@@ -3796,8 +3796,10 @@ bool CUIListBox::HighlightPrev()
 /* the iterator taken from begin() is a local in memory (ASSIGNED from begin(), its copy goes through
  * a float register; initialised from it, it lives in a register: 0xC4 against 0xE4), stepped on to
  * the highlighted row or the end.
- * OPEN, 6 instructions (stack slots): the target puts push_back's end and returned iterators at
- * sp+60/64, below the insert's returned one at 68; here they are at 64/68 and the insert's at 60.
+ * BYTE-EXACT SINCE THE MSL HEADERS' ROUND 39, through include/list's __push_back_deep and __insert_deep (the deeper pair by other
+ * names: as push_back and insert themselves it is +1 / -15, two of them this unit's LoadSpecs) and `int i = 0` declared after the iterator.
+ * Until then 6 instructions (stack slots): the target puts push_back's end and returned iterators at
+ * sp+60/64, below the insert's returned one at 68; here they were at 64/68 and the insert's at 60.
  * Tried: the if/else the other way round (0xEC), the iterator declared at the top, the insert's
  * result assigned or kept, insert(end(), item) for the push_back (6 each); round 56: braces round
  * the push_back, the iterator at function scope (6), the push_back through a one-level-deeper
@@ -3816,14 +3818,15 @@ void CUIListBox::AddItem(ListItem *item, int where)
     item->SetFont(m_font);
     item->SetScale(m_scale);
     if (where == -1)
-        m_items.push_back(item);
+        m_items.__push_back_deep(item);
     else {
         std::list<ListItem *>::iterator it;
+        int i = 0;
 
         it = m_items.begin();
-        for (int i = 0; i < m_highlighted && it != m_items.end(); i++)
+        for (; i < m_highlighted && it != m_items.end(); i++)
             ++it;
-        m_items.insert(it, item);
+        m_items.__insert_deep(it, item);
     }
 }
 

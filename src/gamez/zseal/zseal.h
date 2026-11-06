@@ -238,6 +238,21 @@ public:
      * (kit.h's; OVL2 0x5BC6A0) */
     bool HasItemWithAmmo(EQUIP_ITEM item);
     void FillWeaponEnum(int index, class CZFTSWeapon **out);
+    /* the item pointer of an index, cleared and set (OVL2 0x5B8FF0, 0x5B8FC0, 0x5B8F20: the kit lane's) */
+    void *GetItemPtr(int index);
+    void ClearItemPtr(int index);
+    /* the item's model named for the node, the item at an index, the reticule set (kit.h's: OVL2 0x5C72C0,
+     * 0x5C3740, 0x5BE570) */
+    bool InitItemModel(const char *model, const char *name);
+    class CZFTSWeapon *GetItemByIndex(int index) const;
+    void SetCurReticule(bool force);
+    void SetItemPtr(int index, void *p);
+    /* a weapon set at an index (SOCOM 1's; OVL2 0x5BC410), the rounds added, the slot a weapon picked up
+     * takes and whether an item can be selected (OVL2 0x5BA3D0, 0x5BAE60, 0x5BDC30: the kit lane's) */
+    void SetItemByIndex(int index, class CZWeapon *w);
+    void AddAmmo(int index, int rounds);
+    int GetPickupSlot(int index);
+    bool isSelectableItem(int index);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) and the item made current by its
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
@@ -290,6 +305,8 @@ public:
     /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
      * calls it) */
     void PostSetupItems();
+    /* the mode the hands fire in (kit.h's, OVL2 0x5C48B0) */
+    void SetHandFireMode(int mode);
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
@@ -318,6 +335,8 @@ public:
     /* an item's fire class, no kit asked (the kit lane's round 32 name: a static member, the item in
      * a0; OVL2 0x5B8820 -- seal_env.cpp compares it with the pistol's 2) */
     static FIRE_CLASS GetItemFireClass(EQUIP_ITEM item);
+    /* the index of the item of a fire class, or -1 (OVL2 0x5B8630, the kit lane's) */
+    int GetFireClassIndex(FIRE_CLASS fc);
     /* a weapon's ammunition taken in, the rounds read and handed back (SOCOM 1's PickupAmmo by its
      * arguments, the kit lane's round 32; OVL2 0x5BB000 -- HandlePickupAck's eight takes call it) */
     void PickupAmmo(class CZFTSWeapon *weapon, class CZAmmo *ammo, int *rounds);
@@ -335,7 +354,8 @@ public:
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
     unsigned int m_requested_item : 1;   // bit 12: an item asked for (IsChangingWeapons tests it)
-    unsigned int m_bits13 : 19;
+    unsigned int m_bit13 : 1;   // bit 13: set with bit 12 as a weapon is picked up (PickupItem; the name ours)
+    unsigned int m_bits14 : 18;
 };
 
 class CSealCtrlAi;
@@ -507,7 +527,8 @@ public:
      * its first caller, inlines itself eight times; a caller inlines it once -- the name ours) */
     CSealUnit *GetTop() { return m_parent ? m_parent->GetTop() : this; }
 
-    unsigned char _8[0x60 - 0x8];
+    unsigned char _8[0x5c - 0x8];
+    unsigned int m_mask;   // 0x5c: the squad's bit, 1 << (number & 31) (new in SOCOM II; the name ours)
     CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
     unsigned char _64[0x9c - 0x64];
     /* the squad's current order: its kind a byte at 8 (a kill by the local player under order 19
@@ -1181,7 +1202,10 @@ public:
      * bit 19: the sightings ticked in PostTick (the names ours) */
     unsigned int m_aibit18 : 1;
     unsigned int m_aibit19 : 1;
-    unsigned int m_bits20 : 12;
+    unsigned int m_bits20 : 2;
+    /* bit 22: set when a player's detonated shot hits the AI (OnWeaponHit 0x572330; the name ours) */
+    unsigned int m_aibit22 : 1;
+    unsigned int m_bits23 : 9;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
     unsigned char m_26d;   // 0x26d (cleared with 0x26c by the constructor; the name ours)
@@ -1210,7 +1234,9 @@ public:
     /* a mode (7 keeps the AI-map collision off; the name ours): an AI_MODE, copied with lb (0x557F60) */
     AI_MODE m_3f4;   // 0x3f4
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
-    unsigned char _3f6[0x3fc - 0x3f6];
+    unsigned char _3f6[0x3f8 - 0x3f6];
+    /* (zeroed as the mode changes: SetAiMode; the name ours) */
+    int m_3f8;   // 0x3f8
     /* the countdown to the next glance around: 0x567690 runs it down and restarts it at a random 10
      * to 15, zeroed while the AI has a target or acts (SetAiMode sets it; the name ours) */
     float m_3fc;   // 0x3fc
@@ -1363,6 +1389,12 @@ public:
     /* never on in the AI mode 7 (OVL2 0x557EE0) */
     virtual void SetDoAiMapCollide(bool on);
     virtual void OnSetHealth(float health, float old);
+    /* a target taken (SOCOM 1's; OVL2 0x566540, seal_ai.cpp's) */
+    virtual void SetTarget(CTarget *target);
+    /* a projectile's hit taken (SOCOM 1's; OVL2 0x572330, seal_ai.cpp's) */
+    virtual void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj);
+    /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */
+    virtual void OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* the state sent to the other consoles, as a word's bits (OVL2 0x56F6C0, slot 0x6C) */
@@ -1828,6 +1860,8 @@ public:
     /* the rifle, pistol and launcher found among the made gears, the launcher's part added (SOCOM 1's;
      * OVL2 0x58B0F0, seal_cfg.cpp) */
     void SetupGear();
+    /* the MP bomb's gear shown or hidden (SOCOM 1's; OVL2 0x59DF60) */
+    void EnableMPBombGear(bool on);
     /* a part added to the anims' parts: a bare one by name (OVL2 0x58B630), or a gear's model attached to
      * the part it names (0x58B790; SOCOM 1's two AddItems, after SetupEyes in both builds) */
     bool AddItem(const char *name);
@@ -1856,6 +1890,7 @@ public:
 
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
+    virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
     virtual void OnMissionStart();                                          /* +0x4C */
     virtual void OnMissionEnd();
@@ -1909,6 +1944,9 @@ public:
     void HandleBloodDrip(float dT);
     /* a footfall's sound at a point (SOCOM 1's; OVL2 0x5A39B0) */
     void HandleFootfallSound(CPnt3D *pos);
+    /* a foot's step taken: the footfall's anim on the material, its sound and print (SOCOM 1's; OVL2
+     * 0x5A3570) */
+    void HandleSealStep();
     /* the blood decals, one picked at random (SOCOM 1's static vector<CZDecalDef>; OVL1 bss
      * 0x44D568) */
     static std::vector<class CZDecalDef> m_blooddriptexhandles;
@@ -2088,6 +2126,7 @@ public:
      * ImpactFront in both, $f12 set: OVL2 0x580A80, 0x580B70 -- the SEALs, round 48; ClimbOver's
      * float is never read) */
     void ClimbOver(float h);
+    void Climb(float h);
     /* the stances' blends (SOCOM 1's seal_body.cpp, in its order: BlendedClimb 0x581110 to Stand
      * 0x581DC0 -- Stand_0 gained a float in SOCOM II) */
     CZBodyAnimBlend *BlendedClimb(float h);
@@ -2128,6 +2167,9 @@ public:
      * checked by a delayed intersection when it hurts here or is weapon 123 (SOCOM 1's took the
      * location by value; SOCOM II's caller, HandleDamage 0x5AB850, passes it by address, and the
      * part and location go unread; OVL2 0x5AC070, seal_env.cpp) */
+    /* the explosive's sight from the head answered: its damage taken, unless behind something solid
+     * (SOCOM 1's; OVL2 0x5A0E70) */
+    void HandleGrenadeExplosion();
     void HandleDamageExplosive(CZProjectile *proj, CZBodyPart *part, DAMAGE_LOCATION *where);
     /* a bullet's damage on a part, the location handed back (SOCOM 1's took it by value; OVL2
      * 0x5ABBC0, after HandleDamageExplosive in both builds -- not written) */
@@ -2145,6 +2187,9 @@ public:
     static bool m_allow_friendly_fire;
     /* a landing's damage by its speed, the severity returned (SOCOM 1's; OVL2 0x5AC1F0) */
     LANDING_TYPE HandleFallingDamage(float speed);
+    /* a landing taken: its damage, the anim its grade or the pace asks and the state it leaves -- in
+     * state 8 the ladder and the climb let go (SOCOM 1's; OVL2 0x5AF590) */
+    void HandleLanding(float speed);
     /* the health taken from the six locations' values: dead when the head's or the body's runs out
      * (a bullet in the head a head shot), else their weighted average (SOCOM 1's; OVL2 0x5A54D0; the
      * six values' setter 0x5A5790 calls it too) */
@@ -2172,11 +2217,11 @@ public:
      * SEALs, round 48) */
     void AlignForClimb(bool done, CPnt3D &intpt, CPnt3D &at, CPnt3D *wall);
     /* the terrain a SEAL can cross: an int, the callers make it a bool (seal_env.cpp) */
-    int CanTraverse(CDIType type);
+    bool CanTraverse(CDIType type);
     bool CanClimbWall();
     /* a ladder's polygons crossed (SOCOM 1's, a tail call: OVL2 0x59DA60) and the bomb's defusal
      * handled (SOCOM 1's, empty in both builds: OVL2 0x59DA70) */
-    int CanClimbLadder();
+    bool CanClimbLadder();
     void HandleBombDefuse();
     void AttemptBombDefuse();
     /* the action under the reticule, or near it (SOCOM 1's GetReticuleAction, by its order after the
@@ -2212,6 +2257,11 @@ public:
      * 0x5A0040 call it) */
     void CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds, int id, CPnt3D *pos);
     void DropAmmo(int rounds);
+    /* the wall ahead taken: the climb's or the impact's anim and damage (SOCOM 1's; OVL2 0x5B2620) */
+    bool ImpactFront(zdb::IntersectStruct *hit, CPnt3D *pos);
+    /* a weapon of the kit dropped as a pickup where its part hangs, the anim of the drop run unless asked
+     * not to (SOCOM 1's DropItem; OVL2 0x59F730) */
+    CPickup *DropItem(int index, bool quiet);
     /* a kill credited to the killer, with whether the weapon was one of five (SOCOM 1's, the flag
      * new; OVL2 0x59EE20 -- not written) */
     void HandleKiller(int killer, bool b);
@@ -2223,6 +2273,9 @@ public:
     void DropAllItems();
     /* online, a hit on the SEAL reported to the network and the stats (SOCOM 1's, a projectile
      * first; OVL2 0x5A1FF0) */
+    /* a remote hit taken (SOCOM 1's; OVL2 0x5A1B80) */
+    void RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float pierce, CZSealBody *victim,
+                                  CZSealBody *shooter, unsigned char weapon, bool hit);
     void ReportWeaponHitDamage(CZProjectile *proj, int shooter_id, int victim_id, DAMAGE_LOCATION where,
                                float damage, float pierce, bool hit, unsigned char weapon);
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
@@ -2357,7 +2410,12 @@ public:
     unsigned char m_21c_bit2 : 1;   // bit 2: a crouch 0x58A720 reports as a stand (the name ours)
     unsigned char m_fading : 1;   // bit 3: the node's opacity heads for m_fade_target (0x552780)
     unsigned char _21c_bits : 4;
-    unsigned char _21d[0x22c - 0x21d];
+    unsigned char _21d[0x220 - 0x21d];
+    /* (zeroed as the SEAL is made: PostCreateSeal; the names ours) */
+    unsigned char m_220;   // 0x220
+    unsigned char _221[0x224 - 0x221];
+    int m_224;   // 0x224
+    int m_228;   // 0x228
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
     /* a fade of the node's opacity: where to, how fast (its sign toward the target) and the priority
      * of whoever asked (0x552780 refuses a lower one; the names ours) */
@@ -2378,7 +2436,14 @@ public:
     /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
      * (seal.cpp; the name ours) */
     unsigned char m_258_0 : 1;   // 0x258
-    unsigned char _259[0x2d4 - 0x259];
+    unsigned char _259[0x2bc - 0x259];
+    /* a point the wall's approach is measured from (0x5B4B40; the name ours) */
+    CPnt3D m_2bc;   // 0x2bc
+    unsigned char _2c8[0x2cc - 0x2c8];
+    /* the ground probe queued for the frame: its index in the pool, -999 for none (SOCOM 1's PreCheckDIDown
+     * resets it at 0x25c; OVL2 0x5B0840 queues it; the name ours) */
+    int m_down_di;   // 0x2cc
+    unsigned char _2d0[0x2d4 - 0x2d0];
     /* the volumetric hits under the SEAL (SOCOM 1's m_volumetricAltitudes at 0x260: SealProcessAltitude
      * clears it and pushes each smoke or gas hit) */
     std::vector<zdb::IntersectStruct> m_volumetricAltitudes;   // 0x2d4
@@ -2474,7 +2539,13 @@ public:
     CSealStats m_stats;   // 0x58c
     CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
-    unsigned char _5e4[0xeac - 0x5e4];
+    unsigned char _5e4[0xe9c - 0x5e4];
+    /* (inside the kit: zeroed as a launcher is picked up -- PickupItem; the name ours) */
+    int m_e9c;   // 0xe9c
+    /* the SEAL's node extension (a CSealEx, declared below; SOCOM 1's: PostCreateSeal gives it to the node) */
+    unsigned char m_ex[0xea8 - 0xea0];   // 0xea0
+    /* the camera on the player (SOCOM 1's 0xda4: ReCreate sets it; the name ours) */
+    class CAppCamera *m_camera;   // 0xea8
     /* the body carried (SOCOM 1's m_carry, 0xda8 -- right before m_adrenaline in both builds;
      * 0x5A88C0 refuses while one is) */
     CZSealBody *m_carry;   // 0xeac
@@ -2498,7 +2569,10 @@ public:
     unsigned char m_action_display_on;   // 0xed8 (SOCOM 1's 0xdc8)
     unsigned char _ed9[0xee0 - 0xed9];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xf44 - 0xee4];
+    unsigned char _ee4[0xf40 - 0xee4];
+    /* whether the SEAL ticks after its move (PrePostTick does nothing without it; the name ours) */
+    unsigned char m_f40;   // 0xf40
+    unsigned char _f41[0xf44 - 0xf41];
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
@@ -2562,7 +2636,9 @@ public:
     /* a body that cannot be carried (new in SOCOM II: TickVictims passes over a body with it set;
      * the name ours) */
     unsigned char m_fd1;   // 0xfd1
-    unsigned char _fd2[0xfd4 - 0xfd2];
+    unsigned char _fd2;
+    /* (set as a SEAL is made again: ReCreate; the name ours) */
+    unsigned char m_fd3;   // 0xfd3
     unsigned int m_full_update_time;   // 0xfd4
     float m_movespeedmod;   // 0xfd8
     unsigned char _fdc[0xfe0 - 0xfdc];
@@ -2647,7 +2723,10 @@ public:
     /* the last weapon hit (SOCOM 1's m_wephit, an IntersectStruct * at 0xf84; SOCOM II holds it:
      * HandleDamage takes this + 0x10E0 when its node is set, HandleWepHit clears the node) */
     zdb::IntersectStruct m_wephit;   // 0x10e0
-    unsigned char _1100[0x1160 - 0x1100];
+    unsigned char _1100[0x111c - 0x1100];
+    /* zeroed when the SEAL lands out of state 2, and when the ground is lost (0x5B0420; the name ours) */
+    int m_111c;   // 0x111c
+    unsigned char _1120[0x1160 - 0x1120];
     /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
      * seal_weapon.cpp's view names it so too) */
     CSequence m_wep_seq;   // 0x1160
@@ -2675,6 +2754,7 @@ public:
         unsigned int m_ladder;   // 0x4: unsigned (the SEALs, round 34) -- passed to GetLadderByIndex's
                                  // int, the conversion puts its load after the list's (0x5B14E0, 0x5A2490)
         unsigned char m_state;   // 0x8
+        unsigned char m_up;   // 0x9: whether it climbs up (ImpactFront; the name ours)
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
@@ -2701,7 +2781,13 @@ public:
     zdb::CNode m_wateranimnode;   // 0x1380
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
     CPnt3D m_aim_goal;   // 0x144c (SOCOM 1's 0x10ac: GetThrowAnim compares its y, as SOCOM 1's)
-    unsigned char _1458[0x14a0 - 0x1458];
+    /* three points and their copies from the tick before (PrePostTick; the names ours) */
+    CPnt3D m_1458;   // 0x1458
+    CPnt3D m_1464;   // 0x1464
+    CPnt3D m_1470;   // 0x1470
+    CPnt3D m_prev_1458;   // 0x147c
+    CPnt3D m_prev_1470;   // 0x1488
+    CPnt3D m_prev_1464;   // 0x1494
     /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
      * m_curr_firepos and m_curr_firept, 0x1100-0x111F there: the weapon takes look the points up by
      * name again, seal_weapon.cpp's UpdateAimParams through a view of its own) */

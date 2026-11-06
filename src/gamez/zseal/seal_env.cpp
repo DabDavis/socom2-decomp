@@ -102,7 +102,8 @@ struct CMaterialEx {
     CSnd *m_fallsound;   // 0x14: a landing's (HandleFallingDamage plays it)
     unsigned char _18[0x24 - 0x18];
     float m_penetration;   // 0x24: PENETRATION (int_material.h's)
-    unsigned char _28[0x3c - 0x28];
+    unsigned char _28[0x38 - 0x28];
+    float m_foot_step_offset;   // 0x38: FOOT_STEP_OFFSET (int_material.h's: the ground probes add it to a hit)
     /* int_material.h's flags: VOLUMETRIC (bit 0), LIQUID (bit 1) and PICKUP (bit 4) here */
     unsigned int m_volumetric : 1;   // 0x3c
     unsigned int m_liquid : 1;   // bit 1
@@ -206,6 +207,87 @@ void CZSealBody::HandleBloodDrip(float dT)
 extern "C" {
 /* the decal textures by material (OVL1 bss: a buffer of handles UninitDatabaseHandles frees) */
 extern void *data_0044D550;
+}
+
+/* (the footprint, below) */
+extern "C" void func_005A3280(CZSealBody *seal, CPnt3D *pos);
+
+extern "C" {
+/* the footfalls' anims by material (OVL1 bss 0x44D548: ReInitDatabaseHandles fills it) */
+extern void *data_0044D548;
+float floorf(float);
+void *func_00555170(void *stack);
+bool func_005551A0(unsigned short flags, unsigned short mask);
+}
+
+/* a step's footfall at a foot's place, when asked of the walk's phase: its anim on the material underfoot,
+ * then (out of the state 2 for the left, always for the right) its sound and print (an inline for each foot,
+ * as SOCOM 1's; the name ours) */
+void CZSealBody::HandleSealStep()
+{
+    if (!(m_animate_footsteps ? true : false))
+        return;
+    if (!m_lfoot || !m_rfoot)
+        return;
+
+    float t = ((CSealCtrl *)m_control)->m_throttle[2];
+
+    if (m_state != 0 || GetSpeedState() < 2) {
+        if (m_state == 1 && !(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 0.25f))
+            goto walking;
+        if (m_state == 2 && !(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 0.25f))
+            goto walking;
+        if (m_state == 9 && !(m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z <= 0.25f))
+            goto walking;
+        if (t < 0.1f && !(t <= -0.1f))
+            return;
+    }
+walking:
+    if (!func_005551A0(((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_flags, 64))
+        return;
+    t = ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_tfrac;
+    t -= floorf(t);
+    if (t > 0.0f && t < 0.5f) {
+        if (!m_didlstep && !m_airborne) {
+            CPnt3D p;
+
+            PartInSpace(m_lfoot, 0, &p, 0);
+            m_quat.Apply(&p, &p, 1);
+            p = p + m_posW;
+            m_didlstep = 1;
+            if (m_onMaterial < (int)CMaterialExArray::m_materialex_list.size()) {
+                CZAnim *a = ((CZAnim **)data_0044D548)[m_onMaterial];
+
+                if (a)
+                    a->ActivateArg(1, 5, &p, 0);
+            }
+            if (m_state != 2) {
+                HandleFootfallSound(&p);
+                func_005A3280(this, &p);
+            }
+        }
+    } else if (m_didlstep)
+        m_didlstep = 0;
+    if (t > 0.5f && t < 1.0f && !m_airborne) {
+        if (!m_didrstep) {
+            CPnt3D p;
+
+            PartInSpace(m_rfoot, 0, &p, 0);
+            m_quat.Apply(&p, &p, 1);
+            p = p + m_posW;
+            m_didrstep = 1;
+            if (m_onMaterial < (int)CMaterialExArray::m_materialex_list.size()) {
+                CZAnim *a = ((CZAnim **)data_0044D548)[m_onMaterial];
+
+                if (a)
+                    a->ActivateArg(1, 5, &p, 0);
+            }
+            HandleFootfallSound(&p);
+            if (m_state != 2)
+                func_005A3280(this, &p);
+        }
+    } else if (m_didrstep)
+        m_didrstep = 0;
 }
 
 /* a footprint left at a point: on the polygon the SEAL last stood on, unless its decal node refuses
@@ -820,6 +902,174 @@ extern int data_0044D590;
 extern int data_0044D598;
 }
 
+/* (the lowest a probe starts from, OVL2 bss 0x66AAB8: a variable) */
+extern "C" float data_0066AAB8;
+
+/* the body's bits as bools with a block each (inlines; the names ours) */
+static inline bool HoldsNoProbe(const CZSealBody *seal)
+{
+    if (seal->m_1060_bit11)
+        return true;
+    return false;
+}
+
+static inline bool WantsProbe(const CZSealBody *seal)
+{
+    if (seal->m_bit8)
+        return true;
+    return false;
+}
+
+static inline bool DrivenByPlayer(const CZSealBody *seal)
+{
+    if (seal->m_control)
+        return ((CSealCtrl *)seal->m_control)->IsPlayer();
+    return false;
+}
+
+static inline void SetEntityBit8(CEntity *e, bool on)
+{
+    e->m_bit8 = on;
+}
+
+static inline void SetAltitudeCharacters(zdb::DiIntersect *di, bool on);
+
+/* the ground probe queued for the frame, for a SEAL asked to or a player's: from the gunner's place
+ * (held at the lowest start), lifted by the root's place -- only its height when the state is 3 -- a
+ * pool entry made when all are taken, the region's mask and the characters' flag set (OVL2 0x5B0840, new
+ * in SOCOM II: PrePostTick calls it, SOCOM 1's PreCheckDIDown inlined at its head; the name unknown) */
+extern "C" void func_005B0840(CZSealBody *seal)
+{
+    seal->m_down_di = -999;
+    if (HoldsNoProbe(seal))
+        return;
+    if (!WantsProbe(seal) && !DrivenByPlayer(seal))
+        return;
+    SetEntityBit8(seal, false);
+
+    CPnt3D pos = seal->m_gunner_pos;
+
+    if (data_0066AAB8 > seal->m_gunner_pos.y)
+        pos.y = data_0066AAB8;
+
+    zdb::CNode *root = seal->GetRootPart()->m_node;
+    CPnt3D rootpos;
+    CPnt3D d;
+
+    rootpos.x = root->m_matrix.m_matrix[3][0];
+    rootpos.y = root->m_matrix.m_matrix[3][1];
+    rootpos.z = root->m_matrix.m_matrix[3][2];
+
+    TransformVectors(&seal->m_node->m_matrix, &rootpos, &d, 1);
+    if (seal->m_state == 3)
+        pos.y += d.y;
+    else
+        pos.Add(&d, &pos);
+
+    zdb::DiIntersect *di;
+
+    if (data_0044D598 == data_0044D590) {
+        di = new zdb::DiIntersect(32);
+        if (!di)
+            return;
+        di->m_Type = 1;
+        data_0044D588 = (zdb::DiIntersect **)_realloc(data_0044D588, (data_0044D590 + 1) * 4, 0, 0);
+        if (!data_0044D588)
+            return;
+        data_0044D588[data_0044D590] = di;
+        data_0044D590++;
+    }
+    seal->m_down_di = data_0044D598;
+    di = data_0044D588[seal->m_down_di];
+    data_0044D598++;
+    di->m_Tail = pos;
+    di->SetMask(seal->m_last_altitude.GetRegion());
+    if (seal->m_altitude_characters)
+        SetAltitudeCharacters(di, true);
+    else
+        SetAltitudeCharacters(di, false);
+    di->m_Node = seal->GetNode();
+}
+
+extern "C" {
+/* the alert a lost ground raises, when the switch is on (OVL1 data 0x3DF1C8, a byte: no row; OVL2
+ * 0x5582C0, seal_ai.cpp's) and the landing's test (OVL2 0x59AD30, seal_create.cpp's) */
+extern unsigned char data_003DF1C8;
+extern float data_004365C0;
+bool func_005582C0(CAiStamp *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount);
+bool func_0059AD30(CZSealBody *seal, const CPnt3D *pos);
+}
+
+/* the ground probe's answer once the batch has run: a hit taken as the altitude (a SEAL's only its point),
+ * the height set on a landing, the material's height added; no hit, with the switch on, an alert and the
+ * SEAL back on the last ground; else that ground kept where the SEAL stands, lowered by its material's
+ * height (OVL2 0x5B0420, new in SOCOM II: PostTick calls it; the name unknown) */
+extern "C" void func_005B0420(CZSealBody *seal)
+{
+    if (seal->m_1060_bit11 ? true : false)
+        return;
+    if (seal->m_down_di >= 0) {
+        zdb::DiIntersect *di = data_0044D588[seal->m_down_di];
+        zdb::IntersectStruct *hit = seal->SealProcessAltitude(di, &di->m_Tail, 1.0f);
+
+        if (hit) {
+            func_0059AD30(seal, &hit->m_pos);
+            if (seal->m_landed) {
+                CPnt3D p = seal->m_node->GetPosition();
+                float &y = p.y;
+
+                seal->SetLanded(false);
+                y = hit->m_pos.y;
+                y += MaterialEx(hit->GetMaterial())->m_foot_step_offset;
+                seal->m_node->SetPosition(((const CPnt3D &)p).x, ((const CPnt3D &)p).y, ((const CPnt3D &)p).z);
+                seal->m_alt = y;
+                if (seal->m_state != 2)
+                    seal->m_111c = 0;
+            }
+            if (CZSealBody::GetSeal(hit->m_node))
+                seal->m_last_altitude.m_pos = hit->m_pos;
+            else
+                seal->m_last_altitude = *hit;
+            seal->m_420 = data_004365C0;
+            seal->UpdatePosW();
+        } else if (data_003DF1C8) {
+            CSealCtrlAi *ai = ((CSealCtrl *)seal->m_control)->GetSealCtrlAi();
+
+            if (ai)
+                func_005582C0(&ai->m_stamp, ai, (const CPnt3D *)seal->m_node->m_matrix.m_matrix[3], 0.0333f);
+            seal->SetBit9(false);
+            seal->SetBit10(true);
+            seal->m_1340 = 0.0f;
+            seal->m_node->SetPosition(seal->m_last_altitude.m_pos.x, seal->m_last_altitude.m_pos.y, seal->m_last_altitude.m_pos.z);
+            seal->UpdatePosW();
+            seal->m_111c = 0;
+        } else {
+            CPnt3D norm(seal->m_last_altitude.m_norm);
+            float y = seal->m_last_altitude.m_pos.y;
+
+            seal->m_last_altitude.m_pos = CPnt3D::zero;
+            seal->m_last_altitude.m_norm = CPnt3D::zero;
+            seal->m_last_altitude.m_poly = 0;
+            seal->m_last_altitude.m_node = 0;
+            seal->m_last_altitude.m_pos = *(const CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+            seal->m_last_altitude.m_norm = norm;
+            seal->m_last_altitude.m_pos.y = y;
+            seal->m_node->SetPosition(seal->m_last_altitude.m_pos.x, seal->m_last_altitude.m_pos.y, seal->m_last_altitude.m_pos.z);
+
+            CMaterialEx *mat = MaterialEx(seal->m_last_altitude.GetMaterial());
+
+            if (mat) {
+                CPnt3D d;
+
+                d.x = d.y = d.z = mat->m_foot_step_offset;
+                seal->m_last_altitude.m_pos.Sub(&d, &seal->m_last_altitude.m_pos);
+            }
+        }
+        seal->m_down_di = -1;
+    }
+    seal->SetLanded(false);
+}
+
 /* the intersection pool let go: each deleted, the array freed, the words cleared (OVL2 0x5B61A0, new
  * in SOCOM II; CCoreState::UnInit, CMPExitState::Init and CMission::ReOpen_Unload1 call it) */
 extern "C" void func_005B61A0()
@@ -977,6 +1227,7 @@ void ParentPistolToRHandCallback(void *data, void *arg)
  * slung on the back -- still the body's rifle --, the third part none, the pistol the item in hand
  * (OVL2 0x5A7260; SOCOM 1's ChangeToPistolMode, its kit call ReParentToPistol -- OVL2 0x5C6DA0 --
  * in the same place, after ChangeToRifleMode as here) */
+#pragma auto_inline off
 void CZSealBody::ChangeToPistolMode(bool hand)
 {
     m_kit.ReParentToPistol();
@@ -992,12 +1243,14 @@ void CZSealBody::ChangeToPistolMode(bool hand)
     SetBodyPart(data_003DF160, 0);
     m_item = ITEM_PISTOL;
 }
+#pragma auto_inline reset
 
 /* the rifle taken: the kit's rifle chosen, the rifle into the right hand, the pistol holstered as
  * gear when asked -- the callback's work written through the SEAL, which the target reloads (the
  * callback inlined keeps the member's address instead) --, the third part none, the rifle the item
  * in hand (OVL2 0x5A70F0; SOCOM 1's ChangeToRifleMode, its kit call ReParentToRifle -- OVL2
  * 0x5C6A40 -- in the same place) */
+#pragma auto_inline off
 void CZSealBody::ChangeToRifleMode(bool holster)
 {
     m_kit.ReParentToRifle();
@@ -1015,6 +1268,7 @@ void CZSealBody::ChangeToRifleMode(bool holster)
     SetBodyPart(data_003DF160, 0);
     m_item = ITEM_RIFLE;
 }
+#pragma auto_inline reset
 
 extern "C" {
 /* the blend on top of the body's stack (seal.cpp's tail copy, OVL2 0x555170) */
@@ -1231,7 +1485,7 @@ extern short data_003DF0D0;
 extern short data_003DF0D8;
 void func_005A78C0(void *body, void *data);
 /* (OVL2 0x5B4340: the state test of a kind, below) */
-bool func_005B4340(CZSealBody *seal, int kind);
+bool func_005B4340(CZSealBody *seal, unsigned char kind);
 }
 
 /* a reload's blend pushed: the throwables' set its own; else by the stance the blends rest in -- a
@@ -1740,7 +1994,7 @@ static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
 
 extern "C" {
 /* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind, below) */
-bool func_005B4340(CZSealBody *seal, int kind);
+bool func_005B4340(CZSealBody *seal, unsigned char kind);
 /* the restrained anim set (OVL1 bss, below) */
 extern AnimSet *data_0044D400;
 /* a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) */
@@ -1893,9 +2147,9 @@ AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 }
 
 extern "C" {
-/* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind -- CanTraverse and
+/* (OVL2 0x5B4340, defined below: a test of the SEAL's state against a kind -- CanTraverse and
  * PreTick ask it too; the name unknown) */
-bool func_005B4340(CZSealBody *seal, int kind);
+bool func_005B4340(CZSealBody *seal, unsigned char kind);
 }
 
 extern "C" {
@@ -2850,6 +3104,405 @@ void CZSealBody::HandleDamage(CZProjectile *proj)
     }
 }
 
+extern "C" {
+/* the blast's stun by the weapon (OVL2 0x5A5250, below); the blowback a blast's damage gives (OVL1
+ * 0x3C5930, zwep_ftsweapon.cpp's) */
+void func_005A5250(CZSealBody *seal, EQUIP_ITEM item, const CPnt3D *from, const float *scale);
+float func_003C5930(float damage);
+int func_005A18B0(CZSealBody *seal, CZProjectile *proj);
+}
+
+/* (the people's material, SOCOM 1's zwep::personMaterialId: OVL1 data 0x3E14F8) */
+namespace zwep {
+extern int personMaterialId;
+}
+
+static inline float LenSq(const CPnt3D &v)
+{
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+static inline bool NoNode(const zdb::CNode *p)
+{
+    return !(p != 0);
+}
+
+/* the explosive's sight from the head answered, once the delayed ray has run: the hits walked from the
+ * blast outward past the SEAL's own nodes and whatever lets a blast through; something solid stops it unless
+ * the shot has bit 9. The blast's stun by its reach, a player's ringing ears (not for the shotguns' 81-84),
+ * the explosive's hits by the odds at random locations, the blowback, the health, a death credited
+ * (OVL2 0x5A0E70: SOCOM 1's HandleGrenadeExplosion, which took its stuns one by one) */
+void CZSealBody::HandleGrenadeExplosion()
+{
+    if (!m_tempprojectile)
+        return;
+    if (m_tempprojectile->m_state == 7) {
+        m_tempprojectile = 0;
+        m_projectileintersecthandle = -1;
+        return;
+    }
+
+    bool alive = m_isAlive ? true : false;
+
+    zdb::CWorld::m_world->ClearIgnoreNodeDelayed(m_projectiledi);
+
+    bool done = false;
+    int i;
+    zdb::IntersectStruct *best = 0;
+    bool blocked = false;
+    int n = m_projectiledi->m_Cnt;
+
+    do {
+        CPnt3D hd;
+        float bestd = 0.0f;
+        float last;
+
+        if (!best)
+            last = bestd;
+        else {
+            CPnt3D d;
+
+            best->m_pos.Sub(&m_projectiledi->m_Tail, &d);
+            last = d.x * d.x + d.y * d.y + d.z * d.z;
+        }
+        best = 0;
+        for (i = 0; i < n; i++) {
+            bool mine;
+            zdb::CNode *p;
+            zdb::IntersectStruct *h = &m_projectiledi->m_Intersects[i];
+
+            if (h->m_node) {
+                p = h->m_node->m_parent;
+                mine = false;
+                while (!NoNode(p) && !mine) {
+                    if (p == GetNode())
+                        mine = true;
+                    p = p->m_parent;
+                }
+                if (mine)
+                    continue;
+            }
+
+            h->m_pos.Sub(&m_projectiledi->m_Tail, &hd);
+
+            float dd = hd.x * hd.x + hd.y * hd.y + hd.z * hd.z;
+
+            if (dd > last && (!best || dd < bestd)) {
+                best = h;
+                bestd = dd;
+            }
+        }
+        if (best) {
+            CMaterialEx *m = MaterialEx(best->GetMaterial());
+
+            if (m && !(m->m_particle ? true : false) && !(m->m_liquid ? true : false) && !(m->m_pickup ? true : false) &&
+                zwep::personMaterialId != best->GetMaterial()) {
+                blocked = true;
+                done = blocked;
+            }
+        } else
+            done = true;
+    } while (!done);
+    if (!blocked || m_tempprojectile->GetFlag9()) {
+        bool ears;
+        int n;
+        CZProjectile *proj;
+        bool b;
+        const CPnt3D *from;
+        int k;
+        CZAmmo *ammo;
+        unsigned int shooter;
+        EQUIP_ITEM id;
+
+        from = &m_tempprojectile->m_framestartpos;
+        id = m_tempprojectile->m_weapon->m_ID;
+        ears = false;
+        if (IsPlayer()) {
+            switch (id) {
+            case 84:
+            case 83:
+            case 82:
+            case 81:
+                break;
+            default:
+                ears = true;
+                break;
+            }
+        }
+
+        float scale = 1.0f;
+        float radius = m_tempprojectile->m_ammo ? m_tempprojectile->m_ammo->GetExplosionRadius() : 0.0f;
+
+        if (radius > 0.0f) {
+            float r2 = radius * radius;
+            CPnt3D d;
+
+            d = m_posW;
+            d.Sub(from, &d);
+
+            float dd = LenSq(d);
+
+            if (r2 > dd)
+                scale = 1.0f - dd / r2;
+            else
+                scale = 0.0f;
+        }
+        if (scale > 0.0f) {
+            func_005A5250(this, id, from, &scale);
+            if (ears) {
+                CSnd *snd = CSnd::GetSoundByName(".RINGING_EARS");
+
+                if (snd)
+                    snd->PlaySound(true, 0, 255);
+                CSnd::SetGroupVolTemp(5.0f, 0.35f, 0, 2, 1, 3, 5, 6, -1);
+            }
+
+            DAMAGE_LOCATION where;
+
+            n = func_005A18B0(this, m_tempprojectile);
+            for (k = 0; k < n; k++)
+                PelletDamage(this, m_tempprojectile, where);
+            if (n > 0 && !(theNetwork.m_9 && IsRemote())) {
+                proj = m_tempprojectile;
+
+                float damage = proj->GetDamage(&m_posW, 0.0f);
+
+                if (damage > 0.0f) {
+                    ammo = proj->m_ammo;
+
+                    float reach;
+
+                    if (ammo) {
+                        ammo->GetExplosionDamage();
+                        reach = ammo->GetExplosionRadius();
+                    } else
+                        reach = 30.0f;
+                    func_0057ED10(this, &proj->m_framestartpos, func_003C5930(damage), reach);
+                }
+            }
+            UpdateHealth(where, (SEAL_DEATH_TYPE)4);
+
+            shooter = m_tempprojectile->m_shooterID;
+
+            CEntity *e = CEntity::m_list.GetEntityById(shooter);
+            CZSealBody *killer = 0;
+
+            if (e)
+                killer = AsSeal(e);
+            if (alive && !m_isAlive) {
+                if (killer)
+                    ((CSealCtrl *)killer->m_control)->NotifyTargetDown(this);
+
+                b = false;
+                if (func_003C5AC0(m_tempprojectile->m_weapon->m_ID))
+                    b = true;
+                func_00547AA0(this, shooter, b);
+                func_00547A90(this, id);
+            }
+        }
+    }
+    m_tempprojectile = 0;
+    m_projectileintersecthandle = -1;
+    if (!IsRemote())
+        func_0057E770(this);
+}
+
+/* a remote hit taken: the stats told, a first head shot counted; a shotgun's pellets each at a random
+ * location by its own ammunition, the location's health then updated; else the location's damage; for this
+ * SEAL's own a shotgun's blowback; the health updated -- a death's kill credited, its kind 255 when it lives
+ * (OVL2 0x5A1B80: SOCOM 1's RemoteWeaponDamageVictim, the shotgun new, its Damage calls one) */
+/* (CZWeapon::GetIDType by its mangled name, through a byte: the argument's read of the spilled parameter
+ * is an lbu then -- the enum's a lb, and a cast in the call a common subexpression of its own in a slot of
+ * its own; a device, the original's parameter not told apart from the DWARF's unsigned char) */
+extern "C" EQUIP_ITEM GetIDType__8CZWeaponF10EQUIP_ITEM(unsigned char id);
+static inline EQUIP_ITEM GetIDTypeU(unsigned char id) { return GetIDType__8CZWeaponF10EQUIP_ITEM(id); }
+void CZSealBody::RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float pierce, CZSealBody *victim,
+                                          CZSealBody *shooter, unsigned char weapon, bool hit)
+{
+    EQUIP_ITEM type = GetIDTypeU(weapon);
+
+    if (!shooter || !victim)
+        return;
+
+    CSealStats *vs = &victim->m_stats;
+    CSealStats *ss = &shooter->m_stats;
+    CZAmmo *ammo = 0;
+
+    if (type == 81)
+        ammo = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)weapon)->GetDefaultAmmo();
+    if (hit) {
+        ss->Hit(*shooter, *victim);
+        vs->WasHit(*victim);
+    }
+
+    bool alive = m_isAlive ? true : false;
+    bool grenade = false;
+    bool shotgun = false;
+
+    switch (type) {
+    case 171:
+    case 121:
+        grenade = true;
+        break;
+    case 81:
+        shotgun = true;
+        break;
+    }
+    if (where == 0 && victim->m_isAlive && !grenade && !shotgun) {
+        vs->m_count[1]++;
+        func_005A5830(this, where, damage, pierce);
+        ss->HeadShot(*shooter);
+    } else if (shotgun) {
+        if (damage > 0.0f) {
+            static const DAMAGE_LOCATION locs[6] = {
+                (DAMAGE_LOCATION)0, (DAMAGE_LOCATION)3, (DAMAGE_LOCATION)2,
+                (DAMAGE_LOCATION)1, (DAMAGE_LOCATION)5, (DAMAGE_LOCATION)4
+            };
+            static const float odds[6] = { 0.3f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
+            DAMAGE_LOCATION loc = (DAMAGE_LOCATION)6;
+            int n = func_005A1620(this, &shooter->m_posW);
+
+            for (int i = 0; i < n; i++) {
+                float d = ammo->GetImpactDamage();
+                float a = ammo->GetArmorPierce();
+                float r = Rand01();
+
+                loc = (DAMAGE_LOCATION)3;
+                for (int k = 0; k < 6; k++) {
+                    if (r < odds[k]) {
+                        loc = locs[k];
+                        break;
+                    }
+                }
+                func_005A5830(this, loc, d, a);
+            }
+            if (loc != 6)
+                UpdateHealth(loc, DEATH_BULLET);
+        }
+    } else
+        func_005A5830(this, where, damage, pierce);
+    if (victim == this && type == 81) {
+        CPnt3D d = shooter->m_posW - m_posW;
+
+        func_0057ED10(this, &shooter->m_posW, damage * ammo->GetBlowbackScale(d.x * d.x + d.y * d.y + d.z * d.z), 100.0f);
+    }
+    if (victim == this) {
+        UpdateHealth(where, DEATH_BULLET);
+        if (alive && !m_isAlive) {
+            func_00547A90(this, weapon);
+            if (!IsRemote()) {
+                bool b = false;
+
+                if (func_003C5AC0((EQUIP_ITEM)weapon))
+                    b = true;
+                func_00547AA0(this, shooter->m_id, b);
+            }
+        }
+        if (m_isAlive) {
+            func_00547A90(this, -1);
+            func_00547AA0(this, 255, false);
+        }
+        func_0057E770(this);
+    } else
+        UpdateHealth(where, DEATH_BULLET);
+}
+
+/* the SEAL the aim's assist takes: among the targets flagged 0x200 the nearest to the screen's centre
+ * (its height halved) of the living, awake enemies the AI drives -- not bit 17's -- within the assist's
+ * circle, wider inside 85, past 40 and short of the fog's last fifth, not behind a point given or out
+ * of the weapon's range; its target's place handed back, no assist through a scope (OVL2 0x5AB1C0, new in
+ * SOCOM II: CheckDIShoot asks it; the name unknown) */
+static inline CZSealBody *TargetSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+static inline bool TargetIsAi(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+static inline bool TargetAwake(const CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+static inline zdb::CCamera *WorldCamera()
+{
+    return zdb::CWorld::m_world->m_camera;
+}
+
+extern "C" CZSealBody *func_005AB1C0(CZSealBody *seal, CPnt3D *out, CPnt3D *from)
+{
+    CZSealBody *best = 0;
+
+    if (seal->m_kit.IsUsingScope())
+        return 0;
+
+    float bestd = 100000000.0f;
+    CTargetList &targets = seal->m_targets;
+
+    for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+        CZSealBody *s = TargetSeal(i->m_ent);
+
+        if (!s || !(i->m_flags & 0x200) || !TargetIsAi(s) || !s->m_isAlive)
+            continue;
+        if ((s->m_team & seal->m_team) || (s->m_team & 0x20000))
+            continue;
+        if (!TargetAwake(s->GetSealCtrlAi()))
+            continue;
+
+        CPnt3D tp;
+        CPnt3D sp;
+
+        s->GetTargetPosW(&tp);
+        bool on = WorldCamera()->GetScreenPos(&tp, &sp);
+
+        if (!on)
+            continue;
+        sp.y *= 0.5f;
+
+        float d2 = sp.x * sp.x + sp.y * sp.y;
+
+        if (!(d2 < 10000.0f))
+            continue;
+
+        float z = WorldCamera()->GetZ(&tp);
+        zdb::CCamera *cam = WorldCamera();
+        float limit = cam->m_fog_far;
+
+        limit -= 0.2f * (limit - cam->m_fog_near);
+        if (z <= 40.0f || !(z < limit))
+            continue;
+
+        float r2 = 900.0f;
+
+        if (z < 85.0f)
+            r2 += 9100.0f * (0.022222223f * (85.0f - z));
+        if (!(d2 < r2))
+            continue;
+
+        bool blocked;
+
+        if (from)
+            blocked = cam->GetZ(from) < z;
+        else {
+            CZFTSWeapon *w = seal->m_kit.GetCurItem();
+            float range = 100000000.0f;
+
+            if (w)
+                range = ((CZWeapon *)w)->GetMaxRange();
+            blocked = range < z;
+        }
+        if (blocked || !(d2 < bestd))
+            continue;
+        bestd = d2;
+        best = s;
+        *out = tp;
+    }
+    return best;
+}
+
 /* two rays' hits at once, through the unit's two intersection sets (di0, di1) run as one batch on the
  * world from the entity's node: for each ray the first hit that is not volumetric, not liquid, and
  * not fully penetrable unless a pickup -- each later one is weighed against a nearest-so-far that is
@@ -3025,7 +3678,7 @@ extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
 
 extern "C" {
 /* (OVL2 0x5A60D0, below: a stance change, a kind and a flag) */
-void func_005A60D0(CZSealBody *seal, int a, int b);
+void func_005A60D0(CZSealBody *seal, unsigned char item, unsigned char mode);
 }
 
 /* a callback made, and made and cleared once (inlines, the names ours: the call's own test, through a
@@ -3042,6 +3695,245 @@ static inline void CallOnce(ANIM_CALLBACK &cb, void *body)
         CallBack(&cb, body);
         cb.Clear();
     }
+}
+
+extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item);
+extern AnimSet *data_0044D408;
+
+extern "C" {
+/* the swap's anims' first (OVL1 data 0x3DEC68: AnimTypes', read as a variable) and the changes to and from
+ * a launcher (OVL2 0x5A6B70, 0x5A6D30, below) */
+extern short data_003DEC68;
+void func_005A60D0(CZSealBody *seal, unsigned char item, unsigned char mode);
+}
+
+/* the aim and fire points found again (an inline: three times here; the name ours) */
+static inline void FindFirepoints(CZSealBody *seal)
+{
+    seal->m_curr_aimpt = seal->GetFirepointNode("aimpoint");
+    seal->m_curr_firept = seal->GetFirepointNode("firepoint");
+}
+
+/* an item in hand changed, from one to another, or at once the kit's parts put right: a launcher's change
+ * apart; a change neither end of which is a hand's, or one already in the hand, the parts saved and eased;
+ * otherwise the swap's anim by the stance -- stood or crouched and moving the walking swap -- or, with no
+ * anim to play, the change made at once (OVL2 0x5A64C0, new in SOCOM II: CZSealBody::Tick and CZKit::PreTick
+ * call it; the name unknown) */
+extern "C" bool func_005A64C0(CZSealBody *seal, SEAL_ITEM_BYTE from, SEAL_ITEM_BYTE to, bool now)
+{
+    func_00555170(&seal->m_blends);
+    if (now) {
+        if (seal->m_item == 1)
+            seal->m_kit.ReParentToRifle();
+        else if (seal->m_item == 2)
+            seal->m_kit.ReParentToPistol();
+        else if (seal->m_rifle->m_parent == seal->m_rhand)
+            seal->m_kit.ReParentToRifle();
+        else if (seal->m_pistol->m_parent == seal->m_rhand)
+            seal->m_kit.ReParentToPistol();
+        FindFirepoints(seal);
+        return false;
+    }
+
+    bool fromHand = from == ITEM_RIFLE || from == ITEM_PISTOL;
+    bool toHand = to == ITEM_RIFLE || to == ITEM_PISTOL;
+
+    if (from == 4) {
+        if (to == 4)
+            return true;
+        bool r = func_005A6B70(seal, to);
+
+        return r;
+    }
+    if (to == 4) {
+        if (!fromHand) {
+            if (seal->m_rifle->m_parent == seal->m_rhand)
+                from = ITEM_RIFLE;
+            else if (seal->m_pistol->m_parent == seal->m_rhand)
+                from = ITEM_PISTOL;
+            else
+                from = ITEM_RIFLE;
+        }
+        bool r = func_005A6D30(seal, from);
+
+        return r;
+    }
+
+    bool same = false;
+
+    if (fromHand && !toHand)
+        same = true;
+    if (!fromHand && !toHand)
+        same = true;
+    if (!fromHand) {
+        if (to == 1) {
+            if (seal->m_rifle->m_parent == seal->m_rhand) {
+                seal->m_item = 1;
+                same = true;
+            } else
+                from = ITEM_PISTOL;
+        } else if (to == 2) {
+            if (seal->m_pistol->m_parent == seal->m_rhand) {
+                seal->m_item = 2;
+                same = true;
+            } else
+                from = ITEM_RIFLE;
+        }
+    }
+    if (same) {
+        seal->SaveParts();
+        seal->m_interp1 = 0.3f;
+        seal->m_interp2 = 0.3f;
+        return true;
+    }
+
+    bool moving = seal->m_velM.x * seal->m_velM.x + seal->m_velM.y * seal->m_velM.y + seal->m_velM.z * seal->m_velM.z > 400.0f;
+
+    switch (to) {
+    case 1:
+        if (from != 1 && from != 3) {
+            switch (seal->m_state) {
+            case 0:
+                if (moving)
+                    func_00588BC0(seal, (AnimType)data_003DEC68, 0, 0, 0);
+                else {
+                    seal->ChangeToPistolMode(false);
+                    func_00588BC0(seal, (AnimType)53, 0, 1, 0);
+                }
+                break;
+            case 1:
+                if (moving)
+                    func_00588BC0(seal, (AnimType)data_003DEC68, 1, 0, 0);
+                else {
+                    seal->ChangeToPistolMode(false);
+                    func_00588BC0(seal, (AnimType)54, 1, 1, 0);
+                }
+                break;
+            case 2:
+                seal->ChangeToPistolMode(false);
+                func_00588BC0(seal, (AnimType)55, 2, 1, 0);
+                break;
+            default:
+                seal->ChangeToRifleMode(true);
+                func_005A60D0(seal, 1, 0);
+                break;
+            }
+        } else {
+            seal->ChangeToRifleMode(true);
+            func_005A60D0(seal, 1, 0);
+        }
+        break;
+    case 2:
+        if (from != 2 && from != 3) {
+            switch (seal->m_state) {
+            case 0:
+                if (moving)
+                    func_00588BC0(seal, (AnimType)data_003DEC68, 0, 0, 0);
+                else {
+                    seal->ChangeToPistolMode(false);
+                    func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+                    func_00588BC0(seal, (AnimType)53, 0, 0, 0);
+                }
+                break;
+            case 1:
+                if (moving)
+                    func_00588BC0(seal, (AnimType)data_003DEC68, 1, 0, 0);
+                else {
+                    seal->ChangeToPistolMode(false);
+                    func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+                    func_00588BC0(seal, (AnimType)54, 1, 0, 0);
+                }
+                break;
+            case 2:
+                seal->ChangeToPistolMode(false);
+                func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+                func_00588BC0(seal, (AnimType)55, 2, 0, 0);
+                break;
+            default:
+                seal->ChangeToPistolMode(true);
+                func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+                func_005A60D0(seal, 2, 0);
+                break;
+            }
+        } else {
+            seal->ChangeToPistolMode(true);
+            func_005A60D0(seal, 2, 0);
+        }
+        break;
+    default:
+        if (from == 1) {
+            seal->ChangeToRifleMode(true);
+            func_005A60D0(seal, 1, 0);
+        } else if (from == 2) {
+            seal->ChangeToPistolMode(true);
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+            func_005A60D0(seal, 2, 0);
+        }
+        seal->m_item = to;
+        break;
+    }
+    FindFirepoints(seal);
+    return true;
+}
+
+/* the launcher's part back on the spine and set as gear (an inline, four times in 0x5A60D0, once in
+ * PickupItem; the name ours) */
+static inline void StowLauncher(CZSealBody *seal)
+{
+    CZBodyPart *p = seal->m_item_gear[4].m_part;
+
+    if (p && p->m_node) {
+        p->m_parent->m_node->DeleteChild(p->m_node);
+        p->m_parent = seal->m_spinehi;
+        p->m_parent->m_node->AddChild(p->m_node);
+        p->SetActive(false);
+    }
+    seal->SetPartAsGear(seal->m_item_gear[4].m_part, seal->m_item_gear[4].m_gear);
+}
+
+/* a weapon change made at once: to a launcher (mode 4) out of the launcher's anim set, the item readied
+ * -- the given, else the last -- and the launcher stowed; otherwise, to the pistol, the rifle stowed on the
+ * lower spine as gear; to the rifle, its mode set, the item readied and the pistol as gear; for 4 both as
+ * gear -- then the aim and fire points found again (OVL2 0x5A60D0, new in SOCOM II; the name unknown) */
+extern "C" void func_005A60D0(CZSealBody *seal, unsigned char item, unsigned char mode)
+{
+    if (mode == 4) {
+        if (seal->m_animset == data_0044D408)
+            seal->BindAnimSet(seal->m_default_animset, false);
+        seal->m_desiredState = (SEAL_STATE)0;
+        if (item == 2) {
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+            StowLauncher(seal);
+        } else if (item == 1) {
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)1);
+            StowLauncher(seal);
+        } else if (seal->m_lastitem == 2) {
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+            StowLauncher(seal);
+        } else if (seal->m_lastitem == 1) {
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)1);
+            StowLauncher(seal);
+        }
+    } else if (item == 2) {
+        CZBodyPart *rifle = seal->m_rifle;
+
+        if (rifle->m_node) {
+            rifle->m_parent->m_node->DeleteChild(rifle->m_node);
+            seal->m_rifle->m_parent = seal->m_spinelo;
+            seal->m_rifle->m_parent->m_node->AddChild(seal->m_rifle->m_node);
+            seal->m_rifle->SetActive(false);
+        }
+        seal->SetPartAsGear(seal->m_item_gear[1].m_part, seal->m_item_gear[1].m_gear);
+    } else if (item == 1) {
+        seal->ChangeToRifleMode(false);
+        func_0057D5E0(seal, (SEAL_ITEM_BYTE)1);
+        seal->SetPartAsGear(seal->m_item_gear[2].m_part, seal->m_item_gear[2].m_gear);
+    } else if (item == 4) {
+        seal->SetPartAsGear(seal->m_item_gear[2].m_part, seal->m_item_gear[2].m_gear);
+        seal->SetPartAsGear(seal->m_item_gear[1].m_part, seal->m_item_gear[1].m_gear);
+    }
+    seal->m_curr_aimpt = seal->GetFirepointNode("aimpoint");
+    seal->m_curr_firept = seal->GetFirepointNode("firepoint");
 }
 
 /* a weapon change cut short: with none of the change's blends on top, the change's overlay -- the
@@ -4328,6 +5220,221 @@ void CZSealBody::DropAmmo(int rounds)
 /* the ground under a point within a depth (fts_main.cpp's ftsGetAltitudeApprox, OVL1 0x2A2EB0) */
 zdb::IntersectStruct *ftsGetAltitudeApprox(const CPnt3D *p, float depth, bool chars);
 
+extern "C" {
+/* (OVL1 data: SOCOM 1's AnimTypes::SwapRifle, seal_env.cpp reads it as a variable) */
+extern short data_003DEC78;
+/* whether the launcher's item may be swapped now (OVL2 0x589900, seal_body.cpp's range) */
+bool func_00589900(CZSealBody *seal);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+}
+
+/* a weapon picked up: the class's item the SEAL holds dropped (a remote's only let go), the node off the
+ * pickup and on the part -- an anim of the swap played -- the launcher's rest re-parented to the spine and
+ * set as gear, the kit given the node and the weapon, in the slot of the class or a new one, a launcher's
+ * ammunition item added, the HUD told, the pickup destroyed (OVL2 0x59F0C0: SOCOM 1's PickupItem, which took
+ * the path a remote's took here) */
+void CZSealBody::PickupItem(CPickup *pickup)
+{
+    if (!pickup)
+        return;
+    if (pickup->m_type != CPickup::PU_WEAPON || !pickup->m_data || !pickup->m_node)
+        return;
+
+    bool remote = ((CSealCtrl *)m_control)->IsRemote();
+    CZWeapon *weapon = pickup->GetWeapon();
+    CZKit::FIRE_CLASS fc = CZKit::GetItemFireClass(weapon->m_ID);
+    CPickup *dropped = 0;
+    zdb::CNode *parent;
+    int index;
+    CZBodyPart *part = m_item_gear[fc].m_part;
+    CZBodyPart *p;
+    int slot;
+
+    parent = 0;
+    if (part && part->m_node)
+        parent = part->m_node->m_parent;
+    index = m_kit.GetFireClassIndex(fc);
+    if (!remote && index != -1) {
+        DropAmmo(index);
+        dropped = DropItem(index, true);
+    }
+
+    zdb::CNode *node = pickup->m_node;
+
+    zdb::CWorld::m_world->DeleteTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+    pickup->m_node = 0;
+    if (node->m_parent)
+        node->m_parent->DeleteChild(node);
+
+    short anim = data_003DEC78;
+
+    if (remote && parent) {
+        parent->DeleteChild(part->m_node);
+
+        zdb::CNode *old = index != -1 ? (zdb::CNode *)m_kit.GetItemPtr(index) : 0;
+
+        if (old) {
+            if (part && old == part->m_node)
+                part->m_node = 0;
+            zdb::CNode::Delete(old);
+        }
+        part->m_node = node;
+    } else if (dropped) {
+        dropped->GetPickupNetEntityID();
+        func_00588BC0(this, (AnimType)anim, GetStance(false), 0, 0);
+        if (data_0044D508)
+            ((CZAnim *)data_0044D508)->ActivateArg(1, 3, dropped->m_node, 0);
+    } else if (fc == CZKit::FIRE_CLASS_145 && func_00589900(this)) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)anim, m_state, 0, 0);
+
+        m_rifle->SetActive(false);
+        b->m_24 = 0;
+    }
+    if (parent)
+        parent->AddChild(node);
+    else
+        part->m_node = node;
+    switch (fc) {
+    case CZKit::FIRE_CLASS_RIFLE:
+        node->SetName("rifle");
+        break;
+    case CZKit::FIRE_CLASS_PISTOL:
+        node->SetName("pistol");
+        break;
+    case CZKit::FIRE_CLASS_145: {
+        node->SetName("launcher");
+        m_e9c = 0;
+
+        p = m_item_gear[4].m_part;
+        if (p && p->m_node) {
+            p->m_parent->m_node->DeleteChild(p->m_node);
+            p->m_parent = m_spinehi;
+            p->m_parent->m_node->AddChild(p->m_node);
+            p->SetActive(false);
+        }
+        SetPartAsGear(m_item_gear[4].m_part, m_item_gear[4].m_gear);
+        break;
+    }
+    }
+    if (index != -1) {
+        m_kit.ClearItemPtr(index);
+        m_kit.SetItemPtr(index, node);
+        m_kit.SetItemByIndex(index, pickup->GetWeapon());
+    } else {
+        bool select = false;
+        slot = -1;
+
+        if (fc == CZKit::FIRE_CLASS_145) {
+            slot = m_kit.GetPickupSlot(-1);
+            if (slot == m_kit.GetSelectedItemNum())
+                select = true;
+        }
+        if (slot == -1)
+            slot = m_kit.GetNumItems();
+        m_kit.SetItemByIndex(slot, pickup->GetWeapon());
+        m_kit.SetItemPtr(slot, node);
+        if (select) {
+            int cur = 0;
+
+            if (!m_kit.isSelectableItem(0))
+                cur = 1;
+            m_kit.SetCurItemByIndex(cur);
+        }
+    }
+    if (fc == CZKit::FIRE_CLASS_145) {
+        int n = m_kit.GetNumItems();
+
+        m_kit.SetItem(n, weapon->m_ID == 146 ? (EQUIP_ITEM)186 : (EQUIP_ITEM)185);
+        m_kit.AddAmmo(n, 1);
+    }
+    m_kit.m_requested_item = 1;
+    m_kit.m_bit13 = 1;
+    ((CSealCtrl *)m_control)->m_HudUpdateWeapon = 1;
+    CPickup::Destroy(pickup);
+}
+
+/* a weapon of the kit dropped as a pickup: refused with pickups shut, or online by a SEAL no player drives;
+ * the part of its fire class taken off its parent where it hangs, the item's node let go by the kit and put
+ * in the world there, dynamic and a character node, a pickup of kind 8 the SEAL owns made of it, its flag
+ * the pistols', the drop anim run unless asked not to (OVL2 0x59F730: SOCOM 1's DropItem, the kit's item
+ * pointer calls for its vector's) */
+CPickup *CZSealBody::DropItem(int index, bool quiet)
+{
+    if (!CPickup::m_isOpen || (theNetwork.m_9 && !IsPlayer()))
+        return 0;
+
+    CZFTSWeapon *weapon = 0;
+
+    if (m_kit.GetNumItems() < index)
+        return 0;
+    m_kit.FillWeaponEnum(index, &weapon);
+    if (!weapon) {
+        delete weapon;
+        return 0;
+    }
+
+    CPnt3D off = CPnt3D::zero;
+    CZBodyPart *part;
+
+    switch (CZKit::GetItemFireClass(((const CZWeapon *&)weapon)->m_ID)) {
+    case 1:
+        part = m_item_gear[1].m_part;
+        break;
+    case 2:
+        part = m_item_gear[2].m_part;
+        break;
+    case 4:
+        part = m_item_gear[4].m_part;
+        break;
+    default:
+        return 0;
+    }
+    if (!part || !part->m_node)
+        return 0;
+
+    CQuat rot;
+    CPnt3D at;
+    CQuat q;
+
+    PartInSpace(part, 0, &off, &rot);
+    m_quat.Apply(&off, &at, 1);
+    at.Add(&m_posW, &at);
+
+    zdb::CNode *parent = part->m_node->m_parent;
+
+    if (!parent)
+        return 0;
+    parent->DeleteChild(part->m_node);
+    m_quat.Mul(&rot, &q);
+
+    zdb::CNode *node = (zdb::CNode *)m_kit.GetItemPtr(index);
+
+    m_kit.ClearItemPtr(index);
+
+    CPickup *p = 0;
+
+    if (node) {
+        node->SetPosition((const PNT3D *)&at);
+        node->SetRotation((const CQuat *)&q);
+        if (part && node == part->m_node)
+            part->m_node = 0;
+        zdb::CWorld::m_world->AddChild(node);
+        node->SetDynamic(true, true);
+        node->m_socom2_a1_bits.bit2 = 1;
+        node->m_bumpmap = 1;
+        zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+        node->SetDescendantDI(true);
+        node->SetDescendantVisuals(true);
+        p = CPickup::Create(m_id, CPickup::PU_WEAPON, node, weapon);
+        if (p) {
+            p->m_secondary = CZKit::GetItemFireClass(((CZWeapon *)weapon)->GetId()) == 2;
+            if (data_0044D508 && !quiet)
+                ((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0);
+        }
+    }
+    return p;
+}
+
 /* a dead SEAL's satchel charge dropped: the satchel gear hidden; for a SEAL this console runs, holding
  * the charge (item 152) with rounds as a weapon, a satchel model put on the ground under the SEAL's
  * place (DropAmmo's turned offset, looked for from 1 over it), named, made dynamic and a character
@@ -4435,7 +5542,7 @@ void CZSealBody::HandleBombDefuse()
 }
 
 /* a ladder's polygons crossed (OVL2 0x59DA60; SOCOM 1's tail call with type 2) */
-int CZSealBody::CanClimbLadder()
+bool CZSealBody::CanClimbLadder()
 {
     return CanTraverse((CDIType)2);
 }
@@ -4517,6 +5624,8 @@ class CLadderList {
 public:
     /* the ladder at an index, or none (SOCOM 1's; OVL1 0x2A9210) */
     CLadderData *GetLadderByIndex(int index);
+    /* the ladder at a node (OVL1 0x2A90F0, the states lane's: a flag taken) */
+    CLadderData *GetLadderByNode(zdb::CNode *node, int b);
 };
 
 /* the mission (theMission, OVL1 bss 0x4364E0) -- only its ladders (SOCOM 1's at 0x580, beside the
@@ -4570,6 +5679,94 @@ extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
     }
     climb->m_state = 0;
     climb->m_active = 0;
+}
+
+extern "C" {
+/* (OVL1 data: a time that holds the landings off while above zero; a static 65535, the ladder index of
+ * none, read as a float; the three anims a landing picks from; the pace a soft landing keeps an anim
+ * under -- SOCOM 1's guarded statics) */
+extern float data_004365E8;
+extern float data_003F3438;
+extern short data_003DEDF0;
+extern short data_003DEE00;
+extern short data_003DEEE8;
+extern float data_003F3428;
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+void func_005781C0(CZSealBody *seal);
+void func_005A5DA0(CZSealBody *seal);
+}
+
+/* the SEAL off its ladder: the ladder's count of holders down, none held (OVL2 0x59D750's body, inlined
+ * here; the name ours) */
+static inline void LeaveLadder(CZSealBody *seal)
+{
+    if (seal->m_ladder != data_003F3438) {
+        CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(seal->m_ladder);
+
+        if (ladder)
+            ladder->m_users--;
+        seal->m_ladder = data_003F3438;
+    }
+}
+
+/* whether landings are taken (an inline bool: built with its 1 first) */
+static inline int LandingsOpen()
+{
+    return data_004365E8 <= 0.0f;
+}
+
+/* a landing taken: its damage; over the hard fall rate an anim by the grade, a hurt one in state 8, a
+ * slow step else unless the throttles are all but off; with no body carried the blends cleared to the base
+ * and the anim pushed; state 8 lets go of the ladder and the climb (OVL2 0x5AF590: SOCOM 1's HandleLanding,
+ * without its two blend tests) */
+void CZSealBody::HandleLanding(float speed)
+{
+    if (LandingsOpen()) {
+        AnimType anim;
+        SEAL_STATE state = (SEAL_STATE)0;
+        LANDING_TYPE landing = HandleFallingDamage(speed);
+
+        if (!m_isAlive)
+            landing = LANDING_HURT;
+        if (speed > theCharacterDynamics.m_landHardFallRate) {
+            switch (landing) {
+            case LANDING_NONE:
+            case LANDING_SOFT:
+                anim = (AnimType)11;
+                break;
+            case LANDING_HARD:
+                anim = 4.656612873e-10f * (float)rand() > 0.5f ? (AnimType)data_003DEE00 : (AnimType)data_003DEDF0;
+                break;
+            case LANDING_HURT:
+                anim = (AnimType)data_003DEEE8;
+                state = (SEAL_STATE)8;
+                break;
+            }
+        } else if (m_velW.x * m_velW.x + m_velW.y * m_velW.y + m_velW.z * m_velW.z > 400.0f &&
+                   m_244 * m_244 + m_240 * m_240 > data_003F3428 * data_003F3428) {
+            anim = animTypeUndefined;
+            m_interp1 = 0.4f;
+            m_interp2 = 0.4f;
+            m_prevx = m_244;
+            m_prevz = m_240;
+        } else
+            anim = (AnimType)10;
+        if (!m_carry && anim > animTypeUndefined) {
+            ClearToBase(false);
+            func_00588BC0(this, anim, state, 0, 0);
+            m_21c_bit2 = false;
+        }
+        if (state != 8)
+            BodySetState(state);
+        else {
+            BodySetState(0);
+            func_005781C0(this);
+            func_005A5DA0(this);
+            LeaveLadder(this);
+            func_005B14E0(&m_climb, this);
+            SetAmStunned(false);
+        }
+    }
 }
 
 extern "C" {
@@ -4804,6 +6001,517 @@ extern "C" bool func_005B3A60(CZSealBody *seal, const CPnt3D *ends, CPnt3D *pos,
     m = ends[0];
     m.Add(&ends[1], &m);
     m.Scale(0.5f, pos);
+    return true;
+}
+
+extern "C" {
+/* the ladder's tests, the taking told to the others and the climb's place (OVL2 0x57F7D0, 0x57F9C0,
+ * seal_body.cpp's; OVL1 0x2B9F60, fts_remote.cpp's; OVL2 0x5B3A60, 0x5B1130, this unit's) */
+bool func_0057F7D0(CZSealBody *seal);
+bool func_0057F9C0(CZSealBody *seal);
+void func_002B9F60(int obj, int a, int b);
+}
+
+/* whether the SEAL has the climbs' anims (an inline: the `&&` of plain `!= 0` tests a value MW builds in v0
+ * with no join label -- an inline per test takes a saved register a step, `if (ok) ok = ...` pads its joins;
+ * the name ours) */
+static inline bool HasClimbs(CZSealBody *seal)
+{
+    return seal->m_animset->GetScript((AnimType)33) != 0 && seal->m_animset->GetScript((AnimType)44) != 0 && seal->m_animset->GetScript((AnimType)46) != 0 && seal->m_animset->GetScript((AnimType)AnimTypes::ClimbMedium) != 0 && seal->m_animset->GetScript((AnimType)42) != 0 && seal->m_animset->GetScript((AnimType)AnimTypes::StepUp) != 0;
+}
+
+/* whether an AI may take a ladder at a node (0x5B1350's test by node: holding none, the ladder free, in the
+ * climb's mode with a leg of the climb's kinds; an inline, the name ours) */
+static inline bool LadderNodeFree(CZSealBody *seal, zdb::IntersectStruct *hit)
+{
+    if (seal->m_ladder != data_003F3438)
+        return false;
+
+    CLadderData *ladder = theMission.m_ladders->GetLadderByNode(hit->m_node, 1);
+    bool free = ladder ? !(ladder->m_users > 0) : false;
+
+    if (free) {
+        if (seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false) {
+            CSealCtrlAi *c = seal->GetSealCtrlAi();
+
+            free = c->m_3f4 == 7 && (c->m_448 & 7) != 0;
+        }
+    }
+    return free;
+}
+
+/* the wall ahead taken: by the face's kind a climb, a step over or a ladder -- refused when the anims are
+ * missing, in states 9 and 10, when facing off it or out of the edge's points -- the climb placed on the
+ * edge's point and aimed; a ladder only asked for, told to the others online (OVL2 0x5B2620: SOCOM 1's
+ * ImpactFront, its faces' kinds and its checks as they stand).
+ * OPEN, 24 instructions, all of them frame offsets -- every instruction the target's but a 16-byte slot at
+ * sp+176, between hi and edge, that no instruction touches (frame 256 against 240). No source gives a slot
+ * with no code: an unused CPnt3D, a dead copy, `(void)&x`, a dead pointer or reference to it, a class with an
+ * empty constructor and destructor, a by-value inline parameter ignored, or unreachable code using it
+ * (build/scratch/seal-r58/v_620*.py). Otherwise written to the word: the x of d read twice by Length and Dot
+ * where y and z share their address temporaries */
+bool CZSealBody::ImpactFront(zdb::IntersectStruct *hit, CPnt3D *pos)
+{
+    if (!HasClimbs(this))
+        return false;
+    if (m_state == 9 || m_state == 10)
+        return false;
+
+    CPnt3D d = hit->m_pos;
+    CPnt3D at = hit->m_pos;
+    const CPnt3D *n = &hit->m_norm;
+
+    d.Sub(&m_2bc, &d);
+    d.y = 0.0f;
+    d.x = -d.x;
+    d.y = -d.y;
+    d.z = -d.z;
+    *pos = m_2bc;
+
+    unsigned char kind = (unsigned char)hit->m_poly->m_flags.m_appflags & 7;
+    float len = d.Length();
+    float dot = Dot(d, *n) / len;
+    CPnt3D lo, hi;
+
+    if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+        return false;
+    if (kind == 2) {
+        if (TargetIsAi(this) && !LadderNodeFree(this, hit))
+            return false;
+        if (hi.y - lo.y <= 15.0f) {
+            if (fabsf(dot) < 0.02f)
+                return false;
+        } else if (dot < 0.02f)
+            return false;
+    } else if (dot < 0.3f)
+        return false;
+    d.x = -d.x;
+    d.y = -d.y;
+    d.z = -d.z;
+
+    CPnt3D edge;
+
+    if (!hit->GetIntersectedEdgePointsY(&edge))
+        return false;
+
+    float h = hi.y + MaterialEx(hit->GetMaterial())->m_foot_step_offset - m_posW.y;
+
+    switch (kind) {
+    case 4:
+        func_005B3A60(this, &edge, &at, pos, false);
+        if (h > 5.0f) {
+            if (h <= 32.0f)
+                Climb(h);
+            else
+                return false;
+        }
+        break;
+    case 1:
+        func_005B3A60(this, &edge, &at, pos, true);
+        Climb(h);
+        break;
+    case 5:
+        func_005B3A60(this, &edge, &at, pos, false);
+        ClimbOver(h);
+        break;
+    case 2: {
+        bool up;
+
+        if (hi.y - lo.y <= 15.0f) {
+            if (!func_0057F7D0(this))
+                return false;
+            up = true;
+        } else {
+            if (!func_0057F9C0(this))
+                return false;
+            up = false;
+        }
+
+        CLadderData *ladder = theMission.m_ladders->GetLadderByNode(hit->m_node, 1);
+        int index = ladder->m_index;
+
+        bool held = m_climb.m_state == 1 && m_climb.m_active == 1 && index == m_climb.m_ladder;
+
+        if (!held) {
+            if (theNetwork.m_9) {
+                m_climb.m_active = 1;
+                m_climb.m_ladder = index;
+                m_climb.m_state = 1;
+                m_climb.m_up = up;
+                func_002B9F60(m_id, 1, index);
+            } else if (!(ladder->m_users > 0)) {
+                m_climb.m_active = 1;
+                m_climb.m_ladder = index;
+                m_climb.m_state = 1;
+                m_climb.m_up = up;
+                func_005B1130(1, index);
+            }
+        }
+        return false;
+    }
+    case 3:
+        func_005B3A60(this, &edge, &at, pos, false);
+        Climb(h);
+        break;
+    default:
+        return false;
+    }
+    AlignForClimb(false, at, hi, (CPnt3D *)n);
+    return true;
+}
+
+extern "C" {
+/* the wall ahead's hit (OVL2 0x54E430, seal.cpp's) and the hold dropped (OVL2 0x5B3890, below) */
+zdb::IntersectStruct *func_0054E430(CZSealBody *seal);
+void func_005B3890(CZSealBody *seal, int drop_now);
+}
+
+/* whether one of the climbs' anims is on top (an inline: each test a call, the join one bool; the name ours) */
+static inline bool InClimbAnim(CZSealBody *seal)
+{
+    if (seal->IsCurrentBlend((AnimType)42) || seal->IsCurrentBlend((AnimType)AnimTypes::ClimbMedium) ||
+        seal->IsCurrentBlend((AnimType)33) || seal->IsCurrentBlend((AnimType)AnimTypes::ClimbOver) ||
+        seal->IsCurrentBlend((AnimType)AnimTypes::StepUp) || seal->IsCurrentBlend((AnimType)44))
+        return true;
+    return false;
+}
+
+/* whether the SEAL can take the wall it holds by a kind: the anims there, the action allowed, a ladder free,
+ * no climb playing, facing it -- by a small limit on a ladder, by the edge's drop; the ladder ahead of it --
+ * then by the kind: a step short enough one way, within 10 the impact taken and the hold dropped, one up to
+ * 32 otherwise (OVL2 0x5B3CE0: SOCOM 1's CanTraverse, its faces' kinds grown) */
+bool CZSealBody::CanTraverse(CDIType type)
+{
+    zdb::IntersectStruct *hit = m_1090.m_node ? &m_1090 : 0;
+
+    if (!hit)
+        return false;
+
+    unsigned char kind = (unsigned char)hit->m_poly->m_flags.m_appflags & 7;
+
+    if (kind != (unsigned char)type)
+        return false;
+    if (!HasClimbs(this))
+        return false;
+    if (!func_005B4340(this, 2))
+        return false;
+    if (kind == 2 && !LadderNodeFree(this, hit))
+        return false;
+    func_00555170(&m_blends);
+    if (InClimbAnim(this))
+        return false;
+
+    CPnt3D d = *(const CPnt3D *)m_node->m_matrix.m_matrix[2];
+
+    d.y = 0.0f;
+
+    float len = d.Length();
+    float dot = Dot(d, hit->m_norm) / len;
+
+    if (kind == 2) {
+        CPnt3D lo, hi;
+
+        if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+            return false;
+        if (hi.y - lo.y <= 15.0f) {
+            if (fabsf(dot) < 0.02f)
+                return false;
+        } else if (dot < 0.02f)
+            return false;
+
+        CPnt3D e = m_posW;
+
+        e.Sub(&hit->m_pos, &e);
+        e.y = 0.0f;
+        if (Dot(e, hit->m_norm) <= 0.0f)
+            return false;
+    } else if (dot < 0.3f)
+        return false;
+    hit = func_0054E430(this);
+    switch (kind) {
+    case 4: {
+        CPnt3D lo, hi;
+
+        if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+            return false;
+
+        float h = hi.y + MaterialEx(hit->GetMaterial())->m_foot_step_offset - m_posW.y;
+
+        if (h <= 5.0f)
+            return true;
+        if (h <= 10.0f) {
+            CPnt3D p = m_posW;
+
+            ImpactFront(m_1090.m_node ? &m_1090 : 0, &p);
+            func_005B3890(this, 1);
+            return false;
+        }
+        return h <= 32.0f;
+    }
+    case 5:
+        return true;
+    case 2:
+    case 1:
+    case 3:
+        return true;
+    }
+    return false;
+}
+
+
+extern "C" void func_005B3890(CZSealBody *seal, int drop_now);
+
+static inline void SetActionJump(CZSealBody *seal, bool on)
+{
+    seal->m_action_jump = on;
+}
+
+/* whether an edge's drop is short (an int inline: the comparison built with its 1 first, masked at the
+ * caller's test; the name ours) */
+static inline int ShortDrop(const CPnt3D &hi, const CPnt3D &lo)
+{
+    return hi.y - lo.y <= 15.0f;
+}
+
+/* (a body's controller remote, each answer its own block; the name ours) */
+static inline bool DrivenRemotely(const CZSealBody *seal)
+{
+    if (seal->m_control)
+        return ((CSealCtrl *)seal->m_control)->IsRemote();
+    return false;
+}
+
+/* the wall's hit the SEAL holds run into: refused when the jump's action is up (cleared), with no hit held,
+ * when moving off it; facing it by more than the limit -- on a climbable face (kind 2) by a small limit,
+ * either way round when the edge's drop is short -- the impact taken, the hold dropped on any other, the
+ * two throttles and the velocities zeroed; always false (OVL2 0x5B4B40, new in SOCOM II: Tick calls it
+ * twice; the name unknown) */
+extern "C" bool func_005B4B40(CZSealBody *seal, float *a, float *b)
+{
+    if (seal->m_action_jump) {
+        SetActionJump(seal, false);
+        return false;
+    }
+
+    zdb::IntersectStruct *hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+
+    if (!hit)
+        return false;
+
+    CPnt3D d = hit->m_pos;
+
+    d.Sub(&seal->m_2bc, &d);
+    d.y = 0.0f;
+
+    float len = sqrtf(d.x * d.x + d.y * d.y + d.z * d.z);
+
+    d.Scale(-1.0f, &d);
+    if ((d.x * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z) / len < 0.3f)
+        return false;
+    TransformVectors(&seal->m_node->m_matrix, &CPnt3D::unit_z, &d, 1);
+
+    float dot = d.x * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z;
+
+    if (((unsigned char)hit->m_poly->m_flags.m_appflags & 7) == 2) {
+        CPnt3D lo, hi;
+
+        if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+            return false;
+        if ((bool)ShortDrop(hi, lo)) {
+            if (fabsf(dot) < 0.02f)
+                return false;
+        } else if (dot < 0.02f)
+            return false;
+    } else if (dot < 0.3f)
+        return false;
+    if (!DrivenRemotely(seal)) {
+        CPnt3D pos = seal->m_posW;
+
+        seal->ImpactFront(hit, &pos);
+    }
+    if (((unsigned char)hit->m_poly->m_flags.m_appflags & 7) != 2)
+        func_005B3890(seal, 1);
+    *a = 0.0f;
+    *b = 0.0f;
+    seal->m_velM = CPnt3D::zero;
+    seal->m_1350 = CPnt3D::zero;
+    return false;
+}
+
+extern "C" {
+extern short data_003DEAE0;
+extern short data_003DEAE8;
+extern short data_003DEF08;
+extern AnimSet *data_0044D3F8;
+extern AnimSet *data_0044D410;
+bool func_00588030(CZSealBody *seal);
+bool func_00587FE0(CZSealBody *seal);
+bool func_00587F90(CZSealBody *seal);
+bool func_00587F50(CZSealBody *seal);
+bool func_00587F10(CZSealBody *seal);
+bool func_0057DF10(CZSealBody *seal);
+bool func_0057B510(CZSealBody *seal);
+}
+
+/* the blend on top (an inline over the stack's Top, OVL2 0x555170; the name ours) */
+static inline CZBodyAnimBlend *TopBlend(CZSealBody *seal)
+{
+    return (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+}
+
+/* whether an anim is a throw's or a toss's, CQB's, a stab's or a restraint's (inlines over the anim types'
+ * rows; the names ours) */
+static inline bool IsThrowAnim(short t)
+{
+    if (t == AnimTypes::ThrowGrenade || t == AnimTypes::CrouchThrowGrenade || t == AnimTypes::ProneThrowGrenade ||
+        t == AnimTypes::TossGrenade || t == AnimTypes::PistolTossGrenade || t == AnimTypes::ProneTossGrenade ||
+        t == AnimTypes::PistolProneTossGrenade || t == AnimTypes::CrouchThrowGrenade)
+        return true;
+    return false;
+}
+
+static inline bool IsCQBAnim(short t)
+{
+    if (t == AnimTypes::CQB || t == AnimTypes::PistolCQB)
+        return true;
+    return false;
+}
+
+static inline bool IsStabAnim(short t)
+{
+    if (t == AnimTypes::PistolStab || t == AnimTypes::Stab)
+        return true;
+    return false;
+}
+
+static inline bool IsRestrainAnim(short t)
+{
+    if (t == AnimTypes::ApplyRestraints || t == AnimTypes::PistolApplyRestraints)
+        return true;
+    return false;
+}
+
+static inline bool BlendFlag4(const CZBodyAnimBlend *b)
+{
+    return (b->m_flags & 4) ? true : false;
+}
+
+/* whether the SEAL may start an action of a kind: alive, out of the state 8, the anim tests for each kind
+ * (OVL2 0x5B4340, new in SOCOM II: the reload, the change of an item, the restraint, the CQB and the knife
+ * ask it, with the kit's Reload and the controller's PreTick; the name unknown) */
+extern "C" bool func_005B4340(CZSealBody *seal, unsigned char kind)
+{
+    if (!seal->m_isAlive)
+        return false;
+    if (seal->m_state == 8)
+        return false;
+    if (func_00588030(seal) || func_00587FE0(seal))
+        return false;
+    if (seal->IsCurrentBlend((AnimType)data_003DEAE0))
+        return false;
+    if (seal->m_state == 5 || TopBlend(seal)->m_state == 5)
+        return false;
+    if (seal->IsCurrentBlend((AnimType)data_003DEF08))
+        return false;
+    if (kind == 1) {
+        switch (seal->m_state) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+            break;
+        default:
+            return false;
+        }
+        if (seal->m_carry)
+            return false;
+
+        CZBodyAnimBlend *top = TopBlend(seal);
+
+        if (!top)
+            return false;
+        if (seal->m_state != 3 && !seal->CanInterrupt())
+            return false;
+        if ((seal->m_airborne ? true : false) || func_00587F50(seal) || func_00587F10(seal))
+            return false;
+        if (seal->IsCurrentBlend((AnimType)data_003DEAE8))
+            return false;
+        if (IsThrowAnim(TopBlend(seal)->m_animType))
+            return false;
+        if (func_0057DF10(seal))
+            return false;
+        switch (top->m_state) {
+        case 7:
+        case 5:
+        case 4:
+            return false;
+        }
+        return true;
+    }
+    if (kind == 2 || kind == 3 || kind == 4 || kind == 5 || kind == 6 || kind == 7 || kind == 8) {
+        if (seal->m_state == 8 || TopBlend(seal)->m_state == 8)
+            return false;
+        if (seal->m_state == 9 || seal->m_state == 10 || seal->m_carry)
+            return false;
+        if (seal->IsChangingWeapons(true))
+            return false;
+        if (seal->IsReloading())
+            return false;
+        if (IsCQBAnim(TopBlend(seal)->m_animType))
+            return false;
+        if (IsStabAnim(TopBlend(seal)->m_animType))
+            return false;
+        if (IsRestrainAnim(TopBlend(seal)->m_animType))
+            return false;
+        if (seal->m_am_stunned)
+            return false;
+        if (seal->m_animset == data_0044D3F8)
+            return false;
+    }
+    if (kind == 3 || kind == 4 || kind == 5 || kind == 6 || kind == 7 || kind == 8) {
+        if (seal->m_state == 4 || TopBlend(seal)->m_state == 4)
+            return false;
+    }
+    if (kind == 2 || kind == 6 || kind == 7 || kind == 8 || kind == 11) {
+        if (seal->m_state == 2)
+            return false;
+        if (seal->m_animset == data_0044D408)
+            return false;
+        if (seal->m_animset == data_0044D410)
+            return false;
+    }
+    if (kind == 4) {
+        if (seal->m_state == 3 || TopBlend(seal)->m_state == 3)
+            return false;
+        if (seal->m_airborne || seal->m_state == 6)
+            return false;
+        if (func_00587F50(seal) || func_00587F10(seal))
+            return false;
+        if (!(seal->m_1340 <= 0.001f))
+            return false;
+    }
+    if (kind == 3) {
+        if (seal->IsCurrentBlend((AnimType)46))
+            return false;
+        if (BlendFlag4(TopBlend(seal)) || func_00588030(seal) || func_00587FE0(seal) || func_00587F90(seal))
+            return false;
+        if (!seal->m_kit.CurWeaponIsM203Mode() && (seal->m_airborne || seal->m_state == 6))
+            return false;
+        if ((func_00587F50(seal) || func_00587F10(seal)) && !seal->m_kit.CurWeaponIsM203Mode())
+            return false;
+        if (func_0057B510(seal))
+            return false;
+    }
+    if (kind == 7) {
+        if (func_00587F50(seal) || func_00587F10(seal))
+            return false;
+    }
+    if (kind == 10) {
+        if (seal->m_animset == data_0044D408)
+            return false;
+        if (seal->m_bit9)
+            return false;
+    }
     return true;
 }
 
@@ -5278,11 +6986,6 @@ AnimType CZSealBody::FindRandomDamageAnim(DAMAGE_LOCATION where, bool *b)
     return anim;
 }
 
-extern "C" {
-/* a weapon of the kit dropped as a pickup (OVL2 0x59F730, not written yet: the item's index, a flag) */
-void func_0059F730(CZSealBody *seal, int index, int b);
-}
-
 /* the death's end, once its anim has run: unless the SEAL is of team 2 or remote -- or, online, one
  * whose hits go unfelt, a ghost or in a game whose flag 0xDC is set -- its ammunition dropped, then its
  * primary weapon and its pistol (offline only where no such weapon lies within 50), then, online, its
@@ -5315,12 +7018,12 @@ extern "C" void func_005A0040(CZSealBody *seal)
     }
     seal->DropAmmo(-1);
     if (primary != -1 && (theNetwork.m_9 || !CPickup::IsWeaponNear(seal->m_kit.GetPrimaryEnum(), &seal->m_posW, 50.0f)))
-        func_0059F730(seal, primary, 0);
+        seal->DropItem(primary, false);
     if (secondary != -1 &&
         (theNetwork.m_9 || !CPickup::IsWeaponNear(seal->m_kit.GetSecondaryEnum(), &seal->m_posW, 50.0f)))
-        func_0059F730(seal, secondary, 0);
+        seal->DropItem(secondary, false);
     if (ammo)
-        func_0059F730(seal, launcher, 0);
+        seal->DropItem(launcher, false);
 }
 
 extern "C" {

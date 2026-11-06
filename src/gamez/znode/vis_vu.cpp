@@ -1538,6 +1538,16 @@ _word128 *CVisual::VuBatchProgram_Decals(_word128 *p)
     return VuExecuteState0(p);
 }
 
+/* (marked devices, CVisual::ApplyDecal's note: a word and a byte IRO does not propagate) */
+enum DecalInt {
+    DECAL_0 = 0,
+    DECAL_MAX = 0x7FFFFFFF
+};
+enum DecalByte {
+    DECALB_0 = 0,
+    DECALB_MAX = 255
+};
+
 /* a zone-local UV test (vis_decal.cpp's zdb::UVCompare) */
 bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
 
@@ -1595,7 +1605,7 @@ static inline void DecalUV(CPnt3D *uv, short *s)
  * each point's UVs and normal set and the triangle attached as a decal; the triangles attached
  * (SOCOM 1's ApplyDecal, 0x3096E0 in the demo, rewritten: the normal passed in, VU0's vertices;
  * its second part keeps the original's slip, the second vertex's UVs written into the third point).
- * OPEN, 2 instructions long (453 + 2) -- the first part is the target's to the register: the frame by
+ * BYTE-EXACT since the weapons' round 40 (build/scratch/wep/v_cvad40*.py; below). Before: OPEN, 2 instructions long (453 + 2) -- the first part is the target's to the register: the frame by
  * the declaration order (n, the vertex and index arrays; then count, v, nrm, nt, k: igreplay --movers
  * put nt and k after nrm), the view walk's start `v = &vd` then SelectVertex (the target keeps &vd in
  * v's register), the counters zeroed ahead of the call, the asm's inline taking (t, out, src) with t
@@ -1605,7 +1615,19 @@ static inline void DecalUV(CPnt3D *uv, short *s)
  * the 32768 constant's lui v0 where MW here gives the constant v0 (deg 41, pushed in the second sweep),
  * and the mult/mfhi hazard and a loop-top pad then cost two nops; no placement of the constants or the
  * inline's vertex temporaries gives it (igreplay --want/--movers, 46,656 each), so the graph differs:
- * the increments at the end, ++, `++nt == 1`, the index divide first or cast give 53-62 */
+ * the increments at the end, ++, `++nt == 1`, the index divide first or cast give 53-62.
+ * Round 40: igreplay on the LAST record (`-r 1`: this function spills, record 0 is not the object's)
+ * says `--move 204=211.5`: the divide-by-3 constant has to be pushed in simplify's first sweep, its
+ * neighbours numbered above it at most 13 of 17 (in sweep 2 it is coloured first and takes v0, in
+ * sweep 1 it takes a1 after the temporaries, as the target's); numbering four of those temporaries
+ * ahead of the code generator's does the same (vu_moves.py). THE SHAPE: the index pointer and its byte
+ * in enum-typed locals -- not propagated, so `lw` and `lbu` have low numbers -- with `(int)` at the
+ * divide, an unsigned 4-byte enum for the pointer and a one-byte enum for the byte (a 4-byte enum's
+ * byte, a plain int or unsigned char are folded into the divide; a signed enum is an int to IRO and
+ * folds). Marked devices: what the original wrote is not known. AND THE ORDER: nt and k after the
+ * first two UVs, count after the first divide -- the pre-pass scheduler issues the 32768 constant's
+ * lui and mtc1, then the increments, then the divide constant's lui and ori (the two constants then
+ * share v0), where the increments first or all three together put `li 1` ahead of the ori */
 int CVisual::ApplyDecal(unsigned int vid, float size, CPnt3D *pos, CPnt3D *normal, CMatrix *uv,
                         CTexHandle *tex)
 {
@@ -1648,20 +1670,26 @@ int CVisual::ApplyDecal(unsigned int vid, float size, CPnt3D *pos, CPnt3D *norma
         uv->Transform(&d[2].m_10, &d[2].m_pos, 1);
         if (UVCompare(&d[0].m_pos, &d[1].m_pos, &d[2].m_pos) && fabsf(d[0].m_pos.z) <= 4.8f &&
             fabsf(d[1].m_pos.z) <= 4.8f && fabsf(d[2].m_pos.z) <= 4.8f) {
-            nt++;
-            k += 3;
-            count++;
             d[0].m_20.x = ((short *)vert[0])[3] / 32768.0f;
             d[0].m_20.y = ((short *)vert[0])[6] / 32768.0f;
+            nt++;
+            k += 3;
             d[0].m_20.z = ((short *)vert[0])[7] / 32768.0f;
             d[0].m_2c = (int)nrm;
-            d[0].m_c = *idx[0] / 3;
+            DecalInt p0 = (DecalInt)(int)idx[0];
+            DecalByte c0 = (DecalByte)*(unsigned char *)p0;
+            d[0].m_c = (int)c0 / 3;
+            count++;
             DecalUV(&d[2].m_20, (short *)vert[1]);
             d[1].m_2c = (int)nrm;
-            d[1].m_c = *idx[1] / 3;
+            DecalInt p1 = (DecalInt)(int)idx[1];
+            DecalByte c1 = (DecalByte)*(unsigned char *)p1;
+            d[1].m_c = (int)c1 / 3;
             DecalUV(&d[2].m_20, (short *)vert[2]);
             d[2].m_2c = (int)nrm;
-            d[2].m_c = *idx[2] / 3;
+            DecalInt p2 = (DecalInt)(int)idx[2];
+            DecalByte c2 = (DecalByte)*(unsigned char *)p2;
+            d[2].m_c = (int)c2 / 3;
             if (nt == 1) {
                 AttachDecal(vid, size, pos, nt, decalps, tex);
                 nt = 0;

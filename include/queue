@@ -14,7 +14,16 @@ namespace std {
 template <class T, class Container = deque<T> >
 class queue {
 public:
-    explicit queue(const Container &x = Container()) : c(x) {}
+    explicit queue(const Container &x = Container()) : c(x)
+    {
+        /* a modelling device (no code; the MSL headers round 39): see deque's __chain -- this constructor is parsed before the
+         * end-of-unit walk, and only a unit that copies a deque builds one */
+        typedef void (*F)(void *);
+        F f = &Container::__chain;
+
+        if (0)
+            f(0);
+    }
 
     bool empty() const { return c.empty(); }
     unsigned int size() const { return c.size(); }
