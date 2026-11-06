@@ -4,6 +4,9 @@
  * order as SOCOM 1's (FindKey, Read, Write, InsertKey after its zar_search.cpp fetches). Defined in
  * reverse of their image order (-inline deferred). */
 
+/* a modelling device (the MSL headers round 39): include/vector's end() over __iter(__raw_end()), CountKeys' below */
+#define __MSL_VECTOR_END_ARG
+
 #include <algorithm>
 #include <string.h>
 #include "zar.h"
@@ -121,8 +124,9 @@ int CKey::RecordSize()
  * image's pointer iterator). The end taken once ahead of the loop; the flag tested `!= false`,
  * so MW hoists the narrowed flag and tests it with beqz -- `deep && ...` hoists `!deep` instead
  * (sltu/xori, bnez), a bool copy or the end in the test change the copies' sizes.
- * OPEN, one call (0x240 both, every instruction the target's): the second copy's end() inlines
- * the raw end and calls the pod's end 0x34D920 where the target calls CKey's raw end 0x257BA0 --
+ * BYTE-EXACT SINCE THE MSL HEADERS' ROUND 39, through this unit's __MSL_VECTOR_END_ARG (include/vector's note on end()). Until then
+ * one call off (0x240 both, every instruction the target's): the second copy's end() inlined
+ * the raw end and called the pod's end 0x34D920 where the target calls CKey's raw end 0x257BA0 --
  * one level deeper; `#pragma inline_max_size` 240 to 300 does not move it (120-238: 0x18C), and every
  * spelling with the end in the loop test (as _countKeys' and fixupKey's, byte-exact) is 0x1B8-0x27C;
  * round 15: the end or the iterator assigned rather than initialised 0x19C-0x1A4, the end first 20
