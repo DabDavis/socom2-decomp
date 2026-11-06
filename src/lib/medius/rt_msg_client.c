@@ -2176,6 +2176,82 @@ unsigned char rt_msg_client_process_connect_result(rt_msg_client_connection *pCo
     return 0;
 }
 
+/* the answer to a connect of kind 1 (0x636B30, message type 25, state 6 only): the version, this client's id echoed, the
+ * server's port and address and a second port kept; the type-23 reply sent, state 7 */
+unsigned char func_00636B30(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength)
+{
+    unsigned char nVersion0;
+    unsigned char nVersion1;
+    unsigned char nVersion2;
+    unsigned char bAccepted = 0;
+    unsigned short nClientId;
+    unsigned short nOffset;
+    unsigned char result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0 || nType != 25)
+        return 2;
+    if (pConnection->nState != 6)
+        return 1;
+    if (pConnection->nConnectKind != 1)
+        return 1;
+    nOffset = 0;
+    if (nOffset >= nLength)
+        return 1;
+    if (rt_msg_get_ubyte(pMsg, &nVersion0) != 0)
+        return 7;
+    pMsg++;
+    nOffset++;
+    if (nOffset >= nLength)
+        return 1;
+    if (rt_msg_get_ubyte(pMsg, &nVersion1) != 0)
+        return 7;
+    pMsg++;
+    nOffset++;
+    if (nOffset >= nLength)
+        return 1;
+    if (rt_msg_get_ubyte(pMsg, &nVersion2) != 0)
+        return 7;
+    pMsg++;
+    nOffset++;
+    result = func_00638798(pConnection->nConnectKind, nVersion0, nVersion1, nVersion2, &bAccepted);
+    if (result != 0)
+        return result;
+    if (bAccepted != 1)
+        return 16;
+    if (nOffset + 1 >= nLength)
+        return 1;
+    if (rt_msg_get_u2byte(pMsg, &nClientId) != 0)
+        return 7;
+    pMsg += 2;
+    nOffset += 2;
+    if (nClientId != pConnection->nClientId)
+        return 1;
+    if (nOffset + 1 >= nLength)
+        return 1;
+    if (rt_msg_get_u2byte(pMsg, &pConnection->nServerPort) != 0)
+        return 7;
+    pMsg += 2;
+    nOffset += 2;
+    if (nLength < nOffset + 16)
+        return 1;
+    memcpy(pConnection->szIP, pMsg, 16);
+    pMsg += 16;
+    nOffset += 16;
+    if (nOffset + 1 >= nLength)
+        return 1;
+    if (rt_msg_get_u2byte(pMsg, (unsigned short *)pConnection->pad6C) != 0)
+        return 7;
+    result = rt_msg_client_store_msg_in_send_buf(pConnection->pComm, 23, 0xFFFF, 0, 0, 1);
+    if (result != 0)
+        return result;
+    result = rt_msg_client_change_state(pConnection, 7);
+    return result;
+}
+
 /* the server's confirmation (type 26, SOCOM II's; round 16b): the port it gives kept, the connection
  * connected (state 8), and the connect callback told of the success SOCOM 1's process_connect_result
  * reported -- this client's id and the port */
@@ -3036,4 +3112,7 @@ void func_00638828(void)
     for (; i < 16; i++)
         ;
 }
+
+/* the answer to a connect of kind 1 (0x636B30, message type 25, state 6 only): the version, this client's id echoed, the
+ * server's port and address and a second port kept; the type-23 reply sent, state 7 */
 
