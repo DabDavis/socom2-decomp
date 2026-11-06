@@ -3,7 +3,7 @@
  * Z:\dev\Apps\FTS\hud_actionbitmap.cpp). SOCOM 1 kept the radio bitmaps here too; SOCOM II renamed
  * them (CRadioIcon_Static and CRadioIcon_Dynamic in its RTTI) and their Ticks sit with the
  * network info box's (hud_mpinfobox.cpp, 0x239250 and 0x2393F0), so the static icon's Tick moved
- * there. Written: UnInit (0x21DE50), which wipes the unit's static string (0x40D564) and turns
+ * there. Written: HudTick (0x21D9D0, the unit's first: the HUD's round 63), UnInit (0x21DE50), which wipes the unit's static string (0x40D564) and turns
  * off its 22 action entries' bitmaps (0x40C200, 0xE0 apart), which the unit's initialiser
  * (0x3FE550) builds. Defined in reverse of their image order (-inline deferred). */
 
@@ -85,6 +85,24 @@ public:
 class CSealCtrl {
 public:
     bool CanPerformAction(CNodeAction *action);
+    /* the actions in reach marked in the driver's mask (OVL2 0x593500, SOCOM 1's) */
+    void SampleActionAvailable();
+    virtual ~CSealCtrl();
+    virtual bool PreTick(float dT);
+    virtual bool Tick(float dT);
+    virtual bool PostMortemPreTick(float dT);
+    virtual void OnDeath();
+    virtual void Slot1C();
+    virtual void Slot20();
+    virtual void PlayAiSound();
+    virtual void AllowCommand();
+    virtual bool IsPlayer() const;   /* +0x2c */
+};
+
+/* the SEAL's kit (zseal.h's CZKit: only its place) */
+class CZKit {
+public:
+    unsigned char _0[0x10];
 };
 
 class CZSealBody {
@@ -99,9 +117,27 @@ public:
     void ActionSelectionMask(int id);
     CPickup *CurrentPickupSecondary();
     CPickup *CurrentPickup();
+    /* whether a player drives it (hud_pausemenu.cpp's inline) */
+    bool IsPlayer() { return m_ctrl ? m_ctrl->IsPlayer() : false; }
+    /* the kit (SOCOM 1's GetKit, inline) */
+    CZKit *GetKit() { return &m_kit; }
+    /* SOCOM 1's out-of-line setters, inline in SOCOM II (the HUD tick stores the fields) */
+    void ActionDisplayOn(bool on) { m_action_display_on = on; }
+    void ActionCommand(unsigned int cmd) { m_action_command = cmd; }
 
     unsigned char _0[0xc0];
     CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (the action icon shown only with it)
+    unsigned char _e1_5 : 3;
+    unsigned char _e2[0x5e0 - 0xe2];
+    CZKit m_kit;   // 0x5e0
+    unsigned char _5f0[0xed0 - 0x5f0];
+    unsigned int m_action_available;   // 0xed0: a bit per action (zseal.h's; SOCOM 1's ActionAvailableMask)
+    unsigned int m_action_selection;   // 0xed4: the selected action's bit
+    unsigned char m_action_display_on;   // 0xed8
+    unsigned int m_action_command;   // 0xedc: the pad's cycle asked for -- 3 the next icon, 2 the last
 };
 
 
@@ -117,6 +153,10 @@ public:
     C2DBitmap &TimerBkgrd() { return m_timer_BKGRD; }
     bool UpdateDriverPickup();
     unsigned int Add(CActionTxtr *pActionTxtr);
+    /* the icons drawn about the action bitmap (SOCOM 1's Render_ver_2, OVL1 0x21F210) */
+    bool Render_ver_2(class CZActionBitmap &bmp);
+    /* the icons for an action mask made (SOCOM 1's Open, OVL1 0x21F850) */
+    unsigned int Open(unsigned int cursel_mask);
 
     CPnt3D *m_main_iconcolor;   // 0xc
     CPnt3D *m_side_iconcolor;   // 0x10
@@ -272,10 +312,47 @@ unsigned int CActionTxtrMachine::Add(CActionTxtr *pActionTxtr)
  * address until the machine is written) */
 extern C2DString data_0040D564;
 
+/* the HUD's menu states (hud_missioncams.h's) */
+enum MENU_STATE {
+    stateNone = 0,
+    stateWeaponSel = 1,
+    stateOrders = 2,
+    statePauseTestMenu = 3,
+    stateFullScreenMapMenu = 4,
+    stateFullScreenMapAnim = 5,
+    stateLast = 6
+};
+
 class CZActionBitmap : public C2DBitmap {
 public:
     void UnInit();
+    void HudTick(MENU_STATE menustate);
 };
+
+/* the HUD's map (hud_newhudmap.h's CZNewHudMap: only its full-screen flag) */
+class CZNewHudMap {
+public:
+    unsigned char _0[0xdc];
+    bool m_isFullScreen;   // 0xdc
+};
+
+/* the HUD (hud_main.cpp's CHUD: only what the tick reads) */
+class CHUD {
+public:
+    bool IsOn();
+    static CZSealBody *GetHUDOwner();
+
+    static PNT4D m_hud_textcolor;   /* the HUD's text colour */
+
+    unsigned char _0[0x11c90];
+    CZNewHudMap *m_newmap;   // 0x11c90
+};
+
+extern CHUD *theHUD;
+
+/* the timer image's colour (OVL1 .data 0x3E4BA0, zero in the image: the unit's initialiser
+ * 0x3FE550 sets 100, 100, 100 last -- by address until the initialiser is written) */
+extern CPnt3D data_003E4BA0;
 
 /* the prompt let go of, every entry's bitmap clear and off. The string through a reference: on
  * the static itself MW calls C2DString's functions directly, where the target goes through the
@@ -290,4 +367,102 @@ void CZActionBitmap::UnInit()
         g_arrActionTxtrs[i].m_2DBitmap.SetTrans(0.0f);
         g_arrActionTxtrs[i].m_2DBitmap.Off();
     }
+}
+
+/* the action icon's tick: nothing while the HUD is off or the map is full screen; off, with the
+ * driver's display flag down, unless the HUD's owner shows actions and a player drives it; else
+ * the prompt and the timer coloured, the icon on, the driver noted, the pad's cycle applied to the
+ * icons (3 the next first, 2 the last first), the driver's actions sampled again and the icons
+ * remade when they change, drawn and faded, and the first one's action marked selected (SOCOM 1's
+ * CZActionBitmap::HudTick, 0x3D5870 there: its reco icon and night-vision colours gone, its
+ * setters inline). Byte-exact (the HUD's round 63) with three shapes, each measured:
+ *   - `count > 1`: `count >= 2` materialises the compare (sltiu v0, 8 bytes short), `> 1` branches
+ *     on `sltiu at` as the target;
+ *   - the destination taken as a reference before the source is read (`CActionTxtr *&dst = [i-1];
+ *     dst = [i];`): MW's unrolled copies then make each destination's address before the source's,
+ *     the target's t-register order (written `[i - 1] = [i]`, every copy's pair swapped, 33 off);
+ *   - A MODELLING DEVICE: `count`'s dead first definition before the controller's (`count = 0`,
+ *     never used) numbers it between pSeal and pCtrl (README: MW numbers a variable at its first
+ *     definition). pCtrl, this and pSeal are all deferred; numbered after count pCtrl is pushed a
+ *     sweep earlier and coloured last, s2 (igreplay: --move count=33.5 or pCtrl=36.5 gives the
+ *     target, count before pSeal does not). SOCOM 1's DWARF names no controller local either */
+void CZActionBitmap::HudTick(MENU_STATE menustate)
+{
+    if (!theHUD->IsOn() || (theHUD->m_newmap ? theHUD->m_newmap->m_isFullScreen : false))
+        return;
+
+    CZSealBody *pSeal = CHUD::GetHUDOwner();
+
+    if (!pSeal->m_socom2_e1_4 || !pSeal->IsPlayer()) {
+        pSeal->ActionDisplayOn(false);
+        Off();
+        return;
+    }
+
+    CZKit *pKit = pSeal->GetKit();
+
+    if (pKit) {
+        ActionTxtrMachine_HUD.m_action_string.m_color[0] = CHUD::m_hud_textcolor.x;
+        ActionTxtrMachine_HUD.m_action_string.m_color[1] = CHUD::m_hud_textcolor.y;
+        ActionTxtrMachine_HUD.m_action_string.m_color[2] = CHUD::m_hud_textcolor.z;
+        ActionTxtrMachine_HUD.m_timer_IMAGE.SetColor(data_003E4BA0.x, data_003E4BA0.y, data_003E4BA0.z);
+    }
+
+    unsigned int count = 0;   /* dead: numbers count here (see above) */
+    CSealCtrl *pCtrl = pSeal->m_ctrl;
+
+    pSeal->ActionDisplayOn(true);
+    On();
+    ActionTxtrMachine_HUD.m_driver = pSeal;
+    unsigned int action_command = pSeal->m_action_command;
+
+    if (action_command) {
+        if (action_command == 3) {
+            count = ActionTxtrMachine_HUD.size();
+
+            if (count > 1) {
+                CActionTxtr *first = ActionTxtrMachine_HUD[0];
+
+                for (unsigned int i = 1; i < count; i++) {
+                    CActionTxtr *&dst = ActionTxtrMachine_HUD[i - 1];
+
+                    dst = ActionTxtrMachine_HUD[i];
+                }
+                ActionTxtrMachine_HUD[count - 1] = first;
+                ActionTxtrMachine_HUD.UpdateDriverPickup();
+            }
+        } else if (action_command == 2) {
+            unsigned int count = ActionTxtrMachine_HUD.size();
+
+            if (count > 1) {
+                CActionTxtr *last = ActionTxtrMachine_HUD.back();
+
+                for (unsigned int i = count - 1; i; i--)
+                    ActionTxtrMachine_HUD[i] = ActionTxtrMachine_HUD[i - 1];
+                ActionTxtrMachine_HUD[0] = last;
+                ActionTxtrMachine_HUD.UpdateDriverPickup();
+            }
+        }
+        pSeal->ActionCommand(0);
+    }
+
+    unsigned int prev_actionmask = pSeal->m_action_available;
+
+    pSeal->m_action_available = 0;
+    pCtrl->SampleActionAvailable();
+    unsigned int curr_actionmask = pSeal->m_action_available;
+
+    if (!prev_actionmask)
+        ActionTxtrMachine_HUD.Open(curr_actionmask);
+    else if (curr_actionmask != prev_actionmask)
+        ActionTxtrMachine_HUD.Open(curr_actionmask);
+
+    bool bValidActionsPresent = !ActionTxtrMachine_HUD.empty();
+
+    ActionTxtrMachine_HUD.Render_ver_2(*this);
+    ActionTxtrMachine_HUD.TickTransparencyFade(bValidActionsPresent);
+    if (bValidActionsPresent)
+        pSeal->ActionSelectionMask((signed char &)ActionTxtrMachine_HUD[0]->m_action_id);
+    else
+        pSeal->m_action_selection = 0;
 }
