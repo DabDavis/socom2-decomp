@@ -1888,6 +1888,7 @@ public:
 
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
+    virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
     virtual void OnMissionStart();                                          /* +0x4C */
     virtual void OnMissionEnd();
@@ -2566,7 +2567,10 @@ public:
     unsigned char m_action_display_on;   // 0xed8 (SOCOM 1's 0xdc8)
     unsigned char _ed9[0xee0 - 0xed9];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xf44 - 0xee4];
+    unsigned char _ee4[0xf40 - 0xee4];
+    /* whether the SEAL ticks after its move (PrePostTick does nothing without it; the name ours) */
+    unsigned char m_f40;   // 0xf40
+    unsigned char _f41[0xf44 - 0xf41];
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
@@ -2775,7 +2779,13 @@ public:
     zdb::CNode m_wateranimnode;   // 0x1380
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
     CPnt3D m_aim_goal;   // 0x144c (SOCOM 1's 0x10ac: GetThrowAnim compares its y, as SOCOM 1's)
-    unsigned char _1458[0x14a0 - 0x1458];
+    /* three points and their copies from the tick before (PrePostTick; the names ours) */
+    CPnt3D m_1458;   // 0x1458
+    CPnt3D m_1464;   // 0x1464
+    CPnt3D m_1470;   // 0x1470
+    CPnt3D m_prev_1458;   // 0x147c
+    CPnt3D m_prev_1470;   // 0x1488
+    CPnt3D m_prev_1464;   // 0x1494
     /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
      * m_curr_firepos and m_curr_firept, 0x1100-0x111F there: the weapon takes look the points up by
      * name again, seal_weapon.cpp's UpdateAimParams through a view of its own) */

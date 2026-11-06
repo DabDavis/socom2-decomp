@@ -1471,6 +1471,101 @@ void CZSealBody::PostTick(float dT)
     }
 }
 
+extern "C" {
+/* the SEAL's altitude kept for the probes (seal_env.cpp's), and the post-move steps in their order: the
+ * probes and the collision (OVL2 0x550A80, 0x5483D0), the kit's tick (OVL2 0x5C0FD0) */
+extern float data_0066AAB8;
+void func_00550A80(CZSealBody *seal);
+void func_005483D0(CZSealBody *seal, float dT);
+void func_005B0840(CZSealBody *seal);
+void func_005762E0(CZSealBody *seal);
+void func_00548090(CZSealBody *seal);
+void func_005C0FD0(CZKit *kit, float dT);
+}
+
+/* whether the top state is of a kind (see PrePostTick's OPEN note) */
+static inline bool StateIs(CAiStateStack &s, AI_STATE k)
+{
+    if (!(s.size() == 0) == 0)
+        return false;
+    return s.GetState()->m_state == k;
+}
+
+/* the tick after the move: the probes and collision steps; a SEAL carried, stabbed or being restrained takes
+ * its root part's place and then its carrier's node, quaternion and position; the compass anchor kept on the
+ * SEAL, a player's restrained SEAL's point by whether its AI is held or not; the last tick's points kept; the
+ * aim, the controller's PostTick, the grenades, the kit, the stun, the step and the blood (OVL2 0x5506A0, slot
+ * 0x20; SOCOM 1's slot was empty) */
+/* OPEN, 11 instructions (the size right): all in the state test of the restrained SEAL's point. The target's
+ * test is the first term materialised with no andi (xor/sltiu/xori, beqz v0) and then a real if/else with both
+ * joins padded (`b J; sltiu; nop; E: move v0,zero; nop; J: beqz v0`). CAiStateStack::Is (value &&) has the
+ * materialised test but threads its false path to the next test, no else (0x10 short); an if, a ternary, a named
+ * bool, an inline != or `&& true` on the first term all fold it to `bnez` (0x10 short); `!(n == 0) == 0` (here)
+ * and `ok == false` keep it but add its andi and lay the arms the other way. Everything else is byte-exact: the
+ * carrier's matrix first through a named pointer, the rotation's null test kept by a cast through void, the
+ * remote's point a ternary. */
+void CZSealBody::PrePostTick(float dT)
+{
+    if (!m_f40)
+        return;
+    func_00550A80(this);
+    data_0066AAB8 = m_posW.y;
+    func_005483D0(this, dT);
+    func_005B0840(this);
+    func_005762E0(this);
+    if (m_carry) {
+        if (m_state == stateCarried || IsCurrentBlend((AnimType)AnimTypes::Stabbed) ||
+            IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints)) {
+            CPnt3D pos;
+            CQuat rot;
+
+            PartInSpace(GetRootPart(), 0, &pos, &rot);
+            GetRootPart()->m_node->SetPosition(&pos);
+            GetRootPart()->m_node->SetRotation((const CQuat *)(const void *)&rot);
+            const CMatrix *m = &m_carry->GetNode()->m_matrix;
+
+            GetNode()->SetMatrix(m);
+            m_quat = m_carry->m_quat;
+            m_next_quat = m_quat;
+            GetNode()->SetPosition((const PNT3D *)m_carry->GetNode()->m_matrix.m_matrix[3]);
+            UpdatePosW();
+        }
+    }
+    func_00548090(this);
+    if (m_compass_anchor) {
+        m_compass_anchor->m_posW = m_posW;
+        if (m_compass_anchor->m_type == 4) {
+            int point = 0;
+
+            if (m_restrained) {
+                CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
+                CSealCtrl *remote = ai ? (CSealCtrl *)ai->GetRemoteControl() : 0;
+
+                if (ai) {
+                    if (StateIs(ai->m_stateStack, (AI_STATE)9))
+                        point = 2;
+                    else
+                        point = 1;
+                } else if (remote) {
+                    point = remote->GetJumpFlag() == (AI_STATE)9 ? 2 : 1;
+                }
+            }
+            m_compass_anchor->SetPoint(point);
+        }
+    }
+    m_prev_1458 = m_1458;
+    m_prev_1470 = m_1470;
+    m_prev_1464 = m_1464;
+    m_prev_have_aim_norm = m_have_aim_norm;
+    UpdateAimParams();
+    ((CSealCtrl *)m_control)->PostTick(dT);
+    HandleGrenadeExplosion();
+    func_005C0FD0(&m_kit, dT);
+    TickStun(dT);
+    HandleSealStep();
+    HandleBloodDrip(dT);
+}
+
 /* the two roots of a*t^2 - 2*b*t + c, smaller first, when real (an inline bool: 0x550330's) */
 static inline bool SolveQuadratic(float a, float b, float c, float *t0, float *t1)
 {
