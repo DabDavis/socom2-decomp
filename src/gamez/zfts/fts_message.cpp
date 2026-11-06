@@ -6,9 +6,9 @@
  * colour table's setter and accessor (0x2B7530, 0x2B7520), the constructor (0x2B7610), Init
  * (0x2B6FC0, the states' round 41), LastMessage (open); the unit's vtable copies of C2D's inline
  * virtuals and the implicit ~C2DMessageString (0x2B63B0) come out byte-exact with them; Tick
- * (0x2B5DB0, the states' round 48: OPEN, 38 at the target's size). The rest -- Draw (0x2B5830),
- * Add_Message (0x2B6530), 0x2B6430 -- still to write. Defined in reverse of their image order
- * (-inline deferred). */
+ * (0x2B5DB0, written in the states' round 48, byte-exact since round 49) and Draw (0x2B5830, round
+ * 49). The rest -- Add_Message (0x2B6530, its statics 0x3DE6F8-0x3DE708 before Draw's), 0x2B6430
+ * -- still to write. Defined in reverse of their image order (-inline deferred). */
 
 #include "../ztwod/ztwod.h"
 
@@ -62,6 +62,9 @@ public:
     }
 };
 
+/* the font (Draw reads its scale): c2dfont.h wants the CSaferStr above ahead of it */
+#include "../ztwod/c2dfont.h"
+
 /* the lines' fade: its speed (alpha a second) and the alpha a line fades in to (OVL1 data
  * 0x3DE6D0, 0x3DE6D8: variables, read with lwc1; the unit's first statics, as C2DMessageString::Tick
  * is its last function; the names ours) */
@@ -73,6 +76,12 @@ static float s_fadeMax = 100.0f;
 static float s_queueFadeRate = 280.0f;
 static float s_backgroundTrans = 76.8f;
 static float s_subtitlesTrans = 128.8f;
+/* the lines' placing and the subtitles' background (OVL1 data 0x3DE710 4.0, 0x3DE718 -20.0, 0x3DE720
+ * 27.0: Draw's, read with lwc1 -- variables; the names ours) -- after Add_Message's three
+ * (0x3DE6F8-0x3DE708, not written yet) */
+static float s_lineBase = 4.0f;
+static float s_subtitlesTop = -20.0f;
+static float s_subtitlesPad = 27.0f;
 
 /* a message's line: SOCOM 1's C2DMessageString (a C2DString), SOCOM II's members after the
  * string's 0x98 bytes -- how long it stays up, how long it has been up, how many characters a
@@ -99,6 +108,7 @@ class C2DMessage_Q : public C2D {
 public:
     C2DMessage_Q();
     virtual ~C2DMessage_Q();
+    virtual void Draw(zdb::CCamera *cam);
     void Clear_Messages();
     const char *LastMessage();
     void SetScrolling(bool on) { m_scrolling = on; }
@@ -197,6 +207,9 @@ public:
  * so its initialiser (0x4003E0) is __construct_array over the six with CPnt4D's empty constructor
  * (0x2110E0) and no destructor */
 static CPnt4D s_msgColors[6];
+/* the subtitles background's inner corners' transparency (OVL1 bss 0x440CD0, after the colours: only
+ * Draw reads it, nothing writes it -- zero; the name ours) */
+static float s_subtitlesCornerTrans;
 
 /* the queue set up: SOCOM 1's constructor, the colours -1 and a fourth flag cleared (OVL1
  * 0x2B7610) */
@@ -476,4 +489,86 @@ void C2DMessage_Q::Tick(float dT)
                 Scroll(0.0f);
         }
     }
+}
+
+/* the queue drawn: the lines placed from the newest up -- each under the one before by the queue's
+ * spacing, its height grown by how much smaller its font draws than the queue's, centred, or at the
+ * left --, faded to their own transparency; the backgrounds put behind them -- an ascending queue's
+ * two halves at the margins over the queue's whole height, the subtitles' around the lines there are
+ * (their inner corners clear), a descending queue's to the left of centre --, drawn, and the lines
+ * after them (OVL1 0x2B5830, slot 0xC; SOCOM 1's Draw, its backgrounds C2DBitmaps drawn first, its
+ * lines walked from the oldest). Byte-exact as first written but for five spellings (the game states'
+ * round 49): the reverse walk's ends built from end() and begin() -- include/list's rbegin() and rend()
+ * reach the sentinel through tail(), whose end pair's second() a level down is a call (0x5AC); the
+ * height declared before the first line's place (their saved float registers swap); the line's
+ * length through its GetLength() accessor (written as the field, its load and the 2.0 trade $f1 and
+ * $f2); the ascending queue's top `m_spacing * (int)m_maxsize` -- signed, so its product is not the
+ * height's unsigned one and the target computes it again for each background (cast outside, MW
+ * shares the product: 0x588); the subtitles' empty case first (`count <= 0`, the target's block
+ * order) */
+void C2DMessage_Q::Draw(zdb::CCamera *cam)
+{
+    int count = 0;
+
+    if (!IsOn())
+        return;
+    float height = 0.0f;
+    float first = -99.0f;
+    float y = first;
+    reverse_iterator r;
+
+    for (r = reverse_iterator(end()); r != reverse_iterator(begin()); ++r) {
+        C2DString *line = (C2DString *)*r;
+        float scale = line->m_font ? line->m_font->m_scale_factor : 1.0f;
+        float d = m_font->m_scale_factor - line->m_scale * scale;
+
+        height += m_spacing * d + count * d;
+        y = m_438 + s_lineBase - count * m_spacing - height;
+        if (first == -99.0f)
+            first = y;
+        if (!m_centered && !line->m_isCentered)
+            line->SetPos(m_left, (int)y);
+        else if (!line->m_isCentered)
+            line->SetPos((int)(m_left - line->GetLength() / 2.0f), (int)y);
+        else
+            line->SetPos((int)(m_left + m_maxlength / 2.0f), (int)y);
+        line->SetTrans(line->GetTrans());
+        count++;
+    }
+    if (!m_centered) {
+        float w = m_left + m_maxlength / 2.0f - (m_left - m_xmargin);
+        float h = m_438 + m_ymargin - (m_438 - m_spacing * m_maxsize - m_ymargin);
+
+        m_background1.SetPos(m_left - m_xmargin, m_438 - m_spacing * (int)m_maxsize - m_ymargin, w, h);
+        m_background2.SetPos(m_left + m_maxlength / 2.0f, m_438 - m_spacing * (int)m_maxsize - m_ymargin, w, h);
+    } else if (m_subtitles) {
+        m_background1.SetTrans(0, s_subtitlesCornerTrans);
+        m_background1.SetTrans(1, s_subtitlesCornerTrans);
+        m_background2.SetTrans(3, s_subtitlesCornerTrans);
+        m_background2.SetTrans(2, s_subtitlesCornerTrans);
+        float x = m_left - m_maxlength / 2.0f - m_xmargin;
+        float w = m_left - x;
+        float top;
+        float h;
+
+        if (count <= 0) {
+            h = 0.0f;
+            top = h;
+        } else {
+            h = s_subtitlesPad + (first - y);
+            top = y + s_subtitlesTop;
+        }
+        m_background1.SetPos(x, top, w, h);
+        m_background2.SetPos(m_left, top, w, h);
+    } else {
+        float x = m_left - m_maxlength / 2.0f - m_xmargin;
+        float w = m_left - x;
+        float h = m_438 + m_ymargin - (m_438 - m_spacing * m_maxsize - m_ymargin);
+
+        m_background1.SetPos(x, m_438 - m_spacing * m_maxsize - m_ymargin, w, h);
+        m_background2.SetPos(m_left, m_438 - m_spacing * m_maxsize - m_ymargin, w, h);
+    }
+    m_background1.Draw(cam);
+    m_background2.Draw(cam);
+    C2D::Draw(cam);
 }

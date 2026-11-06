@@ -3991,7 +3991,7 @@
 0x002B5750 0x8 func_002B5750  # OVL1
 0x002B5760 0x70 _actionValveCallback__FP6CValvePv  # OVL1; s1:align
 0x002B57D0 0x60 __dt__Q211CNodeAction9ContainerFv  # OVL1; s1:align
-0x002B5830 0x580 func_002B5830  # OVL1
+0x002B5830 0x580 Draw__12C2DMessage_QFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the states lane, round 49): slot 0xC of C2DMessage_Q's vtable 0x4063B0 (after the destructor 0x2B6EE0, before C2D's inline Draw(matrix) copy), SOCOM 1's Draw__12C2DMessage_QFPQ23zdb7CCamera in the same slot (0x1FF9A0); IsOn, the lines placed and faded, the two backgrounds SetPos'd and drawn, C2D::Draw last as SOCOM 1's; fts_message.cpp, byte-exact
 0x002B5DB0 0x5FC Tick__12C2DMessage_QFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B63B0 0x78 __dt__16C2DMessageStringFv  # OVL1; s1:calls
 0x002B6430 0xF4 func_002B6430  # OVL1
