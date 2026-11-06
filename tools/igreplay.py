@@ -57,6 +57,9 @@ a deep copy of the record (relabel(), kept for its callers): the same colours, ~
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --movers 41,87 --timeout 60
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --greedy    # the single moves that help, one at a time (round 45a)
 
+What this search cannot finish, or does not ask (ten movers; the precedences every hit shares; spill picks; a changed
+interference): tools/igsearch.py anneal / allperm / picks / edges (GCC round 45a).
+
 FPR records (GCC round 35a, the AI core's LeadTargetG and the lanes' `$f20,$f0,$f20` operand misses):
 A dump igdump made with --compiler (a unit's colouring under another build than its directive's: GCC round 44a, the
 kit's round 59) is said to be one on this tool's output, a NOTE line naming both builds, and --target then builds its
