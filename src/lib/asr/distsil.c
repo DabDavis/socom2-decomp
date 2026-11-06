@@ -14,7 +14,7 @@
  * the fields they read; InitDistSilProcess written (OPEN, 3 words), byte-exact in round 35c (an
  * intermediate in v: the constant's register by expand_preferences); round 35c ControlDistSilProcess
  * (every function written so far byte-exact); round 40c the two distance passes, DistCalc and
- * DistCalc4Bit (InitCalculateDistances -- named by SOCOM 1's slot and order -- not written). */
+ * DistCalc4Bit, and InitCalculateDistances (OPEN, 4 words; named by SOCOM 1's slot and order). */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -823,7 +823,7 @@ static int *GetpCachedDistances(DISTSIL *d);
 static int GetDistanceOffset(DISTSIL *d);
 static short CalculateDistance(DISTSIL *d, int n);
 static short CalculateDistance4Bit(DISTSIL *d, int n);
-extern int InitCalculateDistances();         /* 0x5006E8, after this one: not written */
+static void InitCalculateDistances(DISTSIL *d, short *out, unsigned char *frame, unsigned char flag, int off);
 extern unsigned char qQueueControl(void *q, unsigned char cmd, int arg, int n);
 
 /* the distance block's interface, handed to a caller by command 27 */
@@ -1014,7 +1014,7 @@ static int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, int *
 
         c->cache = GetpCachedDistances;
         c->offset = GetDistanceOffset;
-        c->init = InitCalculateDistances;
+        c->init = (void *)InitCalculateDistances;
         if (d->f104 == (void *)DistCalc4Bit)
             c->dist = CalculateDistance4Bit;
         else
@@ -1030,6 +1030,132 @@ static int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, int *
         break;
     }
     return ret;
+}
+
+/* a frame's first distances, for a block that reads them cached: the frame's codewords' tables in
+ * place (each codebook's use counted, its bytes and counts rescaled every f308 frames), every group's
+ * and output's minimum as DistCalc over either table width, the outputs less `off` (GetDistanceOffset's
+ * from then on). SOCOM 1's body with DistCalc's loops (round 40c). OPEN, the right size, 4 words: two
+ * pairs in the head -- the target has `sw t0,4(sp); sll v1,s7,8; lw v0,140(s2)` and `lw t9,0(v0); sw
+ * v1,20(sp)`. The stack store and the load depend in sched2 (a load after a store to a frame slot through
+ * a pointer it cannot tell apart), so the target's sched1 issued off's copy (insn 16) ahead of the
+ * load (36), where sched1's rank here has the load's chain first at t=2; 1440 orders of the head's
+ * statements, best0 and fr at every position, n's type and its place, a void * or int d: no closer. */
+static void InitCalculateDistances(DISTSIL *d, short *out, unsigned char *frame, unsigned char flag, int off)
+{
+    int rescale;
+    int sum;
+    int m;
+    int best0;
+    unsigned int n = d->ntables;
+    unsigned short *fr;
+    DSCODEBOOK *cb;
+    short *dst;
+    short *c;
+    int update;
+    unsigned int i;
+    unsigned char **tab0, **tlast;
+    int shift, mask, div;
+
+    best0 = n * 255;
+    fr = d->f140->data;
+    sum = 0;
+    cb = d->f116;
+    rescale = 0;
+    dst = d->f176;
+    m = d->f160;
+    c = d->f180;
+    if (d->f289 != 0 && d->f288 == 0)
+        update = 1 - flag;
+    else
+        update = 0;
+    if (update != 0) {
+        if (++d->f280 % d->f308 == 0) {
+            rescale = 1;
+            d->f280 = 0;
+            d->f284++;
+        }
+    }
+    for (i = 0; i < n; i++) {
+        unsigned char *b = d->f196[i];
+
+        if (update != 0)
+            cb->f8[*frame]++;
+        if (rescale != 0) {
+            unsigned char **tb = d->f312;
+            int j;
+
+            for (j = 0; j < cb->n; j++) {
+                b[j] = tb[cb->f8[j]][b[j]];
+                cb->f8[j] = 0;
+            }
+            if (d->f284 >= 20)
+                NormCorrection(d, (QIN *)cb, b);
+        }
+        d->tables[i] = cb->data[*frame];
+        sum += b[*frame];
+        frame++;
+        cb++;
+    }
+    tlast = &d->tables[n - 1];
+    tab0 = d->tables;
+    if (d->f104 == (void *)DistCalc4Bit) {
+        shift = 4;
+        mask = 0xF0;
+        div = 2;
+    } else {
+        shift = 0;
+        mask = 0xFF;
+        div = 1;
+    }
+    {
+        unsigned short *p = d->f168 + *d->f168;
+
+        for (i = 0; i < d->f156; i++) {
+            int b = best0;
+            unsigned short *pe = d->f168 + d->f168[i + 1];
+
+            for (; p < pe; p++) {
+                int v;
+
+                if (*p != d->f236) {
+                    unsigned short *f = fr + *p * n;
+                    unsigned char **t = tab0;
+                    unsigned int x = *f++;
+
+                    v = ((*t++)[x / div] << ((x & 1) * shift)) & mask;
+                    for (; t <= tlast; t++) {
+                        x = *f++;
+                        v += ((*t)[x / div] << ((x & 1) * shift)) & mask;
+                    }
+                } else
+                    v = sum;
+                if (v < b)
+                    b = v;
+            }
+            dst[i] = b;
+        }
+    }
+    {
+        unsigned short *p = d->f172 + *d->f172;
+
+        for (i = 0; i < m; i++) {
+            int min;
+            unsigned short *pe = d->f172 + d->f172[i + 1];
+
+            min = (unsigned short)dst[*p++] + *c++;
+            for (; p < pe; ) {
+                int x = (unsigned short)dst[*p++] + *c++;
+
+                if (x < min)
+                    min = x;
+            }
+            out[i] = min - off;
+        }
+    }
+    if (d->f288 == 0 && d->f284 >= 20)
+        d->f284 = 0;
+    d->f96 = off;
 }
 
 /* the block: no queues when profile 35 is set (the distances come from elsewhere), else one output
