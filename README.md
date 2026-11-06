@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 54** (the wedge test -- open since round 53 --, the edge test, the view-wedge
+  sight test, the follower's creep and the route-cell walk, all unwritten before; GetReticuleSettle from its draft):
+  - a struct element whose address is passed to calls as `(const T *)&a[i].x` shares that address with the copy's x store
+    in a saved register while y and z fold into frame offsets; written `(char *)a + k` all three fields go through the
+    register, `&a[i]` or `a + i` recomputes it at each call (the wedge test 0x5FE1F0's missing saved register);
+  - a member read through an inline returning it by reference keeps its address in a saved register across two calls,
+    read in place it is recomputed (8 bytes shorter); a pointer local assigned from an inline wrapper (`EntityOf(ai)`) is
+    numbered after the inline's own locals and the temporaries (0x5FD150, 0x5FAE70 -- igreplay first, the source after);
+  - in this unit a tiny callee was auto-inlined wherever it was defined, before or after its caller -- `#pragma
+    auto_inline off` kept it out of line (0x5FC550); byte flags the target loads before the first test need unsigned char
+    locals, bool locals add an sltu; floats read before bitfield cell copies are scheduled ahead of the copies' masks, the
+    last declared gets f20;
+  - 40 degrees is `0.6981317f` (0x3F32B8C2) -- `0.69813174f` rounds up to 0x3F32B8C3.
 - **Tells from the UI, round 32** (CollectGarbage, open since round 18, UTF8GetChar, since round 21, and UTF8Append):
   - a flag bit tested and later set through BY-REFERENCE INLINES OVER A STRUCT AT THE BIT'S BYTE makes MW compute the
     byte's address once, in the test's delay slot, and hold it in a saved register across calls -- written on the value
