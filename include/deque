@@ -67,7 +67,7 @@
  * reordering of its members reproduces the image: measured, deque's copy constructor, begin() / end()
  * const and init in class make deque() 0x2E0D90 byte-exact but stop the queue's constructor inlining
  * into CZOnlineLobby(), CSimpleStateMachine() and the chat's queue (-4 over the deque units);
- * cdeque<T *>() out of class loses game_main's 0x2CEE40 (-1). Not applied.
+ * cdeque<T *>() out of class lost game_main's 0x2CEE40 (-1) -- closed in round 39, see __cdeque_buf. Not applied.
  *
  * The MSL headers' round 13 (probes build/p13/, untracked): A CLASS ELEMENT IS DESTROYED, a scalar one
  * is not -- the chat lines' clear (0x2F5A30) calls make_iterator twice (end first) and a range destroy
@@ -420,10 +420,26 @@ inline OutputIterator __deque_copy_to(const InputIterator &first, const InputIte
     return result;
 }
 
+/* THE DEFAULT CONSTRUCTORS' LAST TWO LEVELS (the MSL headers round 39, build/p39/, untracked): the image has one
+ * out-of-line 0x18-byte zeroing per ELEMENT type -- __deque_buf() calls it, and nothing else does (0x2CEE70, the lobby's
+ * 0x2E0DF0, the chat's 0x2F6290, the state machine's 0x3A6470): cdeque<T *>() is OUT OF CLASS (below) and __cdeque_buf()
+ * IN CLASS, so it is inlined into each of them whatever the tail's order. Out of class (the header until round 39) the
+ * lobby's cdeque<P11>() comes out 0x28 calling it where the chat's, generated later, is 0x18 -- the two groups the online
+ * lobby's round 29 measured differ only by whether __cdeque_buf() was instantiated first -- and game_main's 0x2CEE40
+ * calls a cdeque<PPCv>() no row named: 0x2CEE70 was named __cdeque_buf<PCv>(), which the image never holds out of line
+ * (it is 0x2CEE40's only callee). Over every hand-written unit: 0x2E0DC0, 0x2E0DF0, 0x2F6260, 0x2F6290 byte-exact from
+ * source (held by their drafts until now), 0x3A6440 / 0x3A6470 named and byte-exact, nothing lost. __cdeque_buf(const
+ * Allocator &) stays out of class: the buffers' copy constructors call it (0x2E0AC0 -> 0x2E0D20) */
 template <class T, class Allocator>
 class __cdeque_buf {
 public:
-    __cdeque_buf();
+    __cdeque_buf()
+    {
+        capacity_ = 0;
+        size_ = 0;
+        start_ = 0;
+        data_ = 0;
+    }
     explicit __cdeque_buf(const Allocator &a);
     ~__cdeque_buf()
     {
@@ -436,15 +452,6 @@ public:
     unsigned int start_;
     T *data_;
 };
-
-template <class T, class Allocator>
-__cdeque_buf<T, Allocator>::__cdeque_buf()
-{
-    capacity_ = 0;
-    size_ = 0;
-    start_ = 0;
-    data_ = 0;
-}
 
 template <class T, class Allocator>
 __cdeque_buf<T, Allocator>::__cdeque_buf(const Allocator &)
@@ -1072,7 +1079,7 @@ public:
         T **last_;
     };
 
-    cdeque() {}
+    cdeque();
     explicit cdeque(const Allocator &a);
     cdeque(const cdeque &x);
     /* begin() (0x2E0CB0 the lobby's, 0x3A6350 the state machine's), OPEN from the online lane's round 13
@@ -1123,6 +1130,11 @@ public:
     T *&operator[](unsigned int n) { return (T *&)base::operator[](n); }
     void pop_back() { base::pop_back(); }
 };
+
+template <class T, class Allocator>
+cdeque<T *, Allocator>::cdeque()
+{
+}
 
 template <class T, class Allocator>
 cdeque<T *, Allocator>::cdeque(const Allocator &) : base(std::allocator<const void *>())
