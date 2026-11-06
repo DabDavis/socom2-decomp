@@ -406,11 +406,11 @@ bool SkbScaling();
 unsigned char SkbScale(CSoftKeyboard *skb, float dT);
 
 extern "C" {
-/* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump); the cursor's
- * key pressed (0x38D200) */
+/* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump) */
 void func_0038DFC0(unsigned char dir, CPad *pad);
-void SkbPressKey(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
 }
+/* the cursor's key pressed (0x38D200) */
+void SkbPressKey(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
 /* the two edit keys: the cursor back and on a character (the keys unit's) */
 void SkbCursorBack(CSoftKeyboard *skb);
 void SkbCursorForward(CSoftKeyboard *skb);
