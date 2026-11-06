@@ -88,7 +88,13 @@ typedef struct AUDIO {
     int nSeq;                           /* 0x00: every message's sequence number */
     int nSeqA;                          /* 0x04: type 0x2F's */
     int nSeqB;                          /* 0x08: type 0x30's */
-    char x0C[0x1C];                     /* 0x0C */
+    int x0C;                            /* 0x0C: the channels */
+    int x10;
+    int x14;
+    int x18;
+    int x1C;
+    int x20;
+    int x24;
     unsigned int nIn;                            /* 0x28 */
     unsigned int nOut;                           /* 0x2C */
     unsigned int nInBytes;                       /* 0x30 */
@@ -110,15 +116,16 @@ typedef struct AUDIO {
     unsigned int nFlags;                /* 0x70 */
     int x74;                            /* 0x74 */
     int nId;                            /* 0x78: this client's */
-    char x7C[8];                        /* 0x7C */
+    int x7C;                            /* 0x7C: this client's address, binary */
+    int x80;                            /* 0x80: and its port */
     int nLocalAddr;                     /* 0x84 */
     int nLocalPort;                     /* 0x88 */
     void *pSocket;                      /* 0x8C */
     int x90;                            /* 0x90 */
     int x94;                            /* 0x94 */
     int nGrid;                          /* 0x98: the group spoken in, if positive */
-    void *pCodecA;                      /* 0x9C */
-    void *pCodecB;                      /* 0xA0 */
+    int nWidth;                         /* 0x9C */
+    int nHeight;                        /* 0xA0 */
     void *pHandles[6];                  /* 0xA4: the encoder's three, the decoder's three */
     AUDIO_CONNECT nConnect;             /* 0xBC */
     char szHost[16];                    /* 0xC0 */
@@ -249,7 +256,7 @@ int func_0060FBE0(AUDIO *pAudio, char *pBuf, int nSize)
         && pAudio->pfnCapture(pAudio, pAudio->pHandles[0], pAudio->pHandles[1], pAudio->pHandles[2]) > 0
         && pAudio->nGrid > 0) {
         func_0060FB50();
-        n = func_006456C0(pAudio->pCodecA, pAudio->pCodecB, pAudio->pHandles[0], pAudio->pHandles[1],
+        n = func_006456C0(pAudio->nWidth, pAudio->nHeight, pAudio->pHandles[0], pAudio->pHandles[1],
                           pAudio->pHandles[2], pBuf);
         pAudio->tEncode += func_0060FB78();
         pAudio->nEncoded++;
@@ -276,9 +283,9 @@ int func_0060FC90(AUDIO *pAudio, PEER *p)
     if (n == 0 || pAudio->pfnPlay == 0)
         return 0;
     if (p->pFrame == 0)
-        p->pFrame = func_006456F8(pAudio->pCodecA, pAudio->pCodecB);
+        p->pFrame = func_006456F8(pAudio->nWidth, pAudio->nHeight);
     func_0060FB50();
-    func_006456C8(pAudio->pCodecA, pAudio->pCodecB, pAudio->pHandles[3], pAudio->pHandles[4],
+    func_006456C8(pAudio->nWidth, pAudio->nHeight, pAudio->pHandles[3], pAudio->pHandles[4],
                   pAudio->pHandles[5], pData);
     pAudio->tDecode += func_0060FB78();
     pAudio->nDecoded++;
@@ -1207,4 +1214,137 @@ void func_00612630(AUDIO *pAudio, int nTo)
     h.nSrc = pAudio->nId;
     h.nGrid = 0;
     func_00610FA0(pAudio, nTo, &h, &nGrid, sizeof(nGrid));
+}
+
+typedef struct AUDIO_INIT {
+    unsigned short nPort;               /* 0x00 */
+    char pad02[2];
+    int a04;                            /* 0x04 */
+    int a08;                            /* 0x08 */
+    int a0C;                            /* 0x0C */
+    int a10;                            /* 0x10 */
+    int a14;                            /* 0x14 */
+    int a18;                            /* 0x18 */
+    int nWidth;                         /* 0x1C */
+    int nHeight;                        /* 0x20 */
+    int a24;                            /* 0x24 */
+    int nChannels;                      /* 0x28 */
+    int a2C;                            /* 0x2C */
+    int (*pfnRead)(struct AUDIO *pAudio, int *pnType, char *pBuf, int nSize); /* 0x30 */
+    void (*pfnDecoded)(struct AUDIO *pAudio, int nType, int nId, char *pBuf, int nLen); /* 0x34 */
+    int (*pfnCapture)(struct AUDIO *pAudio, void *p1, void *p2, void *p3); /* 0x38 */
+    void (*pfnPlay)(struct AUDIO *pAudio, int nId, void *pFrame); /* 0x3C */
+} AUDIO_INIT;
+
+typedef struct AUDIO_SOCKET {           /* the socket's options (rt_udp's 0x63DD18) */
+    unsigned short nPort;               /* 0x00 */
+    int nTry;                           /* 0x04: 1, then 2, 3, 4 while the port is taken */
+    int a08;                            /* 0x08: 256 */
+    int a0C;                            /* 0x0C: 1280 */
+    int a10;                            /* 0x10: 4096 */
+    int a14;                            /* 0x14: 4096 */
+    int a18;
+    int a1C;                            /* 0x1C */
+    void *pfnMessage;                   /* 0x20 */
+    void *pUser;                        /* 0x24 */
+} AUDIO_SOCKET;                         /* 0x28 */
+
+typedef struct AUDIO_SELF {             /* the record func_00629F78 makes from */
+    int a00;
+    int nAddr;                          /* 0x04 */
+    int a08;
+    int nPort;                          /* 0x0C */
+    int a10;
+    int nId;                            /* 0x14 */
+    int a18;                            /* 0x18 */
+    int a1C;
+} AUDIO_SELF;
+
+extern void *func_0062A870(AUDIO *pAudio, int nChannels);
+extern void *func_006456D0(int nWidth, int nHeight);
+extern int func_0063DD18(void **ppSocket, AUDIO_SOCKET *pOptions);
+extern void func_0063E438(void *pSocket, char *szAddr, int *pnPort);
+extern void func_00612518();
+
+/* the voice library's start (0x610010): the parameters kept, the codec and the frame converters made, a socket on the first of the ports
+ * that will bind, this client's own peer record the first of the ring. */
+int func_00610010(AUDIO *pAudio, AUDIO_INIT *pInit)
+{
+    AUDIO_SOCKET options;
+    AUDIO_SELF self;
+    char szAddr[16];
+    int r;
+
+    if (pAudio->nFlags & 1)
+        return 1;
+    func_00611348(pAudio, 0, 3);
+    pAudio->x0C = pInit->nChannels;
+    pAudio->pfnRead = pInit->pfnRead;
+    pAudio->x74 = pInit->a24;
+    pAudio->pfnDecoded = pInit->pfnDecoded;
+    pAudio->pfnCapture = pInit->pfnCapture;
+    pAudio->x10 = pInit->a08;
+    pAudio->x14 = pInit->a14;
+    pAudio->pfnPlay = pInit->pfnPlay;
+    pAudio->x20 = pInit->a04;
+    pAudio->x24 = pInit->a10;
+    pAudio->x18 = pInit->a0C;
+    pAudio->x1C = pInit->a18;
+    if (pAudio->x0C <= 0)
+        pAudio->x0C = 1;
+    pAudio->pCodec = func_0062A870(pAudio, pAudio->x0C);
+    pAudio->nWidth = pInit->nWidth;
+    pAudio->nHeight = pInit->nHeight;
+    if (pAudio->pfnCapture != 0) {
+        pAudio->pHandles[0] = func_006456D0(pAudio->nWidth, pAudio->nHeight);
+        pAudio->pHandles[1] = func_006456D0(pAudio->nWidth / 2, pAudio->nHeight / 2);
+        pAudio->pHandles[2] = func_006456D0(pAudio->nWidth / 2, pAudio->nHeight / 2);
+    }
+    if (pAudio->pfnPlay != 0) {
+        pAudio->pHandles[3] = func_006456D0(pAudio->nWidth, pAudio->nHeight);
+        pAudio->pHandles[4] = func_006456D0(pAudio->nWidth / 2, pAudio->nHeight / 2);
+        pAudio->pHandles[5] = func_006456D0(pAudio->nWidth / 2, pAudio->nHeight / 2);
+    }
+    memset(&options, 0, sizeof(options));
+    options.nPort = pInit->nPort;
+    options.nTry = 1;
+    options.a0C = 1280;
+    options.a08 = 256;
+    options.pfnMessage = func_00612518;
+    options.a1C = pInit->a2C;
+    options.pUser = pAudio;
+    options.a14 = 4096;
+    options.a10 = 4096;
+    while (1) {
+        r = func_0063DD18(&pAudio->pSocket, &options);
+        if (r == 0)
+            break;
+        if (r == 17) {
+            if (options.nTry == 1) {
+                options.nTry = 2;
+            } else if (options.nTry == 2) {
+                options.nTry = 3;
+            } else if (options.nTry == 3) {
+                options.nTry = 4;
+            } else
+                break;
+        } else {
+            return -1;
+        }
+    }
+    szAddr[0] = 0;
+    func_0063E438(pAudio->pSocket, szAddr, &pAudio->x80);
+    pAudio->x7C = func_0062BCB8(szAddr);
+    memset(&self, 0, sizeof(self));
+    self.nId = pAudio->nId;
+    self.nAddr = pAudio->x7C;
+    self.nPort = pAudio->x80;
+    self.a18 = 0;
+    pAudio->pSelf = func_00629F78(pAudio, (PEER_INFO *)&self);
+    pAudio->pPeers = pAudio->pSelf;
+    pAudio->pSelf->pPrev = pAudio->pSelf;
+    pAudio->pPeers->pNext = pAudio->pPeers;
+    func_00626658(pAudio->pGrids, pAudio->pSelf);
+    pAudio->nFlags |= 1;
+    return 0;
 }
