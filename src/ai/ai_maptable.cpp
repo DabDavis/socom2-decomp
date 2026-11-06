@@ -534,7 +534,27 @@ bool _invalid_route(CAiMap::route &r)
  * load -- gives the target's a0/a1, but not the split). Tried: -> for each access, a reference
  * to m_region[1] (the first 65 instructions exact, the second find through the reference), the
  * find through a result local, end() per pass, a while, i then e, the two results declared
- * uninitialised, at the top, or with dead `= 0` definitions (build/scratch/ai/v_vr*.py) */
+ * uninitialised, at the top, or with dead `= 0` definitions (build/scratch/ai/v_vr*.py).
+ * THE AI CORE'S ROUND 34 (0x430 -> 0x438, the target's size; difflib distance 48 -> 36, every
+ * difference inside the second find): the second find reaches the far end through the loop's
+ * iterator itself, its x and y compared field by field (find_far_region below) -- the first find,
+ * the empty test's delay slot and both of the second find's nops are now the target's; left: that
+ * find's x still shares its fresh load of i with y (a3: `lhu a1,10(a3)`) where the target reads y
+ * off the loop-top load (`lhu a2,10(a1)`), so the find's temporaries take a1 where the target's
+ * take a2. Measured there (build/scratch/ai/v_vr34*.py): the end passed as a const CAiMapLoc
+ * pointer or reference, by value (0x4DC), the route by reference / pointer / const reference /
+ * iterator by value, the iterator's operator->, `loc == (*j).m_loc` swapped, both finds through the
+ * iterator (94), the y compare's operands swapped, `x ? y : false`: none splits the load */
+inline CAiMap::region *find_far_region(CAiMap::regions &t, CAiMap::routes::iterator &r)
+{
+    CAiMap::regions::iterator e = t.end();
+
+    for (CAiMap::regions::iterator j = t.begin(); j != e; ++j)
+        if (((*j).m_loc.x == (*r).m_region[1].x && (*j).m_loc.y == (*r).m_region[1].y) ? true : false)
+            return &*j;
+    return 0;
+}
+
 void CAiMap::ValidateRoutes(bool force)
 {
     routes::iterator i;
@@ -543,7 +563,7 @@ void CAiMap::ValidateRoutes(bool force)
         if ((*i).m_flags & 1)
             continue;
         region *a = find_region(m_regionTable, (*i).m_region[0]);
-        region *b = find_region(m_regionTable, (*i).m_region[1]);
+        region *b = find_far_region(m_regionTable, i);
 
         if (!a || !b) {
             (*i).m_flags |= 1;
