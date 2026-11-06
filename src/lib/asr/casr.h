@@ -219,7 +219,8 @@ struct LANGVT {
     int (*GetAnySpeechGarbagePhenome)(LANGVT *l);     /* +72, slot 18 */
     unsigned int (*GetNbrWarpFactors)(LANGVT *l);     /* +76, slot 19 */
     int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
-    void *s21[2];
+    int (*GetNbrSpeechUnitClass)(LANGVT *l);          /* +84, slot 21 */
+    void *s22;
     int (*GetUserWordSpeechUnitClass)(LANGVT *l);     /* +92, slot 23 */
     void *s24;
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
@@ -236,7 +237,8 @@ struct LANGVT {
     void *s38[3];
     void *(*GetpCodeBook)(LANGVT *l, int n);          /* +164, slot 41 */
     int *(*GetpSpeechUnit)(LANGVT *l);                /* +168, slot 42 */
-    void *s43[3];
+    void *(*GetpTransWord)(LANGVT *l);                /* +172, slot 43 */
+    void *s44[2];
     void *(*GetpPhenUserWordTraining)(LANGVT *l);     /* +184, slot 46 */
     void *s47[3];
     void *(*GetpExtraEventContext)(LANGVT *l);        /* +200, slot 50 */
@@ -245,7 +247,10 @@ struct LANGVT {
     void *s53[8];
     unsigned char *(*GetpProbMatrix)(void *cb);       /* +244, slot 61 */
     float *(*GetpSmoothMatrix)(LANGVT *l, void *cb);  /* +248, slot 62 */
-    void *s63[5];
+    void *s63;
+    unsigned short *(*GetpTransWordLex)(void *tw);    /* +256, slot 64 */
+    unsigned short *(*GetpBeginOfTransWords)(void *tw); /* +260, slot 65 */
+    void *s66[2];
     int (*exevGetRejection_NBS_penalty)(void *ev);    /* +272, slot 68 */
     int (*exevGetRejection_NBS_path_penalty)(void *ev); /* +276, slot 69 */
     int (*exevGetExtraEventSilencePhenome)(void *ev); /* +280, slot 70 */
