@@ -74,6 +74,10 @@ public:
  * the other: SOCOM 1's code loaded zon_writeon_dmaref on both arms) */
 extern u_long128 zon_writeon_dmaref;
 extern u_long128 zon_writeoff_dmaref;
+/* the VIF packets zVid_Init hands the zVid (SOCOM 1's ztest_on_vif and ztest_off_vif: TEST register
+ * packets, the z test on and off) */
+extern u_long128 ztest_on_vif;
+extern u_long128 ztest_off_vif;
 /* the full-screen brightness quad, a GIF packet (SOCOM 1's; SOCOM II adds a ZBUF pair after the
  * TEST one, so its ALPHA pair is the fourth quadword and its RGBAQ the sixth) */
 extern u_long128 brightnesscode[];
@@ -882,47 +886,38 @@ enum ZviByte {
  * takes v0; the target's 255 is live from the top (v1), its zero stores where the source writes them.
  * SOCOM 1's zVid_Init (the demo's 0x308690) has the same shape: 255 into v1 near the top, its two zero
  * byte stores in source order among the constants -- a code-generation property of both builds.
- * Round 40 (build/scratch/wep/v_zvi40*.py): 2 OFF, by two marked devices. THE ENUM LEVER (the game
- * states' round 53): 1 and 255 held in enum-typed locals defined first -- not propagated, so each stays
- * one `li` at the top of the list, and 255 takes v1 and 1 a1, as the target's, at no other cost. THE
- * `.set` LEVER (the zdb world's round 33): a split after every store from 640 to ztest_off -- the
- * zero byte store of pcrtcDo goes into the scheduling cycle any `li` leaves free, so it needs the split
- * ahead of it; and with that split the block's critical path is short (no float chain), every `li`
- * urgent, and two `li`s are issued together (v0 and v1 alternating) unless each pair has its own block.
- * Left: `li v1,255; lui at; move s0,a0` against `move s0,a0; lui at; li v1,255`: the target's li has a
- * height (its sb is in the block), here its sb lies behind the splits and the tie goes to the parameter's
- * move. Tried: every order of the first five statements, the parameter copied into a local (an enum or
- * int local is scheduled alike), a removable branch reading the two (`beq one, ff, L1; L1:`; removed by
- * the block pass but the blocks stay apart for the scheduler, and its label pads at 0x34), volatile
- * stores (no order among them here), `asm { nop }` (emitted). Volatile, an enum zero and a cast do not
- * hold pcrtcDo's store; what does in the original, with the whole body in one block, is the open question */
+ * Round 40 (build/scratch/wep/v_zvi40*.py): BYTE-EXACT, by two things. THE DATA: every earlier round's
+ * diff hid that the two pointers are SOCOM 1's ztest_on_vif and ztest_off_vif, not the DMA refs (the
+ * relocation mismatch shows only once the code is aligned: `try.py` printed WRONG REFERENCE, d=0).
+ * THE ENUM LEVER (the game states' round 53): 1 and 255 in enum-typed locals, which IRO does not
+ * propagate, so each is one `li` where it is defined. WHERE they are defined is what orders the stores:
+ * the pre-pass scheduler issues a `li` whose store is ready at once and the store next, so a run of
+ * such pairs leaves a zero byte store no slot, while a `li` whose store is not ready (flag91's and the
+ * fade's follow other stores) lets the first ready zero store in behind it. So one such `li` ahead of
+ * 640 -- exactly one -- lets swapMode's store in at the top, the other just before pcrtcDo's store
+ * lets that store in behind ztest_off's; two at the top put pcrtcDo at the top too, none sinks both
+ * (11 / 31 off in the earlier rounds). And 255 lives from there to its store, so it takes v1, and
+ * the post-pass scheduler hoists its `li` (it has a height, its store being in the block) over the
+ * parameter's move. Either of the two may come first (v_zvi40t.py): one marked device, what the
+ * original held the two constants in is not known. On the way, recorded for other functions: a `.set`
+ * after each store from 640 to ztest_off gave 2 off (the short blocks issue every `li` at once
+ * otherwise) */
 void zVid_Init(_zvid_mode mode)
 {
     ZviByte one = (ZviByte)1;
-    ZviByte ff = (ZviByte)255;
-
     zVid.runTime = 0;
     zVid.swapMode = 0;
     zVid.renderWidth = 640;
-    asm { .set reorder }
     zVid.renderHeight = 448;
-    asm { .set reorder }
     zVid.screenLeft = 1728;
-    asm { .set reorder }
     zVid.screenRight = 2368;
-    asm { .set reorder }
     zVid.screenTop = 1824;
-    asm { .set reorder }
     zVid.screenBottom = 2272;
-    asm { .set reorder }
     zVid.renderBuf = 140;
-    asm { .set reorder }
     zVid.renderBuf2 = 280;
-    asm { .set reorder }
-    zVid.ztest_on = &zon_writeon_dmaref;
-    asm { .set reorder }
-    zVid.ztest_off = &zon_writeoff_dmaref;
-    asm { .set reorder }
+    zVid.ztest_on = &ztest_on_vif;
+    zVid.ztest_off = &ztest_off_vif;
+    ZviByte ff = (ZviByte)255;
     zVid.pcrtcDo = 0;
     zVid.iMinZ = 10;
     zVid.iMaxZ = 0xFFFF;
