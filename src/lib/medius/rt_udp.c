@@ -24,15 +24,13 @@
  * OPEN: 0x63DD18 (the create: the target lays the allocation out after the option copy, jumping
  * back to it, and keeps the new record in one register through the copy -- 95 words with a local
  * copy, 111 without), 0x63EBA0 (the raw send: the length test's `return 1` is a fall-through `b`,
- * 33s), 0x63E4A0 (11:
- * the index lives in v1 and the -2 in v0), 0x63E5E8 (10, the connect), 0x63F168 and 0x6419E8 (2
+ * 33s), 0x63E5E8 (10, the connect), 0x63F168 and 0x6419E8 (2
  * each: the call's arguments scheduled the other way -- the -1 key-manager id in the delay slot),
  * 0x63ECC8 (round 12b, 93s: the receive -- the reliable test reads the header's first word, `lw;
  * andi 6`, as a word-wide `& 6` gives; the loop's message pointer lives in a0 where the target's is
  * v0, and the endpoint path's free does not cross-jump with the connection's). Round 12b: 0x63E928
  * (the connection send) is byte-exact with RT_UDP_BARRIER below, a stand-in. Not written: the
- * datagram handlers 0x63EF38, 0x63F4C8, 0x63FA28, 0x63FC08, 0x6400A8, 0x6404D8, 0x640940, 0x640B70,
- * 0x640D38, 0x640EA0, 0x641308, 0x641490, 0x641748, 0x6418A0, 0x641BA0. */
+ * datagram handlers 0x63EF38, 0x63F4C8, 0x6400A8, 0x6404D8, 0x640940, 0x640EA0, 0x641490. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern void *memcpy(void *d, const void *s, unsigned int n);
@@ -487,6 +485,9 @@ int func_0063E438(RT_UDP *pUdp, char *szAddress, unsigned short *pnPort)
     return 0;
 }
 
+/* a connection's address and port, or (-2) the last datagram's sender's. The -2 test is positive with
+ * its `return 3` in an else (round 14b's rule; round 25b): as a guard, if-conversion hoisted `li v0,3`
+ * above the compare, so the -2 took v1 and nConn a0 (11 words). */
 int func_0063E4A0(RT_UDP *pUdp, unsigned int nConn, char *szAddress, unsigned short *pnPort)
 {
     void *pMsg = 0;
@@ -503,14 +504,15 @@ int func_0063E4A0(RT_UDP *pUdp, unsigned int nConn, char *szAddress, unsigned sh
         *pnPort = pUdp->pConns[nConn].nPort;
         return 0;
     }
-    if (nConn != (unsigned int)-2)
+    if (nConn == (unsigned int)-2) {
+        if (func_00631B10(&pUdp->buf, &pMsg) != 0)
+            return 10;
+        memcpy(&addr, func_00631E58(pMsg), sizeof(RT_UDP_ADDR));
+        strncpy(szAddress, addr.szAddress, 16);
+        *pnPort = addr.nPort;
+        return 0;
+    } else
         return 3;
-    if (func_00631B10(&pUdp->buf, &pMsg) != 0)
-        return 10;
-    memcpy(&addr, func_00631E58(pMsg), sizeof(RT_UDP_ADDR));
-    strncpy(szAddress, addr.szAddress, 16);
-    *pnPort = addr.nPort;
-    return 0;
 }
 
 int func_0063E5C0(RT_UDP *pUdp)
@@ -1465,4 +1467,249 @@ void func_00642200(void *pUpnp, int nError, int a2, char *szAddress, unsigned sh
         pUdp->pfnCallback(pUdp, -2, 5, 0, pUdp->pUser);
     else
         pUdp->pfnCallback(pUdp, -2, 5, 15, pUdp->pUser);
+}
+
+/* a payload appended to the datagram in the send ring its header matches (0x63FC08; the connection send 0x63E928
+ * calls it): the ring's own copy first (func_00631848), then the first message with an equal header grown in
+ * place and its trailing word zeroed. The found arm ends in a `break`, so loop.c moves it out of the loop to the
+ * barrier nearest before its target -- past the `return 10`, the layout's jump over it; a plain `while` gives
+ * the target. Round 25b, unwritten before. */
+int func_0063FC08(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, void *pMsg, void *pData, unsigned int nLength)
+{
+    RT_UDP_HEADER hdr;
+    RT_UDP_HEADER hdrQueued;
+    RT_UDP_BUF *pBuf;
+    char *p;
+
+    if (pMsg == 0)
+        return 1;
+    if (pData == 0)
+        return 1;
+    if (nLength == 0)
+        return 1;
+    func_0063FE48(pMsg, &hdr);
+    pBuf = &pConn->send;
+    if (func_00631848(pBuf, pMsg, pData, nLength) != 0)
+        return 10;
+    func_00631B10(pBuf, &pMsg);
+    while (pMsg != 0) {
+        func_0063FE48(pMsg, &hdrQueued);
+        if (memcmp(&hdr, &hdrQueued, sizeof(hdr)) == 0) {
+            memcpy((char *)func_00631E58(pMsg) + hdr.nLength + 24, pData, nLength);
+            p = func_00631E58(pMsg);
+            memset(p + func_00631E70(pMsg) - 4, 0, 4);
+            hdr.nLength += nLength;
+            hdr.nType |= nType & 7;
+            func_0063FEA8(pMsg, &hdr);
+            pMsg = 0;
+            break;
+        }
+        pMsg = func_00631E88(pMsg);
+    }
+    return 0;
+}
+
+/* an acknowledgement, by what it does (0x641308; pData a type byte and a sequence, read as they lie): the queued
+ * datagram with that type and sequence dropped from the connection's send ring, and the connection's state set
+ * by that datagram's header: flag 0x40 gives state 11, flag 0x10 state 4, and a non-empty one whose first word
+ * masks to 0x408000 (length 64, its second byte's top bit) state 11. Round 25b, unwritten before. */
+int func_00641308(RT_UDP *pUdp, int nConn, void *pData)
+{
+    RT_UDP_HEADER hdr;
+    void *pMsg = 0;
+    unsigned char nType = 0;
+    int nSeq = 0;
+    RT_UDP_CONN *pConn;
+    RT_UDP_BUF *pBuf;
+    int result;
+
+    if (nConn == -1)
+        return 7;
+    memcpy(&nType, pData, 1);
+    pConn = &pUdp->pConns[nConn];
+    memcpy(&nSeq, (char *)pData + 1, 4);
+    pBuf = &pConn->send;
+    result = func_00641D50(pUdp, pConn, nType, nSeq);
+    if (func_00631B10(pBuf, &pMsg) != 0)
+        return 10;
+    while (pMsg != 0) {
+        if (func_00631E70(pMsg) != 0) {
+            result = func_0063FE48(pMsg, &hdr);
+            if (result == 0 && hdr.nType == nType && hdr.nSeq == nSeq) {
+                if (func_00631748(pBuf, pMsg) != 0)
+                    result = 10;
+                if (hdr.nLength == 0) {
+                    if (hdr.nType & 0x40)
+                        pConn->nState = 11;
+                    if (hdr.nType & 0x10)
+                        pConn->nState = 4;
+                } else if ((*(unsigned int *)&hdr & 0xFFFF8000) == 0x408000)
+                    pConn->nState = 11;
+                rt_time_get_time_stamp(&pConn->tLastRecv);
+                return result;
+            }
+        }
+        pMsg = func_00631E88(pMsg);
+    }
+    return result;
+}
+
+/* whether a received datagram repeats one already seen (0x641BA0): a reliable one by the last sequence handed
+ * up, then by the receive ring; a sequenced one by the newest sequence, which a wrapped sequence resets. The loop
+ * is a plain `while`: its found arm's `break` lies within expand_end_loop's scan, so everything up to it moves
+ * below the step -- the layout's entry jump over `pMsg = next`. Round 25b, unwritten before. */
+int func_00641BA0(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv, unsigned char *pbDup)
+{
+    RT_UDP_HEADER hdr;
+    void *pMsg = 0;
+
+    if (pbDup == 0)
+        return 1;
+    *pbDup = 0;
+    if (pUdp == 0)
+        return 1;
+    if (pConn == 0)
+        return 1;
+    if (pRecv == 0)
+        return 1;
+    if (pConn->nState != 0) {
+        if ((*(int *)pRecv & 6) == 6 || (pRecv->nType & 4)) {
+            if (pConn->nRecvSeq - pRecv->nSeq >= 0 && pConn->nRecvSeq != 0)
+                *pbDup = 1;
+            else {
+                if (func_00631B10(&pConn->recv, &pMsg) != 0)
+                    return 10;
+                while (pMsg != 0) {
+                    if (func_00631E70(pMsg) != 0) {
+                        memcpy(&hdr, func_00631E58(pMsg), sizeof(hdr));
+                        if ((*(int *)&hdr & 6) == 6 || (hdr.nType & 4)) {
+                            if (hdr.nSeq == pRecv->nSeq) {
+                                *pbDup = 1;
+                                break;
+                            }
+                        }
+                    }
+                    pMsg = func_00631E88(pMsg);
+                }
+            }
+        } else if (pRecv->nType & 2) {
+            if (pConn->x80 - pRecv->nSeq >= 0) {
+                *pbDup = 1;
+                if ((unsigned int)pConn->x80 <= 0x7FFFFFFE && pRecv->nSeq < 0) {
+                    pConn->x80 = pRecv->nSeq;
+                    *pbDup = 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+
+/* a key to the peer (0x640B70): written into the message still queued in the send ring whose header masks to
+ * 0x408000, if there is one, else sent new as a type-4 datagram (length 64, flagged 0x40 and 0x80). No loop: the backward
+ * branch is a rotated `do { ... break; ... } while (0)` (round 22b's rule) -- and the rotation orders the frame:
+ * pData and nLength, first in insn order once the head has moved below, take their slots before pMsg.
+ * Round 25b, unwritten before. */
+int func_00640B70(RT_UDP *pUdp, RT_UDP_CONN *pConn, RSAKey *pKey)
+{
+    RT_UDP_HEADER hdr;
+    RT_UDP_HEADER sent;
+    void *pMsg;
+    RSAKey *pData;
+    unsigned int nLength;
+
+    do {
+        pMsg = 0;
+        pData = 0;
+        nLength = 0;
+        if (func_00631B10(&pConn->send, &pMsg) != 0)
+            break;
+        if (pMsg == 0)
+            break;
+        if (*(int *)pMsg == 0)
+            break;
+        pData = func_00631E58(pMsg);
+        func_0063FD68(pMsg, &sent);
+        func_0063FE48(pMsg, &hdr);
+        func_00640010(pMsg, (char **)&pData, &nLength);
+        if ((*(unsigned int *)&hdr & 0xFFFF8000) == 0x408000) {
+            func_0063FF98(pMsg, 0);
+            *pData = *pKey;
+            return 0;
+        }
+    } while (0);
+    if (func_0063F948(pUdp, pConn, 4, &hdr) != 0) {
+        pConn->nState = 6;
+        return 7;
+    }
+    hdr.nType |= 0x40;
+    hdr.nLength = 64;
+    hdr.nShared |= 0x80;
+    return func_0063FA28(pConn, &hdr, pKey, 64);
+}
+
+extern int func_00631B60(RT_UDP_BUF *pBuf, void **ppMsg);
+
+/* a datagram queued (0x63FA28): a new tail message in the send ring (twelve zeroed bytes), the header, the payload
+ * and a zero trailer word, one stage a pass; any failure takes the new message back out. Round 25b, unwritten
+ * before. */
+int func_0063FA28(RT_UDP_CONN *pConn, RT_UDP_HEADER *pHeader, void *pData, unsigned int nLength)
+{
+    char abPrefix[12];
+    int nTrailer;
+    void *pMsg = 0;
+    RT_UDP_BUF *pBuf;
+    int bQueued = 0;
+    int result = 0;
+    int status;
+    unsigned int i;
+
+    if (pHeader == 0)
+        return 1;
+    if (pConn == 0)
+        return 1;
+    pHeader->nLength = nLength;
+    for (i = 0; i < 4; ) {
+        pBuf = &pConn->send;
+        status = func_00631B60(pBuf, &pMsg);
+        if (status != 0) {
+            result = 10;
+            break;
+        }
+        switch (i) {
+        case 0:
+            memset(abPrefix, 0, sizeof(abPrefix));
+            status = func_00631508(pBuf, pMsg, abPrefix, sizeof(abPrefix));
+            if (status != 0)
+                goto fail;
+            bQueued = 1;
+            break;
+        case 1:
+            if (bQueued != 0)
+                status = func_00631848(pBuf, pMsg, pHeader, sizeof(RT_UDP_HEADER));
+            break;
+        case 2:
+            if (nLength != 0 && pData != 0 && bQueued != 0)
+                status = func_00631848(pBuf, pMsg, pData, nLength);
+            break;
+        case 3:
+            nTrailer = 0;
+            if (nLength != 0 && pData != 0 && bQueued != 0)
+                status = func_00631848(pBuf, pMsg, &nTrailer, 4);
+            break;
+        default:
+            status = 1;
+            break;
+        }
+        i++;
+        if (status != 0) {
+fail:
+            if (bQueued != 0 && func_00631B60(pBuf, &pMsg) == 0)
+                func_00631748(pBuf, pMsg);
+            result = 10;
+            break;
+        }
+    }
+    return result;
 }
