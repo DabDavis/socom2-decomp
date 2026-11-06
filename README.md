@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 53** (CAiSRescued::Tick 0x559070 and CSealCtrlAi::PostMortemPreTick 0x56EE80 -- 10 and 67
+  off -- byte-exact, the turret release 0x545EE0, unwritten before, and the blend-stack anim test 0x58A470, open since
+  round 41; the turret boarding 0x5463C0 written, OPEN at 0x5F4 of 0x5FC):
+  - A POOLED LITERAL scdiff FLAGS AS CONTENT-MISMATCH IS A WRONG CONSTANT, NOT NOISE: FadeToward's rising arm's lower
+    bound is 0.0f (0x64FD88 holds zero), not -1.0f -- check the flag before treating a miss as a register problem;
+  - an address-taken copy is reloaded from its stack slot in each arm when the tests read a second local holding the
+    same value (`float cur = n->m_Opacity; float op = cur;`); with one variable for both MW reuses the first load in the
+    arms;
+  - locals declared bare are numbered in declaration order even when assigned later in another order (PostMortemPreTick's
+    node, table, flag, params, entity in igreplay's order); `x = a >= b` gives bc1f with `li 1` in the delay slot,
+    `x = !(a < b)` adds an xori;
+  - `#pragma opt_strength_reduction off` also renumbers temporaries (0x58A470: the hoisted type extension numbered
+    before the array load); the code generator evaluates a binary operator's heavier subtree first, ties left first --
+    `heavy * r` and `r * heavy` give identical code, a literal is moved left before numbering (0x54A3D0's open);
+  - stores through a global pointer after a call reload the global at each store, one local read after the call gives
+    a single load; an `unsigned char` field passed to a `char` parameter loads with lb, to `unsigned char` or `int` with
+    lbu; calling an inline virtual (CEntity::GetPosW) through a pointer makes the unit emit the class's out-of-line copy.
 - **Tells from the zdb world, textures, rdr and sound, round 28** (zdb::CWorld::AddTextureAssetCharacter 0x31D260 and the
   particle source's collision box 0x32AD20, both unwritten before, byte-exact with their inline copies; Particle::Source::
   GetBBox 0x329510 written, OPEN at 0x3F8 of 0x404; CPipe::RenderVisual 24 -> 20):
