@@ -10,7 +10,8 @@
  * IdleDistCalcProcess); round 21c FreeLanguage, FreeDistCalc, NormCorrection -- and the
  * object's -ffast-math, which NormCorrection's sum shows (README "The recogniser and Medius by
  * hand", round 21c); round 22c FreeDistCalc byte-exact over a marked stand-in insn; round 34c
- * DistSilProcess (0x4FFCE8, named by SOCOM 1's object order) and the fields it reads. */
+ * DistSilProcess (0x4FFCE8, named by SOCOM 1's object order), func_004FD5C8 and LoadLanguage, with
+ * the fields they read; InitDistSilProcess written (OPEN, 3 words). */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -24,9 +25,16 @@ typedef struct QUEUE {
 typedef struct DSCODEBOOK {
     unsigned char **data;               /* +0: a byte table per codeword */
     unsigned short n;                   /* +4 */
-    short pad6;
+    unsigned short m;                   /* +6: the bytes a codeword's table takes */
     unsigned char *f8;                  /* +8: n counts */
 } DSCODEBOOK;
+
+/* the language's frames (+128, pointed to by +140): a row of codewords per frame */
+typedef struct DSFRAMES {
+    unsigned short *data;
+    unsigned short n;
+    unsigned short m;
+} DSFRAMES;
 
 typedef struct DISTSIL {
     TOSBLOCK b;
@@ -43,24 +51,26 @@ typedef struct DISTSIL {
     void *f112;                         /* +112: cleared at construction */
     void *f116;                         /* +116 */
     char pad120[8];
-    unsigned short *f128;               /* +128: ntables codewords per frame */
-    int pad132;
+    DSFRAMES frames;                    /* +128: ntables codewords per frame */
     DSCODEBOOK *f136;                   /* +136: the codebooks in use */
-    void *f140;                         /* +140 */
+    DSFRAMES *f140;                     /* +140: &frames */
     unsigned short n112;                /* +144: f112's codebooks */
     unsigned short n116;                /* +146: f116's */
     unsigned short ncb;                 /* +148: f136's */
     unsigned short f150;                /* +150 */
-    unsigned short f152;                /* +152 */
-    unsigned short f154;                /* +154 */
+    short f152;                         /* +152: profile 30, added to a value with bit 1 */
+    short f154;                         /* +154: profile 31, added to a value with bit 0 */
     unsigned short f156;                /* +156 */
     unsigned short f158;                /* +158 */
-    char pad160[8];
-    int f168;                           /* +168 */
-    int f172;                           /* +172 */
-    void *f176;                         /* +176 */
-    void *f180;                         /* +180 */
-    int f184;                           /* +184 */
+    unsigned short f160;                /* +160 */
+    unsigned short f162;                /* +162 */
+    short f164;                         /* +164: -f160 */
+    short pad166;
+    void *f168;                         /* +168 */
+    unsigned short *f172;               /* +172: f160 + 1 offsets into f184 */
+    short *f176;                        /* +176: f156 shorts */
+    short *f180;                        /* +180: f184's values decoded */
+    short *f184;                        /* +184 */
     char pad188[8];
     unsigned char *f196[10];            /* +196: a codeword byte per codebook */
     unsigned short f236;                /* +236: the frame f128 is read at */
@@ -129,7 +139,7 @@ static void func_004FD5C8(DISTSIL *d)
         mask = 255;
         shift = 0;
         mult = 1;
-        c = d->f128[d->f236 * d->ntables + k];
+        c = d->frames.data[d->f236 * d->ntables + k];
         cb = d->f116;
         data = cb[k].data;
         if (d->f104 == (void *)func_004FE6C8) {
@@ -144,6 +154,192 @@ static void func_004FD5C8(DISTSIL *d)
         for (j = 0; j < n; j++)
             d->f196[k][j] = ((data[j][c] & mask) >> shift) * mult;
     }
+}
+
+/* the language's interface (the engine's language object), as far as LoadLanguage calls it */
+typedef struct DSLANG {
+    char pad0[16];
+    int (*f16)(struct DSLANG *l);                   /* +16: the codebooks */
+    int (*f20)(struct DSLANG *l);                   /* +20 */
+    int (*f24)(struct DSLANG *l);                   /* +24 */
+    int pad28;
+    int (*f32)(struct DSLANG *l);                   /* +32 */
+    int (*f36)(struct DSLANG *l);                   /* +36 */
+    int pad40;
+    int (*f44)(struct DSLANG *l);                   /* +44 */
+    int pad48;
+    int (*f52)(struct DSLANG *l);                   /* +52 */
+    char pad56[16];
+    int (*f72)(struct DSLANG *l);                   /* +72 */
+    char pad76[48];
+    int (*f124)(void *cb);                          /* +124: a codebook's codewords */
+    int pad128;
+    unsigned int (*f132)(void *cb);                 /* +132: a codeword's bytes */
+    int pad136;
+    unsigned short *(*f140)(struct DSLANG *l);      /* +140 */
+    char pad144[8];
+    void *(*f152)(struct DSLANG *l);                /* +152 */
+    unsigned short *(*f156)(struct DSLANG *l);      /* +156 */
+    short *(*f160)(struct DSLANG *l);               /* +160 */
+    void *(*f164)(struct DSLANG *l, int k);         /* +164: codebook k */
+    char pad168[40];
+    int (*f208)(struct DSLANG *l, int what);        /* +208: 1, the 4-bit tables */
+    char pad212[32];
+    unsigned char *(*f244)(void *cb);               /* +244: a codebook's tables */
+} DSLANG;
+
+extern void func_004FDE08();
+
+/* codebook cb's tables at tab, n codewords of m bytes; 2 logged when its allocations failed */
+static __inline__ unsigned char SetCodeBook(DISTSIL *d, DSCODEBOOK *cb, unsigned char *tab,
+                                            unsigned short n, unsigned short m)
+{
+    TOS *tos = d->b.tos;
+    int i;
+
+    if (cb->data != 0) {
+        heap_Free(tos->heap, cb->data);
+        heap_Free(tos->heap, cb->f8);
+    }
+    cb->n = n;
+    cb->m = m;
+    cb->data = heap_Alloc(tos->heap, n * 4);
+    cb->f8 = heap_Calloc(tos->heap, n, 1);
+    if (cb->data == 0 || cb->f8 == 0)
+        return _tosErrorLog(d, 2);
+    for (i = 0; i < n; i++) {
+        cb->data[i] = tab;
+        tab += m;
+    }
+    return 0;
+}
+
+/* the codebook list made n long, every codebook's tables given back first; the list returned */
+static __inline__ DSCODEBOOK *SizeCodeBooks(DISTSIL *d, DSCODEBOOK **list, unsigned short *cnt,
+                                            unsigned short n)
+{
+    TOS *tos = d->b.tos;
+    DSCODEBOOK *c = *list;
+    int i;
+
+    for (i = 0; i < *cnt; i++, c++)
+        if (c->data != 0) {
+            heap_Free(tos->heap, c->data);
+            heap_Free(tos->heap, c->f8);
+            c->data = 0;
+        }
+    if (*cnt != n) {
+        if (*cnt != 0)
+            heap_Free(tos->heap, *list);
+        if (n != 0)
+            *list = heap_Calloc(tos->heap, n, 12);
+        *cnt = n;
+    }
+    return *list;
+}
+
+/* the language loaded into the block (s1:align, SOCOM 1's LOCAL LoadLanguage, 0x65C): its sizes
+ * read through its interface, the packed values at +184 decoded (each value >> 2, plus +154 with
+ * bit 0 and +152 with bit 1), the frames' table at +128, the codebook list sized, each codebook's
+ * codeword tables (two codewords a byte with the 4-bit tables) and its row at +196 allocated, the
+ * queues re-sized, the distance pass chosen (0x4FE6C8 for the 4-bit tables, else 0x4FDE08), the
+ * frame's bytes copied, the index set at frame -f160, the cache at +108 allocated (2 logged when
+ * it fails). Written from SOCOM II's code in round 34c, byte-exact: each count a variable of its
+ * own (one `n` for the frames', the list's and a codebook's counts is one pseudo across thirteen
+ * calls, and it takes the interface's s4); the list's size an inline returning the list (the null
+ * test reads through its pointer, s7); a codebook's tables an inline returning the error log's
+ * byte; the codeword size computed into an unsigned int and narrowed at the inline's call (the
+ * target's single `andi` after the join); the frames' fields stored through a pointer after all
+ * three calls; the f44 value in a variable of its own; the decode's accumulator an int (a short one
+ * re-extends each sum, 0x614; the value read as an int too, 0x71C); the ncb/f136 stores
+ * written f136 first (sched1). */
+static int LoadLanguage(DISTSIL *d, DSLANG *l)
+{
+    int is4bit;
+    TOS *tos = d->b.tos;
+    short *s, *t, *end;
+    short v;
+    int x, w;
+    unsigned short nf, mf, ncb, n;
+    DSFRAMES *f;
+    unsigned short *data;
+    unsigned int mm;
+    unsigned int k;
+    void *cbl;
+    unsigned char *tab;
+
+    is4bit = l->f208(l, 1);
+    d->index = 0;
+    d->f236 = l->f32(l);
+    d->f156 = l->f36(l);
+    d->f158 = l->f24(l);
+    d->f162 = l->f52(l);
+    w = l->f44(l);
+    d->f160 = w;
+    d->f164 = -w;
+    d->f168 = l->f152(l);
+    d->f172 = l->f156(l);
+    d->f184 = l->f160(l);
+    if (d->f176 != 0) {
+        heap_Free(tos->heap, d->f176);
+        heap_Free(tos->heap, d->f180);
+    }
+    d->f176 = heap_Alloc(tos->heap, d->f156 * 2);
+    d->f180 = heap_Alloc(tos->heap, (d->f172[d->f160] - d->f172[0]) * 2);
+    t = d->f180;
+    s = d->f184;
+    end = s + d->f172[d->f160] - d->f172[0];
+    for (; s < end; s++) {
+        v = *s;
+        x = v >> 2;
+        if (v & 1)
+            x += d->f154;
+        if (v & 2)
+            x += d->f152;
+        *t++ = x;
+    }
+    d->f150 = l->f72(l);
+    nf = l->f20(l);
+    mf = l->f16(l);
+    data = l->f140(l);
+    f = &d->frames;
+    f->n = nf;
+    f->m = mf;
+    f->data = data;
+    d->f140 = f;
+    d->ntables = ncb = l->f16(l);
+    if (SizeCodeBooks(d, (DSCODEBOOK **)&d->f116, &d->n116, ncb) == 0)
+        return 1;
+    for (k = 0; k < d->ntables; k++) {
+        cbl = l->f164(l, k);
+        n = l->f124(cbl);
+        if (is4bit)
+            mm = (l->f132(cbl) + 1) >> 1;
+        else
+            mm = l->f132(cbl);
+        tab = l->f244(cbl);
+        if (SetCodeBook(d, (DSCODEBOOK *)d->f116 + k, tab, n, mm))
+            return 1;
+        if (d->f196[k] != 0)
+            heap_Free(tos->heap, d->f196[k]);
+        d->f196[k] = heap_Alloc(tos->heap, l->f124(cbl));
+    }
+    d->f136 = d->f116;
+    d->ncb = d->n116;
+    if (ResizeQueues(d, l->f24(l)) != 0)
+        return 1;
+    if (is4bit)
+        d->f104 = (void *)func_004FE6C8;
+    else
+        d->f104 = (void *)func_004FDE08;
+    func_004FD5C8(d);
+    d->index = d->f140->data + d->f164 * d->ntables;
+    if (d->f108 != 0)
+        heap_Free(tos->heap, d->f108);
+    d->f108 = heap_Alloc(tos->heap, d->f158 * 2);
+    if (d->f108 == 0)
+        return _tosErrorLog(d, 2);
+    return 0;
 }
 
 /* a list of codebooks given back: each one's two tables, then the list, its count set to `z`
