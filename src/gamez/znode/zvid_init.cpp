@@ -1109,7 +1109,14 @@ extern "C" void func_003B0B10(ZVID_RECT *r)
 
 extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 
-/* func_003B09E0 of a rectangle, through it (inline; new in SOCOM II, not named). OPEN, 35
+/* func_003B09E0 of a rectangle, written out (new in SOCOM II, not named). BYTE-EXACT since the weapons'
+ * round 40 (build/scratch/wep/v_rect40*.py), with no device: the scaled width and height held in two
+ * locals ahead of the first store -- NOT func_003B09E0 inlined, whose own body, the same words, keeps the
+ * subtractions after it. The colours gave it away: the target's registers ask for numbers w, 640, h,
+ * 448, y, x (each node's colour needs a coloured neighbour for every lower register), so w's and h's
+ * parts are generated first, and h is no inline's temporary. The way there: moving the setter's
+ * subtractions ahead of its first store in a throwaway copy fell from 35 to 24 off, and the same with the
+ * fields read in place matched. Before: OPEN, 35
  * instructions, the same size: scheduling -- the target loads h, y, w, x and keeps more of the
  * products live (t3-t5); the inline call, the fields into locals (both orders) and the two words
  * built first all schedule as the by-value setter does. Round 36 (build/scratch/wep/v_rect*.py):
@@ -1123,7 +1130,12 @@ extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, un
  * inlines taking the fields as (x, w, y, h), (h, w, y, x) or (w, x, h, y): 35-38 */
 extern "C" void func_003B0A70(ZVID_RECT *r)
 {
-    func_003B09E0(r->x, r->y, r->w, r->h);
+    unsigned int w = (640 - r->w) * 16;
+    unsigned int h = (448 - r->h) * 16;
+
+    *(unsigned long *)UNCACHED(&finalcode[14]) =
+        (unsigned long)(r->x * 16 + 0x6C00) | ((unsigned long)(r->y * 16 + 0x7200) << 16);
+    *(unsigned long *)UNCACHED(&finalcode[16]) = (unsigned long)(0x9400 - w) | ((unsigned long)(0x8E00 - h) << 16);
 }
 
 /* the GS's FRAME register (Sony's sceGsFrame) */
