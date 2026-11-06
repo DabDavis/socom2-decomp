@@ -14,7 +14,8 @@ typedef void (*TOSLOGCB)(TOS *t, int code);
 /* the host's callbacks, copied in by tosInit (24 bytes) */
 typedef struct TOSCB {
     unsigned char (*setmode)(TOS *t, unsigned short mode);   /* +0 */
-    void *f4;
+    /* +4: the scheduler's own inputs and outputs counted (ConstructArchitecture) */
+    unsigned char (*host_queues)(TOS *t, unsigned char nin, unsigned char nout);
     unsigned char (*input_queue)(TOS *t, void *q, unsigned short reader);   /* +8 */
     unsigned char (*output_queue)(TOS *t, void *q);                         /* +12 */
     TOSLOGCB error_cb;                  /* +16 */
@@ -122,6 +123,8 @@ extern void *func_00243398(void *heap, int count, int size);       /* the heap's
 /* the architecture's blocks (InitialProcs): each id's constructor */
 typedef struct TOSPROC {
     unsigned char id;
+    unsigned char build;                /* +1: 0 leaves the block's slot empty */
+    char pad2[2];
     TOSBLOCK *(*construct)(TOS *t, unsigned char id);   /* +4 */
 } TOSPROC;
 
@@ -429,6 +432,120 @@ unsigned char DestructQueue(TOSQUEUE *q)
     return 0;
 }
 
+extern void *heap_Alloc(void *heap, unsigned int size);
+extern void *memset(void *p, int c, unsigned int n);
+
+/* the architecture built from the host's three tables: the blocks' constructors (procs, ended by
+ * id 255; the first a placeholder whose successor's id is the first block's), the queues' writers
+ * ({queue, built, block}, a queue's entries together) and readers ({queue, block}); the tables
+ * kept, the blocks and queues counted and their slots allocated, each block's outputs, inputs and
+ * each queue's readers counted in one allocation; every block built in order (its slot empty when
+ * its entry says so; an id out of sequence a failure), the scheduler's own counts to the host
+ * (the entry without a constructor at id 0); every queue made at its first writer (unless its entry
+ * says not) and given to each writer as its next output, then to each reader as a free input with
+ * its reader numbered down; the frame table for the most inputs any block has. A 1 on any
+ * failure. SOCOM 1's LOCAL (0x568), written from SOCOM II's code (round 35c), byte-exact: the
+ * three helpers are the object's own inlines (RegisterOutputQueue, AddInputQueue) and the bodies
+ * SOCOM 1 has; each loop's block pointer is a block local of its own (the target's a3, s2 and t2:
+ * one function-level variable lives across the writers' calls and takes s2 in all three); the
+ * queue tests compare `last != w[0]` (the target's `beql s3,v0`). */
+static unsigned char ConstructArchitecture(TOS *t, TOSPROC *procs, unsigned char *writers,
+                                           unsigned char *readers)
+{
+    TOSPROC *p;
+    unsigned char *w, *r;
+    unsigned int nblocks = 0;
+    unsigned int nqueues = 0;
+    unsigned char last;
+    unsigned char *nout, *nin, *nread;
+    int maxin = 0;
+    TOSQUEUE *q;
+
+    t->procs = procs;
+    t->writers = writers;
+    t->readers = readers;
+    for (p = procs; p->id != 255; p++)
+        nblocks++;
+    last = 255;
+    for (w = writers; w[0] != 255; w += 3) {
+        if (last != w[0]) {
+            last = w[0];
+            nqueues++;
+        }
+    }
+    t->blockbase = procs[1].id;
+    t->queuebase = writers[0];
+    if ((t->blocks = heap_Alloc(t->heap, nblocks * 4)) == 0)
+        return 1;
+    if ((t->queues = heap_Alloc(t->heap, nqueues * 4)) == 0)
+        return 1;
+    nout = func_00243398(t->heap, nblocks * 2 + nqueues, 1);
+    if (nout == 0)
+        return 1;
+    nin = nout + nblocks;
+    nread = nin + nblocks;
+    for (w = writers; w[0] != 255; w += 3)
+        nout[w[2]]++;
+    for (r = readers; r[0] != 255; r += 2) {
+        nread[r[0] - t->queuebase]++;
+        nin[r[1]]++;
+    }
+    t->nblocks = 0;
+    for (p = procs; p->id != 255; p++) {
+        if (maxin < nin[p->id])
+            maxin = nin[p->id];
+        if (p->construct != 0) {
+            TOSBLOCK *b = 0;
+
+            if (p->build != 0)
+                b = p->construct(t, p->id);
+            t->blocks[t->nblocks++] = b;
+            if (t->nblocks != p->id) {
+                heap_Free(t->heap, nout);
+                return 1;
+            }
+        } else if (p->id == 0 && t->cb.host_queues(t, nin[0], nout[0]) != 0) {
+            heap_Free(t->heap, nout);
+            return 1;
+        }
+    }
+    memset(nout, 0, nblocks);
+    t->nqueues = 0;
+    last = 255;
+    for (w = writers; w[0] != 255; w += 3) {
+        TOSBLOCK *b = w[2] != 0 ? t->blocks[w[2] - t->blockbase] : (TOSBLOCK *)t;
+
+        if (last != w[0]) {
+            q = 0;
+            if (w[1] != 0) {
+                q = qQueueConstruct(t, w[0], nread[w[0] - t->queuebase]);
+                if (q == 0) {
+                    heap_Free(t->heap, nout);
+                    return 1;
+                }
+            }
+            t->queues[t->nqueues++] = q;
+            last = w[0];
+        }
+        if (RegisterOutputQueue(b, t, q, nout[w[2]]++)) {
+            heap_Free(t->heap, nout);
+            return 1;
+        }
+    }
+    for (r = readers; r[0] != 255; r += 2) {
+        unsigned char k = r[0] - t->queuebase;
+        TOSBLOCK *b = r[1] != 0 ? t->blocks[r[1] - t->blockbase] : (TOSBLOCK *)t;
+
+        if (AddInputQueue(b, t, t->queues[k], --nread[k])) {
+            heap_Free(t->heap, nout);
+            return 1;
+        }
+    }
+    heap_Free(t->heap, nout);
+    t->f76 = heap_Alloc(t->heap, maxin * 4);
+    return t->f76 == 0;
+}
+
 /* every block's control called to destroy it (255), every queue destroyed, the tables freed; a 1
  * when any refused */
 static unsigned char DestructArchitecture(TOS *t)
@@ -671,7 +788,7 @@ int tosBaseBlockControl(TOSBLOCK *b, unsigned char cmd, int arg, int n)
     return ret;
 }
 
-extern unsigned char ConstructArchitecture(TOS *t, void *a, void *b, void *c);   /* not yet written */
+/* ConstructArchitecture: above, after DestructQueue (its place in the image) */
 extern int qQueueInit(void *q);
 extern void fastallo_Init(struct FASTALLO *fa, void *heap, unsigned short chunk_size);
 extern void fastallo_Terminate(struct FASTALLO *fa);
