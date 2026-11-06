@@ -777,6 +777,9 @@ extern char *strncpy(char *dst, const char *src, unsigned int n);
 
 /* SOCOM 1's rt_msg_client_iconnect grown (0x633A08, between ienable_udp's and idisconnect's rows, its callers rt_msg_client_connect's): the
  * connection made, its options copied in, its channels reset and the rt_comm channels created by its kind; then the connect itself. */
+/* OPEN (round 27b): SOCOM 1's rt_msg_client_iconnect grown: registers only, 80 words: the target has s0 the out pointer and the loop's offset, s1 the
+ * started flag and the channel, s2 the options; here the channel (the highest priority by far, 26 refs in the loop over 22 insns) takes s0 first.
+ * One variable for flag and channel, or three for the channel, leave it first. */
 unsigned char func_00633A08(int nConnection, int nOptions)
 {
     unsigned short *pnConnection = (unsigned short *)nConnection;
@@ -1600,6 +1603,8 @@ extern int rt_circ_buf_create(rt_circ_buf *pBuf, unsigned int nSize, void *pMemo
 
 /* SOCOM 1's rt_msg_client_create_new_connection_index grown (0x635228, between udp_update's row and free_connection_index): the first free
  * slot (the table ten longer when there is none), the connection and its channels by kind, their buffers at least 584 bytes each. */
+/* OPEN (round 27b): SOCOM 1's rt_msg_client_create_new_connection_index grown: the first loop's `b; addiu s4` (the table size's address in both exits)
+ * and the registers from it (s3 the index, s4 that address, s5 the new size). */
 unsigned char func_00635228(unsigned short *pnConnection, unsigned int nKind, unsigned int nSendSize, unsigned int nRecvSize)
 {
     void *pNew = 0;

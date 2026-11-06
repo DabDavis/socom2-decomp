@@ -210,7 +210,7 @@ int func_00610788(AUDIO *pAudio);
 int func_00610938(AUDIO *pAudio);
 int func_00610668(AUDIO *pAudio, int nNow);
 void func_00612630(AUDIO *pAudio, int nTo);
-void func_006115C0(AUDIO *pAudio, int nType, char *pBuf, int nLen);
+int func_006115C0(AUDIO *pAudio, int nType, char *pData, int nFlag);
 int func_00610C20(AUDIO *pAudio, int nFrom, int nPort, char *pBuf, int nLen);
 int func_00610FA0(AUDIO *pAudio, int nTo, GRID_HEADER *h, void *pData, int nLen);
 int func_00611250(AUDIO *pAudio, char *pBuf, int nSize, int *pnFrom, int *pnPort);
@@ -1347,4 +1347,99 @@ int func_00610010(AUDIO *pAudio, AUDIO_INIT *pInit)
     func_00626658(pAudio->pGrids, pAudio->pSelf);
     pAudio->nFlags |= 1;
     return 0;
+}
+
+extern GRID *func_00611898(AUDIO *pAudio);
+extern void *func_0062AB10(void *pCodec, int nType, int nMembers);
+extern int func_00626830(GRID *p);
+extern int func_006137F8(void *pFrame);
+extern int func_00613808(void *pFrame, void *pData, int nFlag, void *pBuf, int nSize);
+
+/* the frames of one type sent to the group spoken in (0x6115C0): the codec's frame made or changed as the type asks, each packet it gives
+ * sent with its own sequence number; nFlag 0 sends the header alone and ends the talk. */
+/* OPEN (round 27b): 6 words: the exit test's `blez` with `move v0,s6` in its slot where this gets `blezl`, and the length and sequence stores scheduled
+ * either side of the send's jal the other way round (a local for the sequence does not change it). */
+int func_006115C0(AUDIO *pAudio, int nType, char *pData, int nFlag)
+{
+    GRID_HEADER h;
+    char abBuf[480];
+    int nTotal = 0;
+    GRID *p = func_00611898(pAudio);
+    void *pFrame;
+    int nSize;
+    int n;
+    int nSeq;
+
+    if (p == 0)
+        return 0;
+    pFrame = pAudio->pFrame;
+    if (nFlag != 0) {
+        if (pAudio->x90 != nType) {
+            if (pFrame != 0) {
+                func_0062AE10(pAudio->pCodec, pFrame);
+                pAudio->pFrame = 0;
+                pFrame = 0;
+            }
+            pAudio->x90 = 0;
+        }
+        if (pFrame == 0) {
+            pAudio->pFrame = func_0062AB10(pAudio->pCodec, nType, func_00626830(p));
+            if (pAudio->pFrame == 0) {
+                pAudio->x90 = 0;
+                return 0;
+            }
+            pAudio->x90 = nType;
+            func_0060FFB8(pAudio);
+            pFrame = pAudio->pFrame;
+        }
+    }
+    nSize = 136;
+    if (pFrame != 0)
+        nSize = func_006137F8(pFrame) * 4;
+    switch (nType) {
+    case 33:
+        h.nType = 32;
+        nSize = 240;
+        break;
+    case 34:
+        h.nType = 33;
+        break;
+    case 36:
+        h.nType = 35;
+        break;
+    case 35:
+        h.nType = 34;
+        break;
+    case 63:
+    default:
+        h.nType = 47;
+        nSize = 480;
+        break;
+    }
+    h.nSrc = pAudio->nId;
+    h.nGrid = func_00624828(p);
+    if (nFlag == 0) {
+        h.nSeq = func_0060FFF8(pAudio);
+        h.nLen = 0;
+        func_00624830(p, pAudio->nId, &h, abBuf, 0);
+        if (pAudio->pFrame != 0) {
+            func_0062AE10(pAudio->pCodec, pAudio->pFrame);
+            pAudio->pFrame = 0;
+        }
+        pAudio->x90 = 0;
+        return 0;
+    }
+    if (nFlag == -1)
+        nFlag = 0;
+    for (;;) {
+        n = func_00613808(pAudio->pFrame, pData, nFlag, abBuf, nSize);
+        nFlag = 0;
+        if (n <= 0)
+            return nTotal;
+        nSeq = func_0060FFF8(pAudio);
+        nTotal += n;
+        h.nLen = n;
+        h.nSeq = nSeq;
+        func_00624830(p, pAudio->nId, &h, abBuf, n & 0xFFFF);
+    }
 }

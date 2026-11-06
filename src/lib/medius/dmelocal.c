@@ -26,6 +26,10 @@
  * func_006189C8 (below). func_0061BEB8 returns the second call's result through a
  * variable: no sibling call then. */
 
+/* The `extern int dme_pad_<VA>_<i>` lines (round 27b): declarations nothing reads, above functions whose locals need the other state of the stale alias
+ * word (README "Round 26b"): only text above a function changes it, so the counts were settled in file order (scratch solve.py and search.py). SCEA's file
+ * had other declarations there; these stand in. */
+
 #include "dmelocal.h"
 
 #define DME_OK              0
@@ -2124,6 +2128,10 @@ extern unsigned char data_0065117C;
 extern unsigned char MyClientIsJoined;
 extern int func_00618F70(unsigned int nWorld);
 
+/* OPEN (round 27b): SOCOM 1's NetJoin grown. All but the first loop's entry: the target compares the zero-known result (`slt v0,a1,v0`, the call's
+ * result kept in a1) and takes `move s1,zero` into the unannulled slot; `if (r2 < n) { i = 0; do ... }` gets the slt, a `beqzl` from the target
+ * thread and a nop, and everything after shifts a word. A for over i folds the test to `blez` (i's own constant). The one-member structs stand in for
+ * the alias word's other state (K does not flip it here). */
 int func_00618B38(DmeJoinParams *pParams)
 {
     DmeJoinMessage msg;
@@ -4982,6 +4990,10 @@ extern int ActiveNetObjectCount;
 extern unsigned char data_006511DC;
 extern unsigned char data_006511CC;
 extern unsigned short data_0067A6E0;
+/* OPEN (round 27b): SOCOM 1's NetInitialize grown, 19 words, all in the port's stores. The target's `andi t0,v0,0xffff` is a post-reload CSE: the
+ * `lhu` of the port just stored, with the stored value still in v0, so the load has to come straight after the store before sched2 (720 orders of
+ * the five stores in six spellings: at best `n = data_0067A6E0;` right after the store, nError, nPort, nLocalPort, field_18, field_00 -- the
+ * `andi` comes out, the stores stay in the wrong order, 8 words). */
 int func_00616820(DmeInitParams *pParams, DmeInitResult *pResult)
 {
     unsigned int tNow;
@@ -5282,6 +5294,9 @@ int func_0061A800(int nTarget, unsigned int nIndex)
 
 /* SOCOM 1's NetCreateObject grown (0x6199D0, under dme.c's locked wrapper): a free index in this client's block, the record and its
  * buffers made, all undone when one of them will not allocate. */
+/* OPEN (round 27b): SOCOM 1's NetCreateObject grown, 40 words, mostly a shift: the target keeps pStruct in a copy for the loop (`move a2,s4`, nSize's
+ * load through it), which pField's initialiser does not reproduce, and takes `beqzl` on the initial data's test. The rest as NetObjectFullUpdate's
+ * twin (0x61E8B8, byte-exact). Note the spilled parameters: the target runs out of saved registers and stores a1 to t3 at the entry. */
 int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int nField01, int nField28, int nField03, void *pInit,
                   const char *szName, unsigned int nClass)
 {

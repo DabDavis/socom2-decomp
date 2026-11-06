@@ -1348,6 +1348,9 @@ typedef struct DmeFragHeader {
     int nBytes;                         /* 0x0C */
 } DmeFragHeader;
 
+/* OPEN (round 27b): one word, `bnezl v1` for the allocation test against `bnez` here: reorg annuls the slot's load in the target, as if v0 were live
+ * on the failure arm; five shapes of the test tried, each worse. Everything else exact: the state is a switch (`beqz` 0 first), the range tests one
+ * `||` each, the tail nested under `*ppFrag == 0`. */
 int func_006200D0(int nConnection, int nClient, DmeFragHeader *pMsg, DmeFragment **ppFrag)
 {
     int nFree = -1;
