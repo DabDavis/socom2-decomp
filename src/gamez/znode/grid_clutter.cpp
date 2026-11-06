@@ -86,7 +86,8 @@ inline void SetAddColor(CPnt3D c)
  * register there). The swap traded as words (a typed view, or a volatile read) is what makes MW
  * reload the element as the target does; a swap of the CClutter pointers reuses the tested one.
  * Tried: the insert as a member, through begin(), the index taken first; the counter's types and
- * declaration places; a local or a reference for the tested prop */
+ * declaration places; a local or a reference for the tested prop. Round 21, the replay: no placement of the index, &data[i]
+ * and the element together (681k searched, build/scratch/core/add_want.txt) */
 bool CClutterList::Add(CClutter *clutter)
 {
     if (size_ == 0) {
