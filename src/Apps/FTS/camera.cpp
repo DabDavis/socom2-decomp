@@ -1091,8 +1091,11 @@ void CAppCamera::ResetDeathCam()
 }
 
 /* a point eased: from `from` by `delta` scaled (ours: the frame proves an inline -- the scale's and
- * the sum's results one level below the differences, which are its arguments) */
-inline void EaseBy(CPnt3D &p, const CPnt3D &from, const CPnt3D &delta, float t)
+ * the sum's results one level below the differences, which are its arguments). The scale by
+ * reference (round 23): 0x297410 eases by a global, which the target loads after the difference's
+ * call, where a by-value parameter loads it ahead of the call and holds it in $f20; every other
+ * caller passes a local and is unchanged */
+inline void EaseBy(CPnt3D &p, const CPnt3D &from, const CPnt3D &delta, const float &t)
 {
     p = from + delta * t;
 }
@@ -1211,6 +1214,19 @@ extern "C" void sceVu0RotMatrixY(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float ry);
 /* the death camera's stick turn (below) */
 extern "C" void func_00294B40(CDeathCam *dc, CMatrix *sealMat, CMatrix *view, float dT);
 
+/* an angle wrapped into [-pi, pi] (ours, round 23: by value -- the parameter's copy is a statement
+ * of its own between the caller's if and the first loop, so the if's arms join on a block the
+ * loop's constants are hoisted into, as the target's; written in the caller, or taking the angle by
+ * reference or pointer, the if's arms branch straight to the loop's test and 2pi / -pi are
+ * rebuilt inside the loop) */
+inline float WrapPi(float a)
+{
+    while (a < -3.1415927f)
+        a += 6.2831855f;
+    while (a > 3.1415927f)
+        a -= 6.2831855f;
+    return a;
+}
 /* the death camera's own look (SOCOM II's, not written: VU0 transform loops) */
 extern "C" unsigned char func_00297A30(CAppCamera *cam, CPnt3D *pos, CPnt3D *aim, CMatrix *rot, float dT);
 
@@ -1219,13 +1235,13 @@ extern "C" unsigned char func_00297A30(CAppCamera *cam, CPnt3D *pos, CPnt3D *aim
  * falls, the death camera's stick turn added online; the point and the look carried into the SEAL's
  * space, the ease begun or primed at state 7 online, and the aim eased toward the look while the
  * death camera watches. Returns whether it does.
- * OPEN, 0x60C of 0x614 (the first 70 instructions the target's): the first wrap loop's 2pi / -pi
- * are not hoisted -- the if's then-arm branches straight into the loop's bottom test where the
- * target falls into a preheader holding both constants (the second loop has its preheader in both).
- * Tried (build/scratch/core/v_ta*.py): the turn as a ternary, nested ifs, for loops, a block, `!(a <=
- * b)`, a label, the turn from an inline -- 0x60C to 0x624; the wrapped angle a copy of the turn gives
- * the preheader but keeps a move (0x61C). Also left: sceVu0RotMatrixY's arguments (the target sets
- * a1 first, then a0 from it; a pointer local or a CMatrix inline does not move them) */
+ * Byte-exact since round 23 by four shapes (build/scratch/core/v_ta5-9.py): the wrap through
+ * WrapPi (above), look declared ahead of lz (the inline's copy swaps their frame slots otherwise),
+ * EaseBy's scale by reference, and the rotation's second argument through a no-op integer
+ * conversion -- an argument needing one is evaluated first (the SEALs' round 34), so the target's
+ * a1 is set up and a0 copied from it; a pointer local, the CMatrix conversion operator, inlines
+ * taking the matrix and pointer casts all leave a0 first. The cast is a spelling, not a claim
+ * about the original */
 extern "C" unsigned char func_00297410(CAppCamera *cam, CPnt3D *pos, CPnt3D *offset, CPnt3D *aim, float dT)
 {
     unsigned char watching = 0;
@@ -1242,11 +1258,8 @@ extern "C" unsigned char func_00297410(CAppCamera *cam, CPnt3D *pos, CPnt3D *off
 
         if (cam->m_bc && cam->m_bc->m_state == 8)
             turn = -2.5132742f * dT;
-        while (turn < -3.1415927f)
-            turn += 6.2831855f;
-        while (turn > 3.1415927f)
-            turn -= 6.2831855f;
-        sceVu0RotMatrixY(rot.m_matrix, rot.m_matrix, turn);
+        turn = WrapPi(turn);
+        sceVu0RotMatrixY(rot.m_matrix, (sceVu0FVECTOR *)(unsigned int)rot.m_matrix, turn);
         TransformVectors(&rot, pos, pos, 1);
     }
     if (theNetwork.m_9 && func_002C2FD0(ftsPlayer.m_seal) && ((CDeathCam *)&cam->m_f4)->m_state == 1) {
@@ -1254,8 +1267,8 @@ extern "C" unsigned char func_00297410(CAppCamera *cam, CPnt3D *pos, CPnt3D *off
         TransformVectors(&rot, pos, pos, 1);
     }
     cam->m_entity->GetMatrix()->Transform(pos, 1);
-    CPnt3D lz(0.0f, 0.0f, -1000.0f);
     CPnt3D look;
+    CPnt3D lz(0.0f, 0.0f, -1000.0f);
 
     if (cam->m_entity == cam->m_bc)
         cam->m_bc->m_fwdlook.Apply(&lz, &look, 1);
