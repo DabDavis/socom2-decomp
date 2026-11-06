@@ -1774,6 +1774,36 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  *    sub-branches, or i and j shared with the reallocating branch (SOCOM 1's DWARF lists i, j first)
  *    -43; the else loop as a helper taking (last, first, result) -21; the end object or m declared
  *    first, m's cast: +0 / -0 */
+/* THE END'S FORM, PER ELEMENT: A MODELLING DEVICE (the AI core round 37, build/scratch/aicore-r37/ai/). The
+ * population above that wants the end numbered before m -- the five, and only those, of the map's 19 class
+ * inserts then open -- gets it from a pointer local, chosen by this trait: a unit specialises it for the
+ * element. Every other instance folds `value ? ep : e.m_p` at the front end and compiles as it did
+ * (tools/objcmp.py over every hand-written unit: 665 compared, 0 differ). All five are byte-exact so, each
+ * +1 and nothing lost in its unit: CVehicleRdrEntry 0x534630 (vehicle_rdr.cpp); measured, not applied, their
+ * lanes' files: AcctRecord 0x2FE3E0 (zNetMediusUniverse.cpp 70 -> 71 of 72), CTurretDef 0x3ABD90 (veh_turret.cpp
+ * 72 -> 73 of 74), zrdr_sym 0x3325E0 (zrdr_parse.cpp 73 -> 74 of 79), CDlgDesignModel 0x384ED0 (zui_spec.cpp
+ * 98 -> 99 of 109). The other fourteen stay as they were (size misses: the element's copy, not the end;
+ * CIOPManager::CRegistrant 0x39C7F0 goes 126 -> 99 at the target's size).
+ * WHY NOT THE OTHER DEVICES:
+ *  - a switch per unit (`#define` ahead of the includes) makes the same matches but is too blunt where one
+ *    unit emits both populations: zNetMediusUniverse.cpp loses its UniverseStatus and MediusGet... inserts,
+ *    zui_spec.cpp nets nothing;
+ *  - an explicit specialisation of insert (the resize<reader> device, ai_mapio.cpp) is an OWN function,
+ *    generated before the unit's tail, so it calls the temporary's destructor with -1 where the instance
+ *    inlines it (the rule above, "an insert ... whose temporary's destructor was generated before it").
+ *    That one call moves every register of the reallocating branch: inlined, `beq a0,zero,exit` is a call-free
+ *    path to `.end v0`, so v0 is live from the last call to the end and every temporary there avoids it
+ *    (`move a0,v0; beqz a0`, `lw a0`, `sltu v1`); called, v0 dies at the call. Specialising the deleter's clear
+ *    and destructor as well, defined after insert so generated first, makes insert byte-exact -- and loses
+ *    Close, ~vector and vector::clear, which then inline them where the target calls them.
+ * What the original wrote to number the two populations apart is still not found: this stands for it. */
+template <class T>
+struct __insert_end_pointer {
+    enum { value = 0 };
+};
+
+#define __VI_END (__insert_end_pointer<T>::value ? ep : e.m_p)
+
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
@@ -1783,31 +1813,35 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
         __msl_error("vector::insert length error\n");
     const T *xp = &x;
     iterator e;
+    T *ep;
 
     if (this->size_ + n <= this->capacity_) {
-        e = this->end();
-        unsigned int m = e.m_p - position;
+        if (__insert_end_pointer<T>::value)
+            ep = this->end().m_p;
+        else
+            e = this->end();
+        unsigned int m = __VI_END - position;
         T *i;
 
         if (m < n) {
-            for (i = e.m_p; m < n; --n, ++i) {
+            for (i = __VI_END; m < n; --n, ++i) {
                 this->construct(i, *xp);
                 ++this->size_;
             }
-            for (T *j = position; j < e.m_p; ++j, ++i) {
+            for (T *j = position; j < __VI_END; ++j, ++i) {
                 this->construct(i, *j);
                 ++this->size_;
             }
         } else {
-            T *j = e.m_p - n;
+            T *j = __VI_END - n;
 
-            for (T *k = e.m_p; j < e.m_p; ++j, ++k) {
+            for (T *k = __VI_END; j < __VI_END; ++j, ++k) {
                 this->construct(k, *j);
                 ++this->size_;
             }
-            if (e.m_p - (m - n) <= xp && xp < e.m_p)
+            if (__VI_END - (m - n) <= xp && xp < __VI_END)
                 xp += n;
-            std::copy_backward(position, position + (m - n), e.m_p);
+            std::copy_backward(position, position + (m - n), __VI_END);
         }
         std::fill_n(position, n, *xp);
     } else {
@@ -1825,7 +1859,10 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
         tmp.capacity_.n_ = newcap;
         T *i = tmp.data_;
         T *j = this->data_;
-        e = this->end();
+        if (__insert_end_pointer<T>::value)
+            ep = this->end().m_p;
+        else
+            e = this->end();
 
         for (; j < position; ++j, ++i) {
             this->construct(i, *j);
@@ -1835,7 +1872,7 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
             this->construct(i, *xp);
             ++tmp.size_;
         }
-        for (; j < e.m_p; ++j, ++i) {
+        for (; j < __VI_END; ++j, ++i) {
 
             this->construct(i, *j);
             ++tmp.size_;
@@ -1843,6 +1880,7 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
         tmp.swap(*this);
     }
 }
+#undef __VI_END
 
 template <class T, class Allocator, bool IsPOD>
 T &__vector_imp<T, Allocator, IsPOD>::at(unsigned int n)

@@ -7,7 +7,7 @@
  * as in sase_encsc.c); the constants are hex floats (round 12a: this GCC's decimal conversion is
  * not the vendor's). Written: 0x24AF50 (GCC round 18a), 0x24AEB0 (round 19a), 0x24AD48 (round 36a:
  * its argument a float/int union in the frame, compared as floats against the decade table at
- * 0x3E81D0 as its assert's `union_x.l <= uiBoundary[0]` reads). Not written: 0x24AB48.
+ * 0x3E81D0 as its assert's `union_x.l <= uiBoundary[0]` reads). GCC round 44a: the resampler 0x24AB48: the object whole.
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0
@@ -126,4 +126,42 @@ float func_0024AF50(float fXval)
 	fY = fXval * -0x1.ebae14p-2F + 0x1.00065ep+0F;
 	fY = fXval * fY + 0x1.dba3aap-2F;
 	return fY * fScale;
+}
+
+extern float func_002517D8(float fX);		/* the encoder's fast log2 (shared) */
+
+/* the spectrum resampled: its log magnitude taken every fStep bins, at most 80 points and the last, and each stretch between
+ * two points interpolated linearly back into pfSpec. iLength - 1 written out twice: GCSE (one pass) reuses the integer, spilled
+ * at 1312(sp) with every saved register taken, and not its conversion to float, reloaded by lwc1 (one variable: the float
+ * kept in $f23, the frame 16 smaller; GCC round 44a). */
+void func_0024AB48(float *pfSpec, int iLength, float fStep)
+{
+	float afBuf[328];
+	float *pfLog, *pfFreq;
+	int *piIdx;
+	int n, i, j, k;
+	float fFreq;
+
+	n = (int)((float)(iLength - 1) / fStep);
+	n++;
+	if (n > 80)
+		n = 80;
+	fFreq = 0.0F;
+	pfLog = afBuf;
+	pfFreq = &afBuf[n + 4];
+	piIdx = (int *)&afBuf[2 * n + 8];
+	for (i = 0; i < n; i++) {
+		k = (int)(fFreq + 0.5F);
+		pfLog[i] = func_002517D8(pfSpec[k]);
+		piIdx[i] = k;
+		pfFreq[i] = fFreq;
+		fFreq += fStep;
+	}
+	pfLog[n] = func_002517D8(pfSpec[iLength - 1]);
+	piIdx[n] = iLength;
+	pfFreq[n] = (float)(iLength - 1);
+	for (i = 1; i < n + 1; i++) {
+		for (j = piIdx[i - 1]; j < piIdx[i]; j++)
+			pfSpec[j] = pfLog[i - 1] + (pfLog[i] - pfLog[i - 1]) * ((float)j - pfFreq[i - 1]) / (pfFreq[i] - pfFreq[i - 1]);
+	}
 }

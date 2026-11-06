@@ -248,6 +248,171 @@ extern "C" void func_0060F760(CSealCtrlAi *ai)
     }
 }
 
+extern "C" {
+/* the maps' traversable cell at a point (zseal.h's stand-in has none) */
+bool GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CAiMaps *maps, const CPnt3D *pos, CAiMapLoc *loc);
+/* a plan pushed to a cell, coming back to a step (seal_aistate.cpp's) */
+bool func_005F0830(CSealCtrlAi *ai, void *loc, CAiState::STEP mode, int kind, CAiState::STEP step);
+/* a turret's stick for a look at a point or along a direction (OVL1 0x3A8BD0, 0x3A8910) */
+void func_003A8BD0(CEntity *v, const CPnt3D *look, float *a, float *b);
+void func_003A8910(CEntity *v, const CPnt3D *look, float *a, float *b);
+}
+
+/* the thresholds of the event's distance (a square) and its lift (OVL2 data) */
+extern float data_00651150;
+extern float data_00651158;
+extern float NoExpire__8CAiEvent;
+
+/* the event the AI holds (zseal.h keeps it as bytes: its place and duration -- ai.h's CAiEvent; the view ours), and whether it
+ * has run out (inlined over the controller: the event's address taken only after it; the name ours) */
+struct CAiVehEvent {
+    CPnt3D m_pos;   // 0x0
+    float m_c;   // 0xc
+    float m_duration;   // 0x10
+};
+
+inline bool EventExpired(CSealCtrlAi *ai)
+{
+    bool r = false;
+
+    if (((CAiVehEvent *)ai->m_event)->m_duration != NoExpire__8CAiEvent && ((CAiVehEvent *)ai->m_event)->m_duration <= 0.0f)
+        r = true;
+    return r;
+}
+
+/* the vehicle's timer run out, and run down: whether it has run out (inlined; never for the infinite period; the names
+ * ours) */
+inline bool TimerExpired(CAiSUseVehicle *v)
+{
+    bool r = false;
+
+    if (v->m_68 != CAiTimer::infinite && v->m_68 <= 0.0f)
+        r = true;
+    return r;
+}
+
+inline bool TimerDone(CAiSUseVehicle *v, float dT)
+{
+    bool r = false;
+
+    if (v->m_68 != CAiTimer::infinite) {
+        v->m_68 -= dT;
+        r = TimerExpired(v);
+    }
+    return r;
+}
+
+/* the vehicle's frame: to the vehicle (a plan to the cell beside it, back at step 1), boarded, then held until the timer runs
+ * out -- the look on the target while one is engaged, else a random look to the front, the event near it stepping off --
+ * the turret steered by the look; off the vehicle, then done (OVL2 0x60EE80; new in SOCOM II).
+ * OPEN, 8 instructions, registers only: the SEAL (v35) wants s1 and func_0060F9F0's argument (v42) s2, ours the other way
+ * round. igreplay: the SEAL numbered exactly between that argument and the inline's own local (42.5), or the argument
+ * before the SEAL (34.5). A named pointer local there (declared before the SEAL) is propagated: with func_0060F9F0 its null
+ * test stays, with a test-less inline the address folds into the frame; the SEAL through an accessor takes s0 */
+int CAiSUseVehicle::Tick(CSealCtrlAi *ai)
+{
+    STEP step = (STEP)m_phase;
+    CEntity *seal = ai->m_entity;
+
+    switch (step) {
+    case STEP_0: {
+        step = STEP_4;
+        CEntity *e = CEntity::m_list.GetEntityById(m_5c);
+
+        if (e && GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(&AiMaps, &e->m_posW, &m_58))
+            func_005F0830(ai, &m_58, step, 1, step);
+        break;
+    }
+    case STEP_1:
+        if (Board(ai))
+            step = STEP_2;
+        else
+            step = STEP_4;
+        break;
+    case STEP_2:
+        if (TimerDone(this, m_dT))
+            step = STEP_4;
+        if (!TargetEngaged(ai)) {
+            if (!TargetLost(ai)) {
+                CEntity *t = *(CEntity **)ai->m_67c;
+                const CPnt3D *pos = &t->m_posW;
+
+                ai->SetLookPosW((AI_LOOK)7, pos);
+                ((CZSealBody *)ai->m_entity)->SetAimPointW(pos, 0, false);
+                if (pos) {
+                    ((CAiCtrlLook *)ai)->m_lookKind = 1;
+                    ((CAiCtrlLook *)ai)->m_lookDir = *pos;
+                } else {
+                    ((CAiCtrlLook *)ai)->m_lookKind = 2;
+                    ((CAiCtrlLook *)ai)->m_lookDir = CPnt3D::unit_nz;
+                }
+            } else {
+                ai->ClearLook((AI_LOOK)7);
+                m_time -= m_dT;
+                if (m_time <= 0.0f) {
+                    float r = 4.656613e-10f * (float)rand();
+                    float x = -0.707f + 1.414f * r;
+                    CPnt3D dir;
+
+                    dir.x = x;
+                    dir.y = 0.0f;
+                    dir.z = -sqrtf(1.0f - x * x);
+                    func_0060F9F0(ai, &dir);
+                    m_time = 3.0f;
+                }
+                if (!EventExpired(ai)) {
+                    CAiVehEvent *ev = (CAiVehEvent *)ai->m_event;
+                    CPnt3D d;
+
+                    seal->m_posW.Sub(&ev->m_pos, &d);
+                    if (d.x * d.x + d.y * d.y + d.z * d.z <= data_00651150) {
+                        if (ev->m_duration < data_00651158)
+                            ev->m_duration = data_00651158;
+                        step = STEP_3;
+                    }
+                }
+            }
+        }
+        if (step == STEP_2) {
+            CEntity *v = (CEntity *)((CSealVehicleView *)ai->m_entity)->m_eb8;
+
+            v = v && v->m_type == CEntity::ENT_TYPE_TURRET ? v : 0;
+            if (v) {
+                float a = 0.0f;
+                float b = 0.0f;
+
+                switch (((CAiCtrlLook *)ai)->m_lookKind) {
+                case 1:
+                    func_003A8BD0(v, &((CAiCtrlLook *)ai)->m_lookDir, &a, &b);
+                    break;
+                case 2:
+                    func_003A8910(v, &((CAiCtrlLook *)ai)->m_lookDir, &a, &b);
+                    break;
+                }
+                ai->SetThrottle(2, a);
+                ai->SetThrottle(3, b);
+            }
+        }
+        break;
+    case STEP_3:
+        if (InVehicle(ai)) {
+            if (InVehicle(ai)) {
+                func_00545EE0(seal, 1);
+                ai->ClearLook(AIL_10);
+                ai->SetDoAiMapCollide(true);
+                ai->RestoreAiMode();
+            }
+        } else if (EventExpired(ai))
+            step = STEP_4;
+        break;
+    case STEP_4:
+        m_active = false;
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
+}
+
 /* the vehicle boarded: when it exists and the SEAL takes it (0x546210), the look set at its
  * position (or unit_nz), the AI-map collision off, the AI's mode 2, the goal dropped, the timer
  * drawn (OVL2 0x60F470, the Tick's; the name ours) */

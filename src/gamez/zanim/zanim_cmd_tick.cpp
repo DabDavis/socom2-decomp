@@ -8,6 +8,7 @@
 #include <string.h>
 #include <iostream>   /* (its pair is all __sinit_zanim_cmd_tick.cpp builds, 0x3FFB70) */
 
+#define ZANIM_ARG_CTORS_CALLED
 #include "zanim.h"
 #include "../zcamera/zcamera.h"
 #include "../znode/vis_ripple.h"
@@ -1796,16 +1797,32 @@ struct zanim_cmd_scroll_motion {
     float time;                     /* 0x44 */
 };
 
-/* OPEN, right size (0x468), frame offsets and a few registers: the 2D steps through the
- * out-parameter helpers give the target's store-and-reload exactly, and the named objects sit as
- * the target's (declaration order from the frame's top), but the target's frame holds two 8-byte
- * objects more -- one between pos and delta, one below the else branch's operator- temporary --
- * which no unused local gives (MW drops those); its first GetNode also takes the anim through v0 */
+/* OPEN, 11 instructions (the target's size, 0x468; 221 before the engine core's round 27): the first
+ * read of cmd->node through a0 where the target has s3 (a0's a valid copy source there: the copy
+ * forward is below the IR -- a `const`, int or enum copy alike), and the length's registers: the
+ * target's z (f3) is numbered above the sum (`igreplay --cls 1 --want` over z: only v33 -> 112.5 or
+ * 113.5, a code-generation register though it is read again by the dot; no spelling found). Closed in
+ * round 27: the frame's two holes -- an unused local whose address is taken in a pointer keeps its slot
+ * at no code cost (FrameHole2D, the second through an inline so it sits below the operator-'s result);
+ * the anim loaded ahead of the command's copy (the anim then cannot coalesce with a0, still live:
+ * the target's `lw v0; ...; move a0,v0`), `cmd` declared first and assigned after; dc's x and z in
+ * locals (one load each, read by the length and the dot); pos built field by field (x's load first). */
+/* 8 bytes of the frame no code touches (ours, a modelling device: an unused local whose address is
+ * taken keeps its slot; an inline's, so below the caller's objects in the frame) */
+static inline void FrameHole2D()
+{
+    PNT2D hole;
+    PNT2D *p = &hole;
+}
+
 extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
 {
-    zanim_cmd_scroll_motion *cmd = (zanim_cmd_scroll_motion *)hdr;
+    zanim_cmd_scroll_motion *cmd;
     bool done = false;
-    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+    int anim = (int)ZAnim.m_CurAnim;
+
+    cmd = (zanim_cmd_scroll_motion *)(int)hdr;
+    CNode *node = ((CZAnim *)anim)->GetNode(cmd->node, false);
 
     if (!node)
         return true;
@@ -1834,10 +1851,13 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
 
         r += p;
         PNT2D pos;
+        PNT2D hole;
         PNT2D delta;
         PNT2D s;
+        PNT2D *ph = &hole;
 
-        Set2D(&pos, r.x, r.z);
+        pos.x = r.x;
+        pos.y = r.z;
         Sub2D(&delta, &pos, (PNT2D *)&cmd->last);
         Mul2D(&s, (PNT2D *)&cmd->su, &delta);
         if (fabsf(s.x) > 0.001f || fabsf(s.y) > 0.001f)
@@ -1851,10 +1871,13 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
         CPnt3D dq(q.x - c.x, q.y - c.y, q.z - c.z);
         CPnt3D dc = c - cmd->last;
 
+        FrameHole2D();
         cmd->last = c;
-        float len = dc.Length();
+        const float x = dc.x;
+        const float z = dc.z;
+        float len = sqrtf(x * x + dc.y * dc.y + z * z);
 
-        if (dq.x * dc.x + dq.z * dc.z < 0.0f)
+        if (dq.x * x + dq.z * z < 0.0f)
             len = -len;
         PNT2D s;
 
@@ -1905,22 +1928,22 @@ static inline float AccDist(float v, float a, float t)
 
 /* the profile's times for the distance between the points, and the whole run's: where the
  * distance is too short to reach v1, the top speed is bisected down to fit.
- * OPEN, 5 instructions: the target materialises the 0.5f right after the call, before the
- * distance's copy (whose source pointer then takes a1); MW puts it with its first use. The
- * first pass's v1 in a local, hi declared before lo and a block-local midpoint are each
- * load-bearing (each was a register or a reload off). Round 21: the 0.5f a named or const local
- * (top, after the distance, after lo), the difference a declared, assigned or Sub'd local -- 15 each (v_crt21*.py). */
+ * Byte-exact since the engine core's round 27 (open since round 4). The target's 0.5f comes right
+ * after the call, ahead of the distance's copy (whose source pointer then takes a1), because `lo` is
+ * set only after the difference: its `mtc1 zero` ahead of them took the pre-RA scheduler's earlier
+ * slot, the 0.5f behind the copy's source pointer. The first pass's v1 in a local and hi declared
+ * first are each load-bearing (each was a register or a reload off). */
 float CZAnimFromToAcc::ComputeRunTime(CPnt3D *from, CPnt3D *to)
 {
     float dist = (*from - *to).Length();
     float hi;
-    float lo = 0.0f;
     float top = v1;
 
     t1 = (top - v0) / a1;
     t3 = (v2 - top) / a2;
     float acc = AccDist(v0, a1, t1) + AccDist(top, a2, t3);
     float diff = dist - acc;
+    float lo = 0.0f;
     if (diff < 0.0f) {
         hi = v1;
         while (fabsf(diff) > 0.0001f) {
@@ -2047,20 +2070,20 @@ static inline CPnt3D FromToGoal(zanim_cmd_from_to *cmd, zanim_from_to_pos *pos)
     return pos->to;
 }
 
-/* OPEN, 34 instructions, all registers: the anim pointer and the node trade s2 and s0. Wherever
- * it is declared (first, last, uninitialised, assigned apart) the anim takes the lowest saved
- * register; the declarations here give the other four theirs. A 12-minute permuter run (8,880
- * candidates) found nothing better. */
+/* Byte-exact since the engine core's round 27 (34 off since round 4; "the anim takes the lowest saved
+ * register wherever it is declared" was the scale pointer: a block-local declared last, coloured
+ * first, took s0, and the anim, not interfering with it, took s0 too). The target's holders read off
+ * the replay's colouring order: path s5, pos s4, set s3, anim and the scale pointer s2, cmd s1, node
+ * s0 -- which is the declaration order below, the scale pointer declared at the top. */
 void zAnimObjectMotionFromToBegin(_zanim_cmd_hdr *hdr)
 {
     CZAnimFromToAcc *path;
     zanim_from_to_pos *pos;
     bool set;
-    CNode *node;
     CZAnim *anim = ZAnim.m_CurAnim;
+    zanim_from_to_scale *s;
     zanim_cmd_from_to *cmd = (zanim_cmd_from_to *)hdr;
-
-    node = anim->GetNode(cmd->node, false);
+    CNode *node = anim->GetNode(cmd->node, false);
 
     if (!node)
         return;
@@ -2169,7 +2192,7 @@ void zAnimObjectMotionFromToBegin(_zanim_cmd_hdr *hdr)
         }
     }
     if ((cmd->flags & 0x200) && cmd->scale != 0) {
-        zanim_from_to_scale *s = (zanim_from_to_scale *)((char *)cmd + cmd->scale);
+        s = (zanim_from_to_scale *)((char *)cmd + cmd->scale);
 
         if (cmd->flags & 0x100)
             node->SetScale(&s->from);
@@ -2375,12 +2398,16 @@ struct zanim_script_track {
 /* Play a frame of the script from time t for up to *dT: wait for its start, then move the node
  * along it to its end -- on into the next frame without a stop when that frame carries the same
  * tracks and starts by then. Returns the time used, *dT left what is not.
- * OPEN, 13 instructions: `used` and `step` take each other's FP register ($f20/$f21). Not the
- * declaration order, not which is defined first, not the early return's spelling. Round 21, the FPR replay: `used` must be numbered after
- * ~60 temporaries (v33 >= 96.5) or @4963 past 160 -- no source placement reaches either (asf_want.txt) */
+ * Byte-exact since the engine core's round 27 (13 off since round 3). `used` and the long-lived value
+ * (`*dT`'s common subexpression, shared with the test by the else arm) took each other's $f20 / $f21:
+ * the arm's `step = *dT` coalesced into the common subexpression's temporary, numbered above `used`,
+ * because a reused `step` splits that web off (IRO_SplitLifetimes: the earliest definition keeps the
+ * name, a later web takes a number after everything). With the early return's step a local of its own,
+ * `step` has one web, keeps its name, and declared ahead of `used` holds the value below it. */
 float apply_script_frame(_zanim_object_motion_script *cmd, _zanim_si_script *script, CNode *node,
                          zanim_script_frame_header *frame, float t, float *dT)
 {
+    float step;
     float used = 0.0f;
 
     if (t + *dT < frame->start) {
@@ -2394,7 +2421,6 @@ float apply_script_frame(_zanim_object_motion_script *cmd, _zanim_si_script *scr
         t = frame->start;
         *dT -= used;
     }
-    float step;
     if (t + *dT > frame->end) {
         int offset = cmd->offset;
         float time = cmd->time;
@@ -2413,9 +2439,10 @@ float apply_script_frame(_zanim_object_motion_script *cmd, _zanim_si_script *scr
                 (zanim_script_frame_header *)&((int *)script->script_data)[(unsigned int)cmd->offset / 4];
 
             if (next->flags == frame->flags && t + *dT > next->start) {
-                step = frame->end - t;
-                *dT -= step;
-                used += step;
+                float left = frame->end - t;
+
+                *dT -= left;
+                used += left;
                 cmd->time = frame->end;
                 cmd->offset = offset;
                 return used;
@@ -2789,7 +2816,155 @@ struct zanim_cmd_callanim {
     unsigned short flags;           /* 0x200: wait for the call to finish */
     unsigned char local;
     unsigned char index;
+    unsigned char node_arg;         /* 0x8: flag 2 */
+    unsigned char node_arg2;        /* 0x9: flag 4 */
+    unsigned char pos_node;         /* 0xA: flag 8 */
+    unsigned char dir_node;         /* 0xB: flag 0x80 */
+    unsigned short pos;             /* 0xC: the point's offset in the record */
+    unsigned short dir;             /* 0xE: a direction's */
+    unsigned short vel;             /* 0x10: a velocity's: value, then random extent (flag 0x400) */
+    unsigned char vel_node;         /* 0x12 */
 };
+
+/* CALL_ANIMATION's begin: the call's arguments gathered -- the anim's own copied (flag 1), two nodes
+ * (2, 4), a point through a node and an offset (8, 0x10, 0x20), a direction through a node (0x40, 0x80),
+ * a velocity, heading and pitch and speed with a random part (0x400), through a node -- and the
+ * referenced anim started with them (SOCOM II's; unwritten before the engine core's round 27).
+ * OPEN, 24 instructions, the target's size (0x714), frame slots only: the arg-copy walk's iterator
+ * temporaries sit a pass too deep. The target makes the postfix's copy in pass 0 (468), the begin's inner
+ * (464), each insert's pair (460 / 456 ...) and the end's inner (452) in pass 1; include/list's wrapper
+ * iterator makes the postfix's copy in pass 1 and the begin's and end's inner in pass 2, below every
+ * insert (416, 412). The list's base iterators are too shallow (0x6FC). The named element locals keep
+ * the push_backs' slots (504-484); the constructors are called (zanim_anim.cpp's copies: this unit
+ * defines ZANIM_ARG_CTORS_CALLED); r and r2 locals give the pitch's and the speed's float registers. */
+void zAnimCallAnimBegin(_zanim_cmd_hdr *hdr)
+{
+    CZAnim *anim = ZAnim.m_CurAnim;
+    zanim_cmd_callanim *cmd = (zanim_cmd_callanim *)hdr;
+    CZAnimArgList args;
+    _zanim_call_anim_ref *ref;
+    int count = 0;
+
+    ref = anim->GetCallAnimRef(cmd->index, cmd->local);
+    if (ref && ref->base_anim) {
+        if (cmd->flags & 1) {
+            if (anim->m_arg_list) {
+                CZAnimArgList::iterator it;
+
+                for (it = anim->m_arg_list->begin(); it != anim->m_arg_list->end(); it++) {
+                    CZAnimArg *arg = (*it)->Copy();
+
+                    args.push_back(arg);
+                    count++;
+                }
+            }
+        }
+        if (cmd->flags & 2) {
+            CNode *node = anim->GetNode(cmd->node_arg, false);
+
+            if (node) {
+                CZAnimArg *arg = new CZAnimArgNode((CZAnimArg::TYPE)2, node);
+
+                args.push_back(arg);
+                count++;
+            }
+        }
+        if (cmd->flags & 4) {
+            CNode *node = anim->GetNode(cmd->node_arg2, false);
+
+            if (node) {
+                CZAnimArg *arg = new CZAnimArgNode(CZAnimArg::TYPE_NODE, node);
+
+                args.push_back(arg);
+                count++;
+            }
+        }
+        CPnt3D pos(0.0f, 0.0f, 0.0f);
+        bool placed = false;
+
+        if (cmd->flags & 8) {
+            CNode *node = anim->GetNode(cmd->pos_node, false);
+
+            if (node) {
+                if ((cmd->flags & 0x10) && cmd->pos > 0)
+                    pos = *(CPnt3D *)((char *)cmd + cmd->pos);
+                node->TransformToWorld(pos);
+                placed = true;
+            }
+        }
+        if (cmd->flags & 0x20) {
+            if (cmd->pos > 0) {
+                pos.Add((CPnt3D *)((char *)cmd + cmd->pos), &pos);
+                placed = true;
+            }
+        }
+        if (placed) {
+            CZAnimArg *arg = new CZAnimArgPnt3D(CZAnimArg::TYPE_PNT3D, &pos);
+
+            args.push_back(arg);
+            count++;
+        }
+        if (cmd->flags & 0x40) {
+            if (cmd->dir > 0) {
+                CPnt3D dir = *(CPnt3D *)((char *)cmd + cmd->dir);
+
+                if (cmd->flags & 0x80) {
+                    CNode *node = anim->GetNode(cmd->dir_node, false);
+
+                    if (node) {
+                        CMatrix mtw;
+
+                        node->BuildMTW(mtw);
+                        TransformVectors(&mtw, &dir, &dir, 1);
+                    }
+                }
+                CZAnimArg *arg = new CZAnimArgPnt3D((CZAnimArg::TYPE)7, &dir);
+
+                args.push_back(arg);
+                count++;
+            }
+        }
+        if (cmd->vel > 0) {
+            float *v = (float *)((char *)cmd + cmd->vel);
+            CPnt3D vel;
+
+            if (cmd->flags & 0x400) {
+                float heading = v[0] + v[3] * (rand() * 4.656613e-10f);
+                float r = rand() * 4.656613e-10f;
+                float pitch = v[1] + v[4] * r;
+                float r2 = rand() * 4.656613e-10f;
+                float speed = v[2] + v[5] * r2;
+                CPnt3D d;
+
+                zAnimHeadingToDir(&d, heading, pitch);
+                vel = d * speed;
+            } else
+                vel = *(CPnt3D *)v;
+            if (cmd->vel_node > 0) {
+                CNode *node = anim->GetNode(cmd->vel_node, false);
+
+                if (node) {
+                    CMatrix mtw;
+
+                    node->BuildMTW(mtw);
+                    TransformVectors(&mtw, &vel, &vel, 1);
+                }
+            }
+            CZAnimArg *arg = new CZAnimArgPnt3D((CZAnimArg::TYPE)6, &vel);
+
+            args.push_back(arg);
+            count++;
+        }
+        if (count > 0)
+            ref->executing_anim = ref->base_anim->ActivateArg(count, 10, &args, 0);
+        else
+            ref->executing_anim = ref->base_anim->Activate(0);
+        if (cmd->flags & 0x100)
+            ref->stop_on_exit = 1;
+        else
+            ref->stop_on_exit = 0;
+    }
+}
 
 bool zAnimCallAnimTick(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -3163,14 +3338,13 @@ static inline int NestLevelOf(_zanim_cmd_hdr *hdr)
 }
 
 /* an if: its expression follows the record; false skips to the matching else, elseif (whose
- * expression is tried in turn) or endif. OPEN, 8 bytes long: the target loads m_CurSeq once and
- * re-tests it for each of the three type comparisons, each read the if-assign way (h = 0 in the
- * delay slot, then the load) where CmdHdr's ternary -- which BreakTick, GoToEndIf and the
- * FOR_CHILDREN handler need -- branches over; an if-assign accessor here fixes the comparisons
- * but not the ProcExpr test before them (two delay slots unfilled), still 0x1C8. Every other
- * spelling tried reloads it, or (with the type in a local) shares the read, 0x20 short. Round 21: CmdHdr as an inline assigning its own parameter
- * (`if (seq) h = pc; return h;`, the UI's round-31 if-mode) for every read, the three compares, the first, the
- * last two -- 0x1C8, the level's read 0x1D0 (v_iftick21.py) */
+ * expression is tried in turn) or endif. Byte-exact since the engine core's round 27 (8 bytes long
+ * since round 4). CmdHdr's ternary ASSIGNED to a declared local gives the if-assign read (the zero in
+ * the delay slot) for the three type comparisons and the level -- m_CurSeq shared, as a common
+ * subexpression, in a0 -- written as a comma in each `||` operand; the two later reads initialise a
+ * local of their own, the branch-over read with the command's type loaded after the diamond; straight
+ * in the comparison MW loads the m_cmd_* first. `done` is set inside the failed test (`move s0,zero`
+ * in the bnez's delay slot). */
 bool zAnimIfTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     bool found;
@@ -3178,28 +3352,35 @@ bool zAnimIfTick(_zanim_cmd_hdr *hdr, float *dT)
     func_002681C0(&ZAnim, 1);
     found = false;
     do {
-        bool done = false;
-
         ZAnim.CmdNext(8);
         if (!CZAnimExpression::ProcExpr(dT)) {
+            bool done = false;
+
             do {
                 ZAnim.CmdNext();
                 if (!ZAnim.CmdValid()) {
                     done = true;
                 } else {
-                    if (ZAnim.CmdHdr()->data_type == ZAnim.m_cmd_else.data_type ||
-                        ZAnim.CmdHdr()->data_type == ZAnim.m_cmd_elseif.data_type ||
-                        ZAnim.CmdHdr()->data_type == ZAnim.m_cmd_endif.data_type) {
-                        int level = NestLevelOf(ZAnim.CmdHdr());
+                    _zanim_cmd_hdr *h;
+
+                    if ((h = ZAnim.CmdHdr(), h->data_type == ZAnim.m_cmd_else.data_type) ||
+                        (h = ZAnim.CmdHdr(), h->data_type == ZAnim.m_cmd_elseif.data_type) ||
+                        (h = ZAnim.CmdHdr(), h->data_type == ZAnim.m_cmd_endif.data_type)) {
+                        h = ZAnim.CmdHdr();
+                        int level = NestLevelOf(h);
                         if (level == func_002681C0(&ZAnim, 0)) {
                             done = true;
-                            if (ZAnim.CmdHdr()->data_type == ZAnim.m_cmd_endif.data_type)
+                            int t = ZAnim.CmdHdr()->data_type;
+
+                            if (t == ZAnim.m_cmd_endif.data_type)
                                 func_002681C0(&ZAnim, -1);
                         }
                     }
                 }
             } while (!done);
-            if (ZAnim.CmdHdr()->data_type != ZAnim.m_cmd_elseif.data_type)
+            int t = ZAnim.CmdHdr()->data_type;
+
+            if (t != ZAnim.m_cmd_elseif.data_type)
                 found = true;
         } else {
             found = true;

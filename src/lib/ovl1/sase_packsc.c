@@ -43,3 +43,57 @@ void func_0024FAE8(int *piQuanIndex, unsigned char *pchPacketBuffer, unsigned sh
 	for (i = 0; i < 17; i++)
 		func_002484A0(&bp, piQuanIndex[i], asBitWidth[i]);
 }
+
+extern void func_0024ECF8(const float *pfX, int iLength, int *piMaxIndex, float *pfXmax);
+extern float func_002517D8(float fX);	/* the encoder's fast log2 (shared) */
+extern float *data_001D5598;		/* the cosine table, 256 points a turn */
+
+/* PostFilt.c, kept here by address: the spectrum's envelope pulled toward the first reflection coefficient's own: five
+ * levels of its one-pole response, the gap to them at each bin halved, clamped and faded in over the first band, the maximum
+ * then restored */
+void func_0024FBE8(float *pfLogEnv, const float *pfKS, float fGain)
+{
+	float afLevel[8];
+	int iIdx;
+	float fMax;
+	int iIdx2;
+	float fMax2;
+	float fP, fG, fA, fB, fD, fL, fX;
+	int i, j, k, n;
+	const float *pf;
+	float *pfL, *pfW;
+
+#line 131 "../../SaseEncVad/source/PostFilt.c"
+	assert((pfLogEnv != NellyNull) && (pfKS != NellyNull));
+	func_0024ECF8(pfLogEnv, 64, &iIdx, &fMax);
+	fP = 1.0F;
+	pf = pfKS + 1;
+	for (i = 10; i >= 0; i--) {
+		fX = *pf++;
+		fP *= 1.0F - fX * fX;
+	}
+	fG = fGain - func_002517D8(fP) * 0.5F;
+	fA = pfKS[0] * pfKS[0] + 1.0F;
+	fB = pfKS[0] * -2.0F;
+	n = 0;
+	pfL = afLevel;
+	for (i = 4; i >= 0; i--) {
+		*pfL++ = fG - func_002517D8(fA + fB * data_001D5598[n]) * 0.5F;
+		n += 32;
+	}
+	for (j = 1; j < 64; j++) {
+		k = j >> 4;
+		fL = afLevel[k] + (float)(j & 15) * 0.0625F * (afLevel[k + 1] - afLevel[k]);
+		fD = (pfLogEnv[j] - fL) * 0.5F;
+		fD = (0x1.0d58e4p-2F < fD) ? 0x1.0d58e4p-2F : fD;
+		fD = (-1.0F < fD) ? fD : -1.0F;
+		if (j < 16)
+			fD *= (float)j * 0.0625F;
+		pfLogEnv[j] += fD;
+	}
+	func_0024ECF8(pfLogEnv, 64, &iIdx2, &fMax2);
+	fD = fMax - fMax2;
+	pfW = pfLogEnv;
+	for (j = 63; j >= 0; j--)
+		*pfW++ += fD;
+}

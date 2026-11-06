@@ -79,11 +79,15 @@ public:
 
 class CZAnimArgPnt3D : public CZAnimArg {
 public:
+#ifdef ZANIM_ARG_CTORS_CALLED   /* zanim_cmd_tick.cpp calls them, zanim_anim.cpp's copies (another unit) */
+    CZAnimArgPnt3D(TYPE type, const CPnt3D *pnt);
+#else
     CZAnimArgPnt3D(TYPE type, const CPnt3D *pnt)
     {
         m_type = type;
         m_pnt = *pnt;
     }
+#endif
     CZAnimArg *Copy();
 
     CPnt3D m_pnt;   // 0xc
@@ -115,11 +119,15 @@ public:
 
 class CZAnimArgNode : public CZAnimArg {
 public:
+#ifdef ZANIM_ARG_CTORS_CALLED
+    CZAnimArgNode(TYPE type, CNode *node);
+#else
     CZAnimArgNode(TYPE type, CNode *node)
     {
         m_type = type;
         m_node = node;
     }
+#endif
     CZAnimArg *Copy();
 
     CNode *m_node;   // 0xc
@@ -478,6 +486,16 @@ public:
  * Reset and the destructors -- the records and the rotations are deleted one by one) */
 class CZAnimSetSave : public std::vector<_zanim_node_save *> {
 public:
+    /* A modelling device (the engine core's round 27): the target inlines this constructor one
+     * level and calls its four vectors' out of line -- MW's inline_max_size cut (256 units), which
+     * the original reached with vector constructors fatter than include/vector's. Twenty empty
+     * statements carry the difference (measured: 19 or more cut it; 18 or fewer inline the
+     * vectors, SaveNodeStates 0x94 long) */
+    CZAnimSetSave()
+    {
+        (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0;
+        (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0;
+    }
     void Reset(_zanim_node_save *save);
     void Add(_zanim_node_ref *ref);
     void Free();

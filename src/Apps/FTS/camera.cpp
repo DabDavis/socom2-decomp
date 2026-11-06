@@ -329,29 +329,19 @@ _zanim_cmd_hdr *CAppCamera::CmdParseShake(_zrdr *rdr)
 }
 
 /* SHAKE: the app camera shaken at the command's level.
- * OPEN (36 of 113 instructions, registers only): the target keeps appCamera in v1 and the level in
- * a0 (the command's register, dead after the load); MW gives the level v1 and appCamera a1 -- the
- * same with a local camera, an early return, the level read first or as an int, Shake declared
- * inline, and with the switch written out here; round 15: the level a caller local defined inside
- * the null test (plain, const, int), declared at the top, the command cast into a local -- the same
- * 36 (build/scratch/core/v_shake.py): by the numbering the target's camera is numbered above the
- * inlined Shake's level, which no caller-side spelling reaches. Round 17, the replay (--want
- * @3377=v1,level=a0): the level's node must sit before the camera's (31.5 or 32.5), or the camera's
- * after it (35.5 on); a caller's named level is copy-propagated away (its node dead), and the
- * camera a named local is coalesced with the call's a0 -- the level an enum field, a local copy in
- * Shake (unsigned char, int), a cast in either, a dead first definition: the same 36
- * (build/scratch/core/v_shake*.py, the core lane's round-17 scratch). Round 18: the test and the call
- * in a free inline over the level, the command or a const reference to the level (each 0x34: Shake no
- * longer inlined -- one level more), the level a reference local (53), the command a reference or cast
- * through a leaf template (36). Round 19: the camera through a leaf template (cast or identity) or a
- * cast copy, the command a const cast copy, the level a cast local -- 36; the level read ahead of the
- * test (a named, const or inline-result local) moves the load above the branch (52):
- * build/scratch/core/v_shake19*.py; round 21: the camera through
- * a non-template identity inline (in the test, the call, both, over a local) -- 36 (v_shake21.py) */
+ * Byte-exact since the engine core's round 27 (36 off since round 13): the level an enum-typed local
+ * (ours, the type in no DWARF). The target numbers the level below the camera (a common subexpression
+ * in pass 0): folded into Shake's expanded parameter its load is a code-generation register above the
+ * camera, and the pair trade v1 / a1. A plain, const or int local is propagated; enums are not (the
+ * game states' round 53). */
 void CAppCamera::CmdBeginShake(_zanim_cmd_hdr *hdr)
 {
-    if (appCamera)
-        appCamera->Shake(((_camera_shake_cmd *)hdr)->level);
+    if (appCamera) {
+        enum ShakeLevel { SL_0 = 0, SL_MAX = 255 };
+        ShakeLevel level = (ShakeLevel)((_camera_shake_cmd *)hdr)->level;
+
+        appCamera->Shake(level);
+    }
 }
 
 /* SOCOM 1's (SOCOM II's takes the camera alone): the aim, tie and goal, the camera kept, the

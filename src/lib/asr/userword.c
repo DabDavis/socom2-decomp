@@ -14,7 +14,7 @@
  * Round 29c: CheckConsistency (DoLabelStart/DoLabelStop inlined from GNU extern inline bodies
  * above it, their real definitions in place) and RejectTrainUtters, SOCOM 1's bodies. Round 30c:
  * DoUserWordTraining, SOCOM 1's body as it stands (the out-parameters at +920/+924 typed in casr.h).
- * OPEN: SendLabelsToEngine (26) and SendPartOfLabelsToEngine (36s), diagnosed in place.
+ * Round 39c: SendLabelsToEngine and SendPartOfLabelsToEngine -- the object whole.
  * FindBestTranscription (OPEN since round 30c) byte-exact in round 32c.
  * Round 31c: DoDurationModeling and ScoreTranscriptions, SOCOM 1's bodies (the object 18 of 21:
  * the scoring result at +944 typed in casr.h, the back pointers' phoneme at SEGLABEL +16).
@@ -154,17 +154,19 @@ int ExitUserWordTraining(CASR *c)
 
 /* every whole label of utterance n written so far into the label queue one at a time, the engine
  * run on each (its result an unsigned char: the target's andi at the one return).
- * OPEN (26 words, the right size; round 15c): the result through an int assigned at each exit
- * gives the target's single `andi v0,a0,0xff` (`return` per exit masks each path, an int
- * initialised at the top lives across the calls in s3, 0xF0 bytes); the division unsigned (the
- * target's divu: the size an unsigned int). What is left: the target loads the buffer into a1 and
- * copies it to p's s0 after the subtraction, here p takes the load (a separate buffer local, 27). */
+ * Round 39c, byte-exact (26 words before): the result through an int assigned at each exit gives the
+ * target's single `andi v0,a0,0xff` (`return` per exit masks each path, an int initialised at the top
+ * lives across the calls in s3, 0xF0 bytes); the division unsigned (the target's divu: the size an
+ * unsigned int); the buffer a local of its own, the length a statement before p is copied from it (the
+ * target's `lw a1; subu; move s0,a1`: p from the load directly takes s0 for the load). */
 unsigned char SendLabelsToEngine(CASR *c, const unsigned char *blocks, int n)
 {
     char *pos = c->lab_pos[n];
-    char *p = c->lab_buf[n];
+    char *buf = c->lab_buf[n];
     unsigned int size = LABELQ(c)->elemsize;
-    char *e = p + (pos - p) / size * size;
+    unsigned int len = pos - buf;
+    char *p = buf;
+    char *e = p + len / size * size;
     int ret;
 
     if (pos < p)
@@ -759,16 +761,18 @@ int DoUserWordTraining(CASR *c)
 
 
 /* labels [start, end) of utterance n -- clipped to what was written -- into the label queue one at
- * a time, the engine run on each.
- * OPEN (36s): SOCOM 1's order (the step before tosRun: both builds put it in the call's slot). The
- * target's rotated loop keeps its error blocks in place, as a `for` with an increment does (25s,
- * but the step then follows tosRun), and reloads the queue pointer in the preheader where 2.96
- * reuses the first load (t1); the `while`, `for (;;)`, do-while, guard and comparison spellings
- * tried (build/scratch/gcc/uw/v2.txt, v3.txt) keep the error blocks ahead of the loop. */
+ * a time, the engine run on each. SOCOM 1's order (the step before tosRun: both builds put it in the
+ * call's slot). Round 39c, byte-exact (36s before): the first read goes through a pointer to the queue's
+ * slot, so to GCSE it is not the loop's `(mem (plus c 412))`, CSE2 folding it only after loop.c. With the
+ * same expression the load is partially redundant: PRE inserts it on the back edge, a critical edge, whose
+ * split block lands ahead of the loop with a jump and a BARRIER -- and the barrier is what loop.c's
+ * find_and_verify_loops needs to move the `if (...) { ...; return; }` blocks out of the loop (no barrier at
+ * the target's depth, no move: the error blocks stay in place, the target's shape). */
 int SendPartOfLabelsToEngine(CASR *c, const unsigned char *blocks, int n, int start, int end)
 {
-    char *p = c->lab_buf[n] + start * LABELQ(c)->elemsize;
-    char *e = c->lab_buf[n] + end * LABELQ(c)->elemsize;
+    CBSLOT *s = &c->slot[3];
+    char *p = c->lab_buf[n] + start * ((QUEUE *)s->cb)->elemsize;
+    char *e = c->lab_buf[n] + end * ((QUEUE *)s->cb)->elemsize;
 
     if (c->lab_pos[n] < e)
         e = c->lab_pos[n];

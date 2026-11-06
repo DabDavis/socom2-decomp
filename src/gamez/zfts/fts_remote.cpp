@@ -419,8 +419,6 @@ struct ClientConnectArgs {
 };
 
 void func_002C3330(int arg);
-void func_002BC620(ClientConnectArgs *args);   /* zRemoteClientConnectsCallback */
-void func_002BC530(ClientConnectArgs *args);   /* zRemoteClientDisconnectsCallback */
 extern unsigned char data_00441580[24];   /* (fts_net_persona.cpp's pending slots, a byte per client) */
    /* (SOCOM II's: a word per client, cleared when one joins) */
 
@@ -445,6 +443,9 @@ extern unsigned int data_00440E28;   /* PacketTypeAiOrders */
 }
 
 
+/* SOCOM 1's connect and disconnect callbacks (their arguments now through a pointer) */
+void zRemoteClientConnectsCallback(ClientConnectArgs *args);
+void zRemoteClientDisconnectsCallback(ClientConnectArgs *args);
 extern "C" double fabs(double x);
 
 /* a float field's change tested: the object's (a0's index) data present, a change of more than 4
@@ -581,7 +582,18 @@ extern "C" CZBroadcastSchedule *func_002BD020()
     return &sched_grenade_vel;
 }
 
-void SendGameSignalMessage(int to, unsigned char a, unsigned char b, unsigned char c, int arg, bool);
+/* the side a game signal names (a byte under -enum min; the names ours, the persona state's pending
+ * slots use the same values: 1 the terrorists, 2 the SEALs, 3 a spectator, 4 none) */
+enum NET_SIDE {
+    NET_SIDE_0 = 0,   /* UISetMenuState's signal 0xD */
+    NET_SIDE_TERRORISTS = 1,
+    NET_SIDE_SEALS = 2,
+    NET_SIDE_SPECTATOR = 3,
+    NET_SIDE_NONE = 4
+};
+void SendGameSignalMessage(int to, unsigned char a, NET_SIDE b, unsigned char c, int arg, bool);
+/* no side, as a refusal names it */
+inline NET_SIDE NoSide() { return NET_SIDE_NONE; }
 extern "C" {
 extern ClientConnectArgs data_00440F20;   /* (the arguments handed to the connect callback) */
 struct CZNetVoice;
@@ -620,37 +632,33 @@ unsigned char GetClanTeamSide();
  * reason (a client index past 24 or a full game 3, another LAN game 1, spectators full 2, a clan
  * game's wrong side 4); the slot is kept pending, held until its persona arrives, and the game's
  * object updated. A client that is not the master keeps the connection for when it becomes one.
- * Written in the states' round 51 (unwritten before). OPEN, 184 instructions, at the size (0x9F4):
- * the shape is the target's -- each refusal SendGameSignalMessage (0x2B97F0, this unit's) inlined, the
- * slot a PendingSlot bitfield byte set field by field through `(unsigned char)x & 7` (the target's
- * andi 0xff / 7 / 7), `> 1` for the game state (slti at), the clan side's `first` an int (no bool
- * narrowing after its negation), ClientConnectArgs' two middle words ints (an int[2] copies through
- * lwc1) -- but for two things. The six refusals load the packet's side, 4, into a0 BEFORE the
- * packet's {0} loop (an inline parameter's temporary the optimiser did not substitute), where every
- * spelling tried substitutes the literal at its store: a literal; a side variable holding 4 as int,
- * unsigned char, char, short or unsigned int; b's parameter as int, char, signed char, bool, short or
- * unsigned short; a ternary; `side + 0`; an inline returning it, with or without a local; a wrapper
- * inline taking the reason, with a local, a literal or a default argument (worse). And the saved
- * registers: the target colours client, game, first/side/max, terrs/index and state as s0-s4, this
- * first/index/max, terrs/side, state, game, client (igreplay: no renumbering of state, terrs and first,
- * nor of client and game, gives the target's -- the graph differs, likely by those six temporaries);
- * side = 1 / 2 ahead of the slot finders' calls goes into the call's delay slot here, the branch's
- * in the target (assigning it after the call is 16 bytes long).
- * Round 52 (mweppc's CInline.c and IroPropagate.c, `igdump --iro`): CInline_SetupArgsExpression
- * substitutes an argument CInline_IsTrivialExpression calls trivial -- a constant, or a local read
- * WITHOUT OBJECT_REFERENCED -- and makes a temporary for any other (a global, a side effect, an
- * indirect through anything but an object, a local flagged OBJECT_REFERENCED: every used local of an
- * expanded inline gets that flag). `(void)&side;` does flag it: the temporary `@b = side` is made
- * before the session-master test, the target's place for the li -- but IRO_CopyAndConstantPropagation
- * copy-propagates it into the store in its first pass ("Found propagation at 140 from 124"), so the
- * literal is back at the store (184 off unchanged; int side 217). A constant or copy into a regable
- * temporary is always propagated unless a call kills it (only globals and address-taken locals) or a
- * copy's source is a global or not regable (then it is loaded from memory, not li): the target's
- * surviving `li a0,4` before the loop needs a value IRO does not see as 4 -- not found. Also tried:
- * a wrapper inline with the side as its local (round 51's w_uc_local: 4 still at the store, the
- * frame 32 bytes deeper), a pointer to side, a volatile side (0xA14) */
-extern "C" void func_002BC620(ClientConnectArgs *args)
+ * Written in the states' round 51, byte-exact since round 53 (184 off). Each refusal
+ * SendGameSignalMessage (0x2B97F0, this unit's) inlined, the slot a PendingSlot bitfield byte set field
+ * by field through `(unsigned char)x & 7` (the target's andi 0xff / 7 / 7), `> 1` for the game state
+ * (slti at), ClientConnectArgs' two middle words ints (an int[2] copies through lwc1). Three things
+ * closed it, the first two read off `igdump --iro` and the third off the colouring:
+ *  - THE SIDE AN ENUM: the refusals load the packet's side, 4, into a0 ahead of the packet's {0} loop.
+ *    Constant propagation forwards a literal through any integer variable, however it is typed or
+ *    held (round 51's and 52's spellings), but leaves an enum-typed variable alone. So the parameter
+ *    is a byte enum and the argument an inline's value -- not a plain constant, or the inliner
+ *    substitutes it.
+ *  - `first`'s NEGATION: `(first != 0) ^ 1` gives sltu; xori with no bool narrowing (`!first`: andi),
+ *    and the self-armed `?:` no alignment nop at its join (`if` does).
+ *  - THE LOCALS DECLARED AT THE TOP, C-style: igreplay --target on the aligned code asks for state <
+ *    terrs < first < game < client in every placement, and the declarations here give it with no code
+ *    cost. Declared where they are first used, in scope, client and game number first and every
+ *    saved register differs. side's `li s2,1` in the branch's delay slot, not the call's, follows
+ *    from the colouring. */
+void zRemoteClientConnectsCallback(ClientConnectArgs *args)
 {
+    bool spectator;
+    unsigned char state;
+    unsigned char index;
+    unsigned char terrs;
+    unsigned char seals;
+    int first;
+    CZNetGame *game;
+
     if (args->m_index == theLobby.MediusConnectionIndex()) {
         if (data_0044F3C8)
             data_0044F3C8("ON_CLIENT_CONNECT", 0);
@@ -661,33 +669,33 @@ extern "C" void func_002BC620(ClientConnectArgs *args)
 
     if (client == theNetwork.zNetGetMyGameClientIndex())
         return;
-    bool spectator = false;
+    spectator = false;
 
     if (args->m_10 & 1)
         spectator = true;
     if (theNetwork.m_bSessionMaster) {
-        CZNetGame *game = theMission.m_pNetGame;
+        game = theMission.m_pNetGame;
 
         if (!game)
             return;
-        unsigned char state = game->m_my_major_game_state;
-        unsigned char terrs = 0;
-        unsigned char seals = 0;
-        int side = 4;
+        state = game->m_my_major_game_state;
+        terrs = 0;
+        seals = 0;
+        int side;
         PendingSlot slot = {0};
 
         func_002C4440();
         if (client >= 24) {
-            SendGameSignalMessage(client, state, side, 3, 0, false);
+            SendGameSignalMessage(client, state, NoSide(), 3, 0, false);
             return;
         }
         if (data_0044FE10.IsActive()) {
             if ((args->m_10 & 0x7F0000FE) != theNetwork.m_e8) {
-                SendGameSignalMessage(client, state, side, 1, 0, false);
+                SendGameSignalMessage(client, state, NoSide(), 1, 0, false);
                 return;
             }
         } else if (IsOnClanTeam() && !spectator) {
-            int first = (args->m_10 & 2) != 0;
+            first = (args->m_10 & 2) != 0;
 
             switch (GetClanTeamSide()) {
             case 0:
@@ -701,21 +709,18 @@ extern "C" void func_002BC620(ClientConnectArgs *args)
                 seals = !first;
                 break;
             case 4:
-                if (data_004412D8)
-                    first = !first;
+                first = data_004412D8 ? (first != 0) ^ 1 : first;
                 terrs = first;
                 seals = !terrs;
                 break;
             case 3:
                 if (!first) {
-                    SendGameSignalMessage(client, state, side, 4, 0, false);
+                    SendGameSignalMessage(client, state, NoSide(), 4, 0, false);
                     return;
                 }
                 break;
             }
         }
-        unsigned char index;
-
         if (spectator) {
             int max = 8;
             CValve *v = CValve::GetByName("MaxSpectatorsValve");
@@ -723,7 +728,7 @@ extern "C" void func_002BC620(ClientConnectArgs *args)
             if (v)
                 max = v->m_value;
             if (data_00441458 >= max) {
-                SendGameSignalMessage(client, state, side, 2, 0, false);
+                SendGameSignalMessage(client, state, NoSide(), 2, 0, false);
                 return;
             }
             side = 3;
@@ -735,7 +740,7 @@ extern "C" void func_002BC620(ClientConnectArgs *args)
             if (v)
                 max = v->m_value;
             if (!spectator && data_00441448 + data_00441450 >= max) {
-                SendGameSignalMessage(client, state, side, 3, 0, false);
+                SendGameSignalMessage(client, state, NoSide(), 3, 0, false);
                 return;
             }
             if (terrs && data_00441448 < 8) {
@@ -752,14 +757,14 @@ extern "C" void func_002BC620(ClientConnectArgs *args)
                 side = 2;
                 index = func_002C4730();
             } else {
-                SendGameSignalMessage(client, state, side, 3, 0, false);
+                SendGameSignalMessage(client, state, NoSide(), 3, 0, false);
                 return;
             }
         }
         unsigned int time = game->m_clock.m_clock_running ? theMission.GetTimeLeft()
                                                           : (unsigned int)(game->m_clock.m_max_game_time * 0.001f);
 
-        SendGameSignalMessage(client, state, side, index, time, false);
+        SendGameSignalMessage(client, state, (NET_SIDE)side, index, time, false);
         slot.slot = (unsigned char)index & 7;
         slot.side = (unsigned char)side & 7;
         if (game->m_mp_major_game_state > 1) {
@@ -780,7 +785,7 @@ extern "C" void func_002BC620(ClientConnectArgs *args)
 /* a client disconnected: its word and its pending slot cleared; in a game already under way,
  * fewer than three clients left with no word set abandons it, and otherwise the game's object
  * is updated (SOCOM 1's zRemoteClientDisconnectsCallback, grown; OVL1 0x2BC530) */
-extern "C" void func_002BC530(ClientConnectArgs *args)
+void zRemoteClientDisconnectsCallback(ClientConnectArgs *args)
 {
     if (args->m_index != theLobby.MediusConnectionIndex()) {
         int count = 0;
@@ -926,7 +931,7 @@ void zDoClientLeavesCallback(int client)
             if (data_00440EC0[c]) {
                 data_00440F20.m_client = c;
                 data_00440F20.m_10 = data_00440EC0[c];
-                func_002BC620(&data_00440F20);
+                zRemoteClientConnectsCallback(&data_00440F20);
                 data_00440EC0[c] = 0;
             }
         }
@@ -1024,43 +1029,17 @@ void SendHitMessage(int shooter, int victim, int part, float damage, float f, bo
 
 /* a hit: in a game under way, unless the mission is aborting (its abort valve at 1 or 2), the victim takes it -- its own client's
  * damage for a local victim, the remote one's for a remote victim (SOCOM 1's; OVL1 0x2BBBD0).
- * OPEN, 2 instructions (round 38, from 6: see the end). The mode test matches with the mode passed to the inline as
- * an `int` (round 13: the parameter takes the loaded halfword, which frees v0 for the constant 1 and
- * a0 for the bool; read inside the inline -- straight, through a mode local, as a member of the
- * info, or as an unsigned short parameter -- they land in a0/a1, and round 12's shapes, a switch,
- * early returns, bool locals and `||`, all miss), and the victim's damage is SOCOM 1's member
- * RemoteWeaponDamageVictim (0x5A1B80, named by the SEAL lane: `this` loaded last, the call's moves
- * the target's). Left: the bitfield byte's v0/v1 trade places with the 0.05 constant's (the target
- * loads the constant ahead of the byte and extracts the flag ahead of the part; tried the four
- * locals in six orders, the product cast, swapped, split and through a constant local, the
- * bitfields as unsigned int, bool and signed char, the flag `!= 0` and as a ternary, the part
- * through an int or unsigned char local -- none moves them). Round 36, read off MW's colouring
- * (igdump): the byte is numbered after the constant's lui/ori temporaries because MW generates
- * f's product (the constant last) before the part's load, and the higher number is coloured first
- * (v0). The constant generated after the byte -- `float f = p->m_6;` ahead of the part and flag,
- * `f = 0.05f * f;` after them -- gives exactly the target's GPRs (the constant v0, the byte v1, the
- * flag extracted ahead of the part) but puts the conversion in f's own register ($f20, the product
- * `mul.s $f20,$f20,$f0`) where the target converts into a temporary ($f1) and multiplies constant
- * first; a separate conversion local is forwarded to its single use (56 off), all 24 orders of the
- * four locals as they stand 6-66 off.
- * Round 37 (igdump): the constant's lui/ori temporaries are v66/v67 and the byte v68, coloured
- * highest first -- the byte must be generated before the constant, and MW generates the product's
- * constant after its converted operand, so no single-expression product allows it. Tried: the scale
- * as an inline (by float, unsigned int or unsigned char, through a constant parameter, a named
- * result -- all 6), `v / 20.0f` (33), part and flag in a named copy of a nested bitfield struct
- * (0x1D4, through memory) or of the packet (0x1EC); part and flag defined before the floats move the
- * byte's load and their live ranges, renumbering the saved registers (55-66).
- * Round 38: 6 -> 2. The conversion a local of its own (`s`) with the flag a TERNARY between it and
- * the product: MW's expression propagation (the IR optimiser's, mweppc IroPropagate.c) forwards a
- * single-use local's expression to its use only inside one flow-graph node, and a `?:` (as `&&`/`||`)
- * is linearised into branches -- so `s` stays at its definition ($f1, a temporary), the byte is
- * generated before the constant (v1 against v0) and the flag's select folds back to the target's
- * sltu (SOCOM 1's flag is a select too: `li 1; movz`). Without the ternary `s` is forwarded into the
- * product (56 off); a dead second use, a const or register local, a reference, `(void)s` or an
- * inline's out-parameter forward all the same. Left: the target issues the constant's lui ahead of
- * the byte's lbu, this the lbu first (same registers, same block: a scheduler tie broken by the
- * generation order, which the colouring fixes as byte-first) -- every order of the four statements
- * with the ternary, ten spellings of the flag and five of the product keep it */
+ * Byte-exact since round 53. The mode test matches with the mode passed to the inline as an `int`
+ * (round 13: the parameter takes the loaded halfword, which frees v0 for the constant 1 and a0 for the
+ * bool; read inside the inline -- straight, through a mode local, as a member of the info, or as an
+ * unsigned short parameter -- they land in a0/a1, and round 12's shapes, a switch, early returns, bool
+ * locals and `||`, all miss), and the victim's damage is SOCOM 1's member RemoteWeaponDamageVictim
+ * (0x5A1B80, named by the SEAL lane: `this` loaded last, the call's moves the target's).
+ * The last miss was the order of the product, the flag and the part (rounds 36-38 worked at it with a
+ * separate conversion local `s` and the byte generated first): written product, flag, part the
+ * constant is generated ahead of the byte, so MW's scheduler keeps its lui first, and the byte, live
+ * across the flag's shift because the part's andi comes after it, is coloured v1 where the constant
+ * takes v0. The flag still a ternary (`!= 0` or a plain copy: 6 off). */
 /* whether the mission's abort valve's value takes no hits (the name ours: the handler's test
  * materialised) */
 inline bool NoHitMode(int mode)
@@ -1082,10 +1061,9 @@ int HitPacketHandler(int, int, int, void *data)
             CZSealBody *victim = CZSealState::GetBodyFromObjectIndex(p->victim);
             CZSealBody *shooter = CZSealState::GetBodyFromObjectIndex(p->shooter);
             float damage = p->damage;
-            float s = p->m_6;
-            DAMAGE_LOCATION where = (DAMAGE_LOCATION)p->part;
+            float f = 0.05f * p->m_6;
             bool flag = p->flag ? true : false;
-            float f = 0.05f * s;
+            DAMAGE_LOCATION where = (DAMAGE_LOCATION)p->part;
 
             if (victim && shooter) {
                 if (!(victim->m_ctrl ? victim->m_ctrl->IsRemote() : false))
@@ -2090,7 +2068,7 @@ struct GameSignalPacket {
     unsigned char flag;   // 0x10
 };
 
-void SendGameSignalMessage(int to, unsigned char a, unsigned char b, unsigned char c, int arg, bool)
+void SendGameSignalMessage(int to, unsigned char a, NET_SIDE b, unsigned char c, int arg, bool)
 {
     if (theNetwork.m_bSessionMaster) {
         /* MW zeroes an aggregate initialiser byte by byte, testing the address first */
@@ -2643,7 +2621,7 @@ extern "C" bool func_002B85C0()
     theNetwork.m_bSessionMaster = false;
     for (int i = 0; i < 24; i++)
         data_00440EC0[i] = 0;
-    if (theNetwork.zNetConnect(func_002BC620, func_002BC530))
+    if (theNetwork.zNetConnect(zRemoteClientConnectsCallback, zRemoteClientDisconnectsCallback))
         return false;
     func_002C3330(0);
     return true;
@@ -2675,7 +2653,7 @@ bool DMEJoinGameServer()
             if (data_00440EC0[i]) {
                 data_00440F20.m_client = i;
                 data_00440F20.m_10 = data_00440EC0[i];
-                func_002BC620(&data_00440F20);
+                zRemoteClientConnectsCallback(&data_00440F20);
                 data_00440EC0[i] = 0;
             }
         }

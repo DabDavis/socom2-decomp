@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
 """Try every order of the statements between `/*P{*/` and `/*}P*/` lines in a probe and report
 the orders that match (README "The GCC front"): ccperm.py PROBE.c FUNCTION [TOOLCHAIN [FLAGS]]. (GCC's scheduler moves
-independent stores; which source order gives the target's is easier measured than predicted.)"""
+independent stores; which source order gives the target's is easier measured than predicted.)
+TOOLCHAIN defaults to ee-gcc2.96, FLAGS to `-O2 -G0`. `--stem UNIT` (anywhere): score the probe's statics as unit
+UNIT's (`NAME@UNIT` rows). -h, --help: this text."""
 import itertools, os, re, subprocess, sys
 from pathlib import Path
 D = Path(__file__).resolve().parents[1]
+# the usage, before anything reads an argument as a file (GCC round 44a, the Medius lane's round 25b)
+if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
+    print(__doc__)
+    sys.exit(0)
 # `--stem UNIT` (anywhere): score the probe's statics as unit UNIT's (`NAME@UNIT` rows), as sccheck would
 stem = []
 if "--stem" in sys.argv:
     i = sys.argv.index("--stem")
     stem = ["--stem", sys.argv[i + 1]]
     del sys.argv[i:i + 2]
+if len(sys.argv) < 3:
+    sys.exit(__doc__)
 src = Path(sys.argv[1]).read_text()
 fn = sys.argv[2]
 tc = sys.argv[3] if len(sys.argv) > 3 else "ee-gcc2.96"

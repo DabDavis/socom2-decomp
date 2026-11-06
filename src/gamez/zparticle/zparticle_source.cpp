@@ -9,6 +9,8 @@
 #include <string.h>
 #include "zparticle.h"
 
+extern "C" float sqrtf(float);
+
 /* SOCOM II's pointer-list begin() builds its first node from a reference to the sentinel's link,
  * so `&end_.next_` is a temporary computed once and kept for the clear after a walk: znode.h's
  * stand-ins, the same shapes (include/list's begin() takes the link by value; the names ours) */
@@ -89,7 +91,7 @@ struct FaceCorners {
         memcpy(&s->m_diPolies[0]->m_pnts[2], &m_pts[5], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[0]->m_pnts[3], &m_pts[4], sizeof(CPnt3D));
         s->m_diPolies[0]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[1]->m_pnts[0], &m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[0], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[1]->m_pnts[1], &m_pts[3], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[1]->m_pnts[2], &m_pts[7], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[1]->m_pnts[3], &m_pts[4], sizeof(CPnt3D));
@@ -107,9 +109,9 @@ struct FaceCorners {
         memcpy(&s->m_diPolies[4]->m_pnts[0], &m_pts[4], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[4]->m_pnts[1], &m_pts[5], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[4]->m_pnts[2], &m_pts[1], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[4]->m_pnts[3], &m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[3], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
         s->m_diPolies[4]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[5]->m_pnts[0], &m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[0], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[5]->m_pnts[1], &m_pts[3], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[5]->m_pnts[2], &m_pts[2], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[5]->m_pnts[3], &m_pts[1], sizeof(CPnt3D));
@@ -125,11 +127,14 @@ struct FaceCorners {
  * round 28: the position built from m_oldPosW's three floats (the constructor's arguments read z, y,
  * x), the box's corners through FaceCorners above (the construction loop), the node's position
  * through CNode's point overload (in place, MW keeps &pos.y and &pos.z in saved registers).
- * OPEN, 0x3F8 of 0x404: every statement in the target's order, the frame one saved register short --
- * the target keeps all eight corner addresses in s0-s4/s6/s7 (the first, sp+144, in s2 from face 1 on),
- * where MW rematerialises the first here (`addiu a1,sp,128` at each use); a member ahead of the array
- * (`const CBBox *m_box`) gives the eighth register but stores and reloads it and moves the frame 16
- * bytes (0x40C) */
+ * OPEN, 32 instructions at the target's size (0x404; round 33): the first corner's address through
+ * a no-op conversion in FaceCorners (the engine core's round 24: `&local.member[0]` at offset 0 is
+ * never a common subexpression) gives the eighth saved register; left is a pure permutation of the
+ * eight address temporaries. `igreplay --permute` over them: 8 of the 40,320 orders, all p2, p3, p0,
+ * p6, p7, p5, p4 with p1 anywhere, where IRO_CommonSubs (IroCSE.c: at each expression's first reuse
+ * in linear order) gives p7, p4, p6, p3, p5, p2, p1, p0 -- the bottom ring numbered before the top,
+ * each ring in its order of first use from the third face on (zdb::CDIBBox::SetCDIBBox wants
+ * the same shape, c3, c2, c0, c6, c7, c5, c4). No source shape yet */
 void Source::GetBBox(CBBox *box)
 {
     if (!m_hasbbox || !m_diNode)
@@ -220,6 +225,236 @@ void Source::List::Uninit()
     for (; it != e; ++it)
         delete (Source *)*it;
     ListClear(*this);
+}
+
+/* the shutdown's last step (OVL1, not named) */
+extern "C" void func_0032AB20(Source *s);
+
+/* vectors through the matrix's rotation, each copied into an aligned vector and back (zmath.h's
+ * TransformVectors, the particles' header standing in for it) */
+static inline void TransformVectors(const CMatrix *m, const CPnt3D *in, CPnt3D *out, int count)
+{
+    CPnt4D input;
+    CPnt4D output;
+
+    asm __volatile__(
+        "lqc2 $vf4, 0x0(%0)\n"
+        "lqc2 $vf5, 0x10(%0)\n"
+        "lqc2 $vf6, 0x20(%0)\n"
+        "lqc2 $vf7, 0x30(%0)\n"
+        : : "r"(m) : "memory");
+    do {
+        input.x = in->x;
+        input.y = in->y;
+        input.z = in->z;
+        asm __volatile__(
+            "lqc2 $vf8, 0(%0)\n"
+            "vmulax.xyz $ACC, $vf4, $vf8\n"
+            "vmadday.xyz $ACC, $vf5, $vf8\n"
+            "vmaddz.xyz $vf9, $vf6, $vf8\n"
+            "sqc2 $vf9, 0(%1)\n"
+            : : "r"(&input), "r"(&output) : "memory");
+        out->x = output.x;
+        out->y = output.y;
+        out->z = output.z;
+        in++;
+        out++;
+    } while (--count);
+}
+
+/* SOCOM 1's: one tick of a source -- switched off, its instances gone: its textures and properties
+ * given up; else its position in the world, its phase carried on by time or by distance and the
+ * particles due counted; nothing farther from the camera than its range; each particle due
+ * placed along the tick by its share, perturbed, and made, from the pool when it has one.
+ * Byte-exact (the world lane's round 33, unwritten before; build/scratch/wld/v_tk*.py): SOCOM 1's
+ * body but its range tests. Three things the source is shaped by: the old phase read through a
+ * volatile (A MARKED STAND-IN -- the target keeps it apart in f1 and reloads the member for `+=`,
+ * as SOCOM 1's does, where a plain read is common with those; read ahead of delta's stores it is
+ * apart too but scheduled above them); the constant a named local (a literal is canonicalised
+ * first, `c.eq.s K,x`; propagated from a local it stays second); the square root in a local of
+ * its own (the operand order: a sum over a call's result is emitted the other way round). Instance
+ * is 0x54 bytes here (`new` passes 84): m_opacity is Destruction_Instance's */
+void Source::Tick(float dT)
+{
+    CPnt3D newPos;
+    CPnt3D delta;
+    CPnt3D d;
+    CPnt3D pos;
+    CPnt3D pos2;
+    CPnt3D rot;
+
+    if (!m_active)
+        return;
+    if (m_shuttingoff) {
+        if (m_refcount <= 0) {
+            m_textures.clear();
+            if (m_props)
+                m_props->DecRefCount(1);
+            func_0032AB20(this);
+        }
+        return;
+    }
+    CMatrix mtw;
+
+    m_filled_volume = 0.0f;
+    if (m_node) {
+        mtw.SetIdentity();
+        m_node->BuildMTW(mtw);
+        mtw.Transform(&m_offset, &newPos, 1);
+    } else
+        newPos = m_offset;
+    m_bboxMin.x = m_bboxMax.x = m_oldPosW.x;
+    m_bboxMin.y = m_bboxMax.y = m_oldPosW.y;
+    m_bboxMin.z = m_bboxMax.z = m_oldPosW.z;
+    if (m_goodPos) {
+        delta.x = newPos.x - m_oldPosW.x;
+        delta.y = newPos.y - m_oldPosW.y;
+        delta.z = newPos.z - m_oldPosW.z;
+        float oldPhase = *(volatile float *)&m_phase;
+
+        if (m_numPeriods) {
+            if (m_distInterval) {
+                float len = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+
+                if (len < 40000.0f) {
+                    float s = sqrtf(len);
+
+                    m_phase += s * frequencyFactor;
+                }
+            } else
+                m_phase += dT * frequencyFactor;
+        } else
+            m_phase = 0.0f;
+        float periods = m_phase * m_invPeriod;
+        int n = (int)periods;
+        int count = n;
+
+        m_phase -= m_period * (float)n;
+        if (n) {
+            int left = m_numPeriods;
+
+            if (left != -1) {
+                if (n <= left)
+                    m_numPeriods = left - n;
+                else {
+                    m_numPeriods = 0;
+                    count = left;
+                    m_phase = 0.0f;
+                }
+            }
+        }
+        m_frozen = 0;
+        m_outOfRange = 0;
+        float range = m_distance;
+
+        float inf = 3.4028235e38f;
+
+        if (range != inf) {
+            range = range < m_props->m_farFade2 ? range : m_props->m_farFade2;
+            float limit = distanceFactor * range;
+
+            d.x = m_oldPosW.x - referencePositionW.x;
+            d.y = m_oldPosW.y - referencePositionW.y;
+            d.z = m_oldPosW.z - referencePositionW.z;
+            if (!(d.x * d.x + d.y * d.y + d.z * d.z < limit)) {
+                if (m_freezable)
+                    m_frozen = 1;
+                m_outOfRange = 1;
+                goto done;
+            }
+        }
+        if (n) {
+            zdb::CTexHandle *tex = 0;
+
+            if (!m_perParticleVelocity) {
+                if (m_node)
+                    TransformVectors(&mtw, &m_localVelocity, &pos, 1);
+                else
+                    pos = m_localVelocity;
+                pos.x += m_worldVelocity.x;
+                pos.y += m_worldVelocity.y;
+                pos.z += m_worldVelocity.z;
+            }
+            float step = dT / periods;
+            float start = dT - step * (1.0f - oldPhase * m_invPeriod);
+            float inv = 1.0f / dT;
+
+            delta.x *= inv;
+            delta.y *= inv;
+            delta.z *= inv;
+            for (int i = 0; i < count; i++) {
+                unsigned int ntex = m_textures.size();
+
+                if (ntex)
+                    tex = m_textures[rand() % ntex];
+                float t = start - (float)i * step;
+
+                if (!m_perParticleVelocity) {
+                    pos2.x = pos.x + t * m_props->m_accelW.x;
+                    pos2.y = pos.y + t * m_props->m_accelW.y;
+                    pos2.z = pos.z + t * m_props->m_accelW.z;
+                }
+                for (int j = 0; j < m_number; j++) {
+                    float life = m_lifespanRange.Get();
+                    float age = Instance::ageFactor * (t + m_initialAgeRange.Get());
+
+                    if (age < life) {
+                        CPnt4D vel;
+                        CPnt4D p;
+                        CPnt4D v;
+
+                        if (m_perParticleVelocity) {
+                            pos.x = m_localVelocity.x + m_perturbVelocityX.Get();
+                            pos.y = m_localVelocity.y + m_perturbVelocityY.Get();
+                            pos.z = m_localVelocity.z + m_perturbVelocityZ.Get();
+                            if (m_node)
+                                TransformVectors(&mtw, &pos, &pos, 1);
+                            vel.x = pos.x + m_worldVelocity.x + t * m_props->m_accelW.x;
+                            vel.y = pos.y + m_worldVelocity.y + t * m_props->m_accelW.y;
+                            vel.z = pos.z + m_worldVelocity.z + t * m_props->m_accelW.z;
+                        } else {
+                            vel.x = pos2.x + m_perturbVelocityX.Get();
+                            vel.y = pos2.y + m_perturbVelocityY.Get();
+                            vel.z = pos2.z + m_perturbVelocityZ.Get();
+                        }
+                        p.x = m_oldPosW.x + m_perturbPositionX.Get();
+                        p.y = m_oldPosW.y + m_perturbPositionY.Get();
+                        p.z = m_oldPosW.z + m_perturbPositionZ.Get();
+                        v.x = delta.x + vel.x;
+                        v.y = delta.y + vel.y;
+                        v.z = delta.z + vel.z;
+                        p.x += t * v.x;
+                        p.y += t * v.y;
+                        p.z += t * v.z;
+                        if (m_inheritVelocity)
+                            *(PNT4D *)&vel = v;
+                        rot.x = m_rotationX.Get();
+                        rot.y = m_rotationY.Get();
+                        rot.z = m_rotationZ.Get();
+                        float radius = m_radiusRange.Get();
+                        Props *props = m_props;
+                        Instance *inst = Instance::m_instance_pool.m_head;
+
+                        if (inst) {
+                            Instance::m_instance_pool.m_head = inst->m_next;
+                            inst->m_next = 0;
+                        } else
+                            inst = 0;
+                        if (inst)
+                            new (inst) Instance(p, vel, rot, radius, life, age, tex, props, this);
+                        else
+                            inst = new Instance(p, vel, rot, radius, life, age, tex, props, this);
+                        inst->m_listNext = Instance::list.m_head;
+                        Instance::list.m_head = inst;
+                        m_refcount++;
+                    }
+                }
+            }
+        }
+    }
+done:
+    m_oldPosW = newPos;
+    m_goodPos = 1;
 }
 
 /* SOCOM 1's: the source off the list, its instances let go of, its properties and collision

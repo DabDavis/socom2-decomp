@@ -44,6 +44,9 @@ public:
  * and kit (the compass map's lens test reads them) */
 class CZSealBody {
 public:
+    /* whether its view cone is new: the flag at 0x105C, taken once (OVL2 0x5A5450, SOCOM 1's) */
+    int HudUpdateViewCone();
+
     unsigned char _0[0x1c];
     CPnt3D m_posW;   // 0x1c
     CZMapNode *m_node;   // 0x28
@@ -51,7 +54,11 @@ public:
     class CSealCtrl *m_ctrl;   // 0xc0 (its controller: the full-screen map's tick reads it)
     unsigned char _c4[0xc8 - 0xc4];
     unsigned int m_team;   // 0xc8
-    unsigned char _cc[0x200 - 0xcc];
+    unsigned char _cc[0xe1 - 0xcc];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (hud_actionbitmap.cpp's: the compass map's last test)
+    unsigned char _e1_5 : 3;
+    unsigned char _e2[0x200 - 0xe2];
     ZOOMSTATE m_zoomstate;   // 0x200
     unsigned char _201[0x5e0 - 0x201];
     CZKit m_kit;   // 0x5e0
