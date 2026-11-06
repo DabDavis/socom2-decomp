@@ -2065,6 +2065,33 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 33** (the three requests measured, none applied -- comments only,
+  objcmp 656 units 0 differ; probes build/p33/, untracked: board.py / vgen.py / vrun.py score a shadow
+  include/vector's class insert over all 68 inserts in 4 s, igd.py / igt.py / pc.py dump and replay a shadow
+  build, rs/rv.py the resize probe, sdiff.py scdiff with the shadow FIRST -- scdiff's own `-I` is searched after
+  include/, so it cannot test a shadow header):
+  - THE CLASS INSERT'S END IS AN EXACT DICHOTOMY over 30 spellings: every pointer local (declared, const, from
+    end().m_p, through data(), a named copy of the object's member, an inline returning the pointer, a
+    function-scope T * set in both branches) gives the five cut inserts (AcctRecord, CTurretDef, zrdr_sym,
+    CDlgDesignModel, CVehicleRdrEntry) and loses the same 29 of the 44; every object form gives the 44 and none
+    of the five. `igreplay --move`: the cut five take the target's colouring as well with m and the else
+    branch's j numbered AFTER the end as with the end before m (include/vector's insert comment);
+  - read in doldecomp/mweppc's optimiser (the PowerPC MW's IRO, the same passes): the class scalariser runs at
+    the head of each pass and skips an object whose address is live while any call may touch memory (with no
+    pointer analysis every call does) -- so an iterator object is scalarised only after copy propagation folds
+    its address uses, numbered late; IRO_SplitLifetimes keeps the web holding a variable's EARLIEST definition
+    and splits every later web into a new temporary; copy propagation never carries a copy into a deeper loop
+    once the loop depths are set (`node->loopdepth <= def->loopdepth`);
+  - cdeque<PCv>::resize 0x285660 is CODE-EXACT as a probe: round 31's four-word iterator, begin() through round
+    32's by-value start (`unsigned int s = start_; return iterator(data_, s, capacity_);`) over a constructor
+    reading the storage back through the field's own address (`first_(*&data_ + start), last_(*&data_ + cap)`:
+    the store and both reads through one CSE'd address, numbered after the shift) -- through a `d()` accessor
+    the address is the inliner's and is numbered before the shift (7 off); not applied, the four-word iterator
+    still costs ~__deque_buf's walk (0x2CEFB0, 35 off);
+  - deque::begin() / end() const declared AHEAD of the copy constructor (generated before it in the same pass)
+    are still called by the chat's copy 0x2F5F80 -- declaration order no more the lever than generation order;
+  - scdiff masks the CANDIDATE's relocated fields on both sides by offset: where the candidate is shorter a
+    target word can print masked (0x2F5FA0's `addiu a0,sp,48` shown as `li zero,0`) -- read the image's word.
 - **Tells from the online lobby, round 26** (48 functions from their drafts to source -- zNetDme.cpp whole, the voice
   object and CZNetVoice's constructor named --; two new units, zNetVoiceCodec.cpp 0x3103D0-0x31097F and
   zNetMediusStates.cpp 0x2ED460-0x2F3EDF):
@@ -13213,7 +13240,9 @@ What is open across lanes, and what comes next:
   __const_iterator: the rdr editor's do_assign and its three pieces), and the list's own insert(position,
   x) is measured, not applied (round 29: +0 / -1, LoadVehicles); the circular buffer's begin() and its
   growth recommendation are in since round 32 (the deques' make_iterators, which inline `begin() + n`,
-  stay open at their old sizes).
+  stay open at their old sizes); its resize 0x285660 is code-exact as a probe since round 33 (the
+  four-word iterator, `*&data_` reads) and waits on ~__deque_buf's walk under that iterator (0x2CEFB0
+  35 off) -- with it, insert 0x286160 / erase 0x285D30 and the zero word 0x3DE1D0 to name.
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
