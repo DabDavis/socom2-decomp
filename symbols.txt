@@ -4021,7 +4021,7 @@
 0x002B85C0 0x9C func_002B85C0  # OVL1
 0x002B8660 0xAE4 func_002B8660  # OVL1
 0x002B9150 0x694 GameSignalPacketHandler__FiiiPv  # OVL1; s1:calls (the game states' round 47: SOCOM 1's GameSignalPacketHandler -- the handler zNetRegisterMessage registers for "Game Signal" (0x2B8660, the type data_00440EB0 SendGameSignalMessage sends), the same SyncGameClock, LateJoiner, SetDatabase, AddToFixList twice, MPMajorGameState / MyMajorGameState and CRdrEditor list build in SOCOM 1's order; SOCOM II adds the refusal's reasons and the clan tag; byte-exact)
-0x002B97F0 0xC0 SendGameSignalMessage__FiUcUcUcib  # OVL1; s1:align
+0x002B97F0 0xC0 SendGameSignalMessage__FiUc8NET_SIDEUcib  # OVL1; s1:align; by hand (the states lane, round 53): SOCOM 1's SendGameSignalMessage__FiUcUcUcib with the third parameter a byte enum in SOCOM II (NET_SIDE, the name ours): only an enum-typed parameter keeps zRemoteClientConnectsCallback 0x2BC620's six inlined refusals' `li a0,4` ahead of the packet's loop -- IRO's constant propagation forwards a literal through every integer type measured and leaves an enum alone; this row's code is the same either way
 0x002B98B0 0x60 func_002B98B0  # OVL1
 0x002B9910 0xF0 SendBombStateRequest__FiUcPC6CPnt3D  # OVL1; s1:callee
 0x002B9A00 0x40 BombStatePacketHandler__FiiiPv  # OVL1; s1:align
@@ -4073,8 +4073,8 @@
 0x002BC080 0x380 zDoClientLeavesCallback__Fi  # OVL1; s1:align
 0x002BC400 0x84 zRemoteClientLeavesCallback__Fii  # OVL1; s1:align
 0x002BC490 0x9C zRemoteClientJoinsCallback__Fii  # OVL1; s1:align
-0x002BC530 0xEC func_002BC530  # OVL1
-0x002BC620 0x9F4 func_002BC620  # OVL1
+0x002BC530 0xEC zRemoteClientDisconnectsCallback__FP17ClientConnectArgs  # OVL1; s1:ref by hand (the states lane, round 53): DMEConnectToGameServer 0x2B8580 passes it second to zNetConnect, as SOCOM 1's passes zRemoteClientDisconnectsCallback__FiiPCc (0x204260); byte-exact, fts_remote.cpp
+0x002BC620 0x9F4 zRemoteClientConnectsCallback__FP17ClientConnectArgs  # OVL1; s1:ref by hand (the states lane, round 53): DMEConnectToGameServer 0x2B8580 passes it first to zNetConnect, as SOCOM 1's passes zRemoteClientConnectsCallback__FiiPCc (0x2042D0); SOCOM II's takes its arguments through a pointer. Byte-exact, fts_remote.cpp
 0x002BD020 0x3C func_002BD020  # OVL1
 0x002BD060 0x3C func_002BD060  # OVL1
 0x002BD0A0 0x3C func_002BD0A0  # OVL1
