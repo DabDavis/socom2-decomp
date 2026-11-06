@@ -58,53 +58,14 @@
 #include "zui_skb.h"
 #include "zui_hangul.h"
 
-/* the Korean letters (jamo), by name in alphabetical order, as the table of their names lists them
- * (the names ours: the table's own, e.g. Kiyeok, SsangKiyeok, A_Hang) */
-enum JAMO {
-    JAMO_A,
-    JAMO_AE,
-    JAMO_CHIEUCH,
-    JAMO_CIEUC,
-    JAMO_E,
-    JAMO_EO,
-    JAMO_EU,
-    JAMO_HIEUH,
-    JAMO_I,
-    JAMO_IEUNG,
-    JAMO_KHIEUKH,
-    JAMO_KIYEOK,
-    JAMO_MIEUM,
-    JAMO_NIEUN,
-    JAMO_O,
-    JAMO_PHIEUPH,
-    JAMO_PIEUP,
-    JAMO_RIEUL,
-    JAMO_SIOS,
-    JAMO_SSANGCIEUC,
-    JAMO_SSANGKIYEOK,
-    JAMO_SSANGPIEUP,
-    JAMO_SSANGSIOS,
-    JAMO_SSANGTIKEUT,
-    JAMO_THIEUTH,
-    JAMO_TIKEUT,
-    JAMO_U,
-    JAMO_YA,
-    JAMO_YAE,
-    JAMO_YE,
-    JAMO_YEO,
-    JAMO_YO,
-    JAMO_YU,
-    JAMO_COUNT
-};
-
 /* the 2-set keyboard: the jamo each letter key types, unshifted (a-z) and shifted (A-Z) */
-static const signed char s_keyJamo[26] = {
+static const JAMO s_keyJamo[26] = {
     JAMO_MIEUM, JAMO_YU, JAMO_CHIEUCH, JAMO_IEUNG, JAMO_TIKEUT, JAMO_RIEUL, JAMO_HIEUH, JAMO_O,
     JAMO_YA, JAMO_EO, JAMO_A, JAMO_I, JAMO_EU, JAMO_U, JAMO_AE, JAMO_E,
     JAMO_PIEUP, JAMO_KIYEOK, JAMO_NIEUN, JAMO_SIOS, JAMO_YEO, JAMO_PHIEUPH, JAMO_CIEUC, JAMO_THIEUTH,
     JAMO_YO, JAMO_KHIEUKH
 };
-static const signed char s_shiftKeyJamo[26] = {
+static const JAMO s_shiftKeyJamo[26] = {
     JAMO_MIEUM, JAMO_YU, JAMO_CHIEUCH, JAMO_IEUNG, JAMO_SSANGTIKEUT, JAMO_RIEUL, JAMO_HIEUH, JAMO_O,
     JAMO_YA, JAMO_EO, JAMO_A, JAMO_I, JAMO_EU, JAMO_U, JAMO_YAE, JAMO_YE,
     JAMO_SSANGPIEUP, JAMO_SSANGKIYEOK, JAMO_NIEUN, JAMO_SSANGSIOS, JAMO_YEO, JAMO_PHIEUPH,
@@ -352,7 +313,7 @@ void SkbHangulRestart(CSkbPieces *pieces)
 }
 
 /* the jamo a key types: a lowercase letter's, or a shifted one's */
-signed char KeyToJamo(char c)
+JAMO KeyToJamo(char c)
 {
     if (c >= 'a' && c <= 'z')
         return s_keyJamo[c - 'a'];
@@ -468,7 +429,7 @@ JAMO FindJamo(const char *name)
 
 /* a jamo typed: composed with the jamo so far into pieces; whether it composed, and whether the
  * composition holds fewer jamo strings than pieces (0x390A30; the name ours: 0x399200 calls it) */
-std::pair<bool, bool> SkbHangulType(CSkbPieces *pieces, char c)
+std::pair<bool, bool> SkbHangulType(CSkbPieces *pieces, JAMO c)
 {
     std::vector<char> jamo;
 
@@ -478,7 +439,7 @@ std::pair<bool, bool> SkbHangulType(CSkbPieces *pieces, char c)
         for (int i = 0; i < (int)s.size(); i++)
             jamo.push_back((char)s[i]);
     }
-    jamo.push_back(c);
+    jamo.push_back((char &)c);   /* (the parameter's own frame byte, `sb a2,127(sp)`: no temporary) */
     if (!SkbHangulCompose(pieces, &jamo))
         return std::pair<bool, bool>(false, false);
     bool more = s_compose.m_count < (int)pieces->size();

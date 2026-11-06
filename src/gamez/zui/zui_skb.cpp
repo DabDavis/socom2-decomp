@@ -149,6 +149,13 @@ namespace {
  * copies call compressed_pair_imp's second() and first()) -- a destructor chain cut at its leaves,
  * one inline level deeper than these headers (README "Level 6, or 8?"); the in-place copies also
  * swap s0/s1 (the class insert's end register, include/vector's insert comment) */
+/* OPEN, 1 instruction short (0x31C of 0x324; round 38, from 102 off -- the key a copied object at 184,
+ * the ternary's temporary then copied member by member, not a reference local holding a saved register
+ * and spilling the grid): the grid store reads the key's first union through a built address (`addiu
+ * v0,sp,184; lbu v0,0(v0)`) where here it reads the frame (`lbu v0,184(sp)`) -- its second union through
+ * the hoisted sp+186 alike in both. Tried: the store's members written through a reference and through
+ * casts, a pointer to the key, by-value and in-place helpers (build/scratch/ui/v_csk2.py, v_csk3.py); a
+ * reference local to the key does build the address but holds a saved register across the resizes */
 void CreateSoftKeyboard(_zrdr *rdr)
 {
     CSoftKeyboard *skb = new CSoftKeyboard;
@@ -161,7 +168,7 @@ void CreateSoftKeyboard(_zrdr *rdr)
         _zrdr *row = grid->Item(y);
         for (int x = 0; x < row->Count(); x++) {
             const _zrdr *item = row->Item(x);
-            const CSkbKey &key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
+            CSkbKey key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
 
             SkbSetGridKey(skb, x, y, key);
         }
@@ -402,7 +409,7 @@ extern "C" {
 /* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump); the cursor's
  * key pressed (0x38D200) */
 void func_0038DFC0(unsigned char dir, CPad *pad);
-void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
+void SkbPressKey(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
 }
 /* the two edit keys: the cursor back and on a character (the keys unit's) */
 void SkbCursorBack(CSoftKeyboard *skb);
@@ -417,7 +424,9 @@ void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2);
 void SkbHangulClear();
 void SkbSwitchText(CSoftKeyboard *skb);
 void SkbCloseText0(CSoftKeyboard *skb);
-void SkbTypeJamo(int arg, signed char jamo, CPad *pad);
+/* zui_hangul.cpp's JAMO, a byte enum (33 letters, the rest of its enumerators there) */
+enum JAMO { JAMO_COUNT = 33 };
+void SkbTypeJamo(int arg, JAMO jamo, CPad *pad);
 void SkbToggleBmp4();
 void SkbTogglePair(CBmpWithNode *a, CBmpWithNode *b, void (*onToggle)(bool));
 void SkbTypeCased(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb);
@@ -432,30 +441,41 @@ static inline bool SkbIsAsciiUpper(unsigned short c)
         r = true;
     return r;
 }
-static inline bool SkbIsUpper(unsigned short c)
+/* (the bool off region: the target's test is an int all through, no narrowing anywhere -- `sltu v0,zero,a0`
+ * on the first test's byte, `slti; xori` for the `>=` -- so the int results of comparisons a chain of
+ * ifs passes along in one register. Round 38; round 32 had reached the first operand with `||`, whose
+ * nested `&&` normalises each stage with another sltu) */
+#pragma bool off
+static inline int SkbIsLatinUpper(unsigned short c)
 {
-    return SkbIsAsciiUpper(c) || (c >= 0xC0 && c < 0xDF && c != 0xD7);
+    int r = c >= 0xC0;
+
+    if (r)
+        r = c < 0xDF;
+    if (r)
+        r = c != 0xD7;
+    return r;
 }
+static inline int SkbIsUpper(unsigned short c)
+{
+    int r = !!SkbIsAsciiUpper(c);
+
+    if (!r)
+        r = SkbIsLatinUpper(c);
+    return r;
+}
+#pragma bool on
 
 /* a key of the keyboard pressed (0x38D200; the name ours): a character key types its letter in
  * lower case, a function key (row 1) does its job -- 7 the shift lock --, a jamo key types its jamo
  * and a switch key switches keyboards; then the shift lock set by whether it was the lock key, the
- * key rows shown again and the sound played for it. Written round 29 (the row keeps its placeholder:
- * SkbHandleKey calls it so).
- * OPEN, at the target's size (0x2E0), every call, case order and register the target's but the
- * capital test: the target materialises `upper || (c >= 0xC0 && c < 0xDF && c != 0xD7)` as an
- * int with no narrowing (`sltu v0,zero,a0` on SkbIsAsciiUpper's byte, `slti; xori` for the `>=`),
- * where every C++ form here narrows its bools (`andi 0xff` after each stage, 2-4 words): an int
- * return, an int chain written out (`int r = a != 0; if (!r) { r = ...; if (r) r = ...; }`: two
- * narrowings left), an unsigned char SkbIsAsciiUpper, `!(c < 0xC0)`, `c > 0xBF`
- * (build/scratch/ui/v_kh*.py). Round 32: the target's shape is MW's int-valued `||` / `&&`
- * materialised into one register -- `#pragma bool off` around SkbIsUpper (an int return) gives the
- * first operand exactly (`andi` then `sltu v0,zero,a0`, no narrowing anywhere) but normalises the
- * `&&` chain's last operands with an extra `sltu` each (0x2E8, 8 long); the chain as a separate
- * inline inside or outside the pragma, nested `&&`, int / unsigned char returns, int locals, a cast
- * to int, ternaries with 0/1 arms (0x2D8-0x2E8) do no better. The letter caser 0x39A8D0 opens with
- * the same test (on c - 32, its flag unnarrowed) */
-void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu)
+ * key rows shown again and the sound played for it. Written round 29, byte-exact and named since round
+ * 38 (SkbHandleKey calls it): the capital test (SkbIsUpper's note), the lock a value-form `&&` (each
+ * stage's `andi s0,v0,0xff` in the target), the jamo argument the JAMO byte enum (`lbu a1,2(s4)`, where
+ * a signed char parameter narrows the load to lb: the chain SkbTypeJamo / SkbHangulTypeJamo /
+ * SkbHangulType / KeyToJamo all take or give the enum, their code alike). The letter caser 0x39A8D0 opens
+ * with the same test (on c - 32, its flag unnarrowed) */
+void SkbPressKey(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu)
 {
     switch (key.m_urow) {
     case 0: {
@@ -513,17 +533,15 @@ void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu 
         }
         break;
     case 2:
-        SkbTypeJamo((int)skb, key.m_code, pad);
+        SkbTypeJamo((int)skb, (JAMO)key.m_code, pad);
         break;
     case 3:
         skb->SwitchToNamed(key.m_code - 1);
         SkbPlaySound(3);
         break;
     }
-    bool lock = key.m_urow == 1;
+    bool lock = key.m_urow == 1 && key.m_code == 7;
 
-    if (lock)
-        lock = key.m_code == 7;
     SkbToggleShiftLock(lock);
     SkbShowKeyRows(pad, skb, skb->m_174);
     if (lock)
@@ -549,7 +567,7 @@ void SkbHandleKey(int key, CPad *pad, CGameMenu *menu)
         func_0038DFC0(4, pad);
         break;
     case 5:
-        func_0038D200(g_pActiveSkb->GetCurKey(), g_pActiveSkb, pad, menu);
+        SkbPressKey(g_pActiveSkb->GetCurKey(), g_pActiveSkb, pad, menu);
         break;
     case 6:
         SkbCursorBack(g_pActiveSkb);
@@ -956,8 +974,7 @@ static const char *s_actionKeyNames[14] = {"CapsLock", "Recip", "BackSpace", "Cl
                                            "MsgPlayer", "Action2"};
 
 extern "C" int strncasecmp(const char *a, const char *b, size_t n);
-/* zui_hangul.cpp's jamo by name (its JAMO: JAMO_COUNT for none) */
-enum JAMO { JAMO_COUNT = 33 };
+/* zui_hangul.cpp's jamo by name (JAMO_COUNT for none) */
 JAMO FindJamo(const char *name);
 
 

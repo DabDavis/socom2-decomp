@@ -76,9 +76,11 @@ extern "C" int func_0039A8D0(unsigned short c, bool upper, bool wide);
 /* the keyboard's text given the composed pieces (0x398AE0: the argument first; whether it took
  * them) */
 extern "C" int func_00398AE0(int arg, CSkbPieces *pieces, bool fewer);
-void SkbHangulTypeJamo(int arg, signed char jamo);
+/* (the jamo is zui_hangul.h's JAMO, a byte enum: its lb copy and its andi 0xff compare, SkbTypeJamo's, are
+ * the byte enum's signature -- README's ZAnim motion tells) */
+void SkbHangulTypeJamo(int arg, JAMO jamo);
 /* the jamo a key types, its last jamo taken back (zui_hangul.cpp's) */
-signed char KeyToJamo(char c);
+JAMO KeyToJamo(char c);
 unsigned short SkbHangulBack();
 extern "C" int toupper(int c);
 
@@ -869,7 +871,7 @@ void SkbCloseText0(CSoftKeyboard *skb)
  * (0x398AE0), the composition dropped when the text does not take them (0x399200; the name ours:
  * SkbTypeJamo and SkbUsbLetter call it out of line, so pinned) */
 #pragma auto_inline off
-void SkbHangulTypeJamo(int arg, signed char jamo)
+void SkbHangulTypeJamo(int arg, JAMO jamo)
 {
     CSkbPieces pieces;
     std::pair<bool, bool> r = SkbHangulType(&pieces, jamo);
@@ -896,19 +898,20 @@ void SkbSwitchText(CSoftKeyboard *skb)
 
 /* the compound jamo a shifted key composes (0x3FB840: a jamo and its doubled form, seven pairs) */
 struct SKBJAMOPAIR {
-    unsigned char m_from;
-    signed char m_to;
+    JAMO m_from;
+    JAMO m_to;
 };
 static const SKBJAMOPAIR s_shiftJamo[7] = {
-    {0x19, 0x17}, {0x01, 0x1C}, {0x04, 0x1D}, {0x10, 0x15}, {0x0B, 0x14}, {0x12, 0x16}, {0x03, 0x13}
+    {(JAMO)0x19, (JAMO)0x17}, {(JAMO)0x01, (JAMO)0x1C}, {(JAMO)0x04, (JAMO)0x1D}, {(JAMO)0x10, (JAMO)0x15},
+    {(JAMO)0x0B, (JAMO)0x14}, {(JAMO)0x12, (JAMO)0x16}, {(JAMO)0x03, (JAMO)0x13}
 };
 
 /* a jamo typed: composed with shift when SkbShifted says so (0x399070; the name ours) */
-void SkbTypeJamo(int arg, signed char jamo, CPad *pad)
+void SkbTypeJamo(int arg, JAMO jamo, CPad *pad)
 {
     if (SkbShifted(pad)) {
         for (unsigned int i = 0; i < 7; i++) {
-            if ((unsigned char)jamo == s_shiftJamo[i].m_from) {
+            if (jamo == s_shiftJamo[i].m_from) {
                 jamo = s_shiftJamo[i].m_to;
                 break;
             }
