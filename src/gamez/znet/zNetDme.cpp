@@ -990,8 +990,8 @@ struct LanInfoRequest {
 };
 
 extern "C" {
-void func_00620BD8(void);   /* a message type's description begun */
-void func_00620C60(void *base, void *field, int size, int count);   /* a field described */
+void NetRegisterMessageStart(void);   /* a message type's description begun */
+void NetMessageField(void *base, void *field, int size, int count);   /* a field described */
 int func_00621178(int flags, void *to, int a, int type, int size, void *data);   /* a message sent */
 int func_00622C28(int *client);   /* (the DME's: our client) */
 int NetGetClient(void **client, int conn, int index);   /* a client of the connection */
@@ -1041,29 +1041,29 @@ extern "C" void func_0030CB90(CZNetwork *net, void (*cb)(void *info))
     LanInfoRequest req;
     LanGameInfo info;
 
-    func_00620BD8();
-    func_00620C60(&req, &req.m_0, 4, 1);
-    func_00620C60(&req, &req.m_4, 4, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&req, &req.m_0, 4, 1);
+    NetMessageField(&req, &req.m_4, 4, 1);
     func_006210D0(&net->m_infoRequestType, func_0030CA80);
-    func_00620BD8();
-    func_00620C60(&info, &info.m_name, 21, 21);
-    func_00620C60(&info, &info.m_18, 4, 1);
-    func_00620C60(&info, &info.m_1c, 4, 1);
-    func_00620C60(&info, &info.m_20, 2, 1);
-    func_00620C60(&info, &info.m_22, 2, 1);
-    func_00620C60(&info, &info.m_24, 2, 1);
-    func_00620C60(&info, &info.m_28[0], 4, 1);
-    func_00620C60(&info, &info.m_28[1], 4, 1);
-    func_00620C60(&info, &info.m_28[2], 4, 1);
-    func_00620C60(&info, &info.m_28[3], 4, 1);
-    func_00620C60(&info, &info.m_28[4], 4, 1);
-    func_00620C60(&info, &info.m_28[5], 4, 1);
-    func_00620C60(&info, &info.m_28[6], 4, 1);
-    func_00620C60(&info, &info.m_28[7], 4, 1);
-    func_00620C60(&info, &info.m_48, 4, 1);
-    func_00620C60(&info, &info.m_desc, 64, 64);
-    func_00620C60(&info, &info.m_text, 256, 256);
-    func_00620C60(&info, &info.m_18c, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&info, &info.m_name, 21, 21);
+    NetMessageField(&info, &info.m_18, 4, 1);
+    NetMessageField(&info, &info.m_1c, 4, 1);
+    NetMessageField(&info, &info.m_20, 2, 1);
+    NetMessageField(&info, &info.m_22, 2, 1);
+    NetMessageField(&info, &info.m_24, 2, 1);
+    NetMessageField(&info, &info.m_28[0], 4, 1);
+    NetMessageField(&info, &info.m_28[1], 4, 1);
+    NetMessageField(&info, &info.m_28[2], 4, 1);
+    NetMessageField(&info, &info.m_28[3], 4, 1);
+    NetMessageField(&info, &info.m_28[4], 4, 1);
+    NetMessageField(&info, &info.m_28[5], 4, 1);
+    NetMessageField(&info, &info.m_28[6], 4, 1);
+    NetMessageField(&info, &info.m_28[7], 4, 1);
+    NetMessageField(&info, &info.m_48, 4, 1);
+    NetMessageField(&info, &info.m_desc, 64, 64);
+    NetMessageField(&info, &info.m_text, 256, 256);
+    NetMessageField(&info, &info.m_18c, 1, 1);
     func_006210D0(&net->m_infoType, func_0030CA50);
     net->m_infoCallback = cb;
 }

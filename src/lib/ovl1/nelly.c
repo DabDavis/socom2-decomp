@@ -112,7 +112,10 @@ int func_00249EE0(Blk48 **pp)
  * with nothing branching on it (`c.lt.s; jr ra; nop`), so 56, 48 and below all return 161 by a
  * path the jump optimiser left in place; here the 56 and 48 tests fold into one dead compare after
  * 64. A chain of returns, an assigned result (initialised or in a final else), the ifs in either
- * order and a 141 for the 48 case give 15-49 words (build/scratch/gcc/v_1748.c, GCC round 19a). */
+ * order and a 141 for the 48 case give 15-49 words (build/scratch/gcc/v_1748.c, GCC round 19a). Round
+ * 41a (build/scratch/gcc/r41/v_1748*.py, 10 shapes): a nested ternary returned or assigned, an
+ * else-if chain, the last test as a ternary, 161 through an int local (in the 48 case, the final
+ * return or both), an unsigned char or float 161 -- every one 0x70, the 56 and 48 tests gone whole. */
 int func_00251748(float fX)
 {
     if (fX > 96.0F)
@@ -199,7 +202,13 @@ float func_00251700(float x)                    /* a frequency warp (the .lit4 c
  * conversion; the target's 16-byte frame no instruction touches (an address-taken local's slot,
  * ADDRESSOF's footprint: `*(u_int *)&x` makes the frame but keeps x in memory); its zero loaded as
  * `li at,0; mtc1` (a CONST_DOUBLE 0.0 that is not CONST0_RTX -- `mtc1 zero` for every 0.0F, (float)0,
- * 0 or the cleared union's float tried). */
+ * 0 or the cleared union's float tried). Round 41a (build/scratch/gcc/r41/v_exp2*.py, 17 shapes): the
+ * target's one conversion reads as the two arms' common tail CROSS-JUMPED after reload (both arms'
+ * values in $f0, fX copied there ahead of the test, `cvt.w.s; mfc1; addiu 1` once); here the jump
+ * optimiser hoists the then-arm's conversion above the test instead (`cvt.w.s; mfc1` before the
+ * c.lt.s, its +1 in the slot) in every arm order, the ternary, a goto and a float copy of fX feeding
+ * both arms (d=33); one conversion after the merge through a float t folds `(i + 1) + 126` to `+ 127`
+ * and turns the test into c.le.s (d=37). */
 float func_00251850(float fX)
 {
     union { float f; long l; } m;

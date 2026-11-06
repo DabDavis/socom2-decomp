@@ -1644,6 +1644,115 @@ def test_igdump_pcode_view_names_each_temporarys_inline():
     ck(any(" jal " in l and "Blend" in l for l in dlines), "and the view calls it by name")
 
 
+IG_PASS_FIXTURE = """extern "C" int ig_g(int);
+extern "C" int ig_k(int, int);
+
+extern "C" int ig_cse(int x, int y)
+{
+    int a = ig_g(x * y + 7);
+    int b = ig_g(x * y + 7);
+    return a + b;
+}
+
+extern "C" int ig_split(int x, int y)
+{
+    int t = ig_g(x);
+    ig_k(t, 1);
+    t = ig_g(y);
+    int u = ig_g(t + 1);
+    ig_k(t, u);
+    return u;
+}
+"""
+
+
+def test_igdump_names_the_pass_of_each_temporary():
+    """The temporaries no inline made (GCC round 41a; the kit's 0x60AA20, whose s0/s1 holders round
+    40a traced to create_temp_object called from 0x5327F8): that call is IRO_CommonSubs' (0x532920,
+    dumped as "IRO_CommonSubs"), one temporary per class of a common subexpression -- `x * y + 7`
+    written twice is computed once into it and reused; the call from 0x533D7E is IRO_SplitLifetimes'
+    -- a variable reused (t = ig_g(y) after t's first web) gives its later web a temporary, the
+    earliest definition's web keeping t. Both are numbered after every parameter and named local
+    (u, declared after t's reuse, is numbered before the split web): an Object's place in the
+    locals. igdump --iro writes mwccps2's own optimiser log (its IRO dumper, switched on under
+    gdb): the replacement and the split logged, the temporaries named in the dumps after their
+    passes, and the colourings the same with the log on. Negatives: `#pragma opt_common_subs off`
+    makes no common subexpression, `#pragma opt_lifetimes off` no split; IGDUMP_NO_PASSES=1 (the
+    two breakpoints off) still makes both temporaries but names neither's pass."""
+    import igdump
+    src = _ig_fixture("ig_passes.cpp", IG_PASS_FIXTURE)
+    log = BUILD / "ig_passes.iro.log"
+    recs, out = igdump.dump(src, BUILD / "ig_passes.jsonl", iro=log)
+
+    def made(r, p):
+        return [(int(i), o) for i, o in (r.get("origins") or {}).items() if o.get("pass") == p]
+
+    def node(r, name):
+        return next((i for i in range(r["nreal"], r["nused"]) if igdump.var_name(r, i) == name), None)
+    cse = igdump.select(recs, "^ig_cse$", 0)[0][1]
+    cs = made(cse, "IRO_CommonSubs")
+    ck(len(cs) == 1 and cs[0][1].get("expr") == "(x * y) + 7" and cs[0][1].get("computed")
+       and cs[0][1].get("reused") and not set(cs[0][1]["computed"]) & set(cs[0][1]["reused"]),
+       f"ig_cse: one IRO_CommonSubs temporary for (x * y) + 7, computed once and reused ({cs})")
+    named = [node(cse, n) for n in ("x", "y", "a", "b")]
+    ck(None not in named and cs and cs[0][0] > max(named),
+       f"its node numbered after every parameter and named local ({cs[0][0] if cs else None} > {named})")
+    spl = igdump.select(recs, "^ig_split$", 0)[0][1]
+    sp = made(spl, "IRO_SplitLifetimes")
+    ck(len(sp) == 1 and sp[0][1].get("var") == "t" and node(spl, "t") is not None,
+       f"ig_split: t's later web an IRO_SplitLifetimes temporary, its first web still t ({sp})")
+    ck(sp and node(spl, "u") is not None and sp[0][0] > node(spl, "u") > node(spl, "t"),
+       f"the split web numbered after u, which is declared after it ({sp[0][0] if sp else None}, u "
+       f"{node(spl, 'u')}, t {node(spl, 't')})")
+    ck(all("pass" in o for r in recs for o in (r.get("origins") or {}).values() if o.get("creator") == "0x477270"
+           and o.get("caller") in ("0x5327f8", "0x533d7e")), "every temporary of the two passes names its pass")
+    funcs = {f["name"]: f for f in igdump.iro_read(log)}
+    ev = {n: [e for e, _ in f["events"]] for n, f in funcs.items()}
+    tname = lambda r, i: igdump.var_name(r, i)
+    after = lambda f, ph: "\n".join(next((l for p, l in funcs[f]["phases"] if p == ph), []))
+    ck(set(funcs) == {"ig_cse", "ig_split"} and any(e.startswith("Replacing common sub") for e in ev["ig_cse"])
+       and any(e.startswith("Splitting range for variable") for e in ev["ig_split"]),
+       f"--iro: the optimiser's log, the replacement and the split logged ({ {n: e[:3] for n, e in ev.items()} })")
+    ck(cs and sp and f"Operand {tname(cse, cs[0][0])} " in after("ig_cse", "after IRO_CommonSubs")
+       and f"Operand {tname(spl, sp[0][0])} " in after("ig_split", "after IRO_SplitLifetimes")
+       and f"Operand {tname(spl, sp[0][0])} " not in after("ig_split", "before IRO pass loop"),
+       "each temporary named in the dump after its pass, the split one absent before it")
+    plain, _ = igdump.dump(src, BUILD / "ig_passes_plain.jsonl")
+
+    def strip(rs):          # the log's FILE moves the heap: an operand's pointer by what it names
+        import re as _re
+
+        def op(a, syms):
+            m = _re.fullmatch(r"k(\d+):([0-9a-f]{16})", a)
+            if not m or m.group(1) not in ("4", "6"):
+                return a
+            w0, w1 = struct.unpack("<II", bytes.fromhex(m.group(2)))
+            return (f"k4:{w0:#x}:{syms.get(f'{w1:#x}', '?') if w1 else 0}" if m.group(1) == "4"
+                    else f"k6:{syms.get(f'{w0:#x}', '?')}")
+        return [{**{k: v for k, v in r.items() if k not in ("origins", "syms", "code")},
+                 "code": [c if isinstance(c, str) else [c[0], [op(a, r.get("syms") or {}) for a in c[1]]]
+                          for c in r["code"]]} for r in rs]
+    ck(strip(plain) == strip(recs), "the colourings the same with the log on (each operand's pointer by its name)")
+    off = _ig_fixture("ig_passes_off.cpp", "#pragma opt_common_subs off\n#pragma opt_lifetimes off\n"
+                      + IG_PASS_FIXTURE)
+    orecs, _ = igdump.dump(off, BUILD / "ig_passes_off.jsonl")
+    ck(not any(made(r, "IRO_CommonSubs") or made(r, "IRO_SplitLifetimes") for r in orecs),
+       "negative: opt_common_subs and opt_lifetimes off, neither pass makes a temporary")
+    old = os.environ.get("IGDUMP_NO_PASSES")
+    os.environ["IGDUMP_NO_PASSES"] = "1"
+    try:
+        nrecs, _ = igdump.dump(src, BUILD / "ig_passes_nopass.jsonl")
+    finally:
+        if old is None:
+            os.environ.pop("IGDUMP_NO_PASSES", None)
+        else:
+            os.environ["IGDUMP_NO_PASSES"] = old
+    ncse = igdump.select(nrecs, "^ig_cse$", 0)[0][1]
+    ck(not made(ncse, "IRO_CommonSubs") and strip([ncse])[0]["code"] == strip([cse])[0]["code"]
+       and any(o.get("caller") == "0x5327f8" for o in ncse["origins"].values()),
+       "negative: the two breakpoints off, the temporary still made (the same code) but no pass named")
+
+
 def test_igreplay_replays_and_predicts():
     """tools/igreplay.py (GCC round 32a: the MSL lane's round-11 igreplay.py, the game states' round-37
     relabel.py and brute.py, the AI core's round-28 nbdeg.py): MW's simplify/colour replayed offline
