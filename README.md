@@ -2065,6 +2065,50 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 36** (every one-byte scalar vector on the byte pod; the list's range init
+  through push_back; the HUD's frame-slot hypothesis confirmed and measured; probes build/p36/, untracked: mkbyte.py,
+  rmequip.py, oies.py, additem.py, imsprobe.py, runcheck.sh, cmpcheck.py; runs and objcmp output in build/scratch/msl-r36/.
+  Over every hand-written unit against master a3e6a9fe: 11,264 -> 11,266 byte-exact, +6 rows, nothing lost; objcmp
+  master --by-address, 661 units: 4 differ -- ai_group.cpp, seal_unit.cpp, node_main.cpp by the init and the end() copy,
+  zanim_menu.cpp by its no-target EQUIP_ITEM destructors):
+  - APPLIED (the UI's round 33): include/vector's byte pod is __vector_pod's PRIMARY template and every one-byte scalar
+    element runs on it over its own type -- the primary vector's base chosen by __vector_is_byte<T> (sizeof 1, not a
+    class by MW's SFINAE test, not bool: MSL's bit vector is hud_objectives.cpp's), the char imp generic over T,
+    vector<char> through the primary; zanim_menu.cpp's __vector_pod<EQUIP_ITEM> specialisation goes, its insert 0x284BA0
+    byte-exact from the header. Keyed by the ELEMENT type, not a storage type: the char insert 0x3923E0 and the item one
+    0x284BA0 are two copies in one overlay, so two names (the 2-byte pod is SOCOM 1's __vector_pod<Us> for the one
+    2-byte element there is);
+  - A MEMBER TYPEDEF OF A NON-DEPENDENT BASE HIDES A DERIVED CLASS TEMPLATE'S PARAMETER OF THE SAME NAME: the 4-byte
+    pod as `__vector_pod<unsigned int, A>` with `typedef unsigned int T;` turned every pointer vector's push_back(T *const
+    &) into push_back(unsigned int *const &) -- so the 4-byte pod is a partial specialisation on its ALLOCATOR,
+    `__vector_pod<T, allocator<unsigned int> >`, T a template parameter still (objcmp: every other object identical);
+  - APPLIED (the online lobby's round 28, the weapons' round 35): the list's range init appends through push_back. Tail
+    code that inlines push_back after the unit generated insert finds it past inline_max_size (insert's 253 units) and
+    cuts it one level -- end() and insert called on every element: init<> 0x317720 and OVL2's 0x5EF8D0 byte-exact, the
+    out-of-line end() 0x2A00A0 / 0x50FED0 emitted. The "end() a level taller" of "Level 6, or 8?" is this size cut;
+  - FRAME SLOTS BY INLINE DEPTH, CONFIRMED (the HUD's round 60 hypothesis): an inline that RETURNS ITS CALL'S VALUE
+    DIRECTLY hands the caller's result slot -- the caller's depth, the frame's top -- to the call; one returning a wrapper
+    built from it gives the call a temporary of its own a level down. list<T *>::insert returning the base iterator makes
+    CUIListBox::AddItem 0x373F20 byte-exact (with `int i = 0` declared after the iterator), but costs the wrapper's own
+    copy 0x510B90 (the target wraps through a temporary), CGraph::BuildRoute 0x2D14A0 and CSched_Manager::AddTask
+    0x34E6B0: +1 / -3, not applied (include/list, AddItem's note);
+  - vis_texfx.cpp's sized list insert 0x3C0B90 destroys its temporary list through a call of the deleter's destructor
+    with 0 -- a base subobject's call: ~__list_imp inlined one level, as ~list<CVisual *> 0x3177C0 and ~list<CRipple *>
+    0x322370 do. Not a size cut (inline_max_size 150 to 400 changes nothing there); a height. ~__list_deleter as
+    `erase(begin(), end())`: +4 / -15 (fifteen user-code destructors cut); end_first() a level deeper (the erase's tree
+    alone, so tail code only): +2 / -17 (remove_if's inlined erase in every unit) -- a "Level 6, or 8?" witness. Its
+    resize 0x3C0AC0 (11 off): the target reloads first's node for the inlined erase's loop test apart from the node it
+    frees (two loads, v1 and a0), where this shares one;
+  - the UI's round 34: include/vector's class-vector iterator is ALREADY a class (m_p, != as !(==)); OnIsEquipmentSelected
+    0x280790's latch re-reads size and data and adds size*12 -- scdiff printed that addu as a masked word (round 33's
+    tell: read the image with `scd.py show`), so the "dropped add" was the display. Ten forms of end() and == hoist the
+    whole end (0x120 of 0x138), a const view's size() re-reads the size alone (0x140); SOCOM 1's vector iterators are raw
+    pointers (its symtab's do_assign<PC14CCharacterWeap>), the only vector iterator class its DWARF has vector<bool>'s
+    {vec_, pos_}. Not met;
+  - MAP_DIRCOUNT::GetBestDir 0x5350C0 (the GCC front's round 38a layout dependence) flips with a header's TEXT too: lost
+    in this worktree's sccheck under one header, back under the next, ai_mapwalk.cpp byte-identical in objcmp's
+    fixed-length builds each time -- an sccheck miss of it alone is the layout, not a loss;
+  - the five cut class inserts and the deque tail: no new lever found, not attempted.
 - **Tells from the game states, round 50** (no new row: SetRoundStatUiVars 0x1F21B0, unwritten before, written at the
   size, OPEN by its walk's six frame slots; five rows named -- SOCOM 1's CZPersonaState::GetPersonaName 0x2C3A70 and
   GetSOUPString 0x2C3C30, ours GetPersonaClanTag 0x2C3AC0, EnableExternalWhispers 0x2A41F0, IsNewestVersion 0x2C94F0):
@@ -2327,8 +2371,9 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     its float to unsigned three times inside SetValue, as SOCOM 1's does); `when - zNetGetTime()` wrapped in an inline
     loads `when` before the call; a local defined just before a call lands in that call's delay slot;
   - a CSaferStr member is destroyed with a this-test and flag 0, a std::string member with flag -1 and no test;
-    include/vector maps only char and pointers to the pod base, so a vector over another 1-byte scalar (EQUIP_ITEM)
-    needed a `__vector_pod<EQUIP_ITEM>` specialisation (in zanim_menu.cpp) to emit the image's byte-pod insert -- its code
+    include/vector mapped only char and pointers to the pod base, so a vector over another 1-byte scalar (EQUIP_ITEM)
+    needed a `__vector_pod<EQUIP_ITEM>` specialisation (in zanim_menu.cpp; gone since the MSL headers' round 36 mapped
+    every one-byte scalar) to emit the image's byte-pod insert -- its code
     the char pod's (0x3923E0) with a string pool of its own; OPEN: SelCharsHaveEquip 0x281160 and
     UIDoAllSelCharsHaveWeapon 0x2808E0, one saved register each (the word string's address register inside the loop).
 - **Tells from the SEALs, round 53** (CAiSRescued::Tick 0x559070 and CSealCtrlAi::PostMortemPreTick 0x56EE80 -- 10 and 67
@@ -14206,7 +14251,10 @@ What is open across lanes, and what comes next:
   0x5EF8D0 (0x70 of 0x78) and its do_assign 0x5EF470 (0x1D8 of 0x198) inline the pointer list's
   end() where the target calls it out of line before each insert (OVL2's copy 0x50FED0, OVL1's
   0x2A00A0; OVL1's init 0x317720 calls it the same way) -- an end() a level taller in the original
-  than include/list's, which level 5 inlines whole. Two more (the MSL headers' round 32): ~CUIListBox
+  than include/list's, which level 5 inlines whole. (NOT A HEIGHT, the MSL headers' round 36: the range
+  init appends through push_back, which tail code cuts one level by inline_max_size once insert is
+  generated -- 0x317720 and 0x5EF8D0 byte-exact so at level 5; the do_assign stays open, its own
+  frame.) Two more (the MSL headers' round 32): ~CUIListBox
   0x375710 (the HUD's round 56) -- four this-tests on a vector freed inside a deleted object's written
   destructor need level 6 when the vector is a derived class; and CKey::DeleteChildren 0x25B580 (the
   engine core's round 19), whose deepest FreeVector calls SOCOM 1's compressed-pair pieces (0x25B920-
