@@ -279,6 +279,9 @@ public:
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    /* the lines laid out (ours: an accessor, the count read before the spacing's call) */
+    int GetNumLines() { return m_numLines; }
 
     /* the width it wraps to (out of line in the list item's look, 0x36B320) */
     void SetWidth(float w) { m_width = w; }
@@ -3420,6 +3423,89 @@ void PlaySelectionSound();
 /* zui.cpp's: the stick pushed up or down since it was last centred (UiGetDirStickMoved 3 or 4) */
 bool DidStickMovePrev();
 bool DidStickMoveNext();
+
+/* the window's clip against the lines' base (a variable: read with lwc1 and converted; .data
+ * 0x3E0370, -4; the name ours) */
+static int s_wrappedClipDY = -4;
+
+/* drawn (SOCOM 1's CWrappedText::Draw, 0x391110 there): the window scissored, the lines scrolled --
+ * from the bottom when the text outgrows an auto-scrolling window --, each line placed and drawn if it
+ * falls on the screen, advancing across for one line or down by its own count, the total kept, and
+ * the two arrows drawn with no matrix: the up one while there is scroll to go back, the down one while
+ * there is more below */
+void CWrappedText::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D zero = CPnt3D::zero;
+    CPnt3D p = zero;
+    CPnt3D q = zero;
+
+    m.Transform(&p, 1);
+    m.Transform(&q, 1);
+
+    int lines = 0;
+
+    if (m_shown > 0) {
+        float &py = p.y;
+        int x1 = (int)p.x;
+        int y1 = (int)((float)s_wrappedClipDY + (py - GetSpacing()));
+        int x2 = (int)(p.x + m_width);
+
+        zVid_Scissor(x1, y1, x2, (int)((float)s_wrappedClipDY + (py + (float)m_shown - GetSpacing())));
+        if (m_autoScroll && (float)GetNumLines() * GetSpacing() > (float)m_shown) {
+            py += m_offset;
+            py -= (float)GetNumLines() * GetSpacing() - (float)m_shown;
+        } else {
+            py -= m_offset;
+        }
+    }
+    C2Dlist::iterator e = end();
+    C2Dlist::iterator it = begin();
+
+    while (it != e) {
+        C2DString *line = (C2DString *)*it;
+
+        line->SetPos((int)p.x, (int)(p.y + (float)lines * GetSpacing() - 3.0f));
+
+        int y = (int)(line->m_posy + line->m_socom2_80);
+
+        ++it;
+        if (y > 0 && (unsigned int)y < zVid.renderHeight)
+            line->Draw(mgr, 0, (int)p.z);
+        if (m_displayOneLine)
+            p.x += line->m_length;
+        else if (line->m_numLines > 0)
+            lines += line->m_numLines;
+        else
+            lines++;
+    }
+    m_numLines = lines;
+    zVid_Scissor(0, 0, 640, 448);
+
+    CMatrix mat;
+
+    if (m_upTex) {
+        float y = q.y + (float)m_upOffset.y;
+        float x = q.x + (float)m_upOffset.x;
+
+        m_upArrow.Load(x, y, (float)m_upSize.x + x, (float)m_upSize.y + y, m_upTex);
+        if ((m_offset <= 0.0f && m_numLines != 0) || m_numLines == 0)
+            m_upArrow.Off();
+        else
+            m_upArrow.On();
+        m_upArrow.Draw(mat, mgr);
+    }
+    if (m_downTex) {
+        float y = q.y + (float)m_downOffset.y;
+        float x = q.x + (float)m_downOffset.x;
+
+        m_downArrow.Load(x, y, (float)m_downSize.x + x, (float)m_downSize.y + y, m_downTex);
+        if (m_offset < (float)GetNumLines() * GetSpacing() - (float)m_shown)
+            m_downArrow.On();
+        else
+            m_downArrow.Off();
+        m_downArrow.Draw(mat, mgr);
+    }
+}
 
 /* the slider's menu (zui.cpp's CGameMenu: the event it runs, SLIDER_MOVED; PlaySelectionSound is
  * zui.cpp's too) */
