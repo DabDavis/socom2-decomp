@@ -2559,6 +2559,59 @@ bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the multiplayer game's mission sequence set from the UI variable the argument names, an array of
+ * missions (each a number, or an array whose first value is): "Medley" (254) the missions from the
+ * one before in order to the sequence's end, "Random" (255) one at random; each twice in a clan
+ * game (CreateClanAffiliation 4), the sequence ended with a zero (SOCOM II's) */
+bool UISetMPMissionSeq(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+    bool twice = false;
+    unsigned char seq[32];
+
+    if (CValve::Create("CreateClanAffiliation", (VALVE_TYPE)1)->m_value == 4)
+        twice = true;
+    if (var) {
+        if (var->type == 4) {
+            int n = 0;
+
+            for (unsigned int i = 0; i < var->Count() && n < 29; i++) {
+                _zrdr *e = var->Item(i);
+                int id;
+
+                if (e->type == 4)
+                    id = e->Item(0)->Int();
+                else
+                    id = e->Int();
+                if (id == 254) {
+                    for (n = 0; n < 29;) {
+                        id = static_cast<CMultiMissionList &>(data_00441650).GetNext(id, true)->m_index;
+                        seq[n++] = id;
+                        if (twice)
+                            seq[n++] = id;
+                    }
+                    seq[n] = 0;
+                    break;
+                } else if (id == 255) {
+                    id = static_cast<CMultiMissionList &>(data_00441650).GetRandom(true)->m_index;
+                    seq[n++] = id;
+                    if (twice)
+                        seq[n++] = id;
+                    seq[n] = 0;
+                } else {
+                    seq[n++] = id;
+                    if (twice)
+                        seq[n++] = id;
+                    seq[n] = 0;
+                }
+            }
+        }
+        theLobby.SetMissionSequence(0, seq);
+        theLobby.ResetMissionSequence();
+    }
+    return true;
+}
+
 /* the UI variable the argument names, an array of missions, cut down to the suppression maps:
  * every entry kept but an array whose first value names a mission of another multiplayer kind
  * than 5 (SOCOM II's; the name ours) */
@@ -2613,11 +2666,88 @@ bool UIBanSelfFromGame(C2DAnimCmdHdr *hdr, float *dT)
 
 /* the hard disk operation's last result (a byte; the name ours) */
 extern "C" unsigned char data_00414EB0;
+/* whether the game runs off the hard disk (a byte of util_sonyio.cpp's; not named yet) */
+extern "C" unsigned char data_004A37B0;
 
 bool UIQuitClan(C2DAnimCmdHdr *hdr, float *dT)
 {
     theLobby.QuitClan();
     return true;
+}
+
+/* the ladder's lists asked of the lobby, the player ladder's or the clan ladder's: the top ten, the
+ * player's own place with the best ten, or a page of seven up or down from the list's start -- the
+ * "press" moves only tested, not done at the list's ends (SOCOM II's; SOCOM 1's asked for the info
+ * alone) */
+bool UIGetLadderInfo(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = true;
+
+    switch (((UILadderCmd *)hdr)->m_op) {
+    case 1:
+        theLobby.GetLadderRanking();
+        theLobby.GetLadderBest(10);
+        break;
+    case 0:
+        theLobby.GetLadderInfo();
+        theLobby.GetLadderBest(10);
+        break;
+    case 2:
+        if (theLobby.GetLadderStart() < 2)
+            done = false;
+        break;
+    case 3:
+        if (theLobby.GetLadderStart() + 14 > theLobby.GetLadderTotal())
+            done = false;
+        break;
+    case 5:
+        theLobby.GetLadderList(theLobby.GetLadderStart() + 14, 7);
+        break;
+    case 4: {
+        int start = theLobby.GetLadderStart();
+
+        if (start > 1) {
+            start -= 14;
+            if (start <= 0)
+                start = 1;
+            theLobby.GetLadderList(start, 7);
+        }
+        break;
+    }
+    case 7:
+        theLobby.GetClanLadderLeaders(10);
+        break;
+    case 6:
+        theLobby.GetClanRanking(1);
+        theLobby.GetClanLadderLeaders(10);
+        break;
+    case 8:
+        if (theLobby.GetClanLadderStart() < 2)
+            done = false;
+        break;
+    case 9:
+        if (theLobby.GetClanLadderStart() + 14 > theLobby.GetClanLadderTotal())
+            done = false;
+        break;
+    case 11:
+        theLobby.GetClanLadderList(theLobby.GetClanLadderStart() + 14, 7);
+        break;
+    case 10: {
+        int start = theLobby.GetClanLadderStart();
+
+        if (start > 1) {
+            start -= 14;
+            if (start <= 0)
+                start = 1;
+            theLobby.GetClanLadderList(start, 7);
+        }
+        break;
+    }
+    default:
+        theLobby.GetLadderInfo();
+        break;
+    }
+    return done;
 }
 
 /* GetLadderInfo's parser: which list and which move, the clan ladder's numbered after the player
@@ -2655,6 +2785,68 @@ _zanim_cmd_hdr *UIGetLadderInfoParse(const char *name, _zrdr *rdr)
         cmd->m_op = 0;
     }
     return (_zanim_cmd_hdr *)cmd;
+}
+
+bool HardDriveOperationCallback(int result);
+
+/* the hard disk's game partition opened (the file errors then handed to the callback below; on a
+ * failure, its code told as the callback tells it and the command not done), its missions read in
+ * until one fails, or closed and its missions dropped (SOCOM II's) */
+bool UIHardDriveOperation(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = true;
+    const char *op = ArgText(ArgName(hdr));
+
+    if (op && *op) {
+        if (!strcasecmp(op, "OPEN")) {
+            /* (`== 0` re-reads the byte after its store, as the target does; `!` tests the
+             * call's value narrowed, andi 0xff) */
+            data_00414EB0 = HddMountGame();
+            if (data_00414EB0 == 0) {
+                CFileIO::SetErrorHandler((void (*)(int))HardDriveOperationCallback);
+                data_004A37B0 = 1;
+                done = true;
+            } else {
+                int code;
+
+                done = false;
+                switch (data_00414EB0) {
+                case 1:
+                    code = 1;
+                    break;
+                case 2:
+                    code = 2;
+                    break;
+                case 3:
+                    code = 3;
+                    break;
+                default:
+                    code = 5;
+                    break;
+                }
+                SetValveValue(CValve::Create("hard_disk_error_code", (VALVE_TYPE)1), code);
+                if (theLobby.m_event_handler)
+                    theLobby.m_event_handler("HDD_ERROR", 0);
+            }
+        } else if (!strcasecmp(op, "GET_MISSION_DATA")) {
+            data_00414EB0 = 0;
+            int n = HddFindFiles(".ZDB", 0, 0, 0);
+
+            for (int i = 0; i < n && !data_00414EB0; i++) {
+                MissionDesc desc;
+
+                HddFindFiles(".ZDB", &desc, sizeof(desc), i);
+                MPMissionInfo *m = static_cast<CMultiMissionList &>(data_00441650).Add(&desc);
+
+                m->m_on_hdd = 1;
+            }
+        } else if (!strcasecmp(op, "CLOSE")) {
+            func_0039D020();
+            data_004A37B0 = 0;
+            static_cast<CMultiMissionList &>(data_00441650).Purge();
+        }
+    }
+    return done;
 }
 
 /* the hard disk operation's result, told to the menu through a valve and the lobby's event handler
@@ -2790,6 +2982,62 @@ bool UINetCnfUninit(C2DAnimCmdHdr *hdr, float *dT)
 {
     func_0030C6A0();
     return true;
+}
+
+/* the network configurations in the file the argument names listed into NETCNF_DB, the valid ones
+ * by their number, interface (cut to 32 characters) and device; done unless the file could not be
+ * read, its error then put in NETCNF_ERRNO and NETCNF_ERROR's event run with the message (SOCOM II's:
+ * SOCOM 1's opened the file through CNetCnf) */
+bool UINetCnfOpen(C2DAnimCmdHdr *hdr, float *dT)
+{
+    bool done = false;
+    const char *file = ArgText(ArgName(hdr));
+    CRdrEditor rdr;
+
+    strncpy(data_003DF360, file, 256);
+    rdr.push(0);
+    int n = ezNetCnfGetCombinationList(data_003DF360, 0, &data_00457C40);
+
+    if (n > 0) {
+        NetCnfList *list = &data_00457C40;
+        int count = list->m_count;
+
+        for (int i = 0; i < count; i++) {
+            NetCnfEntry *e = list->Entry(i);
+            char text[48];
+
+            if (e->m_ifc && strlen(e->m_ifc) >= 31)
+                sprintf(text, "%.32s...", e->m_ifc);
+            else
+                sprintf(text, "%s", e->m_ifc);
+            if (e->m_type >= 0) {
+                rdr.push(0);
+                rdr.addintnode(i + 1);
+                rdr.addstringnode(text);
+                rdr.addstringnode(e->m_dev);
+                rdr.pop();
+            }
+        }
+        done = true;
+    } else if (n == 0) {
+        done = true;
+    } else {
+        const char *msg;
+
+        switch (n) {
+        case -15:
+            msg = "Your Network Configuration file was created on another PlayStation 2 console and cannot be used.";
+            break;
+        default:
+            msg = "An error occured while reading Your Network Configuration file.";
+            break;
+        }
+        CValve::Create("NETCNF_ERRNO", -n, (VALVE_TYPE)2);
+        theGame.m_menuState.RunEventAnim("NETCNF_ERROR", msg);
+    }
+    rdr.pop();
+    theUIVarManager.Add("NETCNF_DB", &rdr, UIVAR_SESSION);
+    return done;
 }
 
 bool UINetCnfClose(C2DAnimCmdHdr *hdr, float *dT)

@@ -291,6 +291,18 @@ enum LOBBY_STATE {
 class CZOnlineLobby {
 public:
     int RemovePlayerFromClan(const char *name);
+    void SetMissionSequence(unsigned char idx, unsigned char *seq);   /* 0x2F8270 */
+    void ResetMissionSequence();                                      /* 0x2F8230 */
+    void GetLadderInfo();                        /* 0x2EB2C0 (the online lane's names) */
+    void GetLadderRanking();                     /* 0x2EAFB0 */
+    void GetLadderBest(int n);                   /* 0x2EB610 */
+    void GetLadderList(int start, int n);        /* 0x2EB510 */
+    int GetLadderStart();                        /* 0x2EB790 */
+    int GetClanLadderStart();                    /* 0x2EB780 */
+    int GetLadderTotal();                        /* 0x2EB770 */
+    int GetClanLadderTotal();                    /* 0x2EB760 */
+    void GetClanLadderList(int start, int n);    /* 0x2EA5C0 */
+    void GetClanLadderLeaders(int n);            /* 0x2EA6B0 */
     bool Open(const char *host, int port);   /* 0x2E0030 (the online lane's round 12) */
     bool OnCorrectClanTeam();
     bool GetClan();
@@ -815,9 +827,16 @@ enum LANGUAGE {
     LANG_UNSET = 99
 };
 LANGUAGE LanguageFromName(const char *name);   /* 0x3A40E0 */
+/* the game's partition on the hard disk (util_sonyio.cpp's): mounted (0 or an error), its files
+ * found, and unmounted (0x39D020, not named yet) */
+int HddMountGame();                                                                  /* 0x39D050 */
+int HddFindFiles(const char *pattern, void *out, int size, unsigned int index);     /* 0x39CE80 */
+extern "C" int func_0039D020();
 void SetLanguage(LANGUAGE lang);               /* 0x3A44B0 */
 
 extern "C" int ezNetCnfGetNetcnfifData(const char *device, const char *name, void *out);   /* 0x1E8910 */
+struct NetCnfList;
+extern "C" int ezNetCnfGetCombinationList(char *fname, int type, NetCnfList *list);   /* 0x1E8740 */
 void SetFinalStatsUiVars();          /* 0x2241C0 (st_mpexit.cpp's) */
 bool DMEJoinGameServer();            /* 0x2B83E0 (SOCOM 1's, by UIJoinGameServer) */
 bool MediusInit();                   /* 0x300840 */
@@ -991,6 +1010,12 @@ struct MPMissionInfo {
     unsigned char m_multiplayer;   // 0xc
     int m_number;   // 0x10
     unsigned char m_kind;   // 0x14: the game's kind (GetMultiValue's byte; 5 the one with respawns)
+    unsigned char _15[0x1c - 0x15];
+    unsigned char m_on_hdd;   // 0x1c: read off the hard disk (Purge erases these)
+};
+/* a mission's description as the hard disk's files hold it (39 bytes; HddFindFiles' copy) */
+struct MissionDesc {
+    unsigned char m_data[39];
 };
 extern std::vector<MPMissionInfo *> data_00441650;
 /* whether a mission is its name's newest: the list's Find of its name gives it back (fts_missionlist's
@@ -1005,6 +1030,9 @@ public:
     MPMissionView *GetNext(int id, bool multi);
     /* a mission's multiplayer kind, by its id (fts_missionlist.cpp's, 0x2C8B80) */
     signed char GetMultiValue(int id);
+    /* the hard disk's missions erased (0x2C90B0); a downloaded one entered (0x2C91A0) */
+    void Purge();
+    MPMissionInfo *Add(const MissionDesc *desc);
 };
 bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list);
 bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);
@@ -1014,7 +1042,9 @@ bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);
 struct NetCnfEntry {
     int m_type;   // 0x0
     unsigned char _4[4];
-    char m_name[0x60];   // 0x8
+    char m_name[32];   // 0x8 (Sony's ezNetCnf combination: the combination's name, then the
+    char m_ifc[32];    // 0x28   interface's and the device's)
+    char m_dev[32];    // 0x48
 };
 
 struct NetCnfList {
