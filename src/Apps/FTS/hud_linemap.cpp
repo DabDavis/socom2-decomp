@@ -11,8 +11,9 @@
  * IsMapCell, GetIndex, IsLayer and the vector pieces, all on the AI core's real ai.h; (round 43)
  * Tick (0x20EBD0, SOCOM 1's: its two map ticks one inline each, TickLines pinned out of line) and
  * TickRegions (0x20DF70, SOCOM 1's); (round 60) Clip (0x20D5F0, SOCOM 1's: the clipper held in a local --
- * SOCOM 1's s5 too --, zdb's CCircleClip, SetClipInfo's count passed). Not yet: TickWayPoints, TickAnchors,
- * SetupPolygon. Defined in reverse of their image order (-inline deferred). */
+ * SOCOM 1's s5 too --, zdb's CCircleClip, SetClipInfo's count passed) and TickWayPoints (0x20DAC0, SOCOM
+ * II's labels with SOCOM 1's names). Not yet: TickAnchors, SetupPolygon. Defined in reverse of their image
+ * order (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
 #include "../../ai/ai.h"
@@ -471,6 +472,9 @@ bool CAiLinePtItr::IsValid() const
 
 }
 
+/* whether a label overlaps a box (hud_teammatenames.cpp's, 0x227130) */
+unsigned char WordIntersectionTest(int tx1, int ty1, int tx2, int ty2, C2DString *target);
+
 /* the wide line's polygons along a point walk (the C2D library's, OVL1 0x357F30; unwritten) */
 extern "C" void func_00357F30(CPolySet *polys, CPtItr *itr, float width);
 
@@ -668,6 +672,88 @@ void CZLineMap::TickRegions(const CAiMap &map, bool bDim)
             if ((myLine = LineTo(loc)) != 0) {
                 myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
                 myLine->SetTrans(fTrans);
+            }
+        }
+    }
+}
+
+/* the HUD (hud_main.cpp's, theHUD 0x408E58), as far as the labels' font goes */
+class CHUD {
+public:
+    unsigned char _0[0x498];
+    C2DFont *m_myfont;   // 0x498
+};
+
+extern CHUD *theHUD;
+
+/* the map's way points labelled (SOCOM II's TickWayPoints, SOCOM 1's DWARF naming its pieces --
+ * StringPos, testString, i, j, singlechar, string, myString, pos, origin, nit, names): each name of
+ * kind 5 with a point gets a label just off it, green, its whole name on the full-screen map and its
+ * first letter on the small one; then each label is moved off the earlier ones it overlaps -- down
+ * when it is the lower (the pass restarted), the other moved and the pass ended when not. bDim is
+ * not read. The registers want myString declared first and the next string taken in place (as
+ * NewLine does it, but through an inline the result is folded into the inline's temporary, numbered
+ * after names: s2 / s3 swapped -- igreplay --want put it at 33.5); testString inside the inner loop
+ * (hoisted below its guard, as the target computes it), the other label read by index, the restart
+ * after the if/else (the target's layout) */
+void CZLineMap::TickWayPoints(const CAiMap &map, bool bDim)
+{
+    C2DString *myString;
+    const CAiMap::names &names = map.m_namesTable;
+
+    for (CAiMap::names::const_iterator nit = names.begin(); nit != names.end(); ++nit) {
+        if ((*nit).m_15 == 5) {
+            CPnt3D pos;
+
+            if (GetLocPoint(&map, (*nit).m_loc, &pos)) {
+                CPnt3D origin;
+
+                m_hudmap->m_matrix.Transform(&pos, &origin, 1);
+                origin.Add(&CPnt3D(-20.0f, 5.0f, 0.0f));
+
+                if (m_laststring < 32) {
+                    m_laststring++;
+                    myString = &m_stringlist[m_laststring - 1];
+                } else
+                    myString = 0;
+
+                if (myString) {
+                    const char *string = (*nit).m_name;
+
+                    myString->SetColor(30.0f, 100.0f, 30.0f);
+                    if (m_hudmap->m_isFullScreen) {
+                        myString->Load(0.9f, string, theHUD->m_myfont, origin.x, origin.y, true);
+                        myString->UpdatePos();
+                    } else {
+                        char singlechar[2] = {0};
+
+                        singlechar[0] = string[0];
+                        myString->Load(0.9f, singlechar, theHUD->m_myfont, origin.x, origin.y, true);
+                        myString->UpdatePos();
+                    }
+                }
+            }
+        }
+    }
+    for (int i = 0; i < m_laststring; i++) {
+        for (int j = 0; j < i; j++) {
+            C2DString *testString = &m_stringlist[i];
+            CPnt3D StringPos((int)(testString->m_posx + testString->m_socom2_7c) >> 4,
+                             (int)(testString->m_posy + testString->m_socom2_80) >> 4, 0.0f);
+
+            if (WordIntersectionTest(StringPos.x - 10.0f, StringPos.y - 10.0f,
+                                     StringPos.x + testString->m_length + 10.0f, StringPos.y + 15.0f,
+                                     &m_stringlist[j])) {
+                if ((int)(testString->m_posy + testString->m_socom2_80) >
+                    (int)(m_stringlist[j].m_posy + m_stringlist[j].m_socom2_80)) {
+                    StringPos.y += 3.0f;
+                    testString->SetPos(StringPos.x, StringPos.y);
+                } else {
+                    m_stringlist[j].SetPos((int)(m_stringlist[j].m_posx + m_stringlist[j].m_socom2_7c) >> 4,
+                                           ((int)(m_stringlist[j].m_posy + m_stringlist[j].m_socom2_80) >> 4) + 3);
+                    break;
+                }
+                j = -1;
             }
         }
     }
