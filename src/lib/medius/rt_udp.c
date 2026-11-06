@@ -487,6 +487,9 @@ int func_0063E438(RT_UDP *pUdp, char *szAddress, unsigned short *pnPort)
     return 0;
 }
 
+/* a connection's address and port, or (-2) the last datagram's sender's. The -2 test is positive with
+ * its `return 3` in an else (round 14b's rule; round 25b): as a guard, if-conversion hoisted `li v0,3`
+ * above the compare, so the -2 took v1 and nConn a0 (11 words). */
 int func_0063E4A0(RT_UDP *pUdp, unsigned int nConn, char *szAddress, unsigned short *pnPort)
 {
     void *pMsg = 0;
@@ -503,14 +506,15 @@ int func_0063E4A0(RT_UDP *pUdp, unsigned int nConn, char *szAddress, unsigned sh
         *pnPort = pUdp->pConns[nConn].nPort;
         return 0;
     }
-    if (nConn != (unsigned int)-2)
+    if (nConn == (unsigned int)-2) {
+        if (func_00631B10(&pUdp->buf, &pMsg) != 0)
+            return 10;
+        memcpy(&addr, func_00631E58(pMsg), sizeof(RT_UDP_ADDR));
+        strncpy(szAddress, addr.szAddress, 16);
+        *pnPort = addr.nPort;
+        return 0;
+    } else
         return 3;
-    if (func_00631B10(&pUdp->buf, &pMsg) != 0)
-        return 10;
-    memcpy(&addr, func_00631E58(pMsg), sizeof(RT_UDP_ADDR));
-    strncpy(szAddress, addr.szAddress, 16);
-    *pnPort = addr.nPort;
-    return 0;
 }
 
 int func_0063E5C0(RT_UDP *pUdp)
