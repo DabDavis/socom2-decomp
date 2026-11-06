@@ -2066,6 +2066,36 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 29** (the lobby's deque<LOBBY_STATE>() 0x2E0D90 -- through a marked dead-stripped
+  device, zNetMedius.cpp's LobbyQueueImp in src/ABSENT.txt -- and the chat's deque<MediusChatMessage>() 0x2F6230 byte-exact
+  from source, two of the twelve draft-held rows; 0x30E710 / 0x30E790 named CZNetVoice::IsTalking / IsReceiving by every
+  caller, three deque buffer constructors named; the state-queue push respelled `m_queue.push(s)`):
+  - AN MW OBJECT PUTS EACH FUNCTION IN ITS OWN .text SECTION IN CODE-GENERATION ORDER -- igdump's record order, the image's
+    layout; readelf's symbol order is not it (the MSL's round 38 rule, used on a unit's own tail);
+  - a dead own function defined last instantiates the out-of-class template members it names in the first walk, so a member
+    of a class walked earlier -- in a later walk -- can inline them (the device built a `__deque_imp` from an allocator: the
+    copy constructor is then generated inside the walk and `allocator<PCv>()` is instantiated in time for deque() to inline
+    it); it cannot help a member its walk defers for an unparsed implicit callee;
+  - a rename whose row MATCHED.txt held through a draft needs that draft's `sc: as=` line, or the partial check reports the
+    row lost; `try.py --all` shows only the first missed names -- compare its counts, and confirm a gain with sccheck in
+    place;
+  - zanim_menu.cpp's COnlineArmoryView and hud_mpinfobox.cpp's CRadioState declarations of 0x30E710 / 0x30E790 are
+    misreadings: every caller passes data_0045B718, the voice object CMission::Init creates (the UI's and the HUD's rounds
+    asked to respell).
+- **Tells from the weapons, round 39** (no new row; vis_vu.cpp's eight data placeholders respelled to their named CVisual
+  statics and zwep_weapon.cpp's to CSnd::m_listener, SAME-BY-ADDRESS; MW's PowerPC Scheduler.c and Peephole.c added to
+  build/scratch/mweppc/):
+  - MW SETS UP A CALL'S DEAD ARGUMENTS FIRST and the ones still read after the call last, each group in parameter order, the
+    last move filling the jal's delay slot; "read again" is a linear scan, so a goto back into the loop does not count --
+    CMesh::ApplyDecal's last 2 need `nt` read after its last call, and every no-code read tried (`nt = nt`, `+= 0`, `| 0`, a
+    cast round trip, `(void)nt`) is folded away first;
+  - MW's scheduler breaks ties by original order, so a delay slot gets the last independent instruction generated before the
+    call;
+  - the loop phase -- IRO_PullOutInvariantAssignments and the rest -- runs in pass 0 only, after that pass's first
+    propagation and before its common-subexpression step; a reference bound in the same block is folded by pass 0's first
+    propagation, i.e. before the loop phase, and a plain pointer variable kept address-taken stays in memory to the end --
+    only class objects are scalarised in pass 1 (Ripple's per-strip pointer, still 5);
+  - the pragma scan over every weapons unit, singles and pairs: no hit; 17 variants nearer, best 0x3B0A70 d 48 -> 37.
 - **Tells from the kit and AI states, round 59** (LookAt 0x60DCF0 by camera.cpp's own CAppCamera::LookAt source shape,
   CAiGroup::act_camera::Tick 0x60DB60 -- open since round 17 -- and CAiSSuspended::Tick 0x5F1C70 -- open since round 6 --
   byte-exact; 0x60A850 measured to return bool by its own code):
@@ -9516,9 +9546,11 @@ constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' 
 carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
-online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230
-(each draft carries an `sc: as=` line; ~CLobbySaveModule's copy 0x2FD070, once listed with them, matches from source
-since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
+online lane's round 10 renamed their rows, the lobby queue's 0x2E0DC0 (its draft carries an `sc: as=` line;
+~CLobbySaveModule's copy 0x2FD070, once listed with it, matches from source since the online lane's round 18, and the
+lobby's and the chat's deque() 0x2E0D90 and 0x2F6230 since its round 29 -- whose names added the lobby buffer's
+allocator constructor 0x2E0D50, 0x2C against 0x18, and the chat's __deque_buf() 0x2F6260, 0x20 against 0x30, each
+draft with an `sc: as=` line: twelve still), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
 sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
 built and scored against its other emitters outside `--files` (its draft, and the hand-written units
