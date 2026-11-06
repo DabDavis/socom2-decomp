@@ -8,6 +8,7 @@
 
 #include "../../gamez/zcamera/zcamera.h"
 #include "../../gamez/zanim/zanim.h"
+#include <list>
 
 namespace zdb {
 /* the collision piece's kind (two bits of its byte at 0xA: SOCOM 1's at 0x1A; the name ours) */
@@ -135,6 +136,10 @@ public:
     unsigned int m_isAlive : 1;
     unsigned int _e0_13 : 19;
     unsigned char _e4[0x170 - 0xe4];
+
+    /* every entity (zentity.h's CEntityList, a list of pointers and nothing more) */
+    static std::list<CEntity *> m_list;
+    static const std::list<CEntity *> &GetEntityList() { return m_list; }
 };
 
 /* a SEAL (SOCOM II's CEntity at 0, its CBody at 0x170 -- the RTTI's base list, 0x3EFD20): its body's

@@ -1768,6 +1768,63 @@ extern "C" void func_00295260(CDeathCam *dc, CAppCamera *cam, CPad *pad)
     }
 }
 
+/* an entity as a SEAL, if it is one (ours: inline -- the entity read into the result, the take
+ * flag cleared first) */
+inline CZSealBody *ToSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+/* the death camera's TRIANGLE (SOCOM II's): the view line put out from the camera to its far
+ * plane, and of the SEALs up the one nearest it taken -- nearer the line by a tenth, else as near
+ * and nearer the camera -- and followed (the death camera unused) */
+extern "C" void func_00294F40(CDeathCam *dc, CAppCamera *cam)
+{
+    CZSealBody *best = 0;
+    float bestDist = 0.0f;
+    float bestLen = 0.0f;
+    float dist = 0.0f;
+    CPnt3D line[2];
+    CPnt3D v;
+
+    line[0] = CPnt3D::zero;
+    line[1] = CPnt3D::zero;
+    line[1].z = -cam->m_camera->m_far_plane;
+    cam->m_camera->m_matrix.Transform(line, 2);
+    std::list<CEntity *>::const_iterator it;
+
+    for (it = CEntity::GetEntityList().begin(); it != CEntity::GetEntityList().end(); ++it) {
+        bool take = false;
+        CZSealBody *seal = ToSeal(*it);
+
+        if (seal && !func_002C2FD0(seal) && seal->m_type == CEntity::ENT_TYPE_SEAL) {
+            seal->m_posW.DistToVector(&line[0], &line[1], &dist);
+            if (!best)
+                take = true;
+            else {
+                float d = (dist - bestDist) / bestDist;
+
+                if (d < -0.1f)
+                    take = true;
+                else if (d < 0.1f) {
+                    seal->m_posW.Sub(&line[0], &v);
+                    float l = (v.Length() - bestLen) / bestLen;
+
+                    if (l < 0.1f && (d < 0.0f || l < 0.0f))
+                        take = true;
+                }
+            }
+            if (take) {
+                bestDist = dist;
+                best = seal;
+                seal->m_posW.Sub(&line[0], &v);
+                bestLen = v.Length();
+            }
+        }
+    }
+    if (best)
+        cam->Follow((CEntity *)best, 0);
+}
+
 extern "C" void func_00294B40(CDeathCam *dc, CMatrix *sealMat, CMatrix *view, float dT)
 {
     float dx = 0.0f;
