@@ -1441,7 +1441,7 @@ public:
     unsigned char _75e[0x760 - 0x75e];
     float m_sound_time;   // 0x760
     AI_SOUND_PRIORITY m_sound_priority;   // 0x764
-    unsigned char _768[0x76c - 0x768];
+    float m_768;   // 0x768: the speed factor the AI last asked (0x570F90; the name ours)
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x770 - 0x76d];
     /* when the AI last threw a grenade, on the game clock (the grenade choice 0x565110 waits a while
