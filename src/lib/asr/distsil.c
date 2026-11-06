@@ -42,7 +42,9 @@ typedef struct DISTSIL {
     int *f108;                          /* +108: the cached distances (GetpCachedDistances) */
     void *f112;                         /* +112: cleared at construction */
     void *f116;                         /* +116 */
-    char pad120[16];
+    char pad120[8];
+    unsigned short *f128;               /* +128: ntables codewords per frame */
+    int pad132;
     DSCODEBOOK *f136;                   /* +136: the codebooks in use */
     void *f140;                         /* +140 */
     unsigned short n112;                /* +144: f112's codebooks */
@@ -61,7 +63,8 @@ typedef struct DISTSIL {
     int f184;                           /* +184 */
     char pad188[8];
     unsigned char *f196[10];            /* +196: a codeword byte per codebook */
-    char pad236[44];
+    unsigned short f236;                /* +236: the frame f128 is read at */
+    char pad238[42];
     unsigned int f280;                  /* +280: silent frames, modulo f308 */
     unsigned int f284;                  /* +284: f308-frame periods, up to 20 */
     unsigned char f288;                 /* +288 */
@@ -105,6 +108,42 @@ static int ResizeQueues(DISTSIL *d, int n)
             qDeQueueOne(d->b.inputs[2].q, d->b.inputs[2].reader);
     }
     return 0;
+}
+
+extern void func_004FE6C8();
+
+/* each codebook's bytes at the frame's codeword (f128's row f236) copied into its row at +196; with
+ * the 4-bit distances (+104 the 4-bit pass, 0x4FE6C8) two codewords share a byte, the odd one in
+ * the low nibble, each nibble scaled by 17 to the byte range. No SOCOM 1 counterpart (its object
+ * goes from ResizeQueues to LoadLanguage); unnamed. LoadLanguage (+0x56C) and ControlDistSilProcess
+ * (+0x3C0) call it. Round 34c, byte-exact as first written. */
+static void func_004FD5C8(DISTSIL *d)
+{
+    DSCODEBOOK *cb;
+    unsigned char **data;
+    unsigned short c, n;
+    unsigned int k, j;
+    int mask, shift, mult;
+
+    for (k = 0; k < d->ntables; k++) {
+        mask = 255;
+        shift = 0;
+        mult = 1;
+        c = d->f128[d->f236 * d->ntables + k];
+        cb = d->f116;
+        data = cb[k].data;
+        if (d->f104 == (void *)func_004FE6C8) {
+            if (c & 1)
+                mask = 15;
+            else
+                shift = 4;
+            mult = 17;
+            c >>= 1;
+        }
+        n = cb[k].n;
+        for (j = 0; j < n; j++)
+            d->f196[k][j] = ((data[j][c] & mask) >> shift) * mult;
+    }
 }
 
 /* a list of codebooks given back: each one's two tables, then the list, its count set to `z`
