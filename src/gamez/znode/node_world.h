@@ -55,6 +55,9 @@ public:
     CAssetLib *FindModelLib(const char *name);
     CTexHandle *FindMipLevel(_RenderPhase phase, CTexHandle *tex);
 
+    /* the model cache emptied (inline, out of line at 0x311AE0 in CModel::Create; the name ours) */
+    void ClearCache() { m_cache_model = 0; }
+
     CModel *m_cache_model;   // 0xc
 };   // 0x10 bytes
 
@@ -63,6 +66,9 @@ public:
 class CAssetMgr {
 public:
     static CAssetList m_assets;
+    /* the list (inline, out of line at 0x311AF0 in CModel::Create -- CWorld::GetAssetList's three
+     * words under another name; the name ours) */
+    static CAssetList *GetAssets() { return &m_assets; }
 
     /* a library let go of: at no holders left it moves to the recycle bin (SOCOM 1's) */
     static void ReleaseLibRef(CAssetLib *lib);
