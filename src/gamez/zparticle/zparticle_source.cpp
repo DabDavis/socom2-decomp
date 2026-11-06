@@ -69,6 +69,60 @@ void Source::RenderBBox()
         (*i)->GetBBox(&box);
 }
 
+/* the source's collision box made once (new in SOCOM II as a function of its own: SOCOM 1's
+ * constructor built it) -- six four-point polygons of material 1 and camera type 2, the first and
+ * last of type 3, the others 2; a node holding them, named, in the world, its extension pointing
+ * back at the source, its DI flag and back-face search set (0x32AD20, not named: the box's switch
+ * 0x329A40 calls it when the source has no node yet) */
+extern "C" void func_0032AD20(Source *s)
+{
+    if (!s->m_diPolies[0]) {
+        s->m_diPolies[0] = new zdb::CDIPoly;
+        s->m_diPolies[1] = new zdb::CDIPoly;
+        s->m_diPolies[2] = new zdb::CDIPoly;
+        s->m_diPolies[3] = new zdb::CDIPoly;
+        s->m_diPolies[4] = new zdb::CDIPoly;
+        s->m_diPolies[5] = new zdb::CDIPoly;
+        s->m_diPolies[0]->Allocate(4);
+        s->m_diPolies[1]->Allocate(4);
+        s->m_diPolies[2]->Allocate(4);
+        s->m_diPolies[3]->Allocate(4);
+        s->m_diPolies[4]->Allocate(4);
+        s->m_diPolies[5]->Allocate(4);
+        s->m_diPolies[0]->SetMaterial(1);
+        s->m_diPolies[1]->SetMaterial(1);
+        s->m_diPolies[2]->SetMaterial(1);
+        s->m_diPolies[3]->SetMaterial(1);
+        s->m_diPolies[4]->SetMaterial(1);
+        s->m_diPolies[5]->SetMaterial(1);
+        s->m_diPolies[0]->SetCameraType(2);
+        s->m_diPolies[1]->SetCameraType(2);
+        s->m_diPolies[2]->SetCameraType(2);
+        s->m_diPolies[3]->SetCameraType(2);
+        s->m_diPolies[4]->SetCameraType(2);
+        s->m_diPolies[5]->SetCameraType(2);
+        s->m_diPolies[0]->SetDiType(3);
+        s->m_diPolies[1]->SetDiType(2);
+        s->m_diPolies[2]->SetDiType(2);
+        s->m_diPolies[3]->SetDiType(2);
+        s->m_diPolies[4]->SetDiType(2);
+        s->m_diPolies[5]->SetDiType(3);
+        s->m_diNode = new zdb::CNode;
+        s->m_diNode->AddDI(s->m_diPolies[0]);
+        s->m_diNode->AddDI(s->m_diPolies[1]);
+        s->m_diNode->AddDI(s->m_diPolies[2]);
+        s->m_diNode->AddDI(s->m_diPolies[3]);
+        s->m_diNode->AddDI(s->m_diPolies[4]);
+        s->m_diNode->AddDI(s->m_diPolies[5]);
+        s->m_diNode->SetName("PARTICLE DI NODE");
+        zdb::CWorld::m_world->AddChild(s->m_diNode);
+        s->m_particleEx = new CParticleEx(s);
+        s->m_diNode->SetNodeEx(s->m_particleEx, false);
+        s->m_diNode->m_hasDI = 1;
+        s->m_diNode->m_di.m_bReturnBackFaceIntersections = 1;
+    }
+}
+
 /* SOCOM 1's: every source deleted, the list emptied. The end declared first: byte-exact under
  * include/list's iterator as it stands and under SOCOM 1's (node *node_), where `it, e` swaps the
  * two saved registers (the world lane r6) */
