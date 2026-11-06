@@ -2065,6 +2065,35 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 22** (five cameras byte-exact, all unwritten before -- camera.cpp's death camera
+  stick turn 0x294B40 and pad handler 0x295260, first person's 0x295B00, mode 1's 0x295F20, the tether's 0x296F10; the
+  tether's death points 0x297410 written, OPEN at 0x60C of 0x614):
+  - FRAME SLOTS: after the named locals come the caller's own call-result temporaries, then each inlined callee's locals
+    and temporaries grouped by callee, call sites in source order; pushing a call one inline wrapper deeper moves its
+    local into the later group (0x295B00, 0x296F10);
+  - a clamp written as an inline keeps its own join, then branches to the caller's; written in place MW merges the joins
+    (8 off on 0x294B40); an `andi 0xff` on a call's result before its test means the result went into an `unsigned char`
+    local -- a byte-returning call tested directly is not narrowed;
+  - `r = f(); r *= 2.0f; g(r)` computes into f0 and moves to f13, as the target; the product written in the argument or
+    in an initialiser lands in f13 directly with its operands swapped;
+  - OPEN, the wrap loops: when an if's then-arm runs straight into a top-level `while`, MW drops the block before the
+    loop and rebuilds the loop's constants inside it (0x297410, eight loop shapes 0x60C-0x624); camera.h's stand-ins
+    split without moving a field (CDeathCam over CAppCamera's 0xF4-0x11B, ours), objcmp over its 12 includers: only
+    camera.cpp differs.
+- **Tells from the HUD, round 59** (SetMpStatUiVars 0x224670, open since round 18, and CZPauseTest::TickOffState 0x2011F0,
+  unwritten before, byte-exact; DrawLaseTarget 0x217550 written, OPEN at 0x36C of 0x364; 12 rows named by SOCOM 1's
+  calls -- the pause menu's HudTick / Init / HandleSelectionInput / OpenPauseMenu, the reticule's ChangeReticule /
+  UpdateAccuracy / UpdateColor / HudTick / ThreatDirTick, CZNewHudMap::HudTick):
+  - an int local assigned once from an inline accessor's result is folded back into that result and takes no place of
+    its own in the numbering; read straight off the member, or converted (into an unsigned int), it keeps its
+    declaration's place -- SetMpStatUiVars' points as a named `int iPts` (SOCOM 1's name) read off m_score, found by
+    `igreplay --want / --movers`; a short local keeps the place too but sign-extends at every use (+0x10);
+  - `t = x.GetTrans() - 300.0f * dT` computes the product before the call; `t = x.GetTrans(); t -= 300.0f * dT;` gives
+    the target's order (TickOffState);
+  - a switch on a single-use local gets the local's load substituted into the switch, after the statements between --
+    a local cannot move the selector earlier, nor can an inline accessor (int, byte, enum or reference): GetRoundResult's
+    open (19); DrawLaseTarget's: the target reads the lased point through the kit's address (`addiu a0,s0,0x5E0`, then
+    0xC(a0)), MW folds the offsets in all five spellings tried.
 - **Tells from the AI core, round 35** (no new row, 565 of 577 in the lane's units; comments only, measurements):
   - a conditional branch's delay slot is filled from the jumped-to block only when that block's first instruction writes
     a register the not-taken arm overwrites, otherwise from the not-taken arm (an inference from GetNextEvent 0x50EA50,
