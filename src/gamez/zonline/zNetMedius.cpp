@@ -4,7 +4,23 @@
  * 0x2DF560-0x2E1CDF: after int_material.cpp (the zdb-world lane's, to 0x2DF554), its static
  * initialiser 0x401E30 constructing theLobby (0x2E0710) and registering its destructor (0x2E0630);
  * the queue's deque instances (0x2E07B0-0x2E1BB0) close it, before the rooms' unit (0x2E1CE0).
- * Only some of it so far. Defined in reverse of their image order (-inline deferred).
+ * Every own function written (SyncGameClock 0x2DF560, the last, in the online lane's round 27).
+ * Defined in reverse of their image order (-inline deferred).
+ * THE TAIL'S ORDER, measured in the online lane's round 27 (build/scratch/onl/v_lobord.py, v_decl.py,
+ * v_inl.py, order.py, untracked): the object's tail comes out in the same order -- ~__deque_buf,
+ * push_back, ~alloc_ptr, pop_front, the copy constructor, ~__deque_imp, deque(), clear ... -- whether
+ * the constructor and destructor of CZOnlineLobby swap places, a dead own function copying the deque
+ * (`new deque(x)`) or building the block buffer from an allocator is defined first or last, or
+ * __deque_buf's / deque's members are declared in any of five other orders: the same six misses
+ * every time. The image's copy chain is laid out depth first, each function followed by its callees
+ * in REVERSE call order (the copy constructor; init, end, begin, __deque_buf(alloc); its ~cdeque and
+ * the pair; the pair's cdeque copy; that one's init, end, begin, __cdeque_buf(alloc); the pair's
+ * allocator copy; __deque_buf(alloc)'s 0x2E0D50 and the rebind; the copy's alloc()), then deque()'s
+ * chain, the non-inline members (the do_assigns, the iterators' operators, make_iterator, push_back,
+ * ~__deque_buf) after -- the layout of inline functions referenced but not expanded, each generated
+ * right after its user (README "MAIN's Metrowerks runtime", round 6), where ours shows out-of-class
+ * members' rounds (a reading, not yet a shape: declaring the chain's members `inline` expands them,
+ * CZOnlineLobby() lost) -- for include/deque, with the chat unit's (whose inits come at the end). */
  * The deque instances still open are include/deque's (the MSL lane's); measured in the online
  * lane's round 23 (build/scratch/onl/dq1.py, dqb.py): the cdeque begin() 0x2E0CB0 wants the scaled
  * start (start_ << 2, a code-generator temporary here, v41 in MW's dump) numbered between the
