@@ -2065,6 +2065,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 35** (the mesh decal builder 0x3BD9E0, 0xC08 and 23 off since round 34, byte-exact by
+  three shapes reasoned from MW's PowerPC optimiser source -- build/scratch/mweppc/, IroPropagate.c, IroEval.c,
+  FunctionCalls.c; 0x3B8440 named CMesh::DereferenceDecals(), 0x3C0460 CTextureFXManager::Add):
+  - MW substitutes `v = expr` into a use only within one basic block and only when it is v's single use: a local
+    initialised from a ternary is folded into the ternary's temporary and never keeps its own number; an if/else
+    assignment keeps it a variable numbered at its declaration, and MW still emits the movn (the group's kind);
+  - MW evaluates the right operand first when it costs at least as much as the left (a constant 0, a variable or load 1,
+    a binary node its larger operand's cost, +1 when equal, +2 for a shift, divide or modulo), and the back end emits a
+    commutative operation with the first-evaluated operand as its first source: `x | (n << 16)` gives `or d,shift,x`,
+    `x | (n * 0x10000)` gives `or d,x,shift` with the same sll;
+  - `item->m_10[j]` through a pointer local adds j*4 first, `a->m_items[i].m_10[j]` adds the data pointer first; MW's
+    optimiser folds only integer constants (IroEval.c); PowerPC MW passes register arguments in argument order after
+    linearising them last-first (FunctionCalls.c) -- the target's a1-first set-up in ApplyDecalRender is the closed PS2
+    back end's scheduling;
+  - igdump writes a second GPR record when a colouring is redone after rematerialisation: the LAST record is the one the
+    object has (`igreplay -r 1` for 0x3BD9E0; record 0 pointed at the wrong pair of nodes); in a condition MW drops a bool
+    conversion's sltu (bool bitfields, casts, accessors, `!!`), and an inline's materialised `||` tests one vreg in both
+    branches without threading the branch pair (Gather's open).
 - **Tells from the kit and AI states, round 55** (ai_target.cpp's 0x60B470 -- the shadow and the indoor flag averaged over
   a cell and the neighbours a step can end on -- and 0x60B120 -- the first half of SOCOM 1's ComputeVisibility, the ray's
   hits walked near to far -- both unwritten before, byte-exact; the visibility score 0x60AA20 written, OPEN at the size,
