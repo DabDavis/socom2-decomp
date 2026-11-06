@@ -1196,17 +1196,44 @@ struct CTGroup : TASK_HDR {
     static void Begin(_zanim_cmd_hdr *hdr);
 };
 
-/* ai::GOTO (SOCOM 1's CTGoto) */
+/* ai::GOTO (SOCOM 1's CTGoto): a route through cells -- the nodes named, else the regions -- at a
+ * speed, the block sized to the cells (the layout read off Parse; the names ours but the tags') */
 struct CTGoto : TASK_HDR {
-    /* (the names ours) */
+    /* the bits set through bool setters (true `daddiu`, false `andi zero,1`; the names ours) */
+    void SetBit0(bool b) { m_bit0 = b; }
     void SetBit1(bool b) { m_bit1 = b; }
+    void SetMode(unsigned int m) { m_mode = m; }
+    void SetWaypts(bool b) { m_waypts = b; }
+    void SetRegion(bool b) { m_region = b; }
+    void SetDone(bool b) { m_done = b; }
 
-    unsigned char _8[0xc - 0x8];
-    unsigned char m_bit0 : 1;   // 0xc bit 0
-    unsigned char m_bit1 : 1;   // bit 1
-    unsigned char _c2 : 6;
-    unsigned char _d;
-    unsigned char m_done : 1;   // 0xe bit 0: the tick done at once
+    float m_speed;   // 0x8: the tag "speed" (1 unless read)
+    unsigned short m_bit0 : 1;   // 0xc bit 0
+    unsigned short m_bit1 : 1;   // bit 1
+    unsigned short m_count : 8;   // bits 2-9: the cells
+    unsigned short m_mode : 4;   // bits 10-13 (0 when parsed)
+    unsigned short m_waypts : 1;   // bit 14: the tag "waypts"
+    unsigned short m_region : 1;   // bit 15: the cells are regions'
+    unsigned char m_done : 1;   // 0xe bit 0: the tag "teleport" -- the tick done at once
+    unsigned int m_cells[1];   // 0x10: the cells, packed as TaskLocWord packs them
+
+    /* a block for a count of cells at a speed (inline: the speed read before the allocation, held in
+     * $f20 across it -- the target's saved float register) */
+    static CTGoto *Create(float speed, unsigned int n)
+    {
+        unsigned int size = (n - 1) * 4 + sizeof(CTGoto);
+        CTGoto *cmd = (CTGoto *)_calloc(size, 1, 0, 0);
+
+        cmd->hdr.data_size = size;
+        cmd->hdr.data_type = ai_cmdid[0];
+        cmd->SetBit0(true);
+        cmd->m_count = n;
+        cmd->SetBit1(true);
+        cmd->m_speed = speed;
+        cmd->SetMode(0);
+        cmd->SetWaypts(false);
+        return cmd;
+    }
 
     static void Begin(_zanim_cmd_hdr *hdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
@@ -4346,6 +4373,64 @@ bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd)
         }
     }
     return r;
+}
+
+/* a route read: the speed (1 unless given) and a timer read and dropped (SOCOM 1's), the nodes named --
+ * else the regions named, the route then a region's -- each cell found added, "waypts" and "teleport";
+ * a block made only for a route of at least one cell (OVL2 0x5DBF70; SOCOM 1's, its route a list of
+ * names there). One tag and one count reused for the regions (their second webs split: the regions'
+ * tag, count and counter take the nodes' count's, counter's and tag's registers -- separate locals
+ * colour them the other way round); the items read by an unsigned index (`Item((unsigned int)i)`: the
+ * conversion keeps the target's `sll` each pass -- read straight, MW strength-reduces i*8; written by
+ * an int counter, the cells' source the same while their destination steps); the flag declared ahead
+ * of the vector (its zero ahead of the vector's last store, which fills the call's delay slot) */
+_zanim_cmd_hdr *CTGoto::Parse(_zrdr *rdr)
+{
+    float speed = 1.0f;
+    Rfloat timer(-1.0f);
+
+    zrdr_findreal(rdr, "speed", &speed, 1);
+    zrdr_findRfloat(rdr, "timer", &timer);
+    bool region = false;
+    std::vector<CAiMapLoc> locs;
+    _zrdr *t = zrdr_findtag(rdr, "node");
+    int n = t ? t->Count() : 0;
+
+    if (n > 0) {
+        locs.reserve(n);
+        for (int i = 0; i < n; i++) {
+            CAiMapLoc loc;
+
+            if (AiMaps.GetLocation(t->Item((unsigned int)i)->String(), loc))
+                locs.push_back(loc);
+        }
+    } else {
+        t = zrdr_findtag(rdr, "region");
+        n = t ? t->Count() : 0;
+        if (n > 0) {
+            locs.reserve(n);
+            for (int i = 0; i < n; i++) {
+                CAiMapLoc loc;
+
+                if (AiMaps.GetRegion(t->Item((unsigned int)i)->String(), loc)) {
+                    locs.push_back(loc);
+                    region = true;
+                }
+            }
+        }
+    }
+    bool waypts = zrdr_findtag(rdr, "waypts") != 0;
+    CTGoto *cmd = 0;
+
+    if (locs.size()) {
+        cmd = Create(speed, locs.size());
+        for (int i = 0; i < locs.size(); i++)
+            cmd->m_cells[i] = TaskLocWord(locs[i]);
+        cmd->SetWaypts(waypts);
+        cmd->SetRegion(region);
+        cmd->SetDone(zrdr_findtag(rdr, "teleport") != 0);
+    }
+    return &cmd->hdr;
 }
 
 /* a state push read: the state by name, and for the follow, the vehicle, the action and the rush the
