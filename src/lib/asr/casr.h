@@ -127,7 +127,7 @@ typedef struct CASR {
     char pad578[2];
     void *run_ctx;                      /* +580: the context the engine runs (_tosControl 36) */
     void *f584;                         /* +584: the spelling pass's context (_tosControl 36) */
-    int pad588;
+    void *f588;                         /* +588: each word's second-pass record (CreateSecondPassInfo) */
     struct UWTABLES *uw_tables;         /* +592: the user words' tables (intCreateCtxTree's) */
     void *sp_ctx;                       /* +596: the second pass's (CreateSecondPassContext) */
     int pad600;
@@ -219,7 +219,9 @@ struct LANGVT {
     int (*GetAnySpeechGarbagePhenome)(LANGVT *l);     /* +72, slot 18 */
     unsigned int (*GetNbrWarpFactors)(LANGVT *l);     /* +76, slot 19 */
     int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
-    void *s21[4];
+    void *s21[2];
+    int (*GetUserWordSpeechUnitClass)(LANGVT *l);     /* +92, slot 23 */
+    void *s24;
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
     short (*GetRecogWTP)(LANGVT *l);                  /* +104, slot 26 */
     short (*GetSpellingWTP)(LANGVT *l);               /* +108, slot 27 */

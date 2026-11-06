@@ -3,12 +3,69 @@
  * 0x33E418: CreateSecondPassInfo (LOCAL), CreateExEvCtxInfo, CreateCtxInfo, FreeCtxInfo,
  * CalcAccuracyCtxInfo, CreateMenuMasks -- the same six in the same order), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The
- * GCC front"). Names are SOCOM 1's (s1:calls, the object's order agreeing). Only the object's last
- * two are written: CreateSecondPassInfo, CreateExEvCtxInfo and CreateCtxInfo (0x300, 0x48C, 0xC34)
- * are not, FreeCtxInfo stands as its matched draft. */
+ * GCC front"). Names are SOCOM 1's (s1:calls, the object's order agreeing). CreateExEvCtxInfo and
+ * CreateCtxInfo (0x48C, 0xC34) are not written, FreeCtxInfo stands as its matched draft. */
 #include "casr.h"
 
 void *heap_Alloc(void *heap, unsigned int size);
+
+/* a word's record for the second pass: its score, its length and the speech-unit classes at its ends */
+typedef struct SPINFO {
+    int score;                          /* +0 */
+    short len;                          /* +4 */
+    unsigned char first;                /* +6 */
+    unsigned char last;                 /* +7 */
+} SPINFO;
+
+/* each word's record: a pronunciation of kind 1 is a phoneme list -- its first and last phoneme's units
+ * give the classes, the first's states (less two, when there are three or more) join the score, and the
+ * inner phonemes' states the length; any other kind is the user word's class throughout. SOCOM 1's body. */
+int CreateSecondPassInfo(CASR *c, unsigned short *lex, int *bow, int *scores, unsigned int n)
+{
+    int *su = c->lng->GetpSpeechUnit(c->lng);
+    unsigned char cls = c->lng->GetUserWordSpeechUnitClass(c->lng);
+    SPINFO *info = heap_Alloc(c->heap, n * sizeof(SPINFO));
+    unsigned int i;
+
+    if (info == 0)
+        return 1;
+    c->f588 = info;
+    for (i = 0; i < n; i++) {
+        unsigned short *p = lex + bow[i];
+        unsigned short *e = lex + bow[i + 1];
+        unsigned int kind = *p++;
+        int len = e - p;
+
+        if (kind == 1) {
+            int adj = 0;
+            int sum = 0;
+
+            e--;
+            info->first = *(unsigned char *)((short *)su + su[*p]);
+            info->last = ((unsigned char *)((short *)su + su[*e]))[2];
+            if (len >= 3) {
+                unsigned int x = *p++;
+
+                e--;
+                adj = su[x + 1] - su[x] - 2;
+            }
+            info->score = *scores++ + adj;
+            for (; p <= e; p++) {
+                unsigned int x = *p;
+
+                sum += (unsigned short)((unsigned short)(((unsigned short *)su)[x * 2 + 2] - ((unsigned short *)su)[x * 2]) - 2);
+            }
+            info->len = sum;
+        } else {
+            info->score = *scores++;
+            info->len = len;
+            info->last = cls;
+            info->first = cls;
+        }
+        info++;
+    }
+    return 0;
+}
 
 /* the context the engine runs (casr +580), as far as the accuracy reads it: its word boundaries,
  * n + 1 frame numbers */
