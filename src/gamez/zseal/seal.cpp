@@ -2057,6 +2057,91 @@ extern "C" bool func_005499E0(CZSealBody *seal)
     return true;
 }
 
+
+extern "C" {
+/* the up the root is eased onto while the SEAL stands (OVL2 bss 0x66ACD0; the name ours), and an
+ * AnimType static (OVL1 data 0x3DEF08: seal_body.cpp and seal_create.cpp test the same blend) */
+extern short data_003DEF08;
+extern CPnt3D data_0066ACD0;
+}
+
+/* the root tilted onto the ground: through the top blend's span -- its anim's two marks, 0.5 to 0.9 for
+ * the blend AnimTypes 0x3DEF08 names, or 0.8 to 0.99 airborne in blend state 8 -- the ground's normal
+ * blended in from straight up, turned into the SEAL's frame, eased from 0x66ACD0's up for a standing
+ * SEAL not in blend 19 or 25, and set as the root part's turn (OVL2 0x548090, new in SOCOM II:
+ * PrePostTick calls it; the name unknown) */
+extern "C" void func_00548090(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends);
+    float w;
+    float a, b;
+
+    if (!seal->m_airborne) {
+        CZSIScriptCommon *anim = top->Representative()->m_anim;
+
+        a = anim->m_24;
+        b = anim->m_28;
+        if (seal->IsCurrentBlend((AnimType)data_003DEF08)) {
+            a = 0.5f;
+            b = 0.9f;
+        }
+    } else if (top->m_state == 8) {
+        a = 0.8f;
+        b = 0.99f;
+    } else
+        return;
+
+    /* where t lies from a to b, either way round, a step when the two are equal (nothing set for a t
+     * between equal ends, which cannot be). Written in place, the weight declared ahead of the span
+     * (f22 / f21 / f20 as the target): an inline ramp's weight is numbered after the caller's locals
+     * and takes f20; t and the altitude's address are taken before the tests */
+    float t = top->m_tfrac;
+    zdb::IntersectStruct *alt = &seal->m_last_altitude;
+
+    if (a == b) {
+        if (t <= a)
+            w = 0.0f;
+        else if (t > b)
+            w = 1.0f;
+    } else if (!(b <= a)) {
+        if (t <= a)
+            w = 0.0f;
+        else if (t >= b)
+            w = 1.0f;
+        else
+            w = (t - a) / (b - a);
+    } else {
+        if (t <= b)
+            w = 1.0f;
+        else if (t >= a)
+            w = 0.0f;
+        else
+            w = 1.0f - (t - b) / (a - b);
+    }
+    if (!(w <= 0.0f)) {
+        CPnt3D up = CPnt3D::unit_y;
+        CPnt3D n;
+        CQuat r;
+
+        up.Interp(&alt->m_norm, w, &n);
+        CQuat q = seal->m_quat;
+
+        q.vec.x = -q.vec.x;
+        q.vec.y = -q.vec.y;
+        q.vec.z = -q.vec.z;
+        q.Apply(&n, &up, 1);
+        if (seal->m_state == stateProne && !seal->IsCurrentBlend((AnimType)19) && !seal->IsCurrentBlend((AnimType)25))
+            data_0066ACD0.Interp(&up, 0.2f, &n);
+        else
+            n = up;
+        r.Align(CPnt3D::unit_y, n);
+        seal->m_root->m_rot = r;
+        /* (the cast to const keeps the pointer form's null test of the local's address, as the
+         * target has it: `&r`, a pointer or reference local or an inline fold it away) */
+        seal->GetRootPart()->m_node->SetRotation((const CQuat *)&r);
+    }
+}
+
 /* the heartbeat kept at the adrenaline's pace: three loops by level (none as 1), the one playing
  * swapped when the pace changes -- none when that loop is missing (SOCOM II's test) -- or started
  * when none plays (OVL2 0x5437D0; SOCOM 1's) */

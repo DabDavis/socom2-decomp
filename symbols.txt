@@ -10668,7 +10668,7 @@
 0x00598220 0x60 __dt__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598280 0x5B8 __ct__9CSealCtrlFv  # OVL2; s1:calls (ftsCreateSeal's new of 0x5B8... constructs it where SOCOM 1's calls __ct__9CSealCtrlFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x00598840 0x20 func_00598840  # OVL2
-0x00598860 0x32C func_00598860  # OVL2
+0x00598860 0x32C DrawFunc<11CDynGrenade>__2aiFQ22ai9LINE_TYPEffUi11CDynGrenade_v  # OVL2; s1:order by hand (the SEALs, round 54): SOCOM 1's DrawFunc<11CDynGrenade>__2aiFQ22ai9LINE_TYPEffUi11CDynGrenade 0x2889A0, seal_control.cpp's template tail right after the constructor in both builds (SOCOM II's 0x598840 between); the same body: the grenade's flight drawn from t0 to t1 in steps, the opacity blended; MW 3.0's return-type suffix
 0x00598B90 0x910 RemoteRespawn__10CZSealBodyFb  # OVL2; s1:order (seal_create.cpp's first function after the controller's unit, as SOCOM 1's); calls CZSealState::GetPackedWeaponData first, as SOCOM 1's; SOCOM 1's signature, unproven
 0x005994A0 0x1EC DoRespawn__10CZSealBodyFv  # OVL2; s1:order (after RemoteRespawn, before CreateRemoteSeal); SOCOM 1's signature, unproven
 0x00599690 0x178 CreateRemoteSeal__10CZSealBodyFiiPCciPcUiPUc  # OVL2; s1:order (before GetCharacter); news a CSealCtrl and calls CZSealBody::Create, as SOCOM 1's; SOCOM 1's signature, unproven; the states lane's lead, vetted: its sixth parameter is a word of flags (ANDed with 0x10020000 -- bits 17 and 28, the two type numbers SOCOM 1's compared its byte with -- and loaded with lw by fts_net_seal.cpp's caller), so SOCOM 1's PcUc becomes PcUi; seal_create.cpp

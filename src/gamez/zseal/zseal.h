@@ -670,13 +670,25 @@ public:
     unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
 };
 
-/* a thrown grenade's flight, solved (SOCOM 1's; only the statics) */
+/* a thrown grenade's flight, solved (SOCOM 1's: 0x1c bytes, passed by value to ai::DrawFunc, which
+ * copies all seven words; the members' names ours) */
 class CDynGrenade {
 public:
     /* SOCOM II's takes a scale first (the signature ours) */
     static float ComputeTimeToImpact(float scale, float b, float c);
     static float ComputeElevOfs(float t);
     static float ComputeMaxVel(float dist, float height, float *vel);
+    /* where the grenade is t after its throw: the throw's point, its velocity times t and half the
+     * -98 of gravity times t squared on y (DrawFunc<CDynGrenade>'s inline: the drop a temporary of
+     * the sum, built first and given the slot below the operators' -- a named drop sits above them) */
+    CPnt3D operator()(float t) const
+    {
+        return m_pos + m_vel * t + CPnt3D(0.0f, -49.0f * (t * t), 0.0f);
+    }
+
+    CPnt3D m_pos;   // 0x0
+    CPnt3D m_vel;   // 0xc
+    float m_18;   // 0x18
 };
 
 /* where a look comes from (SOCOM 1's DWARF: AI_LOOK, a signed byte -- AIL_ALL is -1, compared
