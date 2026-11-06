@@ -13644,6 +13644,45 @@ it). No tool changed (scratch: build/scratch/gcc/r35/ -- mkv.py writes one varia
 headers beside it for structdiff, s1cmp.py ranks a row against SOCOM 1's body by mnemonic ratio, s1sizes.py
 sizes rows against SOCOM 1's, rd.py reads the image's doubles and floats).
 
+**Round 36c: the ACNE block whole, the context tree's builder, the N-best backtrace written.**
+
+- **A variable two switch cases share is a global pseudo; local-alloc, which runs first, fills the
+  first saved registers with each block's own locals** (ControlAcne, 48 words -> 0): one session
+  walker `p` for cases 3 and 4 spans two blocks, so the array size local to case 4's block took s0
+  before global-alloc saw `p`; declared in each case's block both are block-local and local-alloc
+  ranks them by references (the target's p s0, size s1). A register swap between a function-level
+  variable and a block's own is worth this check before any priority arithmetic.
+- **An address under a dereference is expanded as a sum, a pointer value as a plain add**
+  (intCreateCtxTree): expand_expr's EXPAND_SUM case puts a multiplication first (`bow[i]`: `sll;
+  addu v1,v1,s5`), a pointer computed as a value keeps the source's order (`q = bow + k`: `addu
+  v1,s5,v0`). The target's `bow[bow[first]]` mixes both: the inner indexed, the outer through `q`.
+- **A switch's index unsigned makes 0 the type's minimum** (ProcessAcne): node_is_bounded then lets
+  the compare tree test 1, 0, 2 by equality (a signed state gets a range test, 82s); and **`return`,
+  not `break`, after a case's last call** -- sibcall.c needs the return straight after the call
+  (75s). The loop's pointers set at the top of the level's block (the target loads them above the
+  first float store's test; set before the loop they come after the clamps, 340s).
+- **A record's stores written in the target's order** can be the answer outright (intCreateCtxTree:
+  reversed 13 words, as written 0) -- try both before reading sched1's dumps.
+- **CSE makes the longer-lived of two equal registers canonical at the copy** (BacktraceWordsParBT):
+  a record built through `r` and copied into the list head `w` keeps its stores off r only when
+  `w = r` comes after them; the copy first sends every later store through w.
+- **Open, diagnosed in place**: BacktraceWordsParBT (written: 218 words, the right size -- registers,
+  the f16 == 0 arm's shape and GCSE keeping the head link's score for the swap), ProcessVad (no new
+  shape: `cnt = sum / cnt` flips the priorities but loses $f0, 24 words), ExtendNodeWheel (if/else
+  with one shared `return 0` gives the first path the target's `b` to it, 115 words with the four
+  stores reordered: the test's load and `old` still one pseudo). Not reached:
+  CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust, the distance passes,
+  InitCalculateDistances, SplitUp_Finals and its twin.
+
+Hand-written in round 36c: `asr/acne.c` (ProcessAcne new, ControlAcne closed: the object whole, 6 of 6),
+`asr/ctxtree.c` (intCreateCtxTree new, with SetUserWordTables as its inline: 13 of 13; CTXVT's slots
+named as contextv2.c's table, the walk record AFREC 0x90), `asr/nbestdp.c` (BacktraceWordsParBT
+written OPEN: 12 of 14; NBRWORD and NBRESULT's fields typed, BTREC +16 the end state), `asr/casr.h`
+(+592 `uw_tables`, from pad584) -- 3 rows new to the map's byte-exact rows (3,708 bytes), no draft
+superseded; `src/lib/asr` 585 of 613 (582 of 610 before). No rows renamed (all had SOCOM 1's names). No
+tool changed (scratch: build/scratch/gcc/r36/ -- vt.py scores a unit's variants with their
+allocation priorities, allunits.py scores every asr unit, v_*.py the variants).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
