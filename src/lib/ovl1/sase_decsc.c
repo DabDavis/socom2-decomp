@@ -426,8 +426,8 @@ extern void func_0024DA70(float *pfSpec, int iLog, int iShift);
 
 /* the same synthesis over three sets of harmonics summed into the first's spectrum, each by its own pitch; the first set stores, the
  * others add */
-void func_00254730(int iPeaks1, int iPeaks2, int iPeaks3, int iLength, short *psOut, HarmSet *p1, HarmSet *p2, HarmSet *p3,
-		   float fPitch1, float fPitch2, float fPitch3)
+void func_00254730(float fPitch1, int iPeaks1, float fPitch2, int iPeaks2, float fPitch3, int iPeaks3, int iLength, short *psOut,
+		   HarmSet *p1, HarmSet *p2, HarmSet *p3)
 {
 	float fBin = fPitch1;
 	int iHalf = iLength >> 1;
@@ -498,8 +498,8 @@ void func_00254730(int iPeaks1, int iPeaks2, int iPeaks3, int iLength, short *ps
 	}
 }
 
-void func_00254A88(int iPeaks1, int iPeaks2, int iPeaks3, int iPeaks4, int iLength, short *psOut, HarmSet *p1, HarmSet *p2, HarmSet *p3, HarmSet *p4,
-		   float fPitch1, float fPitch2, float fPitch3, float fPitch4)
+void func_00254A88(float fPitch1, int iPeaks1, float fPitch2, int iPeaks2, float fPitch3, int iPeaks3, float fPitch4, int iPeaks4,
+		   int iLength, short *psOut, HarmSet *p1, HarmSet *p2, HarmSet *p3, HarmSet *p4)
 {
 	float fBin = fPitch1;
 	int iHalf = iLength >> 1;
