@@ -309,7 +309,18 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
  * code has it too; the seen test as an inline with `if (type != AIE_ENTITY) seen = Test(bit)` on its
  * own parameter or on a local (0x19C, 33 off), the ternary in an inline local (as it is), and an
  * unrelated if-on-a-parameter inline (the scale: the prologue rescheduled, 0x1A4 and 26 off) leave
- * the seen test's fill as it is */
+ * the seen test's fill as it is.
+ * The AI core round 35 (build/scratch/ai/v_gne35*.py): the scale inline's 0x1A4 is a coincidence (its
+ * c.eq.s and nop; the seen block unchanged). The fill follows the bit block's first instruction: ours
+ * is `srl v0` -- v0, which the false arm overwrites, so the slot takes it from the target block; the
+ * target's is `andi a1` (a1 untouched by the false arm), so its slot takes the false arm's `move
+ * v0,zero`, leaving the `b` a nop and a padded label. So the miss is the block's order and colours:
+ * igdump's PCode here is srl, andi, sll, lw, li, sllv, addu, lw, and -- where the target's li and sll
+ * share v1, impossible in this order (they interfere) -- the target's is andi, srl, li, sllv, sll, lw.
+ * Every spelling gives this block: the mask first, `/ 32` and `% 32`, the word through a char pointer,
+ * `(w >> (i & 31)) & 1`, a bool cast, helper inlines (mask and word helpers, the mask or the word in a
+ * local, the word by reference); `#pragma scheduling off` changes nothing (peephole or propagation off
+ * 0x1AC, common_subs off 0x1CC) */
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;
