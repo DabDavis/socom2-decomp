@@ -103,15 +103,18 @@ typedef struct ClientConnectsMsg {
     unsigned char key[64];
 } ClientConnectsMsg;                    /* 0x48 */
 
-/* OPEN (2 words): the target reloads the port global in the bnezl's slot (`lhu a3,0(v0)`) where
- * 2.96 here moves the value it tested (`move a3,v1`) -- `x ? x : y`, `x != 0 ? ...`, an if/else into
- * a local, and int arms all CSE the second load. The three KM_SetPublicKey calls are SOCOM 1's (it
- * kept two of them apart; here cross-jumping merges all three into one jal). */
+/* The port passed on is data_0067B7A8 when it is set, else data_0067A6E0. Round 25b closed round 23b's
+ * two-word open (the target reloads data_0067B7A8 in the bnezl's slot where `x ? x : y`, `x != 0 ? ...`, an
+ * if/else into a local and int arms all let CSE reuse the tested value): the test is `== 0`, data_0067A6E0's
+ * arm first -- the reload is the else arm, the jump's target, where CSE's path does not carry the tested
+ * load. The three KM_SetPublicKey calls are SOCOM 1's (it kept two of them apart; here cross-jumping
+ * merges all three into one jal). */
 int ClientConnectsPacketHandler(int nConnection, int nUnused, int nClient, ClientConnectsMsg *pMsg)
 {
     char szIp[16];
     DmeWorld *pWorld = 0;
     int nWorld = nConnection;
+    unsigned short nPort;
 
     if (pMsg == 0)
         return -1;
@@ -128,7 +131,11 @@ int ClientConnectsPacketHandler(int nConnection, int nUnused, int nClient, Clien
         else
             KM_SetPublicKey(DmeToRtMsgConnectionIndex(nConnection), pMsg->nClient, pMsg->key);
     }
-    func_00614B18(nWorld, pMsg->nClient, szIp, data_0067B7A8 ? data_0067B7A8 : data_0067A6E0);
+    if (data_0067B7A8 == 0)
+        nPort = data_0067A6E0;
+    else
+        nPort = data_0067B7A8;
+    func_00614B18(nWorld, pMsg->nClient, szIp, nPort);
     return sizeof(ClientConnectsMsg);
 }
 
