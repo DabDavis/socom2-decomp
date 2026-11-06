@@ -39,7 +39,7 @@ public:
     unsigned char m_action_id;   // 0x4
     C2DBitmap m_2DBitmap;   // 0x10
     char m_name[64];   // 0x90
-    unsigned char m_d0;   // 0xd0
+    signed char m_colorset;   // 0xd0: its colour pair in the icons' table (Render_ver_2 reads it with lb)
     bool m_active;   // 0xd1
 };
 
@@ -377,6 +377,115 @@ void CActionTxtrMachine::SpecializeActionString(CNodeAction *pNodeAction)
         if (ctrl)
             ctrl->MPBomb_TimerAvailable(false);
     }
+}
+
+/* the icons' colours as pulse pairs (OVL1 bss 0x40C190: four pairs of a base and a swing, which the
+ * unit's initialiser builds -- __construct_array over eight CPnt3Ds -- and sets), the pulse (0x40D750,
+ * 0 to 1 and back), its direction and rate (.data 0x3DC710, 1; 0x3DC718, 5) and the colour last made
+ * (bss 0x40D758); the main icon's place and size (.data 0x3DC628-0x3DC640) and its half width (bss
+ * 0x40C160) -- the unit's statics, by address until its initialiser is written */
+extern CPnt3D data_0040C190[4][2];
+extern float data_0040D750;
+extern float data_003DC710;
+extern float data_003DC718;
+extern CPnt3D data_0040D758;
+extern float data_003DC628;   /* the main icon's centre x */
+extern float data_003DC630;   /* its top */
+extern float data_003DC638;   /* an icon's width (the side icons 12 further apart) */
+extern float data_003DC640;   /* its height */
+extern float data_0040C160;   /* its half width */
+
+/* the icons laid out, faded and coloured: the first in the middle, the next two to its right and
+ * left -- the rest off -- each pulsing in its colour pair (3, a door the driver's sides cannot
+ * open), and the prompt written; false with nothing to show (SOCOM 1's
+ * CActionTxtrMachine::Render_ver_2, 0x3D6EA0 there: its four colour statics are made and no longer
+ * read, the colours come from the pair table). Byte-exact as first written (the HUD's round 63) but
+ * the colour set: a SIGNED local (signed char, char or int) indexed through `(unsigned char)` -- the
+ * field read with lb and narrowed by andi as the target; an unsigned char local makes it lbu and its
+ * 3 a daddiu */
+bool CActionTxtrMachine::Render_ver_2(CZActionBitmap &bmp)
+{
+    if (!size())
+        return false;
+    if (!m_driver)
+        return false;
+    if (!m_driver->GetKit())
+        return false;
+
+    static CPnt3D mainicon_normal(128.0f, 128.0f, 128.0f);
+    static CPnt3D sideicon_normal(100.0f, 100.0f, 100.0f);
+    static CPnt3D mainicon_nvg(0.0f, 128.0f, 0.0f);
+    static CPnt3D sideicon_nvg(0.0f, 128.0f, 0.0f);
+
+    data_0040D750 += data_003DC718 * (zVid.frameTime * data_003DC710);
+    if (data_003DC710 == 1.0f) {
+        if (data_0040D750 > 1.0f) {
+            data_0040D750 = 1.0f;
+            data_003DC710 *= -1.0f;
+        }
+    } else if (data_0040D750 < 0.0f) {
+        data_0040D750 = 0.0f;
+        data_003DC710 *= -1.0f;
+    }
+
+    CActionTxtr *pActionTxtr = (*this)[0];
+
+    pActionTxtr->m_2DBitmap.Load(data_003DC628 - data_0040C160, data_003DC630, data_003DC628 + data_0040C160,
+                                 data_003DC630 + data_003DC640, pActionTxtr->m_texhandle);
+    pActionTxtr->m_2DBitmap.m_fade_dx = 28.0f;
+    pActionTxtr->m_2DBitmap.m_fade_limit = 90.0f;
+    pActionTxtr->m_2DBitmap.TickFade();
+
+    CNodeAction *pNodeAction = m_driver->GetReticuleAction(true);
+    signed char set = pActionTxtr->m_colorset;
+
+    if (pNodeAction && pActionTxtr->m_action_id == 13 && !(m_driver->m_teamflags & pNodeAction->m_teammask))
+        set = 3;
+    CPnt3D *pair = data_0040C190[(unsigned char)set];
+
+    data_0040D758 = pair[0] + pair[1] * data_0040D750;
+    pActionTxtr->m_2DBitmap.SetColor(data_0040D758.x, data_0040D758.y, data_0040D758.z);
+    pActionTxtr->m_2DBitmap.On();
+    SpecializeActionString(pNodeAction);
+
+    unsigned int count = size();
+    unsigned int ll = 0;
+    unsigned int rr = 0;
+
+    for (unsigned int ii = 1; ii < count; ii++) {
+        pActionTxtr = (*this)[ii];
+        if (ii < 3) {
+            if (ii & 1) {
+                float x1 = data_003DC628 + (float)(rr + 1) * (12.0f + data_003DC638);
+
+                pActionTxtr->m_2DBitmap.Load(x1 - data_0040C160, data_003DC630, x1 + data_0040C160,
+                                             data_003DC630 + data_003DC640, pActionTxtr->m_texhandle);
+                rr++;
+            } else {
+                float x1 = data_003DC628 - (float)(ll + 1) * (12.0f + data_003DC638);
+
+                pActionTxtr->m_2DBitmap.Load(x1 - data_0040C160, data_003DC630, x1 + data_0040C160,
+                                             data_003DC630 + data_003DC640, pActionTxtr->m_texhandle);
+                ll++;
+            }
+            pActionTxtr->m_2DBitmap.GetTrans();
+            pActionTxtr->m_2DBitmap.m_fade_dx = 19.0f;
+            pActionTxtr->m_2DBitmap.m_fade_limit = 28.0f;
+            pActionTxtr->m_2DBitmap.TickFade();
+
+            signed char set = pActionTxtr->m_colorset;
+
+            if (pNodeAction && pActionTxtr->m_action_id == 13 && !(m_driver->m_teamflags & pNodeAction->m_teammask))
+                set = 3;
+            CPnt3D *pair = data_0040C190[(unsigned char)set];
+
+            data_0040D758 = pair[0] + pair[1] * data_0040D750;
+            pActionTxtr->m_2DBitmap.SetColor(data_0040D758.x, data_0040D758.y, data_0040D758.z);
+            pActionTxtr->m_2DBitmap.On();
+        } else
+            pActionTxtr->m_2DBitmap.Off();
+    }
+    return true;
 }
 
 /* the driver's pickup when the HUD's first icon is a pickup's (4, the primary; 5, the secondary):
