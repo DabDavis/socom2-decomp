@@ -24,15 +24,13 @@
  * OPEN: 0x63DD18 (the create: the target lays the allocation out after the option copy, jumping
  * back to it, and keeps the new record in one register through the copy -- 95 words with a local
  * copy, 111 without), 0x63EBA0 (the raw send: the length test's `return 1` is a fall-through `b`,
- * 33s), 0x63E4A0 (11:
- * the index lives in v1 and the -2 in v0), 0x63E5E8 (10, the connect), 0x63F168 and 0x6419E8 (2
+ * 33s), 0x63E5E8 (10, the connect), 0x63F168 and 0x6419E8 (2
  * each: the call's arguments scheduled the other way -- the -1 key-manager id in the delay slot),
  * 0x63ECC8 (round 12b, 93s: the receive -- the reliable test reads the header's first word, `lw;
  * andi 6`, as a word-wide `& 6` gives; the loop's message pointer lives in a0 where the target's is
  * v0, and the endpoint path's free does not cross-jump with the connection's). Round 12b: 0x63E928
  * (the connection send) is byte-exact with RT_UDP_BARRIER below, a stand-in. Not written: the
- * datagram handlers 0x63EF38, 0x63F4C8, 0x63FA28, 0x63FC08, 0x6400A8, 0x6404D8, 0x640940, 0x640B70,
- * 0x640D38, 0x640EA0, 0x641308, 0x641490, 0x641748, 0x6418A0, 0x641BA0. */
+ * datagram handlers 0x63EF38, 0x63F4C8, 0x6400A8, 0x6404D8, 0x640940, 0x640EA0, 0x641490. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern void *memcpy(void *d, const void *s, unsigned int n);
@@ -1471,7 +1469,7 @@ void func_00642200(void *pUpnp, int nError, int a2, char *szAddress, unsigned sh
         pUdp->pfnCallback(pUdp, -2, 5, 15, pUdp->pUser);
 }
 
-/* a payload appended to the datagram in the send ring its header matches (0x63FC08; 0x63F9xx's reliable path
+/* a payload appended to the datagram in the send ring its header matches (0x63FC08; the connection send 0x63E928
  * calls it): the ring's own copy first (func_00631848), then the first message with an equal header grown in
  * place and its trailing word zeroed. The found arm ends in a `break`, so loop.c moves it out of the loop to the
  * barrier nearest before its target -- past the `return 10`, the layout's jump over it; a plain `while` gives
@@ -1511,10 +1509,10 @@ int func_0063FC08(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, void *p
     return 0;
 }
 
-/* an acknowledgement (0x641308; pData a type byte and a sequence, read as they lie): the queued datagram it
- * names dropped from the connection's send ring, and the connection's state moved on by what that datagram
- * was -- a close flag (0x40), a connect (0x10), or a length-64 message with the top flag of its second byte.
- * Round 25b, unwritten before. */
+/* an acknowledgement, by what it does (0x641308; pData a type byte and a sequence, read as they lie): the queued
+ * datagram with that type and sequence dropped from the connection's send ring, and the connection's state set
+ * by that datagram's header: flag 0x40 gives state 11, flag 0x10 state 4, and a non-empty one whose first word
+ * masks to 0x408000 (length 64, its second byte's top bit) state 11. Round 25b, unwritten before. */
 int func_00641308(RT_UDP *pUdp, int nConn, void *pData)
 {
     RT_UDP_HEADER hdr;
@@ -1608,8 +1606,8 @@ int func_00641BA0(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv, unsign
 }
 
 
-/* this end's public key to the peer (0x640B70): written into the key message still queued in the send ring, if
- * there is one, else sent new as a type-4 datagram (length 64, flagged 0x40 and 0x80). No loop: the backward
+/* a key to the peer (0x640B70): written into the message still queued in the send ring whose header masks to
+ * 0x408000, if there is one, else sent new as a type-4 datagram (length 64, flagged 0x40 and 0x80). No loop: the backward
  * branch is a rotated `do { ... break; ... } while (0)` (round 22b's rule) -- and the rotation orders the frame:
  * pData and nLength, first in insn order once the head has moved below, take their slots before pMsg.
  * Round 25b, unwritten before. */

@@ -24,8 +24,7 @@
  * order -- sched1 issues the three entry stores by register weight, the base's and the 7's deaths
  * putting nState first; every source order and a chained -1 tried). Not written: the create 0x6395B8 (its
  * record reloaded from the stack after every store, as the target does, but the defaults' order),
- * 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63AAC0, 0x63ACA0, 0x63B0B8, 0x63B708, 0x63B9A0, 0x63BED0,
- * 0x63C4F0.
+ * 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63ACA0, 0x63B708, 0x63B9A0, 0x63C4F0.
  * Round 22b: 0x63A618 (a send to one peer or every one in use), 0x63B2F0 (a peer found by its second
  * address: the first comparison's verdict is a variable of its own, never read -- assigned to the one
  * verdict variable twice, the registers move) and 0x63C3D0 (the leave message: its first loop's state
@@ -546,9 +545,9 @@ void func_0063B048(RT_P2P *pP2p, int nConn, int nError)
  * sibling call (README "The recogniser and Medius by hand", round 7b), and these three are jals */
 #define RT_P2P_RELAY(p, c, e)   do { func_0063C170(p, c, e); } while (0)
 
-/* a connection's address learned (RT_P2P_RELAY's event 5, 0x63B0B8): kept on the peer it belongs to; its other
- * connection already up, this one closed, else the peer has lost its way and func_0063C170 resets it. A connection
- * no peer holds is closed. Round 25b, unwritten before. */
+/* a connection's address learned (RT_P2P_RELAY's event, 0x63B0B8): kept on the peer that holds the connection; with
+ * the peer's other connection up this one is closed, else func_0063C170 is told. A connection no peer holds is
+ * closed. The second arm writes its call first, so the two calls cross-jump. Round 25b, unwritten before. */
 void func_0063B0B8(RT_P2P *pP2p, int nConn, int nError)
 {
     char szAddress[16];
@@ -891,9 +890,9 @@ int func_0063C3D0(RT_P2P *pP2p, int nLast, int nFirst)
     return 0;
 }
 
-/* the session master's move on (0x63BED0): with the master leaving (state 5), no peer still connecting (1, 2)
- * and some joined (3, 4), it is marked 6 and told how many, and every joined peer gets the magic alone, its
- * pending join flag answered through pfnLeave. Round 25b, unwritten before. */
+/* the peers' state counted (0x63BED0): with a peer in state 5, none in 1 or 2 and some in 3 or 4, that peer goes
+ * to state 6, pfnReset is told it and the count plus one, and each peer in 3 or 4 is sent the magic alone (7),
+ * pfnLeave told where its byte at 0x11 was set. Round 25b, unwritten before. */
 int func_0063BED0(RT_P2P *pP2p)
 {
     unsigned int nMagic;

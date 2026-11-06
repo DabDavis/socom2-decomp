@@ -344,6 +344,10 @@ int func_0061F410(int nConnection, int nUnused, int nClient, unsigned char *pMsg
     return 4;
 }
 
+/* OPEN (3 words, round 25b's reading of sched1's dump): the two loads that feed the store tie on priority and
+ * *pMsg wins on register weight (pMsg dies there: 0 against the pLocal reload's 1), so the target's first
+ * fall-through insn -- the reload, in the `beq`'s slot -- comes third here. Seven spellings of the store, five of its
+ * liveness and the positive-guard sweep (d=2 at best) leave it. */
 int func_0061F7B0(int nConnection, int nUnused, int nClient, int *pMsg)
 {
     DmeWorld *pWorld = 0;
@@ -448,8 +452,9 @@ extern int rt_circ_buf_destroy(void *pCirc);
 extern void (*data_006869C8[])(int nClient, int nStream);   /* the streams' end callbacks, by type */
 extern int data_0067E948[];
 
-/* a data stream's end (0x61F2B8; SOCOM 1 has none): the type's callback told, the stream closed unless this
- * client is the session's own and the type wants it kept. Round 25b, unwritten before. */
+/* a data stream's end, by what it does (0x61F2B8): the type's callback told; if this client's index is func_00615090's
+ * value and the stream's byte 5 and the type's word are set only the flag at 4 is set, else the state goes to 1 and
+ * the buffers are freed. Round 25b, unwritten before. */
 int func_0061F2B8(int nConnection, int nUnused, int nClient, unsigned char *pMsg)
 {
     unsigned char *pStream = 0;
@@ -552,8 +557,8 @@ int func_0061E510(int nConnection, int nUnused, int nClient, DmeFragMsg *pMsg)
     return pMsg->nLength + 20;
 }
 
-extern unsigned char data_0065117C;     /* this client has joined */
-extern int data_0067C5C0;               /* 1: the join was given up */
+extern unsigned char data_0065117C;     /* set when this handler accepts */
+extern int data_0067C5C0;               /* at 1 the accept leaves instead (0x61E128) */
 extern void *data_0067C5B8;             /* the join callback */
 extern void *data_006511A0;             /* ... and its user data */
 extern int CurrentNetTime;
@@ -579,8 +584,8 @@ typedef struct DmeJoinFailure {         /* what the join callback is told */
     void *pUser;                        /* 0x04 */
 } DmeJoinFailure;
 
-/* the session accepted this client (0x61E128): state joined and reported, the time and blocks taken from the
- * message; a join already given up leaves instead and tells the callback. Round 25b, unwritten before. */
+/* an accept, by what it does (0x61E128): state joined and reported, the time and blocks taken from the message;
+ * with data_0067C5C0 at 1 it leaves instead and tells the callback 7. Round 25b, unwritten before. */
 int func_0061E128(int nConnection, int nUnused, int nClient, DmeJoinAccept *pMsg)
 {
     char *pClient = 0;

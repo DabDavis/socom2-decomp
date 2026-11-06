@@ -465,7 +465,6 @@ void func_006265F0(GRID *p)
         func_00624510(&p->pMembers[i]);
 }
 
-/* 0x626658: not written */
 
 /* A client leaves the group (and, in a growing group spoken in here, the others are told). */
 void func_00626788(GRID *p, unsigned int nId)

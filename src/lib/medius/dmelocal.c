@@ -2957,9 +2957,10 @@ extern int func_0063A590(int nConnection);
 extern int rt_time_start(unsigned int *pStart);
 extern int rt_msg_client_disconnect(int nConnection);
 
-/* SOCOM 1's NetDisconnect grown (0x61C150; the name is Dme.c's locked wrapper's): a media stream closed, the
- * peer transport (world 0) or the message client's connection dropped, the world's records cleared. World 0
- * polls the transport's update for half a second as SOCOM 1's polled rt_msg_client_update_all. Round 25b. */
+/* SOCOM 1's NetDisconnect grown (0x61C150; NetDisconnect 0x623900, Dme.c's wrapper, calls it): StreamMedia's 0x643E48 run where its
+ * 0x644060 says 1, then in states 1-3 the peer transport (world 0) or the message client's connection dropped, and
+ * the world's records cleared. World 0 polls the transport for half a second, as SOCOM 1's polled
+ * rt_msg_client_update_all. Round 25b, unwritten before. */
 int func_0061C150(unsigned int nWorld)
 {
     unsigned int tStart[2];
@@ -3082,8 +3083,8 @@ typedef struct DmeResolveParams {       /* SOCOM 1's NetResolveAddr's */
 
 extern int func_00639870(int nConnection, void *pAddress, void *pfnCallback);
 
-/* SOCOM 1's NetResolveAddr grown (0x6184E8, after NetSetDefaultResolveAddrParams as SOCOM 1's follows it; the
- * name is Dme.c's wrapper's): answered at once from the last report when the transport is up and has one, else
+/* SOCOM 1's NetResolveAddr grown (0x6184E8, after NetSetDefaultResolveAddrParams as SOCOM 1's follows it;
+ * Dme.c's locked wrapper 0x621B28 calls it): answered at once from the last report when the transport is up and has one, else
  * the transport brought up and the resolve server asked. Each `status 23` a copy of its own, cross-jumped into
  * the last. Round 25b, unwritten before. */
 int func_006184E8(DmeResolveParams *pParams, DmeConnectStatus *pStatus)
@@ -3135,5 +3136,59 @@ int func_006184E8(DmeResolveParams *pParams, DmeConnectStatus *pStatus)
         }
     }
     pStatus->nResult = DME_OK;
+    return DME_OK;
+}
+
+extern unsigned int strlen(const char *s);
+extern int rt_msg_client_udp_set_default_options(void *pParams);
+extern int rt_msg_client_enable_udp(void *pParams);
+extern int rt_msg_client_send_udp(unsigned char *pbSent, char *szIp, unsigned short nPort);
+
+typedef struct DmeUdpParams {           /* rt_msg_client's UDP options (4 bytes read here) */
+    void (*pfnCallback)(char *szIp, unsigned short nPort);
+} DmeUdpParams;
+
+/* an address asked for its reachability (0x6195E0): the message client's UDP brought up once, a pending-peer slot
+ * taken and the probe sent; a null or empty address ends every pending one instead. Round 25b, unwritten before. */
+int func_006195E0(char *szIp, void (*pfnCallback)(int nEvent, char *szIp, int nValue))
+{
+    unsigned short nPort;
+    unsigned char bSent;
+    DmeUdpParams params;
+    unsigned int nSlot;
+    int result;
+
+    if (szIp == 0 || strlen(szIp) == 0)
+        return func_0061CFF0();
+    if (strlen(szIp) == 0)
+        return DME_ERR_ARGUMENT;
+    if (pfnCallback == 0)
+        return DME_ERR_ARGUMENT;
+    if (data_006511CC != 1) {
+        result = NetMapMsgClientError(rt_msg_client_udp_set_default_options(&params), 24);
+        if (result != DME_OK)
+            return result;
+        params.pfnCallback = func_0061CBB8;
+        result = NetMapMsgClientError(rt_msg_client_enable_udp(&params), 24);
+        if (result != DME_OK)
+            return result;
+        memset(data_0066CF78, 0, sizeof(data_0066CF78));
+        data_006511CC = 1;
+    }
+    result = func_0061CEF0(szIp, &nSlot, &nPort);
+    if (result != DME_OK)
+        return result;
+    data_0066CF78[nSlot].nState = 1;
+    data_0066CF78[nSlot].nPort = nPort;
+    data_0066CF78[nSlot].pfnCallback = pfnCallback;
+    strncpy(data_0066CF78[nSlot].szIp, szIp, 16);
+    result = NetMapMsgClientError(rt_msg_client_send_udp(&bSent, data_0066CF78[nSlot].szIp,
+                                                         data_0066CF78[nSlot].nPort), 24);
+    if (result != DME_OK)
+        return result;
+    if (bSent == 1) {
+        data_0066CF78[nSlot].nState = 2;
+        rt_time_get_time_stamp(data_0066CF78[nSlot].tStart);
+    }
     return DME_OK;
 }
