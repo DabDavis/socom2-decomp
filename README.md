@@ -2118,6 +2118,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     over four-word walkers held in memory and stepped by -- with start_ = (start_ + n) % capacity_, else
     copy(last, end(), first) over register walkers wrapping to the storage; size_ -= n; `return begin() +
     pos`.
+- **Tells from the online lobby, round 28** (the zdb node rows of its second range, the integrator's until now: a new
+  node_io.cpp -- OVL1 0x310980-0x311CBF, SOCOM 1's unit name by the press beta's CreateInstance(CSaveLoad &) assert, 23 of
+  24 -- with eleven rows never matched byte-exact (CLight::Read, CNode::CreateInstance / Read / ReadChildren /
+  ReadDataBegin / Read(CSaveLoad &, CNode *), CModel::Read / Create, the model vector's erase / remove / remove_copy) and
+  the copies only drafts held; CFRect's two constructors in a new zmath_frect.cpp, 0x306620-0x30666F, ours, sorting
+  before zmath_main.cpp as the zmath units link alphabetically; 17 rows named; the node rows pass to the zdb world from
+  its round 29):
+  - a bitfield set in a constructor's MEM-INITIALIZER LIST is a word access even when that constructor is inlined into
+    another function; set in the body MW narrows it to a byte (znode.h's NODE_PARAMS facade); a 16-bit field next to 16
+    bits of bitfields, all declared `unsigned int`, is copied as one word by the implicit operator= while reads and
+    stores still narrow (lhu / sh / sb);
+  - an inline whose tree is taller than the level has only its body inlined: every call in it goes out of line, the
+    copies follow the caller last call first, and remove_copy comes at the unit's end (0x311AD0-0x311C50);
+  - a by-value parameter's stack copy is made before the inline's own null test, in that test's delay slot
+    (CModel::Create); with a key reused across two loops the second loop's key and iterator swap registers -- declaring
+    the key in each `if (T *k = f())` keeps them; `bool b = !f(); if (b)` gives sltu / xori / andi, `if (!f())` branches
+    on v0 directly; a local declared uninitialised ahead of the one computed first is numbered first;
+  - `bool result = true; ... return result;` across calls folds to `li` in every spelling tried: the target's daddiu plus
+    a saved register matches only under `#pragma opt_propagation off` placed INSIDE the function body -- placed before
+    the definition, the template members instantiated there compile under it too; an inline setter taking the value by
+    value keeps it in a register for two stores, a stack local whose address was taken is reloaded.
 - **Tells from the game states, round 49** (C2DMessage_Q::Tick 0x2B5DB0 -- 38 off since round 48 -- and C2DMessage_Q::Draw
   0x2B5830, unwritten before and named by its vtable slot 0xC, byte-exact; CMission::UpdateLocalGame 0x2A9EE0 and
   DestroyNetGame 0x2A9EF0 hand-written over their drafts; fts_net_persona.cpp's four lobby / clan placeholders respelled):
