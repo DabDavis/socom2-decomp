@@ -98,21 +98,45 @@ public:
     unsigned char _0[4];
 };
 
-/* a SEAL's body (zbody.h's CBody: only the part's place in space, OVL1 0x2869D0) */
+/* a SEAL's body (zbody.h's CBody: only the part's place in space, OVL1 0x2869D0, and a part
+ * found by name, 0x28E7B0) */
 class CBody {
 public:
     void PartInSpace(CZBodyPart *part, const CPnt3D *offset, CPnt3D *out, CQuat *q) const;
+    CZBodyPart *FindPart(const char *name);
 
     unsigned char _0[4];
 };
 
-/* a SEAL: its matrix (the second virtual), its controller (CEntity's at 0xC0), its body's state
- * and wanted peek (SOCOM 1's CBody::m_state at 0x11D, SOCOM II's a halfword at 0x174; its
- * m_desiredPeek at 0x305, SOCOM II's 0x375) and the zoomed flag (SOCOM 1's at 0xF5C) */
-class CZSealBody {
+/* an entity (zentity.h's CEntity, 0x170 bytes: only what the camera reads -- zentity.h's
+ * CEntityCtrl has no SEAL's mode, which the zoom tests through this header's): its matrix (the
+ * second virtual, SOCOM 1's GetPosW), its type (a byte under -enum min), its position, its
+ * controller, its flag word, and the list of every entity (the death camera walks it) */
+class CEntity {
 public:
-    virtual ~CZSealBody();
+    enum TYPE { ENT_TYPE_UNKNOWN = 0, ENT_TYPE_RECYCLE = 1, ENT_TYPE_SEAL = 2, ENT_TYPE_TURRET = 3 };
+
+    virtual ~CEntity();
     virtual CMatrix *GetMatrix();
+
+    unsigned char _4[0x10 - 4];
+    TYPE m_type;   // 0x10
+    unsigned char _11[0x1c - 0x11];
+    CPnt3D m_posW;   // 0x1c (the node's position)
+    unsigned char _28[0xc0 - 0x28];
+    CEntityCtrl *m_control;   // 0xc0
+    unsigned char _c4[0xe0 - 0xc4];
+    unsigned int _e0 : 12;   // 0xe0: the flag word
+    unsigned int m_isAlive : 1;
+    unsigned int _e0_13 : 19;
+    unsigned char _e4[0x170 - 0xe4];
+};
+
+/* a SEAL (SOCOM II's CEntity at 0, its CBody at 0x170 -- the RTTI's base list, 0x3EFD20): its body's
+ * state and wanted peek (SOCOM 1's CBody::m_state at 0x11D, SOCOM II's a halfword at 0x174; its
+ * m_desiredPeek at 0x305, SOCOM II's 0x375) and the zoomed flag (SOCOM 1's at 0xF5C) */
+class CZSealBody : public CEntity, public CBody {
+public:
     /* the SEAL a node belongs to, if any (zseal.h's static) */
     static CZSealBody *GetSeal(zdb::CNode *node);
     /* the head turned to a pitch (OVL2 0x5AF470: SOCOM II's has no second float) */
@@ -125,16 +149,9 @@ public:
     /* whether a player drives it (zseal.h's inline: the controller tested, IsPlayer called) */
     bool IsPlayer();
 
-    unsigned char _4[0x1c - 4];
-    CPnt3D m_posW;   // 0x1c (CEntity's: the node's position)
-    unsigned char _28[0xc0 - 0x28];
-    CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0xe0 - 0xc4];
-    unsigned int _e0 : 12;   // 0xe0: CEntity's flag word
-    unsigned int m_isAlive : 1;
-    unsigned int _e0_13 : 19;
-    unsigned char _e4[0x170 - 0xe4];
-    CBody m_body;   // 0x170 (SOCOM 1: 0x110; the stand-in's first word only)
+    /* the CBody base (SOCOM 1's at 0x110; the stand-in's first word only) */
+    CBody &Body() { return *this; }
+
     short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE: the body's, at its +4)
     unsigned char _176[0x2e8 - 0x176];
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c: the body's root part)

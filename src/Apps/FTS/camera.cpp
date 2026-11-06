@@ -521,7 +521,7 @@ CPnt3D GetFirstPersonCamPos(CAppCamera *cam)
 
     if (cam->m_entity == cam->m_bc) {
         if (cam->m_entity && cam->m_skel_root)
-            cam->m_bc->m_body.PartInSpace(cam->m_skel_root, 0, &CamPoint, 0);
+            cam->m_bc->PartInSpace(cam->m_skel_root, 0, &CamPoint, 0);
         else
             CamPoint = CPnt3D::zero;
         if (cam->m_bc->m_state != 2) {
@@ -572,7 +572,7 @@ CPnt3D CAppCamera::GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen)
         if (part != m_bc->m_root)
             part = m_bc->m_root;
         if (m_entity && part)
-            m_bc->m_body.PartInSpace(part, 0, &CamPoint, 0);
+            m_bc->PartInSpace(part, 0, &CamPoint, 0);
         else
             CamPoint = CPnt3D::zero;
         float lift;
@@ -658,7 +658,7 @@ extern "C" CPnt3D func_0029A660(CAppCamera *cam, CPnt3D *CamOffset, float *tethe
 
     if (cam->m_entity == cam->m_bc) {
         if (cam->m_entity && cam->m_skel_root)
-            cam->m_bc->m_body.PartInSpace(cam->m_skel_root, 0, &CamPoint, 0);
+            cam->m_bc->PartInSpace(cam->m_skel_root, 0, &CamPoint, 0);
         else
             CamPoint = CPnt3D::zero;
         CamPoint.y += 10.0f;
@@ -1175,7 +1175,7 @@ public:
 /* the SEAL's top blend (its body's blend stack at +0x50: the two offsets added apart) */
 inline CZBodyAnimBlend *TopBlend(CZSealBody *seal)
 {
-    return ((RTStack<CZBodyAnimBlend> *)((unsigned int)&seal->m_body + 0x50))->Top();
+    return ((RTStack<CZBodyAnimBlend> *)((unsigned int)&seal->Body() + 0x50))->Top();
 }
 
 /* the player and the HUD (fts_player.cpp's CftsPlayer: only its SEAL; hud_main.cpp's CHUD) */
