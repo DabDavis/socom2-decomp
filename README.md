@@ -14153,6 +14153,59 @@ open37.py lists the range's open rows and their units, rank.py ranks unwritten r
 mnemonic ratio, vsplit.py writes a `//==` probe's variants as units, sdiff.py side by side, p_xj.c the
 cross-jump probe).
 
+**Round 38c: four of the casr object's unwritten rows by SOCOM 1's bodies -- the data activation, the
+confusion callback (both byte-exact), the iso-word result and the confusion check (written, open).**
+
+- **A variable reused for a second value takes both uses' preferences** (casrActivateData, 0x620): the
+  session send's argument `arg` (a2 for `_tosControl`) reused for the version pointer gives the memcmp's
+  `addiu a2; move a0,a2`; a fresh pointer variable is coalesced straight into a0. **An unsigned switch
+  over 0, 1 and an empty case 2** is the target's tree for a two-arm check -- `beql` on 1, then `bnez`
+  into case 0's body (the test for 2 vanishes: it and the default both reach the end); cases 0 and 1
+  alone test 0 first, signed or not. Every mismatch one `goto` to a single error call written after the
+  send (cross-jumping otherwise pairs only the arms' own calls). A deactivation's `if (...) return 1;
+  return 0;` is a store-flag cross-jumped into the final send's `sltu`; the `return 0` shared with the
+  no-data test stays two branches.
+- **The genders' base a pointer of its own** for the read after the loop: `g[3]` is the unrolled loop's
+  register plus 12; `sd->gender[3]` in two arms is PRE-hoisted into a register of its own.
+- **Splitting `||` into two `if ... return 37;` adds two RTL insns** (each return is a set and a jump
+  inside the body) and so moves loop.c's unroll factor (cbCheckConfusion's first loop: 23 insns in the
+  second pass, by four; 25, by two -- as the target); and only a region that small is scheduled across
+  its blocks. Reads above a test in the unroller's odd-count copy, which is in no region, are the
+  source's statements there: the word and the score read into locals before the checks.
+- **One variable across two loops is one pseudo**: the second loop's word, live across its calls, took
+  an s-register in the first loop too (and shifted every temporary of the first loop one register up);
+  a variable per loop, while the score's variable shared by both loops reaches the priority tie
+  (4 refs over 8 insns, 10000) that the lower pseudo wins -- declared before the word, score a0, word a1,
+  the walker a2, as the target. The same rule placed casrCheckUserWordConfusion's s-registers: the handle
+  check's result and every later result one variable, each loop its own counter.
+- **c-typeck rebuilds every pointer sum pointer first**: `&cc->conf[word]`, `cc->conf + word`, `&word[...]`
+  all give `addu s0,base,index`; the target's `addu s0,index,base` is an integer sum written index first
+  (`(CONFREC *)(word * sizeof(CONFREC) + (unsigned int)cc->conf)`; written base first it misses).
+- **A float result narrowed only at its test** (`move a0,v0`, `andi` into a temporary, `sh` of the whole
+  word) is an unsigned int compared through an `(unsigned short)` cast, not an unsigned short variable.
+- **Two inits of a list walk spelled `-word - 1`** (cbIsoWordRecognised): with `word = -word` once,
+  GCSE's PRE copies the first `word - 1` into the second loop, the negation has one use and combine makes
+  it `nor`; spelled twice the negation is CSE's common value and combine's three-insn split folds each
+  pre-test into `beqz` on it. A second logistic arm written `+ -4.467109f` lets cross-jumping share both
+  arms' `add.s; jal expf`; reload's stack slots go by pseudo number (declaration order).
+- **Open, diagnosed in place**: cbIsoWordRecognised (written, 31 words, the right size: registers in the
+  head block only -- sched1 issues the garbage list's argument-based load beside len, before the vt store
+  and the index shift, so local-alloc and reload pick other registers); casrCheckUserWordConfusion
+  (written, 584 of 591 words, every variable's s-register the target's: the target keeps &c->cb, the lab
+  arrays' and the two stack arrays' addresses in s-registers throughout, spilling the saved host pointer,
+  where ours addresses them by offset); the Calculate_NbrOfItemNodes twins (three variables, one per use,
+  32-33: worse than the shared 19). Not reached: casrDoSpelling, casrCreateResult, the Chinese builders,
+  CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust, the distance passes, InitCalculateDistances.
+
+Hand-written in round 38c: `asr/casr.c` (casrActivateData and cbCheckConfusion new, byte-exact;
+cbIsoWordRecognised and casrCheckUserWordConfusion written OPEN; the result records RESREC/RESWORD/RESITEM
+typed and RESULT's reason, ISONBEST from isowdp.c's command 4, TREEWORD, CONFCHECK/CONFREC, CTXVT slots
+16-17: 63 of 65), `asr/casr.h` (LANGVT slots 18 GetAnySpeechGarbagePhenome and 62 GetpSmoothMatrix,
+language.c's table; CASR +616 `anyspeech`) -- 2 rows new to the map's byte-exact rows (2,636 bytes), no
+draft superseded; `src/lib/asr` 590 of 622 (588 of 618 before). No rows renamed (all four had SOCOM 1's
+names). No tool changed (scratch: build/scratch/gcc/r38/ -- dscore.py counts a function's differing
+instructions after alignment, vt.py and the iso/v*.py variant sets, fbits.py, rd.py).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
