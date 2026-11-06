@@ -365,7 +365,7 @@ extern void func_00251B38(float *pfRe, float *pfIm, int n, float *pfOut);
 
 /* the frame's voiced synthesis: each harmonic's amplitude and phase put at its bin as a complex spectrum (the phase by a 256-entry
  * table, 256 / 2 pi = 40.74), the rest cleared, the inverse FFT, and the first half cross-faded into the previous frame's tail */
-void func_00254510(int iPeaks, int iLength, short *psOut, float *pfSpec, const float *pfPhase, const float *pfAmp, float fPitch)
+void func_00254510(float fPitch, int iPeaks, int iLength, short *psOut, float *pfSpec, const float *pfPhase, const float *pfAmp)
 {
 	float afRe[260];
 	float afIm[260];
