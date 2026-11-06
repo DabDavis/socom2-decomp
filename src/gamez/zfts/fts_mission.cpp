@@ -2147,6 +2147,12 @@ class CCamera {
 public:
     static void RegisterAnimCommands();   /* 0x293890 */
 };
+/* a box-shaped DI (node_world.h's CDIBBox: only its static, the unit box's six faces built once --
+ * OVL1 0x2DC7A0, named by the engine core's round 23) */
+class CDIBBox {
+public:
+    static void SetCDIBBox();
+};
 }
 
 /* the application's camera (camera.h's CAppCamera: its two virtuals, declared only, the zoom, the
@@ -2215,7 +2221,6 @@ extern "C" {
 int CreateSema(SemaParam *param);
 extern SemaParam data_00440BE0;
 extern void *data_0045B718;   /* (an OVL1 object of 4316 bytes Init makes) */
-void func_002DC7A0();
 void func_0059AC60();
 void func_002B4190();
 bool func_00259240();
@@ -2276,7 +2281,7 @@ bool StopImageRecorderTick(_zanim_cmd_hdr *hdr, float *dT);
  * the turrets and vehicles; the archives dropped and the HUD's string table loaded */
 bool CMission::Init()
 {
-    func_002DC7A0();
+    zdb::CDIBBox::SetCDIBBox();
     ZAnim.Open();
     CSealCtrlAi::RegisterCommands();
     func_0059AC60();
