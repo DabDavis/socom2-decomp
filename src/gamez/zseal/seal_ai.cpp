@@ -3772,6 +3772,11 @@ bool CSealCtrlAi::PostMortemPreTick(float dT)
     return true;
 }
 
+/* a box's eight corners (the name ours) */
+struct CBoxCorners {
+    CPnt3D m_c[8];
+};
+
 /* the box around eight points -- a box's corners (OVL2 0x56ACE0, new in SOCOM II: 0x56A8E0 calls it;
  * the name unknown) */
 /* a bound lowered or raised to a value (inlines, the names ours: the value, the later argument, is
@@ -3800,6 +3805,90 @@ extern "C" void func_0056ACE0(CBBox *box, const CPnt3D *pts)
         RaiseTo(box->m_max.y, p->y);
         RaiseTo(box->m_max.z, p->z);
     }
+}
+
+/* a value within two bounds, as the box tests ask it (inlines, each answer its own bool: the target's
+ * ladder of three zeroed bools; the names ours) */
+static inline bool InRange(const float &v, const float &lo, const float &hi)
+{
+    bool r = false;
+
+    if (v >= lo && v <= hi)
+        r = true;
+    return r;
+}
+
+static inline bool InXY(const CBBox &b, const CPnt3D *p)
+{
+    bool r = false;
+
+    if (InRange(p->x, b.m_min.x, b.m_max.x) && InRange(p->y, b.m_min.y, b.m_max.y))
+        r = true;
+    return r;
+}
+
+static inline bool InBox(const CBBox &b, const CPnt3D *p)
+{
+    bool r = false;
+
+    if (InXY(b, p) && InRange(p->z, b.m_min.z, b.m_max.z))
+        r = true;
+    return r;
+}
+
+extern "C" CBoxCorners *func_0056AE40(CBoxCorners *c, const CBBox *b);
+extern "C" CPnt3D *func_0056AE10(const CMatrix *m, CPnt3D *pts);
+/* OVL2's copy of zdb::CNode::GetBBox, called out of line here as in the target (at this unit's
+ * inline_depth(8) the inline would expand) */
+extern "C" const CBBox *func_00541510(zdb::CNode *node);
+
+/* the lesser and the greater of two floats, by reference, and a box and two corners' union into a box
+ * (inlines, the names ours: the operands' trees are the point -- the first box's reads CSE with the
+ * test after it, the stores and the second corners' reads stand alone, the x's read twice as an offset-0
+ * member is) */
+static inline float MinRef(const float &a, const float &b) { return b <= a ? b : a; }
+static inline float MaxRef(const float &a, const float &b) { return b >= a ? b : a; }
+
+static inline void BoxUnion(CBBox &o, const CBBox &a, const CPnt3D &lo, const CPnt3D &hi)
+{
+    o.m_min.x = MinRef(a.m_min.x, lo.x);
+    o.m_min.y = MinRef(a.m_min.y, lo.y);
+    o.m_min.z = MinRef(a.m_min.z, lo.z);
+    o.m_max.x = MaxRef(a.m_max.x, hi.x);
+    o.m_max.y = MaxRef(a.m_max.y, hi.y);
+    o.m_max.z = MaxRef(a.m_max.z, hi.z);
+}
+
+/* whether a point lies in a vehicle's box as its node stands now or, given a time, as it moves through
+ * that time (OVL2 0x56A8E0, new in SOCOM II: 0x56A760 asks it; the name unknown) */
+extern "C" bool func_0056A8E0(CEntity *vehicle, const CPnt3D *pos, float near)
+{
+    zdb::CNode *node = vehicle ? vehicle->GetNode() : 0;
+    bool r = false;
+
+    if (node) {
+        const CBBox *bb = func_00541510(node);
+        const CMatrix *m = (const CMatrix *)vehicle->m_node;
+        CBBox box;
+        CBBox swept;
+        CBoxCorners c;
+
+        func_0056AE40(&c, bb);
+        func_0056AE10(m, c.m_c);
+        func_0056ACE0(&box, c.m_c);
+        r = InBox(box, pos);
+        if (!r && near > 0.0f) {
+            swept = box;
+
+            CPnt3D t = vehicle->m_velW * near;
+
+            swept.m_min.Add(&t, &swept.m_min);
+            swept.m_max.Add(&t, &swept.m_max);
+            BoxUnion(swept, swept, box.m_min, box.m_max);
+            r = InBox(swept, pos);
+        }
+    }
+    return r;
 }
 
 extern "C" {
@@ -4114,8 +4203,142 @@ extern "C" bool func_0055EAA0(CSealCtrlAi *ai, AI_FIREPARAMS *p, bool clear)
  * calls: a weapon's accuracy at a distance -- OVL2 0x5C9340) */
 class CAiWepHint {
 public:
+    /* (the defaults, an inline: SetTarget 0x566540 builds one in place -- seal_tasks.cpp's fields; the
+     * range a float) */
+    CAiWepHint(float range)
+    {
+        SetMode(0);
+        m_2 = 2;
+        m_auto = 1;
+        m_burst = 1;
+        SetBit8(false);
+        m_range = 0.0f;
+        SetHasWeapon(false);
+        SetHigh(0);
+        m_range = range;
+        SetBit8(true);
+    }
+    void SetMode(unsigned int m) { m_mode = m; }
+    void SetBit8(bool b) { m_bit8 = b; }
+    void SetHasWeapon(bool b) { m_hasWeapon = b; }
+    void SetHigh(unsigned int n) { m_high = n; }
     static float GetWeaponAccuracy(CZWeapon *w, float d, bool b);
+
+    unsigned int m_mode : 2;   // bits 0-1
+    unsigned int m_2 : 2;   // bits 2-3
+    unsigned int m_auto : 2;   // bits 4-5
+    unsigned int m_burst : 2;   // bits 6-7
+    unsigned int m_bit8 : 1;   // bit 8
+    unsigned int m_hasWeapon : 1;   // bit 9
+    unsigned int m_weapon : 4;   // bits 10-13
+    unsigned int m_high : 18;   // bits 14-31
+    float m_range;   // 0x4
 };
+
+/* the AI's target as the AI holds it (SOCOM 1's CAiTarget at 0x67C, ai_target.cpp's) */
+class CAiTarget {
+public:
+    void SetTarget(CTarget *t);
+};
+
+/* a squad's sound (OVL2 0x5EAF20, the kit lane's seal_unit.cpp) */
+extern "C" void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
+
+/* the entity as a turret and whether the AI may attack an entity: a SEAL always, kind 4 never, a turret
+ * as above (SOCOM 1's CanAttack, an inline in SOCOM II; the names ours) */
+static inline CTurretFlags *AsTurret(CEntity *e)
+{
+    CTurretFlags *t = (CTurretFlags *)e;
+
+    if (!e || e->m_type != CEntity::ENT_TYPE_TURRET)
+        t = 0;
+    return t;
+}
+
+static inline bool NotBit17(CSealCtrlAi *ai) { return !AiBit17(ai); }
+static inline bool NB(CSealCtrlAi *ai) { int r = ai->m_aibit16 != 0; if (r) r = (ai->m_aibit17 != 0) ^ 1; return r ^ 1; }
+static inline bool TT(CSealCtrlAi *ai, const CTurretFlags *t)
+{
+    bool r = false;
+    bool b = false;
+    bool a = false;
+
+    if (NB(ai) && (t->m_flags & 2))
+        a = true;
+    if (a && t->NoBit10())
+        b = true;
+    if (b && (t->m_flags & 0x20))
+        r = true;
+    return r;
+}
+
+static inline bool CanAttack(CSealCtrlAi *ai, CEntity *e)
+{
+    bool r = false;
+
+    if (e) {
+        switch (e->m_type) {
+        case CEntity::ENT_TYPE_TURRET:
+            r = TT(ai, AsTurret(e));
+            break;
+        case 4:
+            r = false;
+            break;
+        default:
+            r = true;
+            break;
+        }
+    }
+    return r;
+}
+
+/* a target's entity, if any (an inline, the name ours) */
+static inline CEntity *TargetEnt(const CTarget *t)
+{
+    return t ? t->m_ent : 0;
+}
+
+/* a target given to the AI, unless the same one or not taken: its target set and bit 17 cleared; with
+ * bit 2 a weapon chosen for the target's range -- a hint's mode 1 under bit 16 without 17 -- and without
+ * it, once, an enemy's squad's sound for a player's SEAL (OVL2 0x566540, slot 0xB0: SOCOM 1's SetTarget,
+ * SOCOM II's CanAttack inline).
+ * OPEN, 0x3B0 against 0x3A8 -- every instruction the target's but: (1) AsTurret's join takes an 8-byte pad
+ * the target lacks (its `move t0,zero` runs straight on: `if` pads, every ternary spelling folds into a
+ * materialised sltu / movz; two words then shift two more pads); (2) the mode: the target's `li v0,1` comes
+ * from the block's top (a logical temporary, live through the hint's stores: no block temporary may take v0),
+ * `int mode = 1` declared ahead of the hint gets the same shape in a0 -- the node is deferred in the target
+ * (degree over K, coloured first), and `(bit16 && !bit17)` written as a value materialises with sltu instead
+ * (build/scratch/seal-r58/v_540*.py). */
+void CSealCtrlAi::SetTarget(CTarget *target)
+{
+    if (target ? ((CAiTargetFlags *)m_67c)->m_entity == target->m_ent : !((CAiTargetFlags *)m_67c)->m_entity)
+        return;
+    CEntity *e = TargetEnt(target);
+
+    if (e ? CanAttack(this, e) : true) {
+        ((CAiTarget *)m_67c)->SetTarget(target);
+        m_aibit17 = false;
+        CEntity *t = TargetEnt(target);
+
+        if (m_navyseal) {
+            float range = target ? target->GetRange() : m_6ec;
+            int mode = 1;
+            CAiWepHint hint(range);
+
+            if (!m_aibit16 || m_aibit17)
+                mode = 0;
+            hint.m_mode = mode;
+            ChooseWeapon(hint);
+        } else if (!data_0066B008 && t && (t->m_team & 2)) {
+            CZSealBody *s = AsSeal(t);
+            CSealUnit *unit = s ? ((CSealCtrl *)s->m_control)->m_unit : 0;
+
+            if (unit)
+                func_005EAF20(unit, 63, 0, 1.0f);
+            data_0066B008 = 1;
+        }
+    }
+}
 
 extern "C" {
 /* the fire parameters aimed straight at the target's spot (OVL2 0x55EBE0, below) and shot (OVL2
@@ -6642,11 +6865,6 @@ extern "C" bool func_0056D450(CSealCtrlAi *ctrl, const CAiMapLoc *loc, int n)
     return ok;
 }
 
-/* a box's eight corners (the name ours) */
-struct CBoxCorners {
-    CPnt3D m_c[8];
-};
-
 extern "C" {
 /* OVL2's out-of-line copies of CPnt3D's three-float constructor and its implicit copy constructor
  * (0x5414F0, 0x539E90) */
@@ -6655,7 +6873,9 @@ CPnt3D *func_00539E90(CPnt3D *p, const CPnt3D *src);
 }
 
 /* a box's eight corners, each a temporary point copied in -- the lows and highs mixed, the two
- * plain corners copied straight from the box (OVL2 0x56AE40, new in SOCOM II; 0x56A8E0 calls it) */
+ * plain corners copied straight from the box (OVL2 0x56AE40, new in SOCOM II; 0x56A8E0 calls it, out
+ * of line: pinned, the unit's inline_depth(8) would take it) */
+#pragma auto_inline off
 extern "C" CBoxCorners *func_0056AE40(CBoxCorners *c, const CBBox *b)
 {
     CPnt3D t0, t1, t2, t3, t4, t5;
@@ -6670,6 +6890,7 @@ extern "C" CBoxCorners *func_0056AE40(CBoxCorners *c, const CBBox *b)
     func_00539E90(&c->m_c[7], &b->m_max);
     return c;
 }
+#pragma auto_inline reset
 
 /* the AI's anim of a kind stopped when it plays on top of the body's blends (0x5712F0), saying whether
  * it was (OVL2 0x571100, new in SOCOM II; CAiGroup::act_anim::Stop, 0x60DFC0, asks it with the act's

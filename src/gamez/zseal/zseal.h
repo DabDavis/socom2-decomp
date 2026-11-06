@@ -1367,6 +1367,8 @@ public:
     /* never on in the AI mode 7 (OVL2 0x557EE0) */
     virtual void SetDoAiMapCollide(bool on);
     virtual void OnSetHealth(float health, float old);
+    /* a target taken (SOCOM 1's; OVL2 0x566540, seal_ai.cpp's) */
+    virtual void SetTarget(CTarget *target);
     /* a projectile's hit taken (SOCOM 1's; OVL2 0x572330, seal_ai.cpp's) */
     virtual void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj);
     /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */

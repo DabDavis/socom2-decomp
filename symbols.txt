@@ -10221,7 +10221,7 @@
 0x00565B80 0x1A4 func_00565B80  # OVL2
 0x00565D30 0x7BC func_00565D30  # OVL2
 0x005664F0 0x48 func_005664F0  # OVL2
-0x00566540 0x3A8 func_00566540  # OVL2
+0x00566540 0x3A8 SetTarget__11CSealCtrlAiFP7CTarget  # OVL2; slot 0xB0 of __vt__11CSealCtrlAi (no jal reaches it; SOCOM 1's SetTarget__11CSealCtrlAiFP7CTarget: the same test, then CAiTarget::SetTarget -- by hand, the SEALs, round 58)
 0x005668F0 0x48 func_005668F0  # OVL2
 0x00566940 0x3B0 SlideTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00566CF0 0xC4 SlideTick__11CSealCtrlAiFf  # OVL2; slot 0x8C of __vt__11CSealCtrlAi (CSealCtrl's SlideTick slot, 0x566940 in the base)
