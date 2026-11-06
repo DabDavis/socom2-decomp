@@ -10221,7 +10221,7 @@
 0x00565B80 0x1A4 func_00565B80  # OVL2
 0x00565D30 0x7BC func_00565D30  # OVL2
 0x005664F0 0x48 func_005664F0  # OVL2
-0x00566540 0x3A8 func_00566540  # OVL2
+0x00566540 0x3A8 SetTarget__11CSealCtrlAiFP7CTarget  # OVL2; slot 0xB0 of __vt__11CSealCtrlAi (no jal reaches it; SOCOM 1's SetTarget__11CSealCtrlAiFP7CTarget: the same test, then CAiTarget::SetTarget -- by hand, the SEALs, round 58)
 0x005668F0 0x48 func_005668F0  # OVL2
 0x00566940 0x3B0 SlideTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00566CF0 0xC4 SlideTick__11CSealCtrlAiFf  # OVL2; slot 0x8C of __vt__11CSealCtrlAi (CSealCtrl's SlideTick slot, 0x566940 in the base)
@@ -10730,7 +10730,7 @@
 0x0059F0C0 0x548 PickupItem__10CZSealBodyFP7CPickup  # OVL2; s1:calls by hand (the SEALs, round 29): HandlePickupAck's weapon-pickup arm (kind 8, the answer's first bit) calls it with the pickup where SOCOM 1's HandlePickupAck calls PickupItem__10CZSealBodyFP7CPickup; 0x59F610 (a weapon pickup taken offline) calls it too
 0x0059F610 0xDC func_0059F610  # OVL2
 0x0059F6F0 0x34 func_0059F6F0  # OVL2
-0x0059F730 0x388 func_0059F730  # OVL2
+0x0059F730 0x388 DropItem__10CZSealBodyFib  # OVL2; s1:calls by hand (the SEALs, round 58): SOCOM 1's DropItem__10CZSealBodyFib, called where RemotePickupItem and the death's drops call it, the same PartInSpace, Apply, Mul and node calls
 0x0059FAC0 0x284 func_0059FAC0  # OVL2
 0x0059FD50 0x2E8 DropAmmo__10CZSealBodyFi  # OVL2; s1:order by hand (the SEALs, round 35): SOCOM 1's DropAmmo__10CZSealBodyFi -- the same body: the pickups open and online a player only, a stash newed and filled from the kit by FillAmmoPickupInstance (OVL2 0x5BA040, called twice: -1 or the rounds), the offset CPnt3D::zero turned by the SEAL's quat and added to its place, fiftycal_box instanced there, the stash deleted when none, SetDynamic, AddTextureAssetCharacter, CPickup::Create of kind 9 with the SEAL's id and the drop anim kept by the stash; SOCOM II adds the empty-stash test (Count/Get) and the node's name 'Ammobox'. PickupItem and 0x5A0040 call it, as SOCOM 1's PickupItem and DropItem's neighbours do
 0x005A0040 0x228 func_005A0040  # OVL2
@@ -10742,7 +10742,7 @@
 0x005A0C00 0xC8 func_005A0C00  # OVL2
 0x005A0CD0 0xC8 func_005A0CD0  # OVL2
 0x005A0DA0 0xC8 func_005A0DA0  # OVL2
-0x005A0E70 0x7A8 func_005A0E70  # OVL2
+0x005A0E70 0x7A8 HandleGrenadeExplosion__10CZSealBodyFv  # OVL2; s1:calls by hand (the SEALs, round 58): SOCOM 1's HandleGrenadeExplosion__10CZSealBodyFv 0x28F840: ClearIgnoreNodeDelayed, the hits' walk, the material tests, the radius, the ringing ears, UpdateHealth and the killer in order; PrePostTick calls it where SOCOM 1's does
 0x005A1620 0x284 func_005A1620  # OVL2
 0x005A18B0 0x2C0 func_005A18B0  # OVL2
 0x005A1B70 0x10 RemoteWeaponDamageNonVictim__10CZSealBodyF15DAMAGE_LOCATIONP10CZSealBodyP10CZSealBodyUcb  # OVL2; s1:exact
@@ -10761,7 +10761,7 @@
 0x005A3220 0x58 GetTargetPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x30 of __vt__10CZSealBody (CEntity's GetTargetPosW slot)
 0x005A3280 0x12C func_005A3280  # OVL2
 0x005A33B0 0x1B8 HandleBloodDrip__10CZSealBodyFf  # OVL2; s1:calls
-0x005A3570 0x434 func_005A3570  # OVL2
+0x005A3570 0x434 HandleSealStep__10CZSealBodyFv  # OVL2; s1:calls by hand (the SEALs, round 58): SOCOM 1's HandleSealStep__10CZSealBodyFv 0x291B60 (0x560 there), the same PartInSpace, Apply and footfall anim per foot and HandleFootfallSound; PrePostTick calls it where SOCOM 1's does
 0x005A39B0 0x198 HandleFootfallSound__10CZSealBodyFP6CPnt3D  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's HandleFootfallSound__10CZSealBodyFP6CPnt3D, after HandleBloodDrip and HandleSealStep in both builds; the same material bound and bounds-checked read of CMaterialExArray's list, GetStance(false) == prone, the throttles within a half, the sound's PlaySound3D slot at the point; SOCOM II tests a third throttle and plays it flat for a player in first person)
 0x005A3B50 0x58 Uninit_ReInitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 24, the integrator's lead from the game states' round 28): SOCOM 1's Uninit_ReInitDatabaseHandles__10CZSealBodyFv -- its words cleared, the buffer freed and zeroed, RemoveWeaponEventCallback of HandleWeaponEvent, in SOCOM 1's order; CMission::ReOpen_Unload1 calls it where SOCOM 1's does, UninitDatabaseHandles 0x5A3BB0 inlines it (seal_env.cpp)
 0x005A3BB0 0xA8 UninitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:calls by hand (SOCOM 1's UninitDatabaseHandles__10CZSealBodyFv: _free of a buffer, the blood decals' vector emptied through the deleter's constructor, clear, swap and destructor on a stack temporary, a second buffer freed, RemoveWeaponEventCallback of the same callback, 0x5A4F80; SOCOM II zeroes three counts; seal_env.cpp)
@@ -10868,7 +10868,7 @@
 0x005AE980 0xAE8 func_005AE980  # OVL2
 0x005AF470 0x90 RotateHead__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1's RotateHead__10CZSealBodyFff, after GetLookQuat and before GetLookDirW in both builds: the same body -- MakeXRot into the forward look, SOCOM 1's m_fwdlook 0xf60 = 0x1070, else the identity; every SOCOM II caller sets only $f12 (both app-camera transitions, 0x29A180, CZSealBody(), 0x594600), so its second float is gone) -- the SEAL lane, round 12
 0x005AF500 0x90 GetLookDirW__10CZSealBodyCFP6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's GetLookDirW__10CZSealBodyCFP6CPnt3D, after RotateHead in both builds: the same VU0 rotation of the look's direction by the node's matrix, the look held at 0x1190) -- the SEAL lane, round 12
-0x005AF590 0x39C func_005AF590  # OVL2
+0x005AF590 0x39C HandleLanding__10CZSealBodyFf  # OVL2; s1:calls by hand (the SEALs, round 58): SOCOM 1's HandleLanding__10CZSealBodyFf 0x29E8F0, the same first test, HandleFallingDamage, the grade's switch and BodySetState; PostCheckDIDown calls it as SOCOM 1's
 0x005AF930 0xAD4 PostCheckDIDown__10CZSealBodyFRfRfRf  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's PostCheckDIDown 0x29EB00, after HandleLanding before PreCheckDIDown there; CZSealBody::Tick calls it with three member addresses (a1 = x + 4, a2 = x + 8, a3 = x: 0x240/0x244/0x23C here, 0x18C/0x190/0x188 there); reads AnimTypes::StepUp once then ClimbOver three times, as SOCOM 1's
 0x005B0410 0xC func_005B0410  # OVL2
 0x005B0420 0x3E0 func_005B0420  # OVL2

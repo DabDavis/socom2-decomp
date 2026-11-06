@@ -8,6 +8,7 @@
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 #include <stdio.h>
+#include <new>
 
 /* (CCharacterType::Acquire and CreateLODs -- SOCOM 1's Acquire__14CCharacterTypeCFv and
  * CreateLODs__14CCharacterTypeFPQ23zdb5CNode, called here where SOCOM 1's PreCreateSeal calls them;
@@ -276,6 +277,272 @@ CZSealBody *CZSealBody::Create(const CCharacterType *type, const char *name, CSe
 
     sprintf(log, "CZSealBody::Create(%s) %d nodes END", seal->m_node->m_name, func_0059A450(seal->GetNode()));
     return seal;
+}
+
+extern "C" {
+/* the SEALs made so far (OVL2 bss 0x66B420), shadows' switch (OVL1 data 0x3DF138, a byte), the gear's own
+ * step and the kit's after the items (OVL2 0x58B1A0, 0x5C7830) */
+extern int data_0066B420;
+extern unsigned char data_003DF138;
+void func_0058B1A0(CZSealBody *seal);
+void func_005C7830(CZKit *kit);
+void RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D(void *mgr, const void *owner, const CPnt3D *pos, float r, const CPnt3D *vel);
+}
+
+/* the task's select (seal_tasks.cpp's CTSelect::Create, OVL2 0x5D29F0) */
+struct CTSelect {
+    static void *Create(CZSealBody *seal);
+};
+
+/* what PostCreateSeal reads of the world: a shadow's owner and the clutter's animations (zdb::CWorld at 0x56C
+ * and 0x6AC; a view) */
+struct CWorldViews {
+    unsigned char _0[0x56c];
+    void *m_shadow_node;   // 0x56c
+    unsigned char _570[0x6ac - 0x570];
+    void *m_clutter_anims;   // 0x6ac
+};
+
+/* a box made of two corners (a stand-in: zmath.h's CBBox has no constructor; the first corner's copy through
+ * an ld, the second's a member's) */
+struct CBoxInit {
+    CPnt3D m_min;
+    CPnt3D m_max;
+
+    CBoxInit(const CPnt3D &a, const CPnt3D &b) : m_min(a), m_max(b) {}
+};
+
+/* the SEAL finished as made: the bounds and the controller set, the event and the task's select made, the
+ * gear added, the kit given each weapon's model and ammunition -- empty slots skipped --, the aim reset, the
+ * controller started; a clutter effector as wide as the body and a shadow for a player when the world has
+ * none yet (OVL2 0x599F00: SOCOM 1's PostCreateSeal, the effector's width and the shadow new).
+ * The round counts are read twice and held across GetAmmo by IRO_CommonSubs, which numbers them above the
+ * loop's scalarised iterator (s2): named locals would number below it. `fabsf(size.z > r)` is the disc's own
+ * oddity: the comparison's int, unsigned to float, its absolute value tested against no constant */
+void CZSealBody::PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl)
+{
+    seal->m_HudUpdateViewCone = 1;
+
+    zdb::CNode *node = seal->GetNode();
+
+    node->SetNodeEx((zdb::CNodeEx *)seal->m_ex, true);
+    {
+        CBoxInit t(CPnt3D(-12.0f, 0.0f, -14.0f), CPnt3D(12.0f, 20.0f, 14.0f));
+
+        node->m_bbox = (const CBBox &)t;
+    }
+    seal->SetController(ctrl);
+    seal->CreateAiEvent();
+    seal->m_select = CTSelect::Create(seal);
+
+    CCharacterType *type = seal->m_charType;
+
+    data_0066B420++;
+
+    CCharacterGearList &gear = type->m_gear;
+
+    for (CCharacterGearList::iterator g = gear.begin(); g != gear.end(); ++g)
+        seal->AddItem(*g);
+    seal->EnableMPBombGear(false);
+    func_0058B1A0(seal);
+    seal->SetupGear();
+
+    CZKit *kit = &seal->m_kit;
+
+    if (kit) {
+        kit->InitItemModel("null", "null");
+
+        CCharacterWeapList &weapons = seal->m_charType->m_weapons;
+        int slot = 0;
+
+        for (CCharacterWeapList::iterator w = weapons.begin(); w != weapons.end(); ++w) {
+            bool ok = kit->SetItem(slot, w->m_wepId);
+
+            if (ok) {
+                CZWeapon *item = (CZWeapon *)kit->GetItemByIndex(slot);
+
+                if (item) {
+                    char model[1024];
+
+                    strcpy(model, item->GetModelName());
+                    strlen(model);
+
+                    const char *name = "grenade";
+
+                    switch (CZKit::GetItemFireClass(item->m_ID)) {
+                    case 1:
+                        name = "rifle";
+                        break;
+                    case 2:
+                        name = "pistol";
+                        break;
+                    case 4:
+                        name = "launcher";
+                        break;
+                    }
+                    kit->InitItemModel(model, name);
+                }
+
+                if (w->m_ammoCount * w->m_magCount)
+                    kit->SetItemAmmo(slot, CZAmmo::GetAmmo(w->m_ammoId), w->m_ammoCount, w->m_magCount);
+                else
+                    kit->SetItemAmmo(slot, CZAmmo::GetAmmo(w->m_ammoId));
+                slot++;
+            }
+        }
+        kit->SetCurReticule(false);
+        func_005C7830(kit);
+    }
+    seal->m_220 = 0;
+    seal->m_224 = 0;
+    seal->m_228 = 0;
+    seal->SetAimDirR(&CPnt3D::unit_nz, false);
+    seal->m_fd1 = 0;
+    ctrl->Initalize();
+    if (((CWorldViews *)zdb::CWorld::m_world)->m_clutter_anims) {
+        const CBBox *box = node->GetBBox();
+        CPnt3D size;
+
+        box->GetSize(&size);
+
+        float r = fabsf(size.x);
+
+        if (fabsf(size.z > r))
+            r = size.z;
+        r *= 0.5f;
+        RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D(((CWorldViews *)zdb::CWorld::m_world)->m_clutter_anims, seal,
+            (const CPnt3D *)node->m_matrix.m_matrix[3], r, &seal->m_velW);
+    }
+    if (data_003DF138 && seal->IsPlayer() && !((CWorldViews *)zdb::CWorld::m_world)->m_shadow_node) {
+        node->m_socom2_a1_bits.bit5 = 1;
+        zdb::CWorld::m_world->AddShadow(node);
+    }
+    seal->m_useCachedReticuleSeal = false;
+    seal->m_cachedReticuleSeal = 0;
+}
+
+/* the camera, only what ReCreate asks of it (camera.h's class, which this unit does not include) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);
+
+    void ResetDeathCam();
+};
+
+extern CAppCamera *appCamera;
+
+/* the player (fts_player.cpp's CftsPlayer, OVL1 bss 0x440C38: its SEAL first) */
+class CftsPlayer {
+public:
+    CZSealBody *m_body;   // 0x0
+    int m_4;   // 0x4
+};
+
+extern CftsPlayer ftsPlayer;
+
+extern "C" {
+/* a SEAL a spectator may not watch online (OVL1 0x2C2FD0, unowned: hud_tcmcmds.cpp's reading), what a
+ * player online begins as when one is, the node's fade set (OVL2 0x543D50, 0x552780: the priority a byte), the
+ * kit's hand mode and the byte after it read, the byte set (OVL2 0x5C4960, 0x5C4890, 0x5C48A0) */
+bool func_002C2FD0(CZSealBody *seal);
+void func_00543D50(CZSealBody *seal);
+void func_00552780(CZSealBody *seal, unsigned char priority, float target, float rate);
+int func_005C4960(CZKit *kit);
+int func_005C4890(CZKit *kit);
+void func_005C48A0(CZKit *kit, int value);
+}
+
+/* an entity's team and vehicle index read (inlines: the values take their temporaries, numbered above every
+ * named local and spilled to 16-byte slots: ReCreate) */
+static inline unsigned int GetTeamOf(const CEntity *e) { return e->m_team; }
+static inline unsigned int GetVehicleOf(const CEntity *e) { return e->m_vehicle_index; }
+
+/* a SEAL made again in place: its camera node taken off and kept, its id, team, vehicle, kit modes, matrix,
+ * name and display name carried across the destructor and the constructor, the player's camera put back on
+ * it (OVL2 0x599B60; SOCOM 1's ReCreate with the camera node, the kit's modes and the online player's fade) */
+bool CZSealBody::ReCreate(CZSealBody *seal, const CCharacterType *type)
+{
+    char *name;
+    zdb::CNode *fx = seal->GetNode()->FindChild("camera_effects", true);
+
+    if (fx) {
+        zdb::CNode *parent = fx->m_parent;
+
+        if (parent)
+            parent->DeleteChild(fx);
+    }
+
+    CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+
+    seal->m_respawning = 1;
+    ctrl->m_HudUpdateWeapon = 1;
+
+    CZKit *kit = &seal->m_kit;
+
+    if (kit)
+        kit->SetWeaponInfoChanged();
+
+    unsigned int id = seal->m_id;
+    unsigned int team = GetTeamOf(seal);
+    unsigned int vehicle = GetVehicleOf(seal);
+    int mode = func_005C4960(&seal->m_kit);
+    int mode2 = func_005C4890(&seal->m_kit);
+    CMatrix m(seal->m_node->m_matrix);
+
+    if (!type)
+        type = seal->m_charType;
+
+    CCharacterType *acquired = type->Acquire();
+    name = _strdup(seal->m_node->m_name, 0, 0);
+    char *display = seal->m_display_name ? _strdup(seal->m_display_name, 0, 0) : 0;
+
+    seal->~CZSealBody();
+
+    zdb::CNode *node = 0;
+    const CCharacterType *t = PreCreateSeal(type, name, &node);
+
+    new (seal) CZSealBody(node, (CCharacterType *)t);
+    seal->SetTeamMask(team);
+    seal->m_id = id;
+    seal->m_bit8 = 1;
+    seal->SetIncludeInTargetList(true);
+    seal->m_vehicle_index = vehicle;
+    seal->SetDisplayName(display);
+    seal->m_fd1 = 0;
+    seal->m_fd3 = 1;
+    seal->m_desiredState = (SEAL_STATE)1;
+    PostCreateSeal(seal, ctrl);
+    seal->m_kit.PostSetupItems();
+    seal->m_kit.SetHandFireMode(mode);
+    func_005C48A0(&seal->m_kit, mode2);
+    theMission.RefreshTeamValves();
+    seal->TeleportTo(&m);
+    if (seal->IsPlayer()) {
+        ftsPlayer.m_body = seal;
+        if (theNetwork.m_9) {
+            zdb::CNode *n = seal->GetNode();
+
+            n->m_Opacity = 0.0f;
+            if (func_002C2FD0(seal))
+                func_00543D50(seal);
+            else {
+                appCamera->ResetDeathCam();
+                func_00552780(seal, 2, 1.0f, 4.0f);
+            }
+        } else
+            appCamera->ResetDeathCam();
+        appCamera->AttachTo(seal);
+        seal->m_camera = appCamera;
+    }
+    if (fx) {
+        if (fx)
+            seal->GetNode()->AddChild(fx);
+    }
+    acquired->Release();
+    _free(name, 0, 0);
+    _free(display, 0, 0);
+    return true;
 }
 
 /* the character type taken and its model instanced: dynamic, its LODs made, added to the world,
