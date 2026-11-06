@@ -4,6 +4,7 @@
  * of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "seal_throw.h"
 #include "../zinput/zinput.h"
 #include "../zanim/zanim.h"
 #include "../zweapon/zweapon.h"
@@ -171,7 +172,7 @@ inline float FlightTime(const CPnt3D &v, const CPnt3D &p)
 
 /* the thrown grenade's arc drawn while the SEAL throws (OVL2 0x5970B0, slot 0x3C; SOCOM 1's, the switch
  * added, not through binoculars or a scope, its colour by the night vision). Byte-exact from SOCOM 1's
- * body once CDynGrenade::Initalize (zseal.h) is an inline over inline_max_size, as the three calling
+ * body once CDynGrenade::Initalize (seal_throw.h) is an inline over inline_max_size, as the three calling
  * functions' out-of-line calls say. The matrix declared first takes its number ahead of the seal and the
  * kit: `igreplay --permute`'s four placements all have it below them */
 bool CSealCtrl::PostTick(float dT)
