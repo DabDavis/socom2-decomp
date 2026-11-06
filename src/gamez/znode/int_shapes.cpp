@@ -11,7 +11,7 @@
  * unit's name is ours. Written so far: the shapes' constructors and destructors,
  * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
  * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
- * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open);
+ * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both byte-exact since round 27);
  * CDIPoly::GetAltitude (0x2DD8E0) and CDIBBox::GetIntersect in round 14, SetCDIBBox in round 24
  * (byte-exact since round 27) with its two statics, SOCOM 1's bbox_poly and initCDIBBoxOnce.
  * Defined in reverse of their image order (-inline deferred). */
@@ -176,23 +176,17 @@ int CDIPoly::GetAltitude(DiIntersect *di)
  * core's round 15, build/scratch/core/p1-p7.cpp) is scheduled into the gap MW leaves between the
  * asm's sqc2 and its aliasing lwc1, ahead of the load; plain C code with no such store gives the
  * lwc1-mtc1-nop order (164 matched sites) -- likely a stand-in for whatever the original wrote.
- * OPEN, 15-16 instructions, the target's size (0xC0): the set-up's registers and order only -- the
- * target extracts the count (a3) before it forms the hit's address and keeps p in a1 and the
- * normal's address in v1, ours p a3, normal a1, count v1; all 120 declaration orders and every
- * dependency-respecting initialisation order give 15 at best (build/scratch/core/v_poly_ord*.py).
- * Round 16, the replay (tools/igreplay.py --want n=a3,p=a1,norm=v1,is=a2,last=v0): every hit numbers
- * n first of the locals (33.5) and p after the hit count's shift temporary (v40, >= 40.5) -- p
- * defined after `is`'s address is formed; the target's temporaries differ too (its Intersects load
- * v0, the flags v1), so the flags are read before the hit's address in the original. n first, p
- * late, a dead first definition, the count or the list in a local: 15-21 (build/scratch/core/v_poly3.py);
- * a goto label, a do/while(0) or a label alone between the asm and the test merges away (MW keeps
- * one block: the C zero still goes ahead of the load, v_bbt_lbl.py); round 21: p through an
- * identity inline (numbered late, the trick that fixed buildOrderedCellAtomList) -- 16, 20 with n first */
+ * Byte-exact since the engine core's round 27 (16 off since round 10), read off the colouring: the
+ * target's registers need the list's load above the flags' above p above the hit and the count above
+ * n in MW's numbering, and the pre-RA order flags, count, list, p (the flags' shifts ahead of the count's,
+ * which a count loaded first cannot give): so n is read first, and the count is a named local ahead
+ * of the hit, the list's load a code-generation register. */
 bool CDIPoly::GetIntersect(DiIntersect *di)
 {
-    IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
-    CPnt3D *norm = &is->m_norm;
     int n = m_flags.m_ptcount;
+    int cnt = di->m_Cnt;
+    IntersectStruct *is = &di->m_Intersects[cnt];
+    CPnt3D *norm = &is->m_norm;
     CPnt4D *p = m_pnts;
     CPnt4D *last = p + n - 1;
     float w, z;
