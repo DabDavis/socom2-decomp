@@ -2771,9 +2771,10 @@ struct zanim_cmd_scroll_motion {
     float time;                     /* 0x44 */
 };
 
-/* OPEN, 11 instructions (the target's size, 0x468; 221 before the engine core's round 27): the first
- * read of cmd->node through a0 where the target has s3 (a0's a valid copy source there: the copy
- * forward is below the IR -- a `const`, int or enum copy alike), and the length's registers: the
+/* OPEN, 9 instructions (the target's size, 0x468; 221 before the engine core's round 27, 11 before the object of each
+ * GetNode went through TickAnim, round 28): the first read of cmd->node through a0 where the target has s3 (a0's a valid
+ * copy source there: the copy forward is below the IR -- a `const`, int or enum copy alike; TickAnim directly on that
+ * call: 0x460), and the length's registers: the
  * target's z (f3) is numbered above the sum (`igreplay --cls 1 --want` over z: only v33 -> 112.5 or
  * 113.5, a code-generation register though it is read again by the dot; no spelling found). Closed in
  * round 27: the frame's two holes -- an unused local whose address is taken in a pointer keeps its slot
@@ -2793,14 +2794,14 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_scroll_motion *cmd;
     bool done = false;
-    int anim = (int)ZAnim.m_CurAnim;
+    CZAnim *anim = TickAnim(ZAnim.m_CurAnim);
 
-    cmd = (zanim_cmd_scroll_motion *)(int)hdr;
-    CNode *node = ((CZAnim *)anim)->GetNode(cmd->node, false);
+    cmd = (zanim_cmd_scroll_motion *)hdr;
+    CNode *node = anim->GetNode(cmd->node, false);
 
     if (!node)
         return true;
-    CNode *center = ZAnim.m_CurAnim->GetNode(cmd->center, false);
+    CNode *center = TickAnim(ZAnim.m_CurAnim)->GetNode(cmd->center, false);
     if (!center)
         return true;
     CPnt3D c(0.0f, 0.0f, 0.0f);
