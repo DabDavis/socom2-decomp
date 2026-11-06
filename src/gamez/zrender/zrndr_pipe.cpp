@@ -1982,14 +1982,13 @@ void CPipe::CAlpha::Render()
  * last insert (at the list's start again after each pass: Render sets 0x3DFF68), forward while the
  * record is nearer than the one under the cursor, else backward while it is deeper, before the first
  * when it is deeper than every one.
- * OPEN, 0x248 of 0x244 (the world lane round 18; build/scratch/wld/v_ins*.py): the logic and the
- * three inserts are the target's, the cursor in memory as there (its address taken by the by-value
- * copy for insert), the record homed for insert's `const T &`. Left: (1) the target keeps the
- * list's first node in a3 from the head through the backward walk and builds the ternary's other
- * arm from it (`sw a3,64(sp)`, copied through $f0) -- `b` there takes b's address (the conditional
- * an lvalue: b in memory, 0x224), `iterator(b)` 0x21C, a fresh begin() (as here) keeps `this` in s0
- * for it; (2) the first walk reloads the record through its home every pass where MW here hoists
- * `&d->m_40` (the third walk hoists it in the target too; a for/break first walk changes nothing) */
+ * ONE iterator, though the frame shows two (the world lane round 34): 76 the first local's and 28 below
+ * every inline temporary. `it = begin()` is the implicit bitwise assignment, so `it` stays a class
+ * object in memory through IRO_ScalarizeClassDataMembers; the word it holds after that assignment or
+ * `++it` is a web of its own, and IRO_SplitLifetimes gives the walks' web a new object
+ * (create_temp_object, so last in the frame) -- `pos` beside `it` could never reach that frame. The
+ * explicit returns send all three arms past the preheader MW appends at the function's end for the
+ * third walk's hoisted &d->m_40 (without them the first two branch to a lone `b` before it). */
 void CPipe::CAlpha::Insert(tag_DelayedNode *d)
 {
     if (m_first_alpha_add) {
@@ -2000,17 +1999,33 @@ void CPipe::CAlpha::Insert(tag_DelayedNode *d)
     std::list<void *>::iterator b = m_drawList.begin(), e = m_drawList.end();
 
     if (it == b) {
-        while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
+        while (it != e) {
+            if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40))
+                break;
             ++it;
-        m_last_alpha_insert = m_drawList.insert(it, (void *const &)d);
+        }
+        m_last_alpha_insert = m_drawList.insert_at(it, (void *const &)d);
+        return;
     } else if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40)) {
-        while (it != b && !(d->m_40 <= ((tag_DelayedNode *)*it)->m_40))
+        while (it != b) {
+            if (d->m_40 <= ((tag_DelayedNode *)*it)->m_40)
+                break;
             --it;
-        m_last_alpha_insert = m_drawList.insert(d->m_40 < ((tag_DelayedNode *)*b)->m_40 ? ++it : m_drawList.begin(), (void *const &)d);
-    } else {
-        while (it != e && d->m_40 < ((tag_DelayedNode *)*it)->m_40)
+        }
+        if (!(d->m_40 < ((tag_DelayedNode *)*b)->m_40))
+            it = m_drawList.begin();
+        else
             ++it;
-        m_last_alpha_insert = m_drawList.insert(it, (void *const &)d);
+        m_last_alpha_insert = m_drawList.insert_at(it, (void *const &)d);
+        return;
+    } else {
+        while (it != e) {
+            if (!(d->m_40 < ((tag_DelayedNode *)*it)->m_40))
+                break;
+            ++it;
+        }
+        m_last_alpha_insert = m_drawList.insert_at(it, (void *const &)d);
+        return;
     }
 }
 

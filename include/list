@@ -894,6 +894,19 @@ public:
     };
     typedef generic_iterator<false> iterator;
     typedef generic_iterator<true> const_iterator;
+    /* the pointer list's own insert, the result rebuilt from the base's, two levels above the deleter's
+     * (the world lane round 34): CPipe::CAlpha::Insert 0x336F60 has its three return slots 52/48/44 above
+     * its three position copies 40/36/32 -- the copy a level deeper than the slot; one level gives them
+     * in turn (52/48, 44/40, 36/32). Under a name of its own: as `insert` it would hide the base's from
+     * every list<T *> caller, unmeasured over the hand-written units. */
+    typename base::iterator insert_b(typename base::iterator position, const void *const &x)
+    {
+        return base::insert(position, x);
+    }
+    iterator insert_at(iterator position, T *const &x)
+    {
+        return iterator(insert_b(position.i_, (const void *const &)x));
+    }
 
     /* the first node read through a reference to the sentinel, as the base's begin() reads it:
      * &end_.next_ is computed once and shared with the clear()s and the destructor after a walk
