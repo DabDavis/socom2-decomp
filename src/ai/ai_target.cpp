@@ -154,7 +154,14 @@ extern "C" bool func_0060B8F0(float dT, void *data)
  * callers pass it the CAiTarget at controller+0x67C; where SOCOM 1's CAiSPursue::Tick tested the
  * target's entity and its alive bit inline, SOCOM II calls this. The integrator's suggested name,
  * CAiTarget::IsValid, is unproven -- SOCOM 1 has no such out-of-line member -- so the row keeps
- * its placeholder) */
+ * its placeholder). IT RETURNS bool (the kit's round 59, asked by the SEALs' round 56, whose 0x562C80
+ * declares it int): an int return over this bool local adds `andi v0,s1,0xff` before the epilogue
+ * where the target moves s1 straight, and an int local turns `r = true` into `li` where the target
+ * has the bool constant's `daddiu`; every caller in the kit's units compiles the same under either
+ * declaration (objcmp --by-address: six of seven units the same, this one the only difference) --
+ * the callers' `sltu v0,zero,v0` after the call is an `&&` materialising its operand, which a bool
+ * return gives too (ShareTarget's TargetEngaged inline; 0x562C80 spelled `bool ok = f(t) && (flags &
+ * 0x200);` is its own 17 under bool, as under int with `(bool)`) */
 extern "C" bool func_0060A850(const CAiTarget *t)
 {
     bool r = false;
