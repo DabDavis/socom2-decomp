@@ -4,7 +4,7 @@
  * 5000 32-byte elements at 0x45C4D0 with the constructor 0x326F40). SOCOM 1's demo holds DrawRange to the element's
  * constructor in this order. Defined in reverse of their image order (-inline deferred). Written
  * so far: DrawRange, DrawFlush, the sort's comparison, DrawPrep (its zqsort instance, 0x326C30,
- * declared only) and Draw. */
+ * declared only), Draw and BufferElement::Draw (the world lane's round 32). */
 
 #include <eetypes.h>
 #include <iostream>
@@ -18,8 +18,13 @@ struct ZCAM_VIEW {
 };
 class CPipeCamera {
 public:
-    unsigned char _0[0x3f0];   // 0x0
+    unsigned char _0[0x3b0];   // 0x0
+    /* zcamera.h's m_mtxSet.mtxViewToScreen (SOCOM 1's at 0x380): the screen scale on its diagonal */
+    float m_viewToScreen[4][4];   // 0x3b0
     ZCAM_VIEW *m_mtx;   // 0x3f0
+    unsigned char _3f4[0x520 - 0x3f4];   // 0x3f4
+    /* zcamera.h's m_vuFogAlt: the altitude fog's two vectors as the VU takes them */
+    CPnt4D m_vuFogAlt[2];   // 0x520
 };
 class CPipe {
 public:
@@ -36,10 +41,11 @@ namespace Particle {
  * them in place, 0x45C4D0) */
 BufferElement buffer[5000];
 
-/* the sorted elements, drawn from the last back to the first (SOCOM 1's) */
+/* the sorted elements, drawn from the last back to the first (SOCOM 1's); the texture the packets
+ * last selected (SOCOM 1's m_lastTexture: an element's texture is compared with it) */
 extern BufferElement *bufferPtr[5000];   // 0x4835F0
 extern BufferElement **pParticleBuf;   // 0x4835D8
-extern zdb::CTexHandle *m_lastTexture;   // 0x4835D0
+extern zdb::CTexture *m_lastTexture;   // 0x4835D0
 
 int bufferPtrCompare(BufferElement *const &a, BufferElement *const &b);
 
@@ -51,6 +57,41 @@ extern int numParticles;
 /* the system's packet ring (zsys_main.cpp) */
 u_long128 *zSysSprGetPacket(u_long128 **end);
 void zSysFifoKick(u_long128 *packet, unsigned int qwc);
+
+/* a quadword seen every way and the scratchpad's packet (zsys_public.h's) */
+union _word128 {
+    u_long128 u128;
+    float f32[4];
+    unsigned long u64[2];
+    unsigned int u32[4];
+    unsigned short u16[8];
+    unsigned char u8[16];
+};
+class CSPR {
+public:
+    static _word128 *Kick(_word128 *end, bool getNew);
+
+    static _word128 *m_sprPacket;   // 0x49E330
+    static _word128 *m_sprPacketEnd;   // 0x49E338
+};
+
+/* Sony's libvu0 (MAIN): a point through a matrix to the screen, and a colour to integers */
+typedef int sceVu0IVECTOR[4] __attribute__((aligned(16)));
+typedef float sceVu0FVECTOR[4] __attribute__((aligned(16)));
+extern "C" void sceVu0RotTransPers(sceVu0IVECTOR v0, float m0[4][4], sceVu0FVECTOR v1, int mode);
+extern "C" void sceVu0FTOI0Vector(int *v0, float *v1);
+
+/* vis_vu.cpp's: a light tint by value (CVisual::m_lightTint[i]), and a colour through it (the
+ * placeholders' rows, not named) */
+extern "C" CPnt4D func_003B7590(int i);
+extern "C" void func_003B59A0(_word128 *in, _word128 *m, _word128 *out);
+
+/* the texture's DMA reference (znode.h's CTexture::m_dmaRef, a quadword at 0x30; zparticle.h's
+ * stand-in stops at the palette) */
+struct CTexDmaRef {
+    unsigned char _0[0x30];   // 0x0
+    u_long128 m_dmaRef;   // 0x30
+};
 
 /* SOCOM 1's sort of an array by a comparison: an explicit-stack quicksort -- the median of three
  * as the pivot, the larger side's range pushed, ranges of nine or fewer left -- finished by an
@@ -151,6 +192,340 @@ void zqsort(T *a, int n, int (*cmp)(T const &, T const &))
 }
 
 namespace Particle {
+
+/* whether a point the screen transform gave lies outside what is drawn: nearer than 1000 or
+ * within 16000 of the 65536-wide coordinate range's edges (ours, inline: the target materialises
+ * the answer, 1 in each early arm's delay slot, before its branch) */
+static inline bool OffScreen(const int *v)
+{
+    if (v[2] < 1000)
+        return true;
+    if (v[0] < 16000)
+        return true;
+    if (v[0] > 0xC180)
+        return true;
+    if (v[1] < 16000)
+        return true;
+    if (v[1] > 0xC180)
+        return true;
+    return false;
+}
+
+/* SOCOM II's: one particle lying in the ground plane -- its centre through the view to the screen
+ * (z kept to 16 bits, nothing drawn nearer than 1000 or near the range's edges), the altitude fog
+ * on VU0 as Draw's; its four corners, the scale either way along x and z, each through the view
+ * and the same test; the fog into each corner's w; two textured triangles (0, 2, 3) and (0, 1, 2)
+ * at the tinted colour -- the fourth vertex at the element's own colour, the original's -- the
+/* the element's instance and scale (ours, inline accessors: a corner's coordinates read through
+ * them -- see DrawXZ) */
+static inline Instance *InstOf(const BufferElement *e) { return e->m_instance; }
+static inline float ScaleOf(const BufferElement *e) { return e->m_scale; }
+
+/* SOCOM II's: one particle lying in the ground plane -- its centre through the view to the screen
+ * (z kept to 16 bits, nothing drawn nearer than 1000 or near the range's edges), the altitude fog
+ * on VU0 as Draw's; its four corners, the scale either way along x and z, each through the view
+ * and the same test; the fog into each corner's w; two textured triangles (0, 2, 3) and (0, 1, 2)
+ * at the tinted colour -- the fourth vertex at the element's own colour, the original's -- the
+ * texture's DMA reference first when it differs from the last, the tags, the cursor kicked
+ * (SOCOM 1's DrawXZ built its corners on the screen). Unwritten before the world lane's round 32
+ * (build/scratch/wld/v_xz*.py): the corners' coordinates through inline accessors for the instance
+ * and the scale -- an inline's temporaries are made ahead of the linearizer's, so the instance
+ * loads number before the 1.0f constant (v1 / v0, igreplay --movers: the constant after them) and
+ * the scale before the position (f1 / f0); written plainly both pairs swap (47 off).
+ * OPEN, 2 instructions (the target's size, 0x68C): after the fog's qmfc2.i the target stores the
+ * first corner's w BEFORE the cursor's load (`lui at; sw v0,172(sp); lw s0,m_spr; sw ...`; DrawRotated
+ * has the same tail), this schedules the load ahead of all four stores -- not moved by the cursor
+ * read first, after the first store or declared at the top, a chained store either way round, the
+ * fog read through an inline or as an unsigned int or u_long128, or the stores in a loop */
+void BufferElement::DrawXZ(float (&m)[4][4])
+{
+    sceVu0FVECTOR in;
+    sceVu0FVECTOR corner[4];
+    sceVu0IVECTOR out;
+    sceVu0IVECTOR p0;
+    sceVu0IVECTOR p1;
+    sceVu0IVECTOR p2;
+    sceVu0IVECTOR p3;
+    CPnt4D c;
+    _word128 *tag;
+
+    m_spr = CSPR::m_sprPacket = (_word128 *)zSysSprGetPacket((u_long128 **)&CSPR::m_sprPacketEnd);
+    in[0] = m_instance->m_pos[0];
+    in[1] = m_instance->m_pos[1];
+    in[2] = m_instance->m_pos[2];
+    in[3] = 1.0f;
+    sceVu0RotTransPers(out, m, in, 0);
+    out[2] >>= 4;
+    if (out[2] < 1000)
+        return;
+    if (out[0] < 16000)
+        return;
+    if (out[0] > 0xC180)
+        return;
+    if (out[1] < 16000)
+        return;
+    if (out[1] > 0xC180)
+        return;
+    float *pin = in;
+
+    in[3] = *(float *)&out[3];
+    CPnt4D *fogAlt = thePipe.m_camera->m_vuFogAlt;
+
+    asm {
+        lqc2 vf20, 0(pin)
+        lqc2 vf17, 0(fogAlt)
+        lqc2 vf18, 16(fogAlt)
+        vcallms 0x0
+        vnop
+    }
+    corner[0][0] = InstOf(this)->m_pos[0] - ScaleOf(this);
+    corner[0][1] = InstOf(this)->m_pos[1];
+    corner[0][2] = InstOf(this)->m_pos[2] - ScaleOf(this);
+    corner[0][3] = 1.0f;
+    corner[1][0] = InstOf(this)->m_pos[0] + ScaleOf(this);
+    corner[1][1] = InstOf(this)->m_pos[1];
+    corner[1][2] = InstOf(this)->m_pos[2] - ScaleOf(this);
+    corner[1][3] = 1.0f;
+    corner[2][0] = InstOf(this)->m_pos[0] + ScaleOf(this);
+    corner[2][1] = InstOf(this)->m_pos[1];
+    corner[2][2] = InstOf(this)->m_pos[2] + ScaleOf(this);
+    corner[2][3] = 1.0f;
+    corner[3][0] = InstOf(this)->m_pos[0] - ScaleOf(this);
+    corner[3][1] = InstOf(this)->m_pos[1];
+    corner[3][2] = InstOf(this)->m_pos[2] + ScaleOf(this);
+    corner[3][3] = 1.0f;
+    sceVu0RotTransPers(p0, m, corner[0], 0);
+    if (OffScreen(p0))
+        return;
+    sceVu0RotTransPers(p1, m, corner[1], 0);
+    if (OffScreen(p1))
+        return;
+    sceVu0RotTransPers(p2, m, corner[2], 0);
+    if (OffScreen(p2))
+        return;
+    sceVu0RotTransPers(p3, m, corner[3], 0);
+    if (OffScreen(p3))
+        return;
+    int fog;
+
+    asm {
+        qmfc2.i fog, vf14
+    }
+    p0[3] = fog;
+    p1[3] = fog;
+    p2[3] = fog;
+    p3[3] = fog;
+    _word128 *p = m_spr;
+
+    if (m_texture != m_lastTexture) {
+        m_lastTexture = m_texture;
+        p->u128 = ((CTexDmaRef *)m_texture)->m_dmaRef;
+        p++;
+    }
+    tag = p++;
+
+    p->u64[0] = 0x3039C00000008006;
+    p->u64[1] = 0x412;
+    p++;
+    CPnt4D tint = func_003B7590(m_instance->m_source->m_tint);
+
+    func_003B59A0((_word128 *)this, (_word128 *)&tint, (_word128 *)&c);
+    float q = 1.0f / (float)out[2];
+
+    p->u32[0] = 0;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    p++;
+    p->u128 = *(u_long128 *)p0;
+    p++;
+    p->f32[0] = q;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    p++;
+    p->u128 = *(u_long128 *)p2;
+    p++;
+    p->f32[0] = q;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    p++;
+    p->u128 = *(u_long128 *)p3;
+    p++;
+    p->u32[0] = 0;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)this);
+    p++;
+    p->u128 = *(u_long128 *)p0;
+    p++;
+    p->u32[0] = 0;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    p++;
+    p->u128 = *(u_long128 *)p1;
+    p++;
+    p->f32[0] = q;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    p++;
+    p->u128 = *(u_long128 *)p2;
+    p++;
+    m_spr = p;
+    int qwc = m_spr - tag - 1;
+
+    tag->u32[0] = qwc | 0x10000000;
+    tag->u32[1] = 0;
+    tag->u32[2] = 0x11000000;
+    tag->u32[3] = qwc | 0x50000000;
+    CSPR::Kick(m_spr, false);
+}
+
+/* SOCOM 1's: one billboard -- its instance's point through the view to the screen (z kept to 16
+ * bits and nothing nearer than 10), the sprite's half-size the scale over the depth through the
+ * screen matrix's diagonal, nothing drawn that leaves the 4096-pixel square; the colour through
+ * the source's light tint, the altitude fog worked out on VU0 (its microprogram at 0, the fog read
+ * back from vf14 -- new in SOCOM II); then a two-vertex sprite with or without its texture (the
+ * texture's DMA reference first when it differs from the last), the packet's DMA and VIF tags and
+ * the cursor kicked. Byte-exact (the world lane's round 32, unwritten before; build/scratch/wld/
+ * v_bed*.py): the VU0 blocks PLAIN `asm { }` -- `asm volatile` turns the IR optimiser off for the
+ * whole function (0x3D4: the int-to-float loads through GPRs; plain asm restored the size, 75 off
+ * on registers); the tint initialised from its call (assigned, its by-value result is copied
+ * through four FPRs from a fifth stack slot); `tag` declared at the top (numbered ahead of the
+ * half-sizes: s4, then w s3, h s2, the cursor s1); the four range tests one `if` each (an `||`
+ * materialises the compares); out.w read before the fog vectors' address (the target's load
+ * order); the scale read into a named local, numbered ahead of the 256.0f constant (f1 / f0:
+ * igreplay --want 38=f0,39=f1 --movers 38,39; a `(float)` cast on m_scale does the same) */
+void BufferElement::Draw(float (&m)[4][4])
+{
+    sceVu0FVECTOR in;
+    sceVu0IVECTOR out;
+    CPnt4D c;
+    _word128 *tag;
+
+    m_spr = CSPR::m_sprPacket = (_word128 *)zSysSprGetPacket((u_long128 **)&CSPR::m_sprPacketEnd);
+    in[0] = m_instance->m_pos[0];
+    in[1] = m_instance->m_pos[1];
+    in[2] = m_instance->m_pos[2];
+    in[3] = 1.0f;
+    sceVu0RotTransPers(out, m, in, 0);
+    out[2] >>= 4;
+    if (out[2] < 10)
+        return;
+    float scale = m_scale;
+    float s = 256.0f * scale / (float)out[3];
+    CPipeCamera *cam = thePipe.m_camera;
+    int w = (int)(0.5f + s * cam->m_viewToScreen[0][0]);
+    int h = (int)(0.5f + s * cam->m_viewToScreen[1][1]);
+
+    if (out[0] - w < 0)
+        return;
+    if (out[0] + w >= 0x10000)
+        return;
+    if (out[1] - h < 0)
+        return;
+    if (out[1] + h >= 0x10000)
+        return;
+    CPnt4D tint = func_003B7590(m_instance->m_source->m_tint);
+
+    func_003B59A0((_word128 *)this, (_word128 *)&tint, (_word128 *)&c);
+    float *pin = in;
+
+    in[3] = *(float *)&out[3];
+    CPnt4D *fogAlt = thePipe.m_camera->m_vuFogAlt;
+    asm {
+        lqc2 vf20, 0(pin)
+        lqc2 vf17, 0(fogAlt)
+        lqc2 vf18, 16(fogAlt)
+        vcallms 0x0
+        vnop
+    }
+    _word128 *p = m_spr;
+    int fog;
+
+    if (m_texture) {
+        if (m_texture != m_lastTexture) {
+            m_lastTexture = m_texture;
+            p->u128 = ((CTexDmaRef *)m_texture)->m_dmaRef;
+            p++;
+        }
+        tag = p++;
+        p->u64[0] = 0x307B400000008002;
+        p->u64[1] = 0x412;
+        p++;
+        float q = 1.0f / (float)out[2];
+
+        asm {
+            qmfc2.i fog, vf14
+        }
+        p->u128 = *(const u_long128 *)&CPnt4D::zero;
+        p++;
+        sceVu0FTOI0Vector((int *)p, (float *)&c);
+        p++;
+        p->u32[0] = out[0] - w;
+        p->u32[1] = out[1] - h;
+        p->u32[2] = out[2] << 4;
+        p->u32[3] = fog;
+        p++;
+        p->f32[2] = q;
+        p->f32[1] = q;
+        p->f32[0] = q;
+        p->u32[3] = 0;
+        p++;
+        sceVu0FTOI0Vector((int *)p, (float *)&c);
+        p++;
+        p->u32[0] = out[0] + w;
+        p->u32[1] = out[1] + h;
+        p->u32[2] = out[2] << 4;
+        p->u32[3] = fog;
+        p++;
+    } else {
+        tag = p++;
+        p->u64[0] = 0x2073400000008002;
+        p->u64[1] = 0x51;
+        p++;
+        asm {
+            qmfc2.i fog, vf14
+        }
+        sceVu0FTOI0Vector((int *)p, (float *)&c);
+        p++;
+        p->u32[0] = out[0] - w;
+        p->u32[1] = out[1] - h;
+        p->u32[2] = out[2] << 4;
+        p->u32[3] = fog;
+        p++;
+        sceVu0FTOI0Vector((int *)p, (float *)&c);
+        p++;
+        p->u32[0] = out[0] + w;
+        p->u32[1] = out[1] + h;
+        p->u32[2] = out[2] << 4;
+        p->u32[3] = 0;
+        p++;
+    }
+    int qwc = p - tag - 1;
+
+    tag->u32[0] = qwc | 0x10000000;
+    tag->u32[1] = 0;
+    tag->u32[2] = 0x11000000;
+    tag->u32[3] = qwc | 0x50000000;
+    m_spr = p;
+    CSPR::Kick(m_spr, false);
+}
 
 /* whether a depth is still inside the range (ours: the target materialises the compare as a bool
  * before the loop's other test) */

@@ -28,6 +28,15 @@ as one), and the variant's label says how many (`NEW (all 3)`); in --variants a 
 
     ./tools/try.py src/lib/sdk/tty.c sceTtyRead --sub-all 'buf[i] ==' 'buf[i] !='              # both sites
 
+OLD and NEW are taken AS TYPED: a `\\n` in them is a backslash and an n, so a C escape in the source
+(`'\\n'`, `"%d\\n"`) is matched and written as it stands -- and a NEW meant to break a line does not
+build. -n/--newlines makes `\\n` a newline and `\\t` a tab in OLD and NEW alike; -e/--escapes decodes
+the usual escapes -- `\\n`, `\\t`, `\\r`, `\\\\`, `\\"`, `\\'` -- in each NEW alone, OLD left as typed
+(GCC round 43a: the HUD's round 63 read the literal as a bug). A variant that fails to build with
+such a NEW, given neither flag, says so on stderr. With both, OLD takes -n's and each NEW -e's.
+
+    ./tools/try.py src/lib/sdk/tty.c sceTtyRead -e --sub 'return i + 1;' 'return i + 1;\\n\\t/* x */'
+
 src/ (drafts left out) and include/ are copied once to a scratch tree (build/try/, or
 $SC_TRY_WORK -- one per concurrent user), so the tree is never touched, and each variant is built
 there as sccheck builds it: under the unit's own directive (a GCC unit's `sc: compiler=...;
@@ -244,16 +253,35 @@ def apply_subs(text: str, subs) -> tuple[str, str | None, list[tuple[str, int, i
     return text, None, sites
 
 
+_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", '"': '"', "'": "'"}
+
+
+def decode_escapes(s: str) -> str:
+    """`s` with the usual backslash escapes decoded -- \\n, \\t, \\r, \\\\, \\" and \\' (-e/--escapes,
+    GCC round 43a); any other backslash is kept as written (`\\0`, `\\x41` stay as typed)."""
+    return re.sub(r"\\(.)", lambda m: _ESCAPES.get(m.group(1), m.group(0)), s, flags=re.S)
+
+
+def literal_escape(new: str) -> bool:
+    """Does `new` hold a `\\n` or `\\t` typed as a backslash and a letter (what -e or -n decodes)?"""
+    return re.search(r"(?<!\\)\\[nt]", new) is not None
+
+
 def variants_from(a, base: str) -> list[tuple[str, list[tuple]]]:
     """[(label, [(old, new) | (old, new, 'all'), ...])]; an empty list is the file as it is."""
     common: list[tuple] = []
     out: list[tuple[str, list[tuple]]] = []
+    escapes = getattr(a, "escapes", False)          # tools/igvar.py's parser has no -e
     for opt, (old, new) in a.steps or []:
         if a.newlines:
-            old, new = (s.replace("\\n", "\n").replace("\\t", "\t") for s in (old, new))
+            old = old.replace("\\n", "\n").replace("\\t", "\t")
+            if not escapes:
+                new = new.replace("\\n", "\n").replace("\\t", "\t")
+        if escapes:
+            new = decode_escapes(new)
         sub = (old, new, "all") if opt in ("--sub-all", "--and-all") else (old, new)
         if opt in ("--sub", "--sub-all"):
-            out.append((repr(new[:90]) if a.newlines else new[:90], [sub]))
+            out.append((repr(new[:90]) if a.newlines or escapes else new[:90], [sub]))
         elif out:
             out[-1][1].append(sub)
         else:
@@ -281,6 +309,8 @@ def main(argv=None) -> int:
     ap.add_argument("--all", action="store_true", help="score every function the unit defines; list the misses")
     ap.add_argument("--order", help="print the object's functions (in its order) whose names match this regex")
     ap.add_argument("-n", "--newlines", action="store_true", help="`\\n` in OLD and NEW is a newline, `\\t` a tab")
+    ap.add_argument("-e", "--escapes", action="store_true", help="each NEW's usual escapes decoded (\\n \\t \\r \\\\ "
+                    "\\\" \\'), OLD left as typed; without -e or -n both are taken as typed")
     ap.add_argument("-d", "--diff", action="store_true", help="print the diff of a variant that fails")
     ap.add_argument("--no-dist", action="store_true",
                     help="print each verdict alone, without its difflib distance (the output before GCC round 39a)")
@@ -288,7 +318,7 @@ def main(argv=None) -> int:
     unit = a.unit or a.file
     base = a.file.read_text()
     prepare()
-    warned = set()
+    warned, hinted = set(), False
     for label, subs in variants_from(a, base):
         text, missing, sites = apply_subs(base, subs)
         if missing is not None:
@@ -305,6 +335,10 @@ def main(argv=None) -> int:
         obj, err = build(a.file, unit, text if subs else None)
         if obj is None:
             verdict = "BUILD-FAIL " + _last_error(err)
+            if not (a.newlines or a.escapes) and any(literal_escape(s[1]) for s in subs) and not hinted:
+                hinted = True
+                print("try.py: a NEW holds `\\n` or `\\t` as typed (a backslash and a letter); -e decodes the usual "
+                      "escapes in each NEW, -n makes \\n and \\t a newline and a tab in OLD and NEW", file=sys.stderr)
         elif a.all:
             ok, n, misses = score_all(obj, unit)
             verdict = f"{ok} of {n} match" + (f"; miss: {', '.join(m[:40] for m in misses[:8])}" if misses else "")

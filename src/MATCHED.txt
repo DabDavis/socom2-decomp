@@ -1860,9 +1860,13 @@
 0x0021CBA0 UnInit__10CWeaponSelFv
 0x0021CD40 Init__10CWeaponSelFPQ23zdb6CWorldP7C2DFont
 0x0021D760 __ct__10CWeaponSelFv
+0x0021D9D0 HudTick__14CZActionBitmapF10MENU_STATE
 0x0021DE50 UnInit__14CZActionBitmapFv
 0x0021F120 func_0021F120
+0x0021F210 Render_ver_2__18CActionTxtrMachineFR14CZActionBitmap
+0x0021F850 Open__18CActionTxtrMachineFUi
 0x002200C0 TickTransparencyFade__18CActionTxtrMachineFb
+0x00220350 SpecializeActionString__18CActionTxtrMachineFP11CNodeAction
 0x00220870 UpdateDriverPickup__18CActionTxtrMachineFv
 0x002209C0 Add__18CActionTxtrMachineFP11CActionTxtr
 0x00220B50 __dt__18CActionTxtrMachineFv
@@ -2323,6 +2327,7 @@
 0x00248350 libnetb_prepare_async_receive
 0x002483F8 libnetb_prepare_async_send
 0x002484A0 func_002484A0
+0x002485D0 func_002485D0
 0x00248718 func_00248718
 0x00248738 func_00248738
 0x00248760 func_00248760
@@ -5419,6 +5424,7 @@
 0x00324DB0 Draw__8ParticleFv
 0x00325080 bufferPtrCompare__8ParticleFRCPQ28Particle13BufferElementRCPQ28Particle13BufferElement
 0x003250B0 DrawFlush__8ParticleFv
+0x003251B0 Draw__Q28Particle13BufferElementFRA4_A4_f
 0x00326A00 DrawPrep__8ParticleFv
 0x00326C20 func_00326C20
 0x00326F40 __ct__Q28Particle13BufferElementFv
@@ -7009,6 +7015,7 @@
 0x00390A30 SkbHangulType__FP10CSkbPiecesc
 0x00390BB0 FindJamo__FPCc
 0x003910B0 SkbRdrCount__FP5_zrdr
+0x003910E0 SkbHangulBack__Fv
 0x00391270 SetCount__25CSkbFixedVec<8CJamoStr,1>Fi
 0x00391280 __ct__8CJamoStrFv
 0x003912A0 __dt__8CJamoStrFv

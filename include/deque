@@ -655,7 +655,17 @@ public:
      * inlined and the min folded to one temporary. MEASURED (the UI's round 37): out of class, `return
      * __max_size();` is 0x84 against 0x50 -- alloc() called out of line and min() through two stack
      * temporaries, __recommend's copy of the static's initialiser; in class or `inline` it is inlined
-     * into reserve, which calls it out of line in the target */
+     * into reserve, which calls it out of line in the target. The MSL headers round 38 (build/p38/mkdq.py,
+     * genorder.py -- zanim_menu.cpp's code-generation order from igdump's record order; untracked): the
+     * 0x84 is the generation order, not the body -- the tail generates resize, reserve, push_back, then
+     * __recommend, max_size (both waiting past their walk on the unparsed __max_size(), last first), then
+     * alloc() a walk later, so both call it; with alloc() IN CLASS max_size 0x285CE0 IS BYTE-EXACT (0x50)
+     * but __recommend inlines it too (0xF8 of 0x120) -- the target's order is __recommend, alloc(),
+     * max_size (the image's 0x285BB0, 0x285CD0, 0x285CE0), alloc() generated between the two. Declaring
+     * reserve ahead of push_back gives the image's first three, resize, push_back, reserve (last deferred
+     * first); moving alloc() and max_size() after __recommend changes nothing (both still wait). Not met:
+     * no declaration order lets __recommend run before alloc() and max_size after it while both wait on
+     * __max_size() */
     unsigned int max_size() const;
     /* THE GROWTH RECOMMENDATION (0x285BB0, out of line in an earlier unit, zanim_menu.cpp's tail; the
      * MSL headers round 32, named for the online lane's round 24): the capacity a buffer that must hold
