@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 50** (no new row: SetRoundStatUiVars 0x1F21B0, unwritten before, written at the
+  size, OPEN by its walk's six frame slots; five rows named -- SOCOM 1's CZPersonaState::GetPersonaName 0x2C3A70 and
+  GetSOUPString 0x2C3C30, ours GetPersonaClanTag 0x2C3AC0, EnableExternalWhispers 0x2A41F0, IsNewestVersion 0x2C94F0):
+  - MW'S MEMCPY INTRINSIC IS `__memcpy(void *, void *, n)`: it gives the array-initialiser block copy (all loads, then
+    all stores) even from a string literal; plain memcpy / strcpy stay calls on a 10-byte char array, and a struct
+    assignment pairs each load with its store;
+  - `x %= constant` compiles to a div; the target's multiply-back form needs `q = x / c; x -= q * c`;
+  - `do { if (!More()) break; ... } while (count < 4)` gives one More() test at the top and the count tested at the
+    bottom; a `for` with `count < 4 && More()` in its condition jumps to a test at the bottom instead;
+  - igdump's `syms` lists the frame's slot objects, and their @N order is the slot order (ascending @N, descending
+    address); each chain's base temporary is made one inline level before its copy -- the teamwork rating's and
+    SetRoundStatUiVars' step temporaries sit one level deeper than the constructor's and More()'s, and every way to add
+    that level hits the level-5 cut or keeps the list's end node in s7;
+  - `h > 0 ? a : b` stored into a char array element leaves one store at the join, the target's store in each arm is
+    an if/else; four separate stores interleave as the target's, an unrolled constant-count loop schedules them apart; a
+    member call's `this` on a global object's member computed ahead of an earlier call needs a pointer local declared
+    before that call.
 - **Tells from the weapons, round 36** (CWaterRippleManager::Gather 0x3C3120, CVisual::SetBuffer 0x3C38C0 and
   CVisual::ApplyDecalRender 0x3B3950 -- open since round 13 -- byte-exact):
   - A CALL ARGUMENT MADE OF AN INLINE WITH A BODY OF ITS OWN (a local assigned, then returned) IS LOADED BEFORE THE OTHER

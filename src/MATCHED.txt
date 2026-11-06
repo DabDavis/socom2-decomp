@@ -3543,7 +3543,7 @@
 0x002A3E20 Clear__12CCareerStatsFv
 0x002A3E60 Dequeue__13CMessageQueueFP14CQueuedMessage
 0x002A4050 Enqueue__13CMessageQueueFPCc7MSGTYPEPCc
-0x002A41F0 func_002A41F0
+0x002A41F0 EnableExternalWhispers__Fb
 0x002A4270 HasMessages__13CMessageQueueFv
 0x002A4290 __ct__14CQueuedMessageFv
 0x002A42A0 func_002A42A0
@@ -3922,11 +3922,11 @@
 0x002C3980 func_002C3980
 0x002C39D0 func_002C39D0
 0x002C3A20 func_002C3A20
-0x002C3A70 func_002C3A70
-0x002C3AC0 func_002C3AC0
+0x002C3A70 GetPersonaName__14CZPersonaStateFi
+0x002C3AC0 GetPersonaClanTag__14CZPersonaStateFi
 0x002C3B10 func_002C3B10
 0x002C3B60 func_002C3B60
-0x002C3C30 func_002C3C30
+0x002C3C30 GetSOUPString__14CZPersonaStateFP10CZSealBodyi
 0x002C3CF0 CheckStateSwitch__14CZPersonaStateFv
 0x002C3FC0 ToggleReady__14CZPersonaStateFv
 0x002C4020 func_002C4020
@@ -4019,7 +4019,7 @@
 0x002C90B0 Purge__17CMultiMissionListFv
 0x002C91A0 Add__17CMultiMissionListFPC11MissionDesc
 0x002C93E0 Clear__17CMultiMissionListFv
-0x002C94F0 func_002C94F0
+0x002C94F0 IsNewestVersion__FP13CMultiMission
 0x002C9540 __ct__13CMultiMissionFPC5_zrdr
 0x002C9720 __dt__17CMultiMissionListFv
 0x002C9810 SendWhisper__FPcPc
