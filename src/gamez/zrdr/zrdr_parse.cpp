@@ -359,8 +359,11 @@ bool CRdrIO::Open(void *buf, unsigned int size)
     return CBufferIO::Open(buf, size);
 }
 
+static inline void line_erase(std::string &s) { s.erase(); }
+static inline std::string &string_erase2(std::string &s, unsigned int pos, unsigned int n) { return string_erase(s, pos, n); }
+
 /* a string trimmed of the characters given at both ends (ours, inline) */
-static inline void zrdr_trim(std::string &s, const char *set)
+static inline std::string &zrdr_trim(std::string &s, const char *set)
 {
     unsigned int i = s.find_first_not_of(set, 0);
 
@@ -369,6 +372,7 @@ static inline void zrdr_trim(std::string &s, const char *set)
     i = s.find_last_not_of(set, (unsigned int)std::string::npos);
     if (i + 1 != s.size())
         string_erase(s, i + 1, (unsigned int)std::string::npos);
+    return s;
 }
 
 /* the preprocessor's directives (SOCOM 1's _get_pptoken, its codes 1, 2 and 4 the same; SOCOM II
@@ -449,9 +453,14 @@ bool CRdrFile::ValidateFormat(CRdrIO *io)
  * function in reverse of their first use; #ifdef's and the substitution's Find inline whole. Written
  * so, the unit's template tail comes out as the target's: the element's copy constructor 0x332B50,
  * the insert 0x3325E0 and its helpers.
- * OPEN, 1196 instructions at the target's size (0x1588): not reconciled yet -- the skip stack's
- * zeroing loop keeps a null test of its address in the target, the line's c_str() bases are hoisted
- * into stack slots (0xA0, 0xB0), and the registers differ throughout */
+ * Byte-exact since round 34 (open since round 4). What settled it: the skip stack `= {0}`, MW's null-tested byte clear; the
+ * depth defined ahead of it; zrdr_trim returning its string and CALLED IN THE ARGUMENTS of Define, Undefine and Find (`&name`
+ * in a saved register after each trim, an arm's value frame-relative where it is not trimmed: an inline's by-reference
+ * argument that is a call is not substituted, so the parameter is a variable; the two-argument Define's trims still run
+ * left to right); the empty value a temporary of the call (its slot the last of the strings), two small wrappers
+ * (line_erase, string_erase2: ours) a pass deeper for the frame slots of the first two erases' tags; the directive's
+ * code an int narrowed at the switch; a line's character an int (no sign extension of a char variable); the word's
+ * marks `start = mark = i`; a directive inside a string ends the file's loop (`break`). */
 bool _preproc_filter(CRdrIO *io)
 {
     std::string white(" \t");
@@ -464,8 +473,8 @@ bool _preproc_filter(CRdrIO *io)
     if (!CRdrFile::ValidateFormat(io))
         return false;
     io->fseek(0, 0);
-    bool skip[8] = {0};
     int depth = 0;
+    bool skip[8] = {0};
     bool skipping = false;
     int error = 0;
 
@@ -479,7 +488,7 @@ bool _preproc_filter(CRdrIO *io)
     std::string line;
 
     while (!error && !eof) {
-        line.erase();
+        line_erase(line);
         bool end = false;
         char c;
 
@@ -498,17 +507,17 @@ bool _preproc_filter(CRdrIO *io)
         bool directive = pos != (unsigned int)std::string::npos && line.at(pos) == '#';
 
         if (directive && pos)
-            string_erase(line, 0, pos);
+            string_erase2(line, 0, pos);
         if (directive) {
-            unsigned short token = _get_pptoken(line.c_str());
+            int token = _get_pptoken(line.c_str());
 
             if (quoted)
-                continue;
+                break;
             unsigned int end = line.find_first_of(comment, 0);
 
             if (end != (unsigned int)std::string::npos)
                 string_erase(line, end, (unsigned int)std::string::npos);
-            switch (token) {
+            switch ((unsigned short)token) {
             case ZRDR_PP_INCLUDE:
                 if (!skipping) {
                     std::string name(line, line.find_first_of(white, 0), (unsigned int)std::string::npos);
@@ -545,14 +554,9 @@ bool _preproc_filter(CRdrIO *io)
                     if (last != (unsigned int)std::string::npos) {
                         std::string value(line, last, (unsigned int)std::string::npos);
 
-                        zrdr_trim(name, " \t\n\r\f");
-                        zrdr_trim(value, " \t\n\r\f");
-                        g_symbols.Define(name, value);
+                        g_symbols.Define(zrdr_trim(name, " \t\n\r\f"), zrdr_trim(value, " \t\n\r\f"));
                     } else {
-                        std::string value("");
-
-                        zrdr_trim(name, " \t\n\r\f");
-                        g_symbols.Define(name, value);
+                        g_symbols.Define(zrdr_trim(name, " \t\n\r\f"), std::string(""));
                     }
                 }
                 break;
@@ -560,8 +564,7 @@ bool _preproc_filter(CRdrIO *io)
                 if (!skipping) {
                     std::string name(line, line.find_first_of(white, 0), (unsigned int)std::string::npos);
 
-                    zrdr_trim(name, " \t\n\r\f");
-                    g_symbols.Undefine(name);
+                    g_symbols.Undefine(zrdr_trim(name, " \t\n\r\f"));
                 }
                 break;
             case ZRDR_PP_IFDEF: {
@@ -569,8 +572,7 @@ bool _preproc_filter(CRdrIO *io)
 
                 depth++;
                 if (!skipping) {
-                    zrdr_trim(name, " \t\n\r\f");
-                    if (g_symbols.Find(name, false, false))
+                    if (g_symbols.Find(zrdr_trim(name, " \t\n\r\f"), false, false))
                         skip[depth] = false;
                     else
                         skip[depth] = true;
@@ -610,7 +612,7 @@ bool _preproc_filter(CRdrIO *io)
             unsigned int mark = (unsigned int)std::string::npos;
 
             for (; i < line.size(); i++) {
-                char ch = line[i];
+                int ch = line[i];
 
                 if (quoted) {
                     if (ch == '"')
@@ -624,19 +626,18 @@ bool _preproc_filter(CRdrIO *io)
                     quoted = true;
                 else if (rdr_isspace(ch) || ch == '(' || ch == ')') {
                     if (start == mark)
-                        mark = start = i;
+                        start = mark = i;
                     else {
                         std::string word = line.substr(start, i - start);
 
-                        zrdr_trim(word, " \t\n\r\f");
-                        zrdr_sym *sym = g_symbols.Find(word, false, false);
+                        zrdr_sym *sym = g_symbols.Find(zrdr_trim(word, " \t\n\r\f"), false, false);
 
                         if (sym && sym->m_value.size()) {
                             string_erase(line, start, word.size());
                             line.replace(start, 0, sym->m_value);
                             i = start + sym->m_value.size();
                         }
-                        mark = start = i;
+                        start = mark = i;
                     }
                 } else if (start == mark)
                     start = i;
