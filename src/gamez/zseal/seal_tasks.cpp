@@ -1088,6 +1088,19 @@ struct CTState : TASK_HDR {
     };
     TASK_NAME m_name;   // 0x2c: the state's entity, vehicle or action -- else the pushed state's name
 
+    /* the n'th name (inline: SOCOM 1's CTState walked a list of names, SOCOM II's block holds one --
+     * Tick asks for the first. A body of its own, so a call taking it as an argument loads it before
+     * the entity list's address: the target's `addiu a1` ahead of the list's low half, where the name
+     * written in place goes last, into the call's delay slot; the name ours) */
+    const char *GetName(int n)
+    {
+        const char *p = m_name.m_str;
+
+        while (n--)
+            p += strlen(p) + 1;
+        return p;
+    }
+
     /* a block of a state, sized to the name (inline: its name's length 0 for none computed at run
      * time -- the pops' `strlen(0)` arm emitted unreached) */
     static CTState *Create(AI_STATE state, const char *name)
@@ -4177,6 +4190,152 @@ _zanim_cmd_hdr *CTState::Parse(_zrdr *rdr)
         }
     }
     return &cmd->hdr;
+}
+
+extern "C" {
+/* a node action of a name (OVL1 0x2B4E80, fts_action.cpp's), the action state's action taken
+ * (OVL2 0x5F0180, seal_aistate.cpp's), the follow state's master set through its AI (OVL2 0x5FD010,
+ * unnamed: SetFollowMaster, then the AI's master copied to the state's) and a vehicle of an id
+ * boarded (OVL2 0x60F6C0, seal_aivehicle.cpp's) */
+CNodeAction *func_002B4E80(const char *name);
+void func_005F0180(CAiSAction *s, CSealCtrlAi *ai, CNodeAction *na, int mode);
+void func_005FD010(CAiSFollow *s, CSealCtrlAi *ai, CZSealBody *master);
+bool func_0060F6C0(CSealCtrlAi *ai, unsigned int id);
+/* a world unit in cells (OVL2 data 0x64FC68, 0.1: read as a variable, as the follow's cell size
+ * 0x64FC60) */
+extern float data_0064FC68;
+float ceilf(float x);
+}
+CZSealBody *ftsGetPlayer();
+
+/* the state pushed on the SEAL's AI -- the task's SEAL's, or with an entity named that SEAL's (found
+ * three times over, as CTSignal::Tick's) -- and set up from the block: the action's action named (else
+ * the state let go), the rescued step 2, the rush's timer, range and flags and its target (the entity
+ * named, else the AI's target, else the player when no friend), the follow's master and its offset in
+ * cells, the vehicle's timeout once boarded; or the stack popped -- by a state, to one, or the top;
+ * done at once (OVL2 0x5CF930; SOCOM 1's, which pushed only the rush and the follow). The AI declared
+ * with the SEAL and its controller ahead of the find's locals gives the target's numbering (the block
+ * s0, the list and the AI s1 -- declared after the find, as CTSignal's, they swap); the kinds an if-else
+ * chain, the states a switch written in the target's layout order; the entity named tested through a
+ * bool set in two steps -- `e && e->m_type == SEAL ? e : 0` in any spelling (a local, an inline with
+ * a body, a bool inline, a select inline) folds into branches, where the target keeps the materialised
+ * `sltu; beqz; xori; sltiu; movz` GetTyped's statement-level copy gets from CInline_LoadToTemp */
+bool CTState::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    CSealCtrlAi *ai;
+    TASK_SEAL(CTState);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    AI_STATE state = (AI_STATE)cmd->m_state;
+
+    if (cmd->m_kind == POP)
+        ai->PopAiState();
+    else if (cmd->m_kind == POPIF)
+        ai->PopAiState(state);
+    else if (cmd->m_kind == POPTO)
+        ai->PopToAiState(state, false);
+    else if (cmd->m_kind == PUSH && ai->PushAiState(state, 8)) {
+        CAiState *s = ai->GetAiState();
+
+        switch (state) {
+        case AI_STATE_ACTION: {
+            CAiSAction *action = s && s->m_state == AI_STATE_ACTION ? (CAiSAction *)s : 0;
+            CNodeAction *na = func_002B4E80(cmd->m_name.m_str);
+
+            if (na)
+                func_005F0180(action, ai, na, cmd->m_flags);
+            else
+                action->SetActive(false);
+            break;
+        }
+        case AI_STATE_RESCUED: {
+            CAiState *rescued = s && s->m_state == AI_STATE_RESCUED ? s : 0;
+
+            rescued->UpdatePhase(2);
+            break;
+        }
+        case AI_STATE_RUSH: {
+            CAiSRush *rush = s && s->m_state == AI_STATE_RUSH ? (CAiSRush *)s : 0;
+            float t = cmd->m_timer;
+
+            rush->m_time = t;
+            rush->SetFlags(t != 0.0f, t == 0.0f);
+            float r = cmd->m_range;
+
+            rush->m_range2 = r * r;
+            rush->SetFlags(r != 0.0f ? 2 : 0, r != 0.0f ? 0 : 2);
+            rush->SetFlags(cmd->m_flags | 0x20, 0);
+            CEntity *e = CEntity::GetEntityList().GetEntity(cmd->GetName(0));
+            bool ok = (bool)e;
+
+            if (ok)
+                ok = e->m_type == CEntity::ENT_TYPE_SEAL;
+            CZSealBody *target = ok ? (CZSealBody *)e : 0;
+
+            if (target)
+                rush->SetTarget(target);
+            else if (func_0060A850(ai->m_67c)) {
+                CEntity *t = *(CEntity **)ai->m_67c;
+
+                rush->SetTarget(t && t->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)t : 0);
+            } else {
+                CZSealBody *player = ftsGetPlayer();
+
+                if (player && player->IsEnemy(dest))
+                    rush->SetTarget(player);
+            }
+            break;
+        }
+        case AI_STATE_FOLLOW: {
+            CAiSFollow *follow = s && s->m_state == AI_STATE_FOLLOW ? (CAiSFollow *)s : 0;
+            CEntity *e = CEntity::GetEntityList().GetEntity(cmd->GetName(0));
+            bool ok = (bool)e;
+
+            if (ok)
+                ok = e->m_type == CEntity::ENT_TYPE_SEAL;
+            CZSealBody *master = ok ? (CZSealBody *)e : 0;
+
+            if (master) {
+                int cells[2];
+
+                func_005FD010(follow, ai, master);
+                cells[0] = (int)ceilf(-cmd->m_offset.z * data_0064FC68);
+                cells[1] = (int)ceilf(cmd->m_offset.x * data_0064FC68);
+                follow->SetOffset(cells);
+            }
+            break;
+        }
+        case AI_STATE_USEVEHICLE: {
+            CEntity *e = CEntity::GetEntityList().GetEntity(cmd->GetName(0));
+
+            if (e && func_0060F6C0(ai, e->m_id)) {
+                CAiState *v = ai->GetAiState();
+                CAiSUseVehicle *vehicle = v && v->m_state == AI_STATE_USEVEHICLE ? (CAiSUseVehicle *)v : 0;
+
+                vehicle->SetTimeout(cmd->m_timer);
+            }
+            break;
+        }
+        }
+    }
+    *dT = 0.0f;
+    return true;
 }
 
 /* an AI valve's compare read: the SEAL valve named first (none for an unknown name), then as
