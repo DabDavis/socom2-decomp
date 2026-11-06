@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 62** (four long-open rows byte-exact: CTCMNode::RemoveChild 0x232030 -- since round 27 --,
+  tcmSelectPlayer 0x22F5B0 -- since round 23 --, CPopUpDialog::Draw 0x370690 -- since round 58 -- and SetFinalTeamTotalsUiVar
+  0x225BC0 -- since round 17, through a marked CEntityItr(int) modelling device; MW's IroSubable.c and InterferenceGraph.c
+  read, now in build/scratch/mweppc/):
+  - IRO_IsSubableExpression REFUSES `register local +- constant`, so `n - 1` is hoisted only by the back end, numbered after
+    every IRO temporary; a widening-or-equal int cast is subable -- `(int)(n - 1)`, or an unsigned counter compared with
+    an int -- and IRO_MoveInvariantExpressions hoists it into a front-end temporary right after the loop's
+    strength-reduction temporaries (RemoveChild, tcmSelectPlayer);
+  - IRO_MoveInvarianceInAddressExpr puts a loop's invariant addends first (`data[i]` in an inner loop becomes `i*4 + data`);
+    taking the address through a pointer or reference local keeps the written order;
+  - IRO_ExpressionPropagation moves a scalar's defining expression only into a single use in the same flow node, and only
+    if the variable is used in no other flow node; IRO_CommonSubs creates its temporaries at each expression's first
+    reuse, in linear order;
+  - A COPY INTO A NAMED LOCAL IS NEVER COALESCED (InterferenceGraph.c: only copies where one side is a hard register or
+    both are temporaries) -- a surviving `mov` into a named variable's register is expected (the map-item Ticks' one
+    instruction); include/list's const begin() shares &m_list with end() through a pointer local whose address is hoisted
+    out of an outer loop -- reading `l.tail_ptr()->next_` with no local loads it absolutely.
 - **Tells from the game states, round 51** (C2DMessage_Q::Add_Message 0x2B6530 -- SOCOM 1's word-wrapper grown -- and
   CZSealState::IncrementalUpdateRemoteSeal 0x2BE150, both unwritten before, and ScrollUp 0x2B6430 by hand byte-exact;
   fts_message.cpp and fts_net_seal.cpp whole; zRemoteClientConnectsCallback 0x2BC620 written, OPEN at the size):

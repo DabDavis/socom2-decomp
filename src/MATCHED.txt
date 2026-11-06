@@ -1906,6 +1906,7 @@
 0x002253C0 ComputeNewRating__23@unnamed@st_mpexit_cpp@Fv
 0x002256F0 SetMvpUiVars__23@unnamed@st_mpexit_cpp@FPCcPCc
 0x00225A00 SetPlayerStatsUiVar__23@unnamed@st_mpexit_cpp@FPCcii
+0x00225BC0 SetFinalTeamTotalsUiVar__23@unnamed@st_mpexit_cpp@FbPCc
 0x00225E40 GetHitPct__10CSealStatsCFv
 0x00225E70 CompareGameSeals__23@unnamed@st_mpexit_cpp@FP10CZSealBodyP10CZSealBody
 0x00225F20 GetGameStats__10CZSealBodyFv
@@ -2024,6 +2025,7 @@
 0x0022F440 tcmUpdateVote__FP10CZSealBodyi
 0x0022F4C0 tcmMute__FP10CZSealBodyi
 0x0022F530 tcmUpdateMute__FP10CZSealBodyi
+0x0022F5B0 tcmSelectPlayer__FP10CZSealBodyi
 0x0022F810 tcmUpdateRadio__FP10CZSealBodyi
 0x0022F880 tcmRadioOnOff__FP10CZSealBodyi
 0x0022F8F0 tcmUpdateRadioOnOff__FP10CZSealBodyi
@@ -2063,6 +2065,7 @@
 0x00231E40 Find__8CTCMNodeFPCcRQ23std48vector<P8CTCMNode,Q23std21allocator<P8CTCMNode>>b
 0x00231F80 AddChild__8CTCMNodeFP8CTCMNode
 0x00231FD0 DeleteChildren__8CTCMNodeFv
+0x00232030 RemoveChild__8CTCMNodeFP8CTCMNode
 0x002320E0 SetText2__8CTCMNodeFPCc
 0x00232100 SetName__8CTCMNodeFPCc
 0x00232170 SetCaption__8CTCMNodeFPCci
@@ -6532,6 +6535,7 @@
 0x00370340 LoadSpec__11CScrollTextFRC11CScrollSpec
 0x00370350 Draw__11CScrollTextFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x00370610 Load__12CPopUpDialogFPQ23zdb16CTextureRelocMgr
+0x00370690 Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x00370920 Tick__12CPopUpDialogFf
 0x00370990 HandlePad__12CPopUpDialogFPC4CPadi
 0x00370C20 func_00370C20
