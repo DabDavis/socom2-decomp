@@ -67,7 +67,7 @@ CPnt3D running_pistol_throw(3.056369f, 11.494563f, -3.000149f);
 
 /* whether an anim type is anywhere on the blend stack, the top first (OVL2 0x58A470; new in
  * SOCOM II, its name unknown -- seal_env.cpp's 0x5A7AB0 asks it).
- * OPEN, 5 instructions: the accessor's index unsigned against the int counter stops MW
+ * Was OPEN, 5 instructions: the accessor's index unsigned against the int counter stops MW
  * strength-reducing the walk (the target's `sll; addu` each pass -- 0x57DBB0 matches so); left, the
  * registers: the target narrows the type into a0 first and loads the array into v1, MW the other
  * way round. Tried: the compare reversed, a short parameter, the type cast or copied first, the
@@ -76,21 +76,26 @@ CPnt3D running_pistol_throw(3.056369f, 11.494563f, -3.000149f);
  * sign extension @8334, so the extension colours first (v1) and the array takes a0 -- the target
  * needs the extension numbered first. Still 5: the element a local, an int local for its type, a
  * (short) or (AnimType) cast, a BlendIs inline, a result flag with break (18); an InStack(stack,
- * type) inline taking an int, short or AnimType type: 6-7. */
+ * type) inline taking an int, short or AnimType type: 6-7. Byte-exact (round 53): the walk written plainly
+ * under `#pragma opt_strength_reduction off` -- the engine core's round-21 pragma keeps the `sll; addu`
+ * AND numbers the type's extension before the array's load (either compare order, with or without
+ * BlendAt) */
 static inline CZBodyAnimBlend *BlendAt(CBodyAnimBlendStack *stack, unsigned int i)
 {
     return stack->m_stack[i];
 }
 
+#pragma opt_strength_reduction off
 extern "C" bool func_0058A470(CZSealBody *seal, AnimType type)
 {
     CBodyAnimBlendStack *stack = &seal->m_blends;
 
     for (int i = stack->m_top; i >= 0; i--)
-        if (type == BlendAt(stack, i)->m_animType)
+        if (type == stack->m_stack[i]->m_animType)
             return true;
     return false;
 }
+#pragma opt_strength_reduction reset
 
 extern "C" {
 void *func_00555170(void *v);
