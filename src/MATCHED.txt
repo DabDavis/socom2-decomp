@@ -8370,12 +8370,14 @@
 0x004DAAE0 casrGetParam
 0x004DACA8 UpdateExevStatus
 0x004DAD90 casrSetParam
+0x004DB350 casrActivateData
 0x004DB970 casrActivateContext
 0x004DBDB0 casrDoNormalSecondPass
 0x004DBF70 casrDoIsoWordSecondPass
 0x004DCAD0 casrInitSampleFormat
 0x004DCC58 casrAcquisition
 0x004DD070 casrStartUserWordTraining
+0x004DD1D8 cbCheckConfusion
 0x004DDF48 casrInitSegmentation
 0x004DE048 casrAcknowledge
 0x004DE128 casrCloseContext
