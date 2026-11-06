@@ -13,8 +13,8 @@
  * DistSilProcess (0x4FFCE8, named by SOCOM 1's object order), func_004FD5C8 and LoadLanguage, with
  * the fields they read; InitDistSilProcess written (OPEN, 3 words), byte-exact in round 35c (an
  * intermediate in v: the constant's register by expand_preferences); round 35c ControlDistSilProcess
- * (every function written so far byte-exact; the two distance passes, 0x4FDE08 and 0x4FE6C8, and
- * InitCalculateDistances -- named by SOCOM 1's slot and order -- not written). */
+ * (every function written so far byte-exact); round 40c the two distance passes, DistCalc and
+ * DistCalc4Bit (InitCalculateDistances -- named by SOCOM 1's slot and order -- not written). */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -41,7 +41,7 @@ typedef struct DSFRAMES {
 
 typedef struct DISTSIL {
     TOSBLOCK b;
-    short *f40;                         /* +40: the third input's frame */
+    unsigned short *f40;                /* +40: the third input's frame */
     short *f44;                         /* +44: f158 shorts into it */
     unsigned short ntables;             /* +48: the codebooks' byte tables in use */
     short pad50;
@@ -69,7 +69,7 @@ typedef struct DISTSIL {
     unsigned short f162;                /* +162 */
     short f164;                         /* +164: -f160 */
     short pad166;
-    void *f168;                         /* +168 */
+    unsigned short *f168;               /* +168 */
     unsigned short *f172;               /* +172: f160 + 1 offsets into f184 */
     short *f176;                        /* +176: f156 shorts */
     short *f180;                        /* +180: f184's values decoded */
@@ -123,7 +123,7 @@ static int ResizeQueues(DISTSIL *d, int n)
     return 0;
 }
 
-extern void func_004FE6C8();
+static void DistCalc4Bit(DISTSIL *d, short *out, int n, unsigned short sum);
 
 /* each codebook's bytes at the frame's codeword (f128's row f236) copied into its row at +196; with
  * the 4-bit distances (+104 the 4-bit pass, 0x4FE6C8) two codewords share a byte, the odd one in
@@ -145,7 +145,7 @@ static void func_004FD5C8(DISTSIL *d)
         c = d->frames.data[d->f236 * d->ntables + k];
         cb = d->f116;
         data = cb[k].data;
-        if (d->f104 == (void *)func_004FE6C8) {
+        if (d->f104 == (void *)DistCalc4Bit) {
             if (c & 1)
                 mask = 15;
             else
@@ -191,7 +191,8 @@ typedef struct DSLANG {
     unsigned char *(*f244)(void *cb);               /* +244: a codebook's tables */
 } DSLANG;
 
-extern void func_004FDE08();
+static void DistCalc(DISTSIL *d, short *out, int n, unsigned short sum);
+
 
 /* codebook cb's tables at tab, n codewords of m bytes; 2 logged when its allocations failed */
 static __inline__ unsigned char SetCodeBook(DISTSIL *d, DSCODEBOOK *cb, unsigned char *tab,
@@ -332,9 +333,9 @@ static int LoadLanguage(DISTSIL *d, DSLANG *l)
     if (ResizeQueues(d, l->f24(l)) != 0)
         return 1;
     if (is4bit)
-        d->f104 = (void *)func_004FE6C8;
+        d->f104 = (void *)DistCalc4Bit;
     else
-        d->f104 = (void *)func_004FDE08;
+        d->f104 = (void *)DistCalc;
     func_004FD5C8(d);
     d->index = d->f140->data + d->f164 * d->ntables;
     if (d->f108 != 0)
@@ -365,6 +366,211 @@ static __inline__ void FreeCodeBooks(DISTSIL *d, DSCODEBOOK **list, unsigned sho
     if (*n != 0) {
         heap_Free(tos->heap, *list);
         *n = z;
+    }
+}
+
+/* the frame's distances from its labels, 8-bit tables: a state's distance is a byte per table at
+ * its codewords; the frame's list of states wanted (all of them when the list is full, the states
+ * below f160 then a table lookup), the f156 groups' minima and each output's minimum over its groups
+ * plus its offset, not below 0. SOCOM 1's DistCalc, its CalculateDistance inlined by hand (round 40c).
+ * Measured: fr set twice (`lw s6,0(a0); ... addu s6,s6,v1`: the load ties into the pseudo, which frees
+ * v0 for n * 255's shift and moves every local of the head); tab0 used in the group loop keeps it in s3
+ * across memset and pushes m and out to t7 and t9, saved by `sq` round the call; each loop's walkers
+ * block-local; the list's arm through out[k] (`*o` through a copy makes t0 the first store's value);
+ * the minima unsigned (sltu); two empty loops left in, the second under the test the first arm made. */
+static void DistCalc(DISTSIL *d, short *out, int n, unsigned short sum)
+{
+    int off = d->f164;
+    unsigned char **tab0 = d->tables;
+    unsigned char **tlast = &d->tables[n - 1];
+    int best0 = n * 255;
+    unsigned short *fr = d->f140->data;
+    int m = d->f160;
+    unsigned int nl = *d->f40;
+    short *dst = d->f176;
+    short *c = d->f180;
+    int i;
+
+    fr += off * n;
+    if (nl == d->f158) {
+        short *o = out + nl - 1;
+        short *oe = out + m;
+        unsigned short *f = fr + nl * n - 1;
+
+        for (; o >= oe; o--) {
+            unsigned char **t;
+
+            *o = tlast[0][*f--];
+            for (t = tlast - 1; t >= tab0; t--)
+                *o += (*t)[*f--];
+        }
+        memset((char *)d->f44 + d->f160, 0, nl - d->f160);
+    } else {
+        for (i = m + 1; (int)nl >= i; i++) {
+            unsigned short k = d->f40[i];
+            unsigned short *f = fr + k * n;
+            unsigned char **t;
+
+            out[k] = tab0[0][*f++];
+            for (t = &d->tables[1]; t <= tlast; t++)
+                out[k] += (*t)[*f++];
+            ((char *)d->f44)[k] = 0;
+        }
+    }
+    {
+        unsigned short *p = d->f168 + *d->f168;
+
+        fr -= off * n;
+        for (i = 0; i < d->f156; i++) {
+            unsigned int b = best0;
+            unsigned short *pe = d->f168 + d->f168[i + 1];
+
+            for (; p < pe; p++) {
+                unsigned int v;
+
+                if (*p != d->f236) {
+                    unsigned short *f = fr + *p * n;
+                    unsigned char **t = tab0;
+
+                    v = (*t++)[*f++];
+                    for (; t <= tlast; t++)
+                        v += (*t)[*f++];
+                } else
+                    v = sum;
+                if (v < b)
+                    b = v;
+            }
+            dst[i] = b;
+        }
+    }
+    {
+        unsigned short *p = d->f172 + *d->f172;
+
+        for (i = 0; i < d->f160; i++) {
+            int min;
+            unsigned short *pe = d->f172 + d->f172[i + 1];
+
+            min = (unsigned short)dst[*p++] + *c++;
+            for (; p < pe; ) {
+                int x = (unsigned short)dst[*p++] + *c++;
+
+                if (x < min)
+                    min = x;
+            }
+            out[i] = min < 0 ? 0 : min;
+        }
+    }
+    for (i = 0; i < m; i++)
+        ;
+    if (nl != d->f158) {
+        for (i = m + 1; (int)nl >= i; i++)
+            ;
+    }
+}
+
+/* ... and from 4-bit tables: two codewords share a byte, the high nibble the odd one's */
+#define NIBBLE(tab, x) (((tab)[(x) >> 1] << (((x) & 1) * 4)) & 0xF0)
+
+static void DistCalc4Bit(DISTSIL *d, short *out, int n, unsigned short sum)
+{
+    int off = d->f164;
+    unsigned char **tab0 = d->tables;
+    unsigned char **tlast = &d->tables[n - 1];
+    int best0 = n * 255;
+    unsigned short *fr = d->f140->data;
+    int m = d->f160;
+    unsigned int nl = *d->f40;
+    short *dst = d->f176;
+    short *c = d->f180;
+    int i;
+
+    fr += off * n;
+    if (nl == d->f158) {
+        short *o = out + nl - 1;
+        short *oe = out + m;
+        unsigned short *f = fr + nl * n - 1;
+
+        for (; o >= oe; o--) {
+            unsigned char **t;
+
+            unsigned short x = *f--;
+
+            *o = NIBBLE(tlast[0], x);
+            for (t = tlast - 1; t >= tab0; t--) {
+                x = *f--;
+                *o += NIBBLE(*t, x);
+            }
+        }
+        memset((char *)d->f44 + d->f160, 0, nl - d->f160);
+    } else {
+        for (i = m + 1; (int)nl >= i; i++) {
+            unsigned short k = d->f40[i];
+            unsigned short *f = fr + k * n;
+            unsigned char **t;
+            unsigned short x;
+
+            x = *f++;
+            out[k] = NIBBLE(tab0[0], x);
+            for (t = &d->tables[1]; t <= tlast; t++) {
+                x = *f++;
+                out[k] += NIBBLE(*t, x);
+            }
+            ((char *)d->f44)[k] = 0;
+        }
+    }
+    {
+        unsigned short *p = d->f168 + *d->f168;
+
+        fr -= off * n;
+        for (i = 0; i < d->f156; i++) {
+            unsigned int b = best0;
+            unsigned short *pe = d->f168 + d->f168[i + 1];
+
+            for (; p < pe; p++) {
+                unsigned int v;
+
+                if (*p != d->f236) {
+                    unsigned short *f = fr + *p * n;
+                    unsigned char **t = tab0;
+                    unsigned short x;
+
+                    x = *f++;
+                    v = NIBBLE(*t, x);
+                    t++;
+                    for (; t <= tlast; t++) {
+                        x = *f++;
+                        v += NIBBLE(*t, x);
+                    }
+                } else
+                    v = sum;
+                if (v < b)
+                    b = v;
+            }
+            dst[i] = b;
+        }
+    }
+    {
+        unsigned short *p = d->f172 + *d->f172;
+
+        for (i = 0; i < d->f160; i++) {
+            int min;
+            unsigned short *pe = d->f172 + d->f172[i + 1];
+
+            min = (unsigned short)dst[*p++] + *c++;
+            for (; p < pe; ) {
+                int x = (unsigned short)dst[*p++] + *c++;
+
+                if (x < min)
+                    min = x;
+            }
+            out[i] = min < 0 ? 0 : min;
+        }
+    }
+    for (i = 0; i < m; i++)
+        ;
+    if (nl != d->f158) {
+        for (i = m + 1; (int)nl >= i; i++)
+            ;
     }
 }
 
@@ -809,7 +1015,7 @@ static int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, int *
         c->cache = GetpCachedDistances;
         c->offset = GetDistanceOffset;
         c->init = InitCalculateDistances;
-        if (d->f104 == (void *)func_004FE6C8)
+        if (d->f104 == (void *)DistCalc4Bit)
             c->dist = CalculateDistance4Bit;
         else
             c->dist = CalculateDistance;
