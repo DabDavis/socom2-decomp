@@ -1972,13 +1972,14 @@ extern unsigned int data_00686A28;
 
 /* SOCOM 1's NetReleaseObjectPrivateOwnership's place (0x61B538): the release sent to the given client,
  * or for an object whose class wants it, to the session's host when none is given.
- * OPEN (the right size, the frame): the target's slots run pWorld 0, pObject 4, nHost 8, the byte
- * message 12; 2.96 here gives the message slot 0 wherever it is declared (top, inner block) and moves
- * the others up -- zeroing by statement and the `||` range guard (folded to one unsigned test) tried */
+ * Closed in round 24b (open since 13b on the frame: the byte message took slot 0): the message is a one-byte
+ * struct -- an unsigned char local is a promoted mode, so taking its address forces it to the stack at once,
+ * where the pointers' ADDRESSOFs get theirs only when purged, in insn order (0x618F70's finding); a struct
+ * of one byte is not promoted and takes slot 12 after them. The zeroed pointers in declaration order. */
 void func_0061B538(int nTarget, unsigned int nIndex)
 {
-    DmeWorld *pWorld = 0;
     DmeObject *pObject = 0;
+    DmeWorld *pWorld = 0;
     int nHost;
 
     if (nIndex >= DME_MAX_OBJECTS)
@@ -1998,9 +1999,10 @@ void func_0061B538(int nTarget, unsigned int nIndex)
     if (data_0067E948[pObject->field_03] != 0 && pWorld->nMyClient != nHost && nTarget == -1)
         nTarget = nHost;
     {
-        unsigned char nMsg = nIndex;
+        struct { unsigned char nIndex; } msg;
 
-        func_00615DE0(80, data_00651178, nTarget, data_00686A28, 1, &nMsg);
+        msg.nIndex = nIndex;
+        func_00615DE0(80, data_00651178, nTarget, data_00686A28, sizeof(msg), &msg);
     }
 }
 
@@ -2801,4 +2803,62 @@ unsigned char func_0061A488(DmeObjectData *pObject, int nIndex, char *pnMsgClass
         pObject->pnSent[i] = CurrentNetTime;
     }
     return nFields;
+}
+
+/* the 12 bytes ahead of a data stream's packet */
+typedef struct DmeStreamPacket {
+    unsigned char nStream;              /* 0x00 */
+    unsigned char field_01;             /* 0x01: the slot's byte 5 */
+    unsigned char field_02;             /* 0x02: its byte 3 */
+    unsigned char field_03;             /* 0x03: its byte 1 */
+    unsigned char field_04;             /* 0x04: its byte 2 */
+    unsigned char field_05;
+    unsigned short nSize;               /* 0x06: the stream's buffer, end less start */
+    unsigned short nOffset;             /* 0x08: its read position less its start */
+    unsigned short nLength;             /* 0x0A: the bytes that follow */
+} DmeStreamPacket;
+
+extern int rt_circ_buf_is_wrapped(void *pCircBuf, unsigned char *pbWrapped);
+extern int rt_circ_buf_get_start_used_ptr(void *pCircBuf, void **ppStart);
+
+/* SOCOM 1's NetGetDataStreamPacket rewritten over the stream's ring (0x61B3E0): the packet's header, then
+ * nLength bytes from the ring's start (normalised first when it wraps); the packet's size, or 0. The getter's
+ * result and its pointer tested together (round 5b's shape): that `return 0` block has two predecessors, so
+ * it is not if-converted and jump2 cross-jumps the last guard's into it -- the target's in-line block. */
+int func_0061B3E0(unsigned char *pPacket, unsigned int nStream, int nLength)
+{
+    DmeStreamPacket hdr;
+    DmeStreamSlot *pStream = 0;
+    void *pStart = 0;
+    unsigned char bWrapped = 0;
+
+    if (pPacket == 0)
+        return 0;
+    if (nLength <= 0)
+        return 0;
+    if (nStream >= DME_MAX_STREAMS)
+        return 0;
+    if (func_00614F58(nStream, (void **)&pStream) != DME_OK || pStream == 0)
+        return 0;
+    hdr.nStream = nStream;
+    hdr.field_01 = pStream->field_00[5];
+    hdr.field_02 = pStream->field_00[3];
+    hdr.field_03 = pStream->field_00[1];
+    hdr.field_04 = pStream->field_00[2];
+    hdr.nSize = ((DmeStreamHead *)pStream)->field_14[0] - (int)((DmeStreamHead *)pStream)->pBuffer;
+    hdr.nOffset = ((DmeStreamHead *)pStream)->field_14[1] - (int)((DmeStreamHead *)pStream)->pBuffer;
+    hdr.nLength = nLength;
+    *(DmeStreamPacket *)pPacket = hdr;
+    if (rt_circ_buf_is_wrapped(pStream->circ, &bWrapped) != 0)
+        return 0;
+    if (bWrapped) {
+        if (rt_circ_buf_normalize(pStream->circ, 1) != 0)
+            return 0;
+        memcpy(((DmeStreamHead *)pStream)->pBuffer, ((DmeStreamHead *)pStream)->pCircBuf,
+               ((DmeStreamHead *)pStream)->nCircSize);
+    }
+    if (rt_circ_buf_get_start_used_ptr(pStream->circ, &pStart) != 0)
+        return 0;
+    memcpy(pPacket + sizeof(hdr), pStart, nLength);
+    return nLength + sizeof(hdr);
 }
