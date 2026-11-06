@@ -5516,7 +5516,7 @@
 0x00317FC0 0x240 ComputeFacadeMatrix__Q23zdb5CNodeFPC7CMatrixP7CMatrix  # OVL1; s1:align
 0x00318200 0x30 UpdateBBox__Q23zdb5CNodeFb  # OVL1; s1:vtable by hand (slot 13 of CNode's table; the demo's inlines one more parent level, 2.5x the size, so the pass's size guard skipped it)
 0x00318230 0x478 UpdateBBoxFromDI__Q23zdb5CNodeFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003186B0 0x214 func_003186B0  # OVL1
+0x003186B0 0x214 TransformBBox__3zdbFPC7CMatrixPC5CBBoxP5CBBoxb  # OVL1; by hand (the world's round 29, node_model.cpp: a box through a matrix -- exactly, the box about its eight transformed corners (a member array's constructor loop calling CPnt3D() and CPnt3D's assignment out of line), else its two corners transformed and each axis put back in order; UpdateBBoxFromDI 0x318230 calls it for each child's box with exact false; new in SOCOM II, the name ours)
 0x003188D0 0x60 Release__Q23zdb6CModelFPQ23zdb5CNode  # OVL1; s1:exact (SOCOM 1's CModel::Release(CNode *): the instance taken off the list, the model's 0x64 cleared if it was it; ~CNode calls it)
 0x00318930 0x1AC __dt__Q23zdb6CModelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00318AE0 0x150 RemoveModel__Q23zdb9CAssetLibFPQ23zdb6CModel  # OVL1; the online lane r28 (node_model.cpp): ~CModel calls it with the library's own copy of the model, found by name (0x318C30) -- std::remove's find inlined, remove_copy called, the pod erase, CAssetMgr::m_assets' model cache cleared, the model's library cleared -- the code SOCOM 1's ~CModel wrote out; CModel::Create (node_io.cpp) inlines its body; an inline's out-of-line copy, the name ours

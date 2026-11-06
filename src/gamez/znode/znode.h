@@ -788,7 +788,9 @@ public:
         return was;
     }
     virtual CBBox *UpdateBBox(bool up);
-    virtual void UpdateBBoxFromDI(bool up);
+    /* the box made from the DIs' points and (up) the children's boxes, returned as GetBBox gives it
+     * (SOCOM 1's; node_model.cpp, the world's round 29: `addiu v0,s5,64` / the parent's box) */
+    virtual CBBox *UpdateBBoxFromDI(bool up);
 
     CNode();
     void SetName(const char *name);
