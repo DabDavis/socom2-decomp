@@ -1024,6 +1024,8 @@ public:
     void DeclineClanInvitation(int id);
     bool ClanHasInvitations();
     bool HasClanInvitations();
+    bool CanInviteMorePlayersToClan();
+    void GetClanMemberInfo(const char *name);
     void CreateClan(const char *name);
     void TransferLeadership(const char *name);
     void ChangeState(LOBBY_STATE state);
