@@ -2065,6 +2065,41 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the zdb world, textures, rdr and sound, round 29** (the node rows it took over from the integrator:
+  InheritRegionMasks 0x3126A0, ~CModel 0x318930 with its RemoveModel / GetModel copies and CNode::SetModel, CNode()
+  0x316E30, zdb::FindMeshTextures 0x312D00 -- SOCOM 1's, a free function --, zdb::TransformBBox 0x3186B0 and
+  Particle::Source::SetHasBBox 0x329A40 byte-exact; UpdateBBoxFromDI written, OPEN at the size, 39, registers only):
+  - TO MAKE AN INLINE'S OUT-OF-LINE COPIES FOLLOW A CALLER, call it from a wrapper inline whose tree is taller than the
+    level (~CModel through `CAssetLib::RemoveModel(const char *)`); written directly in the caller MW inlines the inner
+    function's body instead; a function holding a constructor that cannot inline whole is itself refused
+    auto-inlining, and that constructor's callees -- CPnt3D's implicit assignment included -- are called out of line;
+  - a float min / max ternary loads the right operand first when both sides are plain loads; an indexed member
+    (`m_pts[i].x`) costs more than a pointer field and loads first even on the left; `x >= y ? x : y` compiles as c.lt.s
+    with bc1t to the false arm, `x <= y ? x : y` as c.le.s with bc1f;
+  - `CPnt3D a[2] = { p, q }` copy-constructs the first element (ld / sd from an aligned source) and copies the second
+    field by field; `1 << (int)bitfield` generates the shift amount before the constant 1, the bare field the 1 first; a
+    byte field stored as -1 emits `li -1` only when it is signed char (on unsigned char MW folds it to `li 255`);
+  - taking begin() into a named local before an `erase(b, end())` shares the vector's data load; a vector walked through
+    a reference local keeps the reference in a register for the loop's end test; `unsigned int i = byte_field; if (i)
+    f(i);` drops the `andi 0xff` that `if (p->byte) f(p->byte)` adds; `found = 0` written inside the `if` arm lands in
+    the loop entry's delay slot.
+- **Tells from the UI, round 34** (six byte-exact: the state queue's push 0x2852B0 -- include/deque's as it stands once
+  zanim_menu.h's CSimpleStateMachine holds a real std::queue, util_ssm.cpp's CStateQueue --, zanim_menu.cpp's pick cyclers
+  NextPick 0x283E60 and NextPickBesides 0x283B50, unwritten before, and util_sonyio.cpp's HddUnmountGame 0x39D020,
+  HddRebootCallback 0x39D910 and HddRegisterReboot 0x39D8C0 by hand over their drafts):
+  - a 22-way `||` equality chain over 141-255 compiles to sllv bitset range tests; the target's linear compare chain is
+    a `switch` with its cases in reverse;
+  - a switch inside an inline bool returning true / false branches straight to the caller's targets; `bool r = false;
+    switch ... r = true; break; return r;` materialises the result in v0 before the caller's test;
+  - a side-effect-free argument to an inline is evaluated after the inline's own null test; passed through a named local
+    defined before the call it is computed ahead of the test (`li 1; li 8; movz` before the beqz);
+  - a global object's address used as `this` in a loop is rematerialised with lui / addiu at each call, held in a named
+    pointer local it takes a saved register; `if (A && B) { ...; item = recurse(...); } return item;` gives the target's
+    shared exit, an early `return item;` after each test a `move v0` at every return site;
+  - OPEN, not a numbering: SelCharsHaveEquip 0x281160 and UIDoAllSelCharsHaveWeapon -- igdump's PCode shows the target
+    one node more (the loop guard reads the position straight off the frame, c_str() gets a fresh &m_word); and
+    OnIsEquipmentSelected's `i != end()` is a materialised `!(i == end)`, a class iterator's operator!= re-reading end()
+    where include/vector's iterator is a pointer.
 - **Tells from the HUD, round 60** (hud_linemap.cpp's CZLineMap::Clip 0x20D5F0, TickWayPoints 0x20DAC0 and SetupPolygon
   0x20F5C0, all unwritten before, byte-exact from SOCOM 1's bodies and its debug info's local names; TickAnchors 0x20E750
   written, OPEN at 0x46C of 0x474; 0x360260 named C2DLine::SetClipInfo):
