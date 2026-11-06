@@ -1936,6 +1936,60 @@ void CAiSCQBAttack::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* a suspended SEAL told: on entry (0) the AI's throttles stopped and what it is kept -- its node on,
+ * its place, its two target-list bits, its anim set; leaving (1) the node put back in the world, the
+ * SEAL teleported to its place, the bits given back and the anim set bound again when the flag's bit
+ * 4 asks; 3 sets bit 0, a reset (4) forgets the place and the set, 5 drops the node bit, 6 keeps the
+ * bits and shuts the node (OVL2 0x5F1E40; SOCOM 1's had 0-4, its node read in each case) */
+void CAiSSuspended::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CEntity *seal = ai ? ai->m_entity : 0;
+    zdb::CNode *node = seal ? seal->GetNode() : 0;
+
+    switch (sig) {
+    case SIGNAL_0:
+        ai->StopThrottles(false);
+        m_nodeActive = (bool)node->m_active;
+        m_matrix.SetIdentity();
+        node->BuildMTW(m_matrix);
+        m_includeInTargets = (bool)seal->m_include_in_targetlist;
+        m_updateTargets = (bool)seal->m_update_targetlist;
+        m_animset = ((CZSealBody *)seal)->m_animset;
+        break;
+    case SIGNAL_1:
+        if (node->m_parent != zdb::CWorld::m_world)
+            zdb::CWorld::m_world->AddChild(node);
+        seal->TeleportTo(&m_matrix);
+        node->SetActive(m_nodeActive);
+        seal->SetUpdateTargetList(m_updateTargets);
+        seal->SetIncludeInTargetList(m_includeInTargets);
+        if (m_animset && (m_flags & 0x10)) {
+            ((CZSealBody *)seal)->BindAnimSet(m_animset, false);
+            m_animset = 0;
+        }
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        SetBit0(true);
+        break;
+    case SIGNAL_4:
+        m_nodeActive = true;
+        m_matrix.SetIdentity();
+        m_animset = 0;
+        break;
+    case (SIGNAL)5:
+        m_nodeActive = false;
+        break;
+    case (SIGNAL)6:
+        m_nodeActive = (bool)node->m_active;
+        m_includeInTargets = (bool)seal->m_include_in_targetlist;
+        m_updateTargets = (bool)seal->m_update_targetlist;
+        node->SetActive(false);
+        break;
+    }
+}
+
 /* a suspended SEAL: faded out first when its flag's bit 3 asks (the node's opacity run to 0 at
  * 0.75 a second, then the node shut and the fade dropped), then held out of the world -- its node
  * off (bit 0, unless it faded), its target list no longer updated (bit 1) nor holding it (bit 2)

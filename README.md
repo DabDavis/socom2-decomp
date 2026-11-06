@@ -2065,6 +2065,30 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 33** (CVisual::VuUpdate at last -- 0xCC4, unwritten for 32 rounds -- with GetVid's copy
+  and three helper copies; CVisual::ApplyDecal and CMesh::ApplyDecal written; hookupVisuals / hookupMesh and node_index,
+  SOCOM 1's, named):
+  - AN INLINE TALLER THAN THE LEVEL IS INLINED ONE LEVEL AND EVERY CALL IN IT GOES OUT OF LINE, its copies emitted after the
+    caller in the REVERSE of the order its body meets them: VuUpdate's tail "inline budget" (rounds 13-32) was its decal
+    walk, an inline six high through GetVid -- GetVid, the pointer vector's [], the decal's two accessors, the room and
+    _word128's implicit assignment (MW generates `__as__8_word128FRC8_word128` for the union) sit at 0x3B5250-0x3B52C0 in
+    exactly that reverse order; a plain function auto-inlined five times is called the sixth time inside such a body;
+  - `std::min(f(p), left)` with f returning the vector's own (unsigned) type compares the temporary in its register and
+    stores it only for min's reference (in the branch's delay slot); a named or converted room is stored and reloaded
+    first; one function can need two shapes of the same send inline: a by-value count copied into a decremented local
+    keeps a caller's count variable as its register (`sw s3,180(sp); beqz s3`), while a decremented parameter copied at
+    the top reloads the copy from its slot when the argument is a global (`sw v1,188(sp); lw s0,188(sp)`, SOCOM 1's too);
+  - values read in an inline call's argument list load AFTER a call that is also an argument -- read into locals first
+    they load ahead of it; `d = c ? x : 0` where `d = 0; if (c) d = x;` padded its join and shifted every later
+    8-byte loop pad; of two stores the later-numbered constant takes v0 (the size stored ahead of the flag's 1);
+  - GCC-style asm operands take their registers from the variables' numbering, not the operand list's order: an inline
+    taking (t, out, src) with t and out named locals of the calling inline gave the target's src v0 / out v1 / t a0, and
+    MW schedules the asm's last instruction into a branch's delay slot; `CVisData *v = &vd; v = v->Select...()` keeps
+    &vd in v's register across the call (the target's `addiu s4,sp,N; move a0,s4`); igreplay --movers placed two
+    counters after a loop-scoped pointer -- declared after it at the top (numbered by declaration) and zeroed ahead of
+    the call, they took the target's registers;
+  - a reference bound between the two tests of an && (the if split in two) puts the member's address in the second
+    test's delay slot and reloads through it after the calls (the game states' round-46 rule across a split test).
 - **Tells from completing the MSL headers, round 33** (the three requests measured, none applied -- comments only,
   objcmp 656 units 0 differ; probes build/p33/, untracked: board.py / vgen.py / vrun.py score a shadow
   include/vector's class insert over all 68 inserts in 4 s, igd.py / igt.py / pc.py dump and replay a shadow
