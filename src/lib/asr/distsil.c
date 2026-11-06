@@ -11,7 +11,8 @@
  * object's -ffast-math, which NormCorrection's sum shows (README "The recogniser and Medius by
  * hand", round 21c); round 22c FreeDistCalc byte-exact over a marked stand-in insn; round 34c
  * DistSilProcess (0x4FFCE8, named by SOCOM 1's object order), func_004FD5C8 and LoadLanguage, with
- * the fields they read; InitDistSilProcess written (OPEN, 3 words). */
+ * the fields they read; InitDistSilProcess written (OPEN, 3 words), byte-exact in round 35c (an
+ * intermediate in v: the constant's register by expand_preferences). */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -446,13 +447,12 @@ extern float expf(float x);
  * linear values (expf) at +292; per count up to the period, a byte per level -- the level after
  * adding count x profile 18's step to its linear value, rescaled to the 255 steps below the top of
  * the scale and rounded, clamped to 0..255 -- the rows in one allocation (1 when it fails); the
- * counters cleared, profile 20 at +288. Written in round 34c from SOCOM II's code. OPEN (3 words,
- * the right size): the float-to-unsigned conversion's 2^31 constant takes $f3 here, $f12 there
- * (global-alloc's pass over registers already used: $f3 is call-clobbered, so "used", and first;
- * the target's choice of $f12 needs $f3..$f11 preferred by a lower-priority neighbour or $f12
- * preferred by the constant -- neither shows here). The clamp as ?: or upper-first, the store
- * through a row pointer or an unsigned local, the inner expression split into temporaries: no
- * closer (build/scratch/gcc/r34/v_ids*.py). */
+ * counters cleared, profile 20 at +288. Written in round 34c from SOCOM II's code; byte-exact in
+ * round 35c: v holds the log less lmax first, and `v - d->f296` -- fptodp's argument, set straight
+ * into $f12 with v its first operand -- gives v's pseudo a $f12 preference, which global.c's
+ * expand_preferences hands the float-to-unsigned conversion's 2^31 constant where both die into
+ * `v - 2^31`: the constant's $f12 (one expression, or a separate temporary, gives $f3 -- the first
+ * call-clobbered register no neighbour holds). */
 static int InitDistSilProcess(DISTSIL *d)
 {
     TOS *tos = d->b.tos;
@@ -494,8 +494,8 @@ static int InitDistSilProcess(DISTSIL *d)
     for (j = 0; j <= d->f308; j++) {
         x = j * d->f304;
         for (i = 0; i < 256; i++) {
-            v = (logf(expf(d->f296 - (d->f296 - d->f300) * i * (1.0 / 255)) + x) - lmax - d->f296)
-                * -255.0 / (d->f296 - d->f300) + 0.5;
+            v = logf(expf(d->f296 - (d->f296 - d->f300) * i * (1.0 / 255)) + x) - lmax;
+            v = (v - d->f296) * -255.0 / (d->f296 - d->f300) + 0.5;
             if (v < 0)
                 v = 0;
             else if (v > 255)
