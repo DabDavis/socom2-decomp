@@ -11863,6 +11863,76 @@ regression, and after merging master daba75d2 every hand-written unit (`--files 
   0x1C6390 saves s0 with `sq` (Metrowerks'), 16-aligned like its two neighbours, which follow the boot's
   main and loader.
 
+**The tools, round 42a** (the integrator's requests and the engine core's round 24). (1) **scdiff checks a call
+to a TU-local function by its CODE, strictly** (the zdb world's round 31: CShadowCaster "matched" with a `jal` to the
+wrong static -- node_world.cpp's `static inline` NodeBBox, its out-of-line copy a LOCAL function no row names):
+`local_code_ok` said the callee's code was not the target's at the jal's address, `by_code` returned None and the
+call stayed `unchecked`, which passes (an LO16 address of such a function fell back to the raw comparison and
+failed; a call had no fallback). Now `CONTENT-MISMATCH` when the bytes differ or the map has no row of the callee's
+size there, `content-ok` when it is the target's; only a chain LOCAL_CODE_DEPTH deep stays unchecked.
+`SC_LOCAL_CALLS=lenient` (`STRICT_LOCAL_CODE`) restores the old rule. **Measured**
+(`build/scratch/gcc/r42/localcalls.py`: every unit built once -- 1,858, hand-written and drafts -- and each of
+15,256 functions scored under both rules): 1,082 functions carry a relocation against a TU-local function, 2,317
+local calls resolve by name or address (or a GNU unit's distance), none needed the code path; **no MATCHED row rests
+on an unchecked local relocation and no function changes its verdict** -- the one call newly CONTENT-MISMATCH is
+graph_tree.cpp's Destroy (`_release_tree`), already WRONG; zrndr_pipe.cpp's Insert (unmatched) keeps two unchecked
+iterator constructors. The canary's `test_local_call_is_checked_by_its_code` (6 assertions): libscf's converttobcd
+calling its static tobcd under another name matches by the callee's code (six calls content-ok), calling a static
+whose body differs -- its own bytes unchanged, as GCC compiles a caller -- does not, and matched under the old rule;
+ldimage.cpp with its static setLoadImageTagsYX renamed matches (the tail call content-ok at 0x30B770), the target's
+`j` retargeted to loadImage or the callee's frame word changed fail, and matched under the old rule. (2)
+**`tools/igreplay.py --permute`**: a --want/--movers search over only the movers' ORDERS AMONG THEIR OWN SLOTS, k!
+placements (`mover_slots`: each mover's key as --move leaves it, so the movers trade places and every other node
+keeps its own; the identity first), under the full search's budget (--timeout, --max-iters, rc 2 STOPPED), progress
+lines and output, each hit a --move per mover. SetCDIBBox 0x2DC7A0 (int_shapes.cpp as on master, `--target`, 219
+virtual registers; the full search ~5.5e18 placements): its eight common subexpressions v41-v48 in 40,320 placements,
+35 s -- 8 orders give the target's s1/s7/s2/s5/s6/s4/s1/s3, e.g. numbered `&c+36, &c+24, ETYPCON(&c), &c+72,
+&c+84, &c+60, &c+48, &c+12` (`--move 41=45 --move 42=47 --move 43=44 --move 44=41 --move 45=46 --move 46=42 --move
+47=48 --move 48=43`; the engine core's to spell). The known numberings no slower
+(`build/scratch/gcc/r42/perm_known.py`): round 32a's GPR fixture, round 35a's FPR fixture and round 33a's zlib move
+are each the one hit of 2 placements, the full search replaying 10, 11 and 23 before its first hit (81, 100, 2,401 in
+all), each hit's colouring the known move's node for node. Canary `test_igreplay_permutes_the_movers_among_their_slots`
+(15). (3) **`tools/try.py --sub-all`/`--and-all`** (the kit's round 57 read a three-site change as one): every
+occurrence of OLD, the label saying how many (`NEW (all 3)`); `--sub`/`--and` keep their meaning, OLD's FIRST
+occurrence, and a second site is said on stderr; `--variants` takes `(old, new, 'all')` and `(old, new, N)`;
+`apply_subs()`/`add_sub_options()` serve tools/igvar.py too. Canary `test_try_sub_all_replaces_every_occurrence`
+(8: tty.c's two `buf[i] ==` sites, d=8 against d=46). (4) **igdump names extern "C" functions**: st_exit.cpp's six read
+`.l@0x4` -- the name scan's word +0x4 is the GLOBAL namespace, whose +0x8 (its using-directive list) is a heap pointer
+whose upper half reads as two printable bytes once past 0x6C210000, ended by the NULL after it -- and the link name,
+which must spell the name, was refused with it; now the Object's name word +0x8 when the link name (+0x30) spells it,
+or when the scan's word lay before it (an inline's origin: no link name is made for a copy never emitted). Proved
+(`build/scratch/gcc/r42/igproof.py`, master's igdump and this one, 14 units, 882 records): 12 renamed (the six, both
+classes), 0 other changes, every record linked. Canary `test_igdump_names_extern_c_functions` (7: a `using
+namespace` behind a 1 MB comment reproduces `7l@0x4`; IGDUMP_NO_LINKNAME=1 the negative). (5) The canary's
+`test_explicit_instance_scores_in_its_units_overlay` builds its fixture (the integrator's request: the kit's round 57
+dropped seal_tasks.cpp's explicit `_max<unsigned char>`): seal_tasks.cpp with the instance appended, in a scratch copy
+of the tree (`sccheck.main`'s `root`), every assertion's meaning kept, plus the unit as it stands holding no global
+instance (8). 52 of 52 canary tests (the full check not run). No other scorer changed (sccheck.py, scdecomp.py,
+`include/` are master's). **automatch** over the lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 2
+--obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses),
+`1C6200 1E7000` and OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 31 tried, 0 hits (2 build failures -- round
+36a's 0x24DBB8 and 0x24B2F8, unchanged -- 5 refusals, 24 misses): 42 tried, none byte-exact (round 41a: 42, 0).
+
+**Round 42a** (2026-11-06, the tools first, then the opens): 3 rows newly byte-exact -- libscf's adddate 0x1BE298 and
+subdate 0x1BE350 (open since round 4a) and libkernl's sceSifInitIopHeap 0x1AAA78 (open since round 11a;
+`sdk/iopheap.c` whole). The lane's `src/lib` 1,303 -> 1,306 of 1,361 scored, no regression. No rows named. What they
+showed:
+
+- **THE TARGET'S RELOAD IS A SOURCE SHAPE, NOT THE VENDOR'S CC1** (round 18a read three places as "the vendor's cc1
+  differs from dtls13010's"; two of the three fell): adddate's and subdate's leap test reads the year into a local
+  (`u_char year = t->year; ... (year & 3) == 0`) -- written on t->year, GCSE carried that load to the century test
+  and the increment, where the target reloads after the day/month stores (the demo's object, whose GetRomName needs
+  this GCSE, holds the same code); sceSifInitIopHeap stores `_bind` in the serve test's arm before the `break`
+  (`return 0` after the loop: the clear is then the loop exit's own block and follows the store, where sched1 had
+  issued it beside the %hi -- ISSUE_RATE 2 -- and the %hi took v1). Left: fileio's no-wait PRE (sceLseek's second
+  `flag & 0x8000`), to be read as a shape too.
+- **Open, diagnosed in place**: frombcd (not another CPU's mulsi3: `-mcpu=r4000` writes `mult; mflo` as one pattern,
+  but this cc1 and 2.96 then synthesise the 6 from shifts; `-mips3` unchanged); sceSifMUnBindRpc (the void * load of
+  cd->serve follows the void * stores to ub's pkt_addr and client in the target -- strict aliasing -- and is hoisted
+  here: 720 orders of its six assignments, `tools/ccperm.py`, none matches, nearest 4; the vendor's field types are the
+  next lever); func_001C1D40 (a loop-size local makes it worse, d=123 against 120). Not reached: round 41a's codec
+  opens (their diagnoses stand), 0x2485D0 (the R5900's accumulator float ops, adda.s/madda.s/madd.s, m2c refuses it).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
