@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 52** (CAiSRescued::SetExtractValve named; 0x5A5A80 and 0x5A5DA0, both unwritten before):
+  - call arguments read into locals before the call's other call-bearing arguments stay in saved registers across those
+    calls; a signed-byte enum local passed to an `unsigned char` parameter goes in raw (lb, no andi), written inline in the
+    call it loads with lbu after the calls (0x5A5A80); a local declared bare first but assigned only at the end is
+    numbered right after the parameters -- declaration order (`igreplay --movers` found it);
+  - an explicit `return;` closing a function's last block keeps a branch to the very next instruction; a `return;` after
+    an if / else keeps the join's own branch out (0x5A5DA0); a shooter test wrapping the body with `return false` after
+    it gives the target's shared late `return false`;
+  - the same address written as `(char *)seal + 0x1c0` twice is computed once into a third saved register, written as
+    `&seal->m_blends` MW recomputes it each time; a free inline taking a `const ANIM_CALLBACK *` reloads the function
+    pointer the caller just tested; `SetFlags(valve != 0, !(valve != 0))` gives the target's code, a bool local negated
+    with `!` adds an sltu.
 - **Tells from the HUD, round 58** (CPopUpDialog::Load named, FrameObjective -- open since round 29 --, Draw2DLine -- open
   since round 53 --, TickSealCone and SetViewCone; hud_playermapitem.cpp whole):
   - a temporary the replay places just below a named local can itself be made a named local declared before it
