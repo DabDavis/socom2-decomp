@@ -1020,6 +1020,16 @@ public:
         m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
         UpdateBBox(false);
     }
+    /* the far range alone, its derived terms and the bounds after it (inline: CRenderMap::Update's;
+     * the name is ours) */
+    void SetMaxRange(float max)
+    {
+        m_maxRange = max;
+        m_maxRangeSq = max * max;
+        m_invMaxRange = 1.0f / m_maxRange;
+        m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
+        UpdateBBox(false);
+    }
     /* each range alone, its derived terms and the bounds after it (inline: CLight::Read, node_io.cpp,
      * keeps the squared range in a register for both stores only so; the names are ours) */
     void SetMinRange(float min)

@@ -73,19 +73,6 @@ enum ZOOMSTATE {
     NUM_ZOOMSTATES = 13
 };
 
-/* the SEAL's zoom state (zseal.h's CZSealBody members at 0x200, SOCOM 1's DWARF names at 0x160:
- * the state, the one before, the change flagged, the field of view -- camera.h's stand-in, the
- * engine core lane's, has none of them, so they are reached through this view) */
-struct CSealZoom {
-    unsigned char _0[0x200];
-    ZOOMSTATE m_zoomstate;   // 0x200
-    ZOOMSTATE m_zoomstate_prev;   // 0x201
-    unsigned char m_zoomstate_echo;   // 0x202
-    unsigned char _203;
-    float m_zoom_range;   // 0x204
-};
-#define SEAL_ZOOM(seal) (*(CSealZoom *)(seal))
-
 /* a SEAL's controller (zseal.h's CSealCtrl: only the zoom's getters and its update flag, bit 8 of
  * the word at 0x170) */
 class CSealCtrl {
@@ -119,16 +106,7 @@ public:
     EQUIP_ITEM m_ID;   // 0x7c
 };
 
-/* the members camera.h's CZSealBody and CZKit stand-ins lack (the engine core lane's header),
- * called by their mangled names: the SEAL's turret scope and thermal tests (zseal.h's), the kit's
- * night vision and binoculars switches and its current item (kit.h's) */
 extern "C" {
-bool TurretHasThermal__10CZSealBodyFv(CZSealBody *seal);   /* OVL2 0x5432F0 */
-void UpdateTurretScope__10CZSealBodyFf(CZSealBody *seal, float f);   /* OVL2 0x543200 */
-bool HasThermal__10CZSealBodyFP7CEntity(CZSealBody *seal, CEntity *e);   /* OVL2 0x5433C0 */
-void NVG_Enabled__5CZKitFb(CZKit *kit, bool on);   /* OVL2 0x5C8080 */
-void Binocs_Enabled__5CZKitFb(CZKit *kit, bool on);   /* OVL2 0x5B9110 */
-CZFTSWeapon *GetCurItem__5CZKitCFv(const CZKit *kit);   /* OVL2 0x5C3780 */
 /* the weapon scopes' settings (unnamed): the see-farther factors of the night vision, the
  * binoculars and the scopes; whether a primary or a secondary may take the starlight scope, and
  * whether each does */
@@ -310,8 +288,10 @@ void SeeFarther(bool bEnable, float SeeFartherFactor)
  * Written in the game states' round 52 (unwritten before), byte-exact from SOCOM 1's body, the
  * repeated lens blocks SetLensFx inlined with a constant: the direction flags `(a < b) != 0` -- the
  * target's slt then sltu, as SOCOM 1's (written plainly MW keeps the slt alone, 2 short); the SEAL's
- * zoom fields through a view based at the SEAL itself (one based at 0x200 makes MW hold that base in
- * a register, the echo flag's address then built from it); ctrl, kit and world declared in that
+ * zoom fields read through camera.h's members (the engine core's round 26; the two states, signed
+ * bytes there, cast to ZOOMSTATE -- a view based at 0x200 instead makes MW hold that base in a
+ * register, the echo flag's address then built from it), its turret scope and the kit's switches
+ * and item called as members (round 53, SAME-BY-ADDRESS); ctrl, kit and world declared in that
  * order (s2, s1, s0) and cur_zoomrange before increment_rate ($f21, $f20); `starlight` declared
  * before `scoped` (each else takes the other's saved register, 7 off) */
 void CameraZoom::HandleNewZoom()
@@ -321,14 +301,14 @@ void CameraZoom::HandleNewZoom()
     CSealCtrl *ctrl = (CSealCtrl *)CameraZoom::m_seal->m_control;
     CZKit *kit = &CameraZoom::m_seal->m_kit;
     zdb::CWorld *world = zdb::CWorld::m_world;
-    ZOOMSTATE cur_zoomstate = SEAL_ZOOM(CameraZoom::m_seal).m_zoomstate;
-    float cur_zoomrange = SEAL_ZOOM(CameraZoom::m_seal).m_zoom_range;
+    ZOOMSTATE cur_zoomstate = (ZOOMSTATE)CameraZoom::m_seal->m_zoomstate;
+    float cur_zoomrange = CameraZoom::m_seal->m_zoom_range;
     float increment_rate = 0.0f;
 
-    if (SEAL_ZOOM(CameraZoom::m_seal).m_zoomstate_echo) {
-        ZOOMSTATE prev_zoomstate = SEAL_ZOOM(CameraZoom::m_seal).m_zoomstate_prev;
+    if (CameraZoom::m_seal->m_zoomstate_echo) {
+        ZOOMSTATE prev_zoomstate = (ZOOMSTATE)CameraZoom::m_seal->m_zoomstate_prev;
 
-        SEAL_ZOOM(CameraZoom::m_seal).m_zoomstate_echo = 0;
+        CameraZoom::m_seal->m_zoomstate_echo = 0;
         bZoomUp = (prev_zoomstate < cur_zoomstate) != 0;
         bZoomDown = (cur_zoomstate < prev_zoomstate) != 0;
     }
@@ -353,8 +333,8 @@ void CameraZoom::HandleNewZoom()
         return;
     }
     if (cur_zoomstate != ZOOMSTATE_THERMAL && appCamera->m_camera_mode != cam_mode_FP &&
-        TurretHasThermal__10CZSealBodyFv(CameraZoom::m_seal))
-        UpdateTurretScope__10CZSealBodyFf(CameraZoom::m_seal, 1.0f);
+        CameraZoom::m_seal->TurretHasThermal())
+        CameraZoom::m_seal->UpdateTurretScope(1.0f);
     if (bZoomUp) {
         HandleZoomIn(cur_zoomrange, increment_rate);
     } else if (bZoomDown && CameraZoom::m_goal != 1.0f) {
@@ -377,15 +357,15 @@ void CameraZoom::HandleNewZoom()
         bool scoped = data_00436674 | data_0043667C;
 
         if (scoped) {
-            CZFTSWeapon *item = GetCurItem__5CZKitCFv(&CameraZoom::m_seal->m_kit);
+            CZFTSWeapon *item = CameraZoom::m_seal->m_kit.GetCurItem();
 
             if (data_00436674 && CZWeapon::IsPrimary(item->m_ID))
                 starlight = data_00436678 != 0;
             else if (data_0043667C && CZWeapon::IsSecondary(item->m_ID))
                 starlight = data_00436680 != 0;
         }
-        NVG_Enabled__5CZKitFb(kit, false);
-        Binocs_Enabled__5CZKitFb(kit, false);
+        kit->NVG_Enabled(false);
+        kit->Binocs_Enabled(false);
         SeeFarther(false, 0.0f);
         switch (cur_zoomstate) {
         case ZOOMSTATE_THERMAL:
@@ -398,7 +378,7 @@ void CameraZoom::HandleNewZoom()
                 PNT4D color = world->m_lensfx_nvg;
 
                 kit->Apply_LensEffects(true, (CPnt3D *)&color);
-                NVG_Enabled__5CZKitFb(kit, true);
+                kit->NVG_Enabled(true);
             }
             SetLensFx(lens_fx_nvg);
             SeeFarther(true, data_003DC368);
@@ -406,7 +386,7 @@ void CameraZoom::HandleNewZoom()
         case ZOOMSTATE_BINOCS:
             if (LensFxOn())
                 SetLensFx(lens_fx_binocs);
-            Binocs_Enabled__5CZKitFb(kit, true);
+            kit->Binocs_Enabled(true);
             SeeFarther(true, data_0043666C);
             return;
         case ZOOMSTATE_WEAPONDEF1:
@@ -417,7 +397,7 @@ void CameraZoom::HandleNewZoom()
         case ZOOMSTATE_WEAPONDEF6:
         case ZOOMSTATE_WEAPONDEF7:
         case ZOOMSTATE_WEAPONDEF8:
-            if (HasThermal__10CZSealBodyFP7CEntity(CameraZoom::m_seal, 0)) {
+            if (CameraZoom::m_seal->HasThermal(0)) {
                 SetLensFx(lens_fx_thermal);
             } else if (world->m_night_mission || scoped && starlight) {
                 if (!LensFxOn()) {

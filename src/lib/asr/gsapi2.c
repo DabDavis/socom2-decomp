@@ -56,7 +56,9 @@ void func_004C8CB8(void)
 /* an engine's parameter as the engine holds it: gsapi's own threshold (9) from the active
  * context's parameters, any other from asrspi by its translated id. OPEN (11 words, the right
  * size): id and gGSAPI's address take each other's saved register (s1/s2); the test inverted, a
- * switch, the locals' order and the PARAM written whole do not swap them. */
+ * switch, the locals' order and the PARAM written whole do not swap them. Round 39c's priorities
+ * (ccdump -f): &gGSAPI 4 refs over 40 insns, 2000; id 4 over 41, 1951 -- one insn less in id's life is a
+ * tie the lower pseudo (id) wins, one reference more 2439. */
 int func_004C8D10(GSENGINE *e, unsigned int id, int *value)
 {
     PARAM p;

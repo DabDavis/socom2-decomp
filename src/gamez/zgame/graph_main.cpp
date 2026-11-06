@@ -200,7 +200,25 @@ CGNode *CGraph::CreateNode()
  * preheader and shortens it to 0x194; round 49: the zdb world's round-28 rule (a definition at the
  * top of a for body turns the guarded loop into a jump to its bottom test) does not reach it -- the
  * loop as a while, the two pointers declared ahead and assigned, `(void)0;` first, the first
- * pointer in a block of its own: all 0x1AC, the same code */
+ * pointer in a block of its own: all 0x1AC, the same code.
+ * Round 53, what the target's shape needs (`igdump --iro`, not applied: no source yet makes it
+ * byte-exact). The out-of-line guard and the binders' set-up outside the loop are one thing:
+ * IRO_PullOutInvariantAssignments moves the two binders' field stores, which brings
+ * IRO_CopyLoopTestToLoopPreheaderAndBranchToSuccNode; with nothing to pull, IRO_RotateLoop keeps the guard
+ * inline and IRO's invariants hoist only the field addresses (the target's addiu s1,sp,100 / s0,sp,84).
+ * `#pragma opt_dead_assignments off` shows it: the stores stay, and frame 144 and s2-s0 are the target's.
+ * All the pragma changes at the loop phase is that dead stores remain, among them the binders' `this`
+ * copies (@N = &binder), so probably those keep the binders address-taken (inferred, not isolated).
+ * With the second half as an inline taking the edge by value (DelEdge(this, *i): the frame's slots then
+ * fall first, third, second binder, as the target's, and `e` below the begin() temporary), the elements
+ * read `*(list_base::iterator &)i` (no iterator copy) and GetOther's argument `*(CGNode **)&node` (its own
+ * common-subexpression class: the target re-reads the node at the loop's top), the pragma form is 9 off at
+ * the size: the bottom test's registers (the target generates the end after the iterator's re-read and
+ * not as a common subexpression) and clear()'s erase's argument order, which the default build has
+ * right -- so the pragma stands in for the real cause. The lead: whatever keeps a binder's address
+ * alive past pass 0's IRO_DeadStore. Not it: a user destructor or copy constructor on the binder (by
+ * reference, 0x1A4), a named binder, bind2nd; the loop as break-at-top or do-while (0x190) or goto (no
+ * rotation) */
 void CGraph::DeleteNode(CGNode *node)
 {
     if (node) {

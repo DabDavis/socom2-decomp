@@ -464,7 +464,17 @@ void CAiPath::IncrementPathId()
  * `more` is dead (rewritten before any read), so its redundant store goes whole. Dead chains (`n
  * = m`), empty inlines taking the map, an inline returning `c ? true : true`, an empty asm
  * elsewhere in the function: deleted whole. The only other MW row in the image with an emptied
- * if-body is OVL1's func_003B1DD0 (0x3B1EB0, `srl; bltz +1` -- unmatched) */
+ * if-body is OVL1's func_003B1DD0 (0x3B1EB0, `srl; bltz +1` -- unmatched).
+ * The AI core round 37 (build/scratch/ai/v_plc37*.py, igdump --pcode): under opt_dead_assignments off every dead body is ALREADY
+ * EMPTY at colouring; what differs is labels. An if-then's body is an unlabelled empty block, so the branch pass after colouring
+ * drops the branch to the next block (the bare sltu, a nop); a ternary's else arm is an empty LABELLED block, so `b JOIN` and the
+ * compare's branch both survive (the pad nop before JOIN: 0xBC). The target's `beqz at,next` wants that second behaviour with no
+ * then-arm jump: an empty labelled block after the branch, or a body still alive after that pass. CAiMaps::GetLocation's altitude
+ * (ai_maps.cpp, _cell_altitude) is the same family and closes without the pragma because its arm has a side effect: a dead
+ * conditional with a store keeps its `b`. Here no arm has one, and `cond ? (map = load, 1) : 0` is deleted whole (0x7C; under the
+ * pragma 0xBC). IRO's dead-store pass skips a noregister variable (mweppc IROUseDef.c), but (void)&map, a pointer or a reference
+ * local to it are folded first: 0x7C. With peephole off as well, the if-then reaches 0xAC, a coincidence (18 off: mtc1 / swc1 for
+ * the float's zero, `andi s0` for more, the branches still gone) */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;
@@ -591,21 +601,17 @@ bool CAiPath::InsertPathLoc(const CAiMapLoc &loc, CAiMap *map)
  * index's leg found, the point inserted there and the path drawn again; false while planning, for no
  * finished plan or an index off the points (new in SOCOM II, the name ours: 0x526810, after
  * PostProcess; the AI states' 0x555420 and 0x5556A0 call it).
- * OPEN (0x3EC against 0x3F4), written in the AI core's round 28: the registers are the target's
- * (the counter shares `ok`'s s3, the leg from_end's s4), the inserted point a named local as in
- * AppendPathLoc; the frame is not -- the target keeps operator+'s iterator copy (sp+132) above
- * the loop's two boundaries (sp+128/124), which this build puts at sp+132/128 with the copy below,
- * as if the leg search were an inline's (expanded later, its locals lower). As an inline helper
- * (by value or by const reference) it takes a sixth saved register (0x3F8, the frame 16 taller).
- * The AI core round 29 (build/scratch/ai/v_ipl*.py): the target's iterator is stored from data_,
- * reloaded, stepped and stored again in its slot -- a named `points::iterator it;` declared after
- * `leg` (before the loop) and set by `it = m_points.begin(); it += index;` gives that slot (sp+132)
- * and the size (0x3F4), 66 off: the scheduling. The target interleaves the iterator's stores with
- * the point's construction (the cell's mapid byte loaded before them, x and y after), so its
- * iterator is no escaped local; a named one blocks the cell's loads (set before the point) or is
- * blocked by the point's stores (after it). `begin() += index` as the argument keeps the stores
- * (0x3F4) in sp+124; inline insert helpers taking the iterator by value scalarise it (0x3EC) or copy
- * it once more (0x3FC) */
+ * OPEN, 66 off at the target's size and frame (the AI core round 37; 0x3EC and d 108 before, d 75 now): the iterator a
+ * named local declared before the loop (sp+132, above the loop's boundaries, 128 / 124: frame slots are creation
+ * order, so it cannot be the argument's temporary, which comes after the loop's), the point a named local (112, below
+ * the position's by-value copy, 120: as a temporary argument it moves to 104). What is left is one block's temporaries,
+ * registers only: the target's PCode holds `index * 8` (v0) across the point's construction -- the shift first, x's temp
+ * taking index's s0, the add after the point -- where `it += index` computes the two together. Offset locals (with the add
+ * after the point, build/scratch/ai/v_ipl37e.py): 85 off and more. An inline helper for the leg search (round 37: v_ipl37.py,
+ * by value, by reference, the counter in the caller) keeps its sixth saved register (0x3F8).
+ * Earlier: the registers are the target's (the counter shares `ok`'s s3, the leg from_end's s4); `begin() += index` as the
+ * argument keeps the stores (0x3F4) in sp+124; inline insert helpers taking the iterator by value scalarise it (0x3EC) or
+ * copy it once more (0x3FC) */
 bool CAiPath::InsertPathLoc(const CAiMapLoc &loc, CAiMap *map, int index, bool from_end)
 {
     bool ok = false;
@@ -626,6 +632,7 @@ bool CAiPath::InsertPathLoc(const CAiMapLoc &loc, CAiMap *map, int index, bool f
             if (index >= 0 && index <= (int)m_points.size()) {
                 int first, last;
                 int leg = -1;
+                points::iterator it;
 
                 for (int i = 0; leg == -1 && i < m_legcount; i++) {
                     int f, l;
@@ -636,9 +643,11 @@ bool CAiPath::InsertPathLoc(const CAiMapLoc &loc, CAiMap *map, int index, bool f
                         leg = i;
                 }
                 GetLegBoundary(first, last, leg);
+                it = m_points.begin();
+                it += index;
                 point p(loc);
 
-                m_points.insert(m_points.begin() + index, p);
+                m_points.insert(it, p);
                 PrintPath("aipath");
                 ok = true;
             }

@@ -866,16 +866,17 @@ int CNode::DeleteVisual(CVisual *visual, bool del)
 /* every visual let go of, each deleted that nothing else holds -- unless the node was drawn this
  * frame, when it waits on the deferred list (once) for DeleteDeferredVisuals; then the list
  * emptied, the node marked changed and holding no mesh.
- * OPEN (0x1A4 of 0x1A8): the final erase's end is the target's begin load (through &data_,
- * kept since entry) plus the size the loop's last test scaled, where here it is the loop's whole
- * end; and the insert's temporaries take the stack slots below the erase's there, above them
- * here. Not moved by begin() + size() for the end. Round 29 (build/scratch/wld/v_dv*.py): begin()
- * taken into a named local first shares the data load (0x1A8, the target's size, 15 off); the
- * push_back one inline wrapper deeper (a static PushBack(list, x) around it) moves the insert's
- * temporaries below the erase's, as the target's frame (10 off) -- an SOCOM 1-deep list push_back
- * (through the base's) would do the same; left: the find's end compared fresh in the target (its
- * `lui/addiu` reused by the insert), where MW here reuses the find's last (a1) -- not moved by an
- * iterator local, `!(... != end())`, an end local or the wrapper calling insert(end(), x) */
+ * Byte-exact (the world lane's round 33; open since round 28, build/scratch/wld/v_dv6-8.py): the data
+ * pointer read once into a plain pointer, the end's load merged with it and the iterators built
+ * last argument first (a named begin() iterator is stored at its declaration, ahead of the end's);
+ * the find's result in an iterator local, so its compare and the insert share a fresh `lui/addiu`
+ * (compared in place, MW reuses find's hoisted last, a1); the push_back one inline wrapper deeper
+ * (the insert's temporaries below the erase's in the frame, as in the target) */
+static inline void PushBack(std::list<CVisual *> &list, CVisual *const &visual)
+{
+    list.push_back(visual);
+}
+
 void CNode::DeleteVisuals()
 {
     bool drawn = m_frameRendered == zVid.frameNumber;
@@ -886,12 +887,17 @@ void CNode::DeleteVisuals()
         if (!visual->Release()) {
             if (!drawn)
                 delete visual;
-            else if (std::find(m_deferred_visuals.begin(), m_deferred_visuals.end(), visual) ==
-                     m_deferred_visuals.end())
-                m_deferred_visuals.push_back(visual);
+            else {
+                std::list<CVisual *>::iterator f = std::find(m_deferred_visuals.begin(), m_deferred_visuals.end(), visual);
+
+                if (f == m_deferred_visuals.end())
+                    PushBack(m_deferred_visuals, visual);
+            }
         }
     }
-    m_visual.erase(m_visual.begin(), m_visual.end());
+    CVisual **d = m_visual.begin().m_p;
+
+    m_visual.erase(CVisualVector::iterator(d), m_visual.end());
     m_socom2_a1 |= 2;
     m_hasMesh = 0;
 }

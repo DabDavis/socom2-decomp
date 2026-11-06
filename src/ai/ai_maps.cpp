@@ -31,7 +31,15 @@ const T &_max(const T &a, const T &b)
  * kinds' loop is a loop invariant MW hoists into the kinds' loop's preheader (the field addresses,
  * both ends, then a jump to the `k < 6` test), and the count walk's postfix step hoists its end into
  * the walk's own (the online lane's postfix rule).
- * OPEN, right size, 12 instructions since round 36 (34 before): registers only -- the target gives the push walk's names
+ * OPEN, right size, 5 instructions since round 37 (12 in round 36, 34 before), registers only: the count walk's hoisted end and its
+ * byte, the target's v1 and a2, here a2 and v1. build/scratch/ai/ig2.py over every placement of the two: the target needs the byte
+ * numbered below the end and below the walk's cursor, so coloured after both -- and the byte is a code-generation temporary, above
+ * every variable. So the original's byte is a variable that reaches the PCode. A named one read once is expression-propagated in
+ * pass 0 (IRO_ExpressionPropagation: useCount 1, whatever other blocks do; the log's Operand count falls there), one local reused by
+ * both walks too (the compare's operands swap: 6 off), an inline accessor's return alike (build/scratch/ai/v_unt37*.py). What round
+ * 37 fixed: `i = begin()` ahead of the named end in the push walk's head (v0 stays busy with `this` through the two address
+ * temporaries: round 29's "code-generation temporaries" below, v76 / v77, 12 -> 5).
+ * Before that: the target gives the push walk's names
  * iterator s0 and the name-table cursor (m_names[k], strength-reduced) s1, this build the other way
  * round (the iterator's scalar @7178 is numbered below the cursor's @7190), and the count walk's
  * cursor and end take a0/v1 where this build's take a2/a0. A named reference to m_names[k] (0x360),
@@ -83,9 +91,10 @@ void CAiMaps::UpdateNameTables()
         if (count > 0) {
             m_names[k].reserve(count);
             unsigned int mapid = 0;
+            i = begin();
             iterator e = end();
 
-            for (i = begin(); i != e; ++i, mapid++) {
+            for (; i != e; ++i, mapid++) {
                 CAiMap::names &names = (*i)->m_namesTable;
 
                 for (CAiMap::names::iterator n = names.begin(); n != names.end(); ++n) {
@@ -643,39 +652,46 @@ inline bool traversable(const CAiMaps *maps, const CAiMapLoc &loc)
  * with the mask (or, failing that, with none), a leg added for each step of the route that stays
  * on its map, the two nodes deleted again. The plan aborted on the first failure, run otherwise
  * (SOCOM 1's, the demo's 0x199870; the mask, the second try and the map's IsTraversable new in
- * SOCOM II). Written in the AI core's round 32 (unstarted before), from the target's code:
- * OPEN, 0x5F8 against 0x608 (difflib distance 105 of 386), every call the target's. What fixed what:
- * the leg's two cells one 8-byte struct (from 288, to 292 -- plan_addleg's shape; &to hoisted into
- * s6), the route's two cells another, declared inside the route's block (264 / 268, below the route
- * at 272, &step hoisted into s0), `from` assigned (a word copy: the written copy constructor works
- * field by field), both list walks' iterators declared and then ASSIGNED from begin() (include/list:
- * kept in memory, re-read and re-stored at each step, as the target's 332 and 304). Left: the
- * target hoists &to.y (s6 + 2) out of the loop and spills it (176), so its frame is 16 bytes taller
- * (336) and every slot above sits 16 higher -- here to.y is rebuilt from sp at its use (a reference
- * local `CAiMapLoc &to = leg.to;` reads it as `lhu 2(s6)` instead, 113); the node walk's end is
- * `&m_nodes + 4` in two adds in the target (the list reached through a pointer or reference), and
- * mask / node take s2 / s3 there, s3 / s2 here; the route walk's begin copy (300) is one temporary
- * more in the target */
+ * SOCOM II). Written in the AI core's round 32 (unstarted before), from the target's code; BYTE-EXACT
+ * in round 37 (0x5F8 and 105 off before, build/scratch/ai/v_rpp37*.py). Each shape settles what the
+ * image shows, all but the last numbering or frame:
+ *  - the leg's two cells an ARRAY: `leg[1].y` is `(&leg + 4) + 2`, where `leg.to.y` is folded to `&leg + 6` by
+ *    the front end. IRO hoists &leg[1] (s6), then `s6 + 2`, which is no frame constant, so it is truly
+ *    spilled (176) and the frame 16 taller; `&leg[0].y` stays a constant, rematerialised at its use (290);
+ *  - one counter for both loops, one iterator for both walks: IRO_SplitLifetimes splits each later web
+ *    into a temporary made after every other (the route walk's two slots, 304 / 300, below all
+ *    the temporaries; the counter's spill slot, 160, the last);
+ *  - node declared ahead of mask (the kit's round 59): mask s2, node s3;
+ *  - the walk's end named, from a reference to the list used for begin() too: `nodes` read twice is
+ *    not expression-propagated (useCount, IRO_ExpressionPropagation), so `nodes + 4` keeps the image's
+ *    two adds -- propagated, the generator folds them to `s4 + 8` -- and the end, scalarised in pass 0, is
+ *    numbered ahead of the loop temporaries (spill slot 192, above &leg[1].y's 176). In the loop test
+ *    `nodes.end()` is no invariant at all: IRO_IsSubableExpression refuses variable + constant;
+ *  - the route's cell an if/else on !l (a ternary selects an address), the goals stepped in the loop's
+ *    increment after the leg's copy. The route's two cells stay one 8-byte struct declared inside its
+ *    block (264 / 268, below the route at 272, &step hoisted into s0) */
 bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, int count, CAiPath *path)
 {
     if (!traversable(this, start))
         return false;
-    for (int k = 0; k < count; k++)
-        if (!traversable(this, goals[k]))
+    int i;
+
+    for (i = 0; i < count; i++)
+        if (!traversable(this, goals[i]))
             return false;
     ai::PathPlanBegin(path);
     bool ok = true;
-    struct { CAiMapLoc from; CAiMapLoc to; } leg;
+    CAiMapLoc leg[2];
 
-    leg.from = start;
-    for (int i = 0; ok && i < count; i++) {
-        leg.to = *goals;
-        if (leg.from.m_mapid == leg.to.m_mapid) {
-            CAiMap *map = GetMapByIndex(leg.from.m_mapid);
+    leg[0] = start;
+    for (i = 0; ok && i < count; goals++, i++) {
+        leg[1] = *goals;
+        if (leg[0].m_mapid == leg[1].m_mapid) {
+            CAiMap *map = GetMapByIndex(leg[0].m_mapid);
 
             ok = map != 0;
             if (ok)
-                ai::PathPlanAddLeg(map, leg.from, leg.to);
+                ai::PathPlanAddLeg(map, leg[0], leg[1]);
         } else {
             CGraph *graph = m_graph;
 
@@ -683,25 +699,28 @@ bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, i
             if (ok) {
                 CGNode *n0 = graph->CreateNode();
                 CGNode *n1 = graph->CreateNode();
+                CGNode *node;
                 unsigned int mask = path->m_unk24;
 
                 std::list<CGNode *>::iterator it;
+                std::list<CGNode *> &nodes = graph->m_nodes;
+                std::list<CGNode *>::iterator last = nodes.end();
 
-                for (it = graph->m_nodes.begin(); it != graph->m_nodes.end(); ++it) {
-                    CGNode *node = *it;
+                for (it = nodes.begin(); it != last; ++it) {
+                    node = *it;
                     CAiMap::link *l = node->m_link;
 
                     if (l) {
-                        if (l->m_loc.m_mapid == leg.from.m_mapid) {
+                        if (l->m_loc.m_mapid == leg[0].m_mapid) {
                             CGEdge *e = graph->CreateEdge(n0, node);
 
-                            e->m_length = (int)loc_delta(l->m_loc, leg.from);
+                            e->m_length = (int)loc_delta(l->m_loc, leg[0]);
                             e->m_mask = mask;
                         }
-                        if (l->m_loc.m_mapid == leg.to.m_mapid) {
+                        if (l->m_loc.m_mapid == leg[1].m_mapid) {
                             CGEdge *e = graph->CreateEdge(n1, node);
 
-                            e->m_length = (int)loc_delta(l->m_loc, leg.to);
+                            e->m_length = (int)loc_delta(l->m_loc, leg[1]);
                             e->m_mask = mask;
                         }
                     }
@@ -710,14 +729,15 @@ bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, i
 
                 if (graph->BuildRoute(n0, n1, mask, &route) || (mask && graph->BuildRoute(n0, n1, 0, &route))) {
                     struct { CAiMapLoc from; CAiMapLoc to; } sub;
-                    std::list<CGNode *>::iterator r;
+                    it = route.m_nodes.begin();
+                    sub.from = leg[0];
+                    for (++it; it != route.m_nodes.end(); ++it) {
+                        CAiMap::link *l = (*it)->m_link;
 
-                    r = route.m_nodes.begin();
-                    sub.from = leg.from;
-                    for (++r; r != route.m_nodes.end(); ++r) {
-                        CAiMap::link *l = (*r)->m_link;
-
-                        sub.to = l ? l->m_loc : leg.to;
+                        if (!l)
+                            sub.to = leg[1];
+                        else
+                            sub.to = l->m_loc;
                         if (sub.from.m_mapid != sub.to.m_mapid) {
                             sub.from = sub.to;
                         } else {
@@ -732,8 +752,7 @@ bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, i
                 graph->DeleteNode(n1);
             }
         }
-        goals++;
-        leg.from = leg.to;
+        leg[0] = leg[1];
     }
     if (!ok)
         ai::PathPlanAbort();
@@ -1035,6 +1054,47 @@ CPnt3D *CAiMaps::GetCellCenter(const CAiMapLoc &loc, CPnt3D *center)
     return map ? map->GetCellCenter(loc, center) : 0;
 }
 
+/* whether a cell is on its row's run, the row read straight off the bitfield (ai_mapwalk.cpp's _on_run: the
+ * target's `bltz a0` with no andi; IsMapCell, called out of line inside GetCell, narrows it) */
+inline bool _on_run(const CAiMap *map, const CAiMapLoc &loc)
+{
+    if (loc.y >= 0 && loc.y < map->m_ny) {
+        const CAiMap::scanline &sl = map->GetScanline(loc.y);
+        bool in = false;
+        unsigned int x = loc.x;
+
+        if (x >= sl.m_start && x < sl.m_end)
+            in = true;
+        return in;
+    }
+    return false;
+}
+
+/* whether a step may not end on the cell: IsTraversable's soils, its bool negated by the caller (`!` of an inline's
+ * bool keeps the target's andi ahead of its sltu, xori; IsTraversable's own negation has none) */
+inline bool _no_ground(const CAiCell *cell)
+{
+    unsigned int soil = cell->m_soil;
+
+    return soil == 0 || soil == 10 || soil == 8 || soil == 9;
+}
+
+/* by reference: the literal is an object of the function's constant pool, -10 at 0x64F958 beside _close_enough's
+ * (written straight, or as a `static const float`, it is folded to lui / mtc1) */
+inline bool _le(const float &a, const float &b)
+{
+    return a <= b;
+}
+
+/* a cell's altitude as GetLocation reads it: CAiMap::GetAltitude's words as a CONDITIONAL. Its value is dead, so its
+ * two arms' temporaries die in the back end, after the branches are laid out: the target's `beqz s0,L ... b L; add.s;
+ * L:`. CAiMap::GetAltitude's own form (its copy 0x516940 is that form's `li v0,1`, no sltu; the conditional's is
+ * daddiu) loses the jump: IRO empties its else arm while it can still drop it (a nop-padded L) */
+inline bool _cell_altitude(const CAiMap *map, const CAiCell *cell, float &alt)
+{
+    return cell ? (alt = map->m_bbox.m_min.y + map->m_alt_quant * (float)cell->m_altitude, true) : false;
+}
+
 /* the cell under a point: the first map whose cells hold it, its index as the map id -- passed
  * over when the first map's cell is a seam (m_mes) and the map's cell is SOIL_NOALT; when that
  * cell is no ground a step may end on or lies more than half a unit off the point's height, and
@@ -1043,87 +1103,94 @@ CPnt3D *CAiMaps::GetCellCenter(const CAiMapLoc &loc, CPnt3D *center)
  * (half a unit more when it is ground and the best not) (SOCOM 1's GetLocation(CPnt3D *, loc), the
  * demo's 0x19C9B0, 0xA04 bytes; the seam, the NOALT soil and the second walk new in SOCOM II, by
  * the code -- the AI core's round 31, written from m2c).
- * OPEN, 0xA44 against 0xA34 (written in the AI core's round 31): every call is the target's -- the
- * map's GetLocation and IsMapCell inlined whole, GetCell one level (IsMapCell, IsLayer, the
- * scanlines' [], GetIndex, the layers' [] out of line; the second walk reads the cell before its
- * row test, as the target does), _close_enough<f> on the literals 0, 0.5 and |dh| -- walked
- * through a const view of the maps with postfix steps as GetLocation(name) is (0x9FC through
- * `this`, 0x9CC prefix). Round 32 (difflib distance 279 -> 172 of 653): ONE cell `l` for both walks
- * (the target's single slot at 280), declared with the best after the size test -- the frame's top
- * is then the target's (best 284, l 280, dh 276, the iterator 272, alt 268); the seam taken as
- * `m_mes ? true : false` (the target's branches, daddiu 1 / move zero, then andi into the saved
- * register). Left: the saved-register numbering (target this s5, map s2, i s1, cell s0, seam s3, the
- * second walk's j s1, m s3, c s0 -- here s3, s5, s0, s1, s2 and s0, s5, s2), the iterator
- * temporaries' middle slots (264 / 248 the begin()/end() copies, 256 / 252 the floats: here the
- * other way round) and the target's one more begin()/end() copy (sp+228, 212 -> 272) */
+ * BYTE-EXACT in the AI core's round 37 (0xA44 and 172 off since round 32, build/scratch/ai/v_gl37*.py, fix_gl*.py). Every
+ * call is the target's: the map's GetLocation inlined whole, GetCell one level, _close_enough<f> on literals, a const
+ * view of the maps with postfix steps, one cell `l` for both walks (the frame's top: best 284, l 280, dh 276, the
+ * iterator 272). What round 37 settled, tools/structdiff.py first (registers normalised), the numbering after:
+ *  - no `j`: the second walk steps `i` on; _on_run, _no_ground, _le and _cell_altitude (each with its evidence above);
+ *  - `best` built by CAiMapLoc(cell, id) (zentity.h's, additive): the three-argument form makes argument temporaries
+ *    of the address-taken `l`; this reads it in place, id, x, y (a named local's field stores narrow to sb / sh);
+ *  - `d` no named local: _close_enough's temporaries at 256 / 252, below the call's copies (named, 264 / 260);
+ *  - the better block's dh ahead of best (the scheduler's order);
+ *  - THE NUMBERING IS NOT PARAMETERS FIRST. No order with this and pos below the locals gives the target's registers
+ *    (annealing over every local's slot, best 7 off; every sequence of spill picks, 0 hits): at K 25 with 19 hard
+ *    neighbours map and m are symmetric, so `this` can only be pushed with its five last neighbours left after a
+ *    sweep in which the others went in one pass. build/scratch/ai/igallperm.py with this and pos free finds thousands, all with
+ *    this < pos < i, m < ground, m < c, seam < cell, map < cell. The one written: map, seam and cell first, the
+ *    named copies of this and pos, found, then m, ground, i, c. Their shape in the original is not known (the
+ *    copies stand for it): a modelling order, marked as such */
 bool CAiMaps::GetLocation(const CPnt3D *pos, CAiMapLoc &loc)
 {
+    CAiMap *map;
+    bool seam;
+    CAiCell *cell;
     const CAiMaps *maps = this;
+    const CPnt3D *p = pos;
+    bool found;
+    CAiMap *m;
+    bool ground;
+    int i;
+    CAiCell *c;
+    bool ground2;
+    bool better;
 
     if (!maps->size())
         return false;
     CAiMapLoc best;
     CAiMapLoc l;
     float dh = 0.0f;
-    bool found = false;
-    bool seam = false;
-    int i = 0;
 
+    found = false;
+    seam = false;
+    i = 0;
     for (const_iterator it = maps->begin(); it != maps->end(); it++, i++) {
-        CAiMap *map = *it;
+        map = *it;
 
-        if (!map->GetLocation(pos, l) || !map->IsMapCell(l))
+        if (!map->GetLocation(p, l) || !_on_run(map, l))
             continue;
-        CAiCell *cell = map->GetCell(l, 0);
+        cell = map->GetCell(l, 0);
 
         if (i == 0)
             seam = cell->m_mes ? true : false;
         if (seam && cell->m_soil == CAiMap::SOIL_NOALT)
             continue;
         found = true;
-        best = CAiMapLoc(l.x, l.y, i);
+        best = CAiMapLoc(l, i);
         float alt;
 
-        map->GetAltitude(cell, alt);
-        dh = pos->y - alt;
-        bool ground = cell->IsTraversable();
+        _cell_altitude(map, cell, alt);
+        dh = p->y - alt;
+        ground = !_no_ground(cell);
 
         if ((!ground || !_close_enough(dh, 0.0f, 0.5f)) && seam) {
-            int j = i + 1;
-
-            for (it++; it != maps->end(); it++, j++) {
-                CAiMap *m = *it;
-                if (!m->GetLocation(pos, l))
+            for (it++, i++; it != maps->end(); it++, i++) {
+                m = *it;
+                if (!m->GetLocation(p, l))
                     continue;
-                CAiCell *c = m->GetCell(l, 0);
+                c = m->GetCell(l, 0);
 
-                if (!m->IsMapCell(l) || c->m_soil == CAiMap::SOIL_NOALT)
+                if (!_on_run(m, l) || c->m_soil == CAiMap::SOIL_NOALT)
                     continue;
                 float alt2;
 
-                m->GetAltitude(c, alt2);
-                float dh2 = pos->y - alt2;
-
-                if (dh2 <= -10.0f)
+                _cell_altitude(m, c, alt2);
+                float dh2 = p->y - alt2;
+                if (_le(dh2, -10.0f))
                     continue;
-                bool ground2 = c->IsTraversable();
-                bool better = false;
+                ground2 = !_no_ground(c);
+                better = false;
 
                 if (!ground2 || ground) {
-                    float d = fabsf(dh);
-
-                    if (_close_enough(dh2, 0.0f, d))
+                    if (_close_enough(dh2, 0.0f, fabsf(dh)))
                         better = true;
                 } else {
-                    float d = 0.5f + fabsf(dh);
-
-                    if (_close_enough(dh2, 0.0f, d))
+                    if (_close_enough(dh2, 0.0f, 0.5f + fabsf(dh)))
                         better = true;
                 }
                 if (better) {
                     ground = ground2;
-                    best = CAiMapLoc(l.x, l.y, j);
                     dh = dh2;
+                    best = CAiMapLoc(l, i);
                 }
             }
         }

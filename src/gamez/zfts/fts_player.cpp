@@ -75,6 +75,9 @@ public:
     /* the debug bit (SOCOM 1's SetDebug, out of line there; inline here: LoadVehicle stores it
      * through a parameter, `andi a3,zero,1`) */
     void SetDebug(bool on) { m_debug = on; }
+    /* the AI on (SOCOM 1's static: its PreTick tests it first; SOCOM II's spawners wait while it
+     * is clear) */
+    static bool aiEnabled;
 
     unsigned char _250[0x264 - 0x250];
     /* 0x264: SOCOM 1's bits at 0x280 (its DWARF), zseal.h's SEAL_AI_PARAMS word */
@@ -289,7 +292,6 @@ public:
 extern CMission theMission;
 
 extern "C" {
-extern bool data_003DF188;   /* (SOCOM II's: the spawners wait while it is clear) */
 void func_0026ADA0(CZAnimMain *zanim, zdb::CNode *node);
 }
 
@@ -975,7 +977,7 @@ void CSpawners::Tick(float dT)
     CEntity *e;
     spawn_map *spawn;
 
-    if (m_count > 0 && data_003DF188) {
+    if (m_count > 0 && CSealCtrlAi::aiEnabled) {
         m_timer -= dT;
         if (m_timer <= 0.0f) {
             if (m_spawns.size()) {

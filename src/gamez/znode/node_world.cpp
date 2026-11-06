@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "node_world.h"
+#include "int_shapes.h"
 #include "../zanim/zanim.h"
 #include "../zcamera/zcamera.h"
 #include "../zsys/zsys.h"
@@ -90,6 +91,56 @@ static inline void SetAmbient(CWorld *w, float r, float g, float b, float a)
     w->m_gLight.ambient.z = b;
     w->m_gLight.ambient.w = a;
     w->m_gLightColUpdate = 1;
+}
+
+/* SOCOM 1's: the children deleted, the landmarks and shadow casters, the camera, the intersection
+ * and the shadow texture let go of, the assets cleared, every character set deleted, the node
+ * universe gone, the world no longer current. OPEN, 0x49C of 0x50C (the world lane's round 33,
+ * unwritten before; every statement, and each member's destructor, in the target's order): (1) THE
+ * LEVEL, as Wipeout / RemoveEmptyTextureAssetCharacters: `delete t` inlines the set's destructor and
+ * its nodes' vector whole in the target (four this-tests, the block freed), and `delete NodeUniverse`
+ * five tests, where include/vector's pointer vector makes each a call at level 5; `#pragma
+ * inline_depth(6)` at the unit's end gives those but loses GarbageCollect and
+ * AddTextureAssetCharacter, which call the same destructors out of line (README "Level 6, or 8?");
+ * (2) the registers follow from it: the target keeps this in s1, the flag in s0, the walks in s2-s4 */
+CWorld::~CWorld()
+{
+    DeleteChildren();
+    for (CNodeVector::iterator i = m_landmarks.begin(); i != m_landmarks.end(); ++i)
+        CNode::Delete(*i);
+    m_landmarks.clear();
+    for (std::vector<CShadowCaster *>::iterator c = m_shadow_casters.begin(); c != m_shadow_casters.end(); ++c)
+        delete *c;
+    m_shadow_casters.clear();
+    delete m_camera;
+    m_camera = 0;
+    delete m_diInt;
+    m_diInt = 0;
+    m_shadowTexH->SetTexture(0);
+    CTexHandle::Destroy(m_shadowTexH);
+    delete m_shadowTex[0];
+    EmptyAssetRecycleBin();
+    CAssetMgr::m_assets.Clear();
+    m_TextureCharacterCommon.clear();
+    m_TextureDecals.clear();
+    while (m_TextureAssetCharacters.size()) {
+        CTextureAssetCharacters *t = m_TextureAssetCharacters.front();
+
+        m_TextureAssetCharacters.pop_front();
+        delete t;
+    }
+    if (NodeUniverse) {
+        NodeUniverse->clear();
+        delete NodeUniverse;
+        NodeUniverse = 0;
+    }
+    m_world = 0;
+    if (m_default_soiltype_name)
+        _free(m_default_soiltype_name, 0, 0);
+    m_default_soiltype_name = 0;
+    if (m_foliage_sound)
+        _free(m_foliage_sound, 0, 0);
+    m_foliage_sound = 0;
 }
 
 /* SOCOM 1's (0x230030): the world made current, its scale set, its intersection made, a light from
@@ -233,35 +284,9 @@ static inline const CBBox *NodeBBox(CNode *node)
     return node->GetBBox();
 }
 
-/* a point set from three values (ours; int_shapes.cpp's PntSet) */
-static inline void CornerSet(CPnt3D &p, float x, float y, float z)
-{
-    p.x = x;
-    p.y = y;
-    p.z = z;
-}
-
-/* a box's eight corners: the bottom four, then the top four, each ring from the low x, high z
- * corner. AN INLINE IN THE ORIGINAL (the world lane's round 31): 0x2DCCD0 is int_shapes.cpp's
- * out-of-line copy of it -- SOCOM 1's CBBox8::Build, the same stores in the same order -- since only
- * a body MW can see makes the corners' constructor below too big to expand whole (then inlined one
- * level: the member array's CPnt3D() constructions a loop, this called). int_shapes.cpp defines it
- * out of line under the same name (an engine core unit; node_world.h declares it), so it is defined
- * here again, inline, with int_shapes.cpp's body */
-inline void GetBBoxCorners(CPnt3D *out, const CBBox *b)
-{
-    CornerSet(out[0], b->m_min.x, b->m_min.y, b->m_max.z);
-    out[1] = b->m_min;
-    CornerSet(out[2], b->m_max.x, b->m_min.y, b->m_min.z);
-    CornerSet(out[3], b->m_max.x, b->m_min.y, b->m_max.z);
-    CornerSet(out[4], b->m_min.x, b->m_max.y, b->m_max.z);
-    CornerSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
-    CornerSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
-    out[7] = b->m_max;
-}
-
-/* a box's eight corners as an object (SOCOM 1's class CBBox8, its Build SOCOM II's GetBBoxCorners
- * above) */
+/* a box's eight corners as an object (SOCOM 1's class CBBox8, its Build SOCOM II's GetBBoxCorners --
+ * int_shapes.h's inline, the engine core's round 26: AN INLINE IN THE ORIGINAL, 0x2DCCD0 its
+ * out-of-line copy; a body MW can see makes this constructor too big to expand whole) */
 class CBBox8 {
 public:
     CBBox8(const CBBox *b) { GetBBoxCorners(m_pts, b); }
