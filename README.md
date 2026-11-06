@@ -2065,6 +2065,32 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 38** (the three requests measured, none applied -- comments only in
+  include/vector and include/deque; probes build/p38/, untracked: permall.py runs tools/igreplay.py --permute keeping
+  every hit and prints each pair's relation, board.py / mkv.py / vrun.py / gen38.py score class-insert variants over the
+  67 inserts, igd.py dumps against a shadow include/ with mwccps2's IRO log, mkdq.py / genorder.py / dqcheck.sh read a
+  unit's tail order; runs in build/scratch/msl-r38/):
+  - REQUESTS (1) AND (2) ARE ONE LEVER: CTurretDef 0x3ABD90 and AcctRecord 0x2FE3E0 (zrdr_sym 0x3325E0 too) take the
+    target's registers in exactly 120 of the 720 orders of m, i, both j's, k and the end -- THE END BEFORE m
+    BEFORE THE ELSE BRANCH'S j, the rest free; the inlined population's saved-register witnesses (CUIVariable 0x2B1BD0,
+    ActionItem 0x383F20) want the converse, the else branch's j before k before the end, m free. The cut five's end is
+    the scalariser's pass-0 temporary or __copy_backward's `result` argument (level 1), m a declared local, so no
+    numbering the inliner and IRO give puts that end first; a pointer end before m does, in BOTH populations (its loop
+    tests sit deeper than its definition, so copy propagation never folds it away): +5 / -28, as round 33's thirty;
+  - A CUT construct() IS DEFERRED, NOT SHORTENED: bottom-up admits a callee only when its whole tree fits the passes
+    left, so an inline holding a big inline-copy element's construct() is admitted at the LAST pass and its callees are
+    called -- a member helper holding the else loop made its three argument temporaries at level 4 in the turret and at
+    level 0 in CUIVariable (igdump's origins); the whole in-place branch as one helper is deferred for every element;
+  - THE TAIL'S GENERATION ORDER IS IGDUMP'S RECORD ORDER (a record per colouring, written as each function is
+    code-generated -- the object's symbol order is not it): zanim_menu.cpp generates resize, reserve, push_back (deferred
+    in their walk, last first), then __recommend and max_size (both waiting on the unparsed __max_size(), last first),
+    then alloc() a walk later -- so the UI's out-of-class max_size calls alloc() (0x84 of 0x50); alloc() in class makes
+    max_size 0x285CE0 byte-exact but __recommend inlines it too (0xF8 of 0x120); reserve declared ahead of push_back gives
+    the image's resize, push_back, reserve; the image's __recommend, alloc(), max_size needs alloc() generated between
+    the two, which no declaration order gives while both wait on __max_size() (include/deque's note);
+  - request (3), resize<reader> 0x51C3F0, was closed by the AI core's round 36 (its device); the deque tail, cdeque<PCv>'s
+    erase / insert / pair / remove_if / AddItem / CountKeys / OnIsEquipmentSelected / the hangul pieces: no new idea, not
+    attempted.
 - **Tells from the HUD, round 63** (hud_actionbitmap.cpp whole: CZActionBitmap::HudTick 0x21D9D0,
   CActionTxtrMachine::SpecializeActionString 0x220350, Render_ver_2 0x21F210 and Open 0x21F850 -- all four unwritten before,
   SOCOM 1's, 6,200 bytes -- byte-exact and named; nine data rows; the SEALs' and the states' respells in four units,

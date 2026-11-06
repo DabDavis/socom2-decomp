@@ -1751,7 +1751,7 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  *    construct() is cut, so the source that numbers the two populations apart is still not found.
  *    The MSL headers round 38 (the weapons' round-38 request and the online lane's; build/p38/,
  *    untracked: permall.py runs tools/igreplay.py --permute keeping every hit, gen38.py / vrun.py the
- *    variants): CTurretDef 0x3ABD90 AND AcctRecord 0x2FE3E0 ARE ONE LEVER -- over m, both i's, both
+ *    variants): CTurretDef 0x3ABD90 AND AcctRecord 0x2FE3E0 ARE ONE LEVER -- over m, i, both
  *    j's, k and the end (720 orders), each takes the target's registers in exactly the 120 orders with
  *    THE END BEFORE m BEFORE THE ELSE BRANCH'S j (i, the first j and k free); zrdr_sym 0x3325E0 the
  *    same 120. The inlined population's witnesses that use saved registers want the converse:
