@@ -431,6 +431,302 @@ int ExtendNodeWheel(ISOWDP *e, WTOKEN ***a, WTOKEN ***b)
 }
 
 /* the garbage arrays grown by 150 entries (each array holds ngarbage + 1 words) */
+extern int RePruneToPho(ISOWDP *e, WTOKEN ***out, int *count, int n, int best);
+
+/* one frame over the wheel: each token's states from the last back, its followers entered from its last state,
+ * a token surviving onto the ring again, its node freed when nothing beat the threshold; the threshold eased by
+ * 100 a frame up to +152, a re-prune when the ring would outgrow +96. SOCOM 1's body. OPEN (round 39c, written:
+ * 586 words of 587, the frame's slots and the whole layout the target's). Measured shapes, each moved it closer:
+ * `hd` a register twin of the address-taken `in`; a guard and a do-while with `done = 0` inside the guard (the
+ * store then lands in the entry test's delay slot); `kk = k * 2` a variable in both arms (PRE carries it over the
+ * join) and the sum `(ws + kk) + ws[word]`; `(x - nun - 1) & 0xFFFF` not a halfword cast (`addiu; andi`, where a
+ * cast goes through `li at,0xffff`); a slot pointer `ps` with the host's result stored through it and read back
+ * (CSE forwards it narrowed: the target's sll/sra); `nn != 0` first; nun an unsigned short. Open: the target
+ * re-reads t->word in the first arm (`lhu v0,8(s6)`) and keeps an `andi` on the follower's word in that arm, both
+ * as if the arm began after a label in CSE1's view -- a bitfield gives the andi on the first read too (tried); so
+ * registers from there on: v in s0 and ps in s1 (swapped here), the reloads' a3 for a2 (kk's global a2 is live
+ * only in the target's shape). */
+int FrameDPacoust(ISOWDP *e)
+{
+    WTOKEN **out, **in, **hd;
+    int count;
+    ISOTOS *tos;
+    WTOKEN **last, **end;
+    NODE *node;
+    unsigned short *st;
+    int best;
+    int k, kept, n, done;
+    short *scores;
+    int *ws;
+    int *f208;
+    unsigned short *f204;
+    unsigned short nun;
+    int thresh;
+    WTOKEN *chend;
+    WHEEL *w;
+    WTOKEN *t, *ch;
+    unsigned short *lastst;
+    short *p, *q;
+    int kk;
+    unsigned short word;
+    unsigned int w2;
+    int lim;
+    int v;
+    short *ps;
+    int m, sc;
+    unsigned int u;
+
+    w = &e->wheel;
+    best = 0x7BFF;
+    tos = e->tos;
+    scores = e->f48(e->f40);
+    ws = e->wordstates;
+    thresh = e->f92 + 100;
+    e->pad124 = 0;
+    f208 = (int *)e->f208;
+    if ((short)e->f152 < thresh)
+        thresh = (short)e->f152;
+    f204 = (unsigned short *)e->f204;
+    e->f92 = thresh;
+    nun = e->nunits;
+    last = w->tail;
+    hd = w->head;
+    end = w->end;
+    if (hd < last)
+        n = last - hd;
+    else
+        n = w->size - (hd - last);
+    lim = e->f96;
+    if (lim > 300)
+        lim = 300;
+    count = 0;
+    in = hd;
+    out = last;
+    if (hd != last) {
+    done = 0;
+    do {
+        t = *hd;
+        kept = 0;
+        done++;
+        node = t->node;
+        word = t->word;
+        k = node->f0;
+        if (word < nun) {
+            kk = k * 2;
+            st = (unsigned short *)((char *)ws + kk) + ws[t->word] + 2;
+            lastst = (unsigned short *)ws + ws[t->word + 1] - 1;
+        } else {
+            int j = (word - nun - 1) & 0xFFFF;
+
+            kk = k * 2;
+            st = f204 + f208[j] + k;
+            lastst = f204 + f208[j + 1] - 1;
+        }
+        p = (short *)((char *)node + kk) + 1;
+        if (st == lastst && t->f10 != 0) {
+            ch = t->f0;
+            chend = ch + t->f10;
+            do {
+                w2 = ch->word;
+                if (w2 < nun)
+                    u = ((unsigned short *)ws + ws[(unsigned short)w2])[2];
+                else
+                    u = f204[f208[(w2 - nun - 1) & 0xFFFF]];
+                m = *p;
+                ps = &scores[u];
+                sc = *ps;
+                v = m + sc;
+                if (sc == 0x7FFF) {
+                    *ps = ((int (*)(int, unsigned int))e->f56)(e->f40, u);
+                    v = m + *ps;
+                }
+                if (v < thresh) {
+                    NODE *nn = ch->node;
+
+                    if (nn != 0) {
+                        if (v < nn->f2[0]) {
+                            nn->f2[0] = v;
+                            if (v < best) {
+                                best = v;
+                                e->f128 = ch;
+                            }
+                        }
+                    } else {
+                        int len;
+                        unsigned int idx;
+
+                        w2 = ch->word;
+                        if (w2 < nun) {
+                            int j = (unsigned short)w2;
+
+                            len = ws[j + 1] - ws[j] - 3;
+                        } else {
+                            int j = (w2 - nun - 1) & 0xFFFF;
+
+                            len = f208[j + 1] - f208[j] - 1;
+                        }
+                        idx = (unsigned int)(len * 2 + 7) >> 2;
+                        FastAlloc(tos, (int **)&nn, idx);
+                        nn->len = len;
+                        ch->node = nn;
+                        *out = ch;
+                        nn->f0 = 0;
+                        nn->f2[0] = v;
+                        if (v < best) {
+                            e->f128 = ch;
+                            best = v;
+                        }
+                        count++;
+                        out = out < end ? out + 1 : w->base;
+                        if (out == in) {
+                            if (ExtendNodeWheel(e, &out, &in) != 0)
+                                return 0;
+                            end = w->end;
+                            last = w->tail;
+                        }
+                        if (count >= lim) {
+                            int x = count * n / done;
+                            int a = count + 200;
+
+                            if (x >= e->f96) {
+                                if (RePruneToPho(e, &out, &count, x, best) != 0)
+                                    return 1;
+                                thresh = e->f92;
+                                a = count + 200;
+                            }
+                            if (a < 300)
+                                a = 300;
+                            lim = e->f96 < a ? e->f96 : a;
+                        }
+                    }
+                }
+                ch++;
+            } while (ch < chend);
+        }
+        u = st[1];
+        m = *p;
+        ps = &scores[u];
+        sc = *ps;
+        v = m + sc;
+        if (sc == 0x7FFF) {
+            *ps = ((int (*)(int, unsigned int))e->f56)(e->f40, u);
+            v = m + *ps;
+        }
+        if (v < thresh) {
+            kept = 1;
+            *out = t;
+            node->f0++;
+            if (v < best) {
+                e->f128 = t;
+                best = v;
+            }
+            count++;
+            out = out < end ? out + 1 : w->base;
+            if (out == in) {
+                if (ExtendNodeWheel(e, &out, &in) != 0)
+                    return 1;
+                end = w->end;
+                last = w->tail;
+            }
+            p[1] = v;
+        }
+        while (k != 0) {
+            q = p - 1;
+            u = st[0];
+            m = *q < *p ? *q : *p;
+            ps = &scores[u];
+            sc = *ps;
+            v = m + sc;
+            if (sc == 0x7FFF) {
+                *ps = ((int (*)(int, unsigned int))e->f56)(e->f40, u);
+                v = m + *ps;
+            }
+            if (v < thresh) {
+                if (kept == 0) {
+                    kept = 1;
+                    *out = t;
+                    node->f0 = k;
+                    count++;
+                    out = out < end ? out + 1 : w->base;
+                    if (out == in) {
+                        if (ExtendNodeWheel(e, &out, &in) != 0)
+                            return 1;
+                        end = w->end;
+                        last = w->tail;
+                    }
+                }
+                *p = v;
+                if (v < best) {
+                    best = v;
+                    e->f128 = t;
+                }
+            } else
+                *p = 0x7BFF;
+            p = q;
+            k--;
+            st--;
+        }
+        u = st[0];
+        m = *p;
+        sc = scores[u];
+        v = m + sc;
+        if (sc == 0x7FFF) {
+            sc = ((int (*)(int, unsigned int))e->f56)(e->f40, u);
+            v = m + (short)sc;
+            scores[st[0]] = sc;
+        }
+        if (v < thresh) {
+            if (kept == 0) {
+                *out = t;
+                node->f0 = 0;
+                count++;
+                out = out < end ? out + 1 : w->base;
+                if (out == in) {
+                    if (ExtendNodeWheel(e, &out, &in) != 0)
+                        return 1;
+                    end = w->end;
+                    last = w->tail;
+                }
+            }
+            *p = v;
+            if (v < best) {
+                e->f128 = t;
+                best = v;
+            }
+        } else if (kept != 0)
+            *p = 0x7BFF;
+        else {
+            NODE *f = t->node;
+            int **fl = (int **)((char *)tos + (((unsigned int)f->len * 2 + 7) & 0x3FC) + 104);
+
+            *(int **)f = *fl;
+            *fl = (int *)t->node;
+            t->node = 0;
+        }
+        if (count >= lim) {
+            int x = count * n / done;
+            int a = count + 200;
+
+            if (x >= e->f96) {
+                if (RePruneToPho(e, &out, &count, x, best) != 0)
+                    return 1;
+                thresh = e->f92;
+                a = count + 200;
+            }
+            if (a < 300)
+                a = 300;
+            lim = e->f96 < a ? e->f96 : a;
+        }
+        hd = in < end ? in + 1 : w->base;
+        in = hd;
+    } while (hd != last);
+    }
+    w->head = hd;
+    w->tail = out;
+    e->f94 = best;
+    return 0;
+}
+
 static int ExpandGarbageArrays(ISOWDP *e)
 {
     int *a, *b;
