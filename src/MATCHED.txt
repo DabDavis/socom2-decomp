@@ -797,6 +797,7 @@
 0x001AA498 sceDevctl
 0x001AA6D0 sceSymlink
 0x001AA8B0 sceReadlink
+0x001AAA78 sceSifInitIopHeap
 0x001AAB00 sceSifAllocIopHeap
 0x001AAB70 sceSifAllocSysMemory
 0x001AABF0 sceSifFreeSysMemory
@@ -1110,6 +1111,8 @@
 0x001BE178 tobcd
 0x001BE1C8 convertfrombcd
 0x001BE230 converttobcd
+0x001BE298 adddate
+0x001BE350 subdate
 0x001BE3F8 addhour
 0x001BE428 subhour
 0x001BE450 AdjustTime
