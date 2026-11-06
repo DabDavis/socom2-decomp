@@ -6556,11 +6556,11 @@
 0x0035A180 0xB0 GetInt__FPC5_zrdrUi  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the point reader's out-of-line piece: ReadPoint is inlined one level into Load and ReadPlacement, which call it; SOCOM 1's zui_skb.cpp has the int reader as GetRdrArrayInt)
 0x0035A230 0x10 __ct__Q221@unnamed@c2dfont_cpp@10CFontPointFv  # OVL1; tu: orders.cpp~ (1.0 beta); ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the point reader's out-of-line piece: ReadPoint is inlined one level into Load and ReadPlacement, which call it; SOCOM 1's zui_skb.cpp has the int reader as GetRdrArrayInt); by hand (the HUD lane, round 46: CFontPoint is in c2dfont.cpp's anonymous namespace -- its copies the unit's own, MW keeps ReadPlacement's found block in a2 across them, the target's code)
 0x0035A240 0x8 FlatFindTag__FPC5_zrdrPCc  # OVL1; by hand (the HUD lane, round 46: c2dfont.cpp's static inline FlatFindTag -- zrdr_flat_findtag_startidx(rdr, tag, 0) as a tail call; called only from the two ReadPoint(rdr, tag) sites, Load 0x35A06C and ReadPlacement 0x35AAA4, where ReadPoint's cut makes it a call; the name ours)
-0x0035A250 0xC func_0035A250  # OVL1
-0x0035A260 0x10 func_0035A260  # OVL1
-0x0035A270 0x14 func_0035A270  # OVL1
-0x0035A290 0x14 func_0035A290  # OVL1
-0x0035A2B0 0x14 func_0035A2B0  # OVL1
+0x0035A250 0xC __ct__8CFontIntFv  # OVL1; the MSL headers round 40: CFontInt()'s out-of-line copy, called four times by C2DFont::Load's one-level cut of CHangulFont()
+0x0035A260 0x10 __ct__10CJamoIndexFv  # OVL1; the MSL headers round 40: CJamoIndex()'s out-of-line copy, called by C2DFont::Load's one-level cut of CHangulFont()
+0x0035A270 0x14 __ct__Q23std48vector<9CVowelRow,Q23std21allocator<9CVowelRow>>Fv  # OVL1; the MSL headers round 40: vector<CVowelRow>()'s out-of-line copy, called by C2DFont::Load's one-level cut of CHangulFont()
+0x0035A290 0x14 __ct__Q23std48vector<9CTrailRow,Q23std21allocator<9CTrailRow>>Fv  # OVL1; the MSL headers round 40: vector<CTrailRow>()'s out-of-line copy, called by C2DFont::Load's one-level cut of CHangulFont()
+0x0035A2B0 0x14 __ct__Q23std44vector<7CLayout,Q23std19allocator<7CLayout>>Fv  # OVL1; the MSL headers round 40: vector<CLayout>()'s out-of-line copy, called by C2DFont::Load's one-level cut of CHangulFont() (c2dfont.cpp at level 6 with the opt-in)
 0x0035A2D0 0x78 __dt__10CJamoGlyphFv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035A350 0x44 __ct__10CJamoGlyphFv  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035A3A0 0x2B0 GetGlyph__7C2DFontFP11C2DGlyphRefUs  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the glyph for a character (C2DString's layout calls it with a two-word glyph reference on its stack))

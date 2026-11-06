@@ -33,8 +33,12 @@
  * strings and ints read through FlatFindString / FindIntAt (inline results, numbered after the
  * caller's named locals; FindIntAt's default stored just ahead of each read), GetTexture one
  * ternary over both tests, the item type through Type(). Still open: LoadLeadRangeLayouts and
- * LoadCharLayouts (registers), AddJamo (2), GetGlyph (the frame), C2DFont::Load. */
+ * LoadCharLayouts (registers), AddJamo (2), GetGlyph (the frame).
+ * The MSL headers' round 40 (THE LEVEL, this file's end): C2DFont::Load (CHangulFont() cut to its own body, its members' constructors called, the
+ * tag assigned in its test, the handle a named local, FontReadInt's locals' frame slots after the named ones), the layout vectors' insert and erase. */
 
+/* (this file's end: THE LEVEL) */
+#define __MSL_POD_DTOR_ARGS
 #include <map>
 #include <string>
 #include <vector>
@@ -703,19 +707,42 @@ void C2DFont::GetGlyph(C2DGlyphRef *ref, unsigned short code)
  * findtag wrapper out of line (0x35A240, FlatFindTag's copy: ReadPoint is cut to one level and
  * its argument's call with it) and keeps its result in a2 across the point's out-of-line pieces,
  * which it generated first; here the wrapper inlines. ReadPlacement misses the same way (4). */
+/* an int of the font's rdr, 0 without one (an inline: its local takes its frame slot after Load's named ones, the target's) */
+static inline int FontReadInt(const _zrdr *rdr, const char *tag)
+{
+    int v = 0;
+
+    zrdr_findint(rdr, tag, &v, 1);
+    return v;
+}
+
+/* the drop shadow's block (ours: an inline two levels down, so the block is numbered after ReadPoint's local, the target's s0 and s1 -- a modelling device) */
+static inline _zrdr *FontShadow1(const _zrdr *rdr)
+{
+    return zrdr_flat_findtag_startidx(rdr, "dropshadow", 0);
+}
+
+static inline _zrdr *FontShadow(const _zrdr *rdr)
+{
+    return FontShadow1(rdr);
+}
+
 void C2DFont::Load(const _zrdr *rdr, const char *name)
 {
     m_name = name;
     _zrdr *face = zrdr_findtag(zrdr_findtag(rdr, "faces"), name);
-    _zrdr *tex = zrdr_flat_findtag_startidx(face, "texture", 0);
+    _zrdr *tex;
 
-    if (!tex)
+    if (!(tex = zrdr_flat_findtag_startidx(face, "texture", 0)))
         tex = zrdr_flat_findtag_startidx(face, "textures", 0);
     for (int i = 0; i < (tex ? (int)tex->Count() : 0); i++) {
         const char *s = tex->Item(i)->String();
 
-        if (s)
-            m_textures.push_back(zdb::CAssetMgr::m_assets.GetTexHandle(s));
+        if (s) {
+            zdb::CTexHandle *h = zdb::CAssetMgr::m_assets.GetTexHandle(s);
+
+            m_textures.push_back(h);
+        }
     }
     zrdr_findreal(face, "opacity", &m_opacity, 1);
     m_scale_factor = 1.0f;
@@ -737,22 +764,13 @@ void C2DFont::Load(const _zrdr *rdr, const char *name)
         m_faces->Load(korean);
     }
     m_avgWidth = (float)total / (float)n;
-    int bot = 0;
-
-    zrdr_findint(face, "boty", &bot, 1);
-    float fbot = bot;
-    int top = 0;
-
-    zrdr_findint(face, "topy", &top, 1);
-    float ftop = top;
+    float fbot = FontReadInt(face, "boty");
+    float ftop = FontReadInt(face, "topy");
 
     m_displaytop = ftop;
     m_displaybottom = fbot;
-    int xsp = 0;
-
-    zrdr_findint(face, "xspacing", &xsp, 1);
-    XPadding = xsp;
-    _zrdr *shadow = zrdr_flat_findtag_startidx(face, "dropshadow", 0);
+    XPadding = FontReadInt(face, "xspacing");
+    _zrdr *shadow = FontShadow(face);
 
     if (shadow) {
         m_3c = true;
@@ -864,3 +882,11 @@ void CHangulFont::AddJamo(C2DGlyph *glyph, int part, JAMO which, CLayout *layout
     it->m_place.sx = place->m_place.sx;
     it->m_place.sy = place->m_place.sy;
 }
+
+/* insert<CLayout> 0x35E100's end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the AI core's round 37) */
+namespace std { template <> struct __insert_end_pointer<CLayout> { enum { value = 1 }; }; }
+
+/* A MODELLING DEVICE, a "Level 6, or 8?" witness, with `__MSL_POD_DTOR_ARGS` at this file's head (include/vector; the MSL headers round 40): the pods'
+ * constructors two levels taller cut CHangulFont() in C2DFont::Load 0x359C40 to its own body (its rows 0x35A250-0x35A2B0 called), and the element copies of
+ * CLayout's vector come out whole (erase 0x35DF40, insert 0x35E100). */
+#pragma inline_depth(6)
