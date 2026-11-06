@@ -63,6 +63,9 @@ enum STICK {
 class CPad {
 public:
     void SetButtonState(PAD_BUTTON button, KEY_STATE state);   /* 0x2DA160 */
+    /* a button's state (the name ours: the look's, 0x2C6290: the argument's copy in the select's arm
+     * keeps the select two blocks) */
+    KEY_STATE GetButtonState(PAD_BUTTON button) const { return m_state[button]; }
     bool GetDoubleClick(PAD_BUTTON button);   /* 0x2DA1C0 */
 
     /* a button's pressure, none for no button (the name ours: the button arrives through an
@@ -187,7 +190,15 @@ public:
     {
         return m_btns.m_btn[func].m_btn != PAD_BUTTON_NONE ? pad->m_state[m_btns.m_btn[func].m_btn] : KEY_UP;
     }
-    bool IsDown(int func, const CPad *pad) const { return GetButtonState(func, pad) == KEY_DOWN; }
+    /* the same with the button held in a local, the pad's own accessor reading the state (the
+     * look's, 0x2C6290) */
+    KEY_STATE HeldButtonState(int func, const CPad *pad) const
+    {
+        PAD_BUTTON button = GetButton(func);
+
+        return button != PAD_BUTTON_NONE ? pad->GetButtonState(button) : KEY_UP;
+    }
+    bool IsDown(int func, const CPad *pad) const { return HeldButtonState(func, pad) == KEY_DOWN; }
     KEY_STATE ButtonState(int func, const CPad *pad) const
     {
         return Button(func) != PAD_BUTTON_NONE ? pad->m_state[Button(func)] : KEY_UP;
@@ -516,30 +527,23 @@ extern "C" STICK func_002C6220(const STICK *stick);
 /* the look's pitch: the layout's stick's raw y, unless function 1's button holds the look (OVL1
  * 0x2C6290). The test is `!A || !B` over two inline bools: the target materialises both negations
  * (sltu; xori and xori; sltiu; xori) with the true in the first branch's delay slot.
- * OPEN, 6 instructions: the layout's pointer and its button trade registers (the target holds the
- * layout in v1 and the button in a2, this the other way round). Tried: the global read at each use
- * (worse: a1/a2), `bool look;` declared first, HoldsLook as `!= 0`, IsDown through a button local or
- * an if-assigned state (both 0x10 shorter). Round 34, read off MW's colouring (igdump): the button is
- * a code-generation temporary (r43, the two reads of m_btn merged after the front end), the layout
- * the named r33, so the button is coloured first and takes v1 -- the target's colouring needs the
- * layout numbered after the button. The global read at each use (the layout a front-end CSE
- * temporary) with the button an inline's named local gives exactly the target's three registers
- * (v1, a1, a2) -- but a button held in any scalar (a local, a const local, a by-value parameter,
- * `(b = ...) != NONE`) makes MW if-convert the select (the zero in the beq's delay slot, 0x10
- * shorter), and through a reference (to the button, its CCfgButton, or GetButton) the select stays
- * two-armed and the button a late temporary again (6 or 9 off). Round 41: `tools/igreplay.py --want
- * 43=a2,33=v1` -- no single move gives it, only the joint one (the layout numbered after v48 AND the
- * button's temporary before v34); the layout defined after the look test (declared before it,
- * after it, or both uninitialised at the top, the test through the global) is 6 off alike */
+ * Byte-exact since round 53 (6 off from round 18). The colouring needs config, look, button in that
+ * order (v1, a1, a2): the button numbered before look's Linearize temporary, the layout after it --
+ * so the button an inline's named local and the layout read from the global at each use, a common
+ * subexpression (round 34 found those registers). What stopped it was the select: with a scalar
+ * button IRO's RebuildCondExpressions turns the two arms into one ECOND, the zero in the beq's delay
+ * slot, 0x10 shorter. CPad's accessor in the arm stops that: its by-value argument is copied in the
+ * arm, a statement besides the value's assignment, and the rebuild leaves the arm alone (the copy
+ * itself costs no code). The select in an inline returning KEY_STATE keeps the load a plain copy,
+ * `lb`; written straight in the compare the load is `lbu`, one off. */
 extern "C" float func_002C6290(const CPad *pad)
 {
-    const CCtrlrConfig *config = g_pCurrentConfig;
-    bool look = !config->HoldsLook() || !config->IsDown(1, pad);
+    bool look = !g_pCurrentConfig->HoldsLook() || !g_pCurrentConfig->IsDown(1, pad);
 
     if (look) {
         float pos = 0.0f;
 
-        switch (config->m_lookStick.m_stick) {
+        switch (g_pCurrentConfig->m_lookStick.m_stick) {
         case STICK_LEFT:
             pos = pad->m_raw[0][1];
             break;
