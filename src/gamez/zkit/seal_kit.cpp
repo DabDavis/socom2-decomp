@@ -100,8 +100,33 @@ public:
  * CZKit of its own, is not included here): its body (CEntityCtrl's entity), a base accuracy, the
  * accuracy the aim is perturbed by, the target (+0x67C, SEAL_AI_PARAMS's) and a scale -- the names
  * of the three floats ours */
+struct CKitState {
+    unsigned char _0[0x30];
+    unsigned char m_state;   // 0x30
+    unsigned char _31[0x84 - 0x31];
+    void *m_84;   // 0x84: the breach state's charge
+};
+
+class CAiStateStack {
+public:
+    const CKitState *GetState() const;
+    unsigned int size() const { return m_size; }
+
+    unsigned int m_size;   // 0x0
+    void *m_4;
+    void *m_8;
+};
+
+typedef CAiStateStack CKitStateStack;
+
 class CSealCtrlAi {
 public:
+    bool StackNotEmpty() const { return !(m_stateStack.size() == 0); }
+    bool AiStateIs(unsigned char state) const
+    {
+        return StackNotEmpty() ? (m_stateStack.GetState()->m_state == state ? true : false) : false;
+    }
+    CKitState *GetAiState();
     float GetAccuracyFactor();
     void PerturbAimVector(CPnt3D *v);
     CZSealBody *GetBody() { return m_entity; }
@@ -115,7 +140,11 @@ public:
     float m_d4;   // 0xd4
     unsigned char _d8[0x3d0 - 0xd8];
     float m_3d0;   // 0x3d0
-    unsigned char _3d4[0x67c - 0x3d4];
+    unsigned char _3d4[0x41c - 0x3d4];
+    /* the state stack (ai_states.h's; SOCOM 1's AiStateIs: `!(size() == 0)`, materialised, then the
+     * state's own test) */
+    CKitStateStack m_stateStack;   // 0x41c
+    unsigned char _428[0x67c - 0x428];
     CAiTarget m_target;   // 0x67c
     unsigned char _6f4[0x70c - 0x6f4];
     float m_70c;   // 0x70c
@@ -3137,7 +3166,6 @@ extern "C" {
  * 0x5C5340, unwritten) and an explosive placed (SOCOM 1's HandleRemotePlaceExplosive, which took the
  * point and the SEAL's rotation: SOCOM II's takes two more, here 0; OVL2 0x5BC730, unwritten) */
 CZProjectile *func_005C5340(CZKit *kit, int index, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
-CZProjectile *func_005BC730(CZKit *kit, const CPnt3D *pos, const void *rot, zdb::CNode *a, zdb::CNode *b);
 }
 
 /* a grenade thrown from a point at a velocity -- the current item fired with no spin, or, an
@@ -3150,7 +3178,7 @@ CZProjectile *CZKit::FireGrenade(const CPnt3D *pos, const CPnt3D *vel)
     if (!w)
         return 0;
     if (w->GetIDType() == IDTYPE_EXPLOSIVE)
-        return func_005BC730(this, pos, (char *)m_body + 0x50, 0, 0);
+        return (CZProjectile *)HandleRemotePlaceExplosive(pos, (const CQuat *)((char *)m_body + 0x50), 0, 0);
     return func_005C5340(this, m_selected_item, pos, vel, &v);
 }
 
@@ -3303,6 +3331,8 @@ int strcasecmp(const char *a, const char *b);
 /* the pickup as the kit reads it (zseal.h's CPickup: its stash and its owner's id; zseal.h is not included here) */
 class CPickup {
 public:
+    enum PU_TYPE { PU_TYPE_FIRST = 0, PU_TYPE_LAST = 255 };
+    static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);
     unsigned int GetPickupNetEntityID();
 
     unsigned char _0[0x8];
@@ -4188,6 +4218,185 @@ void CZKit::OnDeath()
     }
 }
 
+/* what the placing reads besides: the pickups (zseal.h's CPickup; OVL2 0x542B90), the bomb's state
+ * (CZBombState, OVL1 0x2C2090: from the SEAL's id, a state and a point), the world's tree (OVL1 bss
+ * 0x45C380: CWorld::m_world) and the local player (OVL1 bss 0x440C38, ftsPlayer) */
+
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+};
+
+class CZBombState {
+public:
+    enum EnumBombState { BOMB_STATE_FIRST = 0 };
+    static void RequestNewBombState(int id, EnumBombState state, const CPnt3D *pos);
+};
+
+extern CZSealBody *ftsPlayer;
+extern float data_004365C8;
+
+extern "C" void *GetNode__7CEntityFv(CZSealBody *seal);
+
+/* an explosive placed: its model made a projectile's node at the point and rotation -- on another node,
+ * or with a word, when given --, drawn with the characters, its fire anim run, its projectile set off, its
+ * pickup made by kind, its timer run for those who may see it, the round taken, the detonator taken up
+ * for a remote charge and a breaching SEAL told (SOCOM 1's HandleRemotePlaceExplosive with two more
+ * arguments; OVL2 0x5BC730) */
+PlacedExplosive *CZKit::HandleRemotePlaceExplosive(const CPnt3D *pos, const CQuat *rot, zdb::CNode *on, zdb::CNode *node2)
+{
+    zdb::CNode *n;
+    bool remote = false;
+    bool prox = false;
+    PlacedExplosive *x = 0;
+    zdb::CModel *model = (zdb::CModel *)zdb::CWorld::GetModel(m_item[m_selected_item]->GetModelName());
+    CZFTSWeapon *w = m_item[m_selected_item];
+    bool timed = false;
+    unsigned char id = w->m_ID;
+
+    if (id == 151 || id == 152 && w->GetTimer(0) != 9999999.0f)
+        timed = true;
+    if (id == 152 || id == 154)
+        EnableMPBombGear__10CZSealBodyFb(m_body, false);
+    if (id == 153)
+        remote = true;
+    if (m_ammo[m_selected_item] && !(((CZAmmo *)m_ammo[m_selected_item])->GetProximityDistance() <= 0.0f))
+        prox = true;
+    if (id == 154) {
+        if (data_0045A0C1) {
+            CZBombState::RequestNewBombState(((CEntity *)m_body)->m_id, (CZBombState::EnumBombState)3, pos);
+            return 0;
+        }
+        data_004365C8 = 9999999.0f;
+    }
+    if (model) {
+        x = new PlacedExplosive;
+        zdb::CNode *inst = zdb::CNode::CreateXRef();
+
+        x->SetInstance(inst);
+        inst->SetActive(false);
+        n = x->GetInstance();
+
+        n->SetModel(model);
+        if (pos)
+            n->SetPosition(pos->x, pos->y, pos->z);
+        if (rot)
+            n->SetRotation(*rot);
+        if (KitIsRemote((CKitBody *)m_body) && id == 151 && !node2 && !on)
+            inst->m_Opacity = 0.0f;
+        if (node2) {
+            CMatrix inv;
+
+            node2->BuildMTW(inv);
+            Vu0MatrixInverseWithUniformScale(&inv, &inv);
+            CMatrix m(n->m_matrix);
+
+            m.Multiply(&inv, &m);
+            x->SetMatrix((int)node2, &m);
+        }
+        if (on)
+            x->SetWord((int)on);
+        n->m_socom2_a1_bits.bit2 = true;
+        n->m_bumpmap = true;
+        n->m_socom2_a1_bits.bit3 = true;
+        zdb::CWorld::m_world->AddTextureAssetCharacter((zdb::_RenderPhase)2, n);
+        n->SetActive(true);
+        zdb::CWorld::m_world->AddChild(n);
+        CPnt3D v(0, 0, 0);
+
+        x->SetUseFlyout(m_body == ftsGetPlayer__Fv());
+        x->SetIsPlayer(!KitIsRemote((CKitBody *)m_body));
+        CZAmmo *ammo = (CZAmmo *)m_ammo[m_selected_item];
+
+        if (!ammo)
+            ammo = m_item[m_selected_item]->GetDefaultAmmo();
+        /* (marked device: a byte enum holds the zoom class ahead of the item -- enums are not propagated, so the
+         * read generates first and the item takes v0 over its v1; const, int and inline holders all fold) */
+        CZKit::FIRE_CLASS zc = (CZKit::FIRE_CLASS)((CKitBody *)m_body)->m_200;
+        CZAnim *anim = m_item[m_selected_item]->GetFireAnim((signed char)zc > 0);
+
+        if (anim) {
+            void *fire = ((CEntity *)m_body)->GetFirepointNode(0);
+
+            if (!fire)
+                fire = GetNode__7CEntityFv(m_body);
+            if (fire && CZWeapon::m_allowFireAnimations)
+                anim->ActivateArg(3, 2, fire, 5, &((CEntity *)m_body)->m_posW, 0);
+        }
+        CZSealBody *body = m_body;
+
+        bool ok = x->SetProjectile((zdb::CNode *)GetNode__7CEntityFv(body), m_item[m_selected_item], ammo, pos, &v, &v,
+                                   ((CEntity *)body)->m_id, model);
+
+        if (!ok) {
+            delete x;
+            return 0;
+        }
+        CPickup *pickup;
+        unsigned int owner = ((CEntity *)m_body)->m_id;
+
+        switch (m_item[m_selected_item]->m_ID) {
+        case 151:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)4, n, x);
+            break;
+        case 152:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)5, n, x);
+            break;
+        case 153:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)6, n, x);
+            break;
+        case 158:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)6, n, x);
+            break;
+        case 154:
+        default:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)7, n, x);
+            break;
+        }
+        if (timed && m_body) {
+            x->m_b8 = true;
+            CZSealBody *player = ftsPlayer;
+
+            if (data_0045A0C1) {
+                if (m_body == player)
+                    CZWeapon::RegisterTimer(&x->m_time, x->m_time, true);
+            } else if (((CEntity *)player)->m_team & ((CEntity *)m_body)->m_team)
+                CZWeapon::RegisterTimer(&x->m_time, x->m_time, true);
+        }
+        x->m_pickup = pickup;
+        x->SetRemote(remote);
+        x->SetFlag(prox);
+        PlacedExplosive *t = x;
+
+        CZWeapon::m_pProjectilelist->m_explosives.push_back(t);
+        if (m_item[m_selected_item]->m_ID == 158 && (!data_0045A0C1 || x->m_isplayer))
+            CZWeapon::m_placedExplosives.Add(x);
+        int sel = m_selected_item;
+
+        if (!((CKitThrowBody *)m_body)->InfiniteAmmo()) {
+            int i = wrap(sel, m_num_items);
+
+            m_weaponinfoChanged = true;
+            if (m_reloads[i][m_currentmag[i]] > 0)
+                m_reloads[i][m_currentmag[i]]--;
+        }
+        if (remote)
+            SetCurItemEnum((EQUIP_ITEM)193);
+        CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
+
+        if (ai) {
+            if (ai->AiStateIs(4)) {
+                CKitState *st = ai->GetAiState();
+
+                st = st && st->m_state == 4 ? st : 0;
+                st->m_84 = x;
+            }
+        }
+    }
+    ((CKitBody *)m_body)->m_control->SetBombPlaced(true);
+    return x;
+}
+
 /* the node the explosive is being placed on, its place and how far it was then (0x66B680's neighbours:
  * HandleFireWeapon 0x5BE9A0 sets them, this tick reads them; the names ours) */
 extern zdb::CNode *data_0066B6A0;
@@ -4295,7 +4504,7 @@ bool CZKit::TickExplosives(float dT)
             pos.z = data_0066B6A8.z;
 
             q.Align(CPnt3D::unit_z, hit->m_norm);
-            func_005BC730(this, &pos, &q, node, node);
+            HandleRemotePlaceExplosive(&pos, &q, node, node);
             if (m_last_selected == m_selected_item || m_last_selected < 0)
                 SetCurItemByIndex(0);
             else
@@ -4317,7 +4526,7 @@ bool CZKit::TickExplosives(float dT)
                 pos.x = hit->m_pos.x;
                 pos.y = hit->m_pos.y;
                 pos.z = hit->m_pos.z;
-                func_005BC730(this, &pos, (CQuat *)((char *)m_body + 0x50), hit->m_node, 0);
+                HandleRemotePlaceExplosive(&pos, (CQuat *)((char *)m_body + 0x50), hit->m_node, 0);
                 if (m_last_selected >= 0) {
                     SetCurItemByIndex(m_last_selected);
                     m_last_selected = -1;

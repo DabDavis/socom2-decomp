@@ -355,6 +355,8 @@ public:
      * trigger (OVL2 0x5BE9A0; SOCOM 1's HandleFireWeapon) */
     bool TickExplosives(float dT);
     void HandleFireWeapon(int index, float a, float b);
+    /* an explosive placed (SOCOM 1's HandleRemotePlaceExplosive with two more arguments; OVL2 0x5BC730) */
+    class PlacedExplosive *HandleRemotePlaceExplosive(const CPnt3D *pos, const CQuat *rot, zdb::CNode *on, zdb::CNode *node2);
     /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
      * II: the name ours) */
     void StartSniperKick();
