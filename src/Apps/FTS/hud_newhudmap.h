@@ -110,6 +110,10 @@ public:
     void SwitchToCompassMap();
     /* to full screen (SOCOM 1's; 0x20A780) */
     void SwitchMapToFullScreen();
+    /* the map's tick (SOCOM 1's; 0x209AE0, CHUD::Tick's call) and the compass map's pad, inline in it */
+    void HudTick(class CPad *pad, float dT);
+    void AddItem(CZMapItem *item);
+    void TickCompassMap(class CPad *pad, enum MENU_STATE menustate);
     /* the full-screen map's pad: closed, objectives stepped, selected or framed, the map centred
      * on the viewer, scrolled and zoomed, the legend shown while R2 is held (SOCOM 1's; 0x209EE0) */
     void TickFullScreenMap(CPad *pad, enum MENU_STATE menustate);

@@ -56,7 +56,9 @@ class CEntity;
 /* the entities (SOCOM 1's CEntityList, a pointer list): the entity with an id, if any */
 class CEntityList : public std::list<CEntity *> {
 public:
+    typedef std::__list_imp<const void *, std::allocator<const void *> > base2;
     CEntity *GetEntityById(unsigned int id) const;
+    const_iterator end() const { return const_iterator(base2::const_iterator(base2::end())); }
 };
 
 /* a thing in the world: only its type (2, a SEAL) at 0x10 (SOCOM 1's DWARF) */
@@ -64,6 +66,9 @@ class CEntity {
 public:
     unsigned char _0[0x10];
     unsigned char m_type;   // 0x10
+
+    /* the list, const (SOCOM 1's DWARF: HudTick's `CEntityList& list`, its walk const_iterators) */
+    static const CEntityList &GetEntityList() { return m_list; }
 
     static CEntityList m_list;
 };
@@ -383,6 +388,7 @@ float CZNewHudMap::GetZoomOut() const
 /* an item taken off the map if it is on it, given back for the caller to delete (HudTick's dead
  * items; no SOCOM 1 counterpart, the name ours). The walk's iterator is assigned from begin(), so
  * it stays in memory; remove() takes the item by reference, so the parameter is spilled */
+#pragma auto_inline off   /* its one caller, HudTick, calls it out of line */
 CZMapItem *CZNewHudMap::RemoveItem(CZMapItem *item)
 {
     std::list<CZMapItem *>::iterator i;
@@ -395,6 +401,7 @@ CZMapItem *CZNewHudMap::RemoveItem(CZMapItem *item)
     }
     return 0;
 }
+#pragma auto_inline reset
 
 void CZNewHudMap::ReInit()
 {
@@ -878,6 +885,125 @@ void CZNewHudMap::HandleScrolling(float fStickX, float fStickY)
 
     if (bMoveZ)
         m_centerz += fZMove;
+}
+
+/* the player (zfts's) and the network's flags (hud_mpinfobox.cpp's view) */
+CZSealBody *ftsGetPlayer();
+
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_bNetwork;   // 0x1
+};
+
+extern CZNetwork theNetwork;
+
+static inline CEntity *AsSeal(CEntity *e)
+{
+    return e && e->m_type == 2 ? e : 0;
+}
+
+static inline void ListPush(std::list<CZMapItem *> &list, CZMapItem *const &x)
+{
+    list.push_back(x);
+}
+
+inline void CZNewHudMap::AddItem(CZMapItem *item)
+{
+    ListPush(m_itemlist, item);
+}
+
+/* a seal's controller, and whether its input is on (ours: the two ternaries, inline) */
+static inline CSealCtrl *CtrlOf(CZSealBody *seal)
+{
+    return seal ? seal->m_ctrl : 0;
+}
+
+static inline bool InputEnabled(CZSealBody *seal)
+{
+    CSealCtrl *ctrl = CtrlOf(seal);
+
+    return ctrl ? (bool)ctrl->m_input_enabled != false : false;
+}
+
+/* the compass map's pad: the game's button 12, offline, with the owner's input on, no menu up and the
+ * owner the player and shown, opens the map full screen (SOCOM 1's TickCompassMap, 0x3C48B0 there,
+ * inline in SOCOM II: there the same button and a text-entry test) */
+inline void CZNewHudMap::TickCompassMap(CPad *pad, MENU_STATE menustate)
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+    bool input = InputEnabled(seal);
+
+    if (pad && func_002C64E0(12, pad) == 1 && !theNetwork.m_bNetwork && input) {
+        CZSealBody *player = ftsGetPlayer();
+
+        if (menustate == stateNone && seal == player && seal->m_socom2_e1_4)
+            SwitchMapToFullScreen();
+    }
+}
+
+/* the map's tick (SOCOM 1's HudTick, 0x3C3FC0 there): the compass map's pad, or the full-screen map's
+ * under its two menu states; in full screen the objectives ticked, the animations, the matrix, each
+ * item ticked and those that say so taken off and deleted, a new item for each player whose view
+ * cone is new. Measured for it: the second walk's iterator is the first's local reused
+ * (IRO_SplitLifetimes gives it its low frame slot, 148, after the destructor's temporaries -- SOCOM 1's
+ * DWARF names one `iter` for both walks); the `if` form of AsSeal flips the whole function (README "if
+ * versus ternary is function-wide"); a `for` lowers to init, body, increment, test, which reads the
+ * frame: the temporaries of the third push_back sit between the walk's begin and its end's, so its
+ * expansion is a pass deeper than the first's -- SOCOM 1's two-level push_back (include/list's vc,
+ * not applied: ListPush models the level here, AddItem the third's by-value new).
+ * OPEN, 11 instructions, all s1 against s2 (0x3F8 of 0x3F8, frame exact): the target numbers the
+ * scalarised member holding &m_list + 4 (const_iterator(base::end()), IRO_ScalarizeClassDataMembers
+ * in pass 1, @2417) before the common subexpression (&removelist + 4) + 4 (pass 0's IRO_CommonSubs,
+ * the second walk's begin and the destructor's, @2415): `igreplay --move 54=55.5` or `--move 55=50.5`
+ * gives the target's every register. So the original makes the (&removelist + 4) + 4 pair in pass 1
+ * -- likely the real MSL's destructor reading its begin through the compressed pair's tail(), a
+ * reference temporary pass 0 cannot forward ("Level 6, or 8?") -- or hoists &m_list + 4 in pass 0.
+ * Tried: the list a local subclass; a reference or pointer local for the second walk (both reads,
+ * either read); an iterator copy; five spellings of the const end(); &end_ direct or a named base
+ * iterator (then &m_list + 4 is rematerialised at each use, 0x3EC) */
+void CZNewHudMap::HudTick(CPad *pad, float dT)
+{
+    MENU_STATE menustate = CHUD::GetHUDOwner()->m_ctrl->GetMenuState();
+
+    if (!m_isFullScreen)
+        TickCompassMap(pad, menustate);
+    else if (menustate == stateFullScreenMapMenu || menustate == stateFullScreenMapAnim)
+        TickFullScreenMap(pad, menustate);
+    if (!m_isFullScreen)
+        return;
+    m_objectivelist.Tick(dT);
+    TickFullScreenAnims(dT);
+    CalcNewMatrix();
+
+    std::list<CZMapItem *> removelist;
+    std::list<CZMapItem *>::iterator it;
+
+    for (it = m_itemlist.begin(); it != m_itemlist.end(); ++it) {
+        CZMapItem *item = *it;
+        bool deleteitem = item->Tick(this, dT);
+
+        if (deleteitem)
+            ListPush(removelist, item);
+    }
+
+    for (it = removelist.begin(); it != removelist.end(); ++it) {
+        CZMapItem *item = *it;
+
+        RemoveItem(item);
+        delete item;
+    }
+    CEntityList::const_iterator e;
+
+    const CEntityList &list = CEntity::m_list;
+
+    for (e = list.begin(); e != list.end(); ++e) {
+        CEntity *entity = AsSeal(*e);
+
+        if (entity && ((CZSealBody *)entity)->HudUpdateViewCone() &&
+            (((CZSealBody *)entity)->m_ctrl ? ((CZSealBody *)entity)->m_ctrl->IsPlayer() : false))
+            AddItem(new CZPlayerMapItem(entity));
+    }
 }
 
 /* each item's PostDraw (ours: an inline, so its iterator is numbered after Draw's temporaries) */
