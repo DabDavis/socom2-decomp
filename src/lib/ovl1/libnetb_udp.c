@@ -187,8 +187,12 @@ int libnetb_udp_create_space(LIBNETB_RING *n, u_int size, u_int *alloc_size, u_c
 	return 0;
 }
 
-/* OPEN (44 words, the size differs): the walk is the target's (an unsigned position wrapping at the
- * ring's size, stopping where it began); its loop's invariants and the exits' stores are not. */
+/* the first unread datagram from the read position on, its header in *phdr and *valid 1 once it is
+ * complete; none when the walk wraps back to where it began. Byte-exact in GCC round 41a (open
+ * since round 13a, 44 words off then 9): *phdr cleared BEFORE the valid pointer's test (the target
+ * fills that branch's delay slot with the store), and the walk an `if` around a `do`, the start
+ * taken from the position inside it (the target's `move t1,a3` after the first test) -- a while
+ * loop, the start first, gives one register fewer and the first test's slot another fill. */
 int libnetb_get_valid_data_header_ptr(LIBNETB_RING *n, UDP_HDR **phdr, u_char *valid)
 {
 	UDP_HDR *hdr;
@@ -199,23 +203,25 @@ int libnetb_get_valid_data_header_ptr(LIBNETB_RING *n, UDP_HDR **phdr, u_char *v
 		return 2;
 	if (phdr == 0)
 		return 2;
+	*phdr = 0;
 	if (valid == 0)
 		return 2;
-	*phdr = 0;
 	*valid = 0;
-	start = n->off;
-	hdr = (UDP_HDR *)(n->buf + start);
-	off = start;
-	while (hdr->valid == 1) {
-		off = off + hdr->size + 64;
-		if (off >= n->size)
-			off = 0;
-		if (off == start) {
-			*phdr = 0;
-			*valid = 0;
-			return 0;
-		}
-		hdr = (UDP_HDR *)(n->buf + off);
+	off = n->off;
+	hdr = (UDP_HDR *)(n->buf + off);
+	if (hdr->valid == 1) {
+		start = off;
+		do {
+			off = off + hdr->size + 64;
+			if (off >= n->size)
+				off = 0;
+			if (off == start) {
+				*phdr = 0;
+				*valid = 0;
+				return 0;
+			}
+			hdr = (UDP_HDR *)(n->buf + off);
+		} while (hdr->valid == 1);
 	}
 	if (hdr->used == 1 && hdr->end == 1) {
 		*phdr = hdr;
