@@ -1089,6 +1089,137 @@ int casrSetParam(CASR *c, int id, unsigned int value)
     return (unsigned char)c->last_error;
 }
 
+extern void FillLanguageVirtualTable(LANGVT *vt);
+
+/* the data activated: a language (4099) -- its table allocated, a context let go, the language sent
+ * (37), the feature blocks by the codebooks' count (93 below five, else 94: the sample format's
+ * second form follows), parameter 15's second pass refused for a language that has none (bit 16),
+ * the engine's record 85 kept over the change (86), each codebook's smoothing matrix and the
+ * any-speech garbage phoneme read -- or a session's data (4): the genders it names enabled by their
+ * warp masks, then its genders, sample format and language version checked against the engine's
+ * and its engine data sent (38); none deactivates the data. SOCOM 1's body, the genders' warp masks
+ * SOCOM II's. Round 38c, byte-exact: the deactivation's `return 0` shared with the no-data test (a
+ * `return 0` of its own after `if (... != 0) return 1;` is a store-flag, cross-jumped into the final
+ * send's); the send's argument one variable set on both paths, and that variable reused for the
+ * version pointer (its a2 preference from _tosControl: the memcmp's `addiu a2; move a0,a2`); the
+ * genders' base a pointer of its own for the sample format's read (`g[3]` is the loop's register
+ * plus 12, `sd->gender[3]` a PRE-hoisted register); the engine state's check an unsigned switch with
+ * an empty case 2 (the tree tests 1, then 0 by `bnez` into case 0's body; with cases 0 and 1 alone it
+ * tests 0 first); every mismatch one `goto` to a single error call after the send. */
+int casrActivateData(CASR *c, IMPORT *data)
+{
+    int err;
+    int rec[8];
+    unsigned int second;
+    int lres;
+    int sres;
+    SESSIONDATA *sd;
+    CASRLOG *ev;
+    unsigned int i, n, mask;
+    WARP *warp;
+    void *arg;
+    int *g;
+
+    c->last_error = 0;
+    err = casrCheckHandle(c);
+    if (err)
+        return err;
+    if (c->state != 0 && c->state != 1 && c->state != 20 && c->state != 2)
+        return _tosErrorLog(c->event, 7);
+    if (data == 0) {
+        if (c->data != 0) {
+            c->data = 0;
+            heap_Free(c->heap, c->lng);
+            c->lng = 0;
+            if (c->ctx != 0 && casrActivateContext(c, 0, 0) != 0)
+                return 1;
+            if (_tosControl(c->event, 95, 0, 0) != 0)
+                return 1;
+        }
+        return 0;
+    }
+    sd = data->data;
+    switch (sd->kind) {
+    case 4099:
+        lres = 0;
+        if (c->data == 0) {
+            c->lng = heap_Alloc(c->heap, 316);
+            if (c->lng == 0)
+                return 1;
+            FillLanguageVirtualTable(c->lng);
+        }
+        c->lng->data = data->data;
+        if (c->ctx != 0 && casrActivateContext(c, 0, 0) != 0)
+            return 1;
+        ev = c->event;
+        if (_tosControl(ev, 37, (int)c->lng, 0) != 0)
+            return 1;
+        if ((unsigned short)c->lng->GetNbrCodeBook(c->lng) < 5) {
+            if (_tosControl(ev, 93, 0, 0) != 0)
+                return 1;
+            if (c->uw_state == 2 && c->f624 == 5)
+                c->f624 = 4;
+        } else {
+            if (_tosControl(ev, 94, 0, 0) != 0)
+                return 1;
+            if (c->uw_state == 2)
+                c->f624 = 5;
+        }
+        if (casrGetParam(c, 15, &second) != 0)
+            return 1;
+        if (second != 0 && c->lng->CheckBitField(c->lng, 16) != 0)
+            return _tosErrorLog(ev, 28);
+        if (_tosControl(ev, 85, (int)rec, 0) != 0)
+            return 1;
+        if (_tosControl(ev, 86, (int)rec, 0) != 0)
+            return 1;
+        c->gender = 0x7FFFFFFF;
+        n = (unsigned short)c->lng->GetNbrCodeBook(c->lng);
+        for (i = 0; i < n; i++)
+            c->smooth[i] = c->lng->GetpSmoothMatrix(c->lng, c->lng->GetpCodeBook(c->lng, i));
+        c->anyspeech = c->lng->GetAnySpeechGarbagePhenome(c->lng);
+        c->data = data;
+        return _tosControl(ev, 38, 0, (int)&lres) != 0;
+    case 4:
+        sres = 0;
+        arg = 0;
+        if (sd->size != 8) {
+            g = sd->gender;
+            mask = 0;
+            warp = c->lng->GetpWarpFactors(c->lng);
+            for (i = 0; i < 3; i++)
+                if (sd->gender[i] != 0)
+                    mask |= warp[i].mask;
+            c->gender = mask;
+            if (casrEnableGenders(c, mask) != 0)
+                return _tosErrorLog(c->event, 20);
+            if (sd->gender[0] != c->gender_on[0] || sd->gender[1] != c->gender_on[1]
+                || sd->gender[2] != c->gender_on[2])
+                goto mismatch;
+            switch ((unsigned int)c->uw_state) {
+            case 0:
+                if ((unsigned int)(g[3] - 1) < 3)
+                    goto mismatch;
+                break;
+            case 1:
+                if ((unsigned int)(g[3] - 2) < 2)
+                    goto mismatch;
+                break;
+            case 2:
+                break;
+            }
+            arg = sd->lng.w;
+            if (c->data == 0 || memcmp(arg, (*(LNGFILE **)c->data)->hdr.w, 128) != 0)
+                return _tosErrorLog(c->event, 19);
+            arg = sd + 1;
+        }
+        return _tosControl(c->event, 38, (int)arg, (int)&sres) != 0;
+    mismatch:
+        return _tosErrorLog(c->event, 34);
+    }
+    return _tosErrorLog(c->event, 12);
+}
+
 /* the second pass over the labelled utterance: its own context (the Chinese one when the language
  * says so), the labels sent again with the timeout (parameter 1) off, then the context back */
 /* the user words' tables as the scheduler's command 36 takes them with the iso-word tree */
