@@ -604,6 +604,8 @@ public:
     void CheckExtents(CPnt4D p, float r);
     /* SOCOM 1's (0x329AC0): ZAnim's particle tick switches a source on and off through it */
     void SetActive(bool on);
+    /* the collision box switched, made first if need be (0x329A40, SOCOM II's; the name ours) */
+    void SetHasBBox(bool on);
     void GetBBox(CBBox *box);
     void Tick(float dT);
     void ScaleSequenceAdd(float fraction, float scale);

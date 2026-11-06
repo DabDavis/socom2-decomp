@@ -1744,6 +1744,113 @@ extern "C" bool func_0054E760(CZSealBody *seal, CPnt3D *pos, CPnt3D *pt)
     return true;
 }
 
+/* a material's extension (int_material.h's CMaterialEx, which zweapon.h's stand-in of the table leaves
+ * incomplete -- seal_env.cpp's view): only its first two flags */
+struct CMaterialEx {
+    unsigned char _0[0x3c];
+    unsigned int m_volumetric : 1;   // 0x3c: VOLUMETRIC
+    unsigned int m_liquid : 1;   // bit 1: LIQUID
+    unsigned int m_flags2 : 30;
+
+    /* (written `? true : false`, as seal_env.cpp's: the bit converted, sltu, before its test) */
+    bool IsVolumetric() { return m_volumetric ? true : false; }
+    bool IsLiquid() { return m_liquid ? true : false; }
+};
+
+/* a material's extension, the first one for an index past the table (seal_env.cpp's) */
+static inline CMaterialEx *MaterialEx(unsigned int i)
+{
+    if (i >= CMaterialExArray::m_materialex_list.size())
+        i = 0;
+    return (CMaterialEx *)CMaterialExArray::m_materialex_list[i];
+}
+
+/* a part's height in the SEAL's body, raised by an offset of none (an inline, the name ours: the
+ * target stores the zero to a stack slot of its own ahead of the call -- not moved into its delay
+ * slot -- and reloads it after: a volatile local; a plain one, a parameter, a const reference or a
+ * type-punned store are rematerialised, pooled or scheduled into the delay slot. The inline's point
+ * is allocated after the caller's operator* temporary, as the target's is) */
+static inline float PartHeight(CZSealBody *seal, CZBodyPart *part)
+{
+    CPnt3D p;
+    volatile float dy = 0.0f;
+
+    seal->PartInSpace(part, 0, &p, 0);
+    p.y += dy;
+    return p.y;
+}
+
+/* whether a wall may be passed through: no steeper than the dynamics' slope limit, or of a volumetric
+ * or liquid material (an inline, the name ours) */
+static inline bool PassThrough(zdb::IntersectStruct *wall)
+{
+    if (!(wall->m_norm.y <= theCharacterDynamics.m_maxSlopeCos))
+        return true;
+    CMaterialEx *m = MaterialEx(wall->GetMaterial());
+
+    /* (an if returning true: `return m && (...)` materialises the bool and masks it) */
+    if (m && (m->IsVolumetric() || m->IsLiquid()))
+        return true;
+    return false;
+}
+
+extern "C" {
+/* a wall's hit taken for the SEAL to hold to, its two side points kept (OVL2 0x5B0D30, a draft) */
+void func_005B0D30(CZSealBody *seal, const zdb::IntersectStruct *hit, CPnt3D *a, CPnt3D *b);
+}
+
+/* the wall's hit the SEAL holds to, checked against what lies between the SEAL and it: the hit's
+ * height -- 0.5 over its upper edge point, when it has its edge points, under 21.1 over the SEAL's
+ * spot; else the SEAL's head, the hit under it by 0.1 -- and when it is, a ray from the SEAL's spot
+ * to 1.1 times the way to the hit at that height, the SEAL's node switched off; a wall it meets that
+ * is steeper than the dynamics' slope limit, not volumetric or liquid and another node's taken in its
+ * place; the hit held then, or none (OVL2 0x54E430, new in SOCOM II: CanTraverse calls it; the name
+ * unknown) */
+extern "C" zdb::IntersectStruct *func_0054E430(CZSealBody *seal)
+{
+    zdb::IntersectStruct *hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+
+    if (hit) {
+        bool blocked = false;
+        const CPnt3D *pos = (const CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+        CPnt3D lo, hi, a, b;
+        float y;
+
+        if (hit->GetIntersectedEdgePoints(&hi, &lo)) {
+            y = hi.y + 0.5f;
+            if (y < pos->y + 19.1f + 2.0f)
+                blocked = true;
+        } else {
+            y = pos->y + PartHeight(seal, seal->m_head);
+            if (hit->m_pos.y < y - 0.1f)
+                blocked = true;
+        }
+        if (blocked) {
+            a = *pos;
+            b = hit->m_pos;
+            b.y = y;
+            a.y = y;
+            b.Sub(&a, &b);
+            b = b * 1.1f;
+            b.Add(&a, &b);
+
+            bool was = seal->GetNode()->m_active;
+
+            seal->GetNode()->SetActive(false);
+            zdb::IntersectStruct *wall = zdb::CWorld::m_world->GetIntersect(&a, &b);
+
+            seal->GetNode()->SetActive(was);
+            if (wall) {
+                if (!PassThrough(wall) && wall->m_node != hit->m_node) {
+                    func_005B0D30(seal, wall, (CPnt3D *)((char *)seal + 0x10b0), (CPnt3D *)((char *)seal + 0x10bc));
+                    hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+                }
+            }
+        }
+    }
+    return hit;
+}
+
 extern "C" {
 /* the SEAL's ground hit kept, its point, normal and node -- or none (OVL2 0x5B0C10, seal_env.cpp's) */
 void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit);
@@ -1948,6 +2055,91 @@ extern "C" bool func_005499E0(CZSealBody *seal)
     if (zdb::CWorld::m_world->GetIntersect(&from, &to, true))
         return false;
     return true;
+}
+
+
+extern "C" {
+/* the up the root is eased onto while the SEAL stands (OVL2 bss 0x66ACD0; the name ours), and an
+ * AnimType static (OVL1 data 0x3DEF08: seal_body.cpp and seal_create.cpp test the same blend) */
+extern short data_003DEF08;
+extern CPnt3D data_0066ACD0;
+}
+
+/* the root tilted onto the ground: through the top blend's span -- its anim's two marks, 0.5 to 0.9 for
+ * the blend AnimTypes 0x3DEF08 names, or 0.8 to 0.99 airborne in blend state 8 -- the ground's normal
+ * blended in from straight up, turned into the SEAL's frame, eased from 0x66ACD0's up for a standing
+ * SEAL not in blend 19 or 25, and set as the root part's turn (OVL2 0x548090, new in SOCOM II:
+ * PrePostTick calls it; the name unknown) */
+extern "C" void func_00548090(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends);
+    float w;
+    float a, b;
+
+    if (!seal->m_airborne) {
+        CZSIScriptCommon *anim = top->Representative()->m_anim;
+
+        a = anim->m_24;
+        b = anim->m_28;
+        if (seal->IsCurrentBlend((AnimType)data_003DEF08)) {
+            a = 0.5f;
+            b = 0.9f;
+        }
+    } else if (top->m_state == 8) {
+        a = 0.8f;
+        b = 0.99f;
+    } else
+        return;
+
+    /* where t lies from a to b, either way round, a step when the two are equal (nothing set for a t
+     * between equal ends, which cannot be). Written in place, the weight declared ahead of the span
+     * (f22 / f21 / f20 as the target): an inline ramp's weight is numbered after the caller's locals
+     * and takes f20; t and the altitude's address are taken before the tests */
+    float t = top->m_tfrac;
+    zdb::IntersectStruct *alt = &seal->m_last_altitude;
+
+    if (a == b) {
+        if (t <= a)
+            w = 0.0f;
+        else if (t > b)
+            w = 1.0f;
+    } else if (!(b <= a)) {
+        if (t <= a)
+            w = 0.0f;
+        else if (t >= b)
+            w = 1.0f;
+        else
+            w = (t - a) / (b - a);
+    } else {
+        if (t <= b)
+            w = 1.0f;
+        else if (t >= a)
+            w = 0.0f;
+        else
+            w = 1.0f - (t - b) / (a - b);
+    }
+    if (!(w <= 0.0f)) {
+        CPnt3D up = CPnt3D::unit_y;
+        CPnt3D n;
+        CQuat r;
+
+        up.Interp(&alt->m_norm, w, &n);
+        CQuat q = seal->m_quat;
+
+        q.vec.x = -q.vec.x;
+        q.vec.y = -q.vec.y;
+        q.vec.z = -q.vec.z;
+        q.Apply(&n, &up, 1);
+        if (seal->m_state == stateProne && !seal->IsCurrentBlend((AnimType)19) && !seal->IsCurrentBlend((AnimType)25))
+            data_0066ACD0.Interp(&up, 0.2f, &n);
+        else
+            n = up;
+        r.Align(CPnt3D::unit_y, n);
+        seal->m_root->m_rot = r;
+        /* (the cast to const keeps the pointer form's null test of the local's address, as the
+         * target has it: `&r`, a pointer or reference local or an inline fold it away) */
+        seal->GetRootPart()->m_node->SetRotation((const CQuat *)&r);
+    }
 }
 
 /* the heartbeat kept at the adrenaline's pace: three loops by level (none as 1), the one playing
@@ -2302,7 +2494,14 @@ static inline void PushOut(float &cur, float v, bool &moved)
  * before that (so `depth * 10.0f`, `10.0f * depth`, `r * depth` all number the 10.0 first: a tie). The
  * target -- 10.0 numbered after the depth and emitted first -- is that order with the depth HEAVIER than
  * the step: some shape where `1.3 - t` weighs more than a lone constant (the CSE'd 1.3 and a register t
- * weigh as one); the inlines `r * Under(1.3f, t)` / `UnderT(t)` / by-reference keep the tie (0x308) */
+ * weigh as one); the inlines `r * Under(1.3f, t)` / `UnderT(t)` / by-reference keep the tie (0x308).
+ * Round 54 (build/scratch/seal-r54/v_3d*.py): making the depth heavier does flip the EMISSION --
+ * `(t, 1.3f - t) * r` (a comma with a dead variable left) and `lim - t` with a variable lim used only
+ * there both give the target's `mul.s step, depth` -- but they number the step before the depth too
+ * (igreplay --target on the comma's dump: v59 the step, v61 the depth, the target needs v61 below
+ * v59), and lose the delay slot (0x308): in every shape the first-emitted operand is the first
+ * numbered, where the target emits the step first yet numbers it after; `/ 1.0f`, a copy of t, `+ -t`,
+ * `r * 1.0f`, `register`/bare/early-declared r change nothing (1 off) */
 extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)

@@ -102,6 +102,15 @@ inline void CAssetLib::RemoveModel(CModel *model)
     }
 }
 
+/* the library's own model of a name taken off (the world's round 29, ~CModel's: the tree a level
+ * taller than RemoveModel's, so only this body is inlined -- RemoveModel and GetModel are called,
+ * their out-of-line copies 0x318AE0 and 0x318C30 following ~CModel last call first; written out
+ * in ~CModel, MW inlines RemoveModel's body there. The name ours) */
+inline void CAssetLib::RemoveModel(const char *name)
+{
+    RemoveModel(GetModel(name));
+}
+
 /* the recycle bin emptied (SOCOM 1's) */
 void EmptyAssetRecycleBin();
 
@@ -142,6 +151,9 @@ public:
     virtual ~CDIBBox();
     virtual int GetIntersect(DiIntersect *di);
     virtual int GetAltitude(DiIntersect *di);
+    /* the unit box's six faces, built once behind a guard byte (SOCOM 1's static; OVL1 0x2DC7A0, named by the
+     * engine core's round 23 -- declared by the integrator so camera.cpp's lane can write it under its name) */
+    static void SetCDIBBox();
 
     const CBBox *m_bbox;   // 0x14 (after CDI's points pointer at 0x10)
 };   // 0x18 bytes

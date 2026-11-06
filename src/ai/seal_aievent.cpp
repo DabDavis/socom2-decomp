@@ -146,7 +146,9 @@ public:
  * early return, stays 0x90 -- MW merges the global's two loads anyway. Round 53: empty() (through
  * the count pair's reference, sz()) for either test with size() for the other, the loop as a for or a
  * while, and the loop moved into a static inline helper (an inlined while gets the duplicated test):
- * 0x90 or 0x80; the unit under 3.0b50 changes nothing */
+ * 0x90 or 0x80; the unit under 3.0b50 changes nothing. Round 56: opt_propagation, opt_common_subs,
+ * opt_lifetimes, opt_dead_assignments or opt_loop_invariants off in the body, over the do-while and the
+ * plain while: 0x80-0xA8 -- no pragma keeps the guard's load ahead of the early return's */
 bool CAiDodge::Destroy()
 {
     if (m_list.size() == 0)

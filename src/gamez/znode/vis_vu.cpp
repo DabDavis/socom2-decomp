@@ -1682,23 +1682,27 @@ int CVisual::ApplyDecal(unsigned int vid, float size, CPnt3D *pos, CPnt3D *norma
     return count;
 }
 
+/* a matrix's rows, held in a local before they are returned (ours, inline: an argument made of an
+ * inline with a body of its own is set up before the call's other arguments -- ApplyDecalRender's
+ * copy loads the source (a1) first and &inv in the call's delay slot, as the target and SOCOM 1's;
+ * a one-expression inline, `return m->m_matrix;`, is substituted and set up in argument order) */
+static inline float (*MatrixRows(CMatrix *m))[4]
+{
+    float (*r)[4] = m->m_matrix;
+
+    return r;
+}
+
 /* a decal projected onto the visual: the normal brought into the model's frame through the
  * world-to-model inverse, the projection composed with the model-to-world matrix, the node's view
  * id (none without a node) handed to the builder (SOCOM 1's, SOCOM II's builder taking the
- * matrix). OPEN, 2 instructions: the copy's argument set-up -- the target (and SOCOM 1's) sets a1
- * (the matrix) before the call and &inv in its delay slot, here &inv goes first and a1 fills the
- * slot; the direct call, the copy assignment, casts, a pointer local, the four declaration orders
- * of n/m/inv/vid and the id as short/int/unsigned all give the same two (build/scratch/wep/v_adr*.py).
- * Round 24 (CTurret::Fire's no-op-conversion close does not carry over): the direct call over the
- * rows or the CMatrix casts, a source or a destination pointer local, void-pointer casts, the id as
- * an if/else or a zero then an if -- the same two (or 4 short). Round 31 (the HUD's round-55 call
- * arguments and the no-op-conversion rule): the copy through CMatrix's conversion operators on
- * either or both arguments, the source cast straight from the CMatrix pointer (also through void *
- * and unsigned int), local inline copies taking (dst, src), (src, dst), references or the rows --
- * the same two (build/scratch/wep/v_adr*.py). Round 35: the PowerPC MW's call_function (doldecomp
- * mweppc FunctionCalls.c) passes register arguments in argument order after IRO linearizes them last
- * first -- ours is that order (a0 then a1, a1 in the slot); the target's a1-first is not a source
- * order the call takes, so it is the (closed) MIPS backend's scheduling of the two set-ups */
+ * matrix). BYTE-EXACT since the weapons' round 36: the copy's source through MatrixRows (above) --
+ * the target sets a1 before the call and &inv in its delay slot, which `inv = *mtw`, the direct
+ * call, casts, conversion operators and copy inlines of one expression all set the other way round
+ * (rounds 13-35: build/scratch/wep/v_adr*.py; round 35 read PowerPC MW's call_function -- an
+ * argument holding a call is evaluated first, the rest in argument order -- and an inline with a
+ * body of its own is such an argument here; a one-expression inline returning the rows, on the
+ * source, on &inv or on both, still 2: build/scratch/wep/v_adr36.py) */
 void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                                CTexHandle *tex, CMatrix *uv)
 {
@@ -1707,7 +1711,7 @@ void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *po
     CMatrix inv;
     int vid = node ? node->m_vid : 0;
 
-    inv = *mtw;
+    sceVu0CopyMatrix(inv.m_matrix, MatrixRows(mtw));
     Vu0MatrixInverseWithUniformScale(&inv, &inv);
     TransformVectors(&inv, normal, &n, 1);
     sceVu0MulMatrix(m.m_matrix, uv->m_matrix, mtw->m_matrix);
