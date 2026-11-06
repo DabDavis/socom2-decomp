@@ -11980,7 +11980,7 @@ namespace` behind a 1 MB comment reproduces `7l@0x4`; IGDUMP_NO_LINKNAME=1 the n
 `test_explicit_instance_scores_in_its_units_overlay` builds its fixture (the integrator's request: the kit's round 57
 dropped seal_tasks.cpp's explicit `_max<unsigned char>`): seal_tasks.cpp with the instance appended, in a scratch copy
 of the tree (`sccheck.main`'s `root`), every assertion's meaning kept, plus the unit as it stands holding no global
-instance (8). 52 of 52 canary tests (the full check not run). No other scorer changed (sccheck.py, scdecomp.py,
+instance (8). 51 canary tests, 379 assertions, after merging master 0cfcd5e6 (the full check not run): 50 at once, and test_igdump_pcode_view_names_each_temporarys_inline -- its negative's raw PCode compare, once, under the machine's load -- on three re-runs, alone and in order. No other scorer changed (sccheck.py, scdecomp.py,
 `include/` are master's). **automatch** over the lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 2
 --obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses),
 `1C6200 1E7000` and OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 31 tried, 0 hits (2 build failures -- round
