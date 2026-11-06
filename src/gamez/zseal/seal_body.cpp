@@ -1437,11 +1437,12 @@ extern "C" bool func_005857E0(CZSealBody *seal);
 CZBodyAnimBlend *CZSealBody::Crouch()
 {
     CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    int stand_n;
 
     if (!func_005857E0(this)) {
         m_desiredState = stateStand;
         m_stancechanged = true;
-        return Stand(1);
+        return StandN(this, stand_n, 1);
     }
     int stance = m_state;
 
@@ -2736,6 +2737,7 @@ CZBodyAnimBlend *CZSealBody::InStateProne()
 CZBodyAnimBlend *CZSealBody::InStateHang()
 {
     CZBodyAnimBlend *r;
+    int stand_n;
 
     func_00555170(&m_blends);
     float x = m_240;
@@ -2755,7 +2757,7 @@ CZBodyAnimBlend *CZSealBody::InStateHang()
     } else if (!(x <= 0.0f))
         r = Stand_0(4, 1, -1.0f);
     else
-        r = Stand(-1);
+        r = StandN(this, stand_n, -1);
     return r;
 }
 
@@ -3591,6 +3593,94 @@ CZBodyAnimBlend *CZSealBody::CrouchMoveControl(float z, float x)
     return top;
 }
 
+
+/* a hang asked: unless the SEAL or its top blend hangs already the blends cleared to one and the hang's
+ * blends asked from the stance (SOCOM 1's Hang, an inline; the name its) */
+static inline CZBodyAnimBlend *HangN(CZSealBody *seal, int n)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int stance = seal->m_state;
+
+    if (stance == 4 || b->m_state == 4)
+        return b;
+    seal->ClearStack(1, true);
+    return seal->Hang_0(stance, n);
+}
+
+/* the state set: the body's state told, and the state's blends asked from the one it leaves, a change
+ * to the state it has none (OVL2 0x581ED0: SOCOM 1's SetStance, the controller's notice gone -- SOCOM II's
+ * calls BodySetState first; 0 for a state with no blends) */
+bool CZSealBody::SetStance(SEAL_STATE state)
+{
+    int n1;
+    int n2;
+    int n3;
+
+    BodySetState(state);
+    switch (m_state) {
+    case stateStand:
+        switch (state) {
+        case stateStand:
+            return true;
+        case stateCrouch:
+            Crouch();
+            return true;
+        case stateProne:
+            Prone();
+            return true;
+        case stateHang:
+            HangN(this, 1);
+            return true;
+        }
+        return false;
+    case stateCrouch:
+        switch (state) {
+        case stateStand:
+            StandN(this, n1, 1);
+            return true;
+        case stateCrouch:
+            return true;
+        case stateProne:
+            Prone();
+            return true;
+        case stateHang:
+            HangN(this, 1);
+            return true;
+        }
+        return false;
+    case stateProne:
+        switch (state) {
+        case stateStand:
+            StandN(this, n2, 1);
+            return true;
+        case stateCrouch:
+            Crouch();
+            return true;
+        case stateProne:
+            return true;
+        case stateHang:
+            HangN(this, 1);
+            return true;
+        }
+        return false;
+    case stateHang:
+        switch (state) {
+        case stateStand:
+            StandN(this, n3, 1);
+            return true;
+        case stateCrouch:
+            Crouch();
+            return true;
+        case stateProne:
+            Prone();
+            return true;
+        case stateHang:
+            return true;
+        }
+        return false;
+    }
+    return false;
+}
 
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */
 bool CZSealBody::StanceChanged()
