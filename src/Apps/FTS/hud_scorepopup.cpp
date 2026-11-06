@@ -31,6 +31,12 @@ extern float data_003E3000;
 extern float data_003E3018;
 extern float data_003E2FF0;
 
+class CZNetGame;
+/* the game (theMission's, no data row yet: the wins come from it) */
+extern CZNetGame *data_00437CE8;
+int FormatString(char *buf, int size, int id, const char **args, int count);
+const char *GetString(int id);
+
 namespace {
 
 /* a bitmap of the box (SOCOM 1's CScoreBmp: C2DBitmap with its own alpha set at construction --
@@ -48,6 +54,11 @@ public:
  * 0x22E920 destroys them so: a plain bitmap and plain strings */
 class CTeamDisplay {
 public:
+    /* the column's title, its three headers, its stripes and its rows (SOCOM 1's SetupTeam, 0x421140
+     * there: the team's name by string id now, its wins through the game's member function) */
+    void SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam, int (CZNetGame::*pWinsFunc)(),
+                   bool bTeam0);
+
     C2DBitmap _bmpTitleBg;   // 0x0
     C2DString _arrStrs[45];   // 0x80
     unsigned char _1b38[0x1b50 - 0x1b38];
@@ -128,6 +139,8 @@ public:
 
     unsigned char _0[0x498];
     C2DFont *m_myfont;   // 0x498
+    /* the HUD's font (ours: SetupTeam's local, numbered as a temporary at the inline's expansion) */
+    C2DFont *GetFont() const { return m_myfont; }
 };
 
 extern CHUD *theHUD;
@@ -688,6 +701,93 @@ extern signed char data_00412E80;
 extern float data_003E5728;
 
 namespace {
+
+/* the column's look (OVL1 .data, 8 apart; the names ours) */
+extern "C" void func_0022A290(CTeamDisplay *team, CZSealBody **arrSeals, int iRow, float fTopY);
+static float s_fRowTop = 38.0f;
+static float s_fRowSpacing = 16.8f;
+static float s_fTeamTextScale = 1.0f;
+static int s_iScoreColumns = 175;
+static float s_fTeamTextTrans = 90.0f;
+static float s_fStripeX = 161.0f;
+static float s_fStripeW = 463.0f;
+static float s_fStripeH = 16.0f;
+static float s_fStripeDY = 12.0f;
+static float s_fStripeTrans = 60.0f;
+
+void CTeamDisplay::SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam,
+                             int (CZNetGame::*pWinsFunc)(), bool bTeam0)
+{
+    char arrWinsStr[16];
+    char arrTitle[64];
+    CZSealBody *arrSortedSeals[8];
+    CZSealBody *arrUnsortedSeals[8];
+    int arrUnsortedKills[8];
+    C2DFont *font = theHUD->GetFont();
+
+    _bmpTitleBg.SetHasTexture(false);
+    _bmpTitleBg.SetColor(fBgR, fBgG, fBgB);
+    _bmpTitleBg.SetTrans(80.0f);
+    _bmpTitleBg.Load((float)data_0040F628, fTopY, (float)data_0040F630, 25.0f + fTopY, 0);
+    sprintf(arrWinsStr, "%d", (data_00437CE8->*pWinsFunc)());
+
+    int iTextX = (int)(10.0f + (float)data_0040F628 - -8.0f);
+    int iTextY = (int)(20.0f + fTopY);
+
+    FormatString(arrTitle, 32, iTeam, 0, 0);
+    strcat(arrTitle, " :   ");
+    strcat(arrTitle, arrWinsStr);
+    _arrStrs[0].Load(s_fTeamTextScale, arrTitle, font, (float)iTextX, (float)iTextY, false);
+    _arrStrs[0].SetTrans(s_fTeamTextTrans);
+    _arrStrs[1].Load(s_fTeamTextScale, GetString(0xEC6B), font, (float)(data_0040F630 - s_iScoreColumns), (float)iTextY, false);
+    _arrStrs[1].m_isCentered = 1;
+    _arrStrs[1].SetTrans(s_fTeamTextTrans);
+    const char *szDeath = "DEATH";
+
+    _arrStrs[2].Load(s_fTeamTextScale, szDeath, font, (float)(int)((float)(data_0040F630 - s_iScoreColumns / 3 * 2) - -8.0f), (float)iTextY, false);
+    _arrStrs[2].m_isCentered = 1;
+    _arrStrs[2].SetTrans(s_fTeamTextTrans);
+    const char *szScore = "SCORE";
+
+    _arrStrs[3].Load(s_fTeamTextScale, szScore, font, (float)(int)((float)(data_0040F630 - s_iScoreColumns / 3) - -16.0f), (float)iTextY, false);
+    _arrStrs[3].m_isCentered = 1;
+    _arrStrs[3].SetTrans(s_fTeamTextTrans);
+
+    int iNumSeals = GetTeamMembers(arrUnsortedSeals, arrUnsortedKills, bTeam0);
+
+    for (int iNumMoved = 0; iNumMoved < iNumSeals; iNumMoved++) {
+        int iBest = 0;
+
+        for (int i = 1; i < iNumSeals; i++) {
+            bool bBetter = false;
+
+            if (arrUnsortedSeals[iBest]) {
+                if (arrUnsortedSeals[i])
+                    bBetter = arrUnsortedKills[i] > arrUnsortedKills[iBest];
+            } else {
+                bBetter = true;
+            }
+            if (bBetter)
+                iBest = i;
+        }
+        arrSortedSeals[iNumMoved] = arrUnsortedSeals[iBest];
+        arrUnsortedSeals[iBest] = 0;
+    }
+    for (unsigned int iRow = 0; iRow < 8; iRow++) {
+        if (iRow & 1) {
+            float y = fTopY + s_fRowTop + (float)iRow * s_fRowSpacing;
+            C2DBitmap *bmp = &g_arrBmpSpecPieces[iRow + (bTeam0 ? 0 : 8)];
+
+            bmp->SetPos((int)s_fStripeX, (int)(y - s_fStripeDY), (int)(s_fStripeX + s_fStripeW),
+                        (int)(y + s_fStripeH - s_fStripeDY));
+            bmp->C2DBitmap::SetTrans(s_fStripeTrans);
+            bmp->On();
+        }
+    }
+    for (int i = 0; i < iNumSeals; i++)
+        func_0022A290(this, arrSortedSeals, i, fTopY);
+}
+
 /* the pop-up's frame: its nine pieces loaded and UV'd from one texture (SOCOM 1's, the bottom now
  * the spectators' box's), and the sixteen bitmaps the tick places later. The bottom-right corner's
  * SetUV loads the corner u before v, where MW hoists v's load (it feeds the `1 - v`), as the target

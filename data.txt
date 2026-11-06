@@ -295,6 +295,16 @@
 0x003DC870 0x4 s_bitmap2Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the off arrow's size, 32.0 -- 5 references in 4 functions (CMPTeammateNames::Tick x2, both Inits, the initialiser)
 0x003DC888 0x1 cur_zoomstate  # OVL1 data; SOCOM 1's (its symbol table: hud_missioncams.cpp's file static at gp-30240, beside cur_camzoom; -1): the zoom state a mission film put aside -- the HUD lane, round 51: 4 references in 2 functions (PlayCamera 0x228EE0, CleanupCamera 0x229520)
 0x003DC890 0x4 cur_camzoom  # OVL1 data; SOCOM 1's (its symbol table: hud_missioncams.cpp's file static at gp-30236; 1.0): the camera's zoom a mission film put aside -- the HUD lane, round 51: 4 references in 2 functions (PlayCamera 0x228EE0, CleanupCamera 0x229520)
+0x003DC898 0x4 s_fRowTop__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a column's first row below its title, 38; the HUD lane, round 64
+0x003DC8A0 0x4 s_fRowSpacing__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the rows' spacing, 16.8; the HUD lane, round 64
+0x003DC8D8 0x4 s_fTeamTextScale__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the title's and headers' scale, 1; the HUD lane, round 64
+0x003DC8E8 0x4 s_iScoreColumns__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the three score columns' width, 175 (an int); the HUD lane, round 64
+0x003DC8F8 0x4 s_fTeamTextTrans__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the title's and headers' alpha, 90; the HUD lane, round 64
+0x003DC990 0x4 s_fStripeX__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the row stripes' left, 161; the HUD lane, round 64
+0x003DC998 0x4 s_fStripeW__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: their width, 463; the HUD lane, round 64
+0x003DC9A0 0x4 s_fStripeH__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: their height, 16; the HUD lane, round 64
+0x003DC9A8 0x4 s_fStripeDY__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: their offset up from the row, 12; the HUD lane, round 64
+0x003DC9B0 0x4 s_fStripeTrans__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: their alpha, 60; the HUD lane, round 64
 0x003DC9C0 0x10 s_shutdownArgs  # OVL1 data; ours (the states lane, round 19): st_shutdown.cpp's -- the network GUI's LoadExecPS2 arguments ("ENGLISH", the game's ELF, "--menu_state", the dialog) -- 2 references in 1 function take 0x3DC9C0 (Init__14CShutdownStateFv)
 0x003DC9D0 0x10 s_errorRebootArgs  # OVL1 data; ours (the states lane, round 19): st_reboot.cpp's -- the error reboot's LoadExecPS2 arguments ("--menu_state", "dlgAfterErrorReboot.rdr", "") -- 2 references in 1 function take 0x3DC9D0 (RebootAfterError__Fv)
 0x003DC9E0 0x10 s_rebootArgs  # OVL1 data; ours (the states lane, round 19): st_reboot.cpp's -- the reboot's LoadExecPS2 arguments ("--menu_state", "dlgAfterReboot.rdr", "") -- 2 references in 1 function take 0x3DC9E0 (Init__12CRebootStateFv)
