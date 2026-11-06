@@ -14030,8 +14030,10 @@ with SOCOM 1's body; the extern inlines of Set_EndBackTraceMask_In_StateDict and
 slots 15 and 20 named IsSpellingContext and IsIsoWordContext, contextv2.c's table; the object's RUNCTX,
 CTXDATA and UWTABLES as far as these read them: 61 of 61), `asr/casr.h` (+496 p496, +500 p500, +688
 `pending` (the part frame's bytes), +1072 `wtp`, +1092 f1092 from pads; LANGVT slots 26 and 27
-GetRecogWTP and GetSpellingWTP, language.c's table) -- 3 rows new to the map's byte-exact rows (3,604
-bytes), no draft superseded; `src/lib/asr` 588 of 617 (585 of 614 before). No rows renamed (all three
+GetRecogWTP and GetSpellingWTP, language.c's table), `asr/chinese_tree.c` (Translate_Prons_Into_Items_
+And_Tones_TreeCtx written OPEN, 116 words and two short: the kind read once through the walker's first
+post-increment (161 read in the loop), then registers; 2 of 5) -- 3 rows new to the map's byte-exact rows
+(3,604 bytes), no draft superseded; `src/lib/asr` 588 of 618 (585 of 614 before). No rows renamed (all three
 had SOCOM 1's names). No tool changed (scratch: build/scratch/gcc/r37/ -- vt.py scores a unit's variants,
 open37.py lists the range's open rows and their units, rank.py ranks unwritten rows by SOCOM 1's
 mnemonic ratio, vsplit.py writes a `//==` probe's variants as units, sdiff.py side by side, p_xj.c the
