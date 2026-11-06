@@ -6,6 +6,8 @@
 #ifndef NODE_WORLD_H
 #define NODE_WORLD_H
 
+#include <algorithm>
+
 #include "znode.h"
 #include "../zar/zar.h"
 /* FreeVector, for the texture classes' inlines below: included, not declared ahead -- a function
@@ -55,6 +57,9 @@ public:
     CAssetLib *FindModelLib(const char *name);
     CTexHandle *FindMipLevel(_RenderPhase phase, CTexHandle *tex);
 
+    /* the model cache emptied (inline, out of line at 0x311AE0 in CModel::Create; the name ours) */
+    void ClearCache() { m_cache_model = 0; }
+
     CModel *m_cache_model;   // 0xc
 };   // 0x10 bytes
 
@@ -63,6 +68,9 @@ public:
 class CAssetMgr {
 public:
     static CAssetList m_assets;
+    /* the list (inline, out of line at 0x311AF0 in CModel::Create -- CWorld::GetAssetList's three
+     * words under another name; the name ours) */
+    static CAssetList *GetAssets() { return &m_assets; }
 
     /* a library let go of: at no holders left it moves to the recycle bin (SOCOM 1's) */
     static void ReleaseLibRef(CAssetLib *lib);
@@ -75,6 +83,24 @@ public:
     static CAssetLib *NewLib(const char *name, int unused);
     static void AddMipLevels(CDynTexList *list, _RenderPhase phase);
 };
+
+/* a model taken off the library's list (std::remove, the tail erased), the asset manager's model
+ * cache emptied and the model no longer the library's -- none for no model (SOCOM 1's Create and
+ * ~CModel wrote the first two out; SOCOM II's inline, the online lane's round 28: CModel::Create,
+ * node_io.cpp, inlines its body alone -- the tree is taller than the level there -- and calls its
+ * pieces out of line, 0x311AD0-0x311C30; the target's ~CModel calls its whole copy, 0x318AE0; the
+ * name ours) */
+inline void CAssetLib::RemoveModel(CModel *model)
+{
+    if (model) {
+        CModelVector::iterator e = m_models.end();
+        CModelVector::iterator it = std::remove(m_models.begin(), e, model);
+
+        m_models.erase(it, e);
+        CAssetMgr::GetAssets()->ClearCache();
+        model->SetAssetLib(0);
+    }
+}
 
 /* the recycle bin emptied (SOCOM 1's) */
 void EmptyAssetRecycleBin();

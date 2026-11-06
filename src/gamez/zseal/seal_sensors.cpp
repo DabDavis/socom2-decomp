@@ -964,7 +964,13 @@ bool CSealCtrlAi::PreTick(float dT, void *data)
  * from its assignment, an accessor, a wrap helper taking the sum and the count by value, a
  * named count before or after, the parameters swapped) loads the start first and trades the sum's
  * and the count's a0/a1 (27); `m_start += m_size` stores early (0x2C8); the wrap's arms the other
- * way round, `m_total ? x % m_total : 0` or an if/else, 0x2B0 */
+ * way round, `m_total ? x % m_total : 0` or an if/else, 0x2B0. Round 55 (18 more): a cast on either
+ * operand (`m_start + (unsigned)start`) blocks the `x = y + x` rewrite but lets copy propagation fold
+ * the size's load into the sum (27), as do a second variable for the size, a split declaration with
+ * the cast and an inline taking the size by value or const reference (Advance(m_size), a returning
+ * Advanced) -- all 27; `+ 0`, `- -start`, `* 1`, `| 0` and parentheses fold before the rewrite (3).
+ * The target wants both blocked at once: the size loaded into a variable no pass propagates, then
+ * `m_start + size` */
 extern "C" bool func_005CCA30(float dT, void *data)
 {
     static int size0 = 6;

@@ -119,7 +119,15 @@ bool CWaterRippleManager::Update(float dt)
  * branch delay slot with the second bit's shift and leaves the second's empty, MW here branches into
  * the second test's beqz to share its delay slot with the Affects call's argument. Everything else
  * is exact. Tried: the test inline (as here), written out, nested ifs, `!= false`/`== true`, a bool
- * local, `continue`, bool accessors per bit, a const inline -- none moves it */
+ * local, `continue`, bool accessors per bit, a const inline -- none moves it. Round 35 (igdump's
+ * PCode, build/scratch/wep/v_gather*.py): ours tests ONE vreg in both branches (`sltu r62; bnez r62
+ * -> L; ... sltu r62; L: beqz r62`) and the backend does not thread the bnez past L, so the shape
+ * is not a copy between them; the target is the || in jumping form (bnez straight to the call)
+ * with each bit still made a bool by sltu -- in a condition MW drops the sltu (written out, bool
+ * casts, bool accessors per bit, `!!(a || b)`: 0x11C), materialised into a local it is li 1 / li 0
+ * (0x12C), as IsActive()'s value threading never happens: bool bitfields, an int / unsigned char
+ * return, a ternary, if-returns, locals in the inline (6-16 off). Two bool locals (`t || v`) give
+ * the jumping form with the bnez threaded but hoist the second bit and drop the first's sltu (9) */
 void CWaterRippleManager::Gather(CNode *node)
 {
     m_active.clear();
@@ -175,7 +183,9 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
  * addresses are hoisted as well and this spills. SetLevel's shape (a float pointer to the point,
  * set before the select) matches there; here it hoists the pointer out of both loops and spills
  * this and node (0x360), declared in the vertex loop it is propagated (0x340). The locals are
- * declared in the target's slot order (n 288, p 272, off 256, the bool at 303).
+ * declared in the target's slot order (n 288, p 272, off 256, the bool at 303). Round 35: p and a
+ * float or CPnt3D pointer to it at the strip loop's top (the pointer then used for the reads, the
+ * offset and the store) are 0x358 (build/scratch/wep/v_rip.py).
  * a surface's vertices moved: each one's normal tilted by the offset, its height set where a
  * ripple lifts it */
 void CWaterRippleManager::Ripple(CNode *node)
@@ -737,7 +747,11 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
  * stored with sh), where every spelling tried here folds them to constants (a CPnt3D local, float
  * arguments, a reference temporary, CPnt3D::unit_y, a helper per component; opt_propagation off
  * keeps the constants in registers but multiplies in the loop). The point is written and read
- * through a float pointer as in SetLevel, which matches */
+ * through a float pointer as in SetLevel, which matches. Round 35: IRO folds only integer constants
+ * (doldecomp mweppc IroEval.c), so the fold here is the propagated constants' later; `up` built at
+ * the function's top, at the visual loop's top, from float locals (0.0f / 1.0f), const -- all still
+ * 0x260 (build/scratch/wep/v_flat*.py): the target's products, CSE'd for x and z and hoisted to the
+ * outer loop's preheader, need the normal's components to reach the backend as variables */
 void CWaterRipple::Flatten(CNode *node)
 {
     for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {

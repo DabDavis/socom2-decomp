@@ -6,16 +6,25 @@
  * Defined here in reverse of the image's order (-inline deferred).
  * THE POD RESIZE 0x53AA50 (the AI core round 35, build/scratch/ai/podres*.cpp, v_podres*.py,
  * v_vecorder*.py): no function of this unit calls it (the SEAL body's constructor 0x553EA0 and
- * 0x5E3FF0 do), so its caller here was dead-stripped, as ABSENT.txt's Shutdown and Clear were.
- * include/vector's resize(n, c) compiles to it byte-exact in a unit that does not also instantiate
- * the range erase; beside DeleteLayers' erase, a caller written here (first or last in the file)
- * gets a resize with that erase inlined (0x94) -- MW instantiates erase first, where the image has
- * resize first, calling erase. Moving resize's declaration, its definition or both ahead of erase's
- * in include/vector (a probe) leaves erase first and 0x94: not applied */
+ * 0x5E3FF0 do), so its caller here was dead-stripped, as ABSENT.txt's Shutdown and Clear were --
+ * ResizeLayers below, the device (the name ours). Byte-exact with its erase called out of line since
+ * the MSL headers round 35 (include/vector's resize): MW's end-of-unit walk visits the pod's members
+ * in declaration order and generates a member on the spot only when every in-class inline it calls is
+ * parsed -- resize's end() and data() are, through DeleteLayers' end() and begin() -- so resize,
+ * declared ahead of erase, comes out first and calls it; declared after erase, or calling an inline
+ * nothing here parsed (the pod's size() or begin()), it waited past the walk and inlined the erase
+ * DeleteLayers had instantiated (0x94) */
 
 #include <string.h>
 
 #include "ai.h"
+
+/* the layers' vector sized, new slots empty (the name ours; dead-stripped, src/ABSENT.txt): what
+ * emits the pod's resize 0x53AA50 here, in the tail ahead of the erase it calls (0x53AAC0) */
+void ResizeLayers(CAiMapLayerVec &layers, unsigned int n)
+{
+    layers.resize(n, 0);
+}
 
 /* named (none: an empty name), its words cleared, flag 1 set (new in SOCOM II: CAiMap(int) builds
  * its first layer with a name of 0, the layer reader each further one) */

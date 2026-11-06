@@ -60,16 +60,16 @@ class tag_NODE_PARAMS {
 public:
     /* the facade cleared first (CNode's constructor, SOCOM 1's too, writes it with a word access
      * ahead of the vtable pointer) */
-    tag_NODE_PARAMS() { m_facade = 0; }
+    tag_NODE_PARAMS() : m_facade(0) {}
 
     CMatrix m_matrix;   // 0x0
     CBBox m_bbox;   // 0x40
-    unsigned short m_type;   // 0x58 (SOCOM II's CNode code reads a halfword; SOCOM 1's DWARF: an int)
+    unsigned int m_type : 16;   // 0x58 (SOCOM II's CNode code reads a halfword; SOCOM 1's DWARF: an int)
     /* SOCOM II's: two bits set through a whole tree (OVL2 sets 2 on models it loads), the rest
      * unread here -- the names are ours */
-    unsigned short m_socom2_mode : 2;   // 0x5a
-    unsigned short m_socom2_5a_bit2 : 1;   // 0x5a (InitNodeParams copies it)
-    unsigned short m_socom2_5a : 13;   // 0x5a (InitNodeParams clears it)
+    unsigned int m_socom2_mode : 2;   // 0x5a
+    unsigned int m_socom2_5a_bit2 : 1;   // 0x5a (InitNodeParams copies it)
+    unsigned int m_socom2_5a : 13;   // 0x5a (InitNodeParams clears it)
     unsigned int m_active : 1;   // 0x5c
     unsigned int m_dynamic_motion : 1;   // 0x5c
     unsigned int m_dynamic_light : 1;   // 0x5c
@@ -674,8 +674,9 @@ public:
     /* a copy of the mesh, its own data, for a node (SOCOM 1's took no node) */
     CMesh *Clone(CNode *owner);
     /* its decals let go of, each to the pool it came from (SOCOM 1's gave every one back as
-     * temporary; the view unused) */
-    void DereferenceDecals(unsigned int vid);
+     * temporary, and took the view; SOCOM II's takes none -- its one caller, CNode::RemoveDecals
+     * 0x3136A4, sets no a1 where the CVisual call beside it passes the view: the world's round 27) */
+    void DereferenceDecals();
     /* a decal unlinked from its list (SOCOM 1's) */
     void RemoveMeshDecal(CMeshDecal *decal);
     /* a decal added over a strip, last in its list (0x3B8550, SOCOM II's: the name ours) */
@@ -850,6 +851,13 @@ public:
     /* a node read from the archive's open key and added to the parent (SOCOM 1's static
      * Read(CSaveLoad &, CNode *), 0x311520: CWorld::Read calls it where SOCOM 1's does) */
     static CNode *Read(CSaveLoad &io, CNode *parent);
+    /* node_io.cpp's (the online lane's round 28): the node's name, visuals and DI read off the
+     * open key (SOCOM 1's ReadDataBegin, called where SOCOM 1's CLight::Read calls it), its
+     * children (SOCOM II's, the name ours: SOCOM 1's Read read them itself), and an instance of the
+     * model the key names (SOCOM 1's static CreateInstance(CSaveLoad &)) */
+    int ReadDataBegin(CSaveLoad &io);
+    int ReadChildren(CSaveLoad &io);
+    static CNode *CreateInstance(CSaveLoad &io);
     void CopyParams(CNode *to) const;
     void SetModel(CModel *model);
     void RemoveFromParent();
@@ -993,6 +1001,22 @@ public:
         m_minRange = min;
         m_maxRange = max;
         m_maxRangeSq = max * max;
+        m_invMaxRange = 1.0f / m_maxRange;
+        m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
+        UpdateBBox(false);
+    }
+    /* each range alone, its derived terms and the bounds after it (inline: CLight::Read, node_io.cpp,
+     * keeps the squared range in a register for both stores only so; the names are ours) */
+    void SetMinRange(float min)
+    {
+        m_minRange = min;
+        m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
+        UpdateBBox(false);
+    }
+    void SetMaxRangeSq(float sq)
+    {
+        m_maxRange = sqrtf(sq);
+        m_maxRangeSq = sq;
         m_invMaxRange = 1.0f / m_maxRange;
         m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
         UpdateBBox(false);
@@ -1217,6 +1241,10 @@ public:
     CTexHandle *AddTexture(CTexture *tex);
     CModel *AddModel(CModel *model);
     CTexPalette *AddPalette(CTexPalette *pal, bool check);
+    /* a model taken off the list again (inline, node_world.h defines it; the name ours) and a model
+     * by name off the list (inline: ~CModel calls its out-of-line copy, 0x318C30; the name ours) */
+    inline void RemoveModel(CModel *model);
+    CModel *GetModel(const char *name) { return m_models.GetModel(name); }
     bool IsNamed(const char *name);
     char *RootName();
     /* the render phase by value (inline: CAssetList::FindLib(_RenderPhase) narrows its argument
@@ -1259,6 +1287,13 @@ public:
     /* a model read from the archive's open key for a library (SOCOM 1's static, 0x3119A0:
      * CSaveLoad::LoadModels_PS2 calls it where SOCOM 1's LoadAssetLib_PS2 does) */
     static CModel *Create(CSaveLoad &io, CAssetLib *lib);
+    /* the online lane's round 28: the constructor (SOCOM 1's, 0x318C40), its table's two
+     * overrides (__vt__Q23zdb6CModel's +0x08 and +0x34: ~CModel 0x318930, Read 0x311880, node_io.cpp)
+     * and the library setter (inline, out of line at 0x311AD0 in CModel::Create; the name ours) */
+    CModel(const char *name);
+    virtual ~CModel();
+    virtual bool Read(CSaveLoad &io);
+    void SetAssetLib(CAssetLib *lib) { m_AssetLib = lib; }
 };
 
 }

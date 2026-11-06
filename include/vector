@@ -320,6 +320,24 @@ public:
             __msl_error("Memory allocation failure");
         return p;
     }
+    /* grown by copies of c through insert, or cut through erase (out of class: CVisual::Init calls
+     * OVL1's copy, 0x28B0E0; MAIN's is 0x18B050; OVL2's 0x53AA50 is ai_maplayer.cpp's). DECLARED AHEAD
+     * OF reserve, insert AND erase, as SOCOM 1's <vector> defines them (resize 337, reserve 363, insert
+     * 486, erase 548): THE MSL HEADERS ROUND 35 (build/p35/pod/, untracked) read the tail's order out
+     * of MW's front end -- the end-of-unit walk (CTempl_GenClassInstance) visits a class template
+     * instance's members in DECLARATION order (a template's names are appended to its scope,
+     * CScope_AddObject; overloads under their name's first declaration), and a walked member whose body
+     * calls an in-class inline the unit has not parsed yet is deferred to after the walk
+     * (CInline_GenFunc / CInline_CheckDependencies: the inline parsed first, the member then generated
+     * from the export list), while one with every in-class callee parsed is generated on the spot; a
+     * member generated later inlines any member whose body the walk parsed. So resize comes out ahead
+     * of erase, calling it, only when the walk reaches it first AND its in-class callees are parsed by
+     * then: end() and data() alone (the definition below), which a pointer vector's begin() and end()
+     * parse (__raw_begin / __raw_end). Declared after erase (rounds 1-34), or reading size() or begin()
+     * (the pod's: nothing a pointer vector calls parses them), ai_maplayer.cpp's DeleteLayers
+     * instantiates the erase first and the walk inlines it into resize (0x94 against 0x6C: the AI
+     * core's round 35) */
+    void resize(unsigned int sz, const T &c);
     void reserve(unsigned int n);
     void insert(T *position, unsigned int n, const T &x);
     T *erase(T *first, T *last);
@@ -334,9 +352,6 @@ public:
     void do_assign(InputIterator first, InputIterator last, forward_iterator_tag);
     /* n copies of value (SOCOM 1's init__...FUiRCUi, the same 0xE8 bytes as SOCOM II's 0x3C45B0) */
     void init(unsigned int n, const T &value);
-    /* grown by copies of c through insert, or cut through erase (out of class: CVisual::Init calls
-     * OVL1's copy, 0x28B0E0; MAIN's is 0x18B050) */
-    void resize(unsigned int sz, const T &c);
     /* the end read through data()'s reference: across two pushes the target keeps &size_ in the
      * lower saved register and &data_ in the higher (CSndJukebox::LoadMusicLists 0x349490,
      * byte-exact so; nothing else moved over the hand-written units, 2026-10-25, but valve_list.cpp
@@ -1386,14 +1401,24 @@ void __vector_pod<T, Allocator>::insert(T *position, unsigned int n, const T &x)
     }
 }
 
-/* SOCOM 1's lines 337-342: copies of c inserted at the end, or the tail erased */
+/* SOCOM 1's lines 337-342: copies of c inserted at the end, or the tail erased. THE SIZE READ THROUGH A
+ * CONST REFERENCE, THE ERASE'S FIRST THROUGH data() (the MSL headers round 35): resize then calls no
+ * in-class inline but end() and data(), both parsed wherever a pointer vector's begin() and end() are,
+ * so the walk generates it on the spot (above). The const read is size()'s own: MW keeps a load through
+ * a const lvalue apart from end()'s plain `size_`, so the compares and the count share one load and
+ * end() reloads -- the target's, as through size(); through `size_` itself the loads merge (14 off),
+ * and the pointer vectors' size() cannot parse the pod's: it is their own and one high (each element
+ * type's out-of-line copy is its own -- CTCMNode's 0x231E20, CKey's 0x25B2E0 -- and HideAll 0x231BA0
+ * cuts a two-high size() a level early). Through the pod's begin() the erase's first is the same code */
 template <class T, class Allocator>
 void __vector_pod<T, Allocator>::resize(unsigned int sz, const T &c)
 {
-    if (sz > size())
-        insert(end(), sz - size(), c);
-    else if (sz < size())
-        erase(begin() + sz, end());
+    const unsigned int &n = size_;
+
+    if (sz > n)
+        insert(end(), sz - n, c);
+    else if (sz < n)
+        erase(data() + sz, end());
 }
 
 /* reserve: the old elements copied into a fresh block -- word by word for the POD storage, by

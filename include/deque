@@ -642,7 +642,13 @@ public:
         this->start_ = 0;
     }
     /* out of line in an earlier unit (zanim_menu.cpp's tail: erase 0x285D30, insert 0x286160 -- SOCOM 1's
-     * signatures, the four-word iterators by value; resize calls both) */
+     * signatures, the four-word iterators by value; resize calls both). UNWRITTEN; erase's shape read off
+     * the image (the MSL headers round 35): MSL's deque erase -- the empty range returned at once; pos =
+     * first - begin(), back = end() - last, n = last - first through the friend operator- of cdeque<T *>'s
+     * const_iterator form (x's first_ / last_ / data_ re-read); when pos < back, copy_backward(begin(),
+     * first, last) over four-word walkers held in the frame (sp+32..60) and stepped by -- , then start_ =
+     * (start_ + n) % capacity_; else copy(last, end(), first) over register walkers wrapping to the
+     * storage; size_ -= n; `return begin() + pos` (an iterator built at sp+0, its += inlined) */
     iterator erase(iterator first, iterator last);
     void insert(iterator position, unsigned int n, const value_type &x);
     unsigned int max_size() const;
@@ -1596,7 +1602,13 @@ public:
  * loses them too (build/p11/d1.var, d2.var). The buffer's own default constructor calls a per-element
  * 0x18-byte copy of __cdeque_buf<PCv>()'s zeroing (0x2E0DF0, 0x2F6290, 0x3A6470, 0x334150: one level of
  * the buffer chain out of line per element type, round 7's open middle level) where ours calls the
- * shared 0x2CEE70 */
+ * shared 0x2CEE70. THE MSL HEADERS ROUND 35 (README): deque() is generated after the end-of-unit walk
+ * (its __deque_imp() unparsed when walked), and so is the copy constructor (its __deque_imp(const A &)),
+ * so allocator<PCv>() is instantiated after both and inlined by neither; with __deque_imp(const A &)
+ * parsed before the walk (a probe's own function) the copy constructor comes out in the walk, its call
+ * instantiates allocator<PCv>() there, and deque() inlines it: 0x2E0D90 byte-exact. The copy constructor
+ * in class gets that too, but the queue's constructor then inlines it (CZOnlineLobby(), the chat queue's
+ * and CSimpleStateMachine() lost: the deque units 274 -> 270) */
 template <class T, class Allocator>
 deque<T, Allocator>::deque()
 {
