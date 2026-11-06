@@ -326,7 +326,9 @@ inline bool SkbMatchComplete(CSkbPieces *pieces, std::vector<char> *jamo, int st
             int r;
 
             for (r = 0; r < k; r++) {
-                SKBRULE *rule = s_rules[complete->Rule(i, r)];
+                int j;
+                SKBCOMPLETE *c = &(*complete)[i];
+                SKBRULE *rule = s_rules[c->m_rules[r]];
                 int nseq = rule->SeqCount();
                 split.Sum(r);
                 int q;
@@ -335,16 +337,14 @@ inline bool SkbMatchComplete(CSkbPieces *pieces, std::vector<char> *jamo, int st
                     SKBSEQ *seq = rule->Seq(q);
 
                     if (split.Part(r) == seq->Size()) {
-                        int j;
-
                         for (j = 0; j < seq->Size(); j++) {
-                            JAMO a = (JAMO)(*jamo)[start + j];
+                            JAMO a = *(JAMO *)&(*jamo)[start + j];
 
                             if (a != (JAMO)SkbSeqJamo(seq, j))
                                 break;
                         }
                         if (j >= seq->Size()) {
-                            bool v2 = complete->Val2(i);
+                            bool v2 = c->m_val2;
 
                             pieces->Append(*seq, v2);
                             break;
@@ -599,7 +599,9 @@ bool CSkbRdrIter::More() const
 /* a production's sequence (0x3909A0) */
 SKBSEQ *SKBRULE::Seq(int i)
 {
-    return &m_seqs[i];
+    std::vector<SKBSEQ> &v = m_seqs;
+
+    return &v[i];
 }
 
 /* a sequence's jamo appended to the last piece, its value (or its second) added to the code
