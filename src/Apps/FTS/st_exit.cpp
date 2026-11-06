@@ -602,7 +602,7 @@ void func_00545200(CSealStats *stats);   /* (CSealStats' constructor, OVL2: ever
  * begin-bt, More-bt, Next-bt, begin-cp, More-cp, Next-cp (@1405 @1411 @1417, @1422 @1425 @1428 in
  * igdump's syms: every walk's base temporary is made one inline level before its copy, so the
  * target's Next() chain sits one level deeper than the constructor's and More()'s). Tried: Next()
- * out of line (auto-inlined, dead-stripped), through More() or an End() / AtEnd() inline, behind a
+ * out of line (auto-inlined, dead-stripped), through More(), an End() / AtEnd() or a static IsEnd(it) / NotEnd(it) inline (each 0x614: any inline level around Next's end() lets MW share the end node in s7), behind a
  * Step() wrapper (the cut: 0x5C0, or the end node held in s7: 0x60C-0x614), the walk written in
  * place with a static step (0x600), the four loop forms above -- the order holds or the code moves.
  * The teamwork rating's open slots (below) are the same question */
