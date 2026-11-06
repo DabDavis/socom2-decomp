@@ -438,14 +438,14 @@ void func_00254730(int iPeaks1, int iPeaks2, int iPeaks3, int iLength, short *ps
 	const float *pfAmp2 = p2->pfAmp;
 	const float *pfPhase3 = p3->pfPhase;
 	const float *pfAmp3 = p3->pfAmp;
-	int i, j;
+	int i, j, k;
 	float fA;
 	float fStep, fUp, fDown;
 
 	for (i = 0; i < iPeaks1; i++) {
-		int k;
 		fA = pfAmp1[i] * 0.5F;
-		k = (int)(pfPhase1[i] * 0x1.45f306p+5F + 0.5F) & 0xFF;
+		k = (int)(pfPhase1[i] * 0x1.45f306p+5F + 0.5F);
+		k &= 0xFF;
 		j = (int)(fBin + 0.5F);
 		fBin += fPitch1;
 		j *= 2;
@@ -454,9 +454,9 @@ void func_00254730(int iPeaks1, int iPeaks2, int iPeaks3, int iLength, short *ps
 	}
 	fBin = fPitch2;
 	for (i = 0; i < iPeaks2; i++) {
-		int k;
 		fA = pfAmp2[i] * 0.5F;
-		k = (int)(pfPhase2[i] * 0x1.45f306p+5F + 0.5F) & 0xFF;
+		k = (int)(pfPhase2[i] * 0x1.45f306p+5F + 0.5F);
+		k &= 0xFF;
 		j = (int)(fBin + 0.5F);
 		fBin += fPitch2;
 		j *= 2;
@@ -465,11 +465,96 @@ void func_00254730(int iPeaks1, int iPeaks2, int iPeaks3, int iLength, short *ps
 	}
 	fBin = fPitch3;
 	for (i = 0; i < iPeaks3; i++) {
-		int k;
 		fA = pfAmp3[i] * 0.5F;
-		k = (int)(pfPhase3[i] * 0x1.45f306p+5F + 0.5F) & 0xFF;
+		k = (int)(pfPhase3[i] * 0x1.45f306p+5F + 0.5F);
+		k &= 0xFF;
 		j = (int)(fBin + 0.5F);
 		fBin += fPitch3;
+		j *= 2;
+		pfSpec[j] += fA * data_003DCFFC[k];
+		pfSpec[j + 1] += fA * data_003DCFF8[k];
+	}
+	func_0024DA70(pfSpec, 9, 8);
+	if (iHalf > 0)
+		fStep = 1.0F / iHalf;
+	else
+		fStep = 0.0F;
+	fUp = 0.0F;
+	fDown = 1.0F;
+	{
+		float *pf = pfSpec + (512 - iHalf);
+		int n;
+
+		for (n = iHalf; n > 0; n--) {
+			float fS = *psOut * fDown, fT = *pf++ * fUp, fR;
+
+			fR = fS + fT;
+			fR = fR + 32768.5F - 32768.0F;
+			*psOut = (short)fR;
+			fUp += fStep;
+			fDown -= fStep;
+			psOut++;
+		}
+	}
+}
+
+void func_00254A88(int iPeaks1, int iPeaks2, int iPeaks3, int iPeaks4, int iLength, short *psOut, HarmSet *p1, HarmSet *p2, HarmSet *p3, HarmSet *p4,
+		   float fPitch1, float fPitch2, float fPitch3, float fPitch4)
+{
+	float fBin = fPitch1;
+	int iHalf = iLength >> 1;
+	float *pfSpec = p1->pfSpec;
+	const float *pfPhase1 = p1->pfPhase;
+	const float *pfAmp1 = p1->pfAmp;
+	const float *pfPhase2 = p2->pfPhase;
+	const float *pfAmp2 = p2->pfAmp;
+	const float *pfPhase3 = p3->pfPhase;
+	const float *pfAmp3 = p3->pfAmp;
+	const float *pfPhase4 = p4->pfPhase;
+	const float *pfAmp4 = p4->pfAmp;
+	int i, j, k;
+	float fA;
+	float fStep, fUp, fDown;
+
+	for (i = 0; i < iPeaks1; i++) {
+		fA = pfAmp1[i] * 0.5F;
+		k = (int)(pfPhase1[i] * 0x1.45f306p+5F + 0.5F);
+		k &= 0xFF;
+		j = (int)(fBin + 0.5F);
+		fBin += fPitch1;
+		j *= 2;
+		pfSpec[j] = fA * data_003DCFFC[k];
+		pfSpec[j + 1] = fA * data_003DCFF8[k];
+	}
+	fBin = fPitch2;
+	for (i = 0; i < iPeaks2; i++) {
+		fA = pfAmp2[i] * 0.5F;
+		k = (int)(pfPhase2[i] * 0x1.45f306p+5F + 0.5F);
+		k &= 0xFF;
+		j = (int)(fBin + 0.5F);
+		fBin += fPitch2;
+		j *= 2;
+		pfSpec[j] += fA * data_003DCFFC[k];
+		pfSpec[j + 1] += fA * data_003DCFF8[k];
+	}
+	fBin = fPitch3;
+	for (i = 0; i < iPeaks3; i++) {
+		fA = pfAmp3[i] * 0.5F;
+		k = (int)(pfPhase3[i] * 0x1.45f306p+5F + 0.5F);
+		k &= 0xFF;
+		j = (int)(fBin + 0.5F);
+		fBin += fPitch3;
+		j *= 2;
+		pfSpec[j] += fA * data_003DCFFC[k];
+		pfSpec[j + 1] += fA * data_003DCFF8[k];
+	}
+	fBin = fPitch4;
+	for (i = 0; i < iPeaks4; i++) {
+		fA = pfAmp4[i] * 0.5F;
+		k = (int)(pfPhase4[i] * 0x1.45f306p+5F + 0.5F);
+		k &= 0xFF;
+		j = (int)(fBin + 0.5F);
+		fBin += fPitch4;
 		j *= 2;
 		pfSpec[j] += fA * data_003DCFFC[k];
 		pfSpec[j + 1] += fA * data_003DCFF8[k];
