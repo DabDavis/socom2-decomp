@@ -179,8 +179,11 @@ public:
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSDeploy();
 
-    /* what signal 4 resets (the names ours) */
-    unsigned char _58[0x70 - 0x58];
+    /* the point the deploy is made at and the aim it is made with (the grenade's thrower 0x564D20 sets
+     * both; the names ours) */
+    CPnt3D m_58;   // 0x58
+    CPnt3D m_64;   // 0x64
+    /* what signal 4 resets (the names ours; 0x564D20 puts the item at 0x70) */
     unsigned int m_70;   // 0x70
     CAiMapLoc m_74;   // 0x74: a cell, the invalid one when reset
     unsigned char _78[0x7c - 0x78];
@@ -188,7 +191,7 @@ public:
     unsigned char _7d[0x80 - 0x7d];
     unsigned int m_80;   // 0x80
     unsigned int m_84;   // 0x84
-    unsigned char _88[0x8c - 0x88];
+    float m_88;   // 0x88: a wait 0x564D20 sets for a launcher's round (the name ours)
     unsigned int m_8c;   // 0x8c
     float m_timer;   // 0x90: a weapon timer (CZWeapon::ClearTimer clears it)
     unsigned int m_94;   // 0x94
@@ -557,6 +560,103 @@ extern "C" void func_00570D90(CSealCtrlAi *ai, bool on)
         SetRange6F4(ai, data_0064FE48);
     else
         SetRange6F4(ai, ai->m_aiParams.courage);
+}
+
+extern "C" {
+/* (OVL2 0x572190, below: whether the controller is busy -- auto-inlined into the grenade choice) */
+bool func_00572190(CSealCtrlAi *ai);
+/* (OVL2 0x565460: whether a grenade of the item reaches the point -- unwritten) */
+bool func_00565460(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *pos);
+/* (OVL2 0x564D20: the grenade thrown at the point -- unwritten; CSealCtrlAi::OnCommand and the
+ * breach's Tick call it too) */
+bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *target, const CPnt3D *from,
+    unsigned int flags);
+/* (OVL2 data: how long the AI waits after a grenade before choosing another, read as a variable) */
+extern float data_0064FF80;
+/* (OVL1 data: the game's clock, as this unit reads it) */
+extern float data_004365C0;
+}
+
+/* the grenades the AI chooses by its target's range: the item and the squared ranges it covers (OVL2
+ * data 0x650210, eight: 121 and 126 from 50 to 600, the others from 100 to 600; the names ours) */
+struct AI_GRENADE_RANGE {
+    EQUIP_ITEM m_item;   // 0x0
+    float m_min;   // 0x4
+    float m_max;   // 0x8
+};
+extern "C" AI_GRENADE_RANGE data_00650210[8];
+
+/* an entity's position, or none (an inline: the target's point copied out of it) */
+static inline const CPnt3D *EntityPosW(const CEntity *e)
+{
+    return e ? &e->m_posW : 0;
+}
+
+/* whether the SEAL holds the item with the rounds asked; asked a negative count, the item given it
+ * with that many (0x5657C0) */
+static inline bool HasGrenadeRounds(CSealCtrlAi *ai, EQUIP_ITEM item, int count)
+{
+    CZKit *kit = &((CZSealBody *)ai->m_entity)->m_kit;
+
+    bool ok;
+
+    if (count >= 0) {
+        ok = kit->HasItem(item);
+        if (ok)
+            ok = kit->GetAmmoTotal(kit->GetItemIndex(item)) >= count;
+    } else
+        ok = func_005657C0(ai, item, -count);
+    return ok;
+}
+
+/* a grenade chosen and thrown at the target: not within its wait of the last (0x770) nor while the
+ * controller is busy (0x572190); for no item, none at a team mate, item 123 at an entity not to be shot,
+ * none by a navy SEAL, else the first of the table's whose ranges hold the target's, the SEAL holding
+ * it with a round (flag 0x20: given one) and its throw reaching the point; whether it was thrown (OVL2
+ * 0x565110, new in SOCOM II: 0x563E10 and the sensors' tick call it; the name unknown). Byte-exact (the
+ * SEALs' round 57, unwritten before) with: 0x572190 auto-inlined (its first `r = true` the reused 1 of
+ * the count's movz, `andi s1,v1`); the rounds test with ONE exit, each arm assigning `ok` (a bool call's
+ * `&&` operand is `sltu`, its assignment `andi`; two returns add an `andi` at the join); the SEAL declared
+ * before the wait (else the clock is loaded ahead of 0x770); the table's item an EQUIP_ITEM field read
+ * straight into `item` -- `lb`, kept unnormalised (a signed char field cast to EQUIP_ITEM gives `lbu`) */
+extern "C" bool func_00565110(CSealCtrlAi *ai, EQUIP_ITEM item, CTarget *target, unsigned int flags)
+{
+    bool r = false;
+    CEntity *seal = ai->m_entity;
+    float since = data_004365C0 - ai->m_770;
+    CPnt3D pos = *EntityPosW(target->m_ent);
+    int count = (flags & 0x20) ? -1 : 1;
+
+    if (since > data_0064FF80 && !func_00572190(ai)) {
+        bool ok = false;
+
+        if (item == EQUIP_NONE) {
+            CEntity *e = target->m_ent;
+
+            if (!(e->m_team & seal->m_team)) {
+                if (NoShoot(e))
+                    item = (EQUIP_ITEM)123;
+                else if (!ai->IsNavySeal()) {
+                    float d = target->m_distSq;
+
+                    for (int i = 0; i < 8; i++) {
+                        if (d >= data_00650210[i].m_min && d <= data_00650210[i].m_max) {
+                            item = data_00650210[i].m_item;
+                            if (HasGrenadeRounds(ai, item, count) && func_00565460(ai, item, &pos)) {
+                                ok = true;
+                                break;
+                            }
+                            item = EQUIP_NONE;
+                        }
+                    }
+                }
+            }
+        } else if (HasGrenadeRounds(ai, item, count) && func_00565460(ai, item, &pos))
+            ok = true;
+        if (ok)
+            r = func_00564D20(ai, item, &pos, 0, 0);
+    }
+    return r;
 }
 
 /* the valve of a name, or none (OVL2 0x574730; SOCOM 1's, without its fourth valve and the alias) */
@@ -3506,7 +3606,7 @@ extern int data_0066AFE8;
 extern float data_00650170;
 extern float data_00650168;
 bool func_0056A8E0(CEntity *vehicle, const CPnt3D *pos, float near);
-void func_00569550(CSealCtrlAi *ai, unsigned int id);
+bool func_00569550(CSealCtrlAi *ai, unsigned int id);
 }
 
 /* the entity as a vehicle (type 4, CVehicle's), if it is one (an inline, the name ours) */
@@ -3543,6 +3643,74 @@ extern "C" unsigned int func_0056A760(CSealCtrlAi *ai, const CPnt3D *pos, bool t
             func_00569550(ai, id);
     }
     return id;
+}
+
+extern "C" {
+/* (OVL2 data: how long the AI's dodge of a vehicle lasts, read as a variable) */
+extern float data_006501A0;
+}
+
+/* whether the current state is of kind 2 with flag 0x400 (InKind2Flag20's shape) */
+static inline bool IsKind2Flag400(CAiState *s)
+{
+    bool r = false;
+
+    AI_STATE st = s->m_state;
+
+    if (st == (AI_STATE)2 && (s->m_flags & 0x400))
+        r = true;
+    return r;
+}
+
+static inline bool InKind2Flag400(const CAiStateStack &st)
+{
+    CAiState *s;
+
+    if (st.size() == 0)
+        s = 0;
+    else
+        s = st.GetState();
+
+    return s ? IsKind2Flag400(s) : false;
+}
+
+/* the state of kind 2 on top, or none (an inline: the state's kind tested) */
+static inline CAiState *AsKind2(CAiState *s)
+{
+    return s && s->m_state == (AI_STATE)2 ? s : 0;
+}
+
+/* a vehicle by its id dodged: alive and moving, and not already dodged (a kind-2 state with flag
+ * 0x400 on top), a cell found away along its heading from the SEAL's (0x559580, mask 0xD0004, ten
+ * cells), the kind-2 state pushed with flags 0x404 and 4 and its time, and the cell made the avoid
+ * goal (0x570F90 told with 1 when it is); whether it was dodged (OVL2 0x569550, new in SOCOM II:
+ * 0x56A760 and 0x567900 call it; the name ours) */
+extern "C" bool func_00569550(CSealCtrlAi *ai, unsigned int id)
+{
+    bool r = false;
+    const CAiMapLoc *at = &ai->m_entity->m_mapLocValid;
+    CEntity *v = AsVehicle(CEntity::m_list.GetEntityById(id));
+
+    if (v && v->m_isAlive) {
+        CPnt3D dir = v->m_velW;
+
+        if (dir.Normalize() > 0.0f && !InKind2Flag400(ai->m_stateStack)) {
+            CAiMapLoc loc = CAiMapLoc::invalid;
+
+            func_00559580(at, &dir, 0xD0004, &loc, 10, 0);
+            if (ai->PushAiState((AI_STATE)2, 3)) {
+                CAiState *st = AsKind2(ai->GetAiState());
+
+                st->SetFlags(0x404, 0);
+                st->m_time = data_006501A0;
+                st->SetFlags(4, 0);
+                if (ai->SetGoalPos(GOAL_AVOID, loc, 5.0f))
+                    func_00570F90(ai, 1.0f);
+            }
+            r = true;
+        }
+    }
+    return r;
 }
 
 extern "C" {
@@ -3738,6 +3906,93 @@ static inline bool IsAutomatic(EQUIP_ITEM id)
         return true;
     }
     return false;
+}
+
+extern "C" {
+/* (OVL2 0x58F6E0, seal_orders.cpp's: a cell near a point, along a line from another) */
+bool func_0058F6E0(const CPnt3D *from, const CPnt3D *to, CAiMapLoc *out, bool along);
+/* (OVL2 0x555C50: a throw found from a point to another -- its landing point and cell; unwritten) */
+bool func_00555C50(CSealCtrlAi *ai, const CPnt3D *from, const CPnt3D *to, CPnt3D *pos, CAiMapLoc *loc);
+/* (OVL2 data: the wait a launcher's round is given, read as a variable) */
+extern float data_0064FE38;
+}
+
+/* the deploy state on top, or none (an inline: the state's kind tested) */
+static inline CAiSDeploy *AsDeploy(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_DEPLOY ? (CAiSDeploy *)s : 0;
+}
+
+/* a grenade of the item deployed at a point from another (the SEAL's own when none): a rocket's cell
+ * along the line (0x58F6E0), else a throw (0x555C50, flag 0x40) or the cell short of the point --
+ * levelled with the line for all but a launcher's round; with a cell and an item the deploy state
+ * pushed and given the point, a zero aim, the cell, the item and its wait -- 15 for a rocket, 5 else,
+ * a launcher's round's 121 its own wait and flag 0x10 but for a navy SEAL -- and the grenade's time
+ * taken; whether it was (OVL2 0x564D20, new in SOCOM II: the grenade choice 0x565110, OnCommand and
+ * the breach's Tick call it; the name ours). Byte-exact (the SEALs' round 57, unwritten before) with:
+ * the point declared ahead of the aim (the later-declared takes the lower slot); the throw's test
+ * negated, its true arm last (laid out after the cell's path); the item compared and switched on as
+ * `(unsigned char)item` -- the one expression RocketId's and LauncherId's conversions share, kept in s0
+ * (a plain `item != EQUIP_NONE` normalises it again and swaps the item's and the flags' registers; a
+ * plain `switch (item)` shares the 0x70 store's zero extension) */
+extern "C" bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *target, const CPnt3D *from,
+    unsigned int flags)
+{
+    bool r = false;
+    CEntity *seal = ai->m_entity;
+    CPnt3D pos;
+    CPnt3D aim = CPnt3D::zero;
+    CAiMapLoc loc = CAiMapLoc::invalid;
+
+    if (!from)
+        from = &seal->m_posW;
+    if (RocketId(item)) {
+        if (func_0058F6E0(target, from, &loc, true))
+            r = AiMaps.GetCellCenter(loc, &pos) != 0;
+    } else if (!func_00555C50(ai, from, target, &pos, &loc)) {
+        if (func_0058F6E0(target, from, &loc, false)) {
+            r = AiMaps.GetCellCenter(loc, &pos) != 0;
+            if (!LauncherId(item)) {
+                CPnt3D out;
+                float t;
+
+                if (pos.DistToVector(from, target, &out, &t))
+                    pos.y = out.y;
+            }
+        }
+    } else {
+        r = true;
+        flags |= 0x40;
+    }
+    if (r && (unsigned char)item != EQUIP_NONE && ai->PushAiState(AI_STATE_DEPLOY, 0)) {
+        CAiSDeploy *st = AsDeploy(ai->GetAiState());
+
+        st->SetFlags(flags, 0);
+        st->m_58 = pos;
+        st->m_64 = aim;
+        st->m_74 = loc;
+        st->m_70 = item;
+        switch ((unsigned char)item) {
+        case 151:
+        case 152:
+        case 153:
+            st->m_time = 15.0f;
+            break;
+        case 121:
+            st->m_time = 5.0f;
+            if (!ai->IsNavySeal()) {
+                st->m_88 = data_0064FE38;
+                st->SetFlags(0x10, 0);
+            }
+            break;
+        default:
+            st->m_time = 5.0f;
+            break;
+        }
+        ai->m_770 = data_004365C0;
+    } else
+        r = false;
+    return r;
 }
 
 /* the fire parameters set up from the kit for a target -- its spot and its velocity (none: still) --
@@ -5093,6 +5348,84 @@ static inline bool CellTraversable(const CAiMapLoc &loc)
     CAiMap *map = AiMaps.GetMap(loc);
 
     return map ? map->IsTraversable(loc) : false;
+}
+
+extern "C" {
+/* (OVL2 data: the share of a grenade's blast radius the AI keeps its own clear of, read as a variable) */
+extern float data_00650200;
+}
+
+/* two team masks that do not meet (an inline returning the negation, taking the masks by value: used as
+ * the whole test it is materialised -- sltu, xori -- and each mask loaded in the loop; over the two
+ * entities MW keeps the SEAL's mask address hoisted and the saved registers move) */
+static inline bool TeamsApart(unsigned int a, unsigned int b)
+{
+    return !((a & b) != 0);
+}
+
+/* a value squared, the expression written twice (a macro: the target calls the radius twice) */
+#define AI_SQUARE(x) ((x) * (x))
+
+/* whether a grenade of the item may be thrown at the point: item 123 always; a fragmentation kind
+ * (121, 124, 126, 142, 143, 171, 174-176, 179) only from outside the map's cells (0x5561C0), the point
+ * beyond a share of its blast's radius and no living team mate the SEAL tracks -- awake when the AI
+ * drives it -- within that reach of the point (OVL2 0x565460, new in SOCOM II: the grenade choice
+ * 0x565110 asks it for each candidate; the name ours). Byte-exact (the SEALs' round 57, unwritten before)
+ * with: the cases listed 123 first (the chain runs in reverse); the map's location a named reference
+ * (its address kept in the item's saved register for both of CellInside's calls); `r = true` ahead of
+ * the targets' reference; the team test TeamsApart over the two masks by value */
+extern "C" bool func_00565460(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *pos)
+{
+    bool r = false;
+    CEntity *seal = ai->m_entity;
+    CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(item);
+
+    if (w) {
+        CZAmmo *ammo = w->GetDefaultAmmo();
+
+        if (ammo) {
+            switch (item) {
+            case 123:
+                r = true;
+                break;
+            case 121: case 124: case 126: case 142: case 143:
+            case 171: case 174: case 175: case 176: case 179:
+                const CAiMapLoc &loc = seal->m_mapLocValid;
+
+                if (!CellInside(loc)) {
+                    float reach = AI_SQUARE(data_00650200 * ammo->GetExplosionRadius());
+                    CPnt3D d;
+
+                    seal->m_posW.Sub(pos, &d);
+                    if (d.x * d.x + d.y * d.y + d.z * d.z > reach) {
+                        r = true;
+                        CTargetList &targets = seal->m_targets;
+
+                        for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+                            CZSealBody *s = AsSeal(i->m_ent);
+
+                            if (!s || !s->m_isAlive)
+                                continue;
+                            if (AiDriven(s) && !AiAwakeNow(s->GetSealCtrlAi()))
+                                continue;
+                            if (TeamsApart(s->m_team, seal->m_team))
+                                continue;
+
+                            CPnt3D d2;
+
+                            pos->Sub(&s->m_posW, &d2);
+                            if (d2.x * d2.x + d2.y * d2.y + d2.z * d2.z < reach) {
+                                r = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+    return r;
 }
 
 /* the grenade state's tick (OVL2 0x55AC20, slot 0x10; SOCOM 1's Tick__11CAiSGrenadeFfP11CSealCtrlAi

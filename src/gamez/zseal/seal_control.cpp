@@ -68,6 +68,91 @@ void CSealCtrl::SetEnabled(bool on)
         data_003DF1B0 = on;
 }
 
+/* the controller made (OVL2 0x598280; SOCOM 1's constructor, the unit's last function in both builds
+ * but SOCOM II's SetEnabled): CEntityCtrl's with kind 4 (SOCOM 1's 3), then the members in their order
+ * -- the look's rate zeroed, the scan timer CAiTimer(0.0f), the cone's sizes, the three decays,
+ * AI_PARAMS' defaults (its inline constructor), the network state, the goal's and the weapon's timers
+ * -- then, in the target's store order and one bitfield per statement (the SEALs' round 56: CSealCtrlAi's
+ * constructor), the body: SOCOM 1's with its readings gone, the two bits new at 16/17 and 18, the
+ * corpse and the entity cleared beside the victim, the pickups' fields and the hot-swap pair; the goal
+ * and the look cleared, the cone 80 degrees wide, SetViewRange(1000) inlined (its test folded away),
+ * the weapon's period 5 and the 13 event times cleared */
+CSealCtrl::CSealCtrl()
+    : CEntityCtrl(4), m_look_rate_min(0.0f), m_look_rate_range(0.0f), m_scan_timer(0.0f),
+      m_cone_height(1.0f), m_cone_radius(1.0f), m_cone_point_radius(0.0f), m_cone_inv_height(1.0f),
+      m_ai_net_state(0), m_goal_timer(0.0f), m_wep_state(0.0f)
+{
+    m_unit = 0;
+    m_do_aimap_collide = false;
+    m_bit16 = true;
+    m_bit17 = false;
+    m_goal_pos_valid = false;
+    m_goal_dir_valid = false;
+    m_goal_tolerance = 1.0f;
+    m_speed = 1.0f;
+    m_goal_type = GOAL_NONE;
+    m_trigger = TRIGGER_UP;
+    m_throwing = false;
+    m_justthrew = false;
+    m_padid = 0;
+    m_wasthrowing = false;
+    m_trigger_power = 0.0f;
+    m_120 = 0;
+    m_zoomincrement = 0.0f;
+    m_zoomlevel = 0.0f;
+    m_update_zoom = false;
+    m_zoomin = false;
+    m_zoomout = false;
+    m_HudUpdateWeapon = true;
+    m_HudDoPickup = 255;
+    m_curpickup_ID = -1;
+    m_curpickup_secondary_ID = -1;
+    m_curMPBOMBpickup_ID = -1;
+    m_aimPitch = theCharacterDynamics.m_initAimPitch;
+    m_aimYaw = 0.0f;
+    m_138 = 0.0f;
+    m_action = false;
+    m_highrumbletime = 0.0f;
+    m_rumbletime = 0.0f;
+    m_rumblestr = 0.0f;
+    m_menustate = stateNone;
+    m_input_enabled = true;
+    m_zoomin = false;
+    m_zoomout = false;
+    m_hotswapL1 = 0.0f;
+    m_hotswapL2 = 1.0f;
+    m_scan_limits = 0.34906584f;
+    ClearGoal(GOAL_NONE);
+    ClearLook(AIL_ALL);
+    m_victimbody = 0;
+    m_corpsebody = 0;
+    m_16c = 0;
+    SetViewFOV(1.3962634f);
+    SetViewRange(1000.0f);
+    m_aware.m_value = 1.0f;
+    m_aware.m_goal = 1.0f;
+    m_targetSum = 0;
+    m_targetThreat.m_value = 0.0f;
+    m_targetThreat.m_goal = 0.0f;
+    m_wep_state.m_min = 5.0f;
+    m_wep_state.m_range = 0.0f;
+    m_bombpickuptimer = 0.0f;
+    m_weapon_pickup_timer = 0.0f;
+    memset(m_event_time, 0, sizeof m_event_time);
+    m_fudge_velR = CPnt3D::zero;
+    m_fudge_velM = CPnt3D::zero;
+    m_fudge_velW = CPnt3D::zero;
+    m_mpbomb_node = 0;
+    m_bomb_defusal_node = 0;
+    m_mpbomb_timer = 0.0f;
+    m_mpbomb_bTimerAvailable = false;
+    m_mpbomb_bTimerEngaged = false;
+    m_has_respawned = false;
+    m_bit18 = false;
+    m_240 = 0.0f;
+    m_244 = 0.0f;
+}
+
 /* a vector's length squared on the ground plane (OVL2 0x5975B0: an inline's copy, before the
  * grenade's statics; PostTick and the kit call it) */
 extern "C" float func_005975B0(const CPnt3D *v)

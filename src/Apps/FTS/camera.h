@@ -90,6 +90,9 @@ enum SEAL_PEEK {
     PEEK_NONE = 2
 };
 
+/* the kit's current item (zweapon.h's CZFTSWeapon; thezoom.cpp's stand-in defines what it reads) */
+class CZFTSWeapon;
+
 /* a SEAL's kit (zkit's CZKit: only what the zoom calls; zseal.h's member is one word, the SEAL's
  * own fields follow it) */
 class CZKit {
@@ -98,6 +101,11 @@ public:
     bool NVG_Enabled() const;   /* 0x5C80F0 */
     /* the lens effects on or off toward a colour (SOCOM 1's; 0x5C1800, the kit's round 38) */
     void Apply_LensEffects(bool on, CPnt3D *color);
+    /* night vision and the binoculars switched, and the item in hand (kit.h's: HandleNewZoom's, the
+     * game states' round 52) */
+    void NVG_Enabled(bool on);   /* 0x5C8080 */
+    void Binocs_Enabled(bool on);   /* 0x5B9110 */
+    CZFTSWeapon *GetCurItem() const;   /* 0x5C3780 */
 
     unsigned char _0[4];
 };
@@ -158,12 +166,28 @@ public:
     void CheckDIShoot(CPnt3D *pos, CMatrix *cTw);
     /* whether a player drives it (zseal.h's inline: the controller tested, IsPlayer called) */
     bool IsPlayer();
+    /* a turret's thermal scope: whether it has one, its zoom kept up, and whether an entity shows
+     * in thermal (zseal.h's, OVL2 0x5432F0, 0x543200, 0x5433C0: HandleNewZoom's, the game states'
+     * round 52) */
+    bool TurretHasThermal();
+    void UpdateTurretScope(float f);
+    bool HasThermal(CEntity *e);
 
     /* the CBody base (SOCOM 1's at 0x110; the stand-in's first word only) */
     CBody &Body() { return *this; }
 
     short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE: the body's, at its +4)
-    unsigned char _176[0x2e8 - 0x176];
+    unsigned char _176[0x200 - 0x176];
+    /* the zoom: the state, the one before, the change flagged, the field of view (zseal.h's names,
+     * SOCOM 1's DWARF's at 0x160-0x167; the game states' round 52). zseal.h types the two states
+     * ZOOMSTATE, a signed byte under -enum min -- thezoom.cpp defines that enum itself, so they are
+     * its byte here */
+    signed char m_zoomstate;   // 0x200
+    signed char m_zoomstate_prev;   // 0x201
+    unsigned char m_zoomstate_echo;   // 0x202
+    unsigned char _203;
+    float m_zoom_range;   // 0x204
+    unsigned char _208[0x2e8 - 0x208];
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c: the body's root part)
     unsigned char _2ec[0x375 - 0x2ec];
     SEAL_PEEK m_desiredPeek;   // 0x375
