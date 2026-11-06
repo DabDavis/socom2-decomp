@@ -1612,6 +1612,10 @@ typedef struct DmeConnectFull {
     DmeConnectExtra extra;              /* 0xCC */
 } DmeConnectFull;
 
+extern int dme_pad_617788_0;
+extern int dme_pad_617788_1;
+extern int dme_pad_617788_2;
+extern int dme_pad_617788_3;
 int func_00617788(DmeConnectFull *pParams, DmeConnectKind *pKind, DmeConnectStatus *pStatus)
 {
     DmeConnectOptions options;
@@ -3106,6 +3110,8 @@ typedef struct DmeLeaveMsg {
 /* SOCOM 1's NetLeave grown (0x618F70, after the join 0x618B38 as SOCOM 1's follows NetJoin): broadcasts
  * off, the leave message, the objects and clients freed, this client's record back to connecting and
  * reported, every world's value reset (SOCOM 1 stored 256 into the four directly), the callbacks cleared */
+extern int dme_pad_618F70_0;
+extern int dme_pad_618F70_1;
 int func_00618F70(unsigned int nWorld)
 {
     DmeWorld *pWorld = 0;
@@ -3309,7 +3315,7 @@ typedef struct DmeObjectData {
     unsigned int *pnSent;               /* 0x34: each field's time last sent */
 } DmeObjectData;
 
-extern unsigned char func_0061ACF0();
+extern unsigned char func_0061ACF0(DmeField *pField, char *pNew, char *pOld);
 
 /* SOCOM 1's GlobalFieldErrorExceedsThreshold grown (0x61B2A0): whether a field has changed enough to send --
  * each element by func_0061ACF0 (SOCOM 1's ElementErrorExceedsThreshold), or a kind-5 field by its own
@@ -4514,10 +4520,38 @@ tail:
  * allocated; 21 for a client without a block, 20 for no free slot */
 /* OPEN (round 26b): d=14 with the stream in a one-member struct (a real alias set; a plain pointer's alias word did not
  * flip under pert.py): the constant -1 takes a1 in the target and a2 here, and pStream loads before pWorld. */
-/* three declarations nothing reads: they set the alias word (README "Round 26b") this function's locals need (round 27b, pert.py) */
-extern int dme_unused_0;
-extern int dme_unused_1;
-extern int dme_unused_2;
+extern int dme_pad_619DD8_0;
+extern int dme_pad_619DD8_1;
+extern int dme_pad_619DD8_2;
+extern int dme_pad_619DD8_3;
+extern int dme_pad_619DD8_4;
+extern int dme_pad_619DD8_5;
+extern int dme_pad_619DD8_6;
+extern int dme_pad_619DD8_7;
+extern int dme_pad_619DD8_8;
+extern int dme_pad_619DD8_0;
+extern int dme_pad_619DD8_1;
+extern int dme_pad_619DD8_2;
+extern int dme_pad_619DD8_3;
+extern int dme_pad_619DD8_4;
+extern int dme_pad_619DD8_5;
+extern int dme_pad_619DD8_6;
+extern int dme_pad_619DD8_7;
+extern int dme_pad_619DD8_8;
+extern int dme_pad_619DD8_9;
+extern int dme_pad_619DD8_10;
+extern int dme_pad_619DD8_11;
+extern int dme_pad_619DD8_12;
+extern int dme_pad_619DD8_13;
+extern int dme_pad_619DD8_14;
+extern int dme_pad_619DD8_15;
+extern int dme_pad_619DD8_16;
+extern int dme_pad_619DD8_17;
+extern int dme_pad_619DD8_18;
+extern int dme_pad_619DD8_19;
+extern int dme_pad_619DD8_20;
+extern int dme_pad_619DD8_21;
+extern int dme_pad_619DD8_22;
 int func_00619DD8(int *pnStream, int nSize, int nRate, int nType, int a4, int nTarget, int a6, unsigned short a7,
                   unsigned short a8)
 {
@@ -5046,9 +5080,6 @@ int func_00616820(DmeInitParams *pParams, DmeInitResult *pResult)
 extern int rt_msg_client_get_connection_ip(unsigned short nConnection, char *szIp);
 extern void (*data_00651190)(void *pReport);    /* the waiting caller's callback */
 extern int data_00651194;               /* and its user value */
-/* two declarations nothing reads, for this function's alias word as func_00619DD8's */
-extern int dme_unused_3;
-extern int dme_unused_4;
 extern int func_0061D440(int nClient);
 extern int func_0061C600(int nWorld, DmeWorld **ppWorld);
 extern int func_0061C7A8(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient);
@@ -5059,6 +5090,15 @@ extern int strncmp(const char *a, const char *b, unsigned int n);
 extern int func_006189C8(unsigned int nConnection, int bEnable);
 extern DmeLocalAddress data_006766A0;
 
+extern int dme_pad_617250_0;
+extern int dme_pad_617250_1;
+extern int dme_pad_617250_2;
+extern int dme_pad_617250_0;
+extern int dme_pad_617250_1;
+extern int dme_pad_617250_2;
+extern int dme_pad_617250_3;
+extern int dme_pad_617250_4;
+extern int dme_pad_617250_5;
 void func_00617250(unsigned short nConnection, unsigned char nStatus, unsigned short nClient, unsigned short nMaxClients,
                    int nReason)
 {
@@ -5348,15 +5388,10 @@ int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int 
 /*<func_0061ACF0>*/
 /* SOCOM 1's ElementErrorExceedsThreshold grown (0x61ACF0): how far an element has moved against its field's threshold, by the element's
  * type: 0-5 the integers, 6 float, 7 double, 8-15 vectors of two and three (short, int, float, double). */
-typedef struct DmeFieldThreshold {
-    int field_00[3];
-    unsigned int nType;                 /* 0x0C */
-    int nInterval;                      /* 0x10 */
-    int nKind;                          /* 0x14: 1, any change at all */
-    float fThreshold;                   /* 0x18 */
-} DmeFieldThreshold;
+/* the threshold shares the field's word at 0x18 with the comparison's address */
+#define FIELD_THRESHOLD(p) (*(float *)&(p)->pfnCompare)
 
-unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
+unsigned char func_0061ACF0(DmeField *pField, char *pNew, char *pOld)
 {
     if (pField == 0)
         return 0;
@@ -5371,7 +5406,7 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
 
         if (pField->nKind == 1)
             return d != 0;
-        return (signed char)pField->fThreshold < d;
+        return (signed char)FIELD_THRESHOLD(pField) < d;
     }
     case 1: {
         unsigned char a = *(unsigned char *)pNew, b = *(unsigned char *)pOld;
@@ -5379,7 +5414,7 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
 
         if (pField->nKind == 1)
             return d != 0;
-        return (unsigned char)pField->fThreshold < d;
+        return (unsigned char)FIELD_THRESHOLD(pField) < d;
     }
     case 2: {
         short a = *(short *)pNew, b = *(short *)pOld;
@@ -5387,7 +5422,7 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
 
         if (pField->nKind == 1)
             return d != 0;
-        return (short)pField->fThreshold < d;
+        return (short)FIELD_THRESHOLD(pField) < d;
     }
     case 3: {
         unsigned short a = *(unsigned short *)pNew, b = *(unsigned short *)pOld;
@@ -5395,7 +5430,7 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
 
         if (pField->nKind == 1)
             return d != 0;
-        return (unsigned short)pField->fThreshold < d;
+        return (unsigned short)FIELD_THRESHOLD(pField) < d;
     }
     case 4: {
         int a = *(int *)pNew, b = *(int *)pOld;
@@ -5403,14 +5438,14 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
 
         if (pField->nKind == 1)
             return d != 0;
-        return (int)pField->fThreshold < d;
+        return (int)FIELD_THRESHOLD(pField) < d;
     }
     case 5: {
         unsigned int d = *(unsigned int *)pNew - *(unsigned int *)pOld;
 
         if (pField->nKind == 1)
             return d != 0;
-        return (unsigned int)pField->fThreshold < d;
+        return (unsigned int)FIELD_THRESHOLD(pField) < d;
     }
     case 6: {
         float d = *(float *)pNew - *(float *)pOld;
@@ -5419,7 +5454,7 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
             d = -d;
         if (pField->nKind == 1)
             return d != 0.0f;
-        return pField->fThreshold < d;
+        return FIELD_THRESHOLD(pField) < d;
     }
     case 7: {
         double d = *(double *)pNew - *(double *)pOld;
@@ -5428,43 +5463,43 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
             d = 0.0 - d;
         if (pField->nKind == 1)
             return d != 0.0;
-        return d > pField->fThreshold;
+        return d > FIELD_THRESHOLD(pField);
     }
     case 8: {
         short *a = (short *)pNew, *b = (short *)pOld;
         int dx = a[0] - b[0], dy = a[1] - b[1];
 
-        return !((float)(dx * dx + dy * dy) <= pField->fThreshold * pField->fThreshold);
+        return !((float)(dx * dx + dy * dy) <= FIELD_THRESHOLD(pField) * FIELD_THRESHOLD(pField));
     }
     case 9: {
         short *a = (short *)pNew, *b = (short *)pOld;
         int dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
 
-        return !((float)(dx * dx + dy * dy + dz * dz) <= pField->fThreshold * pField->fThreshold);
+        return !((float)(dx * dx + dy * dy + dz * dz) <= FIELD_THRESHOLD(pField) * FIELD_THRESHOLD(pField));
     }
     case 10: {
         int *a = (int *)pNew, *b = (int *)pOld;
         int dx = a[0] - b[0], dy = a[1] - b[1];
 
-        return !((float)(dx * dx + dy * dy) <= pField->fThreshold * pField->fThreshold);
+        return !((float)(dx * dx + dy * dy) <= FIELD_THRESHOLD(pField) * FIELD_THRESHOLD(pField));
     }
     case 11: {
         int *a = (int *)pNew, *b = (int *)pOld;
         int dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
 
-        return !((float)(dx * dx + dy * dy + dz * dz) <= pField->fThreshold * pField->fThreshold);
+        return !((float)(dx * dx + dy * dy + dz * dz) <= FIELD_THRESHOLD(pField) * FIELD_THRESHOLD(pField));
     }
     case 12: {
         float *a = (float *)pNew, *b = (float *)pOld;
         float dx = a[0] - b[0], dy = a[1] - b[1];
 
-        return !(dx * dx + dy * dy <= pField->fThreshold * pField->fThreshold);
+        return !(dx * dx + dy * dy <= FIELD_THRESHOLD(pField) * FIELD_THRESHOLD(pField));
     }
     case 13: {
         float *a = (float *)pNew, *b = (float *)pOld;
         float dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
 
-        return !(dx * dx + dy * dy + dz * dz <= pField->fThreshold * pField->fThreshold);
+        return !(dx * dx + dy * dy + dz * dz <= FIELD_THRESHOLD(pField) * FIELD_THRESHOLD(pField));
     }
     case 14: {
         double *a = (double *)pNew, *b = (double *)pOld;
@@ -5473,7 +5508,7 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
 
         d = a[1] - b[1];
         s += d * d;
-        return !(s <= pField->fThreshold * pField->fThreshold);
+        return !(s <= FIELD_THRESHOLD(pField) * FIELD_THRESHOLD(pField));
     }
     case 15: {
         double *a = (double *)pNew, *b = (double *)pOld;
@@ -5484,7 +5519,7 @@ unsigned char func_0061ACF0(DmeFieldThreshold *pField, char *pNew, char *pOld)
         s += d * d;
         d = a[2] - b[2];
         s += d * d;
-        return !(s <= pField->fThreshold * pField->fThreshold);
+        return !(s <= FIELD_THRESHOLD(pField) * FIELD_THRESHOLD(pField));
     }
     }
     return 0;

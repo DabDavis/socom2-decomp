@@ -1039,3 +1039,169 @@ int func_0061ED48(int nConnection, int nUnused, unsigned int nClient, unsigned c
     }
     return nLength;
 }
+
+/*<func_0061E8B8>*/
+/* SOCOM 1's NetObjectFullUpdatePacketHandler grown (0x61E8B8, by its body): the object made when it is new (a named object of this client's
+ * only counted over when it already exists), every field copied in, the host told. */
+typedef struct DmeFullUpdateMsg {
+    unsigned char nClient;              /* 0x00: the creator's */
+    unsigned char nClass;               /* 0x01 */
+    unsigned char field_02;             /* 0x02 */
+    unsigned char field_03;             /* 0x03 */
+    unsigned char nStatus;              /* 0x04 */
+    short nOwner;                       /* 0x06 */
+    unsigned short nIndex;              /* 0x08 */
+    int field_0C;                       /* 0x0C */
+    int field_10;                       /* 0x10 */
+    char szName[16];                    /* 0x14 */
+} DmeFullUpdateMsg;                     /* 0x24: the fields follow */
+
+typedef struct DmeRemoteObject {        /* dmelocal.c's DmeObjectData */
+    unsigned char nClass;               /* 0x00 */
+    unsigned char field_01;
+    unsigned char nStatus;              /* 0x02 */
+    unsigned char field_03;
+    int nOwner;                         /* 0x04 */
+    int nCreator;                       /* 0x08 */
+    char szName[16];                    /* 0x0C */
+    char *pNew;                         /* 0x1C */
+    char *pOld;                         /* 0x20 */
+    int field_24;
+    int field_28;
+    int field_2C;
+    void *field_30;
+    unsigned int *pnSent;               /* 0x34 */
+} DmeRemoteObject;
+
+extern int func_00616290(char *szName, unsigned int nWorld, unsigned int nClient);
+extern int func_006163A0(void);
+extern void func_00614888(void **ppMemory);
+extern void *DMEmalloc(unsigned int nSize);
+extern void RemoteObjectCreation(unsigned int nClient, unsigned int nIndex);
+extern void RemoteObjectUpdate(int nClient, unsigned int nIndex, unsigned int nField);
+extern int CurrentNetTime;
+extern int ActiveNetObjectCount;
+extern void *data_006766E0[DME_MAX_OBJECTS];
+extern DmeUpdateStructure NetStructureList[16];
+
+int func_0061E8B8(unsigned int nConnection, int nUnused, unsigned int nClient, DmeFullUpdateMsg *pMsg)
+{
+    DmeRemoteObject *pObject = 0;
+    DmeWorld *pWorld = 0;
+    int bNew = 0;
+    DmeUpdateStructure *pStruct;
+    DmeUpdateField *pField;
+    int nIndex;
+    int nSaved;
+    int nBytes;
+    int nLength;
+    char *pData;
+    signed char *pStatus;
+    signed char nOld;
+    int i;
+
+    if (pMsg == 0)
+        return -1;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return -1;
+    if (nConnection >= DME_MAX_WORLDS)
+        return -1;
+    if (nClient >= DME_MAX_CLIENTS)
+        return -1;
+    if (func_0061C600(data_00651178, &pWorld) != 0 || pWorld == 0)
+        return -1;
+    pStruct = &NetStructureList[pMsg->nClass];
+    nIndex = pMsg->nIndex;
+    if (pMsg->nClient == pWorld->nMyClient) {
+        if (NetObjectStatus[nIndex] != 2) {
+            pObject = 0;
+            if (func_00616290(pMsg->szName, nConnection, pMsg->nClient) < 0) {
+                nIndex = func_006163A0();
+                if (nIndex >= 0)
+                    func_00614EC8((char **)&pObject, nIndex);
+            } else {
+                nLength = 36;
+                for (i = 0; i < pStruct->nFields; i++) {
+                    pField = pStruct->apFields[i];
+                    nLength += pField->nSize * pField->nCount;
+                }
+                return nLength;
+            }
+        } else
+            goto update;
+    }
+    pStatus = &NetObjectStatus[nIndex];
+    nOld = *pStatus;
+    if (nOld != 2) {
+        nSaved = ActiveNetObjectCount;
+        pObject = DMEmalloc(60);
+        if (pObject == 0)
+            return 36;
+        *pStatus = 2;
+        data_006766E0[nIndex] = pObject;
+        if (ActiveNetObjectCount < nIndex + 1)
+            ActiveNetObjectCount = nIndex + 1;
+        pObject->nCreator = pMsg->nClient;
+        pObject->field_24 = pMsg->field_0C;
+        pObject->field_28 = pMsg->field_10;
+        pObject->field_2C = 0;
+        pObject->pNew = DMEmalloc(pStruct->nSize);
+        pObject->pOld = DMEmalloc(pStruct->nSize);
+        pObject->field_30 = DMEmalloc(pWorld->field_444 << 2);
+        pObject->pnSent = DMEmalloc(pStruct->nFields << 2);
+        if (pObject->pNew == 0 || pObject->pOld == 0 || pObject->field_30 == 0 || pObject->pnSent == 0) {
+            if (pObject->pNew != 0) {
+                func_00614888((void **)&pObject->pNew);
+                pObject->pNew = 0;
+            }
+            if (pObject->pOld != 0) {
+                func_00614888((void **)&pObject->pOld);
+                pObject->pOld = 0;
+            }
+            if (pObject->field_30 != 0) {
+                func_00614888((void **)&pObject->field_30);
+                pObject->field_30 = 0;
+            }
+            if (pObject->pnSent != 0) {
+                func_00614888((void **)&pObject->pnSent);
+                pObject->pnSent = 0;
+            }
+            func_00614888((void **)&pObject);
+            ActiveNetObjectCount = nSaved;
+            data_006766E0[nIndex] = 0;
+            NetObjectStatus[nIndex] = nOld;
+            return 36;
+        }
+        bNew = 1;
+    } else {
+update:
+        func_00614EC8((char **)&pObject, nIndex);
+    }
+    if (pObject == 0)
+        return 36;
+    pObject->nOwner = pMsg->nOwner;
+    pObject->nClass = pMsg->nClass;
+    strcpy(pObject->szName, pMsg->szName);
+    pObject->field_01 = pMsg->field_02;
+    pObject->nStatus = pMsg->nStatus;
+    pObject->field_03 = pMsg->field_03;
+    nLength = 36;
+    pData = (char *)pMsg + nLength;
+    for (i = 0; i < pStruct->nFields; i++) {
+        pField = pStruct->apFields[i];
+        nBytes = pField->nSize * pField->nCount;
+        if (pObject != 0)
+            memcpy(pObject->pNew + pStruct->anOffsets[i], pData, nBytes);
+        pData += nBytes;
+        nLength += nBytes;
+        pObject->pnSent[i] = CurrentNetTime;
+    }
+    memcpy(pObject->pOld, pObject->pNew, pStruct->nSize);
+    pObject->field_2C = CurrentNetTime;
+    if (bNew)
+        RemoteObjectCreation(pObject->nCreator, nIndex);
+    else
+        RemoteObjectUpdate(pObject->nCreator, nIndex, -1);
+    return nLength;
+}
+/*</func_0061E8B8>*/
