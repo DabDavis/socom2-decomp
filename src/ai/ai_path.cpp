@@ -464,7 +464,17 @@ void CAiPath::IncrementPathId()
  * `more` is dead (rewritten before any read), so its redundant store goes whole. Dead chains (`n
  * = m`), empty inlines taking the map, an inline returning `c ? true : true`, an empty asm
  * elsewhere in the function: deleted whole. The only other MW row in the image with an emptied
- * if-body is OVL1's func_003B1DD0 (0x3B1EB0, `srl; bltz +1` -- unmatched) */
+ * if-body is OVL1's func_003B1DD0 (0x3B1EB0, `srl; bltz +1` -- unmatched).
+ * The AI core round 37 (build/scratch/ai/v_plc37*.py, igdump --pcode): under opt_dead_assignments off every dead body is ALREADY
+ * EMPTY at colouring; what differs is labels. An if-then's body is an unlabelled empty block, so the branch pass after colouring
+ * drops the branch to the next block (the bare sltu, a nop); a ternary's else arm is an empty LABELLED block, so `b JOIN` and the
+ * compare's branch both survive (the pad nop before JOIN: 0xBC). The target's `beqz at,next` wants that second behaviour with no
+ * then-arm jump: an empty labelled block after the branch, or a body still alive after that pass. CAiMaps::GetLocation's altitude
+ * (ai_maps.cpp, _cell_altitude) is the same family and closes without the pragma because its arm has a side effect: a dead
+ * conditional with a store keeps its `b`. Here no arm has one, and `cond ? (map = load, 1) : 0` is deleted whole (0x7C; under the
+ * pragma 0xBC). IRO's dead-store pass skips a noregister variable (mweppc IROUseDef.c), but (void)&map, a pointer or a reference
+ * local to it are folded first: 0x7C. With peephole off as well, the if-then reaches 0xAC, a coincidence (18 off: mtc1 / swc1 for
+ * the float's zero, `andi s0` for more, the branches still gone) */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;
