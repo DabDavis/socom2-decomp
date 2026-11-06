@@ -52,20 +52,7 @@ public:
     unsigned short m_flags;   // 0x6
 };
 
-/* a network address as the DME builds it (16 bytes) */
-struct LANAddress {
-    unsigned char m_bytes[16];
-};
-
-/* a game another console announced (SOCOM II's LANGame : TransientGame : RoomGame, 0x1D8 bytes:
- * its address and port after the room game; its constructor 0x2E1CE0, the room unit's) */
-class LANGame : public RoomGame {
-public:
-    LANGame(LANAddress *addr, int port);
-
-    LANAddress m_addr;   // 0x1c4
-    int m_port;   // 0x1d4
-};   // 0x1d8
+/* LANAddress and LANGame are zonline.h's (the room unit builds the game: its constructor 0x2E1CE0) */
 
 /* the LAN lobby is zonline.h's CZLANLobby (data_0044FE10) */
 /* its room: the unit's one dynamically initialised static, built empty and its destructor

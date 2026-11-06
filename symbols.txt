@@ -4707,10 +4707,10 @@
 0x002E2CE0 0x394 UpdateGameListDisplay__FP12BriefingRoom  # OVL1; s1:name (SOCOM 1's UpdateGameListDisplay, the room passed in SOCOM II: the games sorted, filtered by GamePassesFilters and built into uiv_GameList)
 0x002E3080 0x160 GamePassesFilters__FP8RoomGame  # OVL1; s1:name (SOCOM 1's GamePassesFilters: the same tests in the same order, SOCOM II's password filter first)
 0x002E31E0 0x1EC GamePassesTypeFilter__FP8RoomGame  # OVL1; s1:name (SOCOM 1's GamePassesTypeFilter, which took the type: here the game, its mission sequence through the vtable, tested against the type filter 0x44F528)
-0x002E33D0 0x10 func_002E33D0  # OVL1
+0x002E33D0 0x10 IsRespawnAllowed__8RoomGameFv  # OVL1; ours, the online lane round 27 (the game info's word at 0x30, bit 2: both JoinGames (0x2F8638, the LAN lobby's 0x303AE0) set 'mp_allow_respawn' from it with the game in a0; byte-exact from zNetMediusRoom.cpp)
 0x002E33E0 0xAC HasMissions__8RoomGameFv  # OVL1; ours (each byte of the game's mission sequence -- the vtable's GetMissionSequence -- found in the mission list 0x441650 by Find(id, true); JoinGame, 0x2F8FD0 and the LAN JoinGame ask it)
 0x002E3490 0x40 AllowsType__8RoomGameFi  # OVL1; ours (a game's type mask at +0x1A1 tested for bit type-1, none set allowing any; the bit test 0x2E34E0 makes inline on a room)
-0x002E34D0 0x10 func_002E34D0  # OVL1
+0x002E34D0 0x10 IsFriendlyFire__8RoomGameFv  # OVL1; ours, the online lane round 27 (the game info's word at 0x30, bit 1: both JoinGames (0x2F85E8, the LAN lobby's 0x303A90) set 'mp_friendly_fire' from it with the game in a0; byte-exact from zNetMediusRoom.cpp)
 0x002E34E0 0x124 CanJoinRoom__13CZOnlineLobbyFPCc  # OVL1; ours (UICanJoinRoom 0x27D690 calls it on theLobby: the room found by name, FindRoom's loop inlined, its types at +0x34 tested for GetRankTier(-1)'s bit)
 0x002E3610 0x11C FindPlayer__12BriefingRoomFPCc  # OVL1; ours (find_if over the room's players at +0x7C, 208-byte elements, by the name at +0x20; the player-info callback 0x2F0020 calls it)
 0x002E3730 0x54 RejoinRoom__13CZOnlineLobbyFv  # OVL1; s1:ui ('ConnectToGameServer' 0x27E4C0 and 'DisconnectFromGameServer' 0x27E420 call it on theLobby, as SOCOM 1's UIConnectToGameServer and UIDisconnectFromGameServer call RejoinRoom)
@@ -4851,10 +4851,10 @@
 0x002EB510 0xF4 GetLadderList__13CZOnlineLobbyFii  # OVL1; ours (the player ladder's 'TheRest' page from a position, 2n players, unless one is pending (0x44F878) or LadderLeaders 0x44F7B0 reaches it; cbGetLadderPosition asks it around our position)
 0x002EB610 0x88 GetLadderBest__13CZOnlineLobbyFi  # OVL1; ours (the player ladder's 'TheBest' page: LadderRanking 0x44F7E0 emptied through 0x2EC140, positions 1..n asked for)
 0x002EB6A0 0xC0 func_002EB6A0  # OVL1
-0x002EB760 0xC func_002EB760  # OVL1
-0x002EB770 0xC func_002EB770  # OVL1
-0x002EB780 0xC func_002EB780  # OVL1
-0x002EB790 0xC func_002EB790  # OVL1
+0x002EB760 0xC GetClanLadderTotal__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (ClanLadderRanking's word at 0xC, 0x44F85C: the clan ladder's bound GetClanLadderList pages up to; UIGetLadderInfo calls it on theLobby once, as it calls 0x2EB770 for the player ladder; byte-exact from zNetMediusLadder.cpp)
+0x002EB770 0xC GetLadderTotal__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (LadderLeaders' word at 0x10, 0x44F7C0: the player ladder's count of rankings, cbGetLadderPosition's TotalRankings; UIGetLadderInfo calls it on theLobby against the start plus 14; byte-exact from zNetMediusLadder.cpp)
+0x002EB780 0xC GetClanLadderStart__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (ClanLadderRanking's word at 0x10, 0x44F860: the clan list's first position, GetClanLadderList's start; UIGetLadderInfo calls it on theLobby four times; byte-exact from zNetMediusLadder.cpp)
+0x002EB790 0xC GetLadderStart__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (LadderLeaders' word at 0xC, 0x44F7BC: the player list's first position, GetLadderList's start; UIGetLadderInfo calls it on theLobby four times -- under 2 no page up, plus 14 the next page; byte-exact from zNetMediusLadder.cpp)
 0x002EB7A0 0x15C UpdateLadderBestDisplay__Fv  # OVL1; ours (the player ladder's best, LadderRanking 0x44F7E0, sorted -- std::sort's instance 0x2EC260 -- and built into uiv_MediusLadderTop10: '%d', the name and clan strings at +0x8C/+0x98)
 0x002EB900 0x318 UpdateLadderListDisplay__Fv  # OVL1; ours, the online lane round 14 (the player ladder around us sorted by compare_ladder 0x2EC260 and handed to uiv_MediusLadderRanking -- each one's figure, name, position, GetRankLevel medal and clan, ours (AccountInfo's name) in colour -- then ON_LADDER_REFRESH: UpdateClanLadderList's shape over LadderLeaders 0x44F7B0; the pages' callback func_002EB6A0 calls it)
 0x002EBC20 0xC8 Find__10LadderListFPCc  # OVL1; ours (the MSL headers round 6, written in zNetMediusLadder.cpp: a player ladder's item by name, case-blind, none for no name -- the name read through LadderItem::GetName, the inlined c_str() folding the string's offset into the item's; the chat unit's player-info callback 0x2F0020 calls it); byte-exact
