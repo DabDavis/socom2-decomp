@@ -197,96 +197,11 @@ public:
  * four lookups they make) */
 enum EQUIP_ITEM { EQUIP_PISTOL = 0, EQUIP_END = 254, EQUIP_NONE = 255 };
 
-/* a list of items: MSL's vector over a one-byte scalar, on the byte pod (memmove, memset, memcpy) --
- * its insert this unit's template tail copy 0x284BA0, include/vector's char pod's code over
- * EQUIP_ITEM (the two equipment tests' argument lists; the char pod's own copy is zui's 0x3923E0) */
-namespace std {
-
-inline void __pod_fill_n(EQUIP_ITEM *first, unsigned int n, const EQUIP_ITEM &value)
-{
-    memset(first, (unsigned char)value, n);
-}
-
-template <class Allocator>
-class __vector_pod<EQUIP_ITEM, Allocator> {
-public:
-    typedef EQUIP_ITEM T;
-
-    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
-    ~__vector_pod()
-    {
-        if (data_)
-            deallocate(data_);
-    }
-    static void deallocate(T *p) { operator delete(p); }
-    T *&data() { return data_; }
-    unsigned int capacity() const { return capacity_; }
-    unsigned int size() const { return size_; }
-    static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
-    static T *allocate(unsigned int n)
-    {
-        T *p = (T *)operator new(n * sizeof(T));
-        if (!p)
-            __msl_error("Memory allocation failure");
-        return p;
-    }
-    void insert(T *position, unsigned int n, const T &x);
-    void push_back(const T &x) { insert(data() + size_, 1, x); }
-    T &operator[](unsigned int n) { return data()[n]; }
-
-    unsigned int capacity_;
-    unsigned int size_;
-    T *data_;
-};
-
-template <class Allocator>
-void __vector_pod<EQUIP_ITEM, Allocator>::insert(T *position, unsigned int n, const T &x)
-{
-    if (n == 0)
-        return;
-    if (n > max_size() || size_ > max_size() - n)
-        __msl_error("vector::insert length error\n");
-    const T *xp = &x;
-    unsigned int newsize = size_ + n;
-
-    if (newsize <= capacity()) {
-        T *e = data_ + size_;
-        unsigned int m = e - position;
-
-        if (e - (m - n) <= xp && xp < e)
-            xp += n;
-        if (m)
-            __pod_copy_backward(position, e, e + n);
-        __pod_fill_n(position, n, *xp);
-        size_ += n;
-    } else {
-        unsigned int k = position - data_;
-        T *old = data_;
-        unsigned int newcap = capacity_ ? capacity_ : 1;
-
-        while (newsize > newcap) {
-            if (newcap < max_size() / 2)
-                newcap *= 2;
-            else
-                newcap = max_size();
-        }
-        data() = allocate(newcap);
-        __pod_fill_n(data_ + k, n, *xp);
-        if (old) {
-            __pod_copy(old, old + k, data_);
-            __pod_copy(old + k, old + size_, data_ + k + n);
-            deallocate(old);
-        }
-        size_ = newsize;
-        capacity_ = newcap;
-    }
-}
-
-template <class Allocator>
-class vector<EQUIP_ITEM, Allocator> : public __vector_pod<EQUIP_ITEM, Allocator> {
-};
-
-}
+/* a list of items: MSL's vector over a one-byte scalar runs on the byte pod over the element type
+ * (include/vector's __vector_is_byte: memmove, memset, memcpy) -- its insert this unit's template tail
+ * copy 0x284BA0, the char pod's code over EQUIP_ITEM (the two equipment tests' argument lists; the
+ * char pod's own copy is zui's 0x3923E0). A __vector_pod<EQUIP_ITEM> specialisation here until the
+ * MSL headers' round 36 mapped every one-byte scalar */
 class CZWeapon {
 public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
@@ -366,7 +281,16 @@ namespace {
  * reference gives that test (d 20, still 0x120: end() hoisted), by value 0x178; with it, `#pragma
  * opt_common_subs off` gives the size (0x138, 34 off), opt_propagation off 0x130, opt_loop_invariants
  * off 0x118 -- so the original iterator is a class whose comparison re-reads the vector's end
- * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py) */
+ * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py).
+ * The MSL headers round 36 (build/p36/oies.py, untracked): include/vector's class-vector iterator IS
+ * a class (__MSL_VECTOR_ACCESS: m_p, != as !(==)) -- the materialised test above is today's code
+ * already -- and the target's loop is plain: its latch re-reads size and data through the list's
+ * register and adds size*12 (scdiff printed that addu masked, round 33's tell). Ten header
+ * forms of end() and == (a reference or const count, size(), straight data_ + size_, begin() + n,
+ * base() compares, == by value, const references to the fields) all hoist the end (0x120); a const
+ * view's size() re-reads only the size (0x140), a const self pointer the data (0x128). SOCOM 1's
+ * DWARF and symtab: vector's iterators are raw pointers there (do_assign<PC14CCharacterWeap>), the
+ * only vector iterator class vector<bool>'s {vec_, pos_}. No header change */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));

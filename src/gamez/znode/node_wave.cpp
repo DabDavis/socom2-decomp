@@ -164,7 +164,8 @@ CLensFlare::CLensFlare()
  * Clear inlines the range erase here, where RTPool<CTextureFX>'s calls it).
  *
  * The ripple list's destructor ~list<CRipple *> 0x322370 (__sinit_node_wave.cpp registers it) is
- * OPEN, 0xD4 against 0x60: the target inlines ~__list_imp and calls ~__list_deleter (0x1EA2D0), as
+ * BYTE-EXACT since the MSL headers round 36 (include/list's range erase steps its walker by ++: the
+ * erase a level taller in tail code). It was OPEN, 0xD4 against 0x60: the target inlines ~__list_imp and calls ~__list_deleter (0x1EA2D0), as
  * node_main.cpp's ~list<CVisual *> 0x3177C0 does; here MW inlines the whole chain with the range
  * erase. A deleter destructor one level taller (`clear()` for its erase) gives the target's 0x60
  * but costs this unit's ~RTPool and Clear (0x68, 0xAC) -- an include/list question (the drafts'
