@@ -7,16 +7,16 @@
  * order and the constructor's slots). The block takes four inputs (two frames of n features, a
  * level and a 24-byte frame record) and writes n + 1 words to its own queue; it keeps a speech
  * mean and a noise floor per feature, seeded from the two 11 kHz tables below and smoothed
- * through the smoothing object (smtConstruct, SOCOM 1's Smoother1600Info11kHz). ProcessAcne is
- * not written (declared). */
+ * through the smoothing object (smtConstruct, SOCOM 1's Smoother1600Info11kHz). ProcessAcne
+ * written in round 36c from SOCOM 1's body (the same code but its frame and one ulp of 0.001). */
 #include "tosblk.h"
 
 typedef struct ACNE {
     TOSBLOCK b;
     void *q;                            /* +40: the block's own queue */
-    short f44;                          /* +44: profile 2 (100) */
+    unsigned short f44;                 /* +44: profile 2 (100) */
     char pad46[2];
-    int state;                          /* +48: 2 after a reset */
+    unsigned int state;                 /* +48: 2 after a reset */
     unsigned char f52;                  /* +52 */
     unsigned char smoothed;             /* +53: the speech mean went through the smoother */
     char pad54[2];
@@ -74,7 +74,7 @@ extern float LogAdd(float a, float b);
 extern int qQueueControl(void *q, unsigned char cmd, int arg, int n);
 extern void smtDestruct(void *smoother, TOS *tos);    /* SOCOM 1's smtDestruct */
 
-extern void ProcessAcne(ACNE *a, unsigned char **in, int n);
+extern unsigned int qQueueNbrElements(void *q);
 
 static int Reset(ACNE *a)
 {
@@ -144,6 +144,123 @@ static int NormalizeAndEnQ(ACNE *a)
     return 1;
 }
 
+/* a frame (the block's process): in[0] and in[1] two frames of n features, in[2] the level, in[3]
+ * the 24-byte frame record (its first two words: the frame's energy, the floor at +68). Past the
+ * level's limit the queue is flushed and the block marked; a marked block drains a frame a call.
+ * Otherwise the frame is queued with its energy; while the level is above 0.001 the noise floor
+ * (+60) follows the frame (rising by w1, falling by w2, the step at least +124) and moves by the
+ * mean error, clamped to +-0.7; then the state machine: 0 passes a frame on, 2 waits for the level,
+ * 1 collects until the silence count passes +104 (then flushes) or the queue holds +44. Three
+ * shapes the target needs (round 36c): the loop's pointers set at the top of the level's block
+ * (the target loads +60 and +64 above the +72 update; set before the loop they come after the
+ * clamps, 340s); the state unsigned -- 0 is then the type's minimum, so node_is_bounded lets the
+ * switch's tree test 1, 0, 2 by equality (signed: a range test, 82s); and `return`, not `break`,
+ * after each case's last call -- sibcall.c needs the return straight after the call (75s). */
+static void ProcessAcne(ACNE *a, float **in, int n)
+{
+    float *frame;
+    float *out;
+    float *p, *q, *o, *end;
+    float lvl, e, r, w1, w2, x, y, m, d, sum;
+    unsigned int nf, size;
+
+    if (a->f72 >= a->f108) {
+        a->state = 0;
+        a->f52 = 1;
+        while (qQueueNbrElements(a->q) != 0)
+            NormalizeAndEnQ(a);
+    }
+    if (a->f52 != 0) {
+        if (qQueueNbrElements(a->q) == 0)
+            a->f52 = 0;
+        if (a->f52 != 0) {
+            NormalizeAndEnQ(a);
+            return;
+        }
+    }
+    frame = in[0];
+    if (frame == 0)
+        return;
+    lvl = *in[2];
+    e = in[3][0];
+    a->f68 = in[3][1];
+    nf = a->n;
+    size = nf * sizeof(float);
+    memcpy(a->f64, in[1], size);
+    out = qEnQueueOne(a->q);
+    memcpy(out, frame, size);
+    out[nf] = e;
+    a->f88++;
+    if (lvl > 0.001f) {
+        o = out;
+        p = a->mean0;
+        q = a->f64;
+        end = p + nf;
+        a->f72 += lvl;
+        if (a->f72 >= a->f108)
+            a->f72 = a->f108;
+        r = lvl / a->f72;
+        a->f84 += r;
+        w1 = r * a->f116;
+        if (w1 > 1.0f)
+            w1 = 1.0f;
+        w2 = r / a->f116;
+        if (w2 > 1.0f)
+            w2 = 1.0f;
+        sum = 0;
+        for (; p < end; p++, o++, q++) {
+            x = *q + a->f120;
+            y = *o;
+            if (y < x)
+                y = x;
+            m = *p;
+            d = y - m;
+            if (d < a->f124)
+                d = a->f124;
+            *p = m + d * (d > 0 ? w1 : w2);
+            d = y - *p;
+            sum += d > 0 ? d * a->f116 : d / a->f116;
+        }
+        a->f80 += lvl;
+        if (a->f80 > 200.0f)
+            a->f80 = 200.0f;
+        r = lvl / a->f80;
+        a->f84 += r;
+        sum *= r / nf;
+        if (sum > 0.7f)
+            sum = 0.7f;
+        if (sum < -0.7f)
+            sum = -0.7f;
+        for (p = a->mean0; p < end; p++)
+            *p += sum;
+    }
+    if (lvl == 0 && a->f88 != 0) {
+        a->f92++;
+        if (++a->f76 > 50)
+            a->f76 = 50;
+    } else
+        a->f92 = 0;
+    switch (a->state) {
+    case 0:
+        NormalizeAndEnQ(a);
+        return;
+    case 2:
+        if (lvl > 0.001f)
+            a->state = 1;
+        else
+            NormalizeAndEnQ(a);
+        return;
+    case 1:
+        if (a->f92 > a->f104) {
+            a->state = 2;
+            while (qQueueNbrElements(a->q) != 0)
+                NormalizeAndEnQ(a);
+        } else if (qQueueNbrElements(a->q) == a->f44)
+            NormalizeAndEnQ(a);
+        return;
+    }
+}
+
 /* SOCOM 1's FreeResourcesAcne, inlined into the control (no copy left) */
 static __inline__ void FreeResourcesAcne(ACNE *a)
 {
@@ -155,15 +272,13 @@ static __inline__ void FreeResourcesAcne(ACNE *a)
 }
 
 /* 2 marks the block (f52); 3 saves the block's state into the session buffer at *pos (or only
- * counts its size), 4 restores it (or, without a buffer, resets the block); 255 destroys it.
- * OPEN (48 words, the right size): every instruction is the target's but the session pointer and
- * the array size take each other's saved register (the target: p in s0, size in s1). Tried: the
- * reset first or in the else, the record read through p or its own base (this one: the base, as
- * the target's lbu 4/8 off a3), size declared at the top, in the block, before or after rec. */
+ * counts its size), 4 restores it (or, without a buffer, resets the block); 255 destroys it. The
+ * record read through its own base (the target's lbu 4/8 off a3). The session pointer is each
+ * case block's own (round 36c, 48 words -> 0): one p for both cases spans two blocks, a global
+ * pseudo, and local-alloc -- which runs first -- had given the block's own size s0; declared in
+ * each block both are local and local-alloc ranks them by references (p s0, size s1). */
 static int ControlAcne(ACNE *a, unsigned char cmd, unsigned char *buf, int *pos)
 {
-    unsigned char *p;
-
     switch (cmd) {
     case 2:
         a->f52 = 1;
@@ -172,6 +287,7 @@ static int ControlAcne(ACNE *a, unsigned char cmd, unsigned char *buf, int *pos)
         if (buf != 0) {
             unsigned int size = a->n * sizeof(float);
             unsigned char *rec = buf + *pos;
+            unsigned char *p;
 
             p = rec + 12;
             a->state = *(int *)rec;
@@ -204,6 +320,7 @@ static int ControlAcne(ACNE *a, unsigned char cmd, unsigned char *buf, int *pos)
         if (buf != 0) {
             unsigned int size = a->n * sizeof(float);
             unsigned char *rec = buf + *pos;
+            unsigned char *p;
 
             p = rec + 12;
             *(int *)rec = a->state;

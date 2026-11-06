@@ -8,6 +8,7 @@
 
 #include "../../gamez/zcamera/zcamera.h"
 #include "../../gamez/zanim/zanim.h"
+#include <list>
 
 namespace zdb {
 /* the collision piece's kind (two bits of its byte at 0xA: SOCOM 1's at 0x1A; the name ours) */
@@ -65,6 +66,7 @@ zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3
 
 class CHUD;
 class CEntity;
+class CAppCamera;
 class CZBodyPart;
 
 /* a seal's controller: its throttle (zentity.h's CEntityCtrl: SOCOM 1's three axes at 0x8, SOCOM
@@ -72,9 +74,11 @@ class CZBodyPart;
  * zoom to the camera) */
 class CEntityCtrl {
 public:
-    unsigned char _0[8];
+    unsigned char _0[4];
+    CEntity *m_entity;   // 0x4: what it drives (a turret's: the SEAL manning it)
     float m_throttle[4];   // 0x8
-    unsigned char _18[0x221 - 0x18];
+    unsigned char _18[0x220 - 0x18];
+    unsigned char m_220;   // 0x220 (6 while its SEAL is down online: the camera's follow)
     unsigned char m_221;   // 0x221
 };
 
@@ -98,21 +102,51 @@ public:
     unsigned char _0[4];
 };
 
-/* a SEAL's body (zbody.h's CBody: only the part's place in space, OVL1 0x2869D0) */
+/* a SEAL's body (zbody.h's CBody: only the part's place in space, OVL1 0x2869D0, and a part
+ * found by name, 0x28E7B0) */
 class CBody {
 public:
     void PartInSpace(CZBodyPart *part, const CPnt3D *offset, CPnt3D *out, CQuat *q) const;
+    CZBodyPart *FindPart(const char *name);
 
     unsigned char _0[4];
 };
 
-/* a SEAL: its matrix (the second virtual), its controller (CEntity's at 0xC0), its body's state
- * and wanted peek (SOCOM 1's CBody::m_state at 0x11D, SOCOM II's a halfword at 0x174; its
- * m_desiredPeek at 0x305, SOCOM II's 0x375) and the zoomed flag (SOCOM 1's at 0xF5C) */
-class CZSealBody {
+/* an entity (zentity.h's CEntity, 0x170 bytes: only what the camera reads -- zentity.h's
+ * CEntityCtrl has no SEAL's mode, which the zoom tests through this header's): its matrix (the
+ * second virtual, SOCOM 1's GetPosW), its type (a byte under -enum min), its position, its
+ * controller, its flag word, and the list of every entity (the death camera walks it) */
+class CEntity {
 public:
-    virtual ~CZSealBody();
+    enum TYPE { ENT_TYPE_UNKNOWN = 0, ENT_TYPE_RECYCLE = 1, ENT_TYPE_SEAL = 2, ENT_TYPE_TURRET = 3 };
+
+    virtual ~CEntity();
     virtual CMatrix *GetMatrix();
+    /* its node (out of line, 0x29ED20: SOCOM 1's) */
+    zdb::CNode *GetNode();
+
+    unsigned char _4[0x10 - 4];
+    TYPE m_type;   // 0x10
+    unsigned char _11[0x1c - 0x11];
+    CPnt3D m_posW;   // 0x1c (the node's position)
+    unsigned char _28[0xc0 - 0x28];
+    CEntityCtrl *m_control;   // 0xc0
+    unsigned char _c4[0xe0 - 0xc4];
+    unsigned int _e0 : 12;   // 0xe0: the flag word
+    unsigned int m_isAlive : 1;
+    unsigned int _e0_13 : 19;
+    unsigned char _e4[0x170 - 0xe4];
+
+    /* every entity (zentity.h's CEntityList, a list of pointers and nothing more) */
+    static std::list<CEntity *> m_list;
+    static const std::list<CEntity *> &GetEntityList() { return m_list; }
+};
+
+/* a SEAL (SOCOM II's CEntity at 0, its CBody at 0x170 -- the RTTI's base list, 0x3EFD20): its body's
+ * state and wanted peek (SOCOM 1's CBody::m_state at 0x11D, SOCOM II's a halfword at 0x174; its
+ * m_desiredPeek at 0x305, SOCOM II's 0x375) and the zoomed flag (SOCOM 1's at 0xF5C) */
+class CZSealBody : public CEntity, public CBody {
+public:
     /* the SEAL a node belongs to, if any (zseal.h's static) */
     static CZSealBody *GetSeal(zdb::CNode *node);
     /* the head turned to a pitch (OVL2 0x5AF470: SOCOM II's has no second float) */
@@ -125,16 +159,9 @@ public:
     /* whether a player drives it (zseal.h's inline: the controller tested, IsPlayer called) */
     bool IsPlayer();
 
-    unsigned char _4[0x1c - 4];
-    CPnt3D m_posW;   // 0x1c (CEntity's: the node's position)
-    unsigned char _28[0xc0 - 0x28];
-    CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0xe0 - 0xc4];
-    unsigned int _e0 : 12;   // 0xe0: CEntity's flag word
-    unsigned int m_isAlive : 1;
-    unsigned int _e0_13 : 19;
-    unsigned char _e4[0x170 - 0xe4];
-    CBody m_body;   // 0x170 (SOCOM 1: 0x110; the stand-in's first word only)
+    /* the CBody base (SOCOM 1's at 0x110; the stand-in's first word only) */
+    CBody &Body() { return *this; }
+
     short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE: the body's, at its +4)
     unsigned char _176[0x2e8 - 0x176];
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c: the body's root part)
@@ -142,7 +169,11 @@ public:
     SEAL_PEEK m_desiredPeek;   // 0x375
     unsigned char _376[0x5e0 - 0x376];
     CZKit m_kit;   // 0x5e0 (SOCOM 1: 0x520)
-    unsigned char _5e4[0xf7a - 0x5e4];
+    unsigned char _5e4[0xea8 - 0x5e4];
+    /* the camera watching the SEAL, if any (SOCOM II's: a follow online sets its mode, the name
+     * ours) */
+    CAppCamera *m_camera;   // 0xea8
+    unsigned char _eac[0xf7a - 0xeac];
     /* the SEAL's life as the network reports it, 1 up (zseal.h's m_netlife, a NET_LIFE byte) */
     unsigned char m_netlife;   // 0xf7a
     unsigned char _f7b[0x105c - 0xf7b];
@@ -250,6 +281,24 @@ public:
     virtual bool AttachTo(CZSealBody *prey);
 
     void FTSTick();
+    /* SOCOM 1's camera modes and the death camera's points, in its order (APFirstPersonCam,
+     * APTeatherCam, GetTetherCamPoints, GetDeadCamPoints, UpdateDeathCamState: Tick calls the two
+     * views, each calls the next; SOCOM II's first person takes the frame time too) */
+    void APFirstPersonCam(CMatrix &cTw, float dT);
+    void APTeatherCam(CMatrix &cTw, float dT);
+    unsigned char GetTetherCamPoints(CPnt3D *CamPoint, CPnt3D *CamOffset, CPnt3D *CamAimPoint, float dT);
+    unsigned char GetDeadCamPoints(CPnt3D *CamPoint, CPnt3D *CamAimPoint, CMatrix *rot_mtx, float dT);
+    void UpdateDeathCamState(float dT);
+    /* the camera given an entity to follow -- a SEAL, or what it boards (the turret) -- and the
+     * part of its body to hang from, the root if none: SOCOM 1's AttachTo's first half, split out
+     * (0x2956E0; AttachTo, the constructor and the death camera call it, OVL2's turret boarding
+     * too) -- and a SEAL's overload, a jump to it (0x295AF0; OVL2's turret release calls it). The
+     * names ours */
+    void Follow(CEntity *prey, const char *part);
+    void Follow(CZSealBody *seal, const char *part);
+    /* the death camera, 0xF4-0x11B (camera.cpp's CDeathCam: read through this at each use, its
+     * fields are this one's offsets -- a local pointer to it takes a saved register) */
+    struct CDeathCam *DeathCam() { return (struct CDeathCam *)&m_f4; }
     /* where the tether puts the camera, its offset and the tether's length handed back (SOCOM 1's,
      * 0x29A950) */
     CPnt3D GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen);
@@ -362,8 +411,11 @@ public:
     unsigned char _145[0x148 - 0x145];
     float m_death_state_timer;   // 0x148 (SOCOM 1: 0x98)
     unsigned char _14c[0x150 - 0x14c];
-    void *m_150;   // 0x150 (SOCOM II's, the constructor clears these two; the names ours)
-    void *m_154;   // 0x154
+    /* the SEAL killed and its killer (SOCOM 1's m_killed / m_killer at 0x9C / 0xA0, their names:
+     * the death camera's look carries its point about the first and aims at the second; the
+     * constructor clears both) */
+    CZSealBody *m_killed;   // 0x150
+    CZSealBody *m_killer;   // 0x154
     unsigned char _158[0x188 - 0x158];
 };   // 0x188 bytes (LoadWorld news 392)
 

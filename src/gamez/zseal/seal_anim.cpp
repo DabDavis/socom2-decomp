@@ -414,6 +414,88 @@ bool CZSealBody::IsCurrentBlend(AnimType type) const
     return m_curblend == m_animset->BaseAnim(type);
 }
 
+extern "C" {
+/* (OVL2 0x576700, below: the overlay's parts eased) */
+void func_00576700(CZSealBody *seal);
+}
+
+/* whether the body still blends in (an inline, the name ours: through it the test's load of m_interp1
+ * is not reused by the decrement after it, which reloads the field, as the target does -- tested in
+ * place, the one load serves both) */
+static inline bool Blending(const CZSealBody *s)
+{
+    return s->m_interp1 > 0.0f;
+}
+
+/* the body's blending run down by the frame: the blend-in time (m_interp1, out of m_interp2) and the
+ * overlay's 0x10D0 timer (out of 0.4) each spent and floored at 0 -- while the overlay runs alone its
+ * parts eased (0x576700), else the anims smoothed by the blend-in's quadratic weight; once a weight
+ * reaches 0 ten parts made active again (OVL2 0x576860, new in SOCOM II: CZSealBody::Tick calls it;
+ * the name unknown). The last two arms are the same, as the target's are */
+extern "C" void func_00576860(CZSealBody *seal)
+{
+    bool done = false;
+    float w;
+
+    if (seal->m_10d0 <= 0.0f) {
+        if (!Blending(seal))
+            return;
+        seal->m_interp1 -= seal->m_2e0;
+        if (seal->m_interp1 < 0.0f)
+            seal->m_interp1 = 0.0f;
+        w = quadW(seal->m_interp1 / seal->m_interp2);
+        if (w == 0.0f)
+            done = true;
+        else
+            seal->SmoothAnims(w);
+    } else if (!Blending(seal)) {
+        seal->m_10d0 -= seal->m_2e0;
+        if (seal->m_10d0 < 0.0f)
+            seal->m_10d0 = 0.0f;
+        if (quadW(seal->m_10d0 / 0.4f) == 0.0f)
+            done = true;
+        else
+            func_00576700(seal);
+    } else {
+        seal->m_interp1 -= seal->m_2e0;
+        if (seal->m_interp1 < 0.0f)
+            seal->m_interp1 = 0.0f;
+        seal->m_10d0 -= seal->m_2e0;
+        if (seal->m_10d0 < 0.0f)
+            seal->m_10d0 = 0.0f;
+        if (seal->m_interp1 <= 0.0f) {
+            if (quadW(seal->m_10d0 / 0.4f) == 0.0f)
+                done = true;
+            else
+                func_00576700(seal);
+        } else if (seal->m_10d0 <= 0.0f) {
+            w = quadW(seal->m_interp1 / seal->m_interp2);
+            if (w == 0.0f)
+                done = true;
+            else
+                seal->SmoothAnims(w);
+        } else {
+            w = quadW(seal->m_interp1 / seal->m_interp2);
+            if (w == 0.0f)
+                done = true;
+            else
+                seal->SmoothAnims(w);
+        }
+    }
+    if (done) {
+        seal->SetPartActive(1, seal->m_root);
+        seal->SetPartActive(1, seal->m_rifle);
+        seal->SetPartActive(1, seal->m_pistol);
+        seal->SetPartActive(1, seal->m_weapon);
+        seal->SetPartActive(1, seal->m_rthigh);
+        seal->SetPartActive(1, seal->m_lthigh);
+        seal->SetPartActive(1, seal->m_rcalf);
+        seal->SetPartActive(1, seal->m_lcalf);
+        seal->SetPartActive(1, seal->m_rfoot);
+        seal->SetPartActive(1, seal->m_lfoot);
+    }
+}
+
 /* CBody::SmoothPart (OVL1 0x28E040, body.cpp's) TAKES THE FRACTION FIRST: every call here loads it
  * before the part (MW evaluates the arguments left to right) -- the (part, t) declaration gave the
  * same 0x160 bytes with each pair of loads swapped. SOCOM II's own SetPartActive(int, part) has the

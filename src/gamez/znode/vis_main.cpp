@@ -308,21 +308,23 @@ static inline CTexture *FindTexture(CDynTexList &list, const char *name)
  * target's 13-entry jump table (with only the handled kinds it builds 8, with case 12 alone a compare
  * chain); the lookup an inline shared by both loops and the select copied in by the caller, through
  * the kind pointer (ResolveTextureName inlined stores through the select: the kind and count
- * registers swap). OPEN, 0x368 against 0x370: the target takes &m_lodMesh's data word (this+56) once
- * at the top and spills it (sp+176) for the last store, where here the last store reads the data word
- * off this again (the frame 16 smaller); the detail walk's two counters and offset take s1/s4/s2 in
- * the target, s4/s3/s1 here. Tried: the vector, its pointer or data()'s reference in a local (each
- * keeps this+48 or the word itself, 8 long), the reference taken only for the last store. Round 31:
- * `unsigned int *&lods = m_lodMesh.data();` DEFINED right after names and used only by the last
- * store reproduces the target's head (this+56 spilled to sp+176, the frame 208) but is 8 long: the
- * blend copy's source pointer then lands in _malloc's delay slot after a nop, and the detail walk's
- * counters stay s4/s3/s1 (a vector reference or a pointer to data() the same) */
+ * registers swap). BYTE-EXACT since the weapons' round 36, by three shapes: `unsigned int *&lods =
+ * m_lodMesh.data();` defined right after names and used only by the last store (the target's this+56
+ * spilled to sp+176, the frame 208 -- round 31's find, 8 long alone); the blend count k read before
+ * the `p->u16[6]` test (its lhu in the beqz's delay slot, the malloc's arguments in the target's
+ * order); and the detail walk's outer counter the switch loop's `i` again, declared before the
+ * first loop (igreplay: the outer counter wanted after every temporary, v48 -> 55.5+, which no
+ * fresh `j` gets -- an inline helper over either loop or both, j declared at the top, k reused
+ * leave it 14 or 30 off). Before: OPEN, 0x368 against 0x370 -- the last store read the data word
+ * off this again (the frame 16 smaller), the detail walk's counters s4/s3/s1 for the target's
+ * s1/s4/s2 */
 void CVisual::SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base)
 {
     if (!m_noBufferRefs)
         base->m_refs++;
 
     char *names = (char *)base->m_data;
+    unsigned int *&lods = m_lodMesh.data();
 
     m_lodMesh[vid] = (CMesh *)buf;
     _word128 *h = (_word128 *)m_lodMesh[vid];
@@ -335,7 +337,9 @@ void CVisual::SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base)
     unsigned int n = h->u16[0];
     _word128 *p = h + 1;
 
-    for (unsigned int i = 0; i < n; i++, p++) {
+    unsigned int i;
+
+    for (i = 0; i < n; i++, p++) {
         unsigned char *kind = &p->u8[2];
 
         switch (*kind) {
@@ -354,8 +358,9 @@ void CVisual::SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base)
             break;
         case 3:
             if (tex) {
+                unsigned int k = p->u16[0];
+
                 if (p->u16[6]) {
-                    unsigned int k = p->u16[0];
                     _word128 *f = (_word128 *)(p->u32[1] + (unsigned int)names);
                     _word128 *v = (_word128 *)_malloc(k * 16, 0, 0);
                     _word128 *t = v;
@@ -393,14 +398,14 @@ void CVisual::SetBuffer(_word128 *buf, unsigned int vid, CVisBase *base)
     DETAIL *d = m_details;
 
     if (d && !d->m_6) {
-        for (unsigned int j = 0; j < m_numDetails; j++, d++) {
+        for (i = 0; i < m_numDetails; i++, d++) {
             for (unsigned int e = 0; e < d->m_count; e++) {
                 d->m_data[e].m_tex = FindTexture(m_dynTexList, names + (unsigned int)d->m_data[e].m_tex);
             }
         }
         m_details->m_6 = 1;
     }
-    ((_word128 *)m_lodMesh[vid])->u8[2] = 1;
+    ((_word128 *)lods[vid])->u8[2] = 1;
 }
 
 /* a view's VU buffer copied for this visual: a new owner of the same size (its constructor inline

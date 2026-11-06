@@ -220,6 +220,13 @@ public:
     /* the walk begun, and whether it has ended (st_mpexit.cpp's; the teamwork rating's walk) */
     CEntityItr() : _it(GetEntityList().begin()), _iIdx(0) {}
     bool More() const { return _it != GetEntityList().end(); }
+    void Next()
+    {
+        do {
+            ++_it;
+            _iIdx++;
+        } while (_it != GetEntityList().end() && !IsSeal());
+    }
 
     std::list<CEntity *>::const_iterator _it;   // 0x0
     int _iIdx;   // 0x4
@@ -235,7 +242,7 @@ static inline int Percent(float f) { return Round(100.0f * f); }
 /* a SEAL's stats (zseal.h's CSealStats: SOCOM II's halfword counters at the SEAL's +0x58C) */
 class CSealStats {
 public:
-    unsigned short m_count[0x3c / 2];   // 0x0
+    unsigned short m_count[0x48 / 2];   // 0x0 (0x48 bytes: its constructor, 0x545200, zeroes them all)
 };
 
 /* a valve's kind (zanim.h's: only the one made here) */
@@ -287,6 +294,7 @@ struct _zrdr {
 class CUIVariable : public _zrdr {
 public:
     void UpdateDependents();
+    CUIVariable &operator=(const char *s);   /* 0x3862A0 */
     /* an integer, the watchers told only when it changes (st_mpexit.cpp's) */
     CUIVariable &operator=(int i)
     {
@@ -347,7 +355,7 @@ extern "C" float func_001F3550(CObjectiveCounts *counts)
  * the alarms' `li s2,35` lands between the name's lui and the jal, the name's addiu in the delay
  * slot, as the target (as an if-statement MW put the li in the slot whatever its placement --
  * round 34's measurements, every one 2 off) */
-extern "C" float func_001F3290(CSealStats **stats)
+extern "C" float func_001F3290(CSealStats **stats, int)
 {
     int score = 35;
 
@@ -469,7 +477,17 @@ float fabsf(float x);   /* 0x1B3620 */
  * test). The target's [begin-bt, More-bt] [begin-cp, Next-bt] [More-cp, Next-cp] fits no one depth
  * per call: Next() through More() (0x6C0), a Step() wrapper over Next() (0x664) and More() through an
  * inline End() (0x6A4) all change the size. (C2DMessage_Q::Tick's iterator below every temporary,
- * round 48's pointer here, was a second web: fts_message.cpp, round 49 -- not this walk's case) */
+ * round 48's pointer here, was a second web: fts_message.cpp, round 49 -- not this walk's case)
+ * Round 50 (with SetRoundStatUiVars above, the same walk): igdump's syms number the slot objects in
+ * the slots' order (@N ascending = address descending), and each chain's base temporary (bt) is made
+ * one inline level before its copy (cp), level by level, a level's in generation order (a `for`: the
+ * init, the increment, the test). BOTH targets then read as the Next() chain ONE LEVEL DEEPER than
+ * the constructor's begin() and More()'s end(): here [begin-bt More-bt] [begin-cp Next-bt More-cp]
+ * [Next-cp], SetRoundStatUiVars' [begin-bt More-bt] [begin-cp More-cp Next-bt] [Next-cp] -- where
+ * this source gives [begin-bt Next-bt More-bt] [begin-cp Next-cp More-cp]. With Next() (`it.Next()`
+ * for it.Advance() below) this function is at the size, 11 off, the slots alone; every deeper
+ * spelling measured (a Step() wrapper, More() / AtEnd() / an End() inline in Next's test) either
+ * trips the level-5 cut or lets MW share the end node in s7 */
 extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
 {
     int down1 = 0;
@@ -556,6 +574,129 @@ extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
     UIVar("StatEnemiesCaptured") = stats[0]->m_count[20];
     UIVar("StatTeamworkPct") = pct;
     return 0.01f * pct;
+}
+
+extern "C" {
+void func_00545200(CSealStats *stats);   /* (CSealStats' constructor, OVL2: every counter zeroed) */
+}
+
+/* the round's stats into the UI's variables (OVL1 0x1F21B0; SOCOM 1's SetRoundStatUiVars, the
+ * single-player half): the player and the SEALs of his team (bit 2) gathered, up to four, each
+ * with its stats -- a missing one's a zeroed default --, the four ratings computed (objectives,
+ * stealth, accuracy, teamwork), the career taken up in a single-player game (theMission's byte at
+ * 0x18 2), the overall rating -- 45 % objectives, 20 % stealth, 10 % accuracy, 25 % teamwork,
+ * at least 60 in that game -- shown and kept in a valve, and the time in the game as "hhh:mm:ss".
+ * OPEN, 6 instructions (written in the game states' round 50, unwritten before; at the target's size):
+ * the walk's frame slots only. The walk is a do-while with the end test first (`count < 4` at the
+ * bottom, jumping back to the one More() test at the top: a `for` / `while` with the count in its
+ * condition is laid out test-at-the-bottom, `for (;;)` and `while (count < 4)` with the break give
+ * this layout too); its step the in-class Next() with `!IsSeal()` (the target materialises the SEAL
+ * test, sltu / xori / bnez, where the out-of-line Advance 0x1F1F30 does not); the time's digits by
+ * `iSec -= q * c` (`%=` is a div: the target multiplies back), the first digit an if/else (a
+ * ternary leaves one store), the overflow's "999:59:59" through MW's __memcpy intrinsic (the
+ * array initialiser's own block copy, both loads first, from the literal: strcpy and memcpy stay
+ * calls, a struct assignment pairs each load with its store), the career's `this` a local declared
+ * ahead of ftsGetPlayer (computed in its delay slot, held in s0), the four default stats four
+ * statements (an unrolled loop schedules the stores apart). Left: the slots, high to low -- the
+ * target begin-bt 284, More-bt 280, begin-cp 276, More-cp 272, Next-bt 268, Next-cp 264, here
+ * begin-bt, More-bt, Next-bt, begin-cp, More-cp, Next-cp (@1405 @1411 @1417, @1422 @1425 @1428 in
+ * igdump's syms: every walk's base temporary is made one inline level before its copy, so the
+ * target's Next() chain sits one level deeper than the constructor's and More()'s). Tried: Next()
+ * out of line (auto-inlined, dead-stripped), through More(), an End() / AtEnd() or a static IsEnd(it) / NotEnd(it) inline (each 0x614: any inline level around Next's end() lets MW share the end node in s7), behind a
+ * Step() wrapper (the cut: 0x5C0, or the end node held in s7: 0x60C-0x614), the walk written in
+ * place with a static step (0x600), the four loop forms above -- the order holds or the code moves.
+ * The teamwork rating's open slots (below) are the same question */
+extern "C" void func_001F21B0(CObjectiveCounts *counts)
+{
+    CSealStats none;
+
+    func_00545200(&none);
+    CZSealBody *seals[4] = {0};
+    CSealStats *stats[4] = {0};
+
+    stats[0] = &none;
+    stats[1] = &none;
+    stats[2] = &none;
+    stats[3] = &none;
+    int n = 0;
+    int count = 0;
+    CEntityItr it;
+
+    do {
+        if (!it.More())
+            break;
+        CZSealBody *seal = &it.GetSeal();
+
+        if (seal) {
+            if (seal == ftsGetPlayer() || seal->m_team & 2) {
+                seals[count] = seal;
+                stats[count] = (CSealStats *)&seal->m_58c;
+                count++;
+                n++;
+            }
+        }
+        it.Next();
+    } while (count < 4);
+    float objectives = func_001F3550(counts);
+    float stealth = func_001F3290(stats, n);
+    float accuracy = func_001F2E40(stats, n);
+    float teamwork = func_001F27C0(seals, stats, n);
+
+    if (theMission.m_18 == 2) {
+        CCareerStats *career = (CCareerStats *)((char *)&theMission + 0x1950);
+        CZSealBody *player = ftsGetPlayer();
+        int hit = player->m_590;
+        int fired = player->m_594;
+        float acc;
+
+        if (fired > 0)
+            acc = 100.0f * ((float)hit / (float)fired);
+        else
+            acc = 0.0f;
+        career->AddMission(0.01f * Round(acc), accuracy, stealth, teamwork, objectives);
+    }
+    int total = Round(100.0f * (0.45f * objectives + 0.2f * stealth + 0.1f * accuracy + 0.25f * teamwork));
+
+    if (theMission.m_18 == 2)
+        total = total < 60 ? 60 : total;
+    UIVar("StatOverallPct") = total;
+    CValve::Create("StatOverallPct", total, VALVE_TYPE_1);
+    char szTime[] = "000:00:00";
+    int iSec = (int)theMission.m_timer;
+
+    if (iSec < 3600000) {
+        int h = iSec / 360000;
+
+        if (h > 0)
+            szTime[0] = '0' + h;
+        else
+            szTime[0] = ' ';
+        iSec -= h * 360000;
+        int th = iSec / 36000;
+
+        szTime[1] = '0' + th;
+        iSec -= th * 36000;
+        int hr = iSec / 3600;
+
+        szTime[2] = '0' + hr;
+        iSec -= hr * 3600;
+        int tm = iSec / 600;
+
+        szTime[4] = '0' + tm;
+        iSec -= tm * 600;
+        int mn = iSec / 60;
+
+        szTime[5] = '0' + mn;
+        iSec -= mn * 60;
+        int ts = iSec / 10;
+
+        szTime[7] = '0' + ts;
+        iSec -= ts * 10;
+        szTime[8] = '0' + iSec;
+    } else {
+        __memcpy((void *)szTime, (void *)"999:59:59", sizeof(szTime));
+    }
+    UIVar("TimeInGame") = szTime;
 }
 
 /* a mission taken into the career (OVL1 0x1F1FB0; SetRoundStatUiVars 0x1F21B0 calls it on
@@ -649,10 +790,6 @@ CZSealBody &CEntityItr::GetSeal() const
     CEntity *e = (CEntity *)*_it;
 
     return *(CZSealBody *)(e && e->m_type == 2 ? e : 0);
-}
-
-extern "C" {
-void func_001F21B0(CObjectiveCounts *counts);   /* SetRoundStatUiVars */
 }
 
 

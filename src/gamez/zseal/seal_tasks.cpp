@@ -435,6 +435,9 @@ struct CTSound : TASK_HDR {
      * names ours) */
     void SetStarted(bool b) { m_started = b; }
     void SetBit7(bool b) { m_bit7 = b; }
+    void SetBlocking(bool b) { m_blocking = b; }
+    void SetSitrep(bool b) { m_sitrep = b; }
+    void SetBroadcast(bool b) { m_broadcast = b; }
 
     /* the n'th name, 0 past the last: the entity's first, then the sounds (inline; the name ours) */
     const char *GetName(int n)
@@ -1043,8 +1046,19 @@ struct CTMap : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
+/* a parameter's value as the block holds it: a number, a byte name's code, or a region's cell packed
+ * into a word (ours) */
+union TASK_VALUE {
+    int i;
+    float f;
+};
+
+/* ai::PARAM (SOCOM 1's CTParam): a parameter of the SEAL's AI tested (the layout read off Parse; the
+ * names ours) */
 struct CTParam : TASK_HDR {
-    unsigned char _8[0x10 - 0x8];
+    unsigned short m_which;   // 0x8: an AI_PARAM
+    unsigned short m_op;   // 0xa: an ai::TEST_OP (CValve::ParseOperator's code)
+    TASK_VALUE m_value;   // 0xc
     TASK_ENT m_ent;   // 0x10: an entity whose SEAL is tested in the task's SEAL's place (the tick's)
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
@@ -1057,7 +1071,36 @@ extern "C" {
 bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd);
 }
 
+/* ai::STATE (SOCOM 1's CTState): an AI state pushed on the SEAL's stack -- or another SEAL's, the
+ * "ai" entity's -- or the stack popped (the layout read off Parse; the names ours but the tags') */
 struct CTState : TASK_HDR {
+    enum KIND { PUSH = 0, POPIF = 1, POPTO = 2, POP = 3 };
+
+    unsigned short m_state;   // 0x8: the AI_STATE pushed, or popped to or by
+    unsigned short m_kind;   // 0xa: a KIND
+    TASK_ENT m_ent;   // 0xc: "ai": the entity whose AI it is, none for the task's SEAL
+    unsigned int m_flags;   // 0x14: the action state's "state"; the rush's flags (4: contact)
+    unsigned char _18[0x1c - 0x18];
+    float m_timer;   // 0x1c: "timer" (the vehicle's and the rush's)
+    union {
+        PNT3D m_offset;   // 0x20: the follow's "offset"
+        float m_range;   // 0x20: the rush's "range"
+    };
+    TASK_NAME m_name;   // 0x2c: the state's entity, vehicle or action -- else the pushed state's name
+
+    /* a block of a state, sized to the name (inline: its name's length 0 for none computed at run
+     * time -- the pops' `strlen(0)` arm emitted unreached) */
+    static CTState *Create(AI_STATE state, const char *name)
+    {
+        unsigned int size = TaskAlign(TaskStrLen(name)) + 48;
+        CTState *cmd = (CTState *)_calloc(size, 1, 0, 0);
+
+        cmd->hdr.data_size = size;
+        cmd->hdr.data_type = ai_cmdid[0];
+        cmd->m_state = state;
+        cmd->m_name.Set(name);
+        return cmd;
+    }
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
@@ -1102,8 +1145,9 @@ struct CTMacro : TASK_HDR {
 
 /* ai::LOOKAT (SOCOM 1's CTLookAt) */
 struct CTLookAt : TASK_HDR {
-    /* (the names ours) */
+    /* (the names ours; Parse's kinds through the int setter: `daddiu`, its constants not folded) */
     void SetLooking(unsigned int n) { m_looking = n; }
+    void SetKind(int kind) { m_kind = kind; }
 
     Rfloat m_wait;   // 0x8: the tag "wait"
     float m_timer;   // 0x10
@@ -1118,7 +1162,7 @@ struct CTLookAt : TASK_HDR {
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
     static void End(_zanim_cmd_hdr *hdr);
-    static CTLookAt *Create(const char *name);    /* (RegisterCommands' handlers, unwritten) */
+    static CTLookAt *Create(const char *name);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
@@ -1264,11 +1308,34 @@ inline void SetAiBit17(CSealCtrlAi *ai, bool b)
 }
 
 /* a valve command's data as a task holds it (SOCOM 1's VALVE_CMD_DATA, zvalve/valve.h's, which this
- * unit does not include): the valve set before the compare and cleared after (OVL1 0x353FD0) */
+ * unit does not include -- the same layout): the valve set before the compare and cleared after (OVL1
+ * 0x353FD0); CTValve::Parse leaves it null and reads the value as CValve::CmdParseCmp does */
 struct VALVE_CMD_DATA {
-    CValve *m_valve;   // 0x0
-    unsigned char _4[0xc - 0x4];
+    CValve *m_valve;   // 0x0: valve.h's ref
+    int value;   // 0x4: the constant, or the second valve named as an argument's or the anim's
+    unsigned char op;   // 0x8: CValve::ParseOperator's code
+    unsigned char isArg : 1;   // 0x9
+    unsigned char isAnim : 1;   // 0x9
+    unsigned char valIsArg : 1;   // 0x9
+    unsigned char valIsAnim : 1;   // 0x9
+    unsigned char valIsValve : 1;   // 0x9: value names a valve
 
+    /* (OVL1 0x353C70, valve_main.cpp's) */
+    static CValve *ParseValveName(const char *name, int &index);
+    /* the valve's two flags set (inline, ours: the target's one `andi zero,1` for both, as for the
+     * value's three) */
+    void SetRefFlags(bool arg, bool anim)
+    {
+        isArg = arg;
+        isAnim = anim;
+    }
+    /* the value's three flags set (valve.h's) */
+    void SetValueFlags(bool arg, bool anim, bool valve)
+    {
+        valIsArg = arg;
+        valIsAnim = anim;
+        valIsValve = valve;
+    }
     bool Compare();
 };
 
@@ -1278,7 +1345,7 @@ struct CTValve : TASK_HDR {
     VALVE_CMD_DATA m_data;   // 0x8
     int m_valve;   // 0x14: a SEAL_VALVE
 
-    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);    /* (RegisterCommands' handlers, unwritten) */
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
 };
 
@@ -2663,7 +2730,9 @@ void CTHold::Begin(_zanim_cmd_hdr *hdr)
 
 /* a block made for an entity's name or none (OVL2 0x5D7E70: out of line, CTLookAt::Parse's first
  * call; SOCOM 1's Parse built it inline and copied the name to the block's end -- SOCOM II still
- * sizes the block for it but adds the name to the running anim's names; the name ours) */
+ * sizes the block for it but adds the name to the running anim's names; the name ours). Kept out of
+ * line under `#pragma auto_inline off`: Parse, defined after it, would inline it */
+#pragma auto_inline off
 CTLookAt *CTLookAt::Create(const char *name)
 {
     unsigned int size = TaskAlign(TaskStrLen(name)) + 48;
@@ -2682,6 +2751,81 @@ CTLookAt *CTLookAt::Create(const char *name)
     cmd->m_ent.m_type = 0;
     cmd->m_ent.SetName(name);
     return cmd;
+}
+#pragma auto_inline reset
+
+/* a direction's name to a CAiMap::DIR (OVL2 0x518D80, the AI core's -- unnamed) and a look flag's
+ * name to its bit (OVL2 0x5752B0, seal_ai.cpp's) */
+extern "C" unsigned char func_00518D80(const char *name);
+extern "C" unsigned char func_005752B0(const char *name);
+
+/* a look read: at the "entity" (kind 2), a "pos", a "region"'s centre, a "net" or "node" line's cell
+ * (kind 1) or a "dir" (kind 3); then the "flags" by name, each set -- or cleared, after a '!' --, a
+ * "wait" (the look's bits 0 and 1 set with it) and the "rate" (OVL2 0x5D79F0; SOCOM 1's built the
+ * block in place). The region's centre a named local (the target's frame: the region's cell, the
+ * centre, the line's cell, then GetCenter's own -- passed as `GetCellCenter(r->GetCenter(), ...)` the
+ * copy is a temporary below the line's cell) */
+_zanim_cmd_hdr *CTLookAt::Parse(_zrdr *rdr)
+{
+    const char *name = zrdr_findstring(rdr, "entity");
+    CTLookAt *cmd = Create(name);
+    CPnt3D p;
+
+    if (name)
+        cmd->SetKind(2);
+    else if (zrdr_findPNT3D(rdr, "pos", &p)) {
+        cmd->m_pos = p;
+        cmd->SetKind(1);
+    } else if (const char *rn = zrdr_findstring(rdr, "region")) {
+        CAiMapLoc loc;
+        CAiMap::region *r = AiMaps.GetRegion(rn, loc);
+
+        if (r) {
+            CAiMapLoc c = r->GetCenter();
+
+            if (AiMaps.GetCellCenter(c, &cmd->m_pos))
+                cmd->SetKind(1);
+        }
+    } else {
+        _zrdr *t = zrdr_findtag(rdr, "net");
+
+        if (t || (t = zrdr_findtag(rdr, "node"))) {
+            CAiMapLoc loc;
+            _zrdr *i = t->Item(0);
+
+            if (AiMaps.GetLocation(i ? i->String() : 0, loc) && AiMaps.GetCellCenter(loc, &p)) {
+                cmd->m_pos = p;
+                cmd->SetKind(1);
+            }
+        } else if (const char *d = zrdr_findstring(rdr, "dir")) {
+            cmd->m_18_24 = func_00518D80(d);
+            cmd->SetKind(3);
+        }
+    }
+    _zrdr *flags = zrdr_findtag(rdr, "flags");
+
+    if (flags) {
+        int n = flags->Count();
+
+        for (int i = 0; i < n; i++) {
+            const char *f = TaskItem(flags, i)->String();
+
+            if (f) {
+                if (*f == '!')
+                    cmd->m_flags &= ~func_005752B0(f + 1);
+                else
+                    cmd->m_flags |= func_005752B0(f);
+            }
+        }
+    }
+    Rfloat wait(0.0f);
+
+    if (zrdr_findRfloat(rdr, "wait", &wait)) {
+        cmd->m_wait = wait;
+        cmd->m_looking |= 3;
+    }
+    zrdr_findreal(rdr, "rate", &cmd->m_rate, 1);
+    return &cmd->hdr;
 }
 
 /* the look drawn (OVL2 0x5D7850: the bit cleared in place gives the byte mask `andi 0xfb`; through
@@ -3748,6 +3892,80 @@ bool CTSound::Tick(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
+/* a sound task read: the "name" (or "NAME") list's sounds -- none, no block --, the block sized to the
+ * "entity"'s name and theirs, the names laid end to end after the entity's; then the tags (OVL2
+ * 0x5D1290; SOCOM 1's). The size summed in steps (the entity's length first in the add, the sum
+ * duplicated into both arms of TaskStrLen's test: written in one expression, the names' length comes
+ * first and the align block gains a pad, 0x454); the rdr spilled to the frame as the target's (nine
+ * saved registers) */
+_zanim_cmd_hdr *CTSound::Parse(_zrdr *rdr)
+{
+    CTSound *cmd = 0;
+    _zrdr *names = zrdr_findtag(rdr, "name");
+
+    if (!names)
+        names = zrdr_findtag(rdr, "NAME");
+    if (names && names->type == 4) {
+        int items = names->Count();
+        int count = 0;
+        int len = 0;
+
+        for (int i = 0; i < items; i++) {
+            _zrdr *it = TaskItem(names, i);
+
+            if (it && it->type == 3) {
+                len += strlen(it->String()) + 1;
+                count++;
+            }
+        }
+        if (count > 0) {
+            const char *ent = zrdr_findstring(rdr, "entity");
+            unsigned int size = TaskStrLen(ent);
+
+            size += len;
+            size = TaskAlign(size) + 20;
+
+            cmd = (CTSound *)_calloc(size, 1, 0, 0);
+            cmd->hdr.data_size = size;
+            cmd->hdr.data_type = ai_cmdid[0];
+            ((TASK_NAME *)cmd->m_names)->Set(ent);
+            int k = 1;
+
+            for (int j = 0; j < count; j++) {
+                _zrdr *it = TaskItem(names, j);
+
+                if (it && it->type == 3) {
+                    const char *name = it->String();
+                    char *d = cmd->m_names;
+                    int n = k;
+
+                    while (n--)
+                        d += strlen(d) + 1;
+                    ((TASK_NAME *)d)->Set(name);
+                    k++;
+                }
+            }
+            cmd->m_count = count;
+            cmd->m_items = items;
+            if (zrdr_findtag(rdr, "blocking"))
+                cmd->SetBlocking(true);
+            if (zrdr_findtag(rdr, "sitrep"))
+                cmd->SetSitrep(true);
+            if (zrdr_findtag(rdr, "broadcast"))
+                cmd->SetBroadcast(true);
+            int aware = 4;
+
+            zrdr_findint(rdr, "aware", &aware, 1);
+            cmd->m_aware = aware;
+            int event = 0;
+
+            if (zrdr_findint(rdr, "event", &event, 1))
+                cmd->m_event = (int)(127.0f * event);
+        }
+    }
+    return &cmd->hdr;
+}
+
 /* (OVL2 0x5D1250) */
 void CTSound::Begin(_zanim_cmd_hdr *hdr)
 {
@@ -3756,6 +3974,259 @@ void CTSound::Begin(_zanim_cmd_hdr *hdr)
     cmd->SetStarted(true);
     cmd->SetBit7(false);
     cmd->m_inst = 0;
+}
+
+/* a parameter by its name, none for none or an unknown one (inline: CTParam::Parse walks the names
+ * twice; SOCOM 1's get_param(const char *), out of line there) */
+static inline AI_PARAM TaskParamByName(const char *name)
+{
+    AI_PARAM r = PARAM_NONE;
+
+    if (name)
+        for (int i = 0; i < 23; i++)
+            if (!strcasecmp(name, get_param_name((AI_PARAM)i))) {
+                r = (AI_PARAM)i;
+                break;
+            }
+    return r;
+}
+
+/* a cell packed into a word: the map in the top six bits, then x and y (ours) */
+static inline int TaskLocWord(const CAiMapLoc &loc)
+{
+    return loc.y | (loc.m_mapid << 26 | loc.x << 13);
+}
+
+/* a role's name to its code (OVL2 0x5756B0, seal_ai.cpp's) */
+extern "C" unsigned char func_005756B0(const char *name);
+
+/* a parameter test read: the parameter's name, the operator and the value -- a role or a stance by
+ * name, a sleep region's cell (none's for a value not a name), a whole number or a real by the
+ * parameter -- and for a value read the block made, with the entity named fourth (or by "entity"
+ * past four) and the "ai" argument (OVL2 0x5D5140; SOCOM 1's). The block null declared first (its
+ * zero in the count's first delay slot), `ok` defined after the first walk (it shares s0 with the
+ * walk's counter and the entity), the operator an int narrowed at its store, `n > 4` the fused test,
+ * and the entity through a reference to it (its address held in s1 across AddName -- written
+ * `cmd->m_ent.` MW folds the offsets, 2 instructions short) */
+_zanim_cmd_hdr *CTParam::Parse(_zrdr *rdr)
+{
+    CTParam *cmd = 0;
+    int n = rdr->Count();
+
+    if (n >= 3) {
+        const char *name = rdr->Item(0)->String();
+        int op = CValve::ParseOperator(rdr->Item(1)->String());
+        TASK_VALUE value;
+        AI_PARAM p = TaskParamByName(name);
+        bool ok = false;
+
+        switch (p) {
+        case PARAM_ROLE:
+            if (zrdr_isitemtype(rdr, 2, 3)) {
+                value.i = func_005756B0(rdr->Item(2)->String());
+                ok = true;
+            }
+            break;
+        case PARAM_STANCE:
+            if (zrdr_isitemtype(rdr, 2, 3)) {
+                value.i = sealai::get_stance(rdr->Item(2)->String());
+                ok = true;
+            }
+            break;
+        case PARAM_SLEEP_REGION:
+            if (zrdr_isitemtype(rdr, 2, 3)) {
+                CAiMapLoc loc;
+
+                if (AiMaps.GetRegion(rdr->Item(2)->String(), loc)) {
+                    ok = true;
+                    value.i = TaskLocWord(loc);
+                }
+            } else {
+                ok = true;
+                value.i = TaskLocWord(CAiMapLoc::invalid);
+            }
+            break;
+        case PARAM_SLEEP:
+        case PARAM_AWARE:
+        case PARAM_INSIDE:
+        case PARAM_OUTSIDE:
+        case PARAM_WEAPON_UP:
+        case PARAM_DOCORPSE:
+        case PARAM_DEEPSLEEPER:
+        case PARAM_NOFADE:
+        case PARAM_AWARE_COUNT:
+        case PARAM_CANCHAT:
+        case PARAM_REDSMOKE:
+            value.i = rdr->Item(2)->Int();
+            ok = true;
+            break;
+        default:
+            ok = true;
+            value.f = rdr->Item(2)->Real();
+            break;
+        }
+        if (ok) {
+            const char *ent = 0;
+
+            if (n == 4)
+                ent = rdr->Item(3)->String();
+            else if (n > 4)
+                ent = zrdr_findstring(rdr, "entity");
+            AI_PARAM which = TaskParamByName(name);
+
+            cmd = NewTask<CTParam>();
+            TASK_ENT &e = cmd->m_ent;
+
+            cmd->m_which = which;
+            cmd->m_op = (ai::TEST_OP)op;
+            cmd->m_value = value;
+            e.m_name = 0;
+            e.m_id = CEntity::invalidId;
+            e.m_type = 0;
+            e.SetName(ent);
+            cmd->m_param = 0;
+            zrdr_finduint(rdr, "ai", (unsigned int *)&cmd->m_param, 1);
+        }
+    }
+    return &cmd->hdr;
+}
+
+/* a state push read: the state by name, and for the follow, the vehicle, the action and the rush the
+ * entity, vehicle or action named (the follow's and the rush's entity, the vehicle and the action
+ * required), the follow's offset (20 ahead unless read), the action's state, the rush's timer, range
+ * and contact (4 unless "nocontact") and the vehicle's timer (none unless read); else a pop -- to or
+ * by a state, or the top; then any of them for the "ai" entity's AI (OVL2 0x5D01F0; SOCOM 1's). The push's name tested on the call's
+ * result (`push`, v0) and copied into the name the state's entity replaces (s3, in the test's delay
+ * slot): the chained `name = push = f()` keeps get_state's argument the copy -- with the copy written
+ * as its own statement MW passes v0 (1 off); the state tested `!= AI_STATE_UNKNOWN` narrows before
+ * the branch as the target does (a plain `if (state)` tests the raw word) */
+_zanim_cmd_hdr *CTState::Parse(_zrdr *rdr)
+{
+    CTState *cmd = 0;
+    const char *push;
+    const char *name = push = zrdr_findstring(rdr, "push");
+
+    if (push) {
+        AI_STATE state = sealai::get_state(name);
+
+        if (state != AI_STATE_UNKNOWN) {
+            bool need = false;
+
+            switch (state) {
+            case AI_STATE_FOLLOW:
+                need = true;
+                name = zrdr_findstring(rdr, "entity");
+                break;
+            case AI_STATE_RUSH:
+                name = zrdr_findstring(rdr, "entity");
+                break;
+            case AI_STATE_USEVEHICLE:
+                need = true;
+                name = zrdr_findstring(rdr, "vehicle");
+                break;
+            case AI_STATE_ACTION:
+                need = true;
+                name = zrdr_findstring(rdr, "action");
+                break;
+            }
+            if (!need || name) {
+                cmd = Create(state, name);
+                cmd->m_kind = PUSH;
+                switch (state) {
+                case AI_STATE_ACTION:
+                    zrdr_finduint(rdr, "state", &cmd->m_flags, 1);
+                    break;
+                case AI_STATE_FOLLOW:
+                    cmd->m_offset.x = 0.0f;
+                    cmd->m_offset.y = 0.0f;
+                    cmd->m_offset.z = 20.0f;
+                    zrdr_findPNT3D(rdr, "offset", &cmd->m_offset);
+                    break;
+                case AI_STATE_RUSH:
+                    zrdr_findreal(rdr, "timer", &cmd->m_timer, 1);
+                    zrdr_findreal(rdr, "range", &cmd->m_range, 1);
+                    cmd->m_flags = 4;
+                    if (zrdr_findtag(rdr, "nocontact"))
+                        cmd->m_flags &= ~4;
+                    break;
+                case AI_STATE_USEVEHICLE:
+                    cmd->m_timer = -1.0f;
+                    zrdr_findreal(rdr, "timer", &cmd->m_timer, 1);
+                    break;
+                }
+            }
+        }
+    } else if (const char *s = zrdr_findstring(rdr, "popif")) {
+        cmd = Create(sealai::get_state(s), 0);
+        cmd->m_kind = POPIF;
+    } else if (const char *s = zrdr_findstring(rdr, "popto")) {
+        cmd = Create(sealai::get_state(s), 0);
+        cmd->m_kind = POPTO;
+    } else if (zrdr_findtag(rdr, "pop")) {
+        cmd = Create(AI_STATE_UNKNOWN, 0);
+        cmd->m_kind = POP;
+    }
+    if (cmd) {
+        const char *ai = zrdr_findstring(rdr, "ai");
+
+        if (ai) {
+            cmd->m_ent.m_name = 0;
+            cmd->m_ent.m_id = CEntity::invalidId;
+            cmd->m_ent.m_type = 0;
+            cmd->m_ent.SetName(ai);
+        }
+    }
+    return &cmd->hdr;
+}
+
+/* an AI valve's compare read: the SEAL valve named first (none for an unknown name), then as
+ * CValve::CmdParseCmp reads its arguments -- tested true alone, an operator, or an operator and a
+ * value, a number or a valve named as an argument's or the anim's (OVL2 0x5CE1A0; SOCOM 1's, whose
+ * reader counted its items otherwise) */
+_zanim_cmd_hdr *CTValve::Parse(_zrdr *rdr)
+{
+    unsigned int n = rdr ? rdr->Count() : 0;
+
+    if (!n)
+        return 0;
+    const char *name = rdr->Item(0)->String();
+
+    if (CSealCtrlAi::get_valve(name) == SEAL_VALVE_NONE)
+        return 0;
+    CTValve *cmd = NewTask<CTValve>();
+    VALVE_CMD_DATA *d = &cmd->m_data;
+
+    cmd->m_valve = CSealCtrlAi::get_valve(name);
+    if (n == 1) {
+        d->op = 1;
+        d->SetRefFlags(false, false);
+        d->m_valve = 0;
+        d->value = 0;
+        d->SetValueFlags(false, false, false);
+    } else if (rdr->Count() == 2) {
+        d->op = CValve::ParseOperator(rdr->Item(1)->String());
+        d->SetRefFlags(false, false);
+        d->m_valve = 0;
+        d->value = 0;
+        d->SetValueFlags(false, false, false);
+    } else if (rdr->Count() >= 3) {
+        _zrdr *v = rdr->Item(2);
+
+        d->op = CValve::ParseOperator(rdr->Item(1)->String());
+        d->SetRefFlags(false, false);
+        d->m_valve = 0;
+        if (v->type == 3) {
+            int index = -1;
+            CValve *valve = VALVE_CMD_DATA::ParseValveName(v->String(), index);
+
+            d->value = index != -1 ? index : ZAnim.m_CurAnim->AddValve(valve->m_name);
+            d->SetValueFlags(index != -1, true, true);
+        } else {
+            d->value = v->Int();
+            d->SetValueFlags(false, false, false);
+        }
+    }
+    return &cmd->hdr;
 }
 
 /* the valve the AI holds compared, done at once (OVL2 0x5CE040; SOCOM 1's the same) */

@@ -234,6 +234,10 @@ public:
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
     void SetCurItemByIndex(int index);
+    /* the item in hand's ammunition and its fire mode (kit.h's; OVL2 0x5C6970, 0x5C3790 -- a FIREMODE,
+     * zweapon.h's byte enum, read here as its byte: the AI's fire set-up 0x55F3B0 asks both) */
+    void *GetCurAmmo();
+    unsigned char GetCurFireMode();
     /* the weapons parented to the hand for the rifle or the pistol (kit.h's; OVL2 0x5C6A40, 0x5C6DA0:
      * the two takes start with them) */
     void ReParentToRifle();
@@ -670,13 +674,25 @@ public:
     unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
 };
 
-/* a thrown grenade's flight, solved (SOCOM 1's; only the statics) */
+/* a thrown grenade's flight, solved (SOCOM 1's: 0x1c bytes, passed by value to ai::DrawFunc, which
+ * copies all seven words; the members' names ours) */
 class CDynGrenade {
 public:
     /* SOCOM II's takes a scale first (the signature ours) */
     static float ComputeTimeToImpact(float scale, float b, float c);
     static float ComputeElevOfs(float t);
     static float ComputeMaxVel(float dist, float height, float *vel);
+    /* where the grenade is t after its throw: the throw's point, its velocity times t and half the
+     * -98 of gravity times t squared on y (DrawFunc<CDynGrenade>'s inline: the drop a temporary of
+     * the sum, built first and given the slot below the operators' -- a named drop sits above them) */
+    CPnt3D operator()(float t) const
+    {
+        return m_pos + m_vel * t + CPnt3D(0.0f, -49.0f * (t * t), 0.0f);
+    }
+
+    CPnt3D m_pos;   // 0x0
+    CPnt3D m_vel;   // 0xc
+    float m_18;   // 0x18
 };
 
 /* where a look comes from (SOCOM 1's DWARF: AI_LOOK, a signed byte -- AIL_ALL is -1, compared
@@ -1030,7 +1046,11 @@ public:
  * the members SOCOM II's code shows at SOCOM 1's offsets are named */
 class AI_FIREPARAMS {
 public:
-    unsigned char _0[8];   // SOCOM 1: m_weapon, m_ammo
+    /* every field to rest (OVL2 0x55F6F0; SOCOM 1's) */
+    void reset();
+
+    class CZFTSWeapon *m_weapon;   // 0x0: the kit's item when set up (0x55F3B0; SOCOM 1's m_weapon)
+    void *m_ammo;   // 0x4: its ammunition (SOCOM 1's m_ammo)
     CPnt3D m_targetPos;   // 0x8
     CPnt3D m_targetVel;   // 0x14
     CPnt3D m_lookDirW;   // 0x20
@@ -2790,13 +2810,15 @@ struct CAiSlice {
     }
     /* the window moved on and resized to a new count (inline: ai_posttick's three -- not SetSize, whose
      * stores run m_wrap, m_total, m_size where these run m_size, m_total, m_wrap). The zero arm of the
-     * wrap first (`m_total == 0 ? 0 : ...`, the target's `bnez total` to the divide) and the sum built
-     * in two steps from m_size (the target loads m_size first and keeps the sum in its register) */
+     * wrap first (`m_total == 0 ? 0 : ...`, the target's `bnez total` to the divide) and the sum
+     * built from m_size read into a local (the target loads m_size first and keeps the sum in its
+     * register: byte-exact with the caller's body under `#pragma opt_propagation off`, the kit's
+     * round 56) */
     void Next(int total, int size)
     {
-        int start = m_size;
+        int size0 = m_size;
+        int start = m_start + size0;
 
-        start += m_start;
         if (start >= m_total)
             start = m_total == 0 ? 0 : start % m_total;
         m_start = start;

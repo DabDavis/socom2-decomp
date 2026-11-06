@@ -2761,7 +2761,12 @@ extern "C" bool func_005EC230(CZSealBody *from, CZSealBody *seal, CNodeAction *n
  * after the first test (0x1A8), the rest an inline bool function with its own r or with r passed in
  * (0x1A8), r an int (0x1B0), a do/while(0) of breaks (0x190), r set through a by-reference inline
  * setter or a pointer to it, the returns through a by-reference inline (0x1B0), the range test
- * wrapping the rest (0x1A0) -- MW propagates r's false into each early return in every form */
+ * wrapping the rest (0x1A0) -- MW propagates r's false into each early return in every form. Round
+ * 56: `#pragma opt_propagation off` (inside the body or before it), opt_dead_assignments, opt_lifetimes,
+ * opt_dead_code and opt_loop_invariants off change nothing (0x1B0); opt_common_subs off keeps the
+ * false out of the type test (0x1C0); propagation and common_subs off together give the target's
+ * size, 0x1B8, but 84 instructions off (the action's loads uncached) -- the fold is CSE's value
+ * numbering, not propagation alone (build/scratch/kit/v_door*.py) */
 bool CanUseDoorAction(CZSealBody *seal, CNodeAction *a, float range)
 {
     bool r = false;
