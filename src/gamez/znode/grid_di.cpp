@@ -42,6 +42,15 @@ bool cameraCollideFlagRequired;
 static zdb::DiIntersect *_cmpdi_di;
 static float *_cmpdi_rs;
 
+/* the batch walk's cell marks, a bit per set for each cell of the box (SOCOM 1's global CellCheck,
+ * a flag per byte there), and the marks of the cell being searched (SOCOM 1's global NodeCheck, a
+ * byte there; each stored then read back, as SOCOM 1's) */
+unsigned int CellCheck[1600];
+unsigned int NodeCheck;
+/* the batch walk switched off (SOCOM II's: nothing sets it; SOCOM 1 tested CGrid::m_doIntersect,
+ * set, the other way round; the name ours) */
+static bool noBatchIntersect;
+
 /* two hits' indices by their squared distances, nearer first (SOCOM 1's) */
 static int _cmpdi(const void *a, const void *b)
 {
@@ -248,6 +257,146 @@ bool CGrid::GetIntersect(DiIntersect *di)
     }
     stack.Pop();
     return true;
+}
+
+/* the smaller and the larger of two (macros: each operand read twice, the reads shared -- the
+ * accumulated bound first, `<` and `>`; the names ours) */
+#define BATCH_MIN(a, b) ((a) < (b) ? (a) : (b))
+#define BATCH_MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/* a batch of intersect sets run in one walk of the grid (SOCOM 1's): the box round every set's ray
+ * (2), sphere (4: the tip's x its radius) or point (1) taken in x and z, each set's hits cleared;
+ * every cell inside marked clear, then each set's walk marks the cells it enters with the set's bit
+ * (SOCOM 1 a flag per byte); then the marked cells' nodes, each once per walk (the tick), searched
+ * for the whole batch -- the sets' tree marks cleared, the cell's props with collision under their
+ * matrices (pushed unless the unit one, as GetIntersect), then the node itself */
+/* a sphere set's radius, its tip's x (inline: the walk reads it ahead of the centre; ours) */
+static inline float Radius(const DiIntersect *d) { return d->m_Tip.x; }
+
+/* a set's search marks cleared: the node its tree search stopped at and the type's done bit
+ * (inline: the set read once for both; ours) */
+static inline void BatchReset(DiIntersect *d)
+{
+    d->m_TreeDoneNode = 0;
+    d->m_Type &= ~0x8000;
+}
+
+int CGrid::GetIntersectBatch(DiIntersect **di, int n)
+{
+    CPnt3D ext[2];
+    CPnt3D pts[2];
+
+    if (n == 0)
+        return 0;
+    if (noBatchIntersect)
+        return 0;
+    ext[0].x = di[0]->m_Tail.x;
+    ext[0].z = di[0]->m_Tail.z;
+    ext[1].x = di[0]->m_Tail.x;
+    ext[1].z = di[0]->m_Tail.z;
+    for (int i = 0; i < n; i++) {
+        di[i]->m_Cnt = 0;
+        switch (di[i]->m_Type & ~0x8000) {
+        case 2:
+            ext[0].x = BATCH_MIN(ext[0].x, di[i]->m_Tail.x);
+            ext[0].z = BATCH_MIN(ext[0].z, di[i]->m_Tail.z);
+            ext[1].x = BATCH_MAX(ext[1].x, di[i]->m_Tail.x);
+            ext[1].z = BATCH_MAX(ext[1].z, di[i]->m_Tail.z);
+            ext[0].x = BATCH_MIN(ext[0].x, di[i]->m_Tip.x);
+            ext[0].z = BATCH_MIN(ext[0].z, di[i]->m_Tip.z);
+            ext[1].x = BATCH_MAX(ext[1].x, di[i]->m_Tip.x);
+            ext[1].z = BATCH_MAX(ext[1].z, di[i]->m_Tip.z);
+            break;
+        case 4:
+            ext[0].x = BATCH_MIN(ext[0].x, di[i]->m_Tail.x - Radius(di[i]));
+            ext[0].z = BATCH_MIN(ext[0].z, di[i]->m_Tail.z - Radius(di[i]));
+            ext[1].x = BATCH_MAX(ext[1].x, di[i]->m_Tail.x + Radius(di[i]));
+            ext[1].z = BATCH_MAX(ext[1].z, di[i]->m_Tail.z + Radius(di[i]));
+            break;
+        case 1:
+            ext[0].x = BATCH_MIN(ext[0].x, di[i]->m_Tail.x);
+            ext[0].z = BATCH_MIN(ext[0].z, di[i]->m_Tail.z);
+            ext[1].x = BATCH_MAX(ext[1].x, di[i]->m_Tail.x);
+            ext[1].z = BATCH_MAX(ext[1].z, di[i]->m_Tail.z);
+            break;
+        }
+    }
+    SetTraversalExtents(ext, 2, false);
+    int ix = m_ix;
+    int iz = m_iz;
+    int w = m_ixb - ix;
+    int cells = w * (m_izb - iz);
+
+    for (int c = 0; c < cells; c++)
+        CellCheck[c] = 0;
+    for (int k = 0; k < n; k++) {
+        BatchReset(di[k]);
+        switch (di[k]->m_Type & ~0x8000) {
+        case 2:
+            pts[0] = di[k]->m_Tail;
+            pts[1] = di[k]->m_Tip;
+            SetTraversalBoundary(pts, 2, true);
+            break;
+        case 4:
+            pts[0].x = di[k]->m_Tail.x - di[k]->m_Tip.x;
+            pts[0].z = di[k]->m_Tail.z - di[k]->m_Tip.x;
+            pts[1].x = di[k]->m_Tail.x + di[k]->m_Tip.x;
+            pts[1].z = di[k]->m_Tail.z + di[k]->m_Tip.x;
+            SetTraversalBoundary(pts, 2, false);
+            break;
+        case 1:
+            pts[0].x = di[k]->m_Tail.x;
+            pts[0].z = di[k]->m_Tail.z;
+            SetTraversalBoundary(pts, 1, false);
+            break;
+        }
+        m_xx = m_ix;
+        m_zz = m_iz - 1;
+        while (gridGetNextIndex()) {
+            if (!gridCellOut(m_xx, m_zz))
+                CellCheck[(m_xx - ix) + w * (m_zz - iz)] |= 1 << (k % 32);
+        }
+    }
+    SetTraversalExtents(ext, 2, false);
+    stack.Push(&CMatrix::identity);
+    for (m_zz = m_iz; m_zz < m_izb; m_zz++) {
+        int row = w * (m_zz - iz);
+
+        for (m_xx = m_ix; m_xx < m_ixb; m_xx++) {
+            NodeCheck = CellCheck[row + (m_xx - ix)];
+            if (NodeCheck) {
+                for (m_NextAtom = *gridGetAtomBasePtr(m_xx, m_zz); m_NextAtom; m_NextAtom = m_NextAtom->Next) {
+                    CNode *ent = m_NextAtom->Ent;
+
+                    if (ent->m_active && ent->m_TickNum < m_TickNum) {
+                        ent->m_TickNum = m_TickNum;
+                        for (int i = 0; i < n; i++)
+                            BatchReset(di[i]);
+                        CCell *cell = m_NextAtom->GetCell();
+
+                        if (cell) {
+                            CClutterList &list = cell->m_clutterListDI;
+
+                            if (list.size()) {
+                                for (CClutterList::iterator it = list.begin(); it != list.end(); ++it) {
+                                    m_node = (*it)->m_node;
+                                    if (func_003084F0((*it)->GetMatrix()) == false) {
+                                        stack.Multiply((*it)->GetMatrix(), true);
+                                        NodeGetIntersectBatch(m_node, di, n);
+                                        stack.Pop();
+                                    } else
+                                        NodeGetIntersectBatch(m_node, di, n);
+                                }
+                            }
+                        }
+                        NodeGetIntersectBatch(m_node = m_NextAtom->Ent, di, n);
+                    }
+                }
+            }
+        }
+    }
+    stack.Pop();
+    return 1;
 }
 
 /* the highest hit no more than alt above the point, or none (SOCOM 1's) */

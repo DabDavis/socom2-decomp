@@ -1443,6 +1443,9 @@ public:
     bool GetAltitude(DiIntersect *di);
     /* a batch of intersect sets run (grid_di.cpp's, 0x2D3CF0, SOCOM 1's: CWorld's calls it) */
     int GetIntersectBatch(DiIntersect **di, int n);
+    /* a node's tree searched for a batch of sets (grid_di.cpp's, 0x2D3030, SOCOM 1's: the batch
+     * walk calls it for each node it searches) */
+    void NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n);
     /* a node's tree searched for the hit set (grid_di.cpp's, 0x2D2890: SOCOM II's one walk under
      * GetIntersect and GetAltitude, where SOCOM 1 had NodeGetIntersect and NodeGetAltitude) */
     void NodeGetIntersect(CNode *node, DiIntersect *di);
