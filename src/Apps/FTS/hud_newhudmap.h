@@ -12,8 +12,9 @@ class CZSealBody;
 
 namespace zdb {
 class CWorld;
-}
 
+/* the map's clipping circle (zdb's: SOCOM 1's symbol table and SOCOM II's call to its clipper,
+ * CircleSegmentClip__Q23zdb11CCircleClip..., int_circleclip.cpp) */
 class CCircleClip {
 public:
     CCircleClip() : m_Cx(0), m_Cy(0), m_Radius(0) {}
@@ -25,6 +26,11 @@ public:
         m_Cy = cy;
         m_Radius = radius;
     }
+    /* a segment clipped to the circle: the points, colours and UVs out and in (int_circleclip.cpp's,
+     * 0x2DF160; CZLineMap::Clip's call) */
+    int CircleSegmentClip(CPnt4D *in, CPnt4D *out, CPnt4D *a, CPnt4D *b, CPnt4D *in_c, CPnt4D *out_c,
+                          CPnt4D *a_c, CPnt4D *b_c, CPnt4D *in_t, CPnt4D *out_t, CPnt4D *a_t,
+                          CPnt4D *b_t);
 
     float m_Cx;   // 0x0
     float m_Cy;   // 0x4
@@ -32,6 +38,7 @@ public:
     float m_rCy;   // 0xc
     float m_Radius;   // 0x10
 };
+}
 
 /* the map's objective list (hud_objectives.cpp defines the class): a stand-in, as far as the map
  * reaches into it -- a C2D (SOCOM 1's DWARF), so the map draws it through its table (`lw t9,236`:
@@ -137,7 +144,7 @@ public:
     float m_scale;   // 0x7c
     float m_radar_distance;   // 0x80
     CMatrix m_matrix;   // 0x90
-    CCircleClip *m_circleclipper;   // 0xd0
+    zdb::CCircleClip *m_circleclipper;   // 0xd0
     float m_centerx;   // 0xd4
     float m_centerz;   // 0xd8
     bool m_isFullScreen;   // 0xdc

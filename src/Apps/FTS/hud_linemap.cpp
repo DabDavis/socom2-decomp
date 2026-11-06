@@ -10,8 +10,9 @@
  * CAiMap::GetCellCenter (0x20F220), GetCell (0x2106A0), GetAltitude (0x210630, inline in ai.h),
  * IsMapCell, GetIndex, IsLayer and the vector pieces, all on the AI core's real ai.h; (round 43)
  * Tick (0x20EBD0, SOCOM 1's: its two map ticks one inline each, TickLines pinned out of line) and
- * TickRegions (0x20DF70, SOCOM 1's). Not yet: Clip, TickWayPoints, TickAnchors, SetupPolygon. Defined in reverse of their
- * image order (-inline deferred). */
+ * TickRegions (0x20DF70, SOCOM 1's); (round 60) Clip (0x20D5F0, SOCOM 1's: the clipper held in a local --
+ * SOCOM 1's s5 too --, zdb's CCircleClip, SetClipInfo's count passed). Not yet: TickWayPoints, TickAnchors,
+ * SetupPolygon. Defined in reverse of their image order (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
 #include "../../ai/ai.h"
@@ -669,6 +670,57 @@ void CZLineMap::TickRegions(const CAiMap &map, bool bDim)
                 myLine->SetTrans(fTrans);
             }
         }
+    }
+}
+
+/* the lines clipped to the map's circle (SOCOM 1's Clip, its DWARF: isvalid, outCnt, ii): each line
+ * up to the last (at most 500) filled into the clipper's rows, clipped, the ends the clipper kept
+ * copied back -- 1 the second, 2 the first, 3 both, 4 none -- and set and shown, or hidden when
+ * nothing is left; no clipper, no clipping */
+void CZLineMap::Clip(CZNewHudMap *map)
+{
+    for (int ii = 0; ii < m_lastline && ii < 500; ii++) {
+        zdb::CCircleClip *clip = map->m_circleclipper;
+
+        if (!clip)
+            return;
+        m_linelist[ii].FillClipInfo((float (*)[4])m_pi, (float (*)[4])m_rgbi, (float (*)[4])m_uvi);
+
+        int outCnt = clip->CircleSegmentClip(&m_po[0], &m_po[1], &m_pi[0], &m_pi[1], &m_rgbo[0],
+                                             &m_rgbo[1], &m_rgbi[0], &m_rgbi[1], &m_uvo[0], &m_uvo[1],
+                                             &m_uvi[0], &m_uvi[1]);
+        bool isvalid = true;
+
+        switch (outCnt) {
+        case 1:
+            m_po[1] = m_pi[1];
+            m_rgbo[1] = m_rgbi[1];
+            m_uvo[1] = m_uvi[1];
+            break;
+        case 2:
+            m_po[0] = m_pi[0];
+            m_rgbo[0] = m_rgbi[0];
+            m_uvo[0] = m_uvi[0];
+            break;
+        case 3:
+            m_po[0] = m_pi[0];
+            m_rgbo[0] = m_rgbi[0];
+            m_uvo[0] = m_uvi[0];
+            m_po[1] = m_pi[1];
+            m_rgbo[1] = m_rgbi[1];
+            m_uvo[1] = m_uvi[1];
+            break;
+        case 4:
+            break;
+        case 0:
+            isvalid = false;
+            break;
+        }
+        if (isvalid) {
+            m_linelist[ii].SetClipInfo((float (*)[4])m_po, (float (*)[4])m_rgbo, (float (*)[4])m_uvo, 2);
+            m_linelist[ii].On();
+        } else
+            m_linelist[ii].Off();
     }
 }
 
