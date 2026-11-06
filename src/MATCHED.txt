@@ -1906,6 +1906,7 @@
 0x002253C0 ComputeNewRating__23@unnamed@st_mpexit_cpp@Fv
 0x002256F0 SetMvpUiVars__23@unnamed@st_mpexit_cpp@FPCcPCc
 0x00225A00 SetPlayerStatsUiVar__23@unnamed@st_mpexit_cpp@FPCcii
+0x00225BC0 SetFinalTeamTotalsUiVar__23@unnamed@st_mpexit_cpp@FbPCc
 0x00225E40 GetHitPct__10CSealStatsCFv
 0x00225E70 CompareGameSeals__23@unnamed@st_mpexit_cpp@FP10CZSealBodyP10CZSealBody
 0x00225F20 GetGameStats__10CZSealBodyFv
@@ -2024,6 +2025,7 @@
 0x0022F440 tcmUpdateVote__FP10CZSealBodyi
 0x0022F4C0 tcmMute__FP10CZSealBodyi
 0x0022F530 tcmUpdateMute__FP10CZSealBodyi
+0x0022F5B0 tcmSelectPlayer__FP10CZSealBodyi
 0x0022F810 tcmUpdateRadio__FP10CZSealBodyi
 0x0022F880 tcmRadioOnOff__FP10CZSealBodyi
 0x0022F8F0 tcmUpdateRadioOnOff__FP10CZSealBodyi
@@ -2063,6 +2065,7 @@
 0x00231E40 Find__8CTCMNodeFPCcRQ23std48vector<P8CTCMNode,Q23std21allocator<P8CTCMNode>>b
 0x00231F80 AddChild__8CTCMNodeFP8CTCMNode
 0x00231FD0 DeleteChildren__8CTCMNodeFv
+0x00232030 RemoveChild__8CTCMNodeFP8CTCMNode
 0x002320E0 SetText2__8CTCMNodeFPCc
 0x00232100 SetName__8CTCMNodeFPCc
 0x00232170 SetCaption__8CTCMNodeFPCci
@@ -3762,7 +3765,8 @@
 0x002B5830 Draw__12C2DMessage_QFPQ23zdb7CCamera
 0x002B5DB0 Tick__12C2DMessage_QFf
 0x002B63B0 __dt__16C2DMessageStringFv
-0x002B6430 func_002B6430
+0x002B6430 ScrollUp__12C2DMessage_QFf
+0x002B6530 Add_Message__12C2DMessage_QFPCc7MSGTYPEbif
 0x002B6D00 SetBkgColor__12C2DMessage_QFfff
 0x002B6D60 LastMessage__12C2DMessage_QFv
 0x002B6DE0 Clear_Messages__12C2DMessage_QFv
@@ -3860,6 +3864,7 @@
 0x002BDDA0 CreateLocalSeal__11CZSealStateFP10CZSealBodyb
 0x002BDEA0 UpdateRollandsUnitStuff__11CZSealStateFP10CZSealBodyPQ211CZSealState13TypeSealState
 0x002BE020 RemoteSealPostUpdateCallback__11CZSealStateFiii
+0x002BE150 IncrementalUpdateRemoteSeal__11CZSealStateFiii
 0x002BEE10 RemoteSealUpdateCallback__11CZSealStateFiii
 0x002BEF20 SealDeleteCleanup__11CZSealStateFi
 0x002BEF60 RemoteSealDeletionCallback__11CZSealStateFii
@@ -6530,6 +6535,7 @@
 0x00370340 LoadSpec__11CScrollTextFRC11CScrollSpec
 0x00370350 Draw__11CScrollTextFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x00370610 Load__12CPopUpDialogFPQ23zdb16CTextureRelocMgr
+0x00370690 Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr
 0x00370920 Tick__12CPopUpDialogFf
 0x00370990 HandlePad__12CPopUpDialogFPC4CPadi
 0x00370C20 func_00370C20
@@ -7046,6 +7052,7 @@
 0x00394840 SkbToggleCaption1__FP13CSoftKeyboard
 0x003948F0 SkbToggleLock2__Fv
 0x00394920 SkbToggleCaption2__FP13CSoftKeyboard
+0x003949C0 SkbTickDisplay__FP13CSoftKeyboardf
 0x00394DA0 SkbScale__FP13CSoftKeyboardf
 0x00394F60 SkbPadKeyEvent__FP4CPad
 0x00395110 SkbEmptyAllowed__Fv
@@ -7267,6 +7274,7 @@
 0x003A3490 Reload__13CStringTablesF8LANGUAGE
 0x003A36C0 GetString__13CStringTablesFiPCc
 0x003A3700 GetId__13CStringTablesFPCcPCc
+0x003A3740 Unload__13CStringTablesFPCc
 0x003A3890 __dt__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv
 0x003A3900 Load__13CStringTablesFPCc8LANGUAGE
 0x003A3BC0 __ct__Q23std48vector<P8LOCENTRY,Q23std21allocator<P8LOCENTRY>>Fv
@@ -8352,9 +8360,12 @@
 0x004DAA00 InitParamList
 0x004DAAE0 casrGetParam
 0x004DACA8 UpdateExevStatus
+0x004DAD90 casrSetParam
+0x004DB970 casrActivateContext
 0x004DBDB0 casrDoNormalSecondPass
 0x004DBF70 casrDoIsoWordSecondPass
 0x004DCAD0 casrInitSampleFormat
+0x004DCC58 casrAcquisition
 0x004DD070 casrStartUserWordTraining
 0x004DDF48 casrInitSegmentation
 0x004DE048 casrAcknowledge
@@ -10505,6 +10516,7 @@
 0x005CF6F0 Parse__7CTRangeFP5_zrdr
 0x005CF800 Tick__9CTStopAllFP14_zanim_cmd_hdrPf
 0x005CF860 Parse__9CTStopAllFP5_zrdr
+0x005CF930 Tick__7CTStateFP14_zanim_cmd_hdrPf
 0x005D01F0 Parse__7CTStateFP5_zrdr
 0x005D0730 Tick__8CTStanceFP14_zanim_cmd_hdrPf
 0x005D08A0 End__8CTStanceFP14_zanim_cmd_hdr
@@ -10533,6 +10545,7 @@
 0x005D4300 Begin__8CTPursueFP14_zanim_cmd_hdr
 0x005D4480 Parse__8CTPursueFP5_zrdr
 0x005D4510 Tick__7CTParamFP14_zanim_cmd_hdrPf
+0x005D4770 func_005D4770
 0x005D5140 Parse__7CTParamFP5_zrdr
 0x005D5700 Tick__7CTPaintFP14_zanim_cmd_hdrPf
 0x005D57C0 Parse__7CTPaintFP5_zrdr
@@ -10565,9 +10578,11 @@
 0x005D96E0 clear__Q23std32vector<Pv,Q23std13allocator<Pv>>Fv
 0x005D96F0 __ct__Q23std32vector<Pv,Q23std13allocator<Pv>>Fv
 0x005D9710 Tick__7CTGroupFP14_zanim_cmd_hdrPf
+0x005DAF50 func_005DAF50
 0x005DB350 End__6CTGotoFP14_zanim_cmd_hdr
 0x005DB510 Tick__6CTGotoFP14_zanim_cmd_hdrPf
 0x005DB730 Begin__6CTGotoFP14_zanim_cmd_hdr
+0x005DBF70 Parse__6CTGotoFP5_zrdr
 0x005DC3C0 Tick__12CTFireWeaponFP14_zanim_cmd_hdrPf
 0x005DC6B0 Begin__12CTFireWeaponFP14_zanim_cmd_hdr
 0x005DC800 Parse__12CTFireWeaponFP5_zrdr
@@ -11676,6 +11691,7 @@
 0x006311E8 func_006311E8
 0x00631388 func_00631388
 0x00631390 func_00631390
+0x006313D8 func_006313D8
 0x00631460 func_00631460
 0x006314C0 func_006314C0
 0x00631508 func_00631508
@@ -11830,6 +11846,7 @@
 0x00638F20 randomMT
 0x00638FA8 randomMTSetCharArray
 0x00639038 setNewSeed
+0x00639058 setNewSeed_platform
 0x006390F0 rt_mutex_create
 0x00639138 rt_mutex_destroy
 0x00639180 rt_mutex_lock
@@ -11868,11 +11885,13 @@
 0x0063B2B0 func_0063B2B0
 0x0063B2D0 func_0063B2D0
 0x0063B2F0 func_0063B2F0
+0x0063B480 func_0063B480
 0x0063B520 func_0063B520
 0x0063C078 func_0063C078
 0x0063C138 func_0063C138
 0x0063C328 func_0063C328
 0x0063C3D0 func_0063C3D0
+0x0063C700 func_0063C700
 0x0063C810 func_0063C810
 0x0063C950 func_0063C950
 0x0063CB48 func_0063CB48
@@ -11979,8 +11998,11 @@
 0x00642968 func_00642968
 0x006429E8 func_006429E8
 0x00642A10 func_00642A10
+0x00642A58 func_00642A58
 0x00642BF8 func_00642BF8
+0x00642C48 func_00642C48
 0x00642DA8 func_00642DA8
+0x00642E70 func_00642E70
 0x00643018 func_00643018
 0x00643140 func_00643140
 0x00643168 func_00643168
@@ -12480,6 +12502,11 @@
 0x0064F5F0 func_0064F5F0
 0x0064F5F8 KM_GetSoftwareID
 0x0064F604 KM_GetSoftwareKeyPair
+0x006641D0 func_006641D0
+0x00664F80 func_00664F80
+0x00665B30 func_00665B30
+0x00667AA0 func_00667AA0
+0x00667AD0 func_00667AD0
 0x00668480 __sinit_ai_events.cpp
 0x00668540 __sinit_ai_astar.cpp
 0x00668630 __sinit_ai_map.cpp

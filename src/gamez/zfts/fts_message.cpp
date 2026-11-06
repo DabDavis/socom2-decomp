@@ -7,8 +7,9 @@
  * (0x2B6FC0, the states' round 41), LastMessage (open); the unit's vtable copies of C2D's inline
  * virtuals and the implicit ~C2DMessageString (0x2B63B0) come out byte-exact with them; Tick
  * (0x2B5DB0, written in the states' round 48, byte-exact since round 49) and Draw (0x2B5830, round
- * 49). The rest -- Add_Message (0x2B6530, its statics 0x3DE6F8-0x3DE708 before Draw's), 0x2B6430
- * -- still to write. Defined in reverse of their image order (-inline deferred). */
+ * 49); Add_Message (0x2B6530, its statics 0x3DE6F8-0x3DE708 before Draw's) and ScrollUp (0x2B6430,
+ * Tick's inline Scroll until then) in round 51 -- the unit complete. Defined in reverse of their image
+ * order (-inline deferred). */
 
 #include "../ztwod/ztwod.h"
 
@@ -70,24 +71,46 @@ public:
  * is its last function; the names ours) */
 static float s_fadeRate = 280.0f;
 static float s_fadeMax = 100.0f;
-/* the queue's own fade speed (OVL1 data 0x3DE6E0, 280.0: Tick and Add_Message read it, not written
- * yet) and the backgrounds' transparency, a texture's and the subtitles' (0x3DE6E8 76.8, 0x3DE6F0
+/* the queue's own fade speed (OVL1 data 0x3DE6E0, 280.0: Tick, ScrollUp and Add_Message read it) and
+ * the backgrounds' transparency, a texture's and the subtitles' (0x3DE6E8 76.8, 0x3DE6F0
  * 128.8: Init's; variables, read with lwc1; the names ours) */
 static float s_queueFadeRate = 280.0f;
 static float s_backgroundTrans = 76.8f;
 static float s_subtitlesTrans = 128.8f;
+/* Add_Message's wrapping: added to the longest line's width, the most a word may be walked back over
+ * for a space, and where a longer word is cut (OVL1 data 0x3DE6F8 -8, 0x3DE700 24, 0x3DE708 32: ints,
+ * read with lw / lwc1 -- variables; the names ours) */
+static int s_wrapPad = -8;
+static int s_wrapWord = 24;
+static int s_wrapCut = 32;
 /* the lines' placing and the subtitles' background (OVL1 data 0x3DE710 4.0, 0x3DE718 -20.0, 0x3DE720
- * 27.0: Draw's, read with lwc1 -- variables; the names ours) -- after Add_Message's three
- * (0x3DE6F8-0x3DE708, not written yet) */
+ * 27.0: Draw's, read with lwc1 -- variables; the names ours) -- after Add_Message's three */
 static float s_lineBase = 4.0f;
 static float s_subtitlesTop = -20.0f;
 static float s_subtitlesPad = 27.0f;
+
+/* a message's kind: its colour's index (fts_state.h's MSGTYPE, a byte enum) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
 
 /* a message's line: SOCOM 1's C2DMessageString (a C2DString), SOCOM II's members after the
  * string's 0x98 bytes -- how long it stays up, how long it has been up, how many characters a
  * second it types, and the whole text it is typing (the names ours) */
 class C2DMessageString : public C2DString {
 public:
+    /* not yet up, typed at once until the queue gives its speed (inline: Add_Message's new, as
+     * SOCOM 1's) */
+    C2DMessageString() : m_time(0.0f), m_ttySpeed(10000.0f) {}
+    void SetColor(const CPnt4D &c)
+    {
+        m_color[0] = c.x;
+        m_color[1] = c.y;
+        m_color[2] = c.z;
+        m_color[3] = c.w;
+    }
     virtual void Tick(float dT);
     virtual void SetString(const char *s, bool translate);
     /* its time over, and faded out (the queue's Tick's tests; the names ours) */
@@ -111,31 +134,11 @@ public:
     virtual void Draw(zdb::CCamera *cam);
     void Clear_Messages();
     const char *LastMessage();
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
     void SetScrolling(bool on) { m_scrolling = on; }
     virtual void Tick(float dT);
 
-    /* a scroll begun: a descending queue's from its margin above, the others' backgrounds faded in
-     * (Tick's, three times; the name ours) */
-    void Scroll(float dT)
-    {
-        if (!m_descends) {
-            float trans = m_background2.GetTrans();
-            float max = m_subtitles ? s_subtitlesTrans : s_backgroundTrans;
-
-            if (trans != max) {
-                float t = trans + dT * s_queueFadeRate;
-
-                if (t > max)
-                    t = max;
-                m_background1.SetTrans(t);
-                m_background2.SetTrans(t);
-            }
-        } else {
-            m_440 = -m_ymargin;
-            m_450 = m_440 - m_438;
-            m_43c = 0.0f;
-        }
-    }
+    void ScrollUp(float dT);
     /* the queue empty: the backgrounds faded out, a descending queue's scroll put back at its top
      * (Tick's; the name ours) */
     void Unscroll(float dT)
@@ -189,10 +192,11 @@ public:
     int m_ymargin;   // 0x448: Init's "YMargin"
     float m_44c;   // 0x44c: the time since the last scroll
     float m_450;   // 0x450: the scroll's distance
-    int m_454;   // 0x454
-    int m_458;   // 0x458
-    unsigned char m_45c;   // 0x45c
-    unsigned char _45d[0x4dc - 0x45d];
+    /* Add_Message's: how deep its word-wrapping recursion is, how many lines the last message took,
+     * and that message's text (a repeat of it while lines are up fades them in again; the names ours) */
+    int m_depth;   // 0x454
+    int m_lines;   // 0x458
+    char m_lastText[128];   // 0x45c
     unsigned char m_centered : 1;   // 0x4dc
     unsigned char m_descends : 1;
     unsigned char m_bEnabled : 1;
@@ -337,9 +341,9 @@ void C2DMessage_Q::Init(C2DFont *font, CRdrFile *file)
         m_background2.Off();
     }
     zrdr_findreal(rdr, "TtySpeed", &m_TtySpeed, 1);
-    m_454 = 0;
-    m_458 = 0;
-    m_45c = 0;
+    m_depth = 0;
+    m_lines = 0;
+    m_lastText[0] = 0;
     m_scrolling = false;
 }
 
@@ -396,9 +400,9 @@ void C2DMessage_Q::Clear_Messages()
         delete m;
     }
     m_font = 0;
-    m_454 = 0;
-    m_458 = 0;
-    m_45c = 0;
+    m_depth = 0;
+    m_lines = 0;
+    m_lastText[0] = 0;
     SetScrolling(false);
 }
 
@@ -425,6 +429,165 @@ const char *C2DMessage_Q::LastMessage()
         return last->m_text.c_str();
     }
     return "";
+}
+
+/* a message put up (OVL1 0x2B6530; SOCOM 1's Add_Message(text, r, g, b), grown): nothing without a
+ * font or while disabled; the text's leading spaces skipped; at the top of a wrap the text kept,
+ * and a repeat of the last message while lines are up only fades its lines in again; else a line
+ * made -- the text, the scale (the queue's, or the one given a seventh larger), the font, the type's
+ * colour, the time it stays up (the queue's fade time by default), typed at the queue's speed,
+ * centred or not -- and measured on a scratch string: too long for the queue's width, and with a
+ * space in it, it is cut at the last space that fits (a word longer than the wrap cut at the cut)
+ * and the rest put up by a recursive call one level deeper; else the scroll put back and the line
+ * added. Byte-exact (the states' round 51) as first written but for six spellings, each measured:
+ * the colour through an inline SetColor(const CPnt4D &) (four statements re-read `msg` off the frame
+ * for each store, the inline keeps its `this` in a1); the walk's last node taken before begin() (the
+ * target's load order); the first measure through GetLength() (the field itself shared its address
+ * with the wrap loop's hoisted one); `if (m_maxlength && ...)` (`!= 0.0f` puts the constant first in
+ * the c.eq.s); the long word's cut an if/else assigning in both arms with the cut read in the test
+ * (the target's empty then-arm `b`; `if (...) break;` branches out directly, 8 bytes short); and the
+ * wrap's own index j declared at the top of its block -- `i` reused split into a temporary numbered
+ * after &tmp.m_length's loop-invariant hoist, swapping s3 and s4 (igreplay: any numbering of the
+ * cut / index below the hoist gives the target's; a named `int cut` local matches too) */
+void C2DMessage_Q::Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale)
+{
+    if (!m_font || !m_bEnabled)
+        return;
+    int count = size();
+    int i;
+
+    for (i = 0; text[i] == ' ' && text[i] != '\0'; i++)
+        ;
+    if (!m_depth) {
+        if (!strncmp(m_lastText, text + i, 128)) {
+            SetScrolling(count > 0);
+        } else {
+            SetScrolling(false);
+            m_lines = 0;
+        }
+        strncpy(m_lastText, text + i, 128);
+    }
+    if (!m_scrolling) {
+        C2DMessageString *msg = new C2DMessageString;
+        C2DString tmp;
+        float s;
+
+        if (scale == 0.0f)
+            s = m_scale;
+        else
+            s = scale * 1.1429f;
+        if (!time)
+            time = (int)m_transstep;
+        msg->SetString(text + i, true);
+        msg->m_scale = s;
+        msg->SetFont(m_font);
+        msg->SetColor(s_msgColors[type]);
+        msg->m_displayTime = time;
+        msg->SetTrans(0.0f);
+        msg->m_ttySpeed = m_TtySpeed;
+        msg->m_isCentered = centered;
+        msg->UpdatePos();
+        tmp.SetString(text + i, true);
+        tmp.m_scale = s;
+        tmp.SetFont(m_font);
+        tmp.UpdatePos();
+        strlen(text);
+        int width = (int)(s_wrapPad + (m_maxlength - m_xmargin * 2));
+
+        if (m_maxlength && tmp.GetLength() > width && strstr(text, " ")) {
+            tmp.SetString("", true);
+            tmp.UpdatePos();
+            int j;
+
+            for (j = 0; tmp.m_length < width && text[j]; j++) {
+                tmp.AddCharacter(text[j]);
+                tmp.UpdatePos();
+            }
+            while (text[j] == ' ' && j > 0)
+                j--;
+            int end = j;
+
+            while (text[j] != ' ' && j > 0) {
+                j--;
+                if (end - j > s_wrapWord) {
+                    if (s_wrapCut < strlen(text))
+                        j = s_wrapCut;
+                    else
+                        j = end;
+                    break;
+                }
+            }
+            if (!j) {
+                delete msg;
+                if (m_depth)
+                    m_depth--;
+                return;
+            }
+            char buf[512];
+
+            strncpy(buf, text, j);
+            buf[j] = 0;
+            msg->SetString(buf, true);
+            msg->UpdatePos();
+            msg->SetTrans(0.0f);
+            push_back(msg);
+            m_lines++;
+            if (text[j]) {
+                m_depth++;
+                Add_Message(text + j, type, centered, time, scale);
+            }
+            if (m_depth)
+                m_depth--;
+            return;
+        }
+        Unscroll(0.0f);
+        msg->SetTrans(0.0f);
+        push_back(msg);
+        m_lines++;
+        m_44c = 0.0f;
+    } else {
+        iterator j = end();
+        --j;
+        iterator first = begin();
+        int n = 0;
+
+        for (; n < m_lines && n < count; --j, n++) {
+            C2D *line = *j;
+
+            if (!line)
+                break;
+            line->SetTrans(0.0f);
+            if (j == first)
+                break;
+        }
+        Unscroll(0.0f);
+    }
+    if (m_depth)
+        m_depth--;
+}
+
+/* a scroll begun: a descending queue's from its margin above -- SOCOM 1's ScrollUp(), which was this
+ * alone --, the others' backgrounds faded in (OVL1 0x2B6430; Tick inlines it three times,
+ * CMission::ReOpen_Load calls it with 0) */
+void C2DMessage_Q::ScrollUp(float dT)
+{
+    if (!m_descends) {
+        float trans = m_background2.GetTrans();
+        float max = m_subtitles ? s_subtitlesTrans : s_backgroundTrans;
+
+        if (trans != max) {
+            float t = trans + dT * s_queueFadeRate;
+
+            if (t > max)
+                t = max;
+            m_background1.SetTrans(t);
+            m_background2.SetTrans(t);
+        }
+    } else {
+        m_440 = -m_ymargin;
+        m_450 = m_440 - m_438;
+        m_43c = 0.0f;
+    }
 }
 
 /* a frame of the queue: the lines ticked; the scroll -- an ascending queue held at its top, its
@@ -458,11 +621,11 @@ void C2DMessage_Q::Tick(float dT)
     if (!m_descends) {
         m_438 = m_top;
         if (size())
-            Scroll(dT);
+            ScrollUp(dT);
         else
             Unscroll(dT);
     } else if (m_44c > m_transstep && m_438 == m_top) {
-        Scroll(0.0f);
+        ScrollUp(0.0f);
         m_44c = 0.0f;
     } else if (m_43c > 1.0f) {
         m_438 = (int)m_440;
@@ -486,7 +649,7 @@ void C2DMessage_Q::Tick(float dT)
             next = EraseLine(i);
             delete s;
             if (!size())
-                Scroll(0.0f);
+                ScrollUp(0.0f);
         }
     }
 }

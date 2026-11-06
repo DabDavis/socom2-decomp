@@ -14,10 +14,16 @@
 extern "C" {
 void exit(int code);
 void func_002A6950(void *mission);
-void func_002B6530(void *queue, const char *text, MSGTYPE type, int b, int c, float time);   /* C2DMessage_Q::Add_Message (the type a byte enum: CCoreState::DisplayMessage copies it lb) */
 void func_005B61A0();
 
 }
+
+/* the message queue (fts_message.cpp's C2DMessage_Q: only its line add, OVL1 0x2B6530) and the
+ * message kind its colour is indexed by (fts_state.h's MSGTYPE) */
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
 
 void ftsNetworkGameUninit();
 void DMEDisconnectFromGameServer();
@@ -811,7 +817,7 @@ void CCoreState::DisplayMessage(const char *text, const char *who, int a, int b,
     s = who;
     s += ": ";
     s += text;
-    func_002B6530(&theMission.m_messages, text, type, 0, 0, 0.0f);
+    ((C2DMessage_Q *)&theMission.m_messages)->Add_Message(text, type, false, 0, 0.0f);
 }
 
 /* a pad's actuators stopped (the first pad's) */

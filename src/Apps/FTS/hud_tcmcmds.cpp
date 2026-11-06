@@ -210,7 +210,6 @@ void func_002B9B60(int from, bool remove);
 int func_002C2FA0();
 int func_002C2C20(int channel);
 const char *func_002C3B60(CZSealBody *seal, int i);
-const char *func_002C3C30(CZSealBody *seal, int i);
 /* the voice chat's */
 bool func_0030E540(void *chat);
 void func_0030E490(void *chat);
@@ -220,6 +219,13 @@ void func_0030E580(void *chat, CZNetPersona *persona, bool muted);
 struct CTCMRepeat;
 CTCMRepeat *func_0034A620();
 }
+
+/* the network game's personas (fts_net_persona.cpp's; SOCOM 1's GetSOUPString, the persona's i-th of
+ * five SOP strings -- the game states' round 50 named the row 0x2C3C30) */
+class CZPersonaState {
+public:
+    static char *GetSOUPString(CZSealBody *body, int i);
+};
 
 class CTCMRepeatTarget {
 public:
@@ -654,7 +660,8 @@ int tcmSelectTeam(CZSealBody *player, int team)
  * replay (igdump, igreplay --nb): the player takes s4 in the target, so a fifth saved-register
  * holder interferes with it there -- here the player's neighbours are r, m and unit only (caption,
  * the target's s3, is born after the player's last use): the original keeps the player live
- * longer, or numbers something else there. */
+ * longer, or numbers something else there. Round 62: igreplay --want 32=s4,34=s2,35=s1 over every
+ * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge */
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;
@@ -828,7 +835,7 @@ int tcmUpdateMessage(CZSealBody *player, int msg)
     case 51:
     case 52:
     case 53: {
-        const char *s = func_002C3C30(ftsGetPlayer(), msg - 49);
+        const char *s = CZPersonaState::GetSOUPString(ftsGetPlayer(), msg - 49);
         const char *caption;
 
         if (s && *s)
@@ -904,7 +911,9 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
  * initialised from the const view, the entity test written out, not AsSeal's ternary). Round
  * 53's replay: the 2 is a code-generation temporary made at the type test and hoisted (v53); the
  * one placement of 37 giving the target's a3/a2 is 46.5 -- between the end() copy's list address
- * and its temporary's stack address, inside the iterators' set-up */
+ * and its temporary's stack address, inside the iterators' set-up. Round 62: the unsigned count
+ * that closed tcmSelectPlayer (the index hoisted as a converted invariant) leaves this one at the
+ * same 7 -- the 2 (v54 then) still wants the iterators' set-up; an `(int)2` changes nothing */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;
@@ -931,19 +940,15 @@ int tcmUpdatePlayer(CZSealBody *player, int index)
     return r;
 }
 
-/* OPEN, 19 instructions (registers only): the target numbers the index parameter last (s0; the
- * end s1, the iterator s2, the entity s3, the count s4), here the index is s4 and the rest one
- * lower -- as if the walk were an inline helper whose parameters come after the caller's locals.
- * Round 49's replay (tools/igreplay.py --want, this unit's dump): the index node must sit at 37.5 --
- * after the walk's two iterator temporaries (@1778, @1780: front-end temporaries, so after every
- * named local) and before the code-generation temporaries; moved to the very end it takes s5. A
- * copy declared after the iterators (`int want = index;`) is 17 off (want s3: a named local, still
- * before the temporaries); the walk as an inline helper of (player, index), `index == n`, the count
- * declared after the iterators: 19. (SlotList::NextWeapon's index, the same miss, closed in round 49
- * as a new variable `next = index + 1` -- this walk does no arithmetic on its index.) */
+/* the PLAYER n items' select: the n-th live teammate made the target. Byte-exact since round 62
+ * (open since round 23: the index parameter numbered last, s0): the count is UNSIGNED, so `n ==
+ * index` converts the index -- a widening-or-equal int ETYPCON is an IRO-subable expression, and
+ * a loop-invariant one, so IRO_MoveInvariantExpressions hoists it into a temporary made after the
+ * walk's scalarised iterators (round 49's replay wanted it at 37.5, after @1778 / @1780) and before
+ * the common subexpressions: the target's s0. An `int` count compares the parameter itself */
 int tcmSelectPlayer(CZSealBody *player, int index)
 {
-    int n = 0;
+    unsigned int n = 0;
     std::list<CEntity *>::const_iterator it = tcmEntities().begin();
     std::list<CEntity *>::const_iterator e = tcmEntities().end();
 

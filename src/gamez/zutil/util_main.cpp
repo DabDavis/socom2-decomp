@@ -34,6 +34,9 @@ public:
         void *m_data;                // 0x4
         int m_id;                    // 0x8
         bool m_delete;               // 0xc
+
+        /* the next registration's id (0x49E2F0, SOCOM 1's static member) */
+        static int m_last_id;
     };   // 0x10 bytes
 
     /* the registrants to drop: those with an id (SOCOM 1's CIOPManager::delid, remove_if's
@@ -112,16 +115,13 @@ void zUtilUninit()
 {
 }
 
-/* the next registration's id (0x49E2F0; ours) */
-extern int data_0049E2F0;
-
 int CIOPManager::RegisterRebootCallback(RebootCallback cb, void *data)
 {
     CRegistrant r;
 
     r.m_callback = cb;
     r.m_data = data;
-    r.m_id = data_0049E2F0++;
+    r.m_id = CRegistrant::m_last_id++;
     r.m_delete = false;
     m_registrants.push_back(r);
     return r.m_id;

@@ -20,7 +20,7 @@
  * second guard: the target keeps `if (pP2p == 0) return 2;` as its own `jr ra` (not if-converted,
  * the -2 stored through v0), ours if-converts it (ce: IF-CASE-1) and shares the first guard's
  * v0 = 2; posnest/else/goto/dup-store/result spellings all convert or move the loop;
- * 0x63B480 (rotated and strength-reduced with its first step peeled); 0x639FB8 (2: the stores'
+ * 0x639FB8 (2: the stores'
  * order -- sched1 issues the three entry stores by register weight, the base's and the 7's deaths
  * putting nState first; every source order and a chained -1 tried). Not written: the create 0x6395B8 (its
  * record reloaded from the stack after every store, as the target does, but the defaults' order),
@@ -31,7 +31,13 @@
  * verdict variable twice, the registers move) and 0x63C3D0 (the leave message: its first loop's state
  * tests are two ifs, two movz; `== 3 || == 4` folds to the range test its second loop has) byte-exact.
  * OPEN: 0x63B5D0 (2: the peer's description -- the magic's lui and the local index's load issue the
- * other way round in sched1's dual-issue cycle; the stores' and the test's orders tried) and 0x63C170 (2: the
+ * other way round in sched2's dual-issue cycle; the stores' and the test's orders tried. Round 23b
+ * read sched2's dump: the lui (371) precedes the reload of nLocal after memset (101) by LUID, but
+ * 101 ranks higher -- the stores 95 and 98 through pInfo carry REG_DEP_ANTI on it, three dependants
+ * to the lui's one, because purge_addressof gives that reload a bare MEM (alias set 0, no
+ * MEM_SCALAR_P) where the entry's store to nLocal keeps int's set and the scalar flag, so
+ * fixed_scalar_and_varying_struct_p cannot clear it; fourteen spellings of the declarations, the
+ * stores, the compare and the constant leave the deps) and 0x63C170 (2: the
  * connection-lost handler -- each arm keeps its own copy of the reset, cross-jumped, and the state 0 is
  * assigned after the -2 initialisers; left: the join callback's `beq` keeps its argument load
  * `lw a1,8(sp)` in a plain slot (sched1 issued it before the pointer's load), here `beql` from the
@@ -556,6 +562,12 @@ int func_0063B410(RT_P2P *pP2p, int nConn, int *pnIndex)
     return 0;
 }
 
+/* the table's state and the peer that set it: the first entry in state 6, 7 or 5. Round 23b (open
+ * since round 11b, 16 bytes short): each state its own test, the arm written three times -- the
+ * first test and its stores lie within expand_end_loop's 30-insn scan, so the rotation moves them to
+ * the bottom with the bound (the copy at the entry peels the first step, two strength-reduced
+ * pointers), and the 7 and 5 arms cross-jump into one found block; one `||` test is one arm, and
+ * the rotated region then holds the whole body */
 int func_0063B480(RT_P2P *pP2p, int *pnState, int *pnIndex)
 {
     int i;
@@ -569,7 +581,17 @@ int func_0063B480(RT_P2P *pP2p, int *pnState, int *pnIndex)
     if (pP2p == 0)
         return 2;
     for (i = 0; i < pP2p->nEntries; i++) {
-        if (pP2p->pEntries[i].nState == 6 || pP2p->pEntries[i].nState == 7 || pP2p->pEntries[i].nState == 5) {
+        if (pP2p->pEntries[i].nState == 6) {
+            *pnState = pP2p->pEntries[i].nState;
+            *pnIndex = i;
+            break;
+        }
+        if (pP2p->pEntries[i].nState == 7) {
+            *pnState = pP2p->pEntries[i].nState;
+            *pnIndex = i;
+            break;
+        }
+        if (pP2p->pEntries[i].nState == 5) {
             *pnState = pP2p->pEntries[i].nState;
             *pnIndex = i;
             break;

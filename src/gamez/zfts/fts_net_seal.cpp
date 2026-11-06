@@ -2,8 +2,9 @@
  * network objects of kind "SealObject", their creation, updates and deletion). OVL1 from 0x2BD380,
  * after fts_remote.cpp, to the static initialiser 0x400650's registered destructor (0x2BFFC0): the
  * remote guy list's vector instances (insert 0x2BF980, its temporary's deleter destructor 0x2BFDD0,
- * reserve 0x2BFE40, the list's destructor 0x2BFFC0) close it. Only some of it so far: not yet
- * IncrementalUpdateRemoteSeal (0x2BE150) and the tail; UpdateLocalSeal (0x2BD640) byte-exact since round 48. Defined in reverse of their image order (-inline deferred). */
+ * reserve 0x2BFE40, the list's destructor 0x2BFFC0) close it. UpdateLocalSeal (0x2BD640) byte-exact
+ * since round 48, IncrementalUpdateRemoteSeal (0x2BE150) since round 51; not yet the tail. Defined in
+ * reverse of their image order (-inline deferred). */
 
 class CZSealBody;
 
@@ -54,12 +55,12 @@ public:
         unsigned char m_weapons[0x64 - 0x34];   // 0x34: the packed weapon data
         unsigned short m_64;   // 0x64
         unsigned short m_66;   // 0x66
-        unsigned short m_68;   // 0x68
-        unsigned short m_6a;   // 0x6a
-        unsigned short m_6c;   // 0x6c
-        unsigned short m_6e;   // 0x6e
-        unsigned short m_70;   // 0x70
-        unsigned short m_72;   // 0x72
+        short m_68;   // 0x68
+        short m_6a;   // 0x6a
+        short m_6c;   // 0x6c
+        short m_6e;   // 0x6e
+        short m_70;   // 0x70
+        short m_72;   // 0x72
         unsigned short m_unit_id;   // 0x74
         unsigned short m_76;   // 0x76
         unsigned short m_chartype;   // 0x78: a custom character type's index, 0 a persona's SEAL (SOCOM 1's byte at 0x7a)
@@ -135,11 +136,34 @@ enum ITEM_ENUM {
     ITEM_ENUM_255 = 255
 };
 
+/* the kit's item and fire-mode ids, a SEAL's weapon state and death kind (byte enums; only their
+ * names: the setters' mangled names carry them) */
+enum EQUIP_ITEM {
+    EQUIP_ITEM_0 = 0,
+    EQUIP_ITEM_255 = 255
+};
+enum FIREMODE {
+    FIREMODE_0 = 0,
+    FIREMODE_255 = 255
+};
+enum WEAPON_STATE {
+    WEAPON_STATE_0 = 0,
+    WEAPON_STATE_255 = 255
+};
+enum SEAL_DEATH_TYPE {
+    SEAL_DEATH_0 = 0,
+    SEAL_DEATH_255 = 255
+};
+
 class CZKit {
 public:
     void *GetCurItem() const;   /* 0x5C3780 */
     ITEM_ENUM GetCurItemEnum() const;   /* 0x5C89D0 */
     signed char GetCurFireMode();   /* 0x5C3790 */
+    void SetCurFireMode(FIREMODE mode);   /* 0x5C37B0 */
+    bool SetCurItemEnum(EQUIP_ITEM item);   /* 0x5C8A20 */
+    unsigned int GetNumItems() const;   /* 0x5BE030 */
+    void SetItem(unsigned int index, EQUIP_ITEM item);   /* 0x5BDFB0 */
 };
 
 /* a node (zdb::CNode: only the direction the network packet takes its heading from) */
@@ -159,7 +183,8 @@ public:
     virtual void Slot14();
     virtual void Slot18();
     virtual void Slot1C();
-    virtual void Slot20();
+    /* a control's value, -1 to 1, on its axis (IncrementalUpdateRemoteSeal's three; the name ours) */
+    virtual void SetControl(float value, int axis);
     virtual void Slot24();
     virtual void Slot28();
     virtual void Slot2C();
@@ -179,6 +204,7 @@ public:
     virtual void Slot64();
     virtual void Slot68();
     virtual int Slot6C();   // (the network packet's word at 0x10)
+    virtual void Slot70(int word);   // (the packet's word at 0x10 taken up)
 
     unsigned char _4[0x8 - 0x4];
     float m_8;   // 0x8: three of the controls, -1 to 1 (the packet's bytes at 0x7a-0x7c)
@@ -191,8 +217,9 @@ public:
     unsigned char m_170_2 : 1;   // 0x170, bit 2 (the packet's byte at 0x81)
     unsigned char m_170_3 : 5;
     unsigned char _171[0x1fc - 0x171];
-    unsigned char m_1fc[0x210 - 0x1fc];   // 0x1fc (the two members the body's slot +0x3C takes)
-    unsigned char m_210[4];   // 0x210
+    CPnt3D m_1fc;   // 0x1fc: the position (the two members the body's slot +0x3C takes)
+    unsigned char _208[0x210 - 0x208];
+    CQuat m_210;   // 0x210: the heading
 };
 
 /* the SEAL's body (only what this unit touches) */
@@ -216,9 +243,33 @@ public:
     virtual void Slot34();
     virtual void Slot38();
     virtual void Slot3C(void *a, void *b);
+    virtual void Slot40();
+    virtual void Slot44();
+    virtual void Slot48();
+    virtual void Slot4C();
+    virtual void Slot50();
+    virtual void Slot54();
+    virtual void Slot58();
+    virtual void Slot5C();
+    virtual void Slot60();
+    virtual void Slot64();
+    virtual void Slot68();
+    virtual void Slot6C();
+    virtual void Slot70();
+    virtual void Slot74();
+    virtual void Slot78();
+    virtual void Slot7C();
+    virtual void Slot80();
+    virtual void Slot84();
+    virtual void Slot88();
+    virtual void Slot8C();
+    virtual void Slot90(int kind);   /* (8 when a remote SEAL's death is taken up) */
 
     CCharacterType *GetCharacter();   /* OVL2 0x599810 */
     signed char GetWeaponState() const;   /* OVL2 0x5E0010 */
+    void SetWeaponState(WEAPON_STATE state);   /* OVL2 0x5DFE30 */
+    void SetNetLife(unsigned char life);   /* OVL2 0x544210 */
+    void SetHealth(float health, SEAL_DEATH_TYPE type);   /* OVL2 0x5477A0 */
 
     int m_4;   // 0x4: its network object (SOCOM 1's m_NetObjectIndex)
     unsigned char _8[0xc - 0x8];
@@ -231,8 +282,9 @@ public:
     unsigned char _c4[4];
     unsigned int m_c8;   // 0xc8: CEntity's flags (0x20000 an escortee: SOCOM 1's at 0xc4)
     unsigned char _cc[0x220 - 0xcc];
-    unsigned char m_220;   // 0x220
-    unsigned char _221[0x228 - 0x221];
+    unsigned char m_220;   // 0x220: the kills the network last gave
+    unsigned char _221[0x224 - 0x221];
+    int m_224;   // 0x224: a count the kills move, kept within 1 to 10
     float m_228;   // 0x228: taken by the network packet and cleared
     unsigned char _22c[0x374 - 0x22c];
     signed char m_desiredState;   // 0x374 (zseal.h's)
@@ -472,6 +524,282 @@ void CZSealState::zNetRegisterSeal()
                                                 RemoteSealDeletionCallback);
 }
 
+/* what the remote update calls: the entity's team (ent_main.cpp's), the actions' network sync
+ * (fts_action.cpp's), the body's value, word and short setters (OVL2's), the fields' counters (one
+ * word per field, 0x441138 on, in the fields' order) */
+class CEntity {
+public:
+    void SetTeamMask(unsigned int mask);   /* 0x29ED10 */
+};
+
+class CNodeAction {
+public:
+    static void SyncActionsMP(int client);   /* 0x2B4440 */
+};
+
+/* the controller's word as flags (only its bit 30: the SEAL has died) */
+struct NetCtrlFlags {
+    unsigned char _0[3];
+    unsigned char _3_0 : 6;
+    unsigned char m_dead : 1;
+    unsigned char _3_7 : 1;
+};
+
+extern "C" {
+void func_005A5790(CZSealBody *body, float value, int which);
+void func_00547AA0(CZSealBody *body, unsigned short value, int arg);
+void func_00547A90(CZSealBody *body, unsigned char value);
+void func_00544D60(CZSealBody *body, int arg);
+void *memcpy(void *dst, const void *src, unsigned int n);
+extern int data_00441138;
+extern int data_00441140;
+extern int data_00441148;
+extern int data_00441150;
+extern int data_00441158;
+extern int data_00441160;
+extern int data_00441168;
+extern int data_00441170;
+extern int data_00441178;
+extern int data_00441180;
+extern int data_00441188;
+extern int data_00441190;
+extern int data_00441198;
+extern int data_004411A0;
+extern int data_004411A8;
+extern int data_004411B0;
+extern int data_004411B8;
+extern int data_004411C0;
+extern int data_004411C8;
+extern int data_004411D0;
+extern int data_004411D8;
+extern int data_004411E0;
+extern int data_004411E8;
+extern int data_004411F0;
+extern int data_004411F8;
+extern int data_00441200;
+extern int data_00441208;
+extern int data_00441210;
+extern int data_00441218;
+extern int data_00441220;
+extern int data_00441228;
+extern int data_00441230;
+extern int data_00441238;
+extern int data_00441240;
+extern int data_00441248;
+extern int data_00441250;
+}
+
+/* a remote SEAL's network fields taken up, each that changed (or all, at -1), and counted: its
+ * position, axis by axis, and heading on its controller; the controller's three axes; the weapon
+ * state, the desired state and stance; six of the body's values; its life, its two words; the fire
+ * mode and the item (put in the kit first when it has none); the team; the controller's word, a
+ * death it marks taken up while the body still has health (the session master syncing the
+ * client's actions); a value saturated; six of the body's shorts; and the kills, the change added
+ * to the count, kept within 1 to 10. Four fields are only counted (SOCOM 1's, grown and counted;
+ * OVL1 0x2BE150). Byte-exact (the states' round 51, unwritten before) as first written but for five
+ * spellings, each measured: the item an int with `(EQUIP_ITEM)item` written in the test and the
+ * call (the shared conversion is a temporary made after GetCurItemEnum: the target's sixth saved
+ * register, `move s0,s1`); the packet's six shorts signed (lh; a (short) cast at the copy changes
+ * nothing); the kills compared `body->m_220 != data->m_8b` (the right operand loaded first) with
+ * the store inside the if; the heading's constant written out (1 / 10430.06f folds a unit high);
+ * and the flags and the saturated value declared at the top, the controller's word in its block
+ * (the frame's three words in that order: declared in the blocks, the word sat above the flags) */
+void CZSealState::IncrementalUpdateRemoteSeal(int client, int index, int field)
+{
+    NetObject *obj = theNetwork.zNetGetObject(index);
+
+    if (!obj)
+        return;
+    TypeSealState *data = (TypeSealState *)obj->m_data;
+
+    if (!data)
+        return;
+    CZSealBody *body = data->m_body;
+    NetCtrlFlags flags;
+    float v;
+
+    if (!body) {
+        RemoteSealCreationCallback(client, index);
+        return;
+    }
+    if (field == data_00441018 || field == -1) {
+        CPnt3D p = body->m_ctrl->m_1fc;
+
+        p.x = data->m_x;
+        body->m_ctrl->m_1fc = p;
+        data_00441138++;
+    }
+    if (field == data_00441020 || field == -1) {
+        CPnt3D p = body->m_ctrl->m_1fc;
+
+        p.y = data->m_y;
+        body->m_ctrl->m_1fc = p;
+        data_00441140++;
+    }
+    if (field == data_00441028 || field == -1) {
+        CPnt3D p = body->m_ctrl->m_1fc;
+
+        p.z = data->m_z;
+        body->m_ctrl->m_1fc = p;
+        data_00441148++;
+    }
+    if (field == data_00441030 || field == -1) {
+        CQuat q;
+
+        q.MakeYRot((short)data->m_64 * 9.5876698e-05f);
+        body->m_ctrl->m_210 = q;
+        data_00441150++;
+    }
+    if (field == data_00441038 || field == -1) {
+        body->m_ctrl->SetControl(data->m_7a * (1.0f / 127.0f), 0);
+        data_00441158++;
+    }
+    if (field == data_00441040 || field == -1) {
+        body->m_ctrl->SetControl(data->m_7b * (1.0f / 127.0f), 2);
+        data_00441160++;
+    }
+    if (field == data_00441048 || field == -1) {
+        body->m_ctrl->SetControl(data->m_7c * (1.0f / 127.0f), 1);
+        data_00441168++;
+    }
+    if (field == data_00441050 || field == -1) {
+        body->SetWeaponState((WEAPON_STATE)data->m_7e);
+        data_00441170++;
+    }
+    if (field == data_00441058 || field == -1) {
+        body->m_desiredState = data->m_7f;
+        data_00441178++;
+    }
+    if (field == data_00441060 || field == -1) {
+        body->m_desiredStance = data->m_80;
+        data_00441180++;
+    }
+    if (field == data_00441068 || field == -1)
+        data_00441188++;
+    if (field == data_00441070 || field == -1) {
+        func_005A5790(body, (unsigned int)data->m_82 * (1.0f / 255.0f), 0);
+        data_00441190++;
+    }
+    if (field == data_00441078 || field == -1) {
+        func_005A5790(body, (unsigned int)data->m_83 * (1.0f / 255.0f), 3);
+        data_00441198++;
+    }
+    if (field == data_00441080 || field == -1) {
+        func_005A5790(body, (unsigned int)data->m_84 * (1.0f / 255.0f), 5);
+        data_004411A0++;
+    }
+    if (field == data_00441088 || field == -1) {
+        func_005A5790(body, (unsigned int)data->m_85 * (1.0f / 255.0f), 4);
+        data_004411A8++;
+    }
+    if (field == data_00441090 || field == -1) {
+        func_005A5790(body, (unsigned int)data->m_86 * (1.0f / 255.0f), 2);
+        data_004411B0++;
+    }
+    if (field == data_00441098 || field == -1) {
+        func_005A5790(body, (unsigned int)data->m_87 * (1.0f / 255.0f), 1);
+        data_004411B8++;
+    }
+    if (field == data_004410A0 || field == -1) {
+        body->SetNetLife(data->m_88);
+        data_004411C0++;
+    }
+    if (field == data_004410A8 || field == -1) {
+        func_00547AA0(body, data->m_76, 0);
+        data_004411C8++;
+    }
+    if (field == data_004410B0 || field == -1) {
+        func_00547A90(body, data->m_89);
+        data_004411D0++;
+    }
+    if (field == data_004410B8 || field == -1) {
+        unsigned char mode = data->m_8a;
+
+        if (mode != (unsigned char)body->m_kit.GetCurFireMode())
+            body->m_kit.SetCurFireMode((FIREMODE)mode);
+        data_004411D8++;
+    }
+    if (field == data_004410C0 || field == -1) {
+        int item = data->m_66;
+
+        if ((EQUIP_ITEM)item != body->m_kit.GetCurItemEnum()) {
+            if (!body->m_kit.SetCurItemEnum((EQUIP_ITEM)item)) {
+                body->m_kit.SetItem(body->m_kit.GetNumItems(), (EQUIP_ITEM)data->m_66);
+                body->m_kit.SetCurItemEnum((EQUIP_ITEM)data->m_66);
+            }
+        }
+        data_004411E0++;
+    }
+    if (field == data_004410C8 || field == -1) {
+        ((CEntity *)body)->SetTeamMask(data->m_c);
+        data_004411E8++;
+    }
+    if (field == data_004410D0 || field == -1) {
+        body->m_ctrl->Slot70(data->m_10);
+        int word = body->m_ctrl->Slot6C();
+
+        memcpy(&flags, &word, 4);
+        if (flags.m_dead && body->m_1044 > 0.0f) {
+            body->SetHealth(0.0f, (SEAL_DEATH_TYPE)0);
+            body->Slot90(8);
+            if (theNetwork.m_bSessionMaster)
+                CNodeAction::SyncActionsMP(client);
+        }
+        data_004411F0++;
+    }
+    if (field == data_004410D8 || field == -1)
+        data_004411F8++;
+    if (field == data_004410F0 || field == -1)
+        data_00441210++;
+    if (field == data_004410F8 || field == -1)
+        data_00441218++;
+    if (field == data_00441100 || field == -1)
+        data_00441220++;
+    if (field == data_004410E0 || field == -1) {
+        v = data->m_7d * (1.0f / 128.0f);
+
+        _saturate(&v, -1.0f, 1.0f);
+        body->m_228 = v;
+        data_00441200++;
+    }
+    if (field == data_00441108 || field == -1) {
+        body->m_59e = data->m_68;
+        data_00441228++;
+    }
+    if (field == data_00441110 || field == -1) {
+        body->m_598 = data->m_6a;
+        data_00441230++;
+    }
+    if (field == data_00441118 || field == -1) {
+        body->m_5c8 = data->m_6c;
+        func_00544D60(body, 0);
+        data_00441238++;
+    }
+    if (field == data_00441120 || field == -1) {
+        body->m_556 = data->m_6e;
+        data_00441240++;
+    }
+    if (field == data_00441128 || field == -1) {
+        body->m_550 = data->m_70;
+        data_00441248++;
+    }
+    if (field == data_00441130 || field == -1) {
+        body->m_580 = data->m_72;
+        data_00441250++;
+    }
+    if (field == data_004410E8 || field == -1) {
+        if (body->m_220 != data->m_8b) {
+            body->m_224 += data->m_8b - body->m_220;
+            if (body->m_224 > 10)
+                body->m_224 = 10;
+            else if (body->m_224 <= 0)
+                body->m_224 = 1;
+            body->m_220 = data->m_8b;
+        }
+        data_00441208++;
+    }
+}
+
 /* after a remote SEAL's update: the lobby told once, in play, when its time comes due, and the SEAL
  * put in its unit once its controller is ready (OVL1 0x2BE020; SOCOM 1's had only the unit).
  * The time declared first, uninitialised, fixes the data's and the body's registers; the client
@@ -637,7 +965,7 @@ void CZSealState::RemoteSealCreationCallback(int client, int index)
         CSealCtrl *ctrl = body->m_ctrl;
 
         if (ctrl)
-            body->Slot3C(ctrl->m_1fc, ctrl->m_210);
+            body->Slot3C(&ctrl->m_1fc, &ctrl->m_210);
         GameClient *gc = theNetwork.zNetGetGameClient(client);
 
         if (gc && gc->m_object == 0x1000)

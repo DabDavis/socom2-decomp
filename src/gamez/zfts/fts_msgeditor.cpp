@@ -321,7 +321,17 @@ public:
 
 CEntity *ftsGetPlayer();
 extern "C" bool func_002C2FD0(CEntity *e);
-extern "C" void func_002B6530(void *queue, const char *text, int a, int b, int c, float time);   /* C2DMessage_Q::Add_Message */
+/* the message queue (fts_message.cpp's C2DMessage_Q: only its line add, OVL1 0x2B6530) and the
+ * message kind its colour is indexed by (fts_state.h's MSGTYPE) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
 
 /* the mission (only its first message queue) */
 class CMissionMessages {
@@ -362,12 +372,12 @@ void SendWhisper(char *name, char *msg)
 
                 ok = false;
                 sprintf(buf, ":: Player \"%s\" is unavailable", name);
-                func_002B6530(queue, buf, 2, 0, 0, 0.0f);
+                ((C2DMessage_Q *)queue)->Add_Message(buf, (MSGTYPE)2, false, 0, 0.0f);
             }
         }
         if (ok) {
             theLobby.SendChat(msg, name);
-            func_002B6530(queue, msg, 0, 0, 0, 0.0f);
+            ((C2DMessage_Q *)queue)->Add_Message(msg, MSGTYPE_PLAYER, false, 0, 0.0f);
         }
     }
 }

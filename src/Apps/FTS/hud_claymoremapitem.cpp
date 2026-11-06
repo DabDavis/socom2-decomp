@@ -31,7 +31,13 @@ CZClaymoreMapItem::CZClaymoreMapItem(CZSealBody *owner, CZProjectile *projectile
  * $f0, stores it and copies it to $f23 for the four CalcDrawPos calls; MW sums straight into $f23
  * for every form tried -- the compound assignment, a separate sum and store, the size declared
  * outside the branch, an inline helper taking it by value -- and the one instruction it saves
- * moves the epilogue's alignment nop */
+ * moves the epilogue's alignment nop. Round 62: mweppc's InterferenceGraph.c coalesces a copy only
+ * when one side is a hard register or BOTH are temporaries -- a copy into a NAMED local stays a
+ * move -- so the target's `mov.s $f23,$f0` is a named size copied from a temporary sum (the IRO
+ * keeps `m_size += 10 * dT; size = m_size;` as written: the back end makes the sum and the size);
+ * tried, all 53: `m_size = m_size + k`, the sum written twice (a CSE temporary: 56), the growth in
+ * the size first, `m_size = size = ...`, `size = (m_size += k)`, a pointer or reference to m_size,
+ * size shared by both branches (and pos: 81) */
 bool CZClaymoreMapItem::Tick(CZNewHudMap *map, float dT)
 {
     CZSealBody *viewer = map->m_viewer;
