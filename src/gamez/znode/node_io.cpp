@@ -312,7 +312,17 @@ bool CLight::Read(CSaveLoad &io)
  * numbered ahead of `this`, or the second inlined copy's `this` temporary (@1988, deferred) numbered
  * after every code-generation temporary; zmath.h's Multiply with its conversions held in locals
  * (this, b, out) cuts an inline level (0x1C4); casts, `+ 0`, const_cast on the operands change
- * nothing (build/scratch/wld/v_mul.py) */
+ * nothing (build/scratch/wld/v_mul.py). Round 30 (build/scratch/wld/p_args*.cpp, v_mul2.py,
+ * v_mtw*.py): MW evaluates the ARGUMENTS OF AN INLINED CALL RIGHT TO LEFT (bound to the inline's
+ * parameters) and an out-of-line call's left to right -- conversions inside an inlined body keep
+ * left to right -- so the target's this, b, out order is Multiply passing its three conversions to
+ * an inline of their own; but every such wrapper (static member taking row pointers, row references
+ * or matrices) puts the conversions a level deeper (copy 1 already calls them out of line, in the
+ * right order, 0x254 / 72 off): the original's tree is one level shallower somewhere else. The
+ * numbering: igreplay gives the target's s1 / s0 only with the first inlined copy's m_parent CSE
+ * temporary (@1993, deferred) numbered before `m` or after the code-generation temporaries, or `m`
+ * after it; a parent local, a node or matrix pointer local, a result local, if / else returns and
+ * `#pragma opt_propagation off` / `opt_common_subs off` change nothing (the locals copy-propagate) */
 CMatrix *CNode::BuildMTW(CMatrix &m)
 {
     if (m_type == 6) {
