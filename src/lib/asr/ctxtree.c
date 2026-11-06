@@ -17,13 +17,8 @@
  * declaration order -- the image's FreeTree, _FreeTree, CalcNrNodes, _CountWordsInTree,
  * _GetWordsInTree, CompareIDs, CreateActiveWordsCtxTree after SetIsolatedWordDpActiveWords,
  * CreateCtxTree and CalcAccuracyCtxTree (CompareIDs, qsort's comparator, is deferred as well: its
- * copy follows _GetWordsInTree's). Only the functions written so far are here: AllocateNodeAndFreePrevious
- * (round 22c: the free list tested before it is read, round 6c's shape), intCreateCtxTree (round
- * 36c, with SetUserWordTables, its inline), FreeTree, _FreeTree,
- * CalcNrNodes, CompareIDs and CreateActiveWordsCtxTree as the inlines they are, CalcNrNodes10,
- * SetIsolatedWordDpActiveWords, CreateCtxTree, CalcAccuracyCtxTree, and _CountWordsInTree and
- * _GetWordsInTree as plain statics until GetIsolatedWordDpActiveWords, their inliner, is written (a
- * static inline with no caller has no copy). CreateCtxTree and CreateActiveWordsCtxTree were in
+ * copy follows _GetWordsInTree's). The object is whole since round 40c (func_004D3450, AddFollowers,
+ * GetIsolatedWordDpActiveWords); CreateCtxTree and CreateActiveWordsCtxTree were in
  * ctxutil.c until round 19c. */
 
 #include "casr.h"
@@ -88,6 +83,7 @@ extern int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
 extern void *heap_Alloc(void *heap, unsigned int size);
 extern void *memcpy(void *dst, const void *src, unsigned int n);
 extern void *memset(void *dst, int c, unsigned int n);
+extern void qsort(void *base, unsigned int n, unsigned int size, int (*cmp)(const void *, const void *));
 
 /* a node's children grown by one: n + 1 records (three words each) from the free list of their size
  * in words -- or a new chunk -- while n is below 8, else from the heap; the n old ones copied in and
@@ -512,8 +508,8 @@ static void _FreeTree(CASR *c, TNODE *n);
 static float CalcNrNodes(int *tab, int *uwtab, unsigned short n, TNODE *node, int budget);
 static float CalcNrNodes10(int *tab, int *uwtab, unsigned short n, TNODE *node, float best,
                            unsigned int *maxc);
-static int _CountWordsInTree(WORDREC *tab, TNODE *n);
-static void _GetWordsInTree(WORDREC *tab, TNODE *n, int **out);
+static __inline__ int _CountWordsInTree(WORDREC *tab, TNODE *n);
+static __inline__ void _GetWordsInTree(WORDREC *tab, TNODE *n, int **out);
 int CompareIDs(const void *a, const void *b);
 int CreateActiveWordsCtxTree(CASR *c, unsigned int *ids, unsigned int n);
 long CreateCtxTree(CASR *c, CTXVT *vt);
@@ -622,6 +618,145 @@ static float CalcNrNodes10(int *tab, int *uwtab, unsigned short n, TNODE *node, 
     return best;
 }
 
+/* the words under a node: a leaf holds a word (its index) or a list of them (~ its first entry).
+ * The children's sum returns inside its positive test: so 2.96 unrolls the loop by four, as the
+ * target (an if/else falling into one `return count` leaves it rolled -- _GetWordsInTree's shape);
+ * the list is walked by an index of its own, so combine folds the entry test `~w != -1` into the
+ * target's `beqz w` with the `nor` in its slot (reusing w keeps the compare with -1) */
+static __inline__ int _CountWordsInTree(WORDREC *tab, TNODE *n)
+{
+    int count = 0;
+    unsigned short nc = n->nchildren;
+    unsigned int i;
+
+    if (nc != 0) {
+        for (i = 0; i < nc; i++)
+            count += _CountWordsInTree(tab, &n->children[i]);
+        return count;
+    } else {
+        int w = (int)n->children;
+        int j, k;
+
+        if (w >= 0)
+            return 1;
+        k = 0;
+        for (j = ~w; j != -1; j = tab[j].next)
+            k++;
+        return k;
+    }
+}
+
+/* ... and the words themselves, appended at *out: the children's loop falls into the arms' join,
+ * and 2.96 leaves it rolled, as the target's (SOCOM 1's compiler unrolled it) */
+static __inline__ void _GetWordsInTree(WORDREC *tab, TNODE *n, int **out)
+{
+    unsigned short nc = n->nchildren;
+    unsigned int i;
+
+    if (nc != 0) {
+        for (i = 0; i < nc; i++)
+            _GetWordsInTree(tab, &n->children[i], out);
+    } else {
+        int w = (int)n->children;
+        int j;
+
+        if (w >= 0)
+            *(*out)++ = w;
+        else
+            for (j = ~w; j != -1; j = tab[j].next)
+                *(*out)++ = tab[j].id;
+    }
+}
+
+/* the context's active words (no 0x80 in their properties) */
+static __inline__ unsigned int CountActiveWords(CTXVT *vt)
+{
+    unsigned short *prop = vt->GetpWordProp(vt);
+    unsigned int n = vt->GetNbrWord(vt);
+    unsigned int i;
+    int count = 0;
+
+    for (i = 0; i < n; i++) {
+        if ((prop[i] & 0x80) == 0)
+            count++;
+    }
+    return count;
+}
+
+/* ... and their indices, appended at *out */
+static __inline__ void GetActiveWords(CTXVT *vt, int **out)
+{
+    int *o = *out;
+    unsigned short *prop = vt->GetpWordProp(vt);
+    unsigned int n = vt->GetNbrWord(vt);
+    unsigned int i;
+
+    for (i = 0; i < n; i++) {
+        if ((prop[i] & 0x80) == 0)
+            *o++ = i;
+    }
+    *out = o;
+}
+
+/* the words the isolated-word context recognises, sorted, each once: the active words of the context
+ * and the tree's; a heap block the caller frees. SOCOM 1's body (round 40c). The two counts and the
+ * fill are inlines of their own (the second arm's out2 stays on the frame through its address, its own
+ * slot); `total` and `list` are one variable for both arms so the last two stores are one tail; the
+ * properties are indexed (the giv's walker a copy of the pointer: `move a0,s1`), c->iso_ctx read twice. */
+int GetIsolatedWordDpActiveWords(CASR *c, int **words, int *n)
+{
+    CTXVT vt;
+    int *out;
+    int total;
+    int *list;
+
+    if (c->iso_ctx != 0) {
+        FillContextV2VirtualTable(&vt);
+        vt.data = c->ctx->data;
+        if (c->iso_ctx->nchildren != 0) {
+            WORDREC *tab = c->tree_words;
+            int *p, *q;
+            unsigned int i, m;
+
+            total = _CountWordsInTree(tab, c->iso_ctx);
+            total += CountActiveWords(&vt);
+            list = heap_Alloc(c->heap, total * 4);
+            if (list == 0)
+                return _tosErrorLog(c->event, 1);
+            out = list;
+            GetActiveWords(&vt, &out);
+            _GetWordsInTree(tab, c->iso_ctx, &out);
+            qsort(list, total, 4, CompareIDs);
+            m = total - 1;
+            p = list;
+            q = list;
+            for (i = 0; i < m; q++, i++) {
+                if (q != p)
+                    *p = *q;
+                if (*q != q[1])
+                    p++;
+                else
+                    total--;
+            }
+            if (q != p)
+                *p = *q;
+        } else {
+            int *out2;
+
+            total = CountActiveWords(&vt);
+            list = heap_Alloc(c->heap, total * 4);
+            if (list == 0)
+                return _tosErrorLog(c->event, 1);
+            out2 = list;
+            GetActiveWords(&vt, &out2);
+        }
+        *n = total;
+        *words = list;
+        return 0;
+    }
+    return _tosErrorLog(c->event, 4);
+}
+
 /* the tree of the activated context's words: a table of the context accessors on the stack, over
  * the activated context's data -- an `__inline__`, so SetIsolatedWordDpActiveWords holds its body
  * (the table then a block of the inline's frame, above the caller's own locals) and its own copy
@@ -687,56 +822,6 @@ int CalcAccuracyCtxTree(CASR *c)
     tab = c->lng->GetpSpeechUnit(c->lng);
     n = c->lng->GetNbrSpeechUnit(c->lng);
     return (unsigned int)(CalcNrNodes10(tab, c->uw_offsets, n, root, 0.0f, &maxc) + 0.5f) + 135;
-}
-
-/* the words under a node: a leaf holds a word (its index) or a list of them (~ its first entry).
- * The children's sum returns inside its positive test: so 2.96 unrolls the loop by four, as the
- * target (an if/else falling into one `return count` leaves it rolled -- _GetWordsInTree's shape);
- * the list is walked by an index of its own, so combine folds the entry test `~w != -1` into the
- * target's `beqz w` with the `nor` in its slot (reusing w keeps the compare with -1) */
-static int _CountWordsInTree(WORDREC *tab, TNODE *n)
-{
-    int count = 0;
-    unsigned short nc = n->nchildren;
-    unsigned int i;
-
-    if (nc != 0) {
-        for (i = 0; i < nc; i++)
-            count += _CountWordsInTree(tab, &n->children[i]);
-        return count;
-    } else {
-        int w = (int)n->children;
-        int j, k;
-
-        if (w >= 0)
-            return 1;
-        k = 0;
-        for (j = ~w; j != -1; j = tab[j].next)
-            k++;
-        return k;
-    }
-}
-
-/* ... and the words themselves, appended at *out: the children's loop falls into the arms' join,
- * and 2.96 leaves it rolled, as the target's (SOCOM 1's compiler unrolled it) */
-static void _GetWordsInTree(WORDREC *tab, TNODE *n, int **out)
-{
-    unsigned short nc = n->nchildren;
-    unsigned int i;
-
-    if (nc != 0) {
-        for (i = 0; i < nc; i++)
-            _GetWordsInTree(tab, &n->children[i], out);
-    } else {
-        int w = (int)n->children;
-        int j;
-
-        if (w >= 0)
-            *(*out)++ = w;
-        else
-            for (j = ~w; j != -1; j = tab[j].next)
-                *(*out)++ = tab[j].id;
-    }
 }
 
 /* qsort's order for the active words' ids (GetIsolatedWordDpActiveWords sorts them) */
