@@ -32,6 +32,7 @@ extern float data_003E3018;
 extern float data_003E2FF0;
 
 class CZNetGame;
+class CZSealBody;
 /* the game (theMission's, no data row yet: the wins come from it) */
 extern CZNetGame *data_00437CE8;
 int FormatString(char *buf, int size, int id, const char **args, int count);
@@ -58,6 +59,9 @@ public:
      * there: the team's name by string id now, its wins through the game's member function) */
     void SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam, int (CZNetGame::*pWinsFunc)(),
                    bool bTeam0);
+    /* one row: the name, its clan's tag and the three scores (SOCOM 1's AddRow, 0x421510 there; the
+     * kills gone from its arguments) */
+    void AddRow(CZSealBody *const *arrSeals, int iRow, float fTopY);
 
     C2DBitmap _bmpTitleBg;   // 0x0
     C2DString _arrStrs[45];   // 0x80
@@ -361,16 +365,64 @@ struct CTriggerSource {
 
 /* a SEAL as the pop-up reads it: alive in the world (0x14), the two kill counts summed for its row,
  * and a flag that keeps it off the pop-up (the names ours) */
+class CSealCtrl;
+
+/* a round's and a game's stats (zseal.h's CSealStats, 0x48 bytes: only what the rows read) */
+class CSealStats {
+public:
+    unsigned char _0[0xc];
+    unsigned short m_c;   // 0xc
+    unsigned char _e[0x12 - 0xe];
+    unsigned short m_12;   // 0x12
+    unsigned char _14[0x3c - 0x14];
+    short m_kills;   // 0x3c
+    unsigned char _3e[0x48 - 0x3e];
+};
+
+/* the seal's kit: whether it holds a charged item (kit.h's) */
+class CZKit {
+public:
+    bool HasItemWithAmmo(EQUIP_ITEM item);
+};
+
 class CZSealBody {
 public:
     unsigned char _0[0x14];
-    int m_14;   // 0x14
-    unsigned char _18[0x580 - 0x18];
-    short m_kills;   // 0x580
-    unsigned char _582[0x5c8 - 0x582];
-    short m_kills2;   // 0x5c8
-    unsigned char _5ca[0xfd1 - 0x5ca];
+    const char *m_name;   // 0x14: set while it is alive in the world
+    unsigned char _18[0xc0 - 0x18];
+    CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
+    unsigned char _e1_5 : 3;
+    unsigned char _e2[0x544 - 0xe2];
+    CSealStats m_stats[2];   // 0x544
+    unsigned char _5d4[0x5e0 - 0x5d4];
+    CZKit m_kit;   // 0x5e0
+    unsigned char _5e1[0xfc8 - 0x5e1];
+    int m_persona;   // 0xfc8
+    unsigned char _fcc[0xfd1 - 0xfcc];
     unsigned char m_hidden;   // 0xfd1
+};
+
+/* its controller: whether a player drives it (slot +0x2c: zseal.h's) */
+class CSealCtrl {
+public:
+    virtual ~CSealCtrl();
+    virtual bool PreTick(float dT);
+    virtual bool Tick(float dT);
+    virtual bool PostMortemPreTick(float dT);
+    virtual void OnDeath();
+    virtual void Slot1C();
+    virtual void Slot20();
+    virtual void PlayAiSound();
+    virtual void AllowCommand();
+    virtual bool IsPlayer() const;   /* +0x2c */
+};
+
+class CZPersonaState {
+public:
+    static const char *GetPersonaClanTag(int client);
 };
 
 /* a thing in the world (st_exit.cpp's stub: only the list here) */
@@ -421,10 +473,10 @@ int GetTeamMembers(CZSealBody **arrSeals, int *arrKills, bool bTeam0)
             continue;
         if (!bTeam0 && !func_002C30B0(&seal))
             continue;
-        if (!seal.m_14 || seal.m_hidden)
+        if (!seal.m_name || seal.m_hidden)
             continue;
         arrSeals[iNumSeals] = &seal;
-        arrKills[iNumSeals] = seal.m_kills + seal.m_kills2;
+        arrKills[iNumSeals] = seal.m_stats[0].m_kills + seal.m_stats[1].m_kills;
         if (++iNumSeals >= 8)
             return iNumSeals;
     }
@@ -703,17 +755,121 @@ extern float data_003E5728;
 namespace {
 
 /* the column's look (OVL1 .data, 8 apart; the names ours) */
-extern "C" void func_0022A290(CTeamDisplay *team, CZSealBody **arrSeals, int iRow, float fTopY);
 static float s_fRowTop = 38.0f;
 static float s_fRowSpacing = 16.8f;
+static float s_fRowScale = 0.8f;
 static float s_fTeamTextScale = 1.0f;
+static int s_iNameX = 70;
 static int s_iScoreColumns = 175;
 static float s_fTeamTextTrans = 90.0f;
+static float s_fRowTrans = 110.0f;
+static float s_fBombX = 200.0f;
+static float s_fBombSize = 16.0f;
+static float s_fBombDY = 12.0f;
 static float s_fStripeX = 161.0f;
 static float s_fStripeW = 463.0f;
 static float s_fStripeH = 16.0f;
 static float s_fStripeDY = 12.0f;
 static float s_fStripeTrans = 60.0f;
+
+/* one row (SOCOM 1's AddRow, 0x421510 there): grey, the AI's and the out's colours dimmed; the bomb's
+ * mark beside whoever holds it; the name, the clan's tag and the three scores (SOCOM 1's CIntStr
+ * formats them, a %d in place here).
+ * OPEN, 74 instructions, 0x614 of 0x614, a pure saved-register permutation: the target's order of
+ * colouring is seal s0, iRow s1, this s2, then the stats' two s3 and s4 where ours colours stats1, stats0
+ * first (s0, s1) and seal, iRow, this after (s2-s4) -- all five are pushed in one sweep here, ascending,
+ * so the stats would need to be pushed a sweep earlier (one interference fewer: they have the most
+ * neighbours). Tried: the stats as pointers, swapped, after the row's string, the kills summed first, the
+ * seal through a pointer local. The copies of the colour go through an inline taking a const reference
+ * (through it IRO_CommonSubs finds the three addresses only at the reads, s6-s8, the target's; written
+ * in place they are made at the first stores, 0x620) */
+static inline void SetColor4(C2DString &s, const sceVu0FVECTOR &c)
+{
+    s.m_color[0] = c[0];
+    s.m_color[1] = c[1];
+    s.m_color[2] = c[2];
+    s.m_color[3] = c[3];
+}
+
+void CTeamDisplay::AddRow(CZSealBody *const *arrSeals, int iRow, float fTopY)
+{
+    CZSealBody &seal = *arrSeals[iRow];
+    C2DFont *font = theHUD->GetFont();
+    sceVu0FVECTOR color;
+    sceVu0FVECTOR colorClan;
+
+    color[0] = 115.0f;
+    color[1] = 115.0f;
+    color[2] = 115.0f;
+    color[3] = 128.0f;
+    colorClan[0] = 128.0f;
+    colorClan[1] = 64.0f;
+    colorClan[2] = 32.0f;
+    colorClan[3] = 128.0f;
+
+    float fY = fTopY + s_fRowTop + (float)iRow * s_fRowSpacing;
+    bool bPlayer = seal.m_ctrl ? seal.m_ctrl->IsPlayer() : false;
+
+    if (bPlayer)
+        color[2] = 12.0f;
+    if (!seal.m_socom2_e1_4) {
+        sceVu0ScaleVector(color, color, 0.6f);
+        sceVu0ScaleVector(colorClan, colorClan, 0.6f);
+    }
+    if (seal.m_kit.HasItemWithAmmo((EQUIP_ITEM)154)) {
+        g_bmpBoxOverlay.SetPos((int)s_fBombX, (int)(fY - s_fBombDY), (int)(s_fBombX + s_fBombSize),
+                               (int)(fY + s_fBombSize - s_fBombDY));
+        g_bmpBoxOverlay.On();
+    }
+
+    C2DString &strName = _arrStrs[iRow + 5];
+
+    strName.Load(s_fRowScale, seal.m_name, font, (float)(data_0040F628 + s_iNameX), fY, false);
+    SetColor4(strName, color);
+    strName.SetTrans(s_fRowTrans);
+
+    C2DString &strClan = _arrStrs[iRow + 37];
+    const char *clan = CZPersonaState::GetPersonaClanTag(seal.m_persona);
+    char arrClan[16] = " ";
+
+    if (clan && strlen(clan)) {
+        strcpy(arrClan, "[");
+        strcat(arrClan, clan);
+        strcat(arrClan, "]");
+    }
+    strClan.Load(s_fRowScale, arrClan, font, (float)(data_0040F628 + 10), fY, false);
+    SetColor4(strClan, colorClan);
+    strClan.SetTrans(s_fRowTrans);
+
+    CSealStats &stats0 = seal.m_stats[0];
+    CSealStats &stats1 = seal.m_stats[1];
+    C2DString &strKills = _arrStrs[iRow + 29];
+    char arrKills[16];
+
+    sprintf(arrKills, "%d", seal.m_stats[0].m_kills + seal.m_stats[1].m_kills);
+    strKills.Load(s_fRowScale, arrKills, font, (float)(int)((float)(data_0040F630 - s_iScoreColumns / 3) - -16.0f), fY, false);
+    SetColor4(strKills, color);
+    strKills.m_isCentered = 1;
+    strKills.SetTrans(s_fRowTrans);
+
+    C2DString &strFrags = _arrStrs[iRow + 13];
+    char arrFrags[16];
+
+    sprintf(arrFrags, "%d", stats0.m_c + stats1.m_c);
+    strFrags.Load(s_fRowScale, arrFrags, font, (float)(data_0040F630 - s_iScoreColumns), fY, false);
+    SetColor4(strFrags, color);
+    strFrags.m_isCentered = 1;
+    strFrags.SetTrans(s_fRowTrans);
+
+    C2DString &strDeaths = _arrStrs[iRow + 21];
+    char arrDeaths[16];
+
+    sprintf(arrDeaths, "%d", stats0.m_12 + stats1.m_12);
+    strDeaths.Load(s_fRowScale, arrDeaths, font, (float)(int)((float)(data_0040F630 - s_iScoreColumns / 3 * 2) - -8.0f), fY, false);
+    SetColor4(strDeaths, color);
+    strDeaths.m_isCentered = 1;
+    strDeaths.SetTrans(s_fRowTrans);
+}
 
 void CTeamDisplay::SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam,
                              int (CZNetGame::*pWinsFunc)(), bool bTeam0)
@@ -785,7 +941,7 @@ void CTeamDisplay::SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, in
         }
     }
     for (int i = 0; i < iNumSeals; i++)
-        func_0022A290(this, arrSortedSeals, i, fTopY);
+        AddRow(arrSortedSeals, i, fTopY);
 }
 
 /* the pop-up's frame: its nine pieces loaded and UV'd from one texture (SOCOM 1's, the bottom now

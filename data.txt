@@ -297,9 +297,15 @@
 0x003DC890 0x4 cur_camzoom  # OVL1 data; SOCOM 1's (its symbol table: hud_missioncams.cpp's file static at gp-30236; 1.0): the camera's zoom a mission film put aside -- the HUD lane, round 51: 4 references in 2 functions (PlayCamera 0x228EE0, CleanupCamera 0x229520)
 0x003DC898 0x4 s_fRowTop__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a column's first row below its title, 38; the HUD lane, round 64
 0x003DC8A0 0x4 s_fRowSpacing__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the rows' spacing, 16.8; the HUD lane, round 64
+0x003DC8D0 0x4 s_fRowScale__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a row's text scale, 0.8 -- CTeamDisplay::AddRow's five loads; the HUD lane, round 64
 0x003DC8D8 0x4 s_fTeamTextScale__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the title's and headers' scale, 1; the HUD lane, round 64
+0x003DC8E0 0x4 s_iNameX__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the name's offset from the box's left, 70 (an int) -- 1 reference in 1 function (AddRow); the HUD lane, round 64
 0x003DC8E8 0x4 s_iScoreColumns__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the three score columns' width, 175 (an int); the HUD lane, round 64
 0x003DC8F8 0x4 s_fTeamTextTrans__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the title's and headers' alpha, 90; the HUD lane, round 64
+0x003DC900 0x4 s_fRowTrans__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a row's alpha, 110 -- AddRow's five loads; the HUD lane, round 64
+0x003DC960 0x4 s_fBombX__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the bomb mark's left, 200 -- AddRow; the HUD lane, round 64
+0x003DC968 0x4 s_fBombSize__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: its size, 16 -- AddRow; the HUD lane, round 64
+0x003DC970 0x4 s_fBombDY__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: its offset up from the row, 12 -- AddRow; the HUD lane, round 64
 0x003DC990 0x4 s_fStripeX__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the row stripes' left, 161; the HUD lane, round 64
 0x003DC998 0x4 s_fStripeW__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: their width, 463; the HUD lane, round 64
 0x003DC9A0 0x4 s_fStripeH__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: their height, 16; the HUD lane, round 64
