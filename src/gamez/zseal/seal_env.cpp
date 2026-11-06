@@ -2681,9 +2681,9 @@ extern "C" {
 /* a location's damage taken from a projectile (OVL2 0x5A5A80, new in SOCOM II: SOCOM 1's DamageHead,
  * DamageBody and the limbs' in one, the location first), a damage and an armour pierce dealt to a
  * location (OVL2 0x5A5830), the pellets of a shot from a point that reach the SEAL (OVL2 0x5A1620)
- * and the blowback from a point (OVL2 0x57ED10, seal_body.cpp's) -- the first and third not written; the
- * names unknown */
-void func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj);
+ * and the blowback from a point (OVL2 0x57ED10, seal_body.cpp's) -- the third not written; the names
+ * unknown */
+bool func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj);
 bool func_005A5830(CZSealBody *seal, DAMAGE_LOCATION where, float damage, float pierce);
 int func_005A1620(CZSealBody *seal, const CPnt3D *from);
 bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b);
@@ -3026,6 +3026,73 @@ extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
             n++;
     }
     return n;
+}
+
+/* a projectile's first-hit bit (an inline bool accessor on a const pointer: its test reloads the byte
+ * for the bit's store, as the target's -- tested in place the load is shared) */
+static inline bool FirstHit(const CZProjectile *p)
+{
+    return p->m_isfirsthit;
+}
+
+/* a location's damage taken from a projectile, whether it took (OVL2 0x5A5A80, new in SOCOM II: SOCOM
+ * 1's DamageHead, DamageBody and the limbs' in one, the location first; the name unknown). Online
+ * the shooter's console decides: a shot from a SEAL another console drives, or from no SEAL, is not
+ * taken here; else the hit reported, the first-hit bit cleared and -- unless this SEAL is remote --
+ * the damage taken. Offline a first hit is counted for both, the damage taken and, when it killed
+ * the SEAL, the kill credited to the shooter (whether the weapon was one of the five). The report's
+ * arguments are locals read before its two calls (the weapon's id first -- `lb`, passed on raw), the
+ * report and its two returns wrapped in the shooter's test with the `return false` after it, and the
+ * offline result declared first (igreplay: it numbers just after the parameters) */
+extern "C" bool func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj)
+{
+    bool took;
+    bool alive = seal->m_isAlive;
+
+    if (theNetwork.m_9) {
+        int id = proj->m_shooterID;
+        CEntity *e = CEntity::m_list.GetEntityById(id);
+        CZSealBody *shooter = 0;
+
+        if (e)
+            shooter = AsSeal(e);
+        if (!id || (shooter && !shooter->IsRemote())) {
+            EQUIP_ITEM w = proj->m_weapon->m_ID;
+            int v = seal->m_id;
+            int s = proj->m_shooterID;
+
+            seal->ReportWeaponHitDamage(proj, s, v, where, proj->GetDamage(&seal->m_posW, 0.0f),
+                                        proj->m_ammo->GetArmorPierce(), proj->m_isfirsthit, w);
+            if (FirstHit(proj))
+                proj->SetIsFirstHit(false);
+            if (!seal->IsRemote())
+                return func_005A5830(seal, where, proj->GetDamage(&seal->m_posW, 0.0f), proj->m_ammo->GetArmorPierce());
+            return false;
+        }
+        return false;
+    }
+    int id = proj->m_shooterID;
+    CEntity *e = CEntity::m_list.GetEntityById(id);
+    CZSealBody *shooter = 0;
+
+    if (e)
+        shooter = AsSeal(e);
+    if (FirstHit(proj)) {
+        proj->SetIsFirstHit(false);
+        if (shooter)
+            func_005458A0(&shooter->m_stats, shooter, seal);
+        func_00544CF0(&seal->m_stats, seal);
+    }
+    took = func_005A5830(seal, where, proj->GetDamage(&seal->m_posW, 0.0f), proj->m_ammo->GetArmorPierce());
+
+    if (alive && !seal->m_isAlive) {
+        bool five = false;
+
+        if (func_003C5AC0(proj->m_weapon->m_ID))
+            five = true;
+        func_00547AA0(seal, id, five);
+    }
+    return took;
 }
 
 /* the share of a hit an empty location passes on to the body (OVL2 data, 8 bytes apart: a static
