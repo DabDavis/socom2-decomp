@@ -546,6 +546,41 @@ void func_0063B048(RT_P2P *pP2p, int nConn, int nError)
  * sibling call (README "The recogniser and Medius by hand", round 7b), and these three are jals */
 #define RT_P2P_RELAY(p, c, e)   do { func_0063C170(p, c, e); } while (0)
 
+/* a connection's address learned (RT_P2P_RELAY's event 5, 0x63B0B8): kept on the peer it belongs to; its other
+ * connection already up, this one closed, else the peer has lost its way and func_0063C170 resets it. A connection
+ * no peer holds is closed. Round 25b, unwritten before. */
+void func_0063B0B8(RT_P2P *pP2p, int nConn, int nError)
+{
+    char szAddress[16];
+    unsigned short nPort;
+    int nIndex = -2;
+
+    if (func_0063E4A0(pP2p->pUdp, nConn, szAddress, &nPort) != 0)
+        return;
+    if (func_0063B410(pP2p, nConn, &nIndex) != 0 || nIndex == -2) {
+        func_0063E830(pP2p->pUdp, nConn);
+        return;
+    }
+    if (nConn == pP2p->pEntries[nIndex].nConn) {
+        strncpy(pP2p->pEntries[nIndex].szAddress, szAddress, 16);
+        pP2p->pEntries[nIndex].nPort = nPort;
+        if (pP2p->pEntries[nIndex].nConn2 != -1) {
+            func_0063E830(pP2p->pUdp, nConn);
+            pP2p->pEntries[nIndex].nConn = -1;
+        } else
+            func_0063C170(pP2p, nConn, nError);
+    } else if (nConn == pP2p->pEntries[nIndex].nConn2) {
+        strncpy(pP2p->pEntries[nIndex].szAddress, szAddress, 16);
+        pP2p->pEntries[nIndex].nPort = nPort;
+        if (pP2p->pEntries[nIndex].nConn == -1)
+            func_0063C170(pP2p, nConn, nError);
+        else {
+            func_0063E830(pP2p->pUdp, nConn);
+            pP2p->pEntries[nIndex].nConn2 = -1;
+        }
+    }
+}
+
 void func_0063B290(RT_P2P *pP2p, int nConn, int nError)
 {
     RT_P2P_RELAY(pP2p, nConn, nError);
