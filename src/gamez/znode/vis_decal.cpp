@@ -243,6 +243,12 @@ CDecal *CDecalPool::Get(bool b)
     return d;
 }
 
+/* (a marked device, AddDecal's note: a word IRO does not propagate) */
+enum AddInt {
+    ADD_0 = 0,
+    ADD_MAX = 0x7FFFFFFF
+};
+
 /* a decal set up on a visual's view: its size, kind, visual and view; the texture's VU select; the
  * DMA reference to its VIF packet -- the three points' colours, the fan's and the strip's GIF tags
  * (textured, gouraud, fogged triangles, alpha-blended for a translucent texture that is not a bump
@@ -251,7 +257,13 @@ CDecal *CDecalPool::Get(bool b)
  * the flags are read by neither). The alpha test a materialised bool (the target's sltu / xori
  * before its branch), the points unrolled, the reference's address an integer sum (a pointer sum
  * folds this+16+32 into one addiu; the target adds twice), the decal returned (the target's mid-body
- * `move v0,a0`). OPEN, 50 instructions at the target's size: the colouring -- `tools/igreplay.py
+ * `move v0,a0`). BYTE-EXACT since the weapons' round 40 (v_add40*.py), by three shapes the replay
+ * named one at a time (build/scratch/wep/greedy.py: the single move that lowers the mismatch against
+ * --target, repeated): (1) the strip computed right before its first store, so prim dies after every
+ * constant the pre-pass scheduler hoists -- two neighbours over K, prim is deferred and takes v1; (2) the
+ * reference's address in an enum-typed local (not propagated, so numbered ahead of the DMA tag's
+ * constant: `move 63=64.5`); (3) prim's masked value in an enum-typed local (`move 90=38.5`). Marked
+ * devices: AddInt stands in for whatever kept those two values in the original. Before: OPEN, 50 instructions at the target's size: the colouring -- `tools/igreplay.py
  * --move prim=100.5` (prim numbered after the code generator's temporaries) gives the target's t0
  * for t, v1 for prim and a3 for the flag byte, leaving 8 code-generation temporaries off (the
  * constants' v0/a3 and t1-t3, which then set the schedule); no source shape tried numbers prim so
@@ -276,14 +288,12 @@ CDecal *CDecal::AddDecal(float size, CPnt3D *pos, AddonPoint **points, unsigned 
 
     if (blend)
         prim |= 0x200000;
+    AddInt q = (AddInt)(int)&m_tex;
     m_tex = t->m_dmaRefVu;
     m_pkt[0] = 0x3000000E;
-    u_long128 *q = &m_tex;
-
     m_pkt[1] = (unsigned int)CACHED((unsigned int)q + 0x20);
     m_pkt[2] = 0x01000103;
     m_pkt[3] = 0x6E038006;
-    unsigned int strip = (prim & 0xFFFC7FFF) | 0x18000;
     m_pkt[3] |= 0x4000;
     m_pkt[4] = *points[0]->m_rgba;
     m_pkt[5] = *points[1]->m_rgba;
@@ -291,6 +301,8 @@ CDecal *CDecal::AddDecal(float size, CPnt3D *pos, AddonPoint **points, unsigned 
     m_pkt[7] = 0x01000101;
     m_pkt[8] = 0x6C048000;
     m_pkt[9] = 0x8000;
+    AddInt pm = (AddInt)(prim & 0xFFFC7FFF);
+    unsigned int strip = pm | 0x18000;
     m_pkt[10] = (strip & 0xFFFC7FFF) | 0x28000;
     m_pkt[11] = 0x412;
     m_pkt[12] = 0;

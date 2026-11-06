@@ -190,7 +190,9 @@ static inline float (*MatrixRows(CMatrix *m))[4]
 }
 
 /* the UV test (vis_decal.cpp's) */
+namespace zdb {
 bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
+}
 
 /* a decal applied to one of the mesh's strips (a sub-mesh's index): the palette rebuilt when stale,
  * the strip's triangles walked -- the batch flushed into a decal at each strip's end or past 85
@@ -201,7 +203,7 @@ bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
  * triangles taken (new in SOCOM II: CNode::ApplyDecal's sub-mesh arm, the name ours -- its call
  * there, node_main.cpp's 0x313B2C, loads the index before the mesh: the mesh is this, the node's
  * matrix the unused first argument).
- * OPEN, 2 INSTRUCTIONS OFF at the target's size since the weapons' round 38 (16 long and the frame 16
+ * BYTE-EXACT since the weapons' round 40 (2 instructions off at the size since round 38, 16 long and the frame 16
  * bytes short before; build/scratch/wep/v_mad38*.py), by six shapes: (1) the UV matrix through a
  * named local copy `u` defined just before the dead counter -- spilled, a local takes a 16-byte
  * quadword where a parameter takes a word, so it lands at 192 below the normal and texture at 220 /
@@ -225,8 +227,14 @@ bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
  * (a1 then fills the slot), as `m_74 = 0` after it moves this last. "Read again" is a linear scan:
  * a goto back into the loop (whose body reads nt) does not count. Every no-code read tried folds
  * before code generation (`nt = nt`, `nt += 0`, `nt | 0`, a cast round trip, `(void)nt`), and the
- * loop rewritten with the flush at its top or inside its body changes the layout (0x5A8): what read
- * nt after the target's call, at no cost, is not found */
+ * loop rewritten with the flush at its top or inside its body changes the layout (0x5A8).
+ * Round 40 (build/scratch/wep/v_mad40*.py): A MARKED DEVICE, what the original read nt with is
+ * unknown: the asm block after the last flush, `beq nt, nt, L1; L1:`, is a read that survives to
+ * the argument order -- a branch to the next instruction, which MW's branch pass removes later, so
+ * it costs no code at all. Every read in C dies before that order: dead arithmetic under
+ * opt_dead_assignments off, an enum copy, an empty switch, an arm IRO keeps behind an `If vd` (the
+ * back end drops it first); so does an asm `move` (a dead or coalesced copy); any other instruction
+ * reading nt counts and stays in the code */
 int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *normal, CTexHandle *tex,
                       CMatrix *uv)
 {
@@ -332,6 +340,10 @@ int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *norm
     }
     if (nt)
         AddDecal((void *)nt, tex, size);
+    asm {   /* a read of nt at no cost: see above */
+        beq nt, nt, L1
+        L1:
+    }
     func_003BEA60();
     return count;
 }

@@ -643,7 +643,12 @@ void CVehicle::UpdateAiMapLoc()
 
 /* the table stored, the region's cells destroyed (the deleter's destructor called -- 0x3AFAA0, this
  * unit's copy of OVL2's -- ~vector and ~__vector_imp inlined), then CEntity's.
- * OPEN, 8 bytes short: after the two tests of the cells' address the target has a third, a `b` to
+ * BYTE-EXACT since the weapons' round 40, at level 5 (build/scratch/wep/v_vdt40a.py): CVehicleRegion
+ * holds the cells as three words (zveh.h), which splits the two chains the rounds below could not --
+ * the constructor's three stores no level at all, the destructor's this-test over ~vector the third
+ * level. A marked stand-in for "Level 6, or 8?": the original is likely the vector subclass at a deeper
+ * level (with `#pragma inline_depth(6)` at the unit's end that also matches, 33 of 33).
+ * Before: OPEN, 8 bytes short: after the two tests of the cells' address the target has a third, a `b` to
  * the call (the delay slot's a1 = 0 under it) -- what one more inlined destructor level gives: with
  * the cells a vector subclass (CAiMapLocVec's shape), as a member or as a second base of the region,
  * this matches byte for byte, but the region's constructor is then six high and CVehicle's
