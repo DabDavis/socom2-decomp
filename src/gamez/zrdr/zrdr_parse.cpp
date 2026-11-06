@@ -717,3 +717,7 @@ _zrdr *zrdr_read(const char *name, const char *path, int flags)
     }
     return file;
 }
+
+/* insert<zrdr_sym> 0x3325E0's end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the AI
+ * core's round 37 measured this opt-in, +1 and nothing lost in this unit; what the original wrote is not found) */
+namespace std { template <> struct __insert_end_pointer<zrdr_sym> { enum { value = 1 }; }; }

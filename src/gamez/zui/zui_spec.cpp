@@ -758,3 +758,7 @@ CUIMapCtrlSpec::CUIMapCtrlSpec(_zrdr *rdr) : CDlgObjSpec(rdr)
         ParseButtonAnim(anims->Item(j), &m_animations.back());
     }
 }
+
+/* insert<CDlgDesignModel> 0x384ED0's end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the AI
+ * core's round 37 measured this opt-in, +1 and nothing lost in this unit; what the original wrote is not found) */
+namespace std { template <> struct __insert_end_pointer<CDlgDesignModel> { enum { value = 1 }; }; }
