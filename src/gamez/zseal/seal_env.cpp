@@ -3416,6 +3416,72 @@ CBlink::CBlink()
     m_nextT = 2.0f + 6.0f * (4.656612873e-10f * (float)rand());
 }
 
+/* a direction's yaw and pitch (each an arc cosine, kept to 0 at or past 1 and to pi at or past -1,
+ * signed by the direction's x and y), the yaw taken round the long way when the direction faces +z
+ * (its dot with unit_z over 0.8) and the current direction lies on the other side; within the limits
+ * the direction is the goal (true), else the angles clipped to the limits' box are turned into the
+ * goal, a YX rotation of -z (false) (OVL2 0x5AE040; SOCOM 1's, the same body: SOCOM II's guards the
+ * arc cosine and takes sqrt.s for sqrtf). Byte-exact (round 55, unwritten before): the guard an inline
+ * returning its arms (written out in place, each arm stores the angle; as one ternary 8 bytes long), the
+ * length tested as a bool (`if (len)`: `c.eq.s len, 0` -- `len != 0.0f` and `0.0f != len` both put the
+ * zero first), each limit an if / else-if (`a > hi || a < lo` lays the false arm after the second test) */
+static inline float SafeAcos(float c)
+{
+    if (c >= 1.0f)
+        return 0.0f;
+    if (c <= -1.0f)
+        return 3.1415927f;
+    return acosf(c);
+}
+
+bool CZSealBody::CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal, float up, float down,
+                             float left, float right)
+{
+    float len = sqrtf(dir->x * dir->x + dir->z * dir->z);
+    float c;
+    CPnt3D ang;
+
+    if (len)
+        c = -dir->z / len;
+    else
+        c = 1.0f;
+    ang.x = SafeAcos(c);
+    if (dir->x < 0.0f)
+        ang.x = -ang.x;
+    ang.y = SafeAcos(len);
+    if (dir->y < 0.0f)
+        ang.y = -ang.y;
+    ang.z = 0.0f;
+    if (Dot(*dir, CPnt3D::unit_z) > 0.8f) {
+        if (cur->x > 0.0f && ang.x < 0.0f)
+            ang.x += 6.2831855f;
+        else if (cur->x < 0.0f && ang.x > 0.0f)
+            ang.x -= 6.2831855f;
+    }
+    bool ok = true;
+
+    if (ang.y > up)
+        ok = false;
+    else if (ang.y < down)
+        ok = false;
+    if (ang.x > right)
+        ok = false;
+    else if (ang.x < left)
+        ok = false;
+    if (ok) {
+        *goal = *dir;
+        return true;
+    }
+    CPnt3D center = CPnt3D::zero;
+    CPnt3D clipped;
+    CQuat q;
+
+    ClipToBox(center, ang, clipped, up, down, right, left);
+    q.MakeYXRot(-clipped.x, clipped.y);
+    q.Apply(&CPnt3D::unit_nz, goal, 1);
+    return false;
+}
+
 /* the blink stepped: while a look runs it is stepped, and a finished look down turns into the look
  * back up; between blinks the wait runs down to nothing (OVL2 0x5AD730; SOCOM 1's, LookTick and
  * Blink inlined -- Blink's angle is dead on the way back up and MW drops its load). The outer test

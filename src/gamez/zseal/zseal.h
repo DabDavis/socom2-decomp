@@ -2412,7 +2412,9 @@ public:
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
-    unsigned char _f50[0xf60 - 0xf50];
+    unsigned char _f50[0xf54 - 0xf50];
+    /* the gunner's place on the turret (0x585CD0 puts it there each frame anim 1 plays; the name ours) */
+    CPnt3D m_gunner_pos;   // 0xf54
     /* the crouched move's throttles as CrouchMoveControl 0x582D10 last took them (the names ours) */
     float m_f60;   // 0xf60
     float m_f64;   // 0xf64

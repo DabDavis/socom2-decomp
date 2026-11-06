@@ -2563,6 +2563,65 @@ extern "C" void func_00585FF0(CZSealBody *seal)
     }
 }
 
+/* the SEAL on its turret, while anim 1 plays: the turret's -z through its matrix, the pitch read off it
+ * (the angle out of the ground plane, negative looking down) and the top blend set to two thirds of
+ * its fraction (0.5 less the angle over a quarter turn, kept within 0 and 1), the turn rate zeroed, the
+ * SEAL turned to the facing laid flat (half a turn round y when it points straight back: the Align
+ * would divide by zero) and the gunner's place, (-3.257, 0, 4.282) turned with it, put beside the
+ * turret; the top blend returned either way, at once with no turret (OVL2 0x585CD0, new in SOCOM II,
+ * between UpdateQuadrant and StandTurning: 0x57A330 calls it; the name ours) */
+extern "C" CZBodyAnimBlend *func_00585CD0(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+    if (seal->IsCurrentBlend((AnimType)1)) {
+        CEntity *e = seal->m_eb8;
+
+        if (!e)
+            return top;
+        const CMatrix *m = e->GetPosW();
+        CPnt3D dir = CPnt3D::unit_nz;
+
+        TransformVectors(m, &dir, &dir, 1);
+        float c = sqrtf(dir.x * dir.x + dir.z * dir.z);
+        float a;
+
+        if (c >= 1.0f)
+            a = 0.0f;
+        else if (c <= -1.0f)
+            a = 3.1415927f;
+        else
+            a = acosf(c);
+        if (dir.y < 0.0f)
+            a = -a;
+        float f = 0.5f + -0.63661975f * a;
+
+        if (f < 0.0f)
+            f = 0.0f;
+        else if (!(f <= 1.0f))
+            f = 1.0f;
+        top->m_tfrac = 2.0f * f / 3.0f;
+        CPnt3D seat(-3.257f, 0.0f, 4.282f);
+
+        seal->m_velR = CPnt3D::zero;
+        dir.y = 0.0f;
+        dir.Normalize();
+        CPnt3D sum = dir;
+
+        sum.Add(&CPnt3D::unit_nz, &sum);
+        if (Dot(sum, sum) < 1e-6f) {
+            seal->m_quat.vec = CPnt3D::unit_y;
+            seal->m_quat.w = 0.0f;
+        } else
+            seal->m_quat.Align(CPnt3D::unit_nz, dir);
+        CPnt3D pos;
+
+        seal->m_quat.Apply(&seat, &pos, 1);
+        pos.Add(&seal->m_eb8->m_posW, &seal->m_gunner_pos);
+    }
+    return top;
+}
+
 /* a move's throttles split into two blend weights: a dead zone on the second, the first's share of
  * the length turned into an angle's fraction ((2 / pi) asin, kept within 0 and 1) and the other its
  * complement, the pair's length's inverse left in a static; the length returned, at most 1 (OVL2
