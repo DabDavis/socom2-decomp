@@ -23,9 +23,6 @@ extern "C" bool func_003084F0(const CMatrix *m);
 /* whether a segment surely misses a node's bounds (node_main.cpp's, new in SOCOM II, not named
  * yet) */
 extern "C" bool func_003124F0(zdb::CNode *node, const CPnt3D *a, const CPnt3D *b);
-/* whether a set's region mask takes a region bit, none counting as the first (int_main.cpp's
- * neighbourhood, a generated draft: DiIntersect's, new in SOCOM II, not named yet) */
-extern "C" int func_002DC620(zdb::DiIntersect *d, unsigned int bit);
 
 /* the node the walk is in (SOCOM 1's file static m_node) and the matrix stack the props' matrices
  * are pushed on (SOCOM 1's file static stack; SOCOM II's initialiser, 0x401CC0, clears its owner
@@ -492,24 +489,36 @@ static inline int BatchMarked(int i)
     return NodeCheck && (1 << (i % 32));
 }
 
-/* a vector's first polygon (ours, inline: the vector's address held for the read) */
+/* a vector's first polygon (ours, inline). The iterator a local of the inline's, its slot the frame's
+ * last; `*i.m_p` so the reload of the iterator is a code-generation register (numbered above the
+ * count) and only the element a temporary -- operator* makes the reload an inline's forced load too */
 static inline CDI *FirstDI(CDIVector &v)
 {
-    return *v.begin();
+    CDIVector::iterator i = v.begin();
+
+    return *i.m_p;
 }
 
-/* a coordinate within a radius of a centre's (ours, inline) */
-static inline bool InSpan(float v, float r, float c)
+/* a set's count (ours, inline): an expression-level inline's returned load, so its temporary is
+ * numbered after the first polygon's and below the code-generation registers (the target's a2: the
+ * replay wants the element < the count < the base and the iterator's reload) */
+static inline int CountOf(DiIntersect *d)
 {
-    return v + r >= c && v - r <= c;
+    return d->m_Cnt;
 }
 
-/* a point within a radius of a centre on every axis (ours, inline) */
-static inline bool InCube(const CPnt3D *p, float r, const CPnt3D &c)
+/* a point within a radius of a centre on every axis (ours, inline). The target materialises every
+ * level in one test -- x (a1), y (v1), their pair (a2), z (v1), the whole (a3), each unnarrowed --
+ * and the caller narrows the whole once: in-place `&&`s (through bool helpers each pair gains an andi),
+ * the pair given a type of its own (a cast to an enum: enums are not narrowed, and `bool xy = ...`
+ * then `xy && ...` starts the whole's preset late), an int returned (its truth narrowed in the
+ * caller) */
+static inline int InCube(const CPnt3D *p, float r, const CPnt3D &c)
 {
-    bool xy = InSpan(p->x, r, c.x) && InSpan(p->y, r, c.y);
+    enum F { F_NO, F_YES };
 
-    return xy && InSpan(p->z, r, c.z);
+    return (F)((p->x + r >= c.x && p->x - r <= c.x) && (p->y + r >= c.y && p->y - r <= c.y)) &&
+           (p->z + r >= c.z && p->z - r <= c.z);
 }
 
 /* a node's tree searched for a batch of sets (SOCOM 1's NodeGetIntersectBatch, SOCOM II's per-type
@@ -522,19 +531,18 @@ static inline bool InCube(const CPnt3D *p, float r, const CPnt3D &c)
  * centre, a character's node ending the set, the node's first polygon noted -- then the node's
  * polygons tested in turn for the rays and points; then the children; then every set this node
  * ended released.
- * OPEN, 101 instructions (unwritten before the engine core's round 26; the target's size, 0xCB4,
- * its blocks and calls): (1) the sphere's cube test -- the target tests each axis's and the x-and-y
- * results unnarrowed and narrows the whole (andi 0xff) once, where this narrows every axis's and
- * the pair's and tests the whole as it is; int returns, bool / int locals, explicit flags, the test
- * written in the body: no shape gives it (build/scratch/core/v_ngib1-4.py, 7); (2) `hit = stop` --
- * NodeGetIntersect's one open word again: the spilled flag narrowed where the target moves it;
- * (3) the frame: the point case's two ray ends sit above the sphere's centre in the target (declared
- * first), and declaring them ahead (assigned, not copy-initialised) costs 35 more. Measured on the
- * way: the cell-mark test an int inline (`!BatchMarked(i)` narrowed as the target does), the tail
- * pairs through NodeGetIntersect's accessors (Transform's and the segment test's a2, a1, a0 order),
- * the axis test `v + r >= c` (an explicit `!(v + r < c)` materialises the not), the node's first
- * polygon read through an inline taking the vector by reference (its address held, the target's
- * `addiu a1,s5,116`), `node == di[k]->m_TreeDoneNode` in the release loop */
+ * Byte-exact since the engine core's round 27 (101 off in round 26; unwritten before). What it took:
+ * InCube's materialised levels (above); the centre passed straight as InCube's argument, its temporary
+ * then below the point case's two ray ends in the frame (top 568, bottom 552, centre 536: as a named
+ * local, declared in the earlier case, it sits above them; through an inline returning it, the tree is
+ * a level too tall and CPnt3D's constructors are called); the asm's leading `.set noreorder` in the
+ * ray case (`hit = stop` moved, not narrowed: NodeGetIntersect's word); the vector's address taken ahead
+ * of the size test -- in its own block MW's peephole folds it into the load's displacement, which is
+ * why the target's `addiu a1,s5,116` survives -- and CountOf, FirstDI's forms (above), the colours read
+ * off the replay. Measured on the way: the cell-mark test an int inline (`!BatchMarked(i)` narrowed
+ * as the target does), the tail pairs through NodeGetIntersect's accessors (Transform's and the segment
+ * test's a2, a1, a0 order), the axis test `v + r >= c` (an explicit `!(v + r < c)` materialises the
+ * not), `node == di[k]->m_TreeDoneNode` in the release loop */
 void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
 {
     CDIVector::iterator it;
@@ -548,7 +556,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
     for (int i = 0; i < n; i++) {
         DiIntersect *d = di[i];
 
-        if (node == d->m_Node || !BatchMarked(i) || !func_002DC620(d, 1 << node->m_region_shift))
+        if (node == d->m_Node || !BatchMarked(i) || !d->TestMask(1 << node->m_region_shift))
             MarkDone(d, node);
         if (skip && !(d->m_Type & 0x8000))
             skip = false;
@@ -603,9 +611,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                     const CBBox *box = node->GetBBox();
                     float r = d->m_Tip.x;
                     CPnt3D *p = &d->m_MTail;
-                    CPnt3D centre = box->m_min + (box->m_max - box->m_min) * 0.5f;
-
-                    if (!InCube(p, r, centre)) {
+                    if (!InCube(p, r, box->m_min + (box->m_max - box->m_min) * 0.5f)) {
                         MarkDone(d, node);
                         break;
                     }
@@ -615,8 +621,10 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                         if (m_node->m_socom2_a1 & 4)
                             MarkDone(d, node);
                         if (!d->m_socom2_bit19 || d->m_socom2_bit19 && node->m_nodeEx) {
+                            CDIVector &v = node->m_di;
+
                             if (node->m_di.size())
-                                d->m_Intersects[d->m_Cnt].m_poly = FirstDI(node->m_di);
+                                d->m_Intersects[CountOf(d)].m_poly = FirstDI(v);
                             d->m_Intersects[cnt].m_node = node;
                             d->m_Cnt++;
                         }
@@ -680,6 +688,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                                         CPnt3D *norm = &is->m_norm;
 
                                         asm {
+                                            .set noreorder
                                             lqc2 vf4, 0(m)
                                             lqc2 vf5, 16(m)
                                             lqc2 vf6, 32(m)
