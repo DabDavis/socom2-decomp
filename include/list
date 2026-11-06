@@ -160,7 +160,12 @@ public:
         erase(iterator(t.next_), iterator(&end_));
     }
     /* the elements of a range appended one by one, out of line (0x317720 for the pointer lists'
-     * const iterators: the iterators by value, homed, end() and insert called) */
+     * const iterators: the iterators by value, homed, end() and insert called). THROUGH push_back
+     * (the MSL headers round 36), as the sized init(n, x) is: where the unit generated insert first
+     * (node_main.cpp, seal_unit.cpp, ai_group.cpp: an own push_back's tail copy), push_back inlined
+     * here expands past inline_max_size and is cut to one level -- end() and insert called on every
+     * element, the target's 0x317720 and OVL2's 0x5EF8D0 byte-exact, and the out-of-line end() they
+     * call (0x2A00A0, 0x50FED0) emitted; `insert(end(), *first)` written here inlined end() whole */
     template <class InputIterator>
     void init(InputIterator first, InputIterator last);
     /* the first node read through a reference to the sentinel (the list<T *> wrapper's begin() and
@@ -299,7 +304,7 @@ template <class InputIterator>
 void __list_deleter<T, Allocator>::init(InputIterator first, InputIterator last)
 {
     for (; first != last; ++first)
-        insert(end(), *first);
+        push_back(*first);
 }
 
 /* the nodes [first, last) unlinked around the last one's links, then freed one by one
