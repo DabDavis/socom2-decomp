@@ -1708,7 +1708,25 @@ void __vector_imp<T, Allocator, IsPOD>::reserve(unsigned int n)
  * `iterator e = end();` -- the end a scalarised class object, numbered after the named locals, coloured ahead of the count and the destroy cursor --
  * chosen by the element, the plain local everywhere else (`value ? eo.m_p : ep` folds at the front end: objcmp, every other object byte-identical).
  * A unit specialises it: erase<CSaferStr> 0x383BC0, erase<CDesignDlgObj> 0x384410, erase<CDlgDesignModel> 0x384BD0 (zui_spec.cpp); measured,
- * erase<zrdr_sym> 0x3323F0 (the world's zrdr_parse.cpp). What the original wrote to number the two populations apart is not found: this stands for it */
+ * erase<zrdr_sym> 0x3323F0 (the world's zrdr_parse.cpp). What the original wrote to number the two populations apart is not found: this stands for it.
+ * Value 2, the object with the tail's copy over __erase_copy, the end its LAST parameter: the end is the copy's argument temporary (igdump: `copy's argument last`),
+ * and an inline's argument objects are numbered in parameter order, so it comes after the walkers', as `igreplay --want` asked of erase<CSkbBgPiece> 0x3980D0 (22 off, 45 as the
+ * object alone; zui_skbview.cpp, whose copy inlines whole) */
+template <class T, bool Live>
+struct __erase_copy {
+    static void go(T *, T *, T *) {}
+};
+
+/* (a class: a dead branch's call of a function template would instantiate it, and with it every element's implicit operator=) */
+template <class T>
+struct __erase_copy<T, true> {
+    static void go(T *first, T *result, T *last)
+    {
+        for (; first < last; ++first, ++result)
+            *result = *first;
+    }
+};
+
 template <class T>
 struct __erase_end_object {
     enum { value = 0 };
@@ -1730,8 +1748,12 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
         ep = this->data_ + this->size_;
     int n = __VE_END - last;
 
-    if (n)
-        std::copy(last, __VE_END, first);
+    if (n) {
+        if (__erase_end_object<T>::value == 2)
+            __erase_copy<T, __erase_end_object<T>::value == 2>::go(last, first, __VE_END);
+        else
+            std::copy(last, __VE_END, first);
+    }
     for (T *p = first + n; p < __VE_END; ++p)
 #ifdef __MSL_VECTOR_DESTROY_LEVEL
         ((typename __vector_imp::__cap_pair *)&this->capacity_)->first().destroy(p);
