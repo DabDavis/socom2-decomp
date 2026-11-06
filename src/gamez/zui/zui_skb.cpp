@@ -55,14 +55,26 @@ inline CSkbKey SkbItemKey(_zrdr *item)
     return item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
 }
 
+/* (a modelling device, the weapons' late-folding guard, vis_ripple.cpp's RipFlag: CreateSoftKeyboard's note) */
+struct SkbFlag {
+    int m_on;
+};
+
 /* the grid grown to hold (x, y) and the key set there (ours) */
-inline void SkbSetGridKey(CSoftKeyboard *skb, int x, int y, const CSkbKey &key)
+inline void SkbSetGridKey(CSoftKeyboard *skb, int x, int y, const CSkbKey &key, SkbFlag &f)
 {
     if (skb->m_grid.size() <= y)
         skb->m_grid.resize(y + 1);
     if (skb->m_grid[y].size() <= x)
         skb->m_grid[y].resize(x + 1);
-    skb->m_grid[y][x] = key;
+    CSkbKey &d = skb->m_grid[y][x];
+    const unsigned char *pp;
+    SkbFlag &rf = f;
+
+    if (rf.m_on)
+        pp = &key.m_urow;
+    d.m_urow = *pp;
+    d.m_scode = key.m_scode;
 }
 
 /* a keyboard deleted (as a function object, std::for_each's) */
@@ -149,17 +161,20 @@ namespace {
  * copies call compressed_pair_imp's second() and first()) -- a destructor chain cut at its leaves,
  * one inline level deeper than these headers (README "Level 6, or 8?"); the in-place copies also
  * swap s0/s1 (the class insert's end register, include/vector's insert comment) */
-/* OPEN, 1 instruction short (0x31C of 0x324; round 38, from 102 off -- the key a copied object at 184,
- * the ternary's temporary then copied member by member, not a reference local holding a saved register
- * and spilling the grid): the grid store reads the key's first union through a built address (`addiu
- * v0,sp,184; lbu v0,0(v0)`) where here it reads the frame (`lbu v0,184(sp)`) -- its second union through
- * the hoisted sp+186 alike in both. Tried: the store's members written through a reference and through
- * casts, a pointer to the key, by-value and in-place helpers (build/scratch/ui/v_csk2.py, v_csk3.py); a
- * reference local to the key does build the address but holds a saved register across the resizes */
+/* Byte-exact since round 39 (0x324; round 38 had it 1 instruction short, the key a copied object at 184, the
+ * ternary's temporary then copied member by member). The grid store reads the key's first union through a built
+ * address (`addiu v0,sp,184; lbu v0,0(v0)`) while its second goes through the hoisted sp+186. A reference local
+ * or an enum-held address is hoisted into a saved register and spills the grid; a cast or a direct read reads
+ * the frame. A MODELLING DEVICE gives the per-iteration address: the late-folding guard (SkbFlag; the weapons'
+ * round 40, vis_ripple.cpp): the flag stored outside the loops, read through a reference bound at the read, so
+ * the loop phase of pass 0 sees a conditional `pp = &key.m_urow`, leaves it in the loop, and pass 1 folds the
+ * test away to a plain per-pass assignment. The original's shape is not known. */
 void CreateSoftKeyboard(_zrdr *rdr)
 {
     CSoftKeyboard *skb = new CSoftKeyboard;
+    SkbFlag f;
 
+    f.m_on = 1;
     g_arrSkbs.push_back(skb);
     skb->ParseLook(rdr);
     skb->ParseKeyProps(rdr);
@@ -170,7 +185,7 @@ void CreateSoftKeyboard(_zrdr *rdr)
             const _zrdr *item = row->Item(x);
             CSkbKey key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
 
-            SkbSetGridKey(skb, x, y, key);
+            SkbSetGridKey(skb, x, y, key, f);
         }
     }
     skb->m_ignoreUnchangedString = zrdr_findtag(rdr, "IgnoreUnchangedString") != 0;
