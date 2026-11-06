@@ -2635,10 +2635,19 @@ extern "C" void func_00543D50(CZSealBody *seal)
         unit->IssueCommand(seal, (FT_COMMAND)34, 0, false);
 }
 
+/* the message queue (fts_message.cpp's C2DMessage_Q: only its line add, OVL1 0x2B6530 -- OVL1 bss
+ * 0x4366A0, the queue) and the message kind its colour is indexed by (fts_state.h's MSGTYPE) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
+
 extern "C" {
-/* (OVL1 0x2B6530, the HUD's: a message queued for show -- OVL1 bss 0x4366A0, the queue; hud_tcmcmds.cpp's
- * reading) */
-void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
 extern unsigned char data_004366A0[];
 }
 
@@ -2698,7 +2707,7 @@ extern "C" void func_00547860(CZSealBody *victim)
             SuicideLine(buf, killer->m_display_name, (EQUIP_ITEM)kind);
         else
             FragLine(buf, killer, victim, (EQUIP_ITEM)kind);
-        func_002B6530(data_004366A0, buf, 0, 0, 0, 0.0f);
+        ((C2DMessage_Q *)data_004366A0)->Add_Message(buf, MSGTYPE_PLAYER, false, 0, 0.0f);
     }
     if (ftsGetPlayer() == victim)
         return;
