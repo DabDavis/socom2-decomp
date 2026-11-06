@@ -2075,6 +2075,10 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     with the test); clear() in class, SOCOM 1's insert / erase declared (rows 0x286160 / 0x285D30 named for them), the
     static zero given its data row (0x3DE1D0). objcmp: 658 units, 9 differ, each only by the added copy of resize and
     its static; +1, nothing lost;
+  - THE DEQUE'S MAX SIZE COUNTS WHOLE BLOCKS: `(size_type(-1) / buf_size - 1) * buf_size` -- the state machine's 42
+    twelve-byte member pointers to a block give -46 (its do_assign 0x3A6710's static, `li v1,-46`: byte-exact so, its
+    value and guard given rows 0x3EF758 / 0x415D18); over sizeof(T *) it was 0x7FFFFFAC, the power-of-two blocks (128:
+    -256, 8: -16) the same either way. objcmp: 1 unit differs, by that function alone; +1;
   - THE ORDER IS MW'S END-OF-UNIT LOOP (doldecomp/mweppc CParser_GlobalCleanup, CInline.c, CTemplateNew.c -- the PowerPC
     front end; every rule below checked on mwcps2: e1-e4.cpp and round 7's ord4/ord7): under `-inline deferred` every
     own function is deferred at parse time and code-generated at the end, last defined first. A function is
