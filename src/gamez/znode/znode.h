@@ -556,6 +556,9 @@ public:
     /* a decal projected onto the visual (SOCOM 1's, by name) */
     void ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *pos, CPnt3D *normal,
                           CTexHandle *tex, CMatrix *uv);
+    /* a decal applied to a view's triangles facing against the normal, the triangles attached
+     * counted (SOCOM 1's, SOCOM II's taking the normal; vis_vu.cpp) */
+    int ApplyDecal(unsigned int vid, float size, CPnt3D *pos, CPnt3D *normal, CMatrix *uv, CTexHandle *tex);
     /* a decal taken from a pool and appended to a view's list (SOCOM 1's, 0x3B3800; as SOCOM II's
      * caller 0x3B3AB0 and the set-up 0x3BECA0 show it: SOCOM II's new argument is a point after the
      * size -- CDecal::AddDecal keeps it -- then SOCOM 1's flags, points and texture; the wep lane's

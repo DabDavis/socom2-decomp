@@ -1542,10 +1542,133 @@ _word128 *CVisual::VuBatchProgram_Decals(_word128 *p)
     return VuExecuteState0(p);
 }
 
-/* the decal builder (0x3B3AB0, not written): the visual, the node's view id, the size, the point,
- * the normal in the model's frame, the UV projection and the texture */
-extern "C" void func_003B3AB0(CVisual *v, int vid, float size, CPnt3D *pos, CPnt3D *normal,
-                              CMatrix *uv, CTexHandle *tex);
+/* the builder's add-on points by pointer, three at a time handed to AttachDecal (SOCOM 1's decalps,
+ * 24 bytes) */
+static AddonPoint *decalps[6] = {
+    &decaldata[0], &decaldata[1], &decaldata[2], &decaldata[3], &decaldata[4], &decaldata[5]
+};
+
+/* a zone-local UV test (vis_decal.cpp's zdb::UVCompare) */
+bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
+
+/* a vertex's three shorts to floats offset by its block's translation, VU0's (ours, inline: the
+ * quadword loaded as two doublewords) */
+static inline void VertexToPoint(CPnt4D *t, CPnt3D *out, _word128 *v)
+{
+    asm __volatile__ (
+        "lq $1, 0(%0)\n"
+        "pextlh %0, $0, $1\n"
+        "psllw %0, %0, 16\n"
+        "psraw %0, %0, 16\n"
+        "qmtc2 %0, $vf1\n"
+        "vitof4.xyzw $vf1, $vf1\n"
+        "ld $1, 8(%2)\n"
+        "pcpyld $1, $1, $0\n"
+        "ld $1, 0(%2)\n"
+        "qmtc2 $1, $vf2\n"
+        "vadd.xyz $vf1, $vf1, $vf2\n"
+        "sqc2 $vf1, 0(%1)\n"
+        : : "r"(v), "r"(out), "r"(t) : "memory");
+}
+
+/* a vertex of a view's triangle made an add-on point: its position (the block's scale 1 by VU0,
+ * else each short scaled), its colour; the vertex and its index kept (ours, inline) */
+static inline CVisData *DecalPoint(AddonPoint *d, CVisData *v, _word128 **vert, unsigned char **idx)
+{
+    if (((CPnt4D *)v->m_14)->w == 1.0f) {
+        CPnt4D *t = (CPnt4D *)v->m_14;
+        CPnt3D *out = &d->m_10;
+
+        VertexToPoint(t, out, v->m_vertex);
+    } else {
+        d->m_10.x = ((CPnt4D *)v->m_14)->w * (((short *)v->m_vertex)[0] / 32768.0f);
+        d->m_10.y = ((CPnt4D *)v->m_14)->w * (((short *)v->m_vertex)[1] / 32768.0f);
+        d->m_10.z = ((CPnt4D *)v->m_14)->w * (((short *)v->m_vertex)[2] / 32768.0f);
+    }
+    *vert = v->m_vertex;
+    *idx = v->m_indices;
+    d->m_1c = (int)v->m_color;
+    return v->NextVertex(1);
+}
+
+/* a vertex's UVs, its fourth, seventh and eighth shorts (ours, inline) */
+static inline void DecalUV(CPnt3D *uv, short *s)
+{
+    uv->x = s[3] / 32768.0f;
+    uv->y = s[6] / 32768.0f;
+    uv->z = s[7] / 32768.0f;
+}
+
+/* a decal applied to a view: each triangle of the view's vertices whose normal faces against the
+ * given one (below -0.01) made three add-on points -- positioned by the vertices, projected through
+ * the UV matrix -- and, when the projection lands inside the texture and within 4.8 of its plane,
+ * each point's UVs and normal set and the triangle attached as a decal; the triangles attached
+ * (SOCOM 1's ApplyDecal, 0x3096E0 in the demo, rewritten: the normal passed in, VU0's vertices) */
+int CVisual::ApplyDecal(unsigned int vid, float size, CPnt3D *pos, CPnt3D *normal, CMatrix *uv,
+                        CTexHandle *tex)
+{
+    if (vid >= m_lodMesh.size())
+        return 0;
+
+    CVisData vd;
+    CPnt3D n;
+    _word128 *vert[3];
+    unsigned char *idx[3];
+    int count;
+    CVisData *v = &vd;
+    short *nrm;
+    unsigned int nt;
+    unsigned int k;
+
+    nt = 0;
+    k = 0;
+    count = 0;
+    v = v->SelectVertex(this, vid, 0);
+    while (v) {
+        nrm = (short *)v->m_40;
+
+        n.x = ((short *)v->m_40)[0] / 32768.0f;
+        n.y = ((short *)v->m_40)[1] / 32768.0f;
+        n.z = ((short *)v->m_40)[2] / 32768.0f;
+        v->m_40 += 6;
+        if (!(Dot(n, *normal) < -0.01f)) {
+            v = v->NextVertex(3);
+            continue;
+        }
+
+        AddonPoint *d = &decaldata[k];
+
+        v = DecalPoint(&d[0], v, &vert[0], &idx[0]);
+        v = DecalPoint(&d[1], v, &vert[1], &idx[1]);
+        v = DecalPoint(&d[2], v, &vert[2], &idx[2]);
+        uv->Transform(&d[0].m_10, &d[0].m_pos, 1);
+        uv->Transform(&d[1].m_10, &d[1].m_pos, 1);
+        uv->Transform(&d[2].m_10, &d[2].m_pos, 1);
+        if (UVCompare(&d[0].m_pos, &d[1].m_pos, &d[2].m_pos) && fabsf(d[0].m_pos.z) <= 4.8f &&
+            fabsf(d[1].m_pos.z) <= 4.8f && fabsf(d[2].m_pos.z) <= 4.8f) {
+            nt++;
+            k += 3;
+            count++;
+            d[0].m_20.x = ((short *)vert[0])[3] / 32768.0f;
+            d[0].m_20.y = ((short *)vert[0])[6] / 32768.0f;
+            d[0].m_20.z = ((short *)vert[0])[7] / 32768.0f;
+            d[0].m_2c = (int)nrm;
+            d[0].m_c = *idx[0] / 3;
+            DecalUV(&d[2].m_20, (short *)vert[1]);
+            d[1].m_2c = (int)nrm;
+            d[1].m_c = *idx[1] / 3;
+            DecalUV(&d[2].m_20, (short *)vert[2]);
+            d[2].m_2c = (int)nrm;
+            d[2].m_c = *idx[2] / 3;
+            if (nt == 1) {
+                AttachDecal(vid, size, pos, nt, decalps, tex);
+                nt = 0;
+                k = 0;
+            }
+        }
+    }
+    return count;
+}
 
 /* a decal projected onto the visual: the normal brought into the model's frame through the
  * world-to-model inverse, the projection composed with the model-to-world matrix, the node's view
@@ -1573,7 +1696,7 @@ void CVisual::ApplyDecalRender(CMatrix *mtw, CNode *node, float size, CPnt3D *po
     Vu0MatrixInverseWithUniformScale(&inv, &inv);
     TransformVectors(&inv, normal, &n, 1);
     sceVu0MulMatrix(m.m_matrix, uv->m_matrix, mtw->m_matrix);
-    func_003B3AB0(this, vid, size, pos, &n, &m, tex);
+    ApplyDecal(vid, size, pos, &n, &m, tex);
 }
 
 /* a decal taken from the permanent pool (a negative size) or the temporary one and set up (the point
