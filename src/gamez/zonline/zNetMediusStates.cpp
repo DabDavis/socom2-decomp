@@ -124,7 +124,13 @@ struct MediusFindWorldByNameRequest {
     int WorldType;   // 0x68
 };   // 0x6c
 
-struct MediusFindWorldByNameResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusFindWorldByNameResponse {
+    MEDIUS_RESPONSE_HEAD
+    int ApplicationID;   // 0x1c
+    char ApplicationName[32];   // 0x20
+    int ApplicationType;   // 0x40
+    int MediusWorldID;   // 0x44: the world found (the room or the game)
+};
 
 struct MediusCreateChannelResponse {
     MEDIUS_RESPONSE_HEAD
@@ -204,7 +210,10 @@ public:
     unsigned short m_flags;   // 0x6: the type and the pool bits
 };
 
-struct MediusSessionBeginResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusSessionBeginResponse {
+    MEDIUS_RESPONSE_HEAD
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x1c: the session's key, kept
+};
 struct MediusVersionServerResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusSessionEndResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusAccountRegistrationResponse { MEDIUS_RESPONSE_HEAD };
@@ -751,8 +760,8 @@ struct LANMissionRules {
 
 extern "C" {
 MediusErrorCode MediusSendWorldReport(MediusWorldReport *rep);   /* MediusSendWorldReport */
-void func_00621F90(int conn, int clients, void (*cb)(int, int));   /* (the DME's NetPing) */
-void func_002EFA60(int, int);   /* its callback */
+void func_00621F90(int conn, int clients, void (*cb)(int, int, int));   /* (the DME's NetPing) */
+void func_002EFA60(int, int, int);   /* its callback */
 void func_002F7C40(void *rules);   /* the game's rules filled in (the lobby unit's) */
 int func_002E99F0();   /* (the clan unit's) */
 extern int data_0066A838;   /* our performance figure */
@@ -1817,4 +1826,116 @@ extern "C" void func_002EFE50(CZOnlineLobby *lobby, const char *id, int what)
         break;
     }
     MediusGetPlayerInfo(&req, cbGetPlayerInfo);
+}
+
+/* --- the callbacks and helpers written from their drafts (the online lane's round 26) --------- */
+
+/* the room's world found: its id kept and the room joined, or back to the lobby with the reason
+ * (SOCOM II's 'FindRoomByName' callback; OVL1 0x2ED9C0, JoinRoomStateHandler's) */
+void func_002ED9C0(int, int, int, MediusFindWorldByNameResponse *resp)
+{
+    if (CheckMediusCallbackStatus("FindRoomByName", resp->StatusCode)) {
+        LobbyWorldID = resp->MediusWorldID;
+        theLobby.ChangeState(JOIN_ROOM);
+    } else {
+        theLobby.ChangeState(LOBBY_ACTIVE);
+        LobbyEvent("MP_MEDIUS_JOIN_ROOM_FAILURE",
+                   "Cannot join this room right now. Please try again in a few minutes.");
+    }
+}
+
+/* the game's world found: its id kept and the game joined, or back to the lobby (the
+ * 'FindGameByName' callback; OVL1 0x2EE210, cbCreateGame's for a persistent game) */
+void func_002EE210(int, int, int, MediusFindWorldByNameResponse *resp)
+{
+    if (CheckMediusCallbackStatus("FindGameByName", resp->StatusCode)) {
+        MediusWorldID = resp->MediusWorldID;
+        theLobby.ChangeState(JOIN_GAME);
+    } else
+        theLobby.ChangeState(LOBBY_ACTIVE);
+}
+
+/* the session ended: its key cleared, the lobby back to its root either way (SOCOM 1's
+ * cbSessionEnd; OVL1 0x2EE7B0) */
+void func_002EE7B0(int, int, int, MediusSessionEndResponse *resp)
+{
+    memset(SessionKey, 0, MEDIUS_SESSIONKEY_MAXLEN);
+    if (CheckMediusCallbackStatus("SessionEnd", resp->StatusCode))
+        theLobby.ChangeState(ROOT_LOBBY_STATE);
+    else
+        theLobby.ChangeState(ROOT_LOBBY_STATE);
+}
+
+/* the session begun: its key kept and the success told, or the login failed (SOCOM 1's
+ * cbSessionBegin; OVL1 0x2EE910) */
+void func_002EE910(int, int, int, MediusSessionBeginResponse *resp)
+{
+    if (CheckMediusCallbackStatus("SessionBegin", resp->StatusCode)) {
+        CopyField(SessionKey, resp->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
+        LobbyEvent("MP_SUCCESS", 0);
+    } else
+        theLobby.ChangeState(LOGIN_FAILURE);
+}
+
+/* the console's language as Medius numbers it (the login's localisation request; OVL1 0x2EF340).
+ * Its caller, AccountLoginStateHandler, calls it out of line: pinned */
+#pragma auto_inline off
+int func_002EF340(unsigned char language)
+{
+    switch (language) {
+    case 1:
+        return 2;
+    case 6:
+        return 3;
+    case 2:
+        return 8;
+    case 5:
+        return 5;
+    case 3:
+        return 7;
+    case 4:
+        return 6;
+    case 7:
+        return 4;
+    default:
+        return 1;
+    }
+}
+#pragma auto_inline reset
+
+/* the localisation's answer looked at (OVL1 0x2EF3B0) */
+void func_002EF3B0(int, int, int, MediusSetLocalizationParamsResponse *resp)
+{
+    CheckMediusCallbackStatus("MediusSetLocalizationParams", resp->StatusCode);
+}
+
+/* the ping's answer: the game server's figure kept, 65000 when it timed out (14; the stats
+ * report's NetPing callback; OVL1 0x2EFA60) */
+void func_002EFA60(int status, int client, int ping)
+{
+    if (status != 14)
+        data_0066A838 = ping;
+    else
+        data_0066A838 = 65000;
+}
+
+/* the version server's answer, not looked at (empty; SOCOM 1's cbVersionServer; OVL1 0x2EFE00) */
+void func_002EFE00(int, int, int, MediusVersionServerResponse *resp)
+{
+}
+
+/* the game list's filter set, its answer looked at (OVL1 0x2EFE10) */
+void func_002EFE10(int, int, int, MediusSetGameListFilterResponse *resp)
+{
+    CheckMediusCallbackStatus("SetGameListFilter", resp->StatusCode);
+}
+
+/* the room's player list refreshed on its page while the lobby is open, whether it was returned
+ * ('RefreshRoomPlayerList' 0x27xxxx calls it on theLobby; OVL1 0x2F11F0) */
+bool func_002F11F0(CZOnlineLobby *lobby, C2D *list)
+{
+    if (!lobby->m_isopen)
+        return false;
+    func_002F1240(list ? list : 0);
+    return true;
 }
