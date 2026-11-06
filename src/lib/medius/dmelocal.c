@@ -4745,6 +4745,8 @@ int func_00616820(DmeInitParams *pParams, DmeInitResult *pResult)
 extern int rt_msg_client_get_connection_ip(unsigned short nConnection, char *szIp);
 extern void (*data_00651190)(void *pReport);    /* the waiting caller's callback */
 extern int data_00651194;               /* and its user value */
+extern int rt_msg_client_get_connection_port(unsigned short nConnection);
+extern int rt_msg_client_get_connection_status(unsigned short nConnection);
 extern int func_0061D440(int nClient);
 extern int func_0061C600(int nWorld, DmeWorld **ppWorld);
 extern int func_0061C7A8(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient);
