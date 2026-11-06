@@ -52,6 +52,22 @@
  * start_/size_, no allocator base) that game_main.cpp's 0x2CEE00 inlines; init's parameters are
  * copied twice around two value-initialised empty temporaries (0x333BB0, 0x3A5ED0); begin()/end()
  * of the buffer build their iterator in memory, its fields addressed through registers.
+ * THE MSL HEADERS ROUND 34 READ THE ORDER OUT OF MW'S FRONT END (README "Tells from completing the MSL
+ * headers, round 34"; probes build/p34/, untracked): an out-of-class member of a class template is
+ * instantiated only by the end-of-unit walk -- class templates newest-declared first, each instance's
+ * members in DECLARATION order, every member referenced (by a caller's generated code) when the walk
+ * reaches it, member templates after every class; a member naming an undefined in-class or implicit
+ * member is deferred to after the walk (last deferred first), one that does not is generated on the
+ * spot. An inline function a caller leaves as a call is exported and generated right after that caller,
+ * depth first, last call first. The image's lobby tail 0x2E07B0-0x2E0E0F is that second order: the copy
+ * constructor, then init, end, begin, __deque_buf(A) with its subtree (~cdeque, the pair, the buffer's
+ * copy constructor with its init / end / begin / __cdeque_buf(A), the allocator copies, cdeque(A)),
+ * alloc(), then deque() with __deque_buf() and cdeque<P11>() 0x2E0DF0 -- exported copies of inline
+ * functions cut at their callers. This header's chain, out of class, comes out a class a walk, so no
+ * reordering of its members reproduces the image: measured, deque's copy constructor, begin() / end()
+ * const and init in class make deque() 0x2E0D90 byte-exact but stop the queue's constructor inlining
+ * into CZOnlineLobby(), CSimpleStateMachine() and the chat's queue (-4 over the deque units);
+ * cdeque<T *>() out of class loses game_main's 0x2CEE40 (-1). Not applied.
  *
  * The MSL headers' round 13 (probes build/p13/, untracked): A CLASS ELEMENT IS DESTROYED, a scalar one
  * is not -- the chat lines' clear (0x2F5A30) calls make_iterator twice (end first) and a range destroy
@@ -1230,7 +1246,11 @@ public:
 
         return max;
     }
-    static size_type __max_size() { return ((unsigned int)-1 / sizeof(T *) - 1) * buf_size; }
+    /* the whole blocks the size type counts, less one (the MSL headers round 34): the state machine's
+     * 12-byte elements, 42 to a block, give -46 (0x3A6710's static, `li v1,-46`) -- (-1 / 42 - 1) * 42;
+     * over sizeof(T *) the value was 0x7FFFFFAC there and the same for the power-of-two blocks (128: -256,
+     * 8: -16) */
+    static size_type __max_size() { return ((unsigned int)-1 / buf_size - 1) * buf_size; }
     const_iterator make_iterator(unsigned int n) const;
     iterator make_iterator(unsigned int n);
     /* the ends as make_iterator gives them (in class: through these the range destroy's arguments are
