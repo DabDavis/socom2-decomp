@@ -8,6 +8,7 @@
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 #include <stdio.h>
+#include <new>
 
 /* (CCharacterType::Acquire and CreateLODs -- SOCOM 1's Acquire__14CCharacterTypeCFv and
  * CreateLODs__14CCharacterTypeFPQ23zdb5CNode, called here where SOCOM 1's PreCreateSeal calls them;
@@ -418,6 +419,130 @@ void CZSealBody::PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl)
     }
     seal->m_useCachedReticuleSeal = false;
     seal->m_cachedReticuleSeal = 0;
+}
+
+/* the camera, only what ReCreate asks of it (camera.h's class, which this unit does not include) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);
+
+    void ResetDeathCam();
+};
+
+extern CAppCamera *appCamera;
+
+/* the player (fts_player.cpp's CftsPlayer, OVL1 bss 0x440C38: its SEAL first) */
+class CftsPlayer {
+public:
+    CZSealBody *m_body;   // 0x0
+    int m_4;   // 0x4
+};
+
+extern CftsPlayer ftsPlayer;
+
+extern "C" {
+/* a SEAL a spectator may not watch online (OVL1 0x2C2FD0, unowned: hud_tcmcmds.cpp's reading), what a
+ * player online begins as when one is, the node's fade set (OVL2 0x543D50, 0x552780: the priority a byte), the
+ * kit's hand mode and the byte after it read, the byte set (OVL2 0x5C4960, 0x5C4890, 0x5C48A0) */
+bool func_002C2FD0(CZSealBody *seal);
+void func_00543D50(CZSealBody *seal);
+void func_00552780(CZSealBody *seal, unsigned char priority, float target, float rate);
+int func_005C4960(CZKit *kit);
+int func_005C4890(CZKit *kit);
+void func_005C48A0(CZKit *kit, int value);
+}
+
+/* an entity's team and vehicle index read (inlines: the values take their temporaries, numbered above every
+ * named local and spilled to 16-byte slots: ReCreate) */
+static inline unsigned int GetTeamOf(const CEntity *e) { return e->m_team; }
+static inline unsigned int GetVehicleOf(const CEntity *e) { return e->m_vehicle_index; }
+
+/* a SEAL made again in place: its camera node taken off and kept, its id, team, vehicle, kit modes, matrix,
+ * name and display name carried across the destructor and the constructor, the player's camera put back on
+ * it (OVL2 0x599B60; SOCOM 1's ReCreate with the camera node, the kit's modes and the online player's fade) */
+bool CZSealBody::ReCreate(CZSealBody *seal, const CCharacterType *type)
+{
+    char *name;
+    zdb::CNode *fx = seal->GetNode()->FindChild("camera_effects", true);
+
+    if (fx) {
+        zdb::CNode *parent = fx->m_parent;
+
+        if (parent)
+            parent->DeleteChild(fx);
+    }
+
+    CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+
+    seal->m_respawning = 1;
+    ctrl->m_HudUpdateWeapon = 1;
+
+    CZKit *kit = &seal->m_kit;
+
+    if (kit)
+        kit->SetWeaponInfoChanged();
+
+    unsigned int id = seal->m_id;
+    unsigned int team = GetTeamOf(seal);
+    unsigned int vehicle = GetVehicleOf(seal);
+    int mode = func_005C4960(&seal->m_kit);
+    int mode2 = func_005C4890(&seal->m_kit);
+    CMatrix m(seal->m_node->m_matrix);
+
+    if (!type)
+        type = seal->m_charType;
+
+    CCharacterType *acquired = type->Acquire();
+    name = _strdup(seal->m_node->m_name, 0, 0);
+    char *display = seal->m_display_name ? _strdup(seal->m_display_name, 0, 0) : 0;
+
+    seal->~CZSealBody();
+
+    zdb::CNode *node = 0;
+    const CCharacterType *t = PreCreateSeal(type, name, &node);
+
+    new (seal) CZSealBody(node, (CCharacterType *)t);
+    seal->SetTeamMask(team);
+    seal->m_id = id;
+    seal->m_bit8 = 1;
+    seal->SetIncludeInTargetList(true);
+    seal->m_vehicle_index = vehicle;
+    seal->SetDisplayName(display);
+    seal->m_fd1 = 0;
+    seal->m_fd3 = 1;
+    seal->m_desiredState = (SEAL_STATE)1;
+    PostCreateSeal(seal, ctrl);
+    seal->m_kit.PostSetupItems();
+    seal->m_kit.SetHandFireMode(mode);
+    func_005C48A0(&seal->m_kit, mode2);
+    theMission.RefreshTeamValves();
+    seal->TeleportTo(&m);
+    if (seal->IsPlayer()) {
+        ftsPlayer.m_body = seal;
+        if (theNetwork.m_9) {
+            zdb::CNode *n = seal->GetNode();
+
+            n->m_Opacity = 0.0f;
+            if (func_002C2FD0(seal))
+                func_00543D50(seal);
+            else {
+                appCamera->ResetDeathCam();
+                func_00552780(seal, 2, 1.0f, 4.0f);
+            }
+        } else
+            appCamera->ResetDeathCam();
+        appCamera->AttachTo(seal);
+        seal->m_camera = appCamera;
+    }
+    if (fx) {
+        if (fx)
+            seal->GetNode()->AddChild(fx);
+    }
+    acquired->Release();
+    _free(name, 0, 0);
+    _free(display, 0, 0);
+    return true;
 }
 
 /* the character type taken and its model instanced: dynamic, its LODs made, added to the world,

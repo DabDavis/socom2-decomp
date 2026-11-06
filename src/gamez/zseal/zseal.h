@@ -305,6 +305,8 @@ public:
     /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
      * calls it) */
     void PostSetupItems();
+    /* the mode the hands fire in (kit.h's, OVL2 0x5C48B0) */
+    void SetHandFireMode(int mode);
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
@@ -2538,7 +2540,9 @@ public:
     /* (inside the kit: zeroed as a launcher is picked up -- PickupItem; the name ours) */
     int m_e9c;   // 0xe9c
     /* the SEAL's node extension (a CSealEx, declared below; SOCOM 1's: PostCreateSeal gives it to the node) */
-    unsigned char m_ex[0xeac - 0xea0];   // 0xea0
+    unsigned char m_ex[0xea8 - 0xea0];   // 0xea0
+    /* the camera on the player (SOCOM 1's 0xda4: ReCreate sets it; the name ours) */
+    class CAppCamera *m_camera;   // 0xea8
     /* the body carried (SOCOM 1's m_carry, 0xda8 -- right before m_adrenaline in both builds;
      * 0x5A88C0 refuses while one is) */
     CZSealBody *m_carry;   // 0xeac
@@ -2626,7 +2630,9 @@ public:
     /* a body that cannot be carried (new in SOCOM II: TickVictims passes over a body with it set;
      * the name ours) */
     unsigned char m_fd1;   // 0xfd1
-    unsigned char _fd2[0xfd4 - 0xfd2];
+    unsigned char _fd2;
+    /* (set as a SEAL is made again: ReCreate; the name ours) */
+    unsigned char m_fd3;   // 0xfd3
     unsigned int m_full_update_time;   // 0xfd4
     float m_movespeedmod;   // 0xfd8
     unsigned char _fdc[0xfe0 - 0xfdc];
