@@ -2065,6 +2065,61 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 36** (CWaterRippleManager::Gather 0x3C3120, CVisual::SetBuffer 0x3C38C0 and
+  CVisual::ApplyDecalRender 0x3B3950 -- open since round 13 -- byte-exact):
+  - A CALL ARGUMENT MADE OF AN INLINE WITH A BODY OF ITS OWN (a local assigned, then returned) IS LOADED BEFORE THE OTHER
+    ARGUMENTS; a one-expression inline is substituted and loaded in argument order (ApplyDecalRender's a1 before a0,
+    through a static `MatrixRows(m)`) -- the lead for any "a1 first" miss;
+  - an `||` of two 1-bit bitfields keeps each bit's sltu and still branches straight past the second test only when each
+    bit is written `x ? true : false` in the caller's condition (through an IsActive() inline the `||` is a value
+    re-tested at the join);
+  - a loop counter reused from an earlier loop keeps that variable's register, a fresh counter cannot be numbered after
+    the temporaries; a value loaded before an if's test goes into the branch's delay slot, loaded inside the then-arm the
+    slot stays a nop;
+  - an inline taking `const float *` makes MW hoist `&p[1]` and `&p[2]` as separate addresses, a `float *` parameter keeps
+    every access on one register with offsets; a pointer cast at an inline call stops MW resolving the pointer to the
+    local (the fields go through the stack); mwcps2 folds the multiplication of two float constants, and only a cast of a
+    float constant is left unfolded (CORRECTING round 35: IroEval.c folds float operations too).
+- **Tells from the SEALs, round 54** (seven byte-exact: ToggleFireModeSwap 0x592050 -- seal_control.cpp's first own
+  definition after its constructor --, DrawFunc<CDynGrenade> 0x598860, 0x57A010, 0x54E430, 0x548090, 0x576860, 0x55F3B0):
+  - a float the target stores to its own stack slot before a call and reloads after is a `volatile` local (a plain
+    local, an inline parameter, a `const float &` or a type-punned store all fail);
+  - a temporary built inside a sum (`a + b * t + CPnt3D(...)`) takes a slot below the operators' return temporaries, a
+    named local sits above them; `SetRotation((const CQuat *)&r)` keeps the pointer overload's null test of a local's
+    address, `&r` or a pointer / reference local fold it away;
+  - three contiguous switch cases give a compare chain in reverse written order (the same test written with `||` folds
+    into a range test), eight contiguous a jump table, eleven sparse written ascending a descending chain; `f() > 3`
+    branches on `slti at`, `f() >= 4` materialises the compare;
+  - a byte-enum id read once into a named local stays a signed lb that later tests narrow with andi, cast inside each
+    test MW loads lbu per test; `if (m && (...)) return true; return false;` gives branch leaves, `return m && (...)`
+    materialises and masks.
+- **Tells from the kit and AI states, round 56** (the ai_posttick task 0x5CCA30 -- open since round 51 -- and five task
+  parsers unwritten before, CTValve / CTState / CTLookAt / CTParam / CTSound::Parse, byte-exact):
+  - `#pragma opt_propagation off` INSIDE a caller's body stops `v = load` being folded into its single use, so the load's
+    register holds the sum as the target's (0x5CCA30); with CanUseDoorAction it changes nothing -- the false folded into
+    its early returns is CSE's value numbering (opt_common_subs off alone 0x1C0, both the size at 84 off);
+  - writing a copy as a chain, `name = push = f();`, keeps a later call's argument in the copy's saved register; a
+    byte-enum local tested `if (s)` tests the raw word, `!= ENUM_0` narrows it first; an inline's by-value result
+    assigned to a named local takes a named frame slot above later named locals, passed straight as an argument it is a
+    temporary below them;
+  - a bool defined after an inline's loop shares the loop counter's saved register, defined before it interferes;
+    writing through a reference local (`TASK_ENT &e = cmd->m_ent;`) keeps the member's address in a saved register across
+    a call; a sum written in steps (`size = f(); size += len;`) keeps the inline's result first in the add.
+- **Tells from the engine core, round 23** (the cameras: GetTetherCamPoints 0x297410 -- open since round 22 --,
+  CAppCamera::Follow(CEntity *, const char *) 0x2956E0, Follow(CZSealBody *, const char *) 0x295AF0 and the death camera's
+  TRIANGLE 0x294F40 byte-exact; eight rows named, SOCOM 1's APFirstPersonCam / APTeatherCam / GetTetherCamPoints /
+  GetDeadCamPoints / UpdateDeathCamState / zdb::CDIBBox::SetCDIBBox among them):
+  - a by-value inline parameter's copy keeps an if's join block alive, and it becomes the loop's preheader that receives
+    the hoisted constants; written in place, or taking the value by reference or pointer, the if's arms branch straight
+    to the loop test and the constants are rebuilt inside the loop (0x297410's WrapPi); a global passed by value to an
+    inline is loaded at the call and held in a saved FPR, by `const &` it is loaded at its use;
+  - a no-op integer conversion on an address-expression argument makes it evaluated first (`f(&x, (T *)(unsigned)&x)`
+    sets up a1 and copies a0 from it); on a register variable nothing changes the order -- GetDeadCamPoints' open (see
+    the weapons' round 36 for an inline-with-a-body argument);
+  - a struct overlay reached through a cast pointer local takes a saved register, spelled through an accessor its
+    offsets fold into `this` except an address used on both sides of a call; `if (c) { if (c) ... }` reproduces two
+    consecutive beqz on one register; for a stand-in's second base, a reference accessor avoids the null test a
+    derived-to-base pointer conversion adds (camera.h's CZSealBody derives from CEntity and CBody as its RTTI does).
 - **Tells from the zdb world, textures, rdr and sound, round 29** (the node rows it took over from the integrator:
   InheritRegionMasks 0x3126A0, ~CModel 0x318930 with its RemoveModel / GetModel copies and CNode::SetModel, CNode()
   0x316E30, zdb::FindMeshTextures 0x312D00 -- SOCOM 1's, a free function --, zdb::TransformBBox 0x3186B0 and
@@ -2212,7 +2267,8 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     commutative operation with the first-evaluated operand as its first source: `x | (n << 16)` gives `or d,shift,x`,
     `x | (n * 0x10000)` gives `or d,x,shift` with the same sll;
   - `item->m_10[j]` through a pointer local adds j*4 first, `a->m_items[i].m_10[j]` adds the data pointer first; MW's
-    optimiser folds only integer constants (IroEval.c); PowerPC MW passes register arguments in argument order after
+    optimiser folds float operations too (IroEval.c -- CORRECTED by the weapons' round 36: only a cast of a float
+    constant is left unfolded); PowerPC MW passes register arguments in argument order after
     linearising them last-first (FunctionCalls.c) -- the target's a1-first set-up in ApplyDecalRender is the closed PS2
     back end's scheduling;
   - igdump writes a second GPR record when a colouring is redone after rematerialisation: the LAST record is the one the
