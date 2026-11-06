@@ -835,6 +835,7 @@
 0x003F9B28 0x8 __RTTI__11CDlgObjSpec  # RTTI of CDlgObjSpec: found by its RTTI's name
 0x003F9B50 0x8 __RTTI__9CTextSpec  # RTTI of CTextSpec: found by its RTTI's name
 0x003F9B78 0x8 __RTTI__10CClockSpec  # RTTI of CClockSpec: found by its RTTI's name
+0x003F9EF8 0xB s_onActivate  # OVL1 data; zui_spec.cpp's static (name ours, the UI lane round 39): "ONACTIVATE" in the unit's strings, passed to the event chain in CUIListBoxSpec's constructor 0x37EAB0 (63 references, by its code)
 0x003FA1E8 0x8 __RTTI__12CCounterSpec  # RTTI of CCounterSpec: found by its RTTI's name
 0x003FA530 0x8 __RTTI__7CSTable  # RTTI of CSTable: found by its RTTI's name
 0x003FA558 0x8 __RTTI__12CUIVarSTable  # RTTI of CUIVarSTable: found by its RTTI's name

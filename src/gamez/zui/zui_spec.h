@@ -459,7 +459,7 @@ public:
 
 /* a list box: an image with columns and items (SOCOM 1's CUIListBoxSpec; SOCOM II's 0x120 bytes) */
 class ListItem;
-struct ColumnData;
+class ColumnData;
 class CUIListBoxSpec : public CImageSpec {
 public:
     CUIListBoxSpec(_zrdr *rdr);
