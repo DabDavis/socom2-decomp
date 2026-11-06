@@ -5191,6 +5191,84 @@ static inline bool CellTraversable(const CAiMapLoc &loc)
     return map ? map->IsTraversable(loc) : false;
 }
 
+extern "C" {
+/* (OVL2 data: the share of a grenade's blast radius the AI keeps its own clear of, read as a variable) */
+extern float data_00650200;
+}
+
+/* two team masks that do not meet (an inline returning the negation, taking the masks by value: used as
+ * the whole test it is materialised -- sltu, xori -- and each mask loaded in the loop; over the two
+ * entities MW keeps the SEAL's mask address hoisted and the saved registers move) */
+static inline bool TeamsApart(unsigned int a, unsigned int b)
+{
+    return !((a & b) != 0);
+}
+
+/* a value squared, the expression written twice (a macro: the target calls the radius twice) */
+#define AI_SQUARE(x) ((x) * (x))
+
+/* whether a grenade of the item may be thrown at the point: item 123 always; a fragmentation kind
+ * (121, 124, 126, 142, 143, 171, 174-176, 179) only from outside the map's cells (0x5561C0), the point
+ * beyond a share of its blast's radius and no living team mate the SEAL tracks -- awake when the AI
+ * drives it -- within that reach of the point (OVL2 0x565460, new in SOCOM II: the grenade choice
+ * 0x565110 asks it for each candidate; the name ours). Byte-exact (the SEALs' round 57, unwritten before)
+ * with: the cases listed 123 first (the chain runs in reverse); the map's location a named reference
+ * (its address kept in the item's saved register for both of CellInside's calls); `r = true` ahead of
+ * the targets' reference; the team test TeamsApart over the two masks by value */
+extern "C" bool func_00565460(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *pos)
+{
+    bool r = false;
+    CEntity *seal = ai->m_entity;
+    CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(item);
+
+    if (w) {
+        CZAmmo *ammo = w->GetDefaultAmmo();
+
+        if (ammo) {
+            switch (item) {
+            case 123:
+                r = true;
+                break;
+            case 121: case 124: case 126: case 142: case 143:
+            case 171: case 174: case 175: case 176: case 179:
+                const CAiMapLoc &loc = seal->m_mapLocValid;
+
+                if (!CellInside(loc)) {
+                    float reach = AI_SQUARE(data_00650200 * ammo->GetExplosionRadius());
+                    CPnt3D d;
+
+                    seal->m_posW.Sub(pos, &d);
+                    if (d.x * d.x + d.y * d.y + d.z * d.z > reach) {
+                        r = true;
+                        CTargetList &targets = seal->m_targets;
+
+                        for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+                            CZSealBody *s = AsSeal(i->m_ent);
+
+                            if (!s || !s->m_isAlive)
+                                continue;
+                            if (AiDriven(s) && !AiAwakeNow(s->GetSealCtrlAi()))
+                                continue;
+                            if (TeamsApart(s->m_team, seal->m_team))
+                                continue;
+
+                            CPnt3D d2;
+
+                            pos->Sub(&s->m_posW, &d2);
+                            if (d2.x * d2.x + d2.y * d2.y + d2.z * d2.z < reach) {
+                                r = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+    return r;
+}
+
 /* the grenade state's tick (OVL2 0x55AC20, slot 0x10; SOCOM 1's Tick__11CAiSGrenadeFfP11CSealCtrlAi
  * without its dT, 0x191C there). With its grenade gone the state waits a random while -- shorter
  * for an untrained SEAL -- and ends. Else the grenade's landing point is found once; step 0 alerts
