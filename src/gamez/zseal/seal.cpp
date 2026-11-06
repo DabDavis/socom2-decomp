@@ -1958,7 +1958,9 @@ static inline void PushOut(float &cur, float v)
  * first, second or third, a local copy after the test, the body an inline taking r by value, the test
  * as an if around the body or through a node local all compile the same; so does the HUD's round-57
  * second variable (round 52: a copy of the hit, of r, or both, defined before the null test and used
- * by the test or the body -- build/scratch/seal-r52/v_6d0.py) */
+ * by the test or the body -- build/scratch/seal-r52/v_6d0.py). Round 55: 0x54A3D0's lever -- a (float)
+ * cast making one operand of the step's product the heavier -- changes nothing here, on any operand or on
+ * the `-r` (build/scratch/seal-r55/v_6d0.py) */
 extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit, float r)
 {
     if (!hit->m_node)

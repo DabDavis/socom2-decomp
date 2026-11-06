@@ -1878,7 +1878,8 @@ extern "C" bool func_0057F7D0(CZSealBody *seal)
  * tests, a result local. Round 53 (build/scratch/seal-r53/v_f530*.py): the test through an inline
  * `return IsCurrentBlend(45) ? true : false;` gives the target's LAYOUT (bnez to the call, the false
  * block after it) but adds the bool's `andi` and drops the label's pad (5); an if-form IsRemote, an
- * if-set inline, nested ifs, a goto and `bool r` returns are worse (7-0x94). */
+ * if-set inline, nested ifs, a goto and `bool r` returns are worse (7-0x94). Round 55: `!= true` and a
+ * switch on the test (either case) are worse (0x80, 0x90; build/scratch/seal-r55/v_f530.py). */
 extern "C" bool func_0057F530(CZSealBody *seal)
 {
     if (seal->IsRemote())
