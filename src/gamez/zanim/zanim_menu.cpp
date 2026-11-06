@@ -1667,7 +1667,7 @@ bool UIClanGameSwapSides(C2DAnimCmdHdr *hdr, float *dT)
 
     if (text) {
         if (!strcasecmp(text, "START")) {
-            if (func_002E99E0() == 4) {
+            if (GetClanTeamSide() == 4) {
                 SetValveValue(CValve::Create("mp_locked_game", (VALVE_TYPE)1), 1);
                 theLobby.ForceStatusReport();
                 done = true;
@@ -1694,12 +1694,12 @@ bool UICanJoinRoom(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIClanGameClosed(C2DAnimCmdHdr *hdr, float *dT)
 {
-    return func_002F8C60(&theLobby, ArgText(ArgName(hdr)));
+    return theLobby.ClanGameClosed(ArgText(ArgName(hdr)));
 }
 
 bool UIGameRejectsRank(C2DAnimCmdHdr *hdr, float *dT)
 {
-    return func_002F8BC0(&theLobby, ArgText(ArgName(hdr)));
+    return theLobby.GameRejectsRank(ArgText(ArgName(hdr)));
 }
 
 bool UIGameHasPassword(C2DAnimCmdHdr *hdr, float *dT)
@@ -1713,7 +1713,7 @@ bool UIGameHasPassword(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIGameHasSpectatorPassword(C2DAnimCmdHdr *hdr, float *dT)
 {
-    return func_002F8D50(&theLobby, ArgText(ArgName(hdr)));
+    return theLobby.GameHasSpectatorPassword(ArgText(ArgName(hdr)));
 }
 
 bool UIJoinMPRoom(C2DAnimCmdHdr *hdr, float *dT)
@@ -2190,7 +2190,7 @@ bool UIRemovePlayerFromClan(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UICanInviteMorePlayersToClan(C2DAnimCmdHdr *hdr, float *dT)
 {
-    return func_002E5FE0(&theLobby);
+    return theLobby.CanInviteMorePlayersToClan();
 }
 
 bool UIInvitePlayerToClan(C2DAnimCmdHdr *hdr, float *dT)
@@ -2428,7 +2428,7 @@ bool UIGetClanMemberInfo(C2DAnimCmdHdr *hdr, float *dT)
     const char *text = ArgText(ArgName(hdr));
 
     if (text)
-        func_002E6000(&theLobby, text);
+        theLobby.GetClanMemberInfo(text);
     return true;
 }
 
@@ -2993,7 +2993,7 @@ bool UITransferLeadership(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIIsSwitchTeamsOK(C2DAnimCmdHdr *hdr, float *dT)
 {
-    return func_002F8CE0(&theLobby);
+    return theLobby.IsSwitchTeamsOK();
 }
 
 bool UIPasswordSecurity(C2DAnimCmdHdr *hdr, float *dT)

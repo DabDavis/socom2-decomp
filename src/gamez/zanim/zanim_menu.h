@@ -357,6 +357,12 @@ public:
     void AddFriend(const char *name);
     void RemoveFriend(int index);
     void GetFriendsList();
+    bool CanInviteMorePlayersToClan();                  /* 0x2E5FE0 (the online lane's round 27) */
+    void GetClanMemberInfo(const char *name);           /* 0x2E6000 (the online lane's round 27) */
+    bool GameRejectsRank(const char *name);             /* 0x2F8BC0 (the online lane's round 27) */
+    bool ClanGameClosed(const char *name);              /* 0x2F8C60 (the online lane's round 27) */
+    bool IsSwitchTeamsOK();                             /* 0x2F8CE0 (the online lane's round 27) */
+    bool GameHasSpectatorPassword(const char *name);    /* 0x2F8D50 (the online lane's round 27) */
 
     unsigned char _0[0x58];
     bool (*m_event_handler)(const char *eventname, const char *argument);   // 0x58 (SOCOM 1's): InitNetwork sets it
@@ -365,6 +371,9 @@ public:
     unsigned char _61[0x98 - 0x61];
 };
 extern CZOnlineLobby theLobby;
+/* our clan game's side (zNetMediusClan.cpp's 0x2E99E0, which reads it signed; read unsigned here, as
+ * zNetMediusLobby.cpp does: the online lane's round 27) */
+unsigned char GetClanTeamSide();
 
 /* the network (SOCOM 1's CZNetwork, less the two team indices SOCOM II dropped ahead of the flags) */
 class CZNetwork {
@@ -865,10 +874,6 @@ public:
 /* ---- placeholders: methods and functions not named yet (SOCOM 1's names, by the call SOCOM 1's
  * handler makes at the same place, in the comments) ---- */
 extern "C" {
-/* CZOnlineLobby */
-bool func_002E5FE0(CZOnlineLobby *lobby);                           /* (more invitations?) */
-bool func_002F8CE0(CZOnlineLobby *lobby);                           /* (switch teams OK) */
-
 /* the single-player career's stats (fts_mission.cpp's CCareerStats, theMission's at 0x1950: only the
  * two the UI commands call) */
 class CCareerStats {
@@ -890,13 +895,9 @@ void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 
 /* more of the lobby (SOCOM 1's names by the calls SOCOM 1's handlers make) */
 bool func_0030BF20();                                               /* (whether the network is up) */
-bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
-bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
-bool func_002F8C60(CZOnlineLobby *lobby, const char *name);         /* (clan game closed) */
 bool func_002B85C0();                                               /* (connect to the game server) */
 void func_002EFE50(CZOnlineLobby *lobby, const char *name, int what);   /* (a player's info) */
 void func_002B8660();
-void func_002E6000(CZOnlineLobby *lobby, const char *name);         /* (clan member's info) */
 void func_001F3BB0(CMenuState *state, float time);                  /* (the menu's input suspended) */
 void func_001F3BD0(CMenuState *state, const char *movie);           /* (the background film set) */
 bool func_001F3BE0(CMenuState *state);                              /* (the background film stopped: whether one was playing) */
@@ -978,7 +979,6 @@ struct NetCnfList {
 extern NetCnfList data_00457C40;
 extern char data_004567C0[];
 NetCnfEntry *ezNetCnfGetDefault(NetCnfList *list);                       /* (the configuration in use) */
-unsigned char func_002E99E0();                                      /* (the lobby's game state) */
 void func_002BADA0();                                               /* (the side swap finished) */
 
 
