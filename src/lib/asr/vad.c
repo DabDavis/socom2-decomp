@@ -9,8 +9,8 @@
  * second output and that the block keeps. Written so far: InitVad (round 34c), ControlVad and ProcessVad (OPEN) (round 32c), the session pair (round 15c: the
  * state copied field by field, the arrays by loops 2.96 unrolls by ten, the two ring positions
  * kept as unsigned indices), ChangeMike, TestChangeMike and CheckForAbnormalConditions
- * (round 19c; ChangeMike closed in 20c) and the constructor; VadFastTrackProcess is declared, not yet
- * defined. */
+ * (round 19c; ChangeMike closed in 20c) and the constructor; VadFastTrackProcess (round 35c, written
+ * from SOCOM II's code, byte-exact). */
 #include "tosblk.h"
 
 typedef struct TOSLOG {
@@ -24,22 +24,22 @@ typedef struct VAD {
     char pad41[3];
     float f44[6];                       /* +44 */
     float f68;                          /* +68: 6.5 with profile 46, else 10.5 */
-    unsigned short f72[4];              /* +72 */
+    short f72[4];                       /* +72: [3] counted as unsigned */
     float f80;                          /* +80 */
     float hist[20];                     /* +84 */
     float *histend;                     /* +164: hist's end */
     float *histpos;                     /* +168: in hist */
     short f172[150];                    /* +172 */
     float f472[150];                    /* +472: f68 up to f68 + 20.5 */
-    int f1072;                          /* +1072 */
+    unsigned int f1072;                 /* +1072: frames in the histogram, up to 40 */
     short f1076[40];                    /* +1076 */
     short *end1156;                     /* +1156: f1076's end */
     short *pos1160;                     /* +1160: in f1076 */
     unsigned char second;               /* +1164: profile 37 */
     char pad1165;
-    unsigned short f1166;               /* +1166: profile 10 */
+    short f1166;                        /* +1166: profile 10 */
     unsigned short f1168;               /* +1168: profile 8 */
-    unsigned short f1170;               /* +1170: profile 9 */
+    short f1170;                        /* +1170: profile 9 */
     float noise;                        /* +1172 */
     float f1176;                        /* +1176: profile 13, thousandths of a dB in nepers */
     float f1180;                        /* +1180: profile 11, dB in nepers */
@@ -342,7 +342,157 @@ static void VadPutSession(VAD *v, VADSESSION *ss)
     v->pos1160 = &v->f1076[ss->idx1160];
 }
 
-extern void VadFastTrackProcess(VAD *v, float e);
+extern float ceilf(float x);
+extern float expf(float x);
+extern void *memset(void *p, int c, unsigned int n);
+
+/* a frame's energy e tracked (the block's fast track; f1188 its speech likelihood, 0.01 until the
+ * block has run): the state set up on the first frame (the levels from e, the histogram of the
+ * last frames' energies cleared); while frames are being skipped (+76), nothing else; else e's bin
+ * (149 bins over 20.5 from f68) counted into the histogram, the oldest bin out once 40 frames are
+ * in, the lowest and highest k frames' bins found (k 0.15 of the frames, 7 once full), the floor
+ * (+60) and the spread (+56) moved toward them, the levels derived; the speech level (+44) moved
+ * toward the peak (+64) when the hangover (+74) runs out or the peak is well above it; the
+ * likelihood from e's place between the floor and the speech level -- linear with +1248, else a
+ * logistic -- clamped to 0..1. SOCOM 1's LOCAL (0x73C), written from SOCOM II's code (round 35c),
+ * byte-exact; its shapes:
+ * - the histogram's bins by pointer arithmetic, `*(v->f172 + i)`: an index into a member array
+ *   splits the member's offset at its 16-byte alignment (the EE's BIGGEST_ALIGNMENT) -- the 12
+ *   into the base, 160 into the index, `(v + 12) + (i * 2 + 160)` -- where the target adds 172
+ *   whole after the index (its f472[lo] reads ARE indexed: `v + 8`, then 464);
+ * - the offset as a `?:` (an if-then lets CSE skip the arm and forward f44[2]'s stored value into
+ *   b; the target reloads it);
+ * - top - off computed before the compare (a float op is never moved speculatively: the target's
+ *   early sub.s is the source's);
+ * - the linear case's bound selected by an if on doubles, b + 0.5 first, and converted once into a
+ *   float before e - b (a `?:` has the conversion pushed into its arms by fold);
+ * - +78 counted as unsigned (the target's `andi 0xffff` before the compare). */
+static void VadFastTrackProcess(VAD *v, float e)
+{
+    short k, bin, sum;
+    short *p;
+    unsigned short lo, hi;
+    float low, top, d, old, off, a, b, x, r, m, t;
+    double lim, dm;
+
+    v->f1188 = 0.01f;
+    if (v->f40 == 0) {
+        v->f44[3] = 1.0f;
+        v->f44[4] = e;
+        if (v->speech != 0)
+            v->f44[0] = v->f1184;
+        else
+            v->f44[0] = e + v->f1184 + 1.0f;
+        v->noise = 3.0f;
+        v->f44[2] = v->f44[4] + v->f44[3] * 1.5f;
+        v->f44[1] = v->f44[2] + 1.1513;
+        v->f44[5] = -1e20f;
+        v->f40 = 1;
+        v->count = 0;
+        memset(v->f172, 0, 300);
+        v->f1072 = 0;
+    }
+    if (v->f72[2] > 0) {
+        v->f40 = 0;
+        v->f72[2]--;
+        return;
+    }
+    if (v->f1072 < 40)
+        k = ceilf(++v->f1072 * 0.15f + 0.001);
+    else {
+        k = 7;
+        (*(v->f172 + *v->pos1160))--;
+    }
+    bin = (e - v->f68) * 149.0f * (1 / 20.5f) + 0.5f;
+    if (bin < 0)
+        bin = 0;
+    if (bin > 149)
+        bin = 149;
+    (*(v->f172 + bin))++;
+    *v->pos1160++ = bin;
+    if (v->pos1160 == v->end1156)
+        v->pos1160 = v->f1076;
+    p = v->f172;
+    sum = 0;
+    do
+        sum += *p++;
+    while (sum < k);
+    lo = p - v->f172 - 1;
+    low = v->f472[lo];
+    sum = 0;
+    p = &v->f172[149];
+    do
+        sum += *p--;
+    while (sum < k);
+    hi = p - v->f172 + 1;
+    top = v->f472[hi];
+    d = low - v->f44[4];
+    if (d > 0.5f)
+        d = 0.5f;
+    v->f44[4] = v->f44[4] + d * (d > 0 ? 0.01f : 0.05f);
+    old = *v->histpos;
+    *v->histpos++ = e;
+    if (v->histpos >= v->histend)
+        v->histpos = v->hist;
+    if (old - v->f44[4] < v->f44[3] + 0.5) {
+        d = top - v->f44[4] - v->f44[3];
+        if (d > 0.1f)
+            d = 0.1f;
+        v->f44[3] = v->f44[3] + d * (d > 0 ? 0.02f : 0.2f);
+        if (v->f44[3] < 0.46)
+            v->f44[3] = 0.46f;
+    }
+    v->f44[2] = v->f44[3] * 1.5f + v->f44[4];
+    off = v->speech != 0 ? v->f44[3] + v->f44[4] : 0;
+    a = v->f44[0];
+    b = v->f44[2];
+    t = top - off;
+    v->f44[5] -= (a + off - b) * 0.01f;
+    if (v->f44[5] < top)
+        v->f44[5] = t;
+    v->f44[1] = v->f44[2] + 1.1513;
+    v->f80 = v->f1176 + v->floor + -7.0f - 1000.0f;
+    if (v->f44[1] < v->f80)
+        v->f44[1] = v->f80;
+    if (v->f44[1] < e)
+        v->f72[0]++;
+    else
+        v->f72[0] = 0;
+    if (v->f72[0] > v->f1166) {
+        if (v->f72[1] == 0)
+            v->f44[5] = b - off;
+        v->f72[1] = v->f1168;
+    }
+    if (v->f72[1]-- > 0) {
+        if ((unsigned short)++v->f72[3] == v->f1170 || v->f72[1] == 0 || a + 1.0f < v->f44[5]) {
+            d = v->f44[5] - a;
+            v->f72[3] = 0;
+            v->f44[0] = a + d * (d > 0 ? 0.3f : 0.05f);
+            v->count++;
+        }
+    } else {
+        v->f72[1] = 0;
+        v->f72[3] = 0;
+    }
+    x = v->f44[0] + off;
+    v->noise = x - b;
+    if (v->f1248 != 0) {
+        lim = b + 0.5;
+        dm = x - v->f1180;
+        if (dm < lim)
+            dm = lim;
+        m = dm;
+        r = (e - b) / (m - b);
+    } else if (b < e)
+        r = 1.0f / (expf((e - x + v->f1180) * -2.0f) + 1.0f);
+    else
+        r = 0;
+    if (r < 0.0)
+        r = 0;
+    else if (r > 1.0)
+        r = 1.0f;
+    v->f1188 = r;
+}
 
 /* a frame (the block's process): the single input's value, or with several the mean of those
  * present (none present, nothing); the frame timed and fast-tracked, the first output given the
@@ -358,7 +508,12 @@ extern void VadFastTrackProcess(VAD *v, float e);
  * first, all fifteen orders of the init's four statements give sum 25 refs over 158 insns, cnt 24
  * over 152 (6,329 against 6,315: sum still takes $f0); a structured `if (i < n) { ... }` for the
  * goto flips them (sum's live 160: 6,250) but is 0x26C; a zero temporary copied into both is folded
- * into the first copy by CSE (the same two shapes again). */
+ * into the first copy by CSE (the same two shapes again). Round 35c: `cnt = sum = 0.0f` (SOCOM 1's
+ * shape too: sum zeroed, cnt copied) gives sum 25 weighted refs over 156 insns (6,410) against
+ * cnt's 24 over 152 (6,315): the target's needs one weighted ref more on cnt or three live insns
+ * more on sum with the code unchanged; `if (i < n)` threads a flag through the scan loop (`li
+ * a0,1` on its break: the 2 words), `if (i != n)`, a return or a do-while(0) are the goto's shape
+ * (build/scratch/gcc/r35/v_pv1.py). */
 static void ProcessVad(VAD *v, float **in, int n)
 {
     float *volatile x;
