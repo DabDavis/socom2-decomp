@@ -83,10 +83,9 @@ void PickupObject__10CZSealBodyFP7CPickup(CEntity *seal, CPickup *pickup);
 /* the AI's state-clock hold (OVL2 0x570F90, the SEAL lane's: SOCOM 1 set the goal timer at 0x1BC
  * and saturated it in place) */
 void func_00570F90(CSealCtrlAi *ai, float t);
-/* CSealCtrlAi::SetStance, SetRoute, SetDoReaction and GetRouteComplete (SOCOM 1's, called from
- * the same Ticks; OVL2 0x5631A0, 0x5623B0, 0x561E20, 0x5629B0 -- the SEAL lane's rows) */
+/* CSealCtrlAi::SetStance, SetDoReaction and GetRouteComplete (SOCOM 1's, called from
+ * the same Ticks; OVL2 0x5631A0, 0x561E20, 0x5629B0 -- the SEAL lane's rows) */
 void SetStance__11CSealCtrlAiF11SEAL_STANCE(CSealCtrlAi *ai, int stance);
-bool func_005623B0(CSealCtrlAi *ai, void *loc);
 void func_00561E20(CSealCtrlAi *ai, int on, int reaction);
 bool func_005629B0(CSealCtrlAi *ai);
 /* a traversable cell beside a point (SOCOM 1's free FindTraversableNeighbor, now on the AI maps;
@@ -305,7 +304,7 @@ int CAiSNoAmmo::Tick(CSealCtrlAi *ai)
             unsigned int loc;
 
             *(unsigned int *)&m_pickupLoc = *(unsigned int *)&seal->m_mapLocValid;
-            if (GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(&AiMaps, m_pickup->GetPosW(), &loc) && func_005623B0(ai, &loc)) {
+            if (GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(&AiMaps, m_pickup->GetPosW(), &loc) && ai->SetRoute(*(CAiMapLoc *)&loc)) {
                 phase = 1;
                 SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
                 func_00570F90(ai, 1.0f);
@@ -1437,7 +1436,7 @@ static inline bool HoldEnemy2(unsigned int &team, CEntity *b)
  * folds into the frame offset, and separate temporaries are all drawn up to the block's head by the scheduler, so it is one
  * pointer with four definitions, which IRO_ExpressionPropagation only moves when a definition has one use counted and no use
  * in another flow node, and IRO_SplitLifetimes leaves whole when an asm reads it: a no-code asm read after the last store, and
- * a guarded read of it that lasts until the second pass's folding. func_00357F30, func_005483D0 and CAppCamera::
+ * a guarded read of it that lasts until the second pass's folding. C2DWidePolyline::SetSegments, func_005483D0 and CAppCamera::
  * ClipCameraChord show the same stores, unwritten: what the original spelled here is unknown */
 extern "C" CAiState::STEP func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
 {
