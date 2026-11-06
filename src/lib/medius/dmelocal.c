@@ -1816,7 +1816,13 @@ extern int func_0061D448(int nClient);
  * at once when this client made it, else asked of its creator.
  * OPEN (8 bytes short): the two sends cross-jump into one call here where the target keeps both (each
  * with its own `move v0,zero`), and the creator's message takes its slot before pWorld's; four shapes
- * (the message at the top, an else, a result kept from either call) tried */
+ * (the message at the top, an else, a result kept from either call) tried. Round 24b came to registers
+ * only (0x124 against 0x128, the gap the else label's alignment nop): the ask a one-member struct (the
+ * unsigned short a promoted mode, forced to slot 16 before the pointers' ADDRESSOFs), pObject declared
+ * before pWorld, the arms an if/else before one `return DME_OK` (no cross-jump), the creator read once into
+ * a local (passed on to RemoteObjectUpdate in a0 with no reload) -- left: the creator's pseudo takes a2
+ * for the target's a0 and the shared -1 v1 for v0. Not kept: that body moves func_00618F70, compiled after
+ * it, by 8 bytes (its stores through pClient stop reloading the slot); build/scratch/gcc-r24b has it. */
 int func_0061A118(unsigned int nIndex)
 {
     struct { unsigned char nOwner; unsigned char pad; unsigned short nIndex; } msg;
