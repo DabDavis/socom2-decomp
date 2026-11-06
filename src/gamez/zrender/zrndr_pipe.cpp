@@ -188,8 +188,8 @@ public:
     void RenderUiNodeRecursive(zdb::CNode *node);
     /* SOCOM 1's RenderVisual (0x3374C0): whether every visual passed its level of detail */
     bool RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
-    /* RenderAtom's callees (not written): SOCOM II's lighting and fog set-up (0x33B230, ours), SOCOM 1's
-     * RenderMesh (0x338480) and RenderNode (0x3389C0) */
+    /* RenderAtom's callees: SOCOM II's lighting and fog set-up (0x33B230, ours), SOCOM 1's RenderMesh
+     * (0x338480, not written) and RenderNode (0x3389C0, the world lane's round 31) */
     void PrepareAtom(zdb::CNode *node);
     void BuildLightMapList(zdb::CNode *node);
     void RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov);
@@ -804,6 +804,154 @@ void CPipe::BuildProjectedMapList(zdb::CNode *node)
             }
         }
     }
+}
+
+/* the view ids' pop, below (RenderNode calls it ahead of its definition) */
+static inline void PopVid();
+/* vis_vu.cpp's: the clip word the FOV test leaves (not named) */
+extern "C" unsigned int data_004B4E58;
+/* zmath's box put in order, axis by axis (OVL1 0x2A94E0, fts_mission.cpp's) */
+extern "C" void func_002A94E0(CBBox *box);
+/* zmath's: whether a matrix is the unit one (0x3084F0, not named) */
+extern "C" bool func_003084F0(const CMatrix *m);
+
+/* a node's box through one inline level more than CNode::GetBBox (ours, node_world.cpp's stand-in:
+ * the recursive GetBBox under it is called straight) */
+static inline const CBBox *NodeBBox(zdb::CNode *node)
+{
+    return node->GetBBox();
+}
+
+/* whether a matrix scales: its diagonal's three words against 1.0f's (ours) */
+static inline bool Scales(const CMatrix *m)
+{
+    const unsigned int *w = (const unsigned int *)m->m_matrix;
+
+    return w[0] != 0x3F800000 || w[5] != 0x3F800000 || w[10] != 0x3F800000;
+}
+
+/* a box's eight corners with w 1, in GetBBoxCorners' order (ours) */
+static inline void BoxCorners4(PNT4D *c, const CBBox *b)
+{
+    c[0].x = b->m_min.x;
+    c[0].y = b->m_min.y;
+    c[0].z = b->m_max.z;
+    c[0].w = 1.0f;
+    c[1].x = b->m_min.x;
+    c[1].y = b->m_min.y;
+    c[1].z = b->m_min.z;
+    c[1].w = 1.0f;
+    c[2].x = b->m_max.x;
+    c[2].y = b->m_min.y;
+    c[2].z = b->m_min.z;
+    c[2].w = 1.0f;
+    c[3].x = b->m_max.x;
+    c[3].y = b->m_min.y;
+    c[3].z = b->m_max.z;
+    c[3].w = 1.0f;
+    c[4].x = b->m_min.x;
+    c[4].y = b->m_max.y;
+    c[4].z = b->m_max.z;
+    c[4].w = 1.0f;
+    c[5].x = b->m_min.x;
+    c[5].y = b->m_max.y;
+    c[5].z = b->m_min.z;
+    c[5].w = 1.0f;
+    c[6].x = b->m_max.x;
+    c[6].y = b->m_max.y;
+    c[6].z = b->m_min.z;
+    c[6].w = 1.0f;
+    c[7].x = b->m_max.x;
+    c[7].y = b->m_max.y;
+    c[7].z = b->m_max.z;
+    c[7].w = 1.0f;
+}
+
+/* SOCOM 1's: an active node with visuals drawn with its children -- unless its region is out of
+ * the camera's sight or it is all but transparent; its matrix multiplied onto the stack unless it
+ * is the unit one (SOCOM II's test), a facade turned to the camera; unless the caller's FOV verdict
+ * is "inside", its box's corners tested against the view (a matrix of unit scale carries the box's
+ * two corners, put back in order, any other all eight) and the node dropped when outside; a node
+ * marked so dropped (its flag set) unless the characters are drawn; then its view id and opacity
+ * pushed, its visuals drawn (with the LOD filter on, the node dropped when one is rejected), each
+ * child a mesh or a node of its own, and everything popped. Unwritten before the world lane's round
+ * 31, byte-exact as first written but for two shapes: the box read through NodeBBox (GetBBox called
+ * straight, as the target's two calls; direct, MW inlines GetBBox's body once) and the scale test an
+ * inline bool (the target materialises the `!=` chain, xor / sltu, before its branch) */
+void CPipe::RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
+{
+    if (!node->m_active || !node->m_hasVisuals ||
+        (node->m_apply_clip && !m_camera->CanSeeRegion(1 << node->m_region_shift)))
+        return;
+    if (node->m_Opacity < 1.0f / 128)
+        return;
+    bool identity = func_003084F0(&node->m_matrix);
+    CMatrix *m;
+
+    if (identity)
+        m = CStack::m_top;
+    else
+        m = s_stack.Multiply(&node->m_matrix, true);
+    if (node->m_facade)
+        node->ComputeFacadeMatrix((CMatrix *)m_camera, m);
+    if (fov != 1) {
+        PNT4D corners[8];
+
+        if (!Scales(m)) {
+            CBBox box;
+
+            m->Transform(&NodeBBox(node)->m_min, &box.m_min, 2);
+            func_002A94E0(&box);
+            BoxCorners4(corners, &box);
+        } else {
+            CBBox box = *NodeBBox(node);
+
+            BoxCorners4(corners, &box);
+            m->Transform((CPnt4D *)corners, (CPnt4D *)corners, 8);
+        }
+        fov = m_camera->TestFOV(corners, &data_004B4E58, true);
+        if (fov == 2) {
+            if (!identity)
+                s_stack.Pop();
+            return;
+        }
+    }
+    if (node->m_bumpmap && !m_drawCharacters) {
+        node->m_socom2_a1_bits.bit4 = 1;
+        if (!identity)
+            s_stack.Pop();
+        return;
+    }
+    zdb::CVisual::m_stack_vid.push((void *)node->m_vid);
+    bool pushed = PushNodeOpacity(node);
+
+    if (node->m_visual.size()) {
+        BuildSpecMapList(node);
+        if (m_LODFilter) {
+            if (!RenderVisual(node, fov)) {
+                if (!identity)
+                    s_stack.Pop();
+                if (pushed)
+                    m_opacity_stack_index--;
+                PopVid();
+                return;
+            }
+        } else
+            RenderVisual(node, fov);
+    }
+    zdb::CNodeVector &c = node->m_child;
+
+    for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i) {
+        if ((*i)->m_hasMesh)
+            RenderMesh(*i, 0, 0, (zdb::tag_ZVIS_FOV)0);
+        else
+            RenderNode(*i, fov);
+    }
+    if (!identity)
+        s_stack.Pop();
+    if (pushed)
+        m_opacity_stack_index--;
+    PopVid();
 }
 
 /* SOCOM II's: the dynamic textures of a node's visuals added to the alpha pass's. The list's
