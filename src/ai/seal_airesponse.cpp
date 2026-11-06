@@ -1608,7 +1608,8 @@ static inline CAiSPlan *HoldPlan(CAiStateStack &stack)
  * SetFlags(0x10, 0), `lw v1,44(s4)`, where IRO_CommonSubs here carries the tests' temporary into the first `|=` (a0, live one
  * block longer, which shifts the tests' register too). Nothing between them in the target's code kills that read. Tried without
  * effect: a named local for the look byte, SetFlags through a CAiState pointer, the tests through a named local, a no-code asm
- * ahead of it (a nop, no kill); through an int view or a const pointer the `&= ~0` folds (16 bytes short) */
+ * ahead of it (a nop, no kill); through an int view or a const pointer the `&= ~0` folds (16 bytes short); a late-folding guard
+ * over a store ahead of the reload, before its test or inside its arm (the second pass's CSE still carries the read) */
 int CAiSHold::Tick(CSealCtrlAi *ai)
 {
     STEP step = (STEP)m_phase;
