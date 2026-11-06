@@ -586,9 +586,9 @@ inline void __pod_fill_n(unsigned short *first, unsigned int n, const unsigned s
  *     member's destructor inlined into its class's -- would call them where the image does not. In the original the level is deeper (eight; the
  *     pair's first() and second() under alloc() and cap() are the leaves there: SOCOM 1's 0x173590 / 0x1735A0, and the real shape is one pass taller);
  *   - THE PIECES THE OPT-IN ADDS, each read off zui_hangul.cpp's rows at level 7 (Close stands on the first alone, transform and its op being its
- *     two extra passes): a `__destroy` level for a class element in the deleter's clear and the class erase (a destructor there a pass deeper than a
+ *     two extra passes): a class element destroyed through the allocator in the deleter's clear and the class erase, `first().destroy(--last)` (a destructor there a pass deeper than a
  *     temporary's in resize: clear<SKBCOMPLETE> 0x393E40 cut at the leaves, resize<SKBCOMPLETE> 0x392770 whole; clear<SKBPIECE> 0x3929C0, too tall,
- *     keeps the implicit destructor a call, `li a1,-1`), and the pods' default constructors two levels taller (the capacity pair's: SKBPIECE() eight
+ *     keeps the implicit destructor a call, `li a1,-1`; find_or_insert<C2DGlyph> 0x35C3A0 shows the wait itself, first() 0x35C620 called per element), and the pods' default constructors two levels taller (the capacity pair's: SKBPIECE() eight
  *     high, cut to its own body in resize<SKBPIECE> 0x392670 -- CJamoStr() and CInit<Us,0>() called -- SKBCOMPLETE() seven, whole).
  * The leaves carry SOCOM 1's names, the pair's first() and second() (0x173590 / 0x1735A0: the pod's own alloc() and cap() are other rows, 0x25B940 / 0x25B930,
  * the cut one pass earlier -- __MSL_VECTOR_POD_PAIR's), here called straight from the destructor, a level shallower than the original's. Rows named: the uint pod's
