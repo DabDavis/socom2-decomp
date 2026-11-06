@@ -236,6 +236,117 @@ def unit_span(obj: Path, st, overlay: str | None = None) -> tuple[int, int] | No
     return (lo, hi) if lo is not None else None
 
 
+# --- a partial check's lost rows that another emitter still holds (GCC round 38a) -------------
+
+def mangled_ids(name: str) -> set[str]:
+    """The identifiers a mangled name spells: MW's length-prefixed names (`11CRegistrant`; a template
+    `84vector<...>` as `vector`, its arguments read too) and its leading function name (`GetBestDir`
+    of `GetBestDir__12MAP_DIRCOUNT...`). Each digit run is tried as a length longest suffix first
+    (`Q211CIOPManager`: the qualifier count runs into the length)."""
+    ids: set[str] = set()
+    lead = re.match(r"(?!__)([A-Za-z_]\w*?)__[A-Z0-9]", name)     # not MW's __dt, __ct, __ml ...
+    if lead:
+        ids.add(lead.group(1))
+    i = 0
+    while i < len(name):
+        if not name[i].isdigit():
+            i += 1
+            continue
+        j = i
+        while j < len(name) and name[j].isdigit():
+            j += 1
+        run = name[i:j]
+        for k in range(len(run)):
+            n = int(run[k:])
+            cand = name[j:j + n]
+            m = re.fullmatch(r"([A-Za-z_]\w*)(<.*>)?", cand) if n and len(cand) == n else None
+            if m and (not m.group(2) or m.group(2).count("<") == m.group(2).count(">")):
+                ids.add(m.group(1))
+                break
+        i = j
+    return ids
+
+
+_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^">]+)[">]', re.M)
+_COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.S)
+
+
+def emitter_candidates(name: str, root: Path, skip: set[Path], limit: int = 40) -> list[Path]:
+    """The hand-written units under `root` (none of `skip`) that may emit an inline copy of `name`:
+    each whose text, or a header it includes (transitively: the including file's directory, then
+    `root`, then include/), names every identifier of `name` that include/'s headers do not (the
+    MSL's `vector`, `allocator` ...). [] when every identifier is the MSL's, or more than `limit`
+    units qualify -- too wide to build for one row."""
+    # the code's words, never its comments' (include/vector's notes name CIOPManager::CRegistrant)
+    words = lambda p: set(re.findall(r"\w+", _COMMENT.sub(" ", p.read_text(errors="replace"))))
+    generic: set[str] = set()
+    for p in INCLUDE.rglob("*"):
+        if p.is_file():
+            generic |= words(p)
+    need = mangled_ids(name) - generic
+    if not need:
+        return []
+    cache: dict[Path, set[str]] = {}
+
+    def closure(p: Path, seen: set[Path]) -> set[str]:
+        if p in seen:
+            return set()
+        seen.add(p)
+        if p not in cache:
+            cache[p] = words(p)
+        out = set(cache[p])
+        for inc in _INCLUDE.findall(p.read_text(errors="replace")):
+            for d in (p.parent, root, INCLUDE):
+                q = d / inc
+                if q.is_file():
+                    out |= closure(q.resolve(), seen)
+                    break
+        return out
+
+    found = [p for p in sources(root) if "auto" not in p.relative_to(root).parts and p not in skip
+             and need <= closure(p.resolve(), set())]
+    return found if len(found) <= limit else []
+
+
+def held_elsewhere(lost: list[int], scored_by: dict, built_srcs: set[Path], root: Path, build: Path,
+                   img, st, jobs: int = 2) -> dict[int, str]:
+    """{address: the unit that still matches it} for each row a partial check lost only by an inline
+    copy: every unit that scored the row here emitted a copy (the linker keeps any one emitter's),
+    and another emitter outside --files -- the row's draft (`src/auto/<seg>/<VA>.c`), or a
+    hand-written unit `emitter_candidates` finds -- built and scored now, matches it. zsys_init.cpp's
+    ~vector<CIOPManager::CRegistrant> 0x39CD40 is 6 off and util_main.cpp's matches: built alone,
+    zsys_init.cpp lost the row; the full check never did. A strong definition's miss is never held
+    (the linker keeps it over every copy)."""
+    held: dict[int, str] = {}
+    todo: dict[Path, set[int]] = {}
+    for a in lost:
+        scorers = scored_by.get(a, [])
+        if not scorers or not all(copy for _, _, copy in scorers):
+            continue
+        cands = [p for p in sorted((root / "auto").glob(f"*/{a:08X}.c*")) if p not in built_srcs]
+        for name in sorted({n for _, n, _ in scorers}):
+            cands += [p for p in emitter_candidates(name, root, built_srcs) if p not in cands]
+        for p in cands:
+            todo.setdefault(p, set()).add(a)
+    if not todo:
+        return held
+    with ThreadPoolExecutor(jobs) as ex:
+        built = list(ex.map(lambda p: build_one(p, build, root), sorted(todo)))
+    for src, obj, err in built:
+        if obj is None:
+            continue
+        elf = E.Elf.read(obj)
+        home = unit_overlay(elf, st, tu_options(src).get("overlay"))
+        for fs in elf.functions():
+            try:
+                sym = scoring_row(st, fs.name, home)
+            except KeyError:
+                continue
+            if sym.addr in todo[src] and sym.addr not in held and D.compare(obj, fs.name, sym, img, st).match:
+                held[sym.addr] = str(src.relative_to(root))
+    return held
+
+
 def main(argv=None, root: Path = SRC) -> int:
     """`root`: the tree to build and score, src/ unless a caller names another (the canary builds a
     scratch copy of the hand-written tree with a fixture draft in it); the map, MATCHED.txt and
@@ -267,6 +378,7 @@ def main(argv=None, root: Path = SRC) -> int:
 
     rows, matched, failed_builds = [], [], 0      # matched: (name, address) pairs
     scored_at: set[int] = set()                  # the addresses scored (match or WRONG)
+    scored_by: dict[int, list] = {}              # address -> [(unit, name, an inline copy)]
     auto_at: set[int] = set()                    # matched by a generated draft
     hand_at: set[int] = set()                    # matched by hand-written source
     hand_names: set[str] = set()     # what hand-written source defines as its own (not inline copies)
@@ -338,6 +450,7 @@ def main(argv=None, root: Path = SRC) -> int:
                 rows.append(("elsewhere", src.name, fs.name, f"inline copy; linked at {sym.addr:#x}"))
                 continue
             scored_at.add(sym.addr)
+            scored_by.setdefault(sym.addr, []).append((src, fs.name, is_copy(elf, fs)))
             if res.match:
                 matched.append((fs.name, sym.addr))
                 (auto_at if is_auto else hand_at).add(sym.addr)
@@ -369,10 +482,16 @@ def main(argv=None, root: Path = SRC) -> int:
     now = {a for _, a in matched}
     # a partial build (--files) can only lose what it scored: the addresses its units define
     scored_addrs = scored_at if frx else None
+    lost = sorted(a for a in set(baseline) - now if (not rx or rx.search(baseline[a]))
+                  and (scored_addrs is None or a in scored_addrs))
+    # a row lost only by an inline copy that another emitter outside --files still matches is no
+    # loss (GCC round 38a: 0x39CD40, and the drafts README "Working in parallel" lists): reported apart
+    held = (held_elsewhere(lost, scored_by, {s for s, _, _ in built}, root, a.build_dir.resolve(), img, st,
+                           min(a.jobs, 2))
+            if frx and lost else {})
     regressions = sorted(f"{a:#x} {baseline[a]}" + (f" (now {st.at_addr(a).name})" if st.at_addr(a)
                          and st.at_addr(a).name != baseline[a] else "")
-                         for a in set(baseline) - now if (not rx or rx.search(baseline[a]))
-                         and (scored_addrs is None or a in scored_addrs))
+                         for a in lost if a not in held)
     total_code = sum(s.size for s in st.symbols)
     # count addresses: a template instance two units emit (an MSL vector's reserve) is one
     # function, and one name can be matched once per overlay (its copies)
@@ -393,6 +512,9 @@ def main(argv=None, root: Path = SRC) -> int:
               f"run tools/automatch.py --emit to drop them: {', '.join(superseded[:5])}")
     if failed_builds:
         print(f"{failed_builds} TU(s) failed to build")
+    if held:
+        print(f"not lost -- an inline copy missed here, another emitter outside --files still matches: "
+              + ", ".join(f"{a:#x} {baseline[a]} by {u}" for a, u in sorted(held.items())))
     if regressions:
         print(f"REGRESSIONS against {MATCHED.name}: {', '.join(regressions)}")
     if a.baseline:
