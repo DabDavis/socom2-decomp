@@ -149,7 +149,7 @@ class CDIBBox : public CDI {
 public:
     CDIBBox();
     virtual ~CDIBBox();
-    virtual bool GetIntersect(DiIntersect *di);
+    virtual int GetIntersect(DiIntersect *di);
     virtual int GetAltitude(DiIntersect *di);
     /* the unit box's six faces, built once behind a guard byte (SOCOM 1's static; OVL1 0x2DC7A0, named by the
      * engine core's round 23 -- declared by the integrator so camera.cpp's lane can write it under its name) */
@@ -164,7 +164,7 @@ class CDIPoly : public CDI {
 public:
     CDIPoly();
     virtual ~CDIPoly();
-    virtual bool GetIntersect(DiIntersect *di);
+    virtual int GetIntersect(DiIntersect *di);
     virtual int GetAltitude(DiIntersect *di);
 };   // 0x14 bytes
 
