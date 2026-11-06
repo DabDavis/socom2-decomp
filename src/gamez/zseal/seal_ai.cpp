@@ -179,8 +179,11 @@ public:
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSDeploy();
 
-    /* what signal 4 resets (the names ours) */
-    unsigned char _58[0x70 - 0x58];
+    /* the point the deploy is made at and the aim it is made with (the grenade's thrower 0x564D20 sets
+     * both; the names ours) */
+    CPnt3D m_58;   // 0x58
+    CPnt3D m_64;   // 0x64
+    /* what signal 4 resets (the names ours; 0x564D20 puts the item at 0x70) */
     unsigned int m_70;   // 0x70
     CAiMapLoc m_74;   // 0x74: a cell, the invalid one when reset
     unsigned char _78[0x7c - 0x78];
@@ -188,7 +191,7 @@ public:
     unsigned char _7d[0x80 - 0x7d];
     unsigned int m_80;   // 0x80
     unsigned int m_84;   // 0x84
-    unsigned char _88[0x8c - 0x88];
+    float m_88;   // 0x88: a wait 0x564D20 sets for a launcher's round (the name ours)
     unsigned int m_8c;   // 0x8c
     float m_timer;   // 0x90: a weapon timer (CZWeapon::ClearTimer clears it)
     unsigned int m_94;   // 0x94
@@ -566,7 +569,8 @@ bool func_00572190(CSealCtrlAi *ai);
 bool func_00565460(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *pos);
 /* (OVL2 0x564D20: the grenade thrown at the point -- unwritten; CSealCtrlAi::OnCommand and the
  * breach's Tick call it too) */
-bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *pos, int a, int b);
+bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *target, const CPnt3D *from,
+    unsigned int flags);
 /* (OVL2 data: how long the AI waits after a grenade before choosing another, read as a variable) */
 extern float data_0064FF80;
 /* (OVL1 data: the game's clock, as this unit reads it) */
@@ -3834,6 +3838,93 @@ static inline bool IsAutomatic(EQUIP_ITEM id)
         return true;
     }
     return false;
+}
+
+extern "C" {
+/* (OVL2 0x58F6E0, seal_orders.cpp's: a cell near a point, along a line from another) */
+bool func_0058F6E0(const CPnt3D *from, const CPnt3D *to, CAiMapLoc *out, bool along);
+/* (OVL2 0x555C50: a throw found from a point to another -- its landing point and cell; unwritten) */
+bool func_00555C50(CSealCtrlAi *ai, const CPnt3D *from, const CPnt3D *to, CPnt3D *pos, CAiMapLoc *loc);
+/* (OVL2 data: the wait a launcher's round is given, read as a variable) */
+extern float data_0064FE38;
+}
+
+/* the deploy state on top, or none (an inline: the state's kind tested) */
+static inline CAiSDeploy *AsDeploy(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_DEPLOY ? (CAiSDeploy *)s : 0;
+}
+
+/* a grenade of the item deployed at a point from another (the SEAL's own when none): a rocket's cell
+ * along the line (0x58F6E0), else a throw (0x555C50, flag 0x40) or the cell short of the point --
+ * levelled with the line for all but a launcher's round; with a cell and an item the deploy state
+ * pushed and given the point, a zero aim, the cell, the item and its wait -- 15 for a rocket, 5 else,
+ * a launcher's round's 121 its own wait and flag 0x10 but for a navy SEAL -- and the grenade's time
+ * taken; whether it was (OVL2 0x564D20, new in SOCOM II: the grenade choice 0x565110, OnCommand and
+ * the breach's Tick call it; the name ours). Byte-exact (the SEALs' round 57, unwritten before) with:
+ * the point declared ahead of the aim (the later-declared takes the lower slot); the throw's test
+ * negated, its true arm last (laid out after the cell's path); the item compared and switched on as
+ * `(unsigned char)item` -- the one expression RocketId's and LauncherId's conversions share, kept in s0
+ * (a plain `item != EQUIP_NONE` normalises it again and swaps the item's and the flags' registers; a
+ * plain `switch (item)` shares the 0x70 store's zero extension) */
+extern "C" bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *target, const CPnt3D *from,
+    unsigned int flags)
+{
+    bool r = false;
+    CEntity *seal = ai->m_entity;
+    CPnt3D pos;
+    CPnt3D aim = CPnt3D::zero;
+    CAiMapLoc loc = CAiMapLoc::invalid;
+
+    if (!from)
+        from = &seal->m_posW;
+    if (RocketId(item)) {
+        if (func_0058F6E0(target, from, &loc, true))
+            r = AiMaps.GetCellCenter(loc, &pos) != 0;
+    } else if (!func_00555C50(ai, from, target, &pos, &loc)) {
+        if (func_0058F6E0(target, from, &loc, false)) {
+            r = AiMaps.GetCellCenter(loc, &pos) != 0;
+            if (!LauncherId(item)) {
+                CPnt3D out;
+                float t;
+
+                if (pos.DistToVector(from, target, &out, &t))
+                    pos.y = out.y;
+            }
+        }
+    } else {
+        r = true;
+        flags |= 0x40;
+    }
+    if (r && (unsigned char)item != EQUIP_NONE && ai->PushAiState(AI_STATE_DEPLOY, 0)) {
+        CAiSDeploy *st = AsDeploy(ai->GetAiState());
+
+        st->SetFlags(flags, 0);
+        st->m_58 = pos;
+        st->m_64 = aim;
+        st->m_74 = loc;
+        st->m_70 = item;
+        switch ((unsigned char)item) {
+        case 151:
+        case 152:
+        case 153:
+            st->m_time = 15.0f;
+            break;
+        case 121:
+            st->m_time = 5.0f;
+            if (!ai->IsNavySeal()) {
+                st->m_88 = data_0064FE38;
+                st->SetFlags(0x10, 0);
+            }
+            break;
+        default:
+            st->m_time = 5.0f;
+            break;
+        }
+        ai->m_770 = data_004365C0;
+    } else
+        r = false;
+    return r;
 }
 
 /* the fire parameters set up from the kit for a target -- its spot and its velocity (none: still) --
