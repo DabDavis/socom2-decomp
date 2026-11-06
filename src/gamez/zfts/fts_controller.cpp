@@ -4,9 +4,9 @@
  * 0x2C5E70, with the copies its inlined layout constructor calls, 0x2C5FF0-0x2C60BF), the edited
  * layout's buttons, the pressures, the jump/action test, and SOCOM II's stick readers (the strafe
  * 0x2C6110, a function's button held 0x2C61E0, a stick's axis 0x2C6520, the pitch 0x2C65B0 and its
- * caller, the look 0x2C6290 open), and the chat line's USB keyboard (0x2C6C70, its last function
- * before the layouts' destructor), and the per-layout parser 0x2C67F0 (open). Defined in reverse of
- * their image order (-inline deferred). */
+ * caller, the look 0x2C6290), and the chat line's USB keyboard (0x2C6C70, its last function
+ * before the layouts' destructor), and the per-layout parser 0x2C67F0. Whole since round 53. Defined
+ * in reverse of their image order (-inline deferred). */
 
 #include <string>
 #include <vector>
@@ -63,6 +63,9 @@ enum STICK {
 class CPad {
 public:
     void SetButtonState(PAD_BUTTON button, KEY_STATE state);   /* 0x2DA160 */
+    /* a button's state (the name ours: the look's, 0x2C6290: the argument's copy in the select's arm
+     * keeps the select two blocks) */
+    KEY_STATE GetButtonState(PAD_BUTTON button) const { return m_state[button]; }
     bool GetDoubleClick(PAD_BUTTON button);   /* 0x2DA1C0 */
 
     /* a button's pressure, none for no button (the name ours: the button arrives through an
@@ -187,11 +190,21 @@ public:
     {
         return m_btns.m_btn[func].m_btn != PAD_BUTTON_NONE ? pad->m_state[m_btns.m_btn[func].m_btn] : KEY_UP;
     }
-    bool IsDown(int func, const CPad *pad) const { return GetButtonState(func, pad) == KEY_DOWN; }
+    /* the same with the button held in a local, the pad's own accessor reading the state (the
+     * look's, 0x2C6290) */
+    KEY_STATE HeldButtonState(int func, const CPad *pad) const
+    {
+        PAD_BUTTON button = GetButton(func);
+
+        return button != PAD_BUTTON_NONE ? pad->GetButtonState(button) : KEY_UP;
+    }
+    bool IsDown(int func, const CPad *pad) const { return HeldButtonState(func, pad) == KEY_DOWN; }
     KEY_STATE ButtonState(int func, const CPad *pad) const
     {
         return Button(func) != PAD_BUTTON_NONE ? pad->m_state[Button(func)] : KEY_UP;
     }
+    /* whether a function's button is in a state (the name ours: 0x2C60C0's) */
+    bool IsInState(int func, const CPad *pad, KEY_STATE state) const { return state == ButtonState(func, pad); }
     bool HoldsLook() const { return m_11.m_on; }
 
     CSaferStr m_name;   // 0x0: SelectConfig's key
@@ -208,6 +221,7 @@ class CCtrlrConfigs {
 public:
     static void Init();
     static bool IsJumpAndActionShared();
+    static float GetFwdBackStickPos(const CPad &pad);
     static void SelectConfig(const char *name);
 
     /* the layouts read from controller.rdr (SOCOM 1's static vector of them) */
@@ -347,18 +361,14 @@ const char *c_arrFuncNames[13] = {
  * it lives in the frame and every store reloads it; the function index is narrowed to the byte
  * enum before ReadBtnName (the target's andi in the call's delay slot), the mask an int narrowed
  * at each OR.
- * OPEN, 12 instructions, registers only: at the button store and the two mask ORs the target
- * colours the layout's reload a0 and the narrowed value v1 (the OR's operands mask first, then the
- * loaded byte in a1), this the reload a1/v1 and the narrowed value a0 -- MW's commutative operand
- * order puts the higher-numbered vreg first, so the target numbers the base's reload BEFORE the
- * index's narrowing (and the loaded byte before the mask's), where MW lowers `p->a[i]` and `x |= y`
- * index and right side first. Measured (build/scratch/states/sp_67f0*.py): the base as an rvalue
- * pointer -- `((CCfgButton *)((char *)pConfig + 0x12))[f]`, or a CCfgSticks * accessor for the
- * masks -- makes the button store the target's, and with `|= mask & 0xff` the ORs are 4 off (only
- * the narrowed mask and the loaded byte trade v1/a1); an inline accessor for the buttons' array
- * grows the function 8 bytes. Also tried: the index cast in place, an unsigned char local, a
- * byte-enum local before the call (it gives the delay slot's andi), SetButton/Add members taking
- * the enum or the byte, `mask | m_mask`, two-sided ORs, a CCfgSticks pointer local */
+ * Byte-exact since round 53 (written in round 20, 12 off). At the button store and the two mask ORs the target
+ * colours the layout's reload a0 and the narrowed value v1, and for the ORs that means the numbering
+ * byte < reload < mask, the loaded byte numbered ahead of the base it is loaded through -- only a
+ * variable can be. An integer local is forwarded into the OR (any of them), a local of the byte enum
+ * STICK is not (IRO's propagation leaves enum-typed variables alone, as in zRemoteClientConnectsCallback
+ * 0x2BC620), and written `mask | sticks` the OR's operands are the target's. The button store's
+ * base an rvalue pointer (the index then narrowed after the reload); `(unsigned char)mask` rather than
+ * the plain int, which folds the narrowing away (0x478) */
 extern "C" void func_002C67F0(_zrdr *config)
 {
     const char *name = zrdr_findstring(config, "Name");
@@ -382,7 +392,7 @@ extern "C" void func_002C67F0(_zrdr *config)
             if (!strcasecmp(result, c_arrFuncNames[func])) {
                 PadBtnFunc::_ f = (PadBtnFunc::_)func;
 
-                pConfig->m_btns.m_btn[f].m_btn = ReadBtnName(control);
+                ((CCfgButton *)&pConfig->m_btns)[f].m_btn = ReadBtnName(control);
                 found = true;
                 break;
             }
@@ -409,10 +419,16 @@ extern "C" void func_002C67F0(_zrdr *config)
             const char *aim = zrdr_findstring(input, "AimMode");
             bool on = !aim || strcasecmp(aim, "Off");
 
-            if (!hasAim || on)
-                pConfig->m_pitchSticksHeld.m_mask |= mask;
-            if (!hasAim || !on)
-                pConfig->m_pitchSticks.m_mask |= mask;
+            if (!hasAim || on) {
+                STICK sticks = (STICK)pConfig->m_pitchSticksHeld.m_mask;
+
+                pConfig->m_pitchSticksHeld.m_mask = (unsigned char)mask | sticks;
+            }
+            if (!hasAim || !on) {
+                STICK sticks = (STICK)pConfig->m_pitchSticks.m_mask;
+
+                pConfig->m_pitchSticks.m_mask = (unsigned char)mask | sticks;
+            }
         } else if (!strcasecmp(result, "Rotate")) {
             if (!strcasecmp(control, "LeftStickHoriz"))
                 pConfig->m_e.m_stick = STICK_LEFT;
@@ -513,38 +529,31 @@ extern "C" bool func_002C61E0(const CCtrlrConfig *config, unsigned char func, co
 /* a layout's stick read out of line (OVL1 0x2C6220, a draft's: `lb v0,0(a0)`) */
 extern "C" STICK func_002C6220(const STICK *stick);
 
-/* the look's pitch: the layout's stick's raw y, unless function 1's button holds the look (OVL1
- * 0x2C6290). The test is `!A || !B` over two inline bools: the target materialises both negations
+/* the forward and back stick (SOCOM 1's GetFwdBackStickPos, the name by its body; the rdr's MoveLong):
+ * the layout's stick's raw y, unless function 1's button holds it (OVL1 0x2C6290). The test is `!A || !B` over two inline bools: the target materialises both negations
  * (sltu; xori and xori; sltiu; xori) with the true in the first branch's delay slot.
- * OPEN, 6 instructions: the layout's pointer and its button trade registers (the target holds the
- * layout in v1 and the button in a2, this the other way round). Tried: the global read at each use
- * (worse: a1/a2), `bool look;` declared first, HoldsLook as `!= 0`, IsDown through a button local or
- * an if-assigned state (both 0x10 shorter). Round 34, read off MW's colouring (igdump): the button is
- * a code-generation temporary (r43, the two reads of m_btn merged after the front end), the layout
- * the named r33, so the button is coloured first and takes v1 -- the target's colouring needs the
- * layout numbered after the button. The global read at each use (the layout a front-end CSE
- * temporary) with the button an inline's named local gives exactly the target's three registers
- * (v1, a1, a2) -- but a button held in any scalar (a local, a const local, a by-value parameter,
- * `(b = ...) != NONE`) makes MW if-convert the select (the zero in the beq's delay slot, 0x10
- * shorter), and through a reference (to the button, its CCfgButton, or GetButton) the select stays
- * two-armed and the button a late temporary again (6 or 9 off). Round 41: `tools/igreplay.py --want
- * 43=a2,33=v1` -- no single move gives it, only the joint one (the layout numbered after v48 AND the
- * button's temporary before v34); the layout defined after the look test (declared before it,
- * after it, or both uninitialised at the top, the test through the global) is 6 off alike */
-extern "C" float func_002C6290(const CPad *pad)
+ * Byte-exact since round 53 (written in round 18, 6 off). The colouring needs config, look, button in that
+ * order (v1, a1, a2): the button numbered before look's Linearize temporary, the layout after it --
+ * so the button an inline's named local and the layout read from the global at each use, a common
+ * subexpression (round 34 found those registers). What stopped it was the select: with a scalar
+ * button IRO's RebuildCondExpressions turns the two arms into one ECOND, the zero in the beq's delay
+ * slot, 0x10 shorter. CPad's accessor in the arm stops that: its by-value argument is copied in the
+ * arm, a statement besides the value's assignment, and the rebuild leaves the arm alone (the copy
+ * itself costs no code). The select in an inline returning KEY_STATE keeps the load a plain copy,
+ * `lb`; written straight in the compare the load is `lbu`, one off. */
+float CCtrlrConfigs::GetFwdBackStickPos(const CPad &pad)
 {
-    const CCtrlrConfig *config = g_pCurrentConfig;
-    bool look = !config->HoldsLook() || !config->IsDown(1, pad);
+    bool look = !g_pCurrentConfig->HoldsLook() || !g_pCurrentConfig->IsDown(1, &pad);
 
     if (look) {
         float pos = 0.0f;
 
-        switch (config->m_lookStick.m_stick) {
+        switch (g_pCurrentConfig->m_lookStick.m_stick) {
         case STICK_LEFT:
-            pos = pad->m_raw[0][1];
+            pos = pad.m_raw[0][1];
             break;
         case STICK_RIGHT:
-            pos = pad->m_raw[1][1];
+            pos = pad.m_raw[1][1];
             break;
         }
         return pos;
@@ -554,21 +563,18 @@ extern "C" float func_002C6290(const CPad *pad)
 
 /* whether a function's button is down on the pad (OVL1 0x2C60C0: the button's lb/andi through its
  * byte temporary, KEY_DOWN's runtime narrowing -- `li a2,2` in the test's delay slot, `andi` at the
- * join -- through one of its own on the compare's right).
- * OPEN, 2 instructions: the join's two andi's in the other order (the target narrows the constant
- * first, into v1, then the state; this the state first), the xor alike. The constant's temporary on
- * the LEFT folds its narrowing away (daddiu), as a named local, a member operator== or the
- * in-place ternary do (xori); through g_pCurrentConfig without the local, 7 off. Round 41: igreplay
- * --target finds every virtual register the target's (0 differ, 10 PCode instructions unmatched):
- * the miss is which value each narrowing holds, not the colouring. The constant as an inline's
- * by-value KEY_STATE parameter (`state == ButtonState(...)`) is folded (xori, 0x48); as a by-value
- * CByteEnum<KEY_STATE> parameter it goes through the frame (0x68, 0x70); both sides as CByteEnum
- * temporaries 0x54 */
+ * join -- through one of its own).
+ * Byte-exact since round 53 (written in round 26, 2 off). The wanted state is an inline's by-value parameter
+ * compared on the LEFT, `state == ButtonState(...)`, and its argument a conversion through
+ * CByteEnum, not a plain constant: MW substitutes a plain constant (xori), but holds this one in a
+ * temporary assigned ahead of the inline's body, in another flow node than the compare, where
+ * propagation does not forward it. Written in place the constant's temporary on the compare's right
+ * is 2 off (the andi's the other way round) and on its left it is built at the join and folds. */
 extern "C" bool func_002C60C0(unsigned char func, const CPad *pad)
 {
     const CCtrlrConfig *config = g_pCurrentConfig;
 
-    return config->ButtonState(func, pad) == CByteEnum<KEY_STATE>(KEY_DOWN);
+    return config->IsInState(func, pad, CByteEnum<KEY_STATE>(KEY_DOWN));
 }
 
 /* the strafe: the layout's stick's x when it has one, else its two buttons, left -1 and right 1
@@ -712,7 +718,7 @@ extern "C" PAD_BUTTON func_002C6430(unsigned char func)
 }
 
 /* a function's button's pressure on the pad (OVL1 0x2C63F0).
- * OPEN, 0x38 against 0x40: the target loads the button with lb and narrows it with andi 0xff (a
+ * Byte-exact now; the history, 0x38 against 0x40: the target loads the button with lb and narrows it with andi 0xff (a
  * byte enum's copy, then its compare), and leaves a nop after the 0.0f; every form here folds the
  * two into one lbu. Tried: the enum through an inline taking it (GetPressure), an enum local, a
  * signed char local converted at each use, the test inverted, a negative enumerator; round 8: a
