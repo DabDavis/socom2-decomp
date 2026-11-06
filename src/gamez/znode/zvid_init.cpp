@@ -864,7 +864,7 @@ enum ZviByte {
 
 /* the video system set up: the display 640x448 in the GS's 1728,1824 window, its buffers, the z
  * range, the fade cleared, the LOD valve made, the video thread started and the mode set (SOCOM 1's,
- * with SOCOM II's window, second buffer and thread). OPEN, 11 instructions, the same size: the two
+ * with SOCOM II's window, second buffer and thread). BYTE-EXACT since round 40 (below). Before: OPEN, 11 instructions, the same size: the two
  * zero byte stores (0x7C, 0x7D) sink with the fade alpha's 255 (in v0) to the 0x90 flags, where the
  * target keeps them in source order with 255 hoisted into v1 at the top, as SOCOM 1's does -- every
  * position of the two stores (a 23x23 sweep), bool/char/bitfield/volatile fields, chained and 0.0f

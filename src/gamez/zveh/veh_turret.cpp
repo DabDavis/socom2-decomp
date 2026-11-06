@@ -1176,7 +1176,7 @@ extern "C" void func_003A84E0(CTurret *t)
 }
 
 /* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.
- * OPEN, 12 bytes short: the same calls and loop, but the target builds one end() temporary first
+ * Once OPEN (byte-exact since), 12 bytes short: the same calls and loop, but the target builds one end() temporary first
  * (sp+76) and serves both std::remove's last and erase's last from it, std::remove's result in a
  * slot of its own (sp+72) copied into erase's parameters; here end() is built twice (and with `e`
  * a named local the temporaries' copies fold away: 0x11C/0x100). Tried: the end in a local, the
