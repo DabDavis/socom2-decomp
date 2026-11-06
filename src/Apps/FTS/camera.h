@@ -250,6 +250,21 @@ public:
     virtual bool AttachTo(CZSealBody *prey);
 
     void FTSTick();
+    /* SOCOM 1's camera modes and the death camera's points, in its order (APFirstPersonCam,
+     * APTeatherCam, GetTetherCamPoints, GetDeadCamPoints, UpdateDeathCamState: Tick calls the two
+     * views, each calls the next; SOCOM II's first person takes the frame time too) */
+    void APFirstPersonCam(CMatrix &cTw, float dT);
+    void APTeatherCam(CMatrix &cTw, float dT);
+    unsigned char GetTetherCamPoints(CPnt3D *CamPoint, CPnt3D *CamOffset, CPnt3D *CamAimPoint, float dT);
+    unsigned char GetDeadCamPoints(CPnt3D *CamPoint, CPnt3D *CamAimPoint, CMatrix *rot_mtx, float dT);
+    void UpdateDeathCamState(float dT);
+    /* the camera given an entity to follow -- a SEAL, or what it boards (the turret) -- and the
+     * part of its body to hang from, the root if none: SOCOM 1's AttachTo's first half, split out
+     * (0x2956E0; AttachTo, the constructor and the death camera call it, OVL2's turret boarding
+     * too) -- and a SEAL's overload, a jump to it (0x295AF0; OVL2's turret release calls it). The
+     * names ours */
+    void Follow(CEntity *prey, const char *part);
+    void Follow(CZSealBody *seal, const char *part);
     /* where the tether puts the camera, its offset and the tether's length handed back (SOCOM 1's,
      * 0x29A950) */
     CPnt3D GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen);

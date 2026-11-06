@@ -3584,16 +3584,16 @@
 0x00295260 0x3B0 func_00295260  # OVL1
 0x00295610 0x44 func_00295610  # OVL1
 0x00295660 0x7C func_00295660  # OVL1
-0x002956E0 0x408 func_002956E0  # OVL1
-0x00295AF0 0x8 func_00295AF0  # OVL1
-0x00295B00 0x410 func_00295B00  # OVL1
+0x002956E0 0x408 Follow__10CAppCameraFP7CEntityPCc  # OVL1; the name ours, the engine core round 23 (SOCOM 1's AttachTo's first half split out -- dynamic_cast to the SEAL, the controller and pad taken, the entity set, the effects node and the skeleton part (FindPart of the third argument, else the root) found, DeltaRot / DeltaAim zeroed; AttachTo, the constructor and the death camera call it with (this, seal, 0), OVL2's turret boarding 0x5463C0 with (appCamera, entity, 0): the SEALs' round 53)
+0x00295AF0 0x8 Follow__10CAppCameraFP10CZSealBodyPCc  # OVL1; the name ours, the engine core round 23 (an 8-byte jump to Follow(CEntity *, const char *) 0x2956E0 with the arguments unchanged -- a SEAL's overload; OVL2's turret release 0x545EE0 calls it with (appCamera, seal, 0): the SEALs' round 53)
+0x00295B00 0x410 APFirstPersonCam__10CAppCameraFR7CMatrixf  # OVL1; s1:calls by hand, the engine core round 23 (SOCOM 1's APFirstPersonCam(CMatrix &cTw): Tick calls it once for first person in both builds, the first of camera.cpp's view functions in both; SOCOM II's takes the frame time too)
 0x00295F10 0x8 GetPosW__7CEntityCFv  # OVL1; s1:vtable (CEntity's slot +0x0C, SOCOM 1's GetPosW() const returning the matrix: CTurret's override returns this+0x2C0) -- the entity lane
 0x00295F20 0x5CC func_00295F20  # OVL1
 0x002964F0 0xA14 func_002964F0  # OVL1
-0x00296F10 0x4FC func_00296F10  # OVL1
-0x00297410 0x614 func_00297410  # OVL1
-0x00297A30 0x69C func_00297A30  # OVL1
-0x002980D0 0x1068 func_002980D0  # OVL1
+0x00296F10 0x4FC APTeatherCam__10CAppCameraFR7CMatrixf  # OVL1; s1:calls by hand, the engine core round 23 (SOCOM 1's APTeatherCam(CMatrix &cTw, float dT), the signature exact: Tick calls it twice -- the tether and the default -- in both builds, and it calls GetTetherCamPoints in both)
+0x00297410 0x614 GetTetherCamPoints__10CAppCameraFP6CPnt3DP6CPnt3DP6CPnt3Df  # OVL1; s1:calls by hand, the engine core round 23 (SOCOM 1's GetTetherCamPoints(CamPoint, CamOffset, CamAimPoint, dT) returning unsigned char, the signature exact: APTeatherCam calls it, it calls GetDeadCamPoints, in both builds)
+0x00297A30 0x69C GetDeadCamPoints__10CAppCameraFP6CPnt3DP6CPnt3DP7CMatrixf  # OVL1; s1:calls by hand, the engine core round 23 (SOCOM 1's GetDeadCamPoints(CamPoint, CamAimPoint, rot_mtx, dT) returning unsigned char, the signature exact: GetTetherCamPoints calls it, it calls UpdateDeathCamState first and turns rot_mtx by sceVu0RotMatrixY -- a1 set before a0 in both builds)
+0x002980D0 0x1068 UpdateDeathCamState__10CAppCameraFf  # OVL1; s1:calls by hand, the engine core round 23 (SOCOM 1's UpdateDeathCamState(float dT): GetDeadCamPoints' first call in both builds, after it in both images; SOCOM II's 0x1068 to SOCOM 1's 0xB98)
 0x00299140 0xC func_00299140  # OVL1
 0x00299150 0x68 ResetDeathCam__10CAppCameraFv  # OVL1; s1:calls (SOCOM 1's ResetDeathCam: no death state, the automatic death camera on, save_short_tether_length 10000, DeltaRot and DeltaAim 0; SOCOM II puts back a few more; CMPExitState::UnInit and the mission's fades call it)
 0x002991C0 0x160 APLookAt__10CAppCameraFfP7CEntityR7CMatrix  # OVL1; s1:calls (SOCOM 1's APLookAt(dT, target, cTw): the target's and the SEAL's matrices transforming two points, the chord clipped, LookAt; Tick's mode 4 calls it with m_track as SOCOM 1's mode 3 did)
