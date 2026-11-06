@@ -56,9 +56,17 @@ public:
      * 0x2B48E0) */
     const char *GetUIString();
 
+    /* whether its prompt is the mission's own text (bit 2 of 0x3F; the name ours) */
+    bool UsesMissionText() const { return m_usemissiontext ? true : false; }
+
     unsigned char _0[0x28];
     zdb::CTexHandle *m_texhandle;   // 0x28
     const char *m_uistring;   // 0x2c
+    unsigned int m_teammask;   // 0x30: the teams it is open to (the driver's sides tested against it)
+    unsigned char _34[0x3c - 0x34];
+    unsigned int _3c_0 : 26;
+    unsigned int m_usemissiontext : 1;   // 0x3c bit 26 (byte 0x3f's bit 2)
+    unsigned int _3c_27 : 5;
 };
 
 /* a weapon's name as the pickup prompt shows it (zweapon.h's: OVL1 0x3D2830) */
@@ -97,6 +105,15 @@ public:
     virtual void PlayAiSound();
     virtual void AllowCommand();
     virtual bool IsPlayer() const;   /* +0x2c */
+    /* the bomb's timer offered or withdrawn (OVL2 0x5920A0, SOCOM 1's: bit 12 of the flags) */
+    void MPBomb_TimerAvailable(bool b);
+
+    unsigned char _4[0x160 - 0x4];
+    float m_mpbomb_timer;   // 0x160 (zseal.h's)
+    unsigned char _164[0x170 - 0x164];
+    unsigned int m_bits0 : 12;   // 0x170
+    unsigned int m_mpbomb_bTimerAvailable : 1;   // bit 12
+    unsigned int m_mpbomb_bTimerEngaged : 1;   // bit 13
 };
 
 /* the SEAL's kit (zseal.h's CZKit: only its place) */
@@ -125,9 +142,14 @@ public:
     void ActionDisplayOn(bool on) { m_action_display_on = on; }
     void ActionCommand(unsigned int cmd) { m_action_command = cmd; }
 
+    /* its controller, none for none (ours: the machine's last test) */
+    static CSealCtrl *CtrlOf(CZSealBody *seal) { return seal ? seal->m_ctrl : 0; }
+
     unsigned char _0[0xc0];
     CSealCtrl *m_ctrl;   // 0xc0
-    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _c4[0xc8 - 0xc4];
+    unsigned int m_teamflags;   // 0xc8: its sides (hud_tcmcmds.cpp's)
+    unsigned char _cc[0xe1 - 0xcc];
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (the action icon shown only with it)
     unsigned char _e1_5 : 3;
@@ -153,6 +175,12 @@ public:
     C2DBitmap &TimerBkgrd() { return m_timer_BKGRD; }
     bool UpdateDriverPickup();
     unsigned int Add(CActionTxtr *pActionTxtr);
+    /* the prompt for the first icon written (SOCOM 1's SpecializeActionString, SOCOM II's taking the
+     * reticule's action point) */
+    void SpecializeActionString(CNodeAction *pNodeAction);
+    /* the prompt set, placed, centred and shown (ours: SpecializeActionString's every case) */
+    inline void ShowActionString(const char *s, bool translate);
+    inline void PlaceActionString();
     /* the icons drawn about the action bitmap (SOCOM 1's Render_ver_2, OVL1 0x21F210) */
     bool Render_ver_2(class CZActionBitmap &bmp);
     /* the icons for an action mask made (SOCOM 1's Open, OVL1 0x21F850) */
@@ -237,6 +265,117 @@ void CActionTxtrMachine::TickTransparencyFade(bool b)
                 g_arrActionTxtrs[i].m_2DBitmap.SetTrans(trans);
             }
         }
+    }
+}
+
+/* the prompt's place and the bomb timer's bar (OVL1 .data 0x3DC670-0x3DC67C and bss 0x40C170-0x40C188,
+ * the unit's file statics -- the initialiser 0x3FE550 sets the prompt's x and the bar's corners and
+ * width; by address until it is written) */
+extern float data_003DC670;   /* 0.2: the bar's width per second of the timer */
+extern float data_003DC678;   /* the prompt's x */
+extern float data_003DC67C;   /* 435: its y */
+extern float data_0040C170;   /* the bar's left */
+extern float data_0040C178;   /* its top */
+extern float data_0040C180;   /* its bottom */
+extern float data_0040C188;   /* its width */
+/* the mission's own prompt text (theMission + 0x20; empty for none) */
+extern char data_00436500[];
+
+/* a string id's text (the string table's) */
+const char *GetString(int id);
+
+inline void CActionTxtrMachine::PlaceActionString()
+{
+    ActionString().SetPos((int)data_003DC678, (int)data_003DC67C);
+    ActionString().m_isCentered = 1;
+    ActionString().On();
+}
+
+inline void CActionTxtrMachine::ShowActionString(const char *s, bool translate)
+{
+    ActionString().SetString(s, translate);
+    PlaceActionString();
+}
+
+/* the prompt for the first icon written and shown: a pickup's (4, 5) as its name and the weapon's
+ * when the driver stands on one; the bomb's (7) with its timer's bar while the timer runs, else the
+ * bar faded out and the bomb's plant or defuse text; a door's (13) the mission's text, a reminder
+ * when the mission has none, or the icon's name -- "UNAVAILABLE" to another side; any other the
+ * icon's name; the bar off and the driver's bomb timer withdrawn for all but the bomb (SOCOM 1's
+ * CActionTxtrMachine::SpecializeActionString, 0x3D7B90 there: its tempstr a static). Byte-exact
+ * (the HUD's round 63) with: the timer's zero clamp a ternary (an if-clamp's join takes an alignment
+ * nop the target does not have, the bomb test after it an if); the door's three strings set in the
+ * arms and placed once after them; the mission-text bit read `m_bit ? true : false` (the target's
+ * sltu: a plain bool return, `!= 0`, an int return or a cast all test the bit straight) */
+void CActionTxtrMachine::SpecializeActionString(CNodeAction *pNodeAction)
+{
+    static char tempstr[128] = "UNUSED";
+    CActionTxtr *pActionTxtr = (*this)[0];
+
+    switch (pActionTxtr->m_action_id) {
+    case 4:
+    case 5:
+        if (ActionTxtrMachine_HUD.m_curpickup_node) {
+            sprintf(tempstr, "%s %s", pActionTxtr->m_name, m_pickup_name);
+            ShowActionString(tempstr, true);
+        }
+        break;
+    case 7: {
+        CSealCtrl *ctrl = m_driver->m_ctrl;
+
+        if (ctrl->m_mpbomb_bTimerEngaged && ctrl->m_mpbomb_bTimerAvailable) {
+            float t = ctrl->m_mpbomb_timer;
+
+            t = t < 0.0f ? 0.0f : t;
+            if (!CPickup::m_mpbombnode)
+                t = 5.0f - t;
+            ActionTxtrMachine_HUD.TimerBkgrd().On();
+            ActionTxtrMachine_HUD.TimerBkgrd().SetTrans(38.4f);
+            ActionTxtrMachine_HUD.TimerImage().On();
+            ActionTxtrMachine_HUD.TimerImage().SetTrans(100.0f);
+            ActionTxtrMachine_HUD.TimerImage().SetPos((int)data_0040C170, (int)data_0040C178,
+                                                      (int)(data_0040C170 + data_0040C188 * (t * data_003DC670)),
+                                                      (int)data_0040C180);
+        } else {
+            if (ActionTxtrMachine_HUD.TimerImage().IsOn()) {
+                float dT_by_faderate = 400.0f * zVid.frameTime;
+                float trans_val = ActionTxtrMachine_HUD.TimerImage().GetTrans() - dT_by_faderate;
+
+                if (trans_val < 0.0f) {
+                    trans_val = 0.0f;
+                    ActionTxtrMachine_HUD.TimerImage().Off();
+                    ActionTxtrMachine_HUD.TimerBkgrd().Off();
+                }
+                ActionTxtrMachine_HUD.TimerImage().SetTrans(trans_val);
+                ActionTxtrMachine_HUD.TimerBkgrd().SetTrans(trans_val);
+            }
+            ShowActionString(GetString(CPickup::m_mpbombnode ? 0xEC40 : 0xEC41), false);
+        }
+        break;
+    }
+    case 13:
+        if (m_driver->m_teamflags & pNodeAction->m_teammask) {
+            if (pNodeAction->UsesMissionText()) {
+                const char *text = data_00436500[0] ? data_00436500 : 0;
+
+                ActionString().SetString(text ? text : "PLEASE ADD TO MISSION.RDR", true);
+            } else
+                ActionString().SetString(pActionTxtr->m_name, true);
+        } else
+            ActionString().SetString("UNAVAILABLE", true);
+        PlaceActionString();
+        break;
+    default:
+        ShowActionString(pActionTxtr->m_name, true);
+        break;
+    }
+    if (pActionTxtr->m_action_id != 7) {
+        ActionTxtrMachine_HUD.TimerImage().Off();
+        ActionTxtrMachine_HUD.TimerBkgrd().Off();
+        CSealCtrl *ctrl = CZSealBody::CtrlOf(m_driver);
+
+        if (ctrl)
+            ctrl->MPBomb_TimerAvailable(false);
     }
 }
 
