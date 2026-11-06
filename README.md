@@ -11683,7 +11683,8 @@ tried, none byte-exact (round 40a: 42, 0).
 **Round 41a** (2026-11-06, the tools first, then the opens): 1 row newly byte-exact (192 bytes) --
 **libnetb_get_valid_data_header_ptr 0x245A18** (`ovl1/libnetb_udp.c`, open since round 13a, 44 words off then):
 the ring's first unread datagram. The lane's `src/lib` 2,843 byte-exact of 2,973 scored, no
-regression. No rows named. What the opens showed:
+regression, and after merging master daba75d2 every hand-written unit (`--files '^(?!auto/)'`) 11,278 byte-exact of
+11,665, no regression. No rows named. What the opens showed:
 
 - **A store before a test lands in its branch's delay slot; a loop's entry registers follow the loop's
   shape** (0x245A18, build/scratch/gcc/r41/v_valid.py: the store moved d=10, then the start d=9, the `do` 0): the target's `beqz a2; sw zero,0(a1)` is `*phdr = 0`
