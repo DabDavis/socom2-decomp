@@ -333,15 +333,20 @@ static inline void StoreImageReset()
  * last quadword's bytes copied and the padding read away; every wait counts on one counter and
  * gives up past 0x1000000 polls (-1), the later ones resetting the path first. Written in the
  * weapons' round 30: the register tests `(x & m) == 0` (`!(x & m)` materialises sltu/xori: 0x440).
- * OPEN, 15 instructions at the target's size: the FIFO loop's store -- the target keeps a second
- * counter k (from the block count, t0) beside i (t1) and computes dst + (k << 4) each pass; any
- * `dst[k++]` (int, unsigned, short, separate step, in the for's step, through a value local, a char *
- * or shifted address, a volatile view) MW strength-reduces to a pointer stepped by 16 (45 off), and
- * `dst[base + i]` (here) re-adds base + i each pass; the byte copy's pointer is set before the
- * `0 < count` guard here, inside it in the target (the for-init: no better); the padding loop's
- * counter and bound trade a1/a2. Round 31: the store through an integer address, `*(u_long128 *)
- * ((unsigned int)dst + (k << 4))` with k++ apart or inside, is strength-reduced to an offset stepped
- * by 16 (8 short); `(int)dst + k * 16`, an unsigned k, a char pointer: 45 off */
+ * BYTE-EXACT since the weapons' round 37, by three shapes:
+ *  - the FIFO loop's second counter k is unsigned and indexes through `(int)k`: a same-size
+ *    signedness cast of the induction variable is not a safe conversion to MW's strength reduction
+ *    (PowerPC MW's IroLoop.c, IsSafeTypcon: only a widening, or unsigned to a LARGER signed type,
+ *    passes), so the target's dst + (k << 4) is recomputed each pass; any uncast `dst[k++]` (int,
+ *    unsigned, short, a value local, a char * or shifted address -- rounds 30-31) became a pointer
+ *    stepped by 16 (45 off), `dst[base + i]` re-added base + i (15 off);
+ *  - ONE int i, declared before k (the target's k t0, i t1), counts all three loops: the byte copy's
+ *    and the padding loop's are later webs that IRO_SplitLifetimes renumbers after the loop pass's
+ *    temporaries (the byte copy's index then takes a3 and its induction pointer t0, the padding
+ *    loop's counter a1 and its bound a2, as the target's -- a j of their own trades each pair);
+ *  - the byte copy reads the quadword as `((unsigned char *)&q)[i]`: the strength-reduced pointer
+ *    MW makes is set in the rotated loop's preheader, after the `0 < count` guard as the target's,
+ *    where a pointer of the source's own (`p = &q` in the for-init, `*p++`) was set before it */
 extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
 {
     unsigned int count = 0;
@@ -377,16 +382,18 @@ extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
         }
     }
 
-    int base = data_004A45A8;
+    int i;
+    unsigned int k = data_004A45A8;
 
-    for (int i = 0; i < data_004A45B8; i++) {
+    for (i = 0; i < data_004A45B8; i++) {
         while ((*ZV_VIF1_STAT & 0x1F000000) == 0) {
             if (count++ > 0x1000000) {
                 StoreImageReset();
                 return -1;
             }
         }
-        dst[base + i] = *ZV_VIF1_FIFO;
+        dst[(int)k] = *ZV_VIF1_FIFO;
+        k++;
     }
     if (data_004A45C0) {
         u_long128 q;
@@ -398,13 +405,9 @@ extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
             }
         }
         q = *ZV_VIF1_FIFO;
-
-        unsigned char *p;
-        int j;
-
-        for (j = 0, p = (unsigned char *)&q; j < data_004A45C0; j++)
-            ((unsigned char *)&dst[data_004A45A8 + data_004A45B8])[j] = *p++;
-        for (int j = 0; j < data_004A45B0; j++) {
+        for (i = 0; i < data_004A45C0; i++)
+            ((unsigned char *)&dst[data_004A45A8 + data_004A45B8])[i] = ((unsigned char *)&q)[i];
+        for (i = 0; i < data_004A45B0; i++) {
             while ((*ZV_VIF1_STAT & 0x1F000000) == 0) {
                 if (count++ > 0x1000000) {
                     StoreImageReset();
