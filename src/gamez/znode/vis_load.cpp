@@ -20,10 +20,6 @@ using namespace zar;
  * to -1 before a model's visuals are read, counted up for each node with visuals */
 extern int node_index;
 
-/* a visual let go of by its node (SOCOM 1's CNode::DeleteVisual(CVisual *, bool) by its place in
- * the drop walk -- SOCOM 1's hookupVisuals calls DeleteVisual__Q23zdb5CNodeFPQ23zdb7CVisualb there;
- * the zdb world's row, still a placeholder) */
-extern "C" void func_003162B0(CNode *node, CVisual *visual, bool b);
 
 /* a node's visuals read into the block, and its children's (SOCOM 1's hookupVisuals, 0x30A330 in the
  * demo: the same keys, calls and order). For each of the model's instances, the node's counterpart
@@ -176,7 +172,7 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
     }
     if (drop.size()) {
         for (std::vector<CVisual *>::iterator d = drop.begin(), de = drop.end(); d != de; ++d)
-            func_003162B0(node, *d, true);
+            node->DeleteVisual(*d, true);   /* SOCOM 1's CNode::DeleteVisual (0x3162B0) */
         drop.clear();
     }
     for (CNodeVector::iterator c = node->m_child.begin(), ce = node->m_child.end(); c != ce; ++c) {
