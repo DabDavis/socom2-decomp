@@ -844,7 +844,12 @@ void UpdateCareerRecord(int a, int b)
  * bitfield's). Every saved register, the frame and the code are the target's. Tried: the alive
  * bool, the stats reference and the side bools declared in each order, uninitialised and assigned
  * later, as unsigned char, through an inline IsAlive(); the type in an int or byte local; the
- * score's add spelled out */
+ * score's add spelled out. Round 59's replay (igreplay -r 1 --target, the spilled pass's record):
+ * one move closes all three -- the game's type (v96, a code-generation temporary loaded at the
+ * switch, after the alive bool's v88-v91) numbered anywhere from 42.5 (after bTerr) to 89.5; an
+ * int / byte local for it, before or after the alive bool, and a GetGameType() accessor (int, byte,
+ * enum, reference) are all forward-substituted into the switch (the load still follows the alive
+ * bool's), so 19 each */
 void GetRoundResult(CZSealBody *pSeal, int *pWins, int *pScore)
 {
     int iSeals = 0;
@@ -1077,7 +1082,11 @@ CMPExitState::CMPExitState() : CGameState("MPExitState")
  * frame, the draws spilled to the stack, the inline Add's order, the hit percentage through an
  * unsigned local, the clock reset through one load (an inline on the game), CMPExitMenu's 0x930
  * bytes. Tried: tools/perm.py over the six top declarations (14 after 1,644 steps), the pointer
- * declared first, tested `!= 0`, the late locals declared ahead, the draws' sum reversed */
+ * declared first, tested `!= 0`, the late locals declared ahead, the draws' sum reversed. Round
+ * 59's replay (-r 1, the spilled pass's record): the pointer's node (v52, numbered last as the first
+ * null-tested) placed anywhere from 39.5 to 46.5 -- after the first walk's pSeal, before the walk's
+ * list address @2023 -- gives all three; an inline wrapper for the global (with or without a local
+ * of its own) and the null test on the global itself leave it where it is */
 bool CMPExitState::Init()
 {
     sealSaveFireModes();
