@@ -5347,8 +5347,8 @@
 0x0030E5A0 0xFC func_0030E5A0  # OVL1
 0x0030E6A0 0x3C func_0030E6A0  # OVL1
 0x0030E6E0 0x28 func_0030E6E0  # OVL1
-0x0030E710 0x74 func_0030E710  # OVL1
-0x0030E790 0x54 func_0030E790  # OVL1
+0x0030E710 0x74 IsTalking__10CZNetVoiceFv  # OVL1; ours, the online lane round 29 (by every caller: CRadioIcon_Dynamic::Tick 0x2392BC and UICheckForcedLaunch 0x27CC2C pass data_0045B718, the CZNetVoice -- its state 3, talking, returned and handed to the can_talk valve (+0x1074) on the way; the UI's 'armory view update' reading was this object; zNetVoice.cpp, byte-exact)
+0x0030E790 0x54 IsReceiving__10CZNetVoiceFv  # OVL1; ours, the online lane round 29 (by every caller: CRadioIcon_Dynamic::Tick 0x239278, CWhosTalking::Tick 0x238AF4, CMPTeammateNames::Tick 0x226A20, MapCompass::Tick 0x21179C and UICheckForcedLaunch 0x27CC38 pass data_0045B718, the CZNetVoice CMission::Init news -- its current slot's client neither 256, none, nor zNetGetMyGameClientIndex: someone else on the radio; the UI's COnlineArmoryView reading was this object's slot table; zNetVoice.cpp, byte-exact)
 0x0030E7F0 0xEC func_0030E7F0  # OVL1
 0x0030E8E0 0x290 func_0030E8E0  # OVL1
 0x0030EB70 0x9C func_0030EB70  # OVL1
