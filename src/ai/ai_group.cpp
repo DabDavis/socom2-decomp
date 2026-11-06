@@ -1122,7 +1122,8 @@ bool CAiGroup::campoint::Get(CAiGroup *g, CPnt3D *out) const
  * slots: up highest), `view[3] = right[3] = 1.0f` (one lui), up read into locals before the matrix's
  * stores, the translation through CPnt3D's three-float constructor. Tried for the copies (round 58):
  * `(vView = d).Normalize()` and a reference to the assignment (0x150), a pointer to the copy (0x154),
- * inline copy-and-normalise helpers by pointer (member-wise copies, 0x154) or by value (0x150-0x180) */
+ * inline copy-and-normalise helpers by pointer (member-wise copies, 0x154) or by value (0x150-0x180),
+ * direct initialisation, a pointer or a reference to the copy for the call (all 0x140, the same code) */
 static void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
 {
 #pragma opt_common_subs off
