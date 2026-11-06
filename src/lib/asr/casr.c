@@ -153,7 +153,7 @@ typedef struct TREEWORD {
 } TREEWORD;
 
 extern void casrCreateResult(CASR *c, RESULT **r, int frame, int how);
-int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *nb, int n);
+int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, int nb, int n);
 int casrGetParam(CASR *c, int id, unsigned int *value);
 int casrSetParam(CASR *c, int id, unsigned int value);
 extern int CreateSecondPassContext(CASR *c);
@@ -224,14 +224,14 @@ static __inline__ void casrFreeResult(CASR *c, RESULT *r)
  * first entry spelled `-word - 1` in both loops (with `word = -word` GCSE's PRE copies the first
  * `word - 1` into the second and combine folds the lone negation into a `nor`; spelled so, the
  * negation is CSE's common value and combine folds each pre-test into `beqz` on it); vt.data before
- * frames (sched1's order of the head). OPEN, 31 words, the right size: registers in the head block
- * only -- sched1 issues the garbage list's load (`nb->garbage2`, an argument-based address, which
- * alias.c separates from the vt store on the frame) at t=4 beside len, before the vt store and the
- * index shift, so local-alloc gives it a0 and reload takes v0 for nb; the target's registers (the
- * list's pointer in v1, nb reloaded into a0, n into a1, base reloaded in the preheader) are those
- * of the load issued after the store and the shift. Every order of the head's four statements,
- * `*(p + len)`, a temporary, a volatile read: no change. */
-int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *nb, int n)
+ * frames (sched1's order of the head). Round 39c, byte-exact (31 words before): the N best an `int`
+ * as the callback's arguments are (cbDoSecondPassIfEnabled hands its arg1 on), cast at each use, its
+ * offset-0 field read through `*(int **)` -- alias.c's find_base_term takes an argument's VOIDmode
+ * ADDRESS as a base only when the register is known to be a pointer, and it is one only as a declared
+ * pointer (assign_parms) or once a field at offset 0 has been read through it (expr.c's COMPONENT_REF:
+ * `mark_reg_pointer` when the address stays a bare REG). So `nb->garbage2`'s load has no base, may alias
+ * the vt store on the frame, and sched1 issues it after the store and the index shift. */
+int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, int nb, int n)
 {
     int i;
     unsigned int base, garbage, frames, len;
@@ -244,7 +244,7 @@ int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *n
     float x, conf;
 
     base = *c->frame_base;
-    p = nb->best;
+    p = *(int **)nb;
     r = heap_Alloc(c->heap, sizeof(RESULT));
     if (r == 0)
         return 1;
@@ -257,7 +257,7 @@ int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *n
     vt.data = c->ctx->data;
     frames = c->frames;
     len = frames - base;
-    garbage = nb->garbage2[len];
+    garbage = ((ISONBEST *)nb)->garbage2[len];
     for (i = 0; i < n; i++) {
         word = *p++;
         score = *p++;
@@ -307,8 +307,8 @@ int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *n
     else {
         thr = -1;
         best = -1;
-        if (nb->best != 0)
-            best = nb->best[1];
+        if (*(int **)nb != 0)
+            best = (*(int **)nb)[1];
         if (_tosControl(c->event, 99, (int)&thr, 0) != 0)
             return 1;
         if (thr < best)
@@ -351,7 +351,7 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         if (_tosControl(c->event, 7, 0, 0) != 0)
             return 1;
         if (c->iso_word)
-            err = cbIsoWordRecognised(c, a1, a2, (ISONBEST *)arg1, arg2);
+            err = cbIsoWordRecognised(c, a1, a2, arg1, arg2);
         else {
             casrCreateResult(c, &r, arg1, 1);
             ret = c->cb.result_cb(r, c->info);
