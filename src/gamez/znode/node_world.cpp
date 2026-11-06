@@ -986,6 +986,57 @@ bool TexListHolds(CTexList *have, CTexList *want)
 }
 #pragma auto_inline reset
 
+/* a node's mesh textures gathered into a dynamic list (0x312D00, znode's, not named: SOCOM 1's
+ * CNode::FindMeshTextures() took the node alone; SOCOM II's takes whether the library is the
+ * custom set's and the list to fill, and returns the list or none) */
+extern "C" CDynTexList *func_00312D00(CNode *node, bool custom, CDynTexList *list);
+
+/* SOCOM 1's: a node drawn with a library's character textures -- the common set made first if
+ * there is none; the node's mesh textures gathered (but for the common phase) with the textures
+ * every character shares, the decals for the custom characters' phase, and their mip levels;
+ * the node pushed onto every set of the library's phase whose buffer holds them all (SOCOM II's
+ * test: SOCOM 1 took the first set of the same library), or onto a set of its own */
+void CWorld::AddTextureAssetCharacter(CAssetLib *lib, CNode *node)
+{
+    CTextureAssetCharacters *set = 0;
+    CDynTexList unused;
+    CDynTexList list;
+    bool added = false;
+    CDynTexList *dyn = 0;
+    _RenderPhase phase = lib->m_renderphase;
+
+    if (m_TextureAssetCharacters.size() == 0) {
+        CAssetLib *common = CAssetMgr::m_assets.FindLib(CHARSETCOMMON);
+
+        m_TextureAssetCharacters.push_back(new CTextureAssetCharacters(common, 0, 0));
+    }
+    if (phase != CHARSETCOMMON)
+        dyn = func_00312D00(node, phase == CHARSETCUSTOM, &list);
+    if (dyn && !node->m_landmark) {
+        for (CTexList::iterator it = m_TextureCharacterCommon.begin(); it != m_TextureCharacterCommon.end();
+             ++it)
+            dyn->Add(*it, true);
+        if (phase == CHARSETCUSTOMCHARS)
+            for (CTexList::iterator it = m_TextureDecals.begin(); it != m_TextureDecals.end(); ++it)
+                dyn->Add(*it, true);
+        CAssetMgr::AddMipLevels(dyn, phase);
+    }
+    for (CTextureAssetCharacterList::iterator it = m_TextureAssetCharacters.begin();
+         it != m_TextureAssetCharacters.end(); ++it) {
+        CTextureAssetCharacters *c = *it;
+
+        if (phase == c->m_lib->m_renderphase &&
+            (!dyn || TexListHolds(&c->m_buffer->m_dyntex_list.m_tex_list, &dyn->m_tex_list))) {
+            c->m_nodes.push_back(node);
+            added = true;
+        }
+    }
+    if (!added) {
+        set = new CTextureAssetCharacters(lib, node, dyn);
+        m_TextureAssetCharacters.push_back(set);
+    }
+}
+
 /* a textured character's texture added for every character (SOCOM 1's) */
 void CWorld::AddTextureAssetCharacterAll(CTexHandle *tex)
 {
@@ -1217,7 +1268,8 @@ int CTextureAssetCharacters::TestFOV(CCamera *cam)
 
 /* a character set for a library's textures, in a buffer of its own named after the node (with a
  * dynamic list) or the library, its first node listed (SOCOM 1's; the node's presence is tested
- * and the answer dropped, as there) */
+ * and the answer dropped, as there). Pinned: AddTextureAssetCharacter calls it out of line twice */
+#pragma auto_inline off
 CTextureAssetCharacters::CTextureAssetCharacters(CAssetLib *lib, CNode *node, CDynTexList *dyntex)
 {
     m_visible = 0;
@@ -1237,6 +1289,7 @@ CTextureAssetCharacters::CTextureAssetCharacters(CAssetLib *lib, CNode *node, CD
             m_buffer->Add(lib, true);
     }
 }
+#pragma auto_inline reset
 
 }
 
