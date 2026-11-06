@@ -277,12 +277,36 @@
 0x003DC510 0x4 s_fAnchorScale  # OVL1 .data; hud_mapcompass.cpp's static (name ours, round 65); 3 references, MapCompass::Tick
 0x003DC518 0x4 s_fDistReject  # OVL1 .data; hud_mapcompass.cpp's static (name ours, round 65); 1 reference, MapCompass::Tick
 0x003DC520 0x4 s_fFadeFloor  # OVL1 .data; hud_mapcompass.cpp's static (name ours, round 65); 1 reference, MapCompass::Tick
+0x003DC528 0x4 s_scopeRangeX  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 415, the range text's x with the scope; BitmapReticule::ChangeReticule
+0x003DC530 0x4 s_scopeRangeY  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 215; BitmapReticule::ChangeReticule
+0x003DC538 0x4 s_binocRangeX  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 515, with the binoculars; BitmapReticule::ChangeReticule
+0x003DC540 0x4 s_binocRangeY  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 40; BitmapReticule::ChangeReticule
+0x003DC548 0x4 s_nvgRangeX  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 515, with the night vision; BitmapReticule::ChangeReticule
+0x003DC550 0x4 s_nvgRangeY  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 70; BitmapReticule::ChangeReticule
 0x003DC558 0x4 c_szDefusingValve__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_bitmapreticule.cpp's anonymous namespace, gp-30448 there): "hud_defuse_timer", the defuse timer's valve -- 1 reference (hudStartDefuseTimer, 0x219330, CValve::Create's name)
 0x003DC560 0x4 g_fDefuseTime__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_bitmapreticule.cpp's anonymous namespace, gp-30444 there; -1.0 here) -- 4 references in 2 functions: BitmapReticule's constructor stores -1, hudStartDefuseTimer (0x219330) the time and its address twice
 0x003DC568 0x4 s_laseBoxSize__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; ours (the HUD lane, round 59: hud_bitmapreticule.cpp's anonymous-namespace float after the defuse timer's, 10.0 -- the lased point's box half-size): 5 references in 1 function (DrawLaseTarget 0x217550)
 0x003DC570 0x4 s_laseTickSize__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; ours (the HUD lane, round 59: hud_bitmapreticule.cpp's anonymous-namespace float, 4.0 -- the box's corner ticks' length): 4 references in 1 function (DrawLaseTarget 0x217550)
 0x003DC578 0x4 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@DIAGONAL_SCALAR  # OVL1 data; SOCOM 1's (its DWARF: ThreatDirTick's local static, 0x476A9C there and made under a guard; 0.5 in data here): the diagonal arrows' share of their two neighbours -- 4 references in 1 function; the HUD lane, round 64
 0x003DC580 0x4 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@ONE_OVER_90  # OVL1 data; ours (1/90): an arrow's share per degree -- 16 references in 1 function; the HUD lane, round 64
+0x003DC588 0x4 s_colorBlockedR  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 3 references; the name is ours
+0x003DC590 0x4 s_colorBlockedG  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 3 references; the name is ours
+0x003DC598 0x4 s_colorBlockedB  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 3 references; the name is ours
+0x003DC5A0 0x4 s_colorFoeR  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 4 references; the name is ours
+0x003DC5A8 0x4 s_colorFoeG  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 3 references; the name is ours
+0x003DC5B0 0x4 s_colorFoeB  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 2 references; the name is ours
+0x003DC5B8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@ne_x  # OVL1 data; SOCOM 1's (its DWARF; 0.9) -- 1 reference, UpdateAccuracy
+0x003DC5C0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@ne_y  # OVL1 data; SOCOM 1's (its DWARF; 0.6) -- 1 reference, UpdateAccuracy
+0x003DC5C8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@se_x  # OVL1 data; SOCOM 1's (its DWARF; 0.65) -- 1 reference, UpdateAccuracy
+0x003DC5D0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@se_y  # OVL1 data; SOCOM 1's (its DWARF; 0.5) -- 1 reference, UpdateAccuracy
+0x003DC5D8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@nw_x  # OVL1 data; SOCOM 1's (its DWARF; 0.9) -- 1 reference, UpdateAccuracy
+0x003DC5E0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@nw_y  # OVL1 data; SOCOM 1's (its DWARF; 0.6) -- 1 reference, UpdateAccuracy
+0x003DC5E8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@sw_x  # OVL1 data; SOCOM 1's (its DWARF; 0.65) -- 1 reference, UpdateAccuracy
+0x003DC5F0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@sw_y  # OVL1 data; SOCOM 1's (its DWARF; 0.52) -- 1 reference, UpdateAccuracy
+0x003DC5F8 0x4 s_scopeRangeSize  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 32, the scope's range box; BitmapReticule::ChangeReticule
+0x003DC600 0x4 s_barBackTrans  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 36, the grenade bar's back alpha; BitmapReticule::ChangeReticule
+0x003DC608 0x4 s_barTrans  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 64, the grenade bar's alpha; BitmapReticule::ChangeReticule
+0x003DC610 0x4 s_binocTrans  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 128, the binoculars' overlay; BitmapReticule::ChangeReticule
 0x003DC618 0x1 @LOCAL@SetGBarVal__14BitmapReticuleFf@first  # OVL1 data; ours (the HUD lane, round 57: hud_bitmapreticule.cpp -- SetGBarVal's static flag, 1 in data, cleared with the error flag at the first missing texture; SOCOM 1's DWARF: its `first`, 0x476B30 there) -- 4 references in 1 function
 0x003DC620 0x4 g_fFadeInTime__27@unnamed@hud_weaponsel_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace, gp-30408 in the demo): the selector's backdrop fade-in clock, -1.0 in data (idle) -- 5 references in 2 functions (CWeaponSel::HudTick x4, OnOpen); the HUD lane
 0x003DC628 0x4 ACTIONICON_CENTERX  # OVL1 data; SOCOM 1's (its symbol table: hud_actionbitmap.cpp's file static, 0x47552C there): the main icon's centre x, 306 -- 4 references in 2 functions (Render_ver_2 x3, __sinit_hud_actionbitmap.cpp); the HUD lane, round 64
@@ -310,10 +334,14 @@
 0x003DC890 0x4 cur_camzoom  # OVL1 data; SOCOM 1's (its symbol table: hud_missioncams.cpp's file static at gp-30236; 1.0): the camera's zoom a mission film put aside -- the HUD lane, round 51: 4 references in 2 functions (PlayCamera 0x228EE0, CleanupCamera 0x229520)
 0x003DC898 0x4 s_fRowTop__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a column's first row below its title, 38; the HUD lane, round 64
 0x003DC8A0 0x4 s_fRowSpacing__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the rows' spacing, 16.8; the HUD lane, round 64
+0x003DC8A8 0x4 s_fPopupMargin  # OVL1 data; hud_scorepopup.cpp's static (name ours, the HUD lane round 66): 20, the message pop-up's bottom margin; 1 reference, hudOpenPopup
+0x003DC8B0 0x4 s_fPopupTextX  # OVL1 data; hud_scorepopup.cpp's static (name ours, round 66): 20, the text's inset; 2 references, hudOpenPopup
+0x003DC8B8 0x4 s_fPopupTextY  # OVL1 data; hud_scorepopup.cpp's static (name ours, round 66): 10, the text's top; 1 reference, hudOpenPopup
 0x003DC8D0 0x4 s_fRowScale__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a row's text scale, 0.8 -- CTeamDisplay::AddRow's five loads; the HUD lane, round 64
 0x003DC8D8 0x4 s_fTeamTextScale__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the title's and headers' scale, 1; the HUD lane, round 64
 0x003DC8E0 0x4 s_iNameX__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the name's offset from the box's left, 70 (an int) -- 1 reference in 1 function (AddRow); the HUD lane, round 64
 0x003DC8E8 0x4 s_iScoreColumns__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the three score columns' width, 175 (an int); the HUD lane, round 64
+0x003DC8F0 0x4 s_fPopupTextScale  # OVL1 data; hud_scorepopup.cpp's static (name ours, round 66): 1, the wrap's scale; 1 reference, hudOpenPopup
 0x003DC8F8 0x4 s_fTeamTextTrans__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the title's and headers' alpha, 90; the HUD lane, round 64
 0x003DC900 0x4 s_fRowTrans__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a row's alpha, 110 -- AddRow's five loads; the HUD lane, round 64
 0x003DC960 0x4 s_fBombX__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the bomb mark's left, 200 -- AddRow; the HUD lane, round 64
@@ -332,6 +360,17 @@
 0x003DCA08 0x4 s_tcmCursorH  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 27.0, the cursor bar's height (CTCM::PlaceCursor) -- 2 references in 1 function
 0x003DCA10 0x4 s_tcmCursorTextX  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 10.0, the item text's x in the bar (CTCM::PlaceCursor) -- 1 reference in 1 function
 0x003DCA18 0x4 s_tcmCursorTextY  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 21.0, the item text's y in the bar (CTCM::PlaceCursor) -- 1 reference in 1 function
+0x003DCA28 0x4 s_tcmItemTop  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 55, a column's first item; 1 reference(s), CTCM::LayoutColumn
+0x003DCA30 0x4 s_tcmItemW  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 164, an item's width; 4 reference(s), CTCM::LayoutColumn
+0x003DCA38 0x4 s_tcmItemH  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 22, an item's height; 2 reference(s), CTCM::LayoutColumn
+0x003DCA40 0x4 s_tcmColumnGap  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 20, the columns' gap; 1 reference(s), CTCM::LayoutColumn
+0x003DCA48 0x4 s_tcmRowGap  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): -2, the rows' overlap; 1 reference(s), CTCM::LayoutColumn
+0x003DCA50 0x4 s_tcmArrowX  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 4; 1 reference(s), CTCM::LayoutColumn
+0x003DCA58 0x4 s_tcmArrowW  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 8; 1 reference(s), CTCM::LayoutColumn
+0x003DCA60 0x4 s_tcmArrowH  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 14; 1 reference(s), CTCM::LayoutColumn
+0x003DCA68 0x4 s_tcmArrowY  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 4; 1 reference(s), CTCM::LayoutColumn
+0x003DCA70 0x4 s_tcmItemTextX  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 10; 1 reference(s), CTCM::LayoutColumn
+0x003DCA78 0x4 s_tcmItemTextY  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 17; 1 reference(s), CTCM::LayoutColumn
 0x003DCA88 0x4 s_tcmSlideIn  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 1200.0, the root column's slide-in rate (CTCM::SlideRoot 0x231150) -- 1 reference in 1 function
 0x003DCA90 0x4 s_tcmSlideOut  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 1000.0, the root column's slide-out rate (CTCM::SlideRoot) -- 1 reference in 1 function
 0x003DCA98 0x4 s_tcmFadeIn  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 450.0, the cursor's fade-in rate (CTCM::FadeCursor 0x231540) -- 1 reference in 1 function
@@ -339,6 +378,10 @@
 0x003DCAA8 0x4 s_tcmCloseHold  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 1.0, the closing menu's hold (CTCM::Layout clamps m_dd0 to it) -- 2 references in 1 function
 0x003DCAB0 0x4 s_tcmPulseRate  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 12.0, the closing pulse's rate (CTCM::Layout) -- 1 reference in 1 function
 0x003DCAB8 0x4 s_tcmPulseDir  # OVL1 data; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float 1.0, the closing pulse's direction, negated at each end (CTCM::Layout) -- 3 references in 1 function
+0x003DCAC0 0x4 s_tcmDeadText  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 32, a dead item's caption; 2 reference(s), CTCM::LayoutColumn
+0x003DCAC8 0xc s_tcmHighPulse  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, round 66): (85, 130, 130), the highlight's reach; CTCM::LayoutColumn
+0x003DCAD8 0xc s_tcmHighBase  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, round 66): (80, 120, 120), the highlight's base; CTCM::LayoutColumn
+0x003DCAE8 0x6 s_tcmTeams  # OVL1 data; hud_tcmtree.cpp's file static (name ours, the HUD lane round 66): the six teams' numbers 1, 2, 3, 17, 18, 29; 2 references, tcmBuildCaches and CTCM::Build
 0x003DCAF0 0x4 s_tcm_slidehold  # OVL1 data; ours (the HUD lane, round 27): hud_tcmtree.cpp's file static, 0.2 -- the hold after a slide (CTCM::Next): 1 reference in 1 function
 0x003DCAF8 0x4 s_tcm_talkwait  # OVL1 data; ours (the HUD lane, round 57): hud_tcmtree.cpp's file static, 0.3 -- the hold before the closed menu's push-to-talk starts (CTCM::HandleClosedPad): 1 reference in 1 function
 0x003DCB00 0x4 s_tcm_talkmax  # OVL1 data; ours (the HUD lane, round 27): hud_tcmtree.cpp's file static, 10.0 -- the longest push-to-talk and the close test's wait (CTCM::TalkTick, CTCM::Tick): 2 references in 2 functions
@@ -588,6 +631,7 @@
 0x003E0300 0x10 r  # OVL1 data (initialised: the identity); SOCOM 1's static r (0x43A860, 16 bytes, c2dbitmap_poly.cpp's): the 2x2 rotation both C2DBitmapPoly::Rotate_Zaxis write ([1][0] the sine, [0][1] its negation, [0][0] and [1][1] the cosine) and turn the four corners by; 39 references in 2 functions (20 in Rotate_Zaxis(float, float), 19 in Rotate_Zaxis(float)) -- the HUD lane, round 40
 0x003E0330 0x4 zOffset  # OVL1 data (initialised 2); SOCOM 1's static zOffset (0x4753C8, small data there): c2dline.cpp's -- the depth Draw3DLine adds to both ends' projected z; 2 references in 1 function (Draw3DLine) -- the HUD lane, round 40
 0x003E0338 0x4 s_brightalpha  # OVL1 data; ours (the HUD lane, round 49): c2dstring.cpp's file static, 1.5, a bright string's alpha scale (the first of the unit's .data, after c2dline.cpp's zOffset) -- 1 reference in 1 function (C2DStringCursor's constructor 0x362900)
+0x003E0340 0x4 s_u1offset  # OVL1 data (initialised 15); c2dstring.cpp's static (name ours, round 66): added to the far U, under a whole texel; 1 reference, C2DStringPacket::Write
 0x003E0350 0x10 s_defcolor  # OVL1 data (initialised {0, 0, 0, 128}, 16-aligned); ours (the HUD lane, round 50): c2dstring.cpp's file static, a string's default colour (black, opaque) -- 1 reference in 1 function (C2DString::MakePacket 0x3635C0, copied with lq / sq)
 0x003E0360 0x4 s_prim  # OVL1 data (initialised 0x11E: textured sprites by UV); ours (the HUD lane, round 50): c2dstring.cpp's file static, the PRIM word the string's GIF tags carry, alpha blending (0x40) ORed in for good by a transparent string's flush -- 6 references in 2 functions (3 in MakePacket 0x3635C0, 3 in C2DStringPacket::Write 0x361BD0)
 0x003E0368 0x1 s_bStickCentered  # OVL1 data (initialised 1); zui.cpp's static, ours: whether the menu's stick came back to the centre -- UiGetDirStickMoved and its inlined copies in DidStickMovePrev/Next read it (3 references in 3 functions) -- the UI-widgets lane
@@ -688,6 +732,15 @@
 0x003E4028 0x8 __RTTI__9CZMapItem  # RTTI of CZMapItem: found by its RTTI's name
 0x003E4040 0x8 __RTTI__17CZClaymoreMapItem  # RTTI of CZClaymoreMapItem: found by its RTTI's name
 0x003E4068 0x8 __RTTI__11CNodeAction  # RTTI of CNodeAction: found by its RTTI's name
+0x003E4070 0x20 s_legendTypes__27@unnamed@hud_newhudmap_cpp@  # OVL1 data (7, 8, 14, 37, 4, 12, 13, 6); hud_newhudmap.cpp's static (name ours, the HUD lane round 66): the legend's anchor types; SetupLegend
+0x003E40A8 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row0  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40B0 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row1  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40B8 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row2  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40C0 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row3  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40C8 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row4  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40D0 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row5  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40D8 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row6  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40E0 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@bottom  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
 0x003E40E8 0x4 @LOCAL@SetupNorthIndicator__27@unnamed@hud_newhudmap_cpp@FP10CZSealBody@cy  # OVL1 data; ours (the HUD lane, round 52: hud_newhudmap.cpp -- SetupNorthIndicator's guarded static, 40 + g_fHudLayout60, the north indicator's centre y where SOCOM 1's literal was 100; the name ours) -- 3 references in 1 function (SetupNorthIndicator 0x20BE00: its store and two reads)
 0x003E40F0 0x4 @LOCAL@InitMap__11CZNewHudMapFPQ23zdb6CWorld@fArrowTopY  # OVL1 data; ours: InitMap's static copy of g_fHudLayout60, the scroll arrows' top -- 3 references in 1 function (InitMap's store and two reads); the HUD lane, round 64
 0x003E40F8 0x4 @LOCAL@InitMap__11CZNewHudMapFPQ23zdb6CWorld@fArrowBotY  # OVL1 data; ours: InitMap's static copy of g_fHudLayout365, the scroll arrows' bottom -- 3 references in 1 function (InitMap's store and two reads); the HUD lane, round 64
@@ -1166,6 +1219,10 @@
 0x00409040 0xC s_pauseColor2  # OVL1 bss; ours (the HUD lane, round 31: hud_pausemenu.cpp's file static, a CPnt3D colour (11, 45, 64) stored by __sinit_hud_pausemenu.cpp) -- 6 references in 2 functions: func_00202520 x3, the initialiser x3
 0x00409050 0xC s_pauseColor3  # OVL1 bss; ours (the HUD lane, round 31: hud_pausemenu.cpp's file static, a CPnt3D colour (35, 51, 56) stored by __sinit_hud_pausemenu.cpp) -- 8 references in 3 functions: func_00202520 x4, func_00201690, the initialiser x3
 0x00409060 0xC s_pauseColor4  # OVL1 bss; ours (the HUD lane, round 31: hud_pausemenu.cpp's file static, a CPnt3D grey (128, 128, 128) stored by __sinit_hud_pausemenu.cpp) -- 3 references in 1 function: the initialiser x3
+0x00409070 0x1 data_00409070  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 66; no name yet): a byte the menu sets while open, which holds the start button's open test off; 3 references, all in that unit
+0x00409078 0x4 data_00409078  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 66; no name yet): a float zeroed by the menu and counted up by dT; 2 references, all in that unit
+0x00409080 0x1 data_00409080  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 66; no name yet): a byte: the menu draws while open or while it holds; 5 references, all in that unit
+0x00409088 0x4 data_00409088  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 66; no name yet): seconds since the mission's set-up: ReInit zeroes it, TickOffState counts it up to s_pauseDelay; 3 references, all in that unit
 0x00409090 0x4 data_00409090  # OVL1 bss; hud_pausemenu.cpp's (the HUD lane round 65; no name yet): the clock between pad moves; 3 references, CZPauseTest::HudTick
 0x00409098 0x1 data_00409098  # OVL1 bss; hud_pausemenu.cpp's (round 65; no name yet): whether a pad move may come; 6 references, CZPauseTest::HudTick
 0x004090A0 0x4 data_004090A0  # OVL1 bss; hud_pausemenu.cpp's (round 65; no name yet): the selected line's pulse, 0-1; 11 references, CZPauseTest::HudTick
@@ -1207,6 +1264,14 @@
 0x0040BD20 0xA0 g_lineNorthIndFrontShaft__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (the north indicator's front shaft; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 twice
 0x0040BDD0 0xA0 g_lineNorthIndRearShaft__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (the north indicator's rear shaft; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 twice
 0x0040BE70 0x4 g_pFov__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: g_pFov at gp-25048, the texture the north lines are loaded with -- SOCOM 1's SetupNorthIndicator passes it to all three C2DLine::Loads as SOCOM II's 0x20BE00 does) -- 7 references in 2 functions (InitMap 0x20B2C0 x4, SetupNorthIndicator x3); the HUD lane, round 52
+0x0040BE78 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row0  # OVL1 bss; MW's guard for SetupLegend's row0
+0x0040BE80 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row1  # OVL1 bss; MW's guard for SetupLegend's row1
+0x0040BE88 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row2  # OVL1 bss; MW's guard for SetupLegend's row2
+0x0040BE90 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row3  # OVL1 bss; MW's guard for SetupLegend's row3
+0x0040BE98 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row4  # OVL1 bss; MW's guard for SetupLegend's row4
+0x0040BEA0 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row5  # OVL1 bss; MW's guard for SetupLegend's row5
+0x0040BEA8 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row6  # OVL1 bss; MW's guard for SetupLegend's row6
+0x0040BEB0 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@bottom  # OVL1 bss; MW's guard for SetupLegend's bottom
 0x0040BEB8 0x1 @GUARD@SetupNorthIndicator__27@unnamed@hud_newhudmap_cpp@FP10CZSealBody@cy  # OVL1 bss; ours (the HUD lane, round 52: hud_newhudmap.cpp -- the guard of SetupNorthIndicator's static cy) -- 2 references in 1 function (SetupNorthIndicator 0x20BE00)
 0x0040BEC0 0x1 @GUARD@InitMap__11CZNewHudMapFPQ23zdb6CWorld@fArrowTopY  # OVL1 bss; its guard -- 2 references in 1 function (the test and the set); the HUD lane, round 64
 0x0040BEC8 0x1 @GUARD@InitMap__11CZNewHudMapFPQ23zdb6CWorld@fArrowBotY  # OVL1 bss; its guard -- 2 references in 1 function (the test and the set); the HUD lane, round 64
@@ -1241,6 +1306,12 @@
 0x0040C090 0x1 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@dirN  # OVL1 bss; SOCOM 1's (its DWARF: dirN, the second flag) -- 2 references in 1 function; the HUD lane, round 64
 0x0040C098 0x1 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@dirW  # OVL1 bss; SOCOM 1's (its DWARF: dirW, the third flag) -- 3 references in 1 function; the HUD lane, round 64
 0x0040C0A0 0x1 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@dirS  # OVL1 bss; SOCOM 1's (its DWARF: dirS, the fourth flag) -- 3 references in 1 function; the HUD lane, round 64
+0x0040C0C8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_NORTH  # OVL1 bss; SOCOM 1's (its DWARF: UpdateAccuracy's local static) -- 3 references, UpdateAccuracy
+0x0040C0D0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_EAST  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
+0x0040C0D8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_SOUTH  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
+0x0040C0E0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_WEST  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
+0x0040C0E8 0x1 @GUARD@ChangeReticule__14BitmapReticuleFi@s_barColor  # OVL1 bss; MW's guard for ChangeReticule's local static
+0x0040C0F0 0xc @LOCAL@ChangeReticule__14BitmapReticuleFi@s_barColor  # OVL1 bss; ChangeReticule's local static (name ours, round 66): (128, 70, 32), the grenade bar's colour
 0x0040C108 0x4 g_iBgRightX__27@unnamed@hud_weaponsel_cpp@  # OVL1 bss; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace): the selector's backdrops' right edge, 160, stored by CWeaponSel::Init -- 6 references in 2 functions take 0x40C108 (Init x5, AfterOpenSecond); the HUD lane, round 16
 0x0040C110 0x50 tempstr$890  # OVL1 bss; SOCOM 1's PlaceWeaponText's function-local tempstr (tempstr$2861 in the demo, 80 bytes there too; the number is MW's counter in our hud_weaponsel.cpp, which names the row as the object does): 7 references in 1 function (CWeaponSel::PlaceWeaponText); the HUD lane, round 16
 0x0040C160 0x4 ACTIONICON_HWIDTH  # OVL1 bss; SOCOM 1's (its symbol table, 0x476B3C there): half ACTIONICON_WIDTH, made in __sinit_hud_actionbitmap.cpp -- 4 references in 2 functions (Render_ver_2 x3, the initialiser); the HUD lane, round 64
@@ -1325,6 +1396,8 @@
 0x00413030 0x10 s_tcmCursorColor  # OVL1 bss; ours (the HUD lane, round 23): hud_tcmcmds.cpp's file static CPnt4D (160, 250, 250, 100), built by the initialiser 0x3FF430 -- the layout 0x231310 reads x/y/z, the slide 0x231540 w
 0x00413040 0x40 g_tcmColumns  # OVL1 bss; ours (the HUD lane, round 23): hud_tcmcmds.cpp's eight menu columns (CTCMColumn, 8 bytes: a slide direction 1/-1, a word), constructed by the unit's initialiser 0x3FF430 (__construct_array, the element constructor 0x231A10) -- 8 references in 8 functions (tcmOpenNode, tcmCloseNode, the layout 0x230870/0x231690, the tree's 0x235300/0x235440, the menu object's 0x236430, the initialiser)
 0x00413080 0x4 s_tcmPulse  # OVL1 bss; ours (the HUD lane, round 37): hud_tcmcmds.cpp's file static float, the closing menu's pulse 0..1 (CTCM::Layout 0x231690 swings it by s_tcmPulseDir and passes it to the layout 0x230870) -- 5 references in 1 function
+0x00413088 0x1 @GUARD@LayoutColumn__4CTCMFP8CTCMNodefffUib@s_pulse  # OVL1 bss; MW's guard for LayoutColumn's local static (name ours, round 66)
+0x00413090 0xc @LOCAL@LayoutColumn__4CTCMFP8CTCMNodefffUib@s_pulse  # OVL1 bss; LayoutColumn's local static (name ours, round 66): (128, 128, 64), the caption's colour on the closing pulse
 0x004130A0 0x1 s_tcm_talking  # OVL1 bss; ours (the HUD lane, round 27): hud_tcmtree.cpp's file static bool, push-to-talk on (CTCM::TalkTick, CTCM::HandleClosedPad): 3 references in 2 functions
 0x004130A8 0x4 s_tcm_talktime  # OVL1 bss; ours (the HUD lane, round 27): hud_tcmtree.cpp's file static float, the push-to-talk's time (CTCM::TalkTick): 3 references in 1 function
 0x004130B0 0x1 s_tcm_armed  # OVL1 bss; ours (the HUD lane, round 57): hud_tcmtree.cpp's file static bool, the closed menu's button let go out of hold (CTCM::HandleClosedPad): 3 references in 1 function
@@ -1798,6 +1871,8 @@
 0x0049E8A0 0x10 TexBufParams__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (16 bytes at m_texmanager + 0x20, as the demo's 0x50EB20 after its 0x50EB00): the CTextureAssetCharacters constructor passes its first two floats to doAddBuffer as SOCOM 1's does; 27 references in 4 functions take 0x49E8A0-0x49E8AC
 0x0049E8B0 0xDC TexPhase__Q23zdb11CTexManager  # OVL1 bss; SOCOM 1's (0xCC bytes; SOCOM II's states read entries to 0xD8 as buffer indices): 82 references in 12 functions take 0x49E8B0-0x49E988
 0x0049E998 0x1 @GUARD@Draw3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D@s_scale  # OVL1 bss; MW's guard for Draw3DLine's s_scale 0x3F8B20; 2 references in 1 function -- the HUD lane, round 40
+0x0049E9A0 0x4 s_yoffset0  # OVL1 bss; c2dstring.cpp's static (name ours, the HUD lane round 66): the near screen row's offset; 1 reference, C2DStringPacket::Write
+0x0049E9A8 0x4 s_yoffset1  # OVL1 bss; c2dstring.cpp's static (name ours, round 66): the far screen row's offset; 1 reference, C2DStringPacket::Write
 0x0049E9B0 0x4 g_languageVersion  # OVL1 bss; ours (the HUD lane, round 31: c2dstring.cpp's global, the language's change count -- IncLanguageVersion counts it after SetLanguage's reload, C2DString's SetString/SetStringId keep it, its Draws look the id up again when it moved) -- 6 references in 5 functions: IncLanguageVersion x2, C2DString::SetString, SetStringId and both Draws
 0x0049E9D0 0x10 g_stringTables  # OVL1 bss; ours (the HUD lane, round 31: c2dstring.cpp's global CStringTables -- util_loc.cpp's vector of the loaded tables and the entry found last -- built by __sinit_c2dstring.cpp 0x4035C0 with reserve(12), its implicit destructor 0x364170 registered; GetStringTables returns it) -- 28 references in 8 functions: C2DString::SetString x9, SetStringId x7, the initialiser x6, TranslateString x2, GetStringId, GetString, GetStringTables, func_00363F60
 0x0049E9E0 0x4 m_p2dcamera__3C2D  # OVL1 bss; SOCOM 1's static (gp-26200 there): C2D::Open news the camera into it when null, as SOCOM 1's Open does, and C2DBitmap::Draw(matrix) draws with it as SOCOM 1's: 3 references in 2 functions take 0x49E9E0

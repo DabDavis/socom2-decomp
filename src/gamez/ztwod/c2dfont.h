@@ -61,6 +61,8 @@ public:
 class C2DGlyphPiece {
 public:
     C2DGlyphPiece() : m_0(0), m_2(0), m_4(0), m_6(0) {}
+    /* (const: an operand through it is read first, the packet writer's FPR pair) */
+    float GetScaleY() const { return m_place.sy; }
 
     short m_0;   // 0x0
     short m_2;   // 0x2
