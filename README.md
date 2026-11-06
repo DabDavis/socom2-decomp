@@ -14214,6 +14214,41 @@ opens nearer (0x639FB8, 0x639A90, 0x63B410: d 4/37/34 -> 2/6/6; rt_list's init d
 the map's byte-exact rows (`src/lib/medius` 949 -> 958 of 1,002), none superseding a draft; 2 rows named.
 No tool changed.
 
+**Round 22b: unwritten rows in the RT objects, each a shape 2.96 decides.**
+
+- **A do-while(0) of breaks is laid out rotated**: rt_udp's datagram queue 0x641748 has its appends first
+  in the image and the sender's store at the end, whose success is a branch BACK to them -- 2.96 has no
+  block reordering, so that layout is expand_end_loop's rotation (round 16b's rule) of a `do { ... break;
+  ... } while (0);`: the code up to the last exit in the first 30 insns moved to the loop's end. A backward
+  branch in a function with no loop is a loop statement in the source.
+- **A parameter whose address is taken is stored at the entry; a local copy where the target stores it
+  later**: rt_table's record dispatcher 0x63C950 hands &a, &b, &c to a callback between records, and the
+  target stores the three words only after the guards (in their delay slots) -- locals assigned from the
+  parameters there (d 49 -> 6). Its last word: the handler's count added to the offset only after its
+  sign test (added first, sched1 put the offset test's sltu into the sign test's delay slot).
+- **One variable through three meanings keeps one register**: SHA1.c's final 0x643018 holds the bit count,
+  the block index and the pad length in a3 in turn, the shift in v0 between -- `n = count; n = (n >> 3) &
+  0x3F; p = buf + n; ...; n = 63 - n;` (three variables: d=16; `n >>= 3; n &= 0x3F` d=6).
+- **A switch on an enum tests unsigned**: rt_udp's 0x640D38 switches on the connection state with
+  `sltiu` (cases 8, 9, 11, 12): RT_UDP_CONN's state as an enum gives it, and no other row of the unit moves.
+- **Shapes, measured**: a first verdict never read is a variable of its own (0x63B2F0: assigned to the one
+  verdict variable twice, pP2p and the index take s1/s2 for s0/s1); two ifs give two movz where `== 3 ||
+  == 4` folds to the range test (0x63C3D0's two loops have one of each); a state 0 assigned after the -2
+  initialisers stores last (0x63C170, round 15b's declaration-order rule the other way); each arm keeping
+  its own copy of a reset tail, cross-jumped (0x63C170, round 21b's rule).
+- **Open, diagnosed in place**: setNewSeed_platform (new `medius/rt_mt_platform.c`, d=19: every instruction
+  the target's; its first count's dsll32/dsra32 are two insns apart there, truncdisi2's one here, and the
+  call's `li a1,64` issues before the second count's load -- no other row in the range splits the pair),
+  0x63B5D0 (2: the magic's lui and the local index's load issue the other way round in one dual-issue
+  cycle), 0x63C170 (2: the join callback's `beq` keeps its argument load in a plain slot, here `beql` from
+  the target thread), and the earlier opens (not reached: round 21b's list).
+
+Hand-written in round 22b: `medius/rt_table.c` (+1, 0x63C950: 5 of 7), `medius/rt_p2p.c` (+3: 0x63A618,
+0x63B2F0, 0x63C3D0; 0x63B5D0 and 0x63C170 OPEN; 28 of 34), `medius/rt_udp.c` (+3: 0x640D38, 0x641748,
+0x6418A0; 42 of 49), `medius/sha1.c` (+1, 0x643018: 3 of 3), `medius/rt_mt_platform.c` (new, 0 of 1) -- 8 rows
+new to the map's byte-exact rows (`src/lib/medius` 958 -> 966 of 1,013), none superseding a draft; no rows
+named (all are placeholders without strings or a SOCOM 1 counterpart). No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;

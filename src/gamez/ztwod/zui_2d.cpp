@@ -917,7 +917,11 @@ void CTeleType::SetString(const char *s, bool translate)
  * is the target's. Tried: the cells assigned straight (interleaved stores), a CPnt3D built by its
  * constructor (y and z swapped: arguments right to left), the parts as an array of 0x450-byte
  * {object, offset} walked by a loop (not unrolled, two registers more), an inline setter taking the
- * three floats (23) */
+ * three floats (23). Round 61's replay (igdump, igreplay --target): the GPRs differ only in the five
+ * address temporaries' order -- &p.z's (@10258) moved to 42.5, right after &p.y's, gives every
+ * register; here pos.z's plain copy of p.z is propagated into the third cell's store, so p.z's
+ * address is first seen after the cells' (the target loads p.z with the other loads, before any
+ * store); pos copied whole from p (`pos = p;` then the two offsets added) keeps that order (25) */
 void CPopUpDialog::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
 {
     CPnt3D p = CPnt3D::zero;
