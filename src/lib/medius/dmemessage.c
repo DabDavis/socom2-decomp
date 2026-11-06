@@ -311,7 +311,7 @@ int RequestOwnershipPacketHandler(int nConnection, int nUnused, int nClient, uns
     return 2;
 }
 
-extern int func_0061FE18(int nWorld, int nClient, int nValue1, int nValue2);
+extern void func_0061FE18(int nWorld, int nClient, int nValue1, int nValue2);
 
 int func_0061F410(int nConnection, int nUnused, int nClient, unsigned char *pMsg)
 {
@@ -546,4 +546,146 @@ int func_0061E510(int nConnection, int nUnused, int nClient, DmeFragMsg *pMsg)
         }
     }
     return pMsg->nLength + 20;
+}
+
+extern unsigned char data_0065117C;     /* this client has joined */
+extern int data_0067C5C0;               /* 1: the join was given up */
+extern void *data_0067C5B8;             /* the join callback */
+extern void *data_006511A0;             /* ... and its user data */
+extern int CurrentNetTime;
+extern int data_00686A2C;               /* the new client's reply's message type */
+extern int data_00686A54;               /* the delay report's */
+extern int func_00618F70(unsigned int nWorld);
+extern int func_0061C998(unsigned int nWorld, int nValue);
+extern void NetResetTime(int nTime);
+extern int func_00612AB0(unsigned int nWorld, int nTarget);
+extern void MyClientJoins(unsigned int nWorld, unsigned int nClient);
+extern int func_006189C8(unsigned int nConnection, int bEnable);
+extern int func_0061D440(int nClient);
+extern void func_006192A0(unsigned int nClient);
+
+typedef struct DmeJoinAccept {          /* 8 bytes: the session's time and this client's blocks */
+    int nTime;                          /* 0x00 */
+    unsigned short nObjects;            /* 0x04 */
+    unsigned short nStreams;            /* 0x06 */
+} DmeJoinAccept;
+
+typedef struct DmeJoinFailure {         /* what the join callback is told */
+    int nResult;                        /* 0x00: 7 */
+    void *pUser;                        /* 0x04 */
+} DmeJoinFailure;
+
+/* the session accepted this client (0x61E128): state joined and reported, the time and blocks taken from the
+ * message; a join already given up leaves instead and tells the callback. Round 25b, unwritten before. */
+int func_0061E128(int nConnection, int nUnused, int nClient, DmeJoinAccept *pMsg)
+{
+    char *pClient = 0;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pInfo = 0;
+    unsigned int nMyClient;
+    DmeJoinFailure report;
+
+    if (pMsg == 0)
+        return -1;
+    if ((unsigned int)nConnection >= DME_MAX_WORLDS)
+        return -1;
+    if ((unsigned int)nClient >= DME_MAX_CLIENTS)
+        return -1;
+    if (data_0065117C == 1)
+        return 8;
+    if (func_0061C600(nConnection, &pWorld) != 0)
+        return -1;
+    if (pWorld == 0)
+        return -1;
+    nMyClient = pWorld->nMyClient;
+    if (nMyClient >= DME_MAX_CLIENTS)
+        return -1;
+    func_006126E8(&pClient, nConnection, nMyClient);
+    if (pClient == 0)
+        return -1;
+    if (data_0067C5C0 == 1) {
+        func_00618F70(nConnection);
+        if (data_0067C5B8 != 0) {
+            report.nResult = 7;
+            report.pUser = data_006511A0;
+            ((void (*)(DmeJoinFailure *))data_0067C5B8)(&report);
+            data_0067C5B8 = 0;
+            data_006511A0 = 0;
+        }
+    } else {
+        if (func_0061C720(nConnection, nMyClient, (char **)&pInfo) != 0 || pInfo == 0)
+            return -1;
+        pInfo->nState = DME_CLIENT_JOINED;
+        func_00613FD0(nConnection, -1);
+        func_0061C998(nConnection, nClient);
+        data_0065117C = 1;
+        NetResetTime(pMsg->nTime);
+        *(int *)pClient = CurrentNetTime;
+        *(unsigned short *)(pClient + 6) = pMsg->nObjects;
+        *(unsigned short *)(pClient + 10) = pMsg->nStreams;
+        func_00612AB0(nConnection, -1);
+        MyClientJoins(nConnection, nMyClient);
+        func_006189C8(nConnection, 1);
+    }
+    return 8;
+}
+
+typedef struct DmeNewClientReply {      /* 8 bytes */
+    int nTime;                          /* 0x00 */
+    unsigned short nObjects;            /* 0x04 */
+    unsigned short nStreams;            /* 0x06 */
+} DmeNewClientReply;
+
+/* the session master takes a new client in (0x61FE18; func_0061F410 calls it): its record made, object and stream
+ * blocks found, the time and blocks sent back, its delay reported, three pings. Round 25b, unwritten before. */
+void func_0061FE18(int nWorld, int nClient, int nObjects, int nStreams)
+{
+    DmeNewClientReply msg;
+    int nValue;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pInfo = 0;
+    char *pClient;
+    int nDelay;
+
+    if ((unsigned int)nWorld >= DME_MAX_WORLDS)
+        return;
+    if (func_0061D440(nClient) != 1)
+        return;
+    func_00615090(&nValue, nWorld);
+    if (nValue == 256)
+        return;
+    if ((unsigned int)nValue >= DME_MAX_CLIENTS)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    if (func_0061C720(nWorld, nClient, (char **)&pInfo) != 0)
+        return;
+    if (pInfo == 0)
+        return;
+    if (pWorld->nMyClient != nValue)
+        return;
+    pClient = 0;
+    func_006126E8(&pClient, nWorld, nClient);
+    if (pClient != 0)
+        return;
+    pClient = NetCreateClient(nWorld, nClient);
+    if (pClient == 0)
+        return;
+    if (nObjects != 0)
+        *(unsigned short *)(pClient + 6) = GetFreeNetObjectBlock(nObjects);
+    if (nStreams != 0)
+        *(unsigned short *)(pClient + 10) = FindFreeDataStreamBlock(nStreams);
+    msg.nTime = CurrentNetTime;
+    msg.nObjects = *(unsigned short *)(pClient + 6);
+    msg.nStreams = *(unsigned short *)(pClient + 10);
+    func_00615DE0(80, nWorld, nClient, data_00686A2C, sizeof(msg), &msg);
+    func_00620008(nWorld, &nDelay);
+    if (func_0061C720(nWorld, nClient, (char **)&pInfo) == 0 && pInfo != 0)
+        pInfo->nValue = nDelay;
+    func_00615DE0(80, nWorld, nClient, data_00686A54, sizeof(nDelay), &nDelay);
+    func_006192A0(nClient);
+    func_006192A0(nClient);
+    func_006192A0(nClient);
 }
