@@ -1470,3 +1470,43 @@ void func_00642200(void *pUpnp, int nError, int a2, char *szAddress, unsigned sh
     else
         pUdp->pfnCallback(pUdp, -2, 5, 15, pUdp->pUser);
 }
+
+/* a payload appended to the datagram in the send ring its header matches (0x63FC08; 0x63F9xx's reliable path
+ * calls it): the ring's own copy first (func_00631848), then the first message with an equal header grown in
+ * place and its trailing word zeroed. The found arm ends in a `break`, so loop.c moves it out of the loop to the
+ * barrier nearest before its target -- past the `return 10`, the layout's jump over it; a plain `while` gives
+ * the target. Round 25b, unwritten before. */
+int func_0063FC08(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, void *pMsg, void *pData, unsigned int nLength)
+{
+    RT_UDP_HEADER hdr;
+    RT_UDP_HEADER hdrQueued;
+    RT_UDP_BUF *pBuf;
+    char *p;
+
+    if (pMsg == 0)
+        return 1;
+    if (pData == 0)
+        return 1;
+    if (nLength == 0)
+        return 1;
+    func_0063FE48(pMsg, &hdr);
+    pBuf = &pConn->send;
+    if (func_00631848(pBuf, pMsg, pData, nLength) != 0)
+        return 10;
+    func_00631B10(pBuf, &pMsg);
+    while (pMsg != 0) {
+        func_0063FE48(pMsg, &hdrQueued);
+        if (memcmp(&hdr, &hdrQueued, sizeof(hdr)) == 0) {
+            memcpy((char *)func_00631E58(pMsg) + hdr.nLength + 24, pData, nLength);
+            p = func_00631E58(pMsg);
+            memset(p + func_00631E70(pMsg) - 4, 0, 4);
+            hdr.nLength += nLength;
+            hdr.nType |= nType & 7;
+            func_0063FEA8(pMsg, &hdr);
+            pMsg = 0;
+            break;
+        }
+        pMsg = func_00631E88(pMsg);
+    }
+    return 0;
+}

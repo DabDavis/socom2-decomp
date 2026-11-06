@@ -3073,3 +3073,67 @@ int func_0061D1B0(void)
     }
     return DME_OK;
 }
+
+typedef struct DmeResolveParams {       /* SOCOM 1's NetResolveAddr's */
+    int nVersion;                       /* 0x00: 1 */
+    void (*pfnCallback)(DmeAddressReport *pReport); /* 0x04 */
+    DmeAddress address;                 /* 0x08: its first word 3 when set */
+} DmeResolveParams;
+
+extern int func_00639870(int nConnection, void *pAddress, void *pfnCallback);
+
+/* SOCOM 1's NetResolveAddr grown (0x6184E8, after NetSetDefaultResolveAddrParams as SOCOM 1's follows it; the
+ * name is Dme.c's wrapper's): answered at once from the last report when the transport is up and has one, else
+ * the transport brought up and the resolve server asked. Each `status 23` a copy of its own, cross-jumped into
+ * the last. Round 25b, unwritten before. */
+int func_006184E8(DmeResolveParams *pParams, DmeConnectStatus *pStatus)
+{
+    struct { char szIp[16]; unsigned short nPort; } addr;
+    int result;
+
+    if (pStatus == 0)
+        return DME_ERR_ARGUMENT;
+    pStatus->nResult = 30;
+    pStatus->field_00 = 1;
+    if (pParams == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    if (data_00651180 != 1) {
+        pStatus->nResult = 17;
+        return 17;
+    }
+    if (pParams->nVersion != 1) {
+        pStatus->nResult = 38;
+        return 38;
+    }
+    if (pParams->pfnCallback == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    if (data_006511D4 == 1 && data_0066CF20.field_00 == 1 && data_0066CF20.nResult == 0)
+        pParams->pfnCallback(&data_0066CF20);
+    else {
+        if (data_006511D4 == 0) {
+            result = func_00616C98();
+            pStatus->nResult = result;
+            if (result != DME_OK)
+                return result;
+        }
+        if (pParams->address.w[0] == 3)
+            func_00618458(&pParams->address);
+        if (data_0066CF08.w[0] != 3) {
+            pStatus->nResult = DME_ERR_ARGUMENT;
+            return DME_ERR_ARGUMENT;
+        }
+        data_0066CF58 = pParams->pfnCallback;
+        strncpy(addr.szIp, (char *)&data_0066CF08.w[1], 16);
+        addr.nPort = *(unsigned short *)&data_0066CF08.w[5];
+        if (func_00639870(data_006511D8, &addr, func_0061D650) != 0) {
+            pStatus->nResult = 37;
+            return 37;
+        }
+    }
+    pStatus->nResult = DME_OK;
+    return DME_OK;
+}
