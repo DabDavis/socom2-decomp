@@ -283,6 +283,14 @@
 0x003DC570 0x4 s_laseTickSize__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; ours (the HUD lane, round 59: hud_bitmapreticule.cpp's anonymous-namespace float, 4.0 -- the box's corner ticks' length): 4 references in 1 function (DrawLaseTarget 0x217550)
 0x003DC578 0x4 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@DIAGONAL_SCALAR  # OVL1 data; SOCOM 1's (its DWARF: ThreatDirTick's local static, 0x476A9C there and made under a guard; 0.5 in data here): the diagonal arrows' share of their two neighbours -- 4 references in 1 function; the HUD lane, round 64
 0x003DC580 0x4 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@ONE_OVER_90  # OVL1 data; ours (1/90): an arrow's share per degree -- 16 references in 1 function; the HUD lane, round 64
+0x003DC5B8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@ne_x  # OVL1 data; SOCOM 1's (its DWARF; 0.9) -- 1 reference, UpdateAccuracy
+0x003DC5C0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@ne_y  # OVL1 data; SOCOM 1's (its DWARF; 0.6) -- 1 reference, UpdateAccuracy
+0x003DC5C8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@se_x  # OVL1 data; SOCOM 1's (its DWARF; 0.65) -- 1 reference, UpdateAccuracy
+0x003DC5D0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@se_y  # OVL1 data; SOCOM 1's (its DWARF; 0.5) -- 1 reference, UpdateAccuracy
+0x003DC5D8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@nw_x  # OVL1 data; SOCOM 1's (its DWARF; 0.9) -- 1 reference, UpdateAccuracy
+0x003DC5E0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@nw_y  # OVL1 data; SOCOM 1's (its DWARF; 0.6) -- 1 reference, UpdateAccuracy
+0x003DC5E8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@sw_x  # OVL1 data; SOCOM 1's (its DWARF; 0.65) -- 1 reference, UpdateAccuracy
+0x003DC5F0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@sw_y  # OVL1 data; SOCOM 1's (its DWARF; 0.52) -- 1 reference, UpdateAccuracy
 0x003DC618 0x1 @LOCAL@SetGBarVal__14BitmapReticuleFf@first  # OVL1 data; ours (the HUD lane, round 57: hud_bitmapreticule.cpp -- SetGBarVal's static flag, 1 in data, cleared with the error flag at the first missing texture; SOCOM 1's DWARF: its `first`, 0x476B30 there) -- 4 references in 1 function
 0x003DC620 0x4 g_fFadeInTime__27@unnamed@hud_weaponsel_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace, gp-30408 in the demo): the selector's backdrop fade-in clock, -1.0 in data (idle) -- 5 references in 2 functions (CWeaponSel::HudTick x4, OnOpen); the HUD lane
 0x003DC628 0x4 ACTIONICON_CENTERX  # OVL1 data; SOCOM 1's (its symbol table: hud_actionbitmap.cpp's file static, 0x47552C there): the main icon's centre x, 306 -- 4 references in 2 functions (Render_ver_2 x3, __sinit_hud_actionbitmap.cpp); the HUD lane, round 64
@@ -1233,6 +1241,10 @@
 0x0040C090 0x1 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@dirN  # OVL1 bss; SOCOM 1's (its DWARF: dirN, the second flag) -- 2 references in 1 function; the HUD lane, round 64
 0x0040C098 0x1 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@dirW  # OVL1 bss; SOCOM 1's (its DWARF: dirW, the third flag) -- 3 references in 1 function; the HUD lane, round 64
 0x0040C0A0 0x1 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@dirS  # OVL1 bss; SOCOM 1's (its DWARF: dirS, the fourth flag) -- 3 references in 1 function; the HUD lane, round 64
+0x0040C0C8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_NORTH  # OVL1 bss; SOCOM 1's (its DWARF: UpdateAccuracy's local static) -- 3 references, UpdateAccuracy
+0x0040C0D0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_EAST  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
+0x0040C0D8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_SOUTH  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
+0x0040C0E0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_WEST  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
 0x0040C108 0x4 g_iBgRightX__27@unnamed@hud_weaponsel_cpp@  # OVL1 bss; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace): the selector's backdrops' right edge, 160, stored by CWeaponSel::Init -- 6 references in 2 functions take 0x40C108 (Init x5, AfterOpenSecond); the HUD lane, round 16
 0x0040C110 0x50 tempstr$890  # OVL1 bss; SOCOM 1's PlaceWeaponText's function-local tempstr (tempstr$2861 in the demo, 80 bytes there too; the number is MW's counter in our hud_weaponsel.cpp, which names the row as the object does): 7 references in 1 function (CWeaponSel::PlaceWeaponText); the HUD lane, round 16
 0x0040C160 0x4 ACTIONICON_HWIDTH  # OVL1 bss; SOCOM 1's (its symbol table, 0x476B3C there): half ACTIONICON_WIDTH, made in __sinit_hud_actionbitmap.cpp -- 4 references in 2 functions (Render_ver_2 x3, the initialiser); the HUD lane, round 64

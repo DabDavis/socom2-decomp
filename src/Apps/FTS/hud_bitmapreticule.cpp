@@ -87,6 +87,14 @@ public:
     float m_retposy;   // 0x1c
     float m_retoffsetx;   // 0x20
     float m_retoffsety;   // 0x24
+    unsigned char _28[0x84c - 0x28];
+    float m_retsize;   // 0x84c: the reticle's spread (the seal's 0xE2C)
+    unsigned char _850[0x864 - 0x850];
+    float m_retblockedX;   // 0x864 (SOCOM 1's 0x848, kit.h)
+    float m_retblockedY;   // 0x868 (SOCOM 1's 0x84c)
+    /* whether the seal looks through binoculars or a scope (kit.h's, SOCOM 1's) */
+    bool IsUsingBinocs();
+    bool IsUsingScope();
 };
 
 /* what the seal hit along the reticle: the point, and what it hit at 0x1c (zdb's CDI, as far as the
@@ -115,6 +123,7 @@ public:
     void SetCurZoomState(ZOOMSTATE state);
     CReticuleDi *GetReticuleDi();
     CZKit *GetKit() { return &m_kit; }
+    float GetThreatScale(unsigned int i) const { return m_threatscale[i]; }
 
     unsigned char _0[0x1c];
     CPnt3D m_posW;   // 0x1c
@@ -124,13 +133,15 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x200 - 0xe2];
+    unsigned char _e2[0x174 - 0xe2];
+    short m_174;   // 0x174: 9 hides the error marker (SOCOM 1's byte at 0x11D)
+    unsigned char _176[0x200 - 0x176];
     ZOOMSTATE m_zoomstate;   // 0x200
-    unsigned char _201[0x5e0 - 0x201];
-    CZKit m_kit;   // 0x5e0
-    unsigned char _608[0xe2c - 0x608];
-    float m_retsize;   // 0xe2c: the reticle's spread
-    unsigned char _e30[0xeb8 - 0xe30];
+    unsigned char _201[0x258 - 0x201];
+    unsigned char m_258_0 : 1;   // 0x258 bit 0 (zseal.h's)
+    unsigned char _259[0x5e0 - 0x259];
+    CZKit m_kit;   // 0x5e0, to 0xe4c
+    unsigned char _e4c[0xeb8 - 0xe4c];
     CEntity *m_eb8;   // 0xeb8: the turret it works
     unsigned char _ebc[0xefc - 0xebc];
     /* where it was hit from, and each of the eight arrows' strength and angle (SOCOM 1's DWARF: E, N,
@@ -352,6 +363,213 @@ BitmapReticule::BitmapReticule()
 BitmapReticule::~BitmapReticule()
 {
     binocs_tex = 0;
+}
+
+/* the error marker and the floating reticle's four pieces placed round the point, and the threat
+ * arrows round them (SOCOM 1's; a body of its order with SOCOM II's fade on the marker, its third kind of
+ * reticle and its zoom's half size) */
+void BitmapReticule::UpdateAccuracy()
+{
+    static float PT_NORTH;
+    static float PT_EAST;
+    static float PT_SOUTH;
+    static float PT_WEST;
+    static float ne_x = 0.9f;
+    static float ne_y = 0.6f;
+    static float se_x = 0.65f;
+    static float se_y = 0.5f;
+    static float nw_x = 0.9f;
+    static float nw_y = 0.6f;
+    static float sw_x = 0.65f;
+    static float sw_y = 0.52f;
+
+    /* a reference: the base is the add's first operand (an indexed read adds it last) */
+    C2DBitmapPoly &ret = m_floatingreticule[m_rettype];
+
+    if (!ret.m_texture)
+        return;
+    CZSealBody *seal = CHUD::GetHUDOwner();
+    CZKit *kit = seal->GetKit();
+
+    if (!seal)
+        return;
+    float RetSize;
+
+    if (seal->m_zoomstate == ZOOMSTATE_3RDPERSON)
+        RetSize = 0.5f * m_retsize;
+    else
+        RetSize = m_retsize;
+    float rpos_offsetx, dpos_offsety, lpos_offsetx, upos_offsety, posx_ex, posy_ex;
+    float x = kit->m_retblockedX;
+    float y = kit->m_retblockedY;
+
+    if ((kit->m_retblocked || !seal->m_258_0) && seal->m_174 != 9 && seal->m_socom2_e1_4 && !kit->IsUsingBinocs()
+        && (!(x <= RetSize) || !(y <= RetSize))) {
+        if (kit->IsUsingScope()) {
+            float d = x * x + y * y;
+
+            if (!(d <= 40012.8f)) {
+                float k = 200.032f / sqrtf(d);
+
+                x = x * k;
+                y = y * k;
+            }
+        }
+        m_miss_x.Load(x + m_posx - (int)m_accuracyxtex->m_texture->m_width / 2.0f,
+                      y + m_posy - (int)m_accuracyxtex->m_texture->m_height / 2.0f, m_accuracyxtex);
+        m_miss_x.On();
+        m_miss_x.m_fade_dx = 32.0f;
+        if (m_miss_x.GetTrans() < 128.0f) {
+            float fade = m_miss_x.m_fade_dx;
+            float t = m_miss_x.GetTrans();
+
+            m_miss_x.SetTrans(t + fade);
+        }
+    } else {
+        m_miss_x.m_fade_dx = -32.0f;
+
+        float fade = m_miss_x.m_fade_dx;
+        float t = m_miss_x.GetTrans();
+
+        m_miss_x.SetTrans(t + fade);
+        if (m_miss_x.GetTrans() <= 0.0f) {
+            m_miss_x.Off();
+            m_miss_x.SetTrans(0.0f);
+        }
+    }
+    rpos_offsetx = m_posx + RetSize;
+    dpos_offsety = m_posy + RetSize;
+    lpos_offsetx = m_posx - RetSize;
+    upos_offsety = m_posy - RetSize;
+    /* held in a local: a literal comes first in the add (add.s f21,f0,f2 for the target's f2,f0) */
+    float one = 1.0f;
+
+    posx_ex = m_posx + one;
+    posy_ex = m_posy - one;
+    if (m_rettype == 9) {
+        m_floatingreticule[0].SetPos(rpos_offsetx, posy_ex - m_rettexsizey, rpos_offsetx, posy_ex,
+                                     rpos_offsetx + m_rettexsizex, posy_ex, rpos_offsetx + m_rettexsizex,
+                                     posy_ex - m_rettexsizey);
+        m_floatingreticule[0].FlipImage_Yaxis();
+        m_floatingreticule[1].SetPos(posx_ex - m_rettexsizex, upos_offsety - m_rettexsizey, posx_ex - m_rettexsizex,
+                                     upos_offsety, posx_ex, upos_offsety, posx_ex, upos_offsety - m_rettexsizey);
+        m_floatingreticule[2].SetPos(lpos_offsetx - m_rettexsizex, posy_ex, lpos_offsetx - m_rettexsizex,
+                                     posy_ex + m_rettexsizey, lpos_offsetx, posy_ex + m_rettexsizey, lpos_offsetx,
+                                     posy_ex);
+        m_floatingreticule[2].FlipImage_Xaxis();
+        m_floatingreticule[3].SetPos(posx_ex, dpos_offsety, posx_ex, dpos_offsety + m_rettexsizey,
+                                     posx_ex + m_rettexsizex, dpos_offsety + m_rettexsizey,
+                                     posx_ex + m_rettexsizex, dpos_offsety);
+        m_floatingreticule[3].FlipImage_XYaxis();
+    } else if (m_rettype == 2 || m_rettype == 3) {
+        if (m_rettype == 3) {
+            m_rettexsizex *= 0.7f;
+            m_rettexsizey *= 0.7f;
+        }
+        m_floatingreticule[0].SetPos(rpos_offsetx, upos_offsety - m_rettexsizey, rpos_offsetx, upos_offsety,
+                                     rpos_offsetx + m_rettexsizex, upos_offsety, rpos_offsetx + m_rettexsizex,
+                                     upos_offsety - m_rettexsizey);
+        m_floatingreticule[0].FlipImage_Yaxis();
+        m_floatingreticule[1].SetPos(lpos_offsetx - m_rettexsizex, upos_offsety - m_rettexsizey,
+                                     lpos_offsetx - m_rettexsizex, upos_offsety, lpos_offsetx, upos_offsety,
+                                     lpos_offsetx, upos_offsety - m_rettexsizey);
+        m_floatingreticule[2].SetPos(lpos_offsetx - m_rettexsizex, dpos_offsety, lpos_offsetx - m_rettexsizex,
+                                     dpos_offsety + m_rettexsizey, lpos_offsetx, dpos_offsety + m_rettexsizey,
+                                     lpos_offsetx, dpos_offsety);
+        m_floatingreticule[2].FlipImage_Xaxis();
+        m_floatingreticule[3].SetPos(rpos_offsetx, dpos_offsety, rpos_offsetx, dpos_offsety + m_rettexsizey,
+                                     rpos_offsetx + m_rettexsizex, dpos_offsety + m_rettexsizey,
+                                     rpos_offsetx + m_rettexsizex, dpos_offsety);
+        m_floatingreticule[3].FlipImage_XYaxis();
+        if (m_rettype == 3) {
+            m_rettexsizex /= 0.7f;
+            m_rettexsizey /= 0.7f;
+        }
+    } else {
+        m_floatingreticule[0].SetPos(rpos_offsetx, posy_ex, rpos_offsetx, posy_ex + m_rettexsizey,
+                                     rpos_offsetx + m_rettexsizex, posy_ex + m_rettexsizey,
+                                     rpos_offsetx + m_rettexsizex, posy_ex);
+        m_floatingreticule[0].FlipImage_XYaxis();
+        m_floatingreticule[1].SetPos(posx_ex - m_rettexsizex, upos_offsety - m_rettexsizey, posx_ex - m_rettexsizex,
+                                     upos_offsety, posx_ex, upos_offsety, posx_ex, upos_offsety - m_rettexsizey);
+        m_floatingreticule[2].SetPos(lpos_offsetx - m_rettexsizex, posy_ex, lpos_offsetx - m_rettexsizex,
+                                     posy_ex + m_rettexsizey, lpos_offsetx, posy_ex + m_rettexsizey, lpos_offsetx,
+                                     posy_ex);
+        m_floatingreticule[2].FlipImage_XYaxis();
+        m_floatingreticule[2].FlipImage_Xaxis();
+        m_floatingreticule[3].SetPos(posx_ex - m_rettexsizex, dpos_offsety, posx_ex - m_rettexsizex,
+                                     dpos_offsety + m_rettexsizey, posx_ex, dpos_offsety + m_rettexsizey, posx_ex,
+                                     dpos_offsety);
+        m_floatingreticule[3].FlipImage_Xaxis();
+    }
+    PNT2D center_pt;
+
+    center_pt.x = m_rettexsizex2;
+    center_pt.x += 15.0f;
+    PT_EAST = center_pt.x;
+    center_pt.x += rpos_offsetx;
+    center_pt.y = posy_ex;
+    m_threatdirpoly[0].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(0));
+    m_threatdirpoly[0].FlipImage_XYaxis();
+    center_pt.x = posx_ex;
+    center_pt.y = -m_rettexsizey2;
+    center_pt.y -= 15.0f;
+    PT_NORTH = center_pt.y;
+    center_pt.y += upos_offsety;
+    m_threatdirpoly[2].SetCenterPos(center_pt, m_threattexsizex * seal->GetThreatScale(2), m_threattexsizey);
+    center_pt.x = -m_rettexsizex2;
+    center_pt.x -= 15.0f;
+    PT_WEST = center_pt.x;
+    center_pt.x += lpos_offsetx;
+    center_pt.y = posy_ex;
+    m_threatdirpoly[4].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(4));
+    m_threatdirpoly[4].FlipImage_XYaxis();
+    m_threatdirpoly[4].FlipImage_Xaxis();
+    center_pt.x = posx_ex;
+    center_pt.y = m_rettexsizey2;
+    center_pt.y += 15.0f;
+    PT_SOUTH = center_pt.y;
+    center_pt.y += dpos_offsety;
+    m_threatdirpoly[6].SetCenterPos(center_pt, m_threattexsizex * seal->GetThreatScale(6), m_threattexsizey);
+    m_threatdirpoly[6].FlipImage_Xaxis();
+    if (m_threatdirpoly[1].GetTrans() > 0.0f) {
+        center_pt.x = PT_EAST * ne_x;
+        center_pt.x += rpos_offsetx;
+        center_pt.y = PT_NORTH * ne_y;
+        center_pt.y += upos_offsety;
+        m_threatdirpoly[1].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(1));
+        m_threatdirpoly[1].FlipImage_XYaxis();
+        m_threatdirpoly[1].Rotate_Zaxis(-45.0f);
+    }
+    if (m_threatdirpoly[7].GetTrans() > 0.0f) {
+        center_pt.x = PT_EAST * se_x;
+        center_pt.x += rpos_offsetx;
+        center_pt.y = PT_SOUTH * se_y;
+        center_pt.y += dpos_offsety;
+        m_threatdirpoly[7].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(7));
+        m_threatdirpoly[7].FlipImage_XYaxis();
+        m_threatdirpoly[7].Rotate_Zaxis(45.0f);
+    }
+    if (m_threatdirpoly[3].GetTrans() > 0.0f) {
+        center_pt.x = PT_WEST * nw_x;
+        center_pt.x += lpos_offsetx;
+        center_pt.y = PT_NORTH * nw_y;
+        center_pt.y += upos_offsety;
+        m_threatdirpoly[3].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(3));
+        m_threatdirpoly[3].FlipImage_XYaxis();
+        m_threatdirpoly[3].FlipImage_Xaxis();
+        m_threatdirpoly[3].Rotate_Zaxis(45.0f);
+    }
+    if (m_threatdirpoly[5].GetTrans() > 0.0f) {
+        center_pt.x = PT_WEST * sw_x;
+        center_pt.x += lpos_offsetx;
+        center_pt.y = PT_SOUTH * sw_y;
+        center_pt.y += dpos_offsety;
+        m_threatdirpoly[5].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(5));
+        m_threatdirpoly[5].FlipImage_XYaxis();
+        m_threatdirpoly[5].FlipImage_Xaxis();
+        m_threatdirpoly[5].Rotate_Zaxis(-45.0f);
+    }
 }
 
 /* the reticle on: itself and its three groups (SOCOM 1's On, which only turned itself on) */
@@ -594,7 +812,7 @@ void BitmapReticule::HudTick(float dT)
         ChangeReticule(seal->m_kit.GetCurItemReticule());
     }
     if (m_rettype != 4) {
-        m_retsize = seal->m_retsize;
+        m_retsize = seal->m_kit.m_retsize;
 
         float x = seal->m_kit.m_retposx + seal->m_kit.m_retoffsetx;
         float y = seal->m_kit.m_retposy + seal->m_kit.m_retoffsety;
