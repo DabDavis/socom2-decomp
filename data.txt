@@ -318,10 +318,14 @@
 0x003DC890 0x4 cur_camzoom  # OVL1 data; SOCOM 1's (its symbol table: hud_missioncams.cpp's file static at gp-30236; 1.0): the camera's zoom a mission film put aside -- the HUD lane, round 51: 4 references in 2 functions (PlayCamera 0x228EE0, CleanupCamera 0x229520)
 0x003DC898 0x4 s_fRowTop__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a column's first row below its title, 38; the HUD lane, round 64
 0x003DC8A0 0x4 s_fRowSpacing__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the rows' spacing, 16.8; the HUD lane, round 64
+0x003DC8A8 0x4 s_fPopupMargin  # OVL1 data; hud_scorepopup.cpp's static (name ours, the HUD lane round 66): 20, the message pop-up's bottom margin; 1 reference, hudOpenPopup
+0x003DC8B0 0x4 s_fPopupTextX  # OVL1 data; hud_scorepopup.cpp's static (name ours, round 66): 20, the text's inset; 2 references, hudOpenPopup
+0x003DC8B8 0x4 s_fPopupTextY  # OVL1 data; hud_scorepopup.cpp's static (name ours, round 66): 10, the text's top; 1 reference, hudOpenPopup
 0x003DC8D0 0x4 s_fRowScale__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a row's text scale, 0.8 -- CTeamDisplay::AddRow's five loads; the HUD lane, round 64
 0x003DC8D8 0x4 s_fTeamTextScale__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the title's and headers' scale, 1; the HUD lane, round 64
 0x003DC8E0 0x4 s_iNameX__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the name's offset from the box's left, 70 (an int) -- 1 reference in 1 function (AddRow); the HUD lane, round 64
 0x003DC8E8 0x4 s_iScoreColumns__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the three score columns' width, 175 (an int); the HUD lane, round 64
+0x003DC8F0 0x4 s_fPopupTextScale  # OVL1 data; hud_scorepopup.cpp's static (name ours, round 66): 1, the wrap's scale; 1 reference, hudOpenPopup
 0x003DC8F8 0x4 s_fTeamTextTrans__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the title's and headers' alpha, 90; the HUD lane, round 64
 0x003DC900 0x4 s_fRowTrans__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: a row's alpha, 110 -- AddRow's five loads; the HUD lane, round 64
 0x003DC960 0x4 s_fBombX__28@unnamed@hud_scorepopup_cpp@  # OVL1 data; ours: the bomb mark's left, 200 -- AddRow; the HUD lane, round 64
