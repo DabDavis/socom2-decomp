@@ -783,6 +783,8 @@ public:
 class CAiSAvoid : public CAiState {
 public:
     CAiSAvoid() : CAiState(AI_STATE_AVOID) {}
+    /* (OVL2 0x602270; the AI's tick calls it after the push, the float unused) */
+    bool Begin(CZSealBody *seal, CZSealBody *other, float dist);
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSAvoid();

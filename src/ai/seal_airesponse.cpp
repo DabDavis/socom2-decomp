@@ -1856,6 +1856,10 @@ inline CAiSAvoid *AvoidState(CSealCtrlAi *ai)
     return s && s->m_state == AI_STATE_AVOID ? (CAiSAvoid *)s : 0;
 }
 
+/* the speed (squared) above which a SEAL counts as moving: one static, read by ShouldAvoid and
+ * CAiSAvoid::Begin (0x651020; the name ours) */
+static float s_avoidSpeed = 50.0f;
+
 /* whether SEAL `a`, `d2` (a squared distance) from SEAL `b`, should step out of its way: either
  * moving and `a` up, when `b` is not the AI's; when it is, unless `b` lies prone, `b` not already
  * avoiding `a`; never when `a` is the AI's and restrainable but not restrained (OVL2 0x602B20: the
@@ -1864,12 +1868,11 @@ inline CAiSAvoid *AvoidState(CSealCtrlAi *ai)
 bool ShouldAvoid(CZSealBody *a, CZSealBody *b, float d2)
 {
     static float range = 225.0f;
-    static float speed = 50.0f;
     bool r = false;
 
     if (d2 < range) {
-        bool aMoving = ai::is_moving(&a->m_velW, speed);
-        bool bMoving = ai::is_moving(&b->m_velW, speed);
+        bool aMoving = ai::is_moving(&a->m_velW, s_avoidSpeed);
+        bool bMoving = ai::is_moving(&b->m_velW, s_avoidSpeed);
         CSealCtrlAi *aAi = a->GetSealCtrlAi();
 
         if (!AiDriven(b)) {
@@ -1935,6 +1938,165 @@ extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, un
  * GOAL_TYPE (ai_states.h's since the kit's round 51: a signed char cast to the enum loads with lbu
  * where the target has lb -- round 50 read it through a pointer cast); the SEAL avoided and the AI's entity declared self first (the target's a0 / a1), the cell before the
  * count (the count the lower slot) */
+/* a random float between two (inline; the name ours) */
+static inline float RandBetween(float lo, float hi)
+{
+    float r = 4.656613e-10f * (float)rand();
+    float range = hi - lo;
+
+    return lo + range * r;
+}
+
+/* what an avoidance does about `other`, in the way of `seal` (OVL2 0x602270, called by the AI's tick
+ * right after pushing the state, 20.0 in the unused float -- new in SOCOM II, the name ours): nothing
+ * when `other` is ahead, `seal` walking on and neither heading apart; a short wait when they head the
+ * same way; else by the AI's mode (a follow's by the follow's flags) -- on a path a detour, on a goal a
+ * step aside (the point square to the way to the goal -- the x of that way, twice, as the target's --
+ * either side, reaching both ways), else a wait. (The two is_moving's are the target's: dead results.) */
+bool CAiSAvoid::Begin(CZSealBody *seal, CZSealBody *other, float)
+{
+    static float side = 10.0f;
+    bool taken = false;
+    const CPnt3D *sv = &seal->m_velW;
+    const CPnt3D *pos = &seal->m_posW;
+    const CPnt3D *ov = &other->m_velW;
+
+    m_58 = (unsigned int)other;
+    ai::is_moving(sv, s_avoidSpeed);
+    ai::is_moving(ov, s_avoidSpeed);
+    const float *row = seal->m_node->m_matrix.m_matrix[2];
+    CPnt3D look;
+    CPnt3D d;
+
+    look.x = -row[0];
+    look.y = -row[1];
+    look.z = -row[2];
+
+    other->m_posW.Sub(pos, &d);
+    d.Normalize();
+    float vv = sv->x * ov->x + sv->z * ov->z;
+    float ld = look.x * d.x + look.z * d.z;
+    bool ahead = sv->x * look.x + sv->y * look.y + sv->z * look.z > 0.0f;
+    CSealCtrlAi *ai = seal->GetSealCtrlAi();
+
+    if (!(ld < 0.0f && ahead && vv > 0.0f)) {
+        if (vv > 0.5f) {
+            m_time = RandBetween(0.0f, 1.0f);
+            UpdatePhase(4);
+        } else {
+            CAiMapLoc theirs = other->m_mapLoc;
+            CAiMapLoc mine = seal->m_mapLocValid;
+            AI_MODE mode = ai->m_3f5;
+
+            if (mode == 6) {
+                CAiState *s = ai->FindAiState(AI_STATE_FOLLOW);
+                CAiSFollow *f = s && s->m_state == AI_STATE_FOLLOW ? (CAiSFollow *)s : 0;
+
+                if (f) {
+                    if (f->m_7c)
+                        mode = (AI_MODE)4;
+                    else if (f->m_7d)
+                        mode = (AI_MODE)3;
+                }
+            }
+            switch (mode) {
+            case 6:
+                break;
+            case 3: {
+                CAiPath *path = (CAiPath *)&ai->m_path;
+
+                if (path->HasPoints()) {
+                    if (path->FindDetour(mine, &seal->m_posW, theirs, 3)) {
+                        m_time = 0.5f;
+                        UpdatePhase(4);
+                    } else {
+                        m_time = RandBetween(0.5f, 2.0f);
+                        UpdatePhase(4);
+                    }
+                }
+                break;
+            }
+            case 4:
+                if (ai->m_goal_pos_valid) {
+                    CPnt3D b;
+                    CPnt3D a;
+
+                    other->m_posW.Sub(&seal->m_posW, &a);
+                    a.Normalize();
+                    ai->m_goal_pos.Sub(&seal->m_posW, &b);
+                    b.Normalize();
+                    float dot = a.x * b.x + a.y * b.y + a.z * b.z;
+                    CAiMapLoc goal;
+
+                    if (dot > 0.0f && AiMaps.GetLocation(&ai->m_goal_pos, goal)) {
+                        CPnt3D perp;
+                        CAiMapLoc loc;
+
+                        perp.y = 0.0f;
+                        perp.z = b.x;
+                        perp.x = -b.x;
+                        CPnt3D p = *pos + perp * side;
+
+                        if (AiMaps.GetLocation(&p, loc) && AiMaps.CanTravelLine(mine, loc, 0) && AiMaps.CanTravelLine(loc, goal, 0)) {
+                            m_78.x = ai->m_goal_pos.x;
+                            m_78.y = ai->m_goal_pos.y;
+                            m_78.z = ai->m_goal_pos.z;
+                            m_goal = ai->m_goal_type;
+                            if (ai->m_goal_dir_valid) {
+                                SetFlags(2, 0);
+                                m_84.x = ai->m_goal_dir.x;
+                                m_84.y = ai->m_goal_dir.y;
+                                m_84.z = ai->m_goal_dir.z;
+                            } else {
+                                SetFlags(0, 2);
+                            }
+                            ai->SetGoalPos(GOAL_AVOID, &p, 3.0f);
+                            UpdatePhase(1);
+                            taken = true;
+                        }
+                        if (!taken) {
+                            CPnt3D q = *pos + perp * -side;
+
+                            if (AiMaps.GetLocation(&q, loc) && AiMaps.CanTravelLine(mine, loc, 0) && AiMaps.CanTravelLine(loc, goal, 0)) {
+                                m_78.x = ai->m_goal_pos.x;
+                                m_78.y = ai->m_goal_pos.y;
+                                m_78.z = ai->m_goal_pos.z;
+                                m_goal = ai->m_goal_type;
+                                if (ai->m_goal_dir_valid) {
+                                    SetFlags(2, 0);
+                                    m_84.x = ai->m_goal_dir.x;
+                                    m_84.y = ai->m_goal_dir.y;
+                                    m_84.z = ai->m_goal_dir.z;
+                                } else {
+                                    SetFlags(0, 2);
+                                }
+                                ai->SetGoalPos(GOAL_AVOID, &q, 3.0f);
+                                UpdatePhase(1);
+                                taken = true;
+                            }
+                        }
+                    }
+                    if (!taken) {
+                        m_time = dot < 0.0f ? 0.25f : 2.0f;
+                        UpdatePhase(4);
+                    }
+                }
+                break;
+            case 2:
+            case 1:
+                if (!(m_flags & 1)) {
+                    m_time = 0.5f;
+                    UpdatePhase(4);
+                }
+                break;
+            }
+        }
+    }
+    if (m_phase == 0)
+        SetActive(false);
+    return m_active;
+}
+
 int CAiSAvoid::Tick(CSealCtrlAi *ai)
 {
     CEntity *self = ai->m_entity;
