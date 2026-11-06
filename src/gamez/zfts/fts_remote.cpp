@@ -222,7 +222,18 @@ public:
     unsigned char m_respawn;   // 0xdc: respawning on (fts_mission.cpp's)
     unsigned char _dd[0xde - 0xdd];
     unsigned char m_de;   // 0xde: no hits sent while set (SOCOM II's)
-    unsigned char _df[0x104 - 0xdf];
+    unsigned char _df[0xe0 - 0xdf];
+    /* the game's clock (SOCOM 1's CNetClock at 0xa0, a word less: fts_net_bomb.cpp's) */
+    struct {
+        unsigned int m_max_game_time;   // 0x0: in ms
+        unsigned int m_initial_read;   // 0x4
+        unsigned int m_time_in_round;   // 0x8
+        unsigned int m_game_time;   // 0xc
+        unsigned int m_total_time;   // 0x10
+        unsigned char m_initial_read_set;   // 0x14
+        unsigned char m_clock_running;   // 0x15
+    } m_clock;   // 0xe0
+    unsigned char _f8[0x104 - 0xf8];
     CPnt3D m_104;   // 0x104: where the bomb is (SOCOM 1's at 0xcc; the name ours)
     unsigned char m_110;   // 0x110: a bomb is down there (SOCOM 1's at 0xd8; the name ours)
     char m_111;   // 0x111 (SOCOM 1's at 0xd9: m_game_type)
@@ -238,6 +249,7 @@ public:
 class CMission {
 public:
     void RefreshTeamValves();   /* 0x2B23A0 */
+    unsigned int GetTimeLeft();   /* 0x2A6AD0 */
 
     unsigned char _0[0x1ac];
     CValve *m_valve_abort;   // 0x1ac: the "mission_abort" valve (fts_mission.cpp's): at 1 or 2 no hits are taken
@@ -388,8 +400,11 @@ bool func_002C3080();
 struct ClientConnectArgs {
     int m_index;   // 0x0: the connection
     int m_client;   // 0x4
-    int _8[2];
-    int m_10;   // 0x10: the client's word (DMEJoinGameServer hands each waiting one on)
+    int m_8;   // 0x8
+    int m_c;   // 0xc
+    int m_10;   // 0x10: the client's word (DMEJoinGameServer hands each waiting one on): bit 0 a
+                // spectator, bit 1 the first side in a clan game, 0x7F0000FE a LAN game's key
+    int m_14;   // 0x14 (the connect callback keeps all 0x18 bytes)
 };
 
 void func_002C3330(int arg);
@@ -553,6 +568,189 @@ extern "C" CZBroadcastSchedule *func_002BD020()
     if (data_0044FE10.IsActive())
         return &sched_lan_grenade_vel;
     return &sched_grenade_vel;
+}
+
+void SendGameSignalMessage(int to, unsigned char a, unsigned char b, unsigned char c, int arg, bool);
+extern "C" {
+extern ClientConnectArgs data_00440F20;   /* (the arguments handed to the connect callback) */
+struct CZNetVoice;
+extern CZNetVoice *data_0045B718;   /* (zNetVoice.cpp's object) */
+}
+extern "C" void (*data_0044F3C8)(const char *event, const char *arg);   /* (the lobby's UI event) */
+
+/* the persona state's pending slots and side counts (fts_net_persona.cpp's: a client's slot taken
+ * ahead of its persona -- the slot, the side, 1 the terrorists, 2 the SEALs, 3 a spectator, and
+ * whether it is held; the sides counted, each side's first empty slot) and the voice radio's
+ * client set (zNetVoice.cpp's 0x30E580) */
+struct PendingSlot {
+    unsigned char slot : 3;
+    unsigned char side : 3;
+    unsigned char held : 2;
+};
+
+extern "C" {
+extern int data_00441448;   /* the terrorists counted */
+extern int data_00441450;   /* the SEALs */
+extern int data_00441458;   /* the spectators */
+void func_002C4440();   /* the sides counted, the pending slots too */
+int func_002C4940();   /* the terrorists' first empty slot */
+int func_002C4730();   /* the SEALs' */
+void func_002C4B50(int client);
+void func_0030E580(CZNetVoice *radio, int client, bool muted);
+}
+bool IsOnClanTeam();   /* the clan unit's (zNetMediusClan.cpp) */
+unsigned char GetClanTeamSide();
+
+/* a client connected (SOCOM 1's zRemoteClientConnectsCallback, grown; OVL1 0x2BC620): the lobby's
+ * own connection only tells the UI; another client is set in the voice radio, and the session
+ * master, unless it is ourselves, gives it a side and a slot -- a spectator (the connection's flag
+ * 1) while the spectators are under MaxSpectatorsValve, else the side asked for in a clan game, or
+ * the smaller side, while the players are under MaxPlayersValve -- or turns it away with the
+ * reason (a client index past 24 or a full game 3, another LAN game 1, spectators full 2, a clan
+ * game's wrong side 4); the slot is kept pending, held until its persona arrives, and the game's
+ * object updated. A client that is not the master keeps the connection for when it becomes one.
+ * Written in the states' round 51 (unwritten before). OPEN, 184 instructions, at the size (0x9F4):
+ * the shape is the target's -- each refusal SendGameSignalMessage (0x2B97F0, this unit's) inlined, the
+ * slot a PendingSlot bitfield byte set field by field through `(unsigned char)x & 7` (the target's
+ * andi 0xff / 7 / 7), `> 1` for the game state (slti at), the clan side's `first` an int (no bool
+ * narrowing after its negation), ClientConnectArgs' two middle words ints (an int[2] copies through
+ * lwc1) -- but for two things. The six refusals load the packet's side, 4, into a0 BEFORE the
+ * packet's {0} loop (an inline parameter's temporary the optimiser did not substitute), where every
+ * spelling tried substitutes the literal at its store: a literal; a side variable holding 4 as int,
+ * unsigned char, char, short or unsigned int; b's parameter as int, char, signed char, bool, short or
+ * unsigned short; a ternary; `side + 0`; an inline returning it, with or without a local; a wrapper
+ * inline taking the reason, with a local, a literal or a default argument (worse). And the saved
+ * registers: the target colours client, game, first/side/max, terrs/index and state as s0-s4, this
+ * first/index/max, terrs/side, state, game, client (igreplay: no renumbering of state, terrs and first,
+ * nor of client and game, gives the target's -- the graph differs, likely by those six temporaries);
+ * side = 1 / 2 ahead of the slot finders' calls goes into the call's delay slot here, the branch's
+ * in the target (assigning it after the call is 16 bytes long) */
+extern "C" void func_002BC620(ClientConnectArgs *args)
+{
+    if (args->m_index == theLobby.MediusConnectionIndex()) {
+        if (data_0044F3C8)
+            data_0044F3C8("ON_CLIENT_CONNECT", 0);
+        return;
+    }
+    func_0030E580(data_0045B718, args->m_client, false);
+    int client = args->m_client;
+
+    if (client == theNetwork.zNetGetMyGameClientIndex())
+        return;
+    bool spectator = false;
+
+    if (args->m_10 & 1)
+        spectator = true;
+    if (theNetwork.m_bSessionMaster) {
+        CZNetGame *game = theMission.m_pNetGame;
+
+        if (!game)
+            return;
+        unsigned char state = game->m_my_major_game_state;
+        unsigned char terrs = 0;
+        unsigned char seals = 0;
+        int side = 4;
+        PendingSlot slot = {0};
+
+        func_002C4440();
+        if (client >= 24) {
+            SendGameSignalMessage(client, state, side, 3, 0, false);
+            return;
+        }
+        if (data_0044FE10.IsActive()) {
+            if ((args->m_10 & 0x7F0000FE) != theNetwork.m_e8) {
+                SendGameSignalMessage(client, state, side, 1, 0, false);
+                return;
+            }
+        } else if (IsOnClanTeam() && !spectator) {
+            int first = (args->m_10 & 2) != 0;
+
+            switch (GetClanTeamSide()) {
+            case 0:
+                break;
+            case 1:
+                seals = first;
+                terrs = !first;
+                break;
+            case 2:
+                terrs = first;
+                seals = !first;
+                break;
+            case 4:
+                if (data_004412D8)
+                    first = !first;
+                terrs = first;
+                seals = !terrs;
+                break;
+            case 3:
+                if (!first) {
+                    SendGameSignalMessage(client, state, side, 4, 0, false);
+                    return;
+                }
+                break;
+            }
+        }
+        unsigned char index;
+
+        if (spectator) {
+            int max = 8;
+            CValve *v = CValve::GetByName("MaxSpectatorsValve");
+
+            if (v)
+                max = v->m_value;
+            if (data_00441458 >= max) {
+                SendGameSignalMessage(client, state, side, 2, 0, false);
+                return;
+            }
+            side = 3;
+            index = 0;
+        } else {
+            int max = 16;
+            CValve *v = CValve::GetByName("MaxPlayersValve");
+
+            if (v)
+                max = v->m_value;
+            if (!spectator && data_00441448 + data_00441450 >= max) {
+                SendGameSignalMessage(client, state, side, 3, 0, false);
+                return;
+            }
+            if (terrs && data_00441448 < 8) {
+                side = 1;
+                index = func_002C4940();
+            } else if (seals && data_00441450 < 8) {
+                side = 2;
+                index = func_002C4730();
+            } else if (data_00441450 >= data_00441448 && data_00441448 < 8 &&
+                       data_00441448 + data_00441450 > 0 && !terrs && !seals) {
+                side = 1;
+                index = func_002C4940();
+            } else if (data_00441450 < 8 && !terrs && !seals) {
+                side = 2;
+                index = func_002C4730();
+            } else {
+                SendGameSignalMessage(client, state, side, 3, 0, false);
+                return;
+            }
+        }
+        unsigned int time = game->m_clock.m_clock_running ? theMission.GetTimeLeft()
+                                                          : (unsigned int)(game->m_clock.m_max_game_time * 0.001f);
+
+        SendGameSignalMessage(client, state, side, index, time, false);
+        slot.slot = (unsigned char)index & 7;
+        slot.side = (unsigned char)side & 7;
+        if (game->m_mp_major_game_state > 1) {
+            slot.held = 1;
+            if (data_0044FE10.IsActive())
+                func_002C4B50(args->m_client);
+        } else {
+            slot.held = 2;
+        }
+        ((PendingSlot *)data_00441580)[args->m_client] = slot;
+        CZGameState::UpdateLocalGame(game);
+    } else if (client < 24) {
+        data_00440EC0[client] = args->m_10 | 0x100;
+        data_00440F20 = *args;
+    }
 }
 
 /* a client disconnected: its word and its pending slot cleared; in a game already under way,
