@@ -368,3 +368,79 @@ void func_00249A38(void *pvState, CircMblk *pvCircMblk, float *pfRe, float *pfIm
 	*piLength = iLength;
 }
 
+extern float fabsf(float);
+extern void func_0024C7D0(CircMblk *pvCircMblk, int iDelay, int iLen, float *pfOut);
+
+typedef struct {
+	float afRe[4];			/* 0x00 */
+	float afIm[4];			/* 0x10 */
+	float fRe;			/* 0x20 */
+	float fIm;			/* 0x24 */
+	int iPos;			/* 0x28 */
+	int iBest;			/* 0x2C */
+} TransientState;
+
+/* the window's shift from the block's transient: a sliding sum of four smoothed bins, the largest step in phase against its
+ * power over the block, the position scaled to +-40 from the centre (GCC round 44a; one float, fA, is the gain and the step's
+ * size: global, so f4, and the multiplies tie to the bins' locals; the two rings through plain float pointers) */
+int func_00249C88(void *pvState, CircMblk *pvCircMblk, int iDelay, int iLength, float *pfWork)
+{
+	TransientState *p = pvState;
+	float *pfRe = pvState;
+	float *pfIm = p->afIm;
+	int iBest = 0;
+	int iPos, iStart, i, iShift;
+	float fRe, fIm, fSumRe, fSumIm, fBestP, fBestM, fT;
+
+	iPos = p->iPos;
+	fSumRe = p->fRe;
+	iStart = p->iBest - 150;
+	fRe = pfRe[iPos];
+	fIm = pfIm[iPos];
+	fSumIm = p->fIm;
+	func_0024C7D0(pvCircMblk, iDelay, 161, pfWork);
+	fBestP = 1.0F;
+	fBestM = 0x1.47ae14p-3F;
+	for (i = 0; i < 160; i += 2) {
+		float fX = pfWork[0];
+		float fY = pfWork[1];
+		float fOldRe, fOldIm, fM, fP, fA;
+
+		fA = fX * 0x1.fcp-6F;
+		pfWork += 2;
+		fRe = fA * fX + fRe * 0x1.f01ffep-1F;
+		fIm = fA * fY + fIm * 0x1.f01ffep-1F;
+		iPos = (iPos + 1) % 4;
+		fOldRe = pfRe[iPos];
+		fOldIm = pfIm[iPos];
+		pfRe[iPos] = fRe;
+		pfIm[iPos] = fIm;
+		fM = fIm * fSumRe - fRe * fSumIm;
+		fP = fSumRe * fRe;
+		fSumRe = fSumRe + fRe - fOldRe;
+		fSumIm = fSumIm + fIm - fOldIm;
+		fA = fabsf(fM);
+		if (i >= iStart && fA * fBestP > fP * fBestM) {
+			fBestP = fP;
+			fBestM = fA;
+			iBest = i;
+		}
+	}
+	p->iPos = iPos;
+	p->fRe = fSumRe;
+	p->fIm = fSumIm;
+	p->iBest = iBest;
+	if (iBest > 80) {
+		fT = (float)(160 - iBest) * (float)(iDelay - (iLength >> 1)) * 0x1.999998p-7F;
+		iShift = (int)(fT + 0.5F);
+		if (iShift > 40)
+			iShift = 40;
+	} else {
+		fT = (float)(iBest * (iDelay - (iLength >> 1))) * 0x1.999998p-7F;
+		iShift = (int)(fT + 0.5F);
+		iShift = -iShift;
+		if (iShift < -40)
+			iShift = -40;
+	}
+	return iShift;
+}
