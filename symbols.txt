@@ -7543,7 +7543,7 @@
 0x0039CE70 0xC SetErrorHandler__7CFileIOFPFi_v  # OVL1; ours (stores its argument to the handler fread, fwrite and fseek call with 2 on a failure when the file's flags have 2)
 0x0039CE80 0x194 HddFindFiles__FPCcPviUi  # OVL1; ours (util_sonyio.cpp: the installed game's pfs0:RUN entries whose names hold the pattern, counted; the index-th one's header bytes from offset 20 copied out -- UIHardDriveOperation calls it twice)
 0x0039D020 0x24 func_0039D020  # OVL1
-0x0039D050 0x430 func_0039D050  # OVL1
+0x0039D050 0x430 HddMountGame__Fv  # OVL1; ours, by hand (the UI lane round 31: util_sonyio.cpp, byte-exact -- the game's partition hdd0:PP.SCUS-97275..SOCOM_II mounted at pfs0: with its password (8 bytes inverted from 0x3E0620's words), made 256M/PFS, formatted, given pfs0:/RUN and the icon file (WriteHddIcon) when the mount fails; s_hddMounted set and sceDevctl(hdd0:, 0x4803) on success; 0 mounted, 2 failed, 1 with no usable disk; UIHardDriveOperation and 0x39D910 call it)
 0x0039D480 0x1D0 WriteHddIcon__FPCc  # OVL1; ours (util_sonyio.cpp: the installed game's icon file -- a PS2ICON3D header of four offsets and sizes, then system.cnf and RUN/ICONS/HDD/'s icon.sys, list.ico and deleting.ico, each read by 0x39D650; the HDD install 0x39D050 calls it)
 0x0039D650 0x268 LoadHddIconFile__FPCcPCcP11HDDICONFILE  # OVL1; ours (util_sonyio.cpp: a file read whole through a local CFileIO into a 64-aligned buffer rounded up to 512 bytes, the buffer and size handed back, the size returned; WriteHddIcon reads its four files so)
 0x0039D8C0 0x44 func_0039D8C0  # OVL1

@@ -180,9 +180,11 @@ public:
     bool CreateReserveFile(const char *name, int kb);
     bool CreateReserveFiles();
     bool CreateIconFiles();
-    void Uninit();
+    /* the card's module down and up: static (neither reads the object, and their one caller,
+     * CGameMenu::LoadFromDesign, passes none -- the UI lane's round 31) */
+    static void Uninit();
     void Reset();
-    void Init();
+    static void Init();
     /* the chosen port and slot made the file's (as zanim_menu.h's SelectPortSlot) */
     void SelectPortSlot()
     {

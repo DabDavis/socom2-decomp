@@ -6,8 +6,9 @@
  * word at 0x10, reads through an open package (0x4A15F8/FC: util_main.cpp's CPackage, called here
  * through its placeholders) and a CD file opened by its sector (the DNAS client's).
  *
- * OPEN, not written yet: the hard disk's mount and reboot handlers (0x39CE80-0x39D910), 0x39DDB0
- * and 0x39DFC0 (both byte-exact as drafts). */
+ * The hard disk's game partition: HddFindFiles 0x39CE80, HddMountGame 0x39D050 (the UI lane's round
+ * 31), WriteHddIcon and LoadHddIconFile (OPEN, its note). Not written: 0x39D910, 0x39DDB0 and
+ * 0x39DFC0 (byte-exact as drafts). */
 
 #include <stdio.h>
 #include "zutil.h"
@@ -806,6 +807,101 @@ struct sce_dirent {
 int sceDopen(const char *dirname);
 int sceDread(int fd, struct sce_dirent *buf);
 int sceDclose(int fd);
+}
+
+extern "C" {
+/* the IOP's file system calls (sifdev.h) */
+int sceMount(const char *fsname, const char *devname, int flag, const char *arg, int arglen);
+int sceUmount(const char *name);
+int sceFormat(const char *path, const char *blkdevname, void *arg, int arglen);
+int sceMkdir(const char *name, int mode);
+int sceDevctl(const char *devname, int cmd, const void *arg, unsigned int arglen, void *buf,
+              unsigned int buflen);
+}
+
+/* the hard disk's modules loaded and started (zsys_init.cpp's) */
+bool zSysHddInit();
+
+/* the game's partition passwords, each byte inverted in the low byte of a word (ours: "b00mr972") */
+static const int s_hddPassword[8] = {
+    0x70928A9D, (int)0x935A89CF, 0x6C9E76CF, 0x656B9E92, 0x6C37C78D, (int)0xCBCA36C6, (int)0xCF31CCC8,
+    0x3DD42DCD
+};
+
+/* the scratchpad's strings: the partition's path, a size and the create string, a password */
+#define HDD_PATH ((char *)0x70000000)
+#define HDD_SIZE ((char *)0x70000100)
+#define HDD_MAKE ((char *)0x70000200)
+#define HDD_PASS ((char *)0x70000400)
+
+/* ",password" written to the scratchpad (ours) */
+static inline char *HddPassword()
+{
+    char *pw = HDD_PASS;
+
+    char *p = pw;
+
+    *p++ = ',';
+    for (int i = 0; i < 8; i++)
+        *p++ = ~(char)s_hddPassword[i];
+    *p = 0;
+    return pw;
+}
+
+/* the game's partition mounted at pfs0: -- made the first time (256 MB, formatted, its RUN directory
+ * and the game's icon written) -- and the disk told; 0 when mounted, 2 when it could not be, 1 with
+ * no usable disk (0x39D050, SOCOM II's: UIHardDriveOperation and 0x39D910 call it; the name ours).
+ * Byte-exact on the UI lane's round 31 (written then): the password built three times by one inline,
+ * through a pointer stepped with `*p++` (MW unrolls it in pairs, the target's v0 += 2) -- indexed,
+ * the stores fold into the scratchpad's absolute addresses (0x20 longer) -- each word narrowed with
+ * `(char)` (the target's lb; plain, a whole lw); the seven later words' addresses are CSE'd across the
+ * three copies into s0-s6; the success arm sets the result first (its `move s0,zero` in sceDevctl's
+ * delay slot), then the flag, then the byte -- the result last, it lands in the `b`'s slot */
+int HddMountGame()
+{
+    int result = 1;
+
+    zSysHddInit();
+    if (!s_hddStatus) {
+        strcpy(HDD_PATH, "hdd0:");
+        strcat(HDD_PATH, "PP.SCUS-97275..SOCOM_II");
+        strcat(HDD_PATH, HddPassword());
+        int err = sceMount("pfs0:", HDD_PATH, 1, 0, 0);
+
+        if (err) {
+            strcpy(HDD_MAKE, "hdd0:");
+            strcat(HDD_MAKE, "PP.SCUS-97275..SOCOM_II");
+            strcat(HDD_MAKE, HddPassword());
+            strcat(HDD_MAKE, HddPassword());
+            sprintf(HDD_SIZE, ",%dM", 256);
+            strcat(HDD_MAKE, HDD_SIZE);
+            strcat(HDD_MAKE, ",PFS");
+            int fd = sceOpen(HDD_MAKE, 512);
+
+            if (fd >= 0) {
+                sceClose(fd);
+                unsigned int args[3] = {0x2000, 0x2D66, 0xF0F0F0F0};
+                int r = sceFormat("pfs:", HDD_PATH, args, 4);
+
+                if (!r) {
+                    sceMount("pfs0:", HDD_PATH, 0, 0, 0);
+                    sceMkdir("pfs0:/RUN", 0777);
+                    r = sceUmount("pfs0:");
+                }
+                if (!r && WriteHddIcon(HDD_PATH))
+                    err = sceMount("pfs0:", HDD_PATH, 1, 0, 0);
+            }
+        }
+        if (!err) {
+            result = 0;
+            s_hddMounted = 1;
+            char c = 60;
+
+            sceDevctl("hdd0:", 0x4803, &c, 1, 0, 0);
+        } else
+            result = 2;
+    }
+    return result;
 }
 
 /* the files of the installed game's RUN directory whose names hold the pattern, counted; the one

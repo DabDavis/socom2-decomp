@@ -7,12 +7,8 @@
  * II's images hold them in reverse alphabetical order). Defined in reverse of their image order
  * (-inline deferred).
  *
- * OPEN, not written yet: CGameMenu itself (Tick 0x3654C0?, SwitchMenu, LoadFromDesign 0x367950,
- * HandlePad 0x368650 -- SOCOM 1's DWARF has the layout, SOCOM II's grew the vtable pointer at
- * 0x910), the design's loaders, HookupLib 0x36A430 (its CGSTexBuffer local's constructor
- * 0x357BC0 and Hookup 0x3571D0 are rows outside the lane), 0x369880 (reads a string member of
- * theGame, +0x8C, for a sound), and the vector instances closing the unit (0x36AE50 among the
- * clears). Generated drafts stand for the rest. Round 15 wrote RunEventAnim (0x367810) and
+ * WHOLE since the UI lane's round 31 (every row of 0x365200-0x36AF9F byte-exact): LoadFromDesign
+ * 0x367950, the last, written then (its notes). Round 15 wrote RunEventAnim (0x367810) and
  * CDblBufTextureRelocator's PreGetSprPacket (0x365210), both byte-exact. Round 18 wrote Init
  * (0x368570, SOCOM 1's) and the design loader it calls, LoadDesign (0x367430, ours: the block SOCOM
  * 1's Init and SwitchMenu inlined), whose design's inline constructor and destructor name the vector
@@ -66,18 +62,27 @@ public:
     unsigned char m_libref;    // 0x10
 };   // 0x14 bytes
 
-class CAssetList {
+/* a list of libraries (node_world.h's CAssetList, 0x10 bytes: a pointer list, cleared as it dies,
+ * and the model a lookup cached -- its size puts LoadFromDesign's local among the 16-byte slots) */
+class CAssetLib;
+class CModel;
+class CAssetList : public std::list<CAssetLib *> {
 public:
+    CAssetList();
+    ~CAssetList() { Clear(); }
+    void Clear();
     CTexHandle *GetTexHandle(const char *name);
 
-    unsigned char _0[0x10];
+    CModel *m_cache_model;   // 0xc
 };
 
-class CAssetLib;
 class CAssetMgr {
 public:
     /* a library's reference given back (Clear's, for the menu's libraries) */
     static void ReleaseLibRef(CAssetLib *lib);
+    /* a library by name, or the named ones listed, loaded and referenced (LoadFromDesign's) */
+    static CAssetLib *GetLoadedLibRef(const char *name);
+    static void GetLoadedLibRefs(const char **names, int n, CAssetList *list);
 
     static CAssetList m_assets;
 };
@@ -135,12 +140,13 @@ public:
     CDynTexList m_dyntex_list;       // 0x28
 };   // 0x40 bytes
 
-/* a library (znode.h's CAssetLib: only its texture and palette lists) */
+/* a library (znode.h's CAssetLib: only its texture and palette lists and its autoload flag) */
 class CAssetLib {
 public:
     unsigned char _0[0x14];
     std::vector<CTexHandle *> m_textures;     // 0x14
     std::vector<CTexPalette *> m_palettes;    // 0x20
+    unsigned char m_autoload;                 // 0x2c
 };
 
 /* the texture manager: its GS buffers first (SOCOM 1's; only what the relocator reads) */
@@ -261,6 +267,9 @@ public:
     bool TickMPEG();
     bool RestartBackgroundMPEG(const char *name);
     bool HaltBackgroundMPEG();
+    /* the movie's name kept (ours: LoadFromDesign sets it through this -- assigned in place, its
+     * erase()'s tag temporary trades frame slots with the script libraries' string's) */
+    void SetMPEGName(const char *name) { m_MPEGName = name; }
     /* the button a node names made the active one, and the previous or next one that takes input
      * (SOCOM 1's; SOCOM II's Prev and Next take whether to play the selection sound) */
     void MakeButtonActive(const char *name);
@@ -373,17 +382,26 @@ public:
     void Activate(CZAnim *parent);
 };
 
-/* an animation set (zanim.h's CZAnimSet: only what Clear calls) */
+/* an animation set (zanim.h's CZAnimSet: what Clear and LoadFromDesign call, its scheduler) */
 class CZAnimSet {
 public:
     void Stop();
     void Unload();
+    int Start();
+
+    unsigned char _0[0x30];
+    CSched_Manager *m_task_scheduler;   // 0x30
 };
 
 class CZAnimMain {
 public:
     CZAnimSet *GetAnimSet(const char *name);
     CZAnim *GetAnim(const char *name, const char *set);
+    int LoadZAR(CZAnimZAR *archive, const char *set_name);
+    bool Load(const char *name, const char *set);
+
+    unsigned char _0[0x10];
+    bool m_LoadFromZAR;   // 0x10
 };
 
 extern CZAnimMain ZAnim;
@@ -649,7 +667,9 @@ CGameMenu::~CGameMenu()
  * returned (0x3696D0, ours: SOCOM 1's LoadFromDesign inlined the same block at each of its three
  * places, without the control's node hand-over and the opacity, which SOCOM II's adds). The node
  * found and the parent are two variables, the backplane chosen by a ternary (`if (!parent) parent =
- * ...` on one variable keeps it in a saved register from the search on: 8 bytes short) */
+ * ...` on one variable keeps it in a saved register from the search on: 8 bytes short). Its one
+ * caller, LoadFromDesign, calls it out of line (MW takes it whole under -inline auto): pinned */
+#pragma auto_inline off
 C2D *CGameMenu::Add2dNode(CDesignDlgObj *obj)
 {
     C2D *ctrl = obj->m_spec->CreateDisplayObj(&m_font, m_Reloc);
@@ -667,6 +687,7 @@ C2D *CGameMenu::Add2dNode(CDesignDlgObj *obj)
     node->SetName(obj->m_name.c_str());
     return ctrl;
 }
+#pragma auto_inline reset
 
 /* slot 0x10: the menu's rdr (SOCOM 1's) */
 const char *CGameMenu::GetReaderFileName()
@@ -681,13 +702,18 @@ struct CMenuEntry {
     int m_id;             // 0x0
     char m_argname[48];   // 0x4
 };
+/* the pop-up (zanim_menu.h's CPopUpDialog, a plain bitmap: the menu calls its Tick and HandlePad and
+ * gives it its font) */
+class CPopUpDialog : public CPlainBmp {
+public:
+    unsigned char _a0[0x300 - 0xa0];
+    C2DFont *m_font;   // 0x300
+};
 class CMenuStack {
 public:
     void CleanPopup();
     void AddToHistory(const char *name);
-    /* the pop-up (zanim_menu.h's CPopUpDialog, a CPlainBmp: here its 2D object, whose Tick and
-     * HandlePad the menu calls) */
-    C2D *GetPopUp();
+    CPopUpDialog *GetPopUp();
     void HandleCommand(const char *name);
     /* the top entry (ours: the tick reads its command and argument through it) */
     CMenuEntry *Top() { return &m_entries[m_top]; }
@@ -920,6 +946,200 @@ bool CGameMenu::Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar)
     LoadDesign(GetReaderFileName(), m_zar);
     m_Reloc->EndBatchReloc();
     return true;
+}
+
+/* the counters' and teletypes' speeds (zanim_menu.h's, SOCOM 1's), the mission's fonts rdr
+ * (zanim_menu.cpp's), the keyboards' display prepared (zui_skb.cpp's) */
+void UiSetTtySpeedFactor(float f);
+void UiSetCounterSpeedFactor(float f);
+_zrdr *FetchMissionFontsRdr();
+void PrepSkbsForDisplay(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr, C2DFont *font);
+
+/* the pop-up's textures prepared with the menu's relocator (0x370610, zui_2d.cpp's: SOCOM 1's
+ * CPopUpDialog::Load, there called in the same place) */
+extern "C" void func_00370610(CPopUpDialog *popup, zdb::CTextureRelocMgr *mgr);
+
+/* a 2D object given a node of its own under the parent ("Add2dNode": the object told of it, its
+ * visual added), the node returned (ours: LoadFromDesign's background, fader and pop-up, the
+ * arguments loaded parent first) */
+static inline zdb::CNode *AddNode(C2D *obj, zdb::CTextureRelocMgr *mgr, zdb::CNode *parent)
+{
+    zdb::CNode *node = zdb::CNode::Create("Add2dNode");
+
+    obj->Slot10(node);
+    node->AddVisual(new C2DVisual(obj, mgr));
+    parent->FindChild(node, true);
+    parent->AddChild(node);
+    return node;
+}
+
+/* a design's script library by index, or none (ours) */
+static inline const char *ScriptLibrary(const CGameDlgDesign &design, unsigned int i)
+{
+    return i < design.m_scriptLibraries.size() ? design.m_scriptLibraries[i].c_str() : 0;
+}
+
+/* the menu built from a design (0x367950, SOCOM 1's LoadFromDesign): emptied first, the memory card
+ * brought up or down as the design uses it (SOCOM II's), the speeds reset, the design's libraries
+ * referenced and hooked up (SOCOM II's in one call), the font loaded with its textures batched, the
+ * background image placed under the backplane, the actions copied, the fader under the foreplane,
+ * the controls (with their children) and the objects made, the controls prepared, the models placed,
+ * the fader put back on top, the keyboards and the pop-up prepared, the script libraries' animations
+ * loaded and started (else the fader cleared), the first button made active, the background movie
+ * started and the count sound looked up.
+ * Byte-exact on the UI lane's round 31 (written then; SOCOM 1's 0xBA4 inlined Add2dNode's block
+ * three times): Add2dNode pinned out of line; the library walk's iterator ASSIGNED from begin()
+ * (kept in memory, a begin() temporary copied in through $f0 -- initialised it lives in a register);
+ * the 16-byte CAssetList (its cached model at 0xC) laid among the 16-byte slots, between the name
+ * array (12 entries: the script string's temporary sits right above it) and the path; the background,
+ * fader and pop-up nodes through one inline taking the parent last (loaded first: arguments right to
+ * left); the movie's name through SetMPEGName, a level deeper (assigned in place its erase() tag and
+ * the script string's swap sp+780 / sp+784); the active index cleared after the front is read (its
+ * store in the null test's delay slot) */
+void CGameMenu::LoadFromDesign(const CGameDlgDesign &design, CZAnimZAR *zar)
+{
+    Clear();
+    if (m_8f8 && !design.m_usesMemcard) {
+        CMemCard::Uninit();
+        m_8f8 = false;
+    } else if (!m_8f8 && design.m_usesMemcard) {
+        CMemCard::Init();
+        m_8f8 = true;
+    }
+    UiSetCounterSpeedFactor(1.0f);
+    UiSetTtySpeedFactor(1.0f);
+
+    const char *names[12];
+
+    for (int i = 0; i < (int)design.m_libraries.size(); i++)
+        names[i] = design.m_libraries[i].c_str();
+    zdb::CAssetList libs;
+
+    zdb::CAssetMgr::GetLoadedLibRefs(names, design.m_libraries.size(), &libs);
+    zdb::CAssetList::iterator it;
+
+    for (it = libs.begin(); it != libs.end(); ++it) {
+        zdb::CAssetLib *lib = *it;
+
+        lib->m_autoload = 0;
+        HookupLib(lib);
+        m_libs.push_back(lib);
+    }
+    libs.clear();
+
+    const char *font = design.m_font.c_str();
+
+    if (design.m_fontLib) {
+        m_274 = zdb::CAssetMgr::GetLoadedLibRef("common/assetlib/font");
+        m_274->m_autoload = 0;
+    } else
+        m_274 = 0;
+    m_font.Load(FetchMissionFontsRdr(), font);
+    for (int i = 0; i < (int)m_font.m_textures.size(); i++) {
+        if (!m_font.GetTexture(i)) {
+            printf("*** ERROR *** Cannot find texture for font - %s\n", font);
+            printf("*** ERROR *** Recovering - for now\n");
+        } else
+            m_Reloc->AddToBatch(m_font.GetTexture(i));
+    }
+
+    const char *bg = design.m_background.c_str();
+
+    if (design.m_backgroundType == 0) {
+        zdb::CTextureRelocMgr *mgr = m_Reloc;
+        zdb::CTexHandle *tex = PrepTexture(bg, mgr);
+
+        if (tex ? tex->m_texture : 0) {
+            m_bmpd0.Load(0.0f, 0.0f, 640.0f, 448.0f, tex);
+            AddNode(&m_bmpd0, mgr, m_pBackplaneNode);
+        }
+    }
+    for (int i = 0; i < (int)design.m_animations.size(); i++) {
+        m_commands[i] = design.m_animations[i];
+        g_hasAnims = 1;
+        m_numCommands++;
+    }
+
+    zdb::CNode *fader = AddNode(&m_fader, m_Reloc, m_pForeplaneNode);
+
+    data_0049EA98 = fader;
+    fader->SetName("MENUFADER");
+    m_fader.SetTrans(128.0f);
+    for (int i = 0; i < (int)design.m_controls.size(); i++) {
+        CDesignDlgObj *obj = (CDesignDlgObj *)&design.m_controls[i];
+        C2D *ctrl = Add2dNode(obj);
+
+        m_buttons.push_back(ctrl);
+        CDlgObjSpec *spec = obj->m_spec;
+
+        if (spec->HasChildren()) {
+            for (int j = 0; j < spec->NumChildren(); j++)
+                ctrl->push_back(Add2dNode(spec->GetChild(j)));
+        }
+    }
+    for (int i = 0; i < (int)design.m_objects.size(); i++)
+        m_6d4.push_back(Add2dNode((CDesignDlgObj *)&design.m_objects[i]));
+    PrepControls(m_Reloc);
+    PrepModels(design);
+    m_pForeplaneNode->DeleteChild(data_0049EA98);
+    m_pForeplaneNode->AddChild(data_0049EA98);
+    if (Slot14())
+        PrepSkbsForDisplay(m_pForeplaneNode, m_Reloc, &m_font);
+
+    CPopUpDialog *popup = GetMenuStack()->GetPopUp();
+
+    popup->m_font = &m_font;
+    func_00370610(popup, m_Reloc);
+    m_popupnode = AddNode(popup, m_Reloc, m_pForeplaneNode);
+    m_popupnode->SetName("POPUP");
+    m_popupnode->SetActive(false);
+    if (g_hasAnims) {
+        for (int i = 0; i < (int)design.m_scriptLibraries.size(); i++) {
+            const char *name = ScriptLibrary(design, i);
+            char path[512];
+
+            sprintf(path, "data/common/zrdr/dialog/%s", name);
+            if (zar && ZAnim.m_LoadFromZAR)
+                ZAnim.LoadZAR(zar, name);
+            else
+                ZAnim.Load(path, name);
+            CZAnimSet *set = ZAnim.GetAnimSet(name);
+
+            if (set) {
+                m_904.push_back(CSaferStr(name));
+                set->m_task_scheduler = &zUIScheduler;
+                set->Start();
+            }
+        }
+        RunEventAnim(ActionItem::ONSTART, 0);
+    } else
+        m_fader.SetTrans(0.0f);
+    if (m_buttons.size()) {
+        C2D *button = m_buttons.front();
+
+        m_activeButton = 0;
+        if (!button || !button->CanHandleInput())
+            MakeNextButtonActive(false);
+        else
+            button->SetActive();
+    }
+
+    unsigned char type = design.m_backgroundType;
+
+    if (type == 1 || type == 2) {
+        bool loop = type == 2;
+
+        SetMPEGName(bg);
+        m_has_mpeg_background = true;
+        m_loopMPEG = loop;
+        zSysFifoEnd();
+        zSysFifoDisable();
+        m_movierunning = CMPEG::Run(bg, true, false, 0) != 0;
+        zSysFifoEnable(1);
+    }
+    if (m_has_mpeg_background && !m_movierunning)
+        RunEventAnim(ActionItem::ONMPEGEND, 0);
+    UiLoadCountSound(this);
 }
 
 /* the actions on an event run (0x367810, SOCOM 1's RunEventAnim): each event action of the event
