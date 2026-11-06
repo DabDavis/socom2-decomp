@@ -16,13 +16,9 @@
 using namespace zdb;
 using namespace zar;
 
-/* (0x3E14A8: the node number in the visuals' keys -- set to -1 before a node's visuals are read,
- * counted up for each node with visuals; SOCOM 1's is a gp global) */
-extern "C" int data_003E14A8;
-
-/* whether the views' buffers share their owners' counts (vis_main.cpp's 0x4B5010: set while a
- * visual's level-of-detail views are trimmed) */
-extern "C" unsigned char data_004B5010;
+/* the node number in the visuals' keys (0x3E14A8, SOCOM 1's node_index, a gp global there) -- set
+ * to -1 before a model's visuals are read, counted up for each node with visuals */
+extern int node_index;
 
 /* a visual let go of by its node (SOCOM 1's CNode::DeleteVisual(CVisual *, bool) by its place in
  * the drop walk -- SOCOM 1's hookupVisuals calls DeleteVisual__Q23zdb5CNodeFPQ23zdb7CVisualb there;
@@ -66,7 +62,7 @@ static inline void DropView(CVisual *v)
     if (v->m_lodMesh.size() > 1) {
         v->m_lodMesh.pop_back();
         v->m_24.pop_back();
-        data_004B5010 = 1;
+        CVisual::m_noBufferRefs = 1;
     }
 }
 
@@ -89,7 +85,7 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
     if (!node->m_hasMesh)
         node->GetSubMesh();
     if (node->m_visual.size() || node->m_has_visuals_prior_to_export)
-        data_003E14A8++;
+        node_index++;
 
     int i = 0;
     int j;
@@ -109,10 +105,10 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
         j = 0;
 
         for (; v != e; ++v, j++) {
-            data_004B5010 = 0;
+            CVisual::m_noBufferRefs = 0;
             visual = *v;
             AddView(visual);
-            sprintf(name, fmtI, data_003E14A8, i, j);
+            sprintf(name, fmtI, node_index, i, j);
             strcpy(lname, name);
             strcat(lname, "_L");
 
@@ -124,7 +120,7 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
                 ok = zar->Fetch(name, &off, 4);
             if (!ok) {
                 i = 0;
-                sprintf(name, fmtN, data_003E14A8, j);
+                sprintf(name, fmtN, node_index, j);
                 inst->m_vid = 0;
                 DropView(visual);
                 ok = zar->Fetch(name, &off, 4);
@@ -146,10 +142,10 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
         j = 0;
 
         for (; v != e; ++v, j++) {
-            data_004B5010 = 0;
+            CVisual::m_noBufferRefs = 0;
             visual = *v;
             AddView(visual);
-            sprintf(name, fmtI, data_003E14A8, 0, j);
+            sprintf(name, fmtI, node_index, 0, j);
             strcpy(lname, name);
             strcat(lname, "_L");
 
@@ -160,7 +156,7 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
             else
                 ok = zar->Fetch(name, &off, 4);
             if (!ok) {
-                sprintf(name, fmtN, data_003E14A8, j);
+                sprintf(name, fmtN, node_index, j);
                 strcpy(lname, name);
                 strcat(lname, "_L");
                 ok = zar->Fetch(lname, &off, 4);
@@ -196,11 +192,13 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
     return result;
 }
 
-/* a mesh node's data: the key "MESH_<name>" fetched in place, the selects starting at the offset
- * its "_START" key holds, the matrix count, a view in both view lists, the first level of detail's
- * buffer and selects, the mesh's texture selects resolved (the name ours) */
+/* a mesh model's data (SOCOM 1's hookupMesh(CZAR *, CModel *), 0x30A1F0 in the demo, after
+ * hookupVisuals(CZAR *, CModel *) as here: the same calls and order): the key "MESH_<name>" fetched
+ * in place, the selects starting at the offset its "_START" key holds, the matrix count, a view in
+ * both view lists, the first level of detail's buffer and selects, the mesh's texture selects
+ * resolved */
 #pragma auto_inline off
-void LoadMeshNode(CZAR *zar, CNode *node)
+void hookupMesh(CZAR *zar, CModel *node)
 {
     CMesh *mesh = node->GetMesh();
     char name[192];
@@ -233,20 +231,22 @@ void LoadMeshNode(CZAR *zar, CNode *node)
 }
 #pragma auto_inline reset
 
-/* a node's visuals: a mesh's own way; otherwise its key's data fetched in place into a static block
- * the size of the key and read, the block freed when either fails. A node without a key copies its
- * visual list into a vector it then drops (likely what used it compiled out) (the name ours; OVL1's
- * 0x1E91C0 calls it). The target's shapes: the count an int and the array a local (both loaded once,
- * the node's register reused), the key's size read before the `new` (a call in an argument list
- * runs first), the two reads' result in a bool tested after them (the join's label padded ahead of
- * its branch), the delete's own null test the only one */
-void LoadNodeVisuals(CZAR *zar, CNode *node)
+/* a model's visuals (SOCOM 1's hookupVisuals(CZAR *, CModel *), 0x30A040 in the demo, before
+ * hookupMesh as here: GetMesh, then node_index set to -1 and the key of the model's name opened):
+ * a mesh's own way; otherwise its key's data fetched in place into a static block the size of the
+ * key and read, the block freed when either fails. A model without a key copies its visual list
+ * into a vector it then drops (likely what used it compiled out) (OVL1's 0x1E91C0 calls it). The
+ * target's shapes: the count an int and the array a local (both loaded once, the node's register
+ * reused), the key's size read before the `new` (a call in an argument list runs first), the two
+ * reads' result in a bool tested after them (the join's label padded ahead of its branch), the
+ * delete's own null test the only one */
+void hookupVisuals(CZAR *zar, CModel *node)
 {
     if (node->GetMesh()) {
-        LoadMeshNode(zar, node);
+        hookupMesh(zar, node);
         return;
     }
-    data_003E14A8 = -1;
+    node_index = -1;
     CKey *key = zar->OpenKey(node->m_name);
 
     if (!key) {
@@ -264,7 +264,7 @@ void LoadNodeVisuals(CZAR *zar, CNode *node)
     bool ok = zar->FetchLIP(key, (void **)block);
 
     if (ok)
-        ok = hookupVisuals(zar, key, node, (CModel *)node, block);
+        ok = hookupVisuals(zar, key, node, node, block);
     if (!ok)
         delete block;
     zar->CloseKey(key);
