@@ -706,6 +706,10 @@ struct CMenuEntry {
  * gives it its font) */
 class CPopUpDialog : public CPlainBmp {
 public:
+    /* its textures prepared with the menu's relocator (0x370610, zui_2d.cpp's: SOCOM 1's
+     * CPopUpDialog::Load, there called in the same place; the HUD's round 58 named it) */
+    bool Load(zdb::CTextureRelocMgr *mgr);
+
     unsigned char _a0[0x300 - 0xa0];
     C2DFont *m_font;   // 0x300
 };
@@ -955,10 +959,6 @@ void UiSetCounterSpeedFactor(float f);
 _zrdr *FetchMissionFontsRdr();
 void PrepSkbsForDisplay(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr, C2DFont *font);
 
-/* the pop-up's textures prepared with the menu's relocator (0x370610, zui_2d.cpp's: SOCOM 1's
- * CPopUpDialog::Load, there called in the same place) */
-extern "C" void func_00370610(CPopUpDialog *popup, zdb::CTextureRelocMgr *mgr);
-
 /* a 2D object given a node of its own under the parent ("Add2dNode": the object told of it, its
  * visual added), the node returned (ours: LoadFromDesign's background, fader and pop-up, the
  * arguments loaded parent first) */
@@ -1089,7 +1089,7 @@ void CGameMenu::LoadFromDesign(const CGameDlgDesign &design, CZAnimZAR *zar)
     CPopUpDialog *popup = GetMenuStack()->GetPopUp();
 
     popup->m_font = &m_font;
-    func_00370610(popup, m_Reloc);
+    popup->Load(m_Reloc);
     m_popupnode = AddNode(popup, m_Reloc, m_pForeplaneNode);
     m_popupnode->SetName("POPUP");
     m_popupnode->SetActive(false);
