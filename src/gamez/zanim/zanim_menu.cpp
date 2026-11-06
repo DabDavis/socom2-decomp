@@ -504,8 +504,9 @@ bool UpdateSelItemValves();
 inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
 {
     CCharacterWeap &w = (*(CCharacterWeapList *)it.m_weapons)[1];
+    EQUIP_ITEM id = w.m_wepId;   /* (a local: the item's narrowing then numbered after the load) */
 
-    if (item == w.m_wepId)
+    if (item == id)
         return true;
     w.SetupCharacterWeapon(item);
     UpdateCharWeaponUiVars(it.m_index);
