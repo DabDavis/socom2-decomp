@@ -67,8 +67,8 @@ void func_002488A0(int *piQuanIndex, void *pvEncMblk, void *pvParamMblk)
  * harmonics' phases (the step in 1/4096 turns, the phase's top byte the table's index). The scale
  * is a local initialised at its declaration -- its lui/mtc1 before the loop's entry test, as the
  * target's (a literal is hoisted into the preheader after it: 4 words); the 0.5 stays a literal. */
-void func_00248A18(float *pfMax, int n, const float *pfAmp, const int *piHarm, float *pfMaxFreq,
-		   float fStep, float fFreq, float fEnd, float fBias)
+void func_00248A18(float *pfMax, int n, const float *pfAmp, float fStep, float fFreq, float fEnd, float fBias,
+		   const int *piHarm, float *pfMaxFreq)
 {
 	int i, iStep;
 	float fSum;
