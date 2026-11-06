@@ -1816,7 +1816,13 @@ extern int func_0061D448(int nClient);
  * at once when this client made it, else asked of its creator.
  * OPEN (8 bytes short): the two sends cross-jump into one call here where the target keeps both (each
  * with its own `move v0,zero`), and the creator's message takes its slot before pWorld's; four shapes
- * (the message at the top, an else, a result kept from either call) tried */
+ * (the message at the top, an else, a result kept from either call) tried. Round 24b came to registers
+ * only (0x124 against 0x128, the gap the else label's alignment nop): the ask a one-member struct (the
+ * unsigned short a promoted mode, forced to slot 16 before the pointers' ADDRESSOFs), pObject declared
+ * before pWorld, the arms an if/else before one `return DME_OK` (no cross-jump), the creator read once into
+ * a local (passed on to RemoteObjectUpdate in a0 with no reload) -- left: the creator's pseudo takes a2
+ * for the target's a0 and the shared -1 v1 for v0. Not kept: that body moves func_00618F70, compiled after
+ * it, by 8 bytes (its stores through pClient stop reloading the slot); build/scratch/gcc-r24b has it. */
 int func_0061A118(unsigned int nIndex)
 {
     struct { unsigned char nOwner; unsigned char pad; unsigned short nIndex; } msg;
@@ -1972,13 +1978,14 @@ extern unsigned int data_00686A28;
 
 /* SOCOM 1's NetReleaseObjectPrivateOwnership's place (0x61B538): the release sent to the given client,
  * or for an object whose class wants it, to the session's host when none is given.
- * OPEN (the right size, the frame): the target's slots run pWorld 0, pObject 4, nHost 8, the byte
- * message 12; 2.96 here gives the message slot 0 wherever it is declared (top, inner block) and moves
- * the others up -- zeroing by statement and the `||` range guard (folded to one unsigned test) tried */
+ * Closed in round 24b (open since 13b on the frame: the byte message took slot 0): the message is a one-byte
+ * struct -- an unsigned char local is a promoted mode, so taking its address forces it to the stack at once,
+ * where the pointers' ADDRESSOFs get theirs only when purged, in insn order (0x618F70's finding); a struct
+ * of one byte is not promoted and takes slot 12 after them. The zeroed pointers in declaration order. */
 void func_0061B538(int nTarget, unsigned int nIndex)
 {
-    DmeWorld *pWorld = 0;
     DmeObject *pObject = 0;
+    DmeWorld *pWorld = 0;
     int nHost;
 
     if (nIndex >= DME_MAX_OBJECTS)
@@ -1998,9 +2005,10 @@ void func_0061B538(int nTarget, unsigned int nIndex)
     if (data_0067E948[pObject->field_03] != 0 && pWorld->nMyClient != nHost && nTarget == -1)
         nTarget = nHost;
     {
-        unsigned char nMsg = nIndex;
+        struct { unsigned char nIndex; } msg;
 
-        func_00615DE0(80, data_00651178, nTarget, data_00686A28, 1, &nMsg);
+        msg.nIndex = nIndex;
+        func_00615DE0(80, data_00651178, nTarget, data_00686A28, sizeof(msg), &msg);
     }
 }
 
@@ -2470,4 +2478,393 @@ void func_0061D9F8(unsigned short nConnection, unsigned char nType, int a2, int 
         msg.field_18 = data_006511BC;
         pfn(&msg);
     }
+}
+
+extern void NetFreeClients(unsigned int nWorld);
+extern int func_0061D320(void);
+extern int func_0061C998(unsigned int nWorld, int nValue);
+extern int data_00686A48;               /* the leave message's type */
+extern unsigned char data_0065117C;
+extern unsigned char MyClientIsJoined;
+extern int ActiveNetObjectCount;
+extern void *data_0067C5B8;
+extern void *data_0067C5BC;             /* clients.c's join/leave callback */
+extern void *data_006511A0;
+extern void *data_006511A4;             /* ... and its user data */
+extern void *data_006511B0;             /* clients.c's session-master callback */
+extern void *data_006511B4;             /* ... and its user data */
+
+/* the leave message: one byte, a struct -- not promoted to a word as an unsigned char is, so its slot
+ * comes after the world pointer's (ADDRESSOF purged in insn order), as the target's frame has it */
+typedef struct DmeLeaveMsg {
+    unsigned char nClient;
+} DmeLeaveMsg;
+
+/* SOCOM 1's NetLeave grown (0x618F70, after the join 0x618B38 as SOCOM 1's follows NetJoin): broadcasts
+ * off, the leave message, the objects and clients freed, this client's record back to connecting and
+ * reported, every world's value reset (SOCOM 1 stored 256 into the four directly), the callbacks cleared */
+int func_00618F70(unsigned int nWorld)
+{
+    DmeWorld *pWorld = 0;
+    DmeLeaveMsg msg;
+    DmeClientInfo *pClient = 0;
+    int result;
+    int i;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld == 0)
+        return result;
+    func_006189C8(nWorld, 0);
+    msg.nClient = func_0061D448(pWorld->nMyClient);
+    func_006158F8(80, nWorld, -1, 0, data_00686A48, sizeof(msg), &msg);
+    func_0061D320();
+    NetFreeAllObjects();
+    NetFreeClients(nWorld);
+    data_00651178 = 4;
+    data_0065117C = 0;
+    MyClientIsJoined = 0;
+    result = func_0061C720(nWorld, pWorld->nMyClient, &pClient);
+    if (result != DME_OK)
+        return result;
+    if (pClient == 0)
+        return result;
+    pClient->nState = DME_CLIENT_CONNECTING;
+    pClient->field_18 = 0;
+    pClient->field_1C = 0;
+    func_00613FD0(nWorld, -1);
+    for (i = 0; i < DME_MAX_WORLDS; i++) {
+        if (func_0061C600(i, &pWorld) == DME_OK && pWorld != 0)
+            func_0061C998(i, 256);
+    }
+    ActiveNetObjectCount = 0;
+    data_0067C5B8 = 0;
+    data_006511A0 = 0;
+    data_0067C5BC = 0;
+    data_006511A4 = 0;
+    data_006511B0 = 0;
+    data_006511B4 = 0;
+    return DME_OK;
+}
+
+/* an object update's head (4 bytes), then its fields */
+typedef struct DmeUpdateHeader {
+    unsigned char nClass;               /* 0x00: the object's class */
+    unsigned char nFields;              /* 0x01: the fields that follow (func_0061A488's count) */
+    unsigned short nIndex;              /* 0x02: the object */
+} DmeUpdateHeader;
+
+typedef struct DmeUpdateMsg {
+    DmeUpdateHeader hdr;
+    unsigned char abData[508];
+} __attribute__((aligned(4))) DmeUpdateMsg;
+
+extern DmeUpdateMsg data_0066C4F8;      /* the update being sent */
+extern int data_00686A20;               /* the object update's message type */
+extern void func_0061A328(DmeTargetMask *pMask, unsigned int nIndex);
+struct DmeObjectData;
+extern unsigned char func_0061A488(struct DmeObjectData *pObject, int nIndex, char *pnMsgClass,
+                                   unsigned char *pData, unsigned int *pnLength);
+
+/* SOCOM 1's NetSendObjectFullUpdate's head (0x61A6D8; its body is 0x61A488 now): the object's changed
+ * fields to the clients its filter picks, or to everyone. Measured: the header goes in by memcpy through a
+ * pointer to a word-aligned buffer (lw/sw -- a struct assignment of the 2-aligned header is lwl/lwr/swl/swr;
+ * the attribute stands for whatever made SCEA's buffer type word-aligned); the buffer's address a local
+ * (one register for the fill's +4 and both sends); the sends an if/else before one `return DME_OK` -- the
+ * join is an eleventh block at sched1, past haifa's 10-block region limit, so the call's arguments are not
+ * moved above the range test as they are with a `return` in each arm (-fno-sched-interblock does the same);
+ * the zeroed locals in declaration order, the length set before the class byte (ccperm-style sweep). */
+int func_0061A6D8(unsigned int nIndex)
+{
+    DmeUpdateHeader hdr;
+    DmeTargetMask mask;
+    DmeObject *pObject = 0;
+    int nLength = 0;
+    char nMsgClass = 0;
+    DmeUpdateMsg *pMsg;
+    int result;
+
+    if (nIndex >= DME_MAX_OBJECTS)
+        return DME_ERR_ARGUMENT;
+    result = func_00614EC8((void **)&pObject, nIndex);
+    if (result != DME_OK)
+        return result;
+    if (pObject == 0)
+        return result;
+    if (pObject->field_01 != 0)
+        func_0061A328(&mask, nIndex);
+    memset(&hdr, 0, sizeof(hdr));
+    pMsg = &data_0066C4F8;
+    hdr.nIndex = nIndex;
+    nLength = sizeof(hdr);
+    hdr.nClass = pObject->nClass;
+    hdr.nFields = func_0061A488((struct DmeObjectData *)pObject, nIndex, &nMsgClass, pMsg->abData,
+                                (unsigned int *)&nLength);
+    memcpy(pMsg, &hdr, sizeof(hdr));
+    if (hdr.nFields == 0)
+        return DME_OK;
+    if (pObject->field_01 != 0)
+        func_00615B48(nMsgClass, data_00651178, 0, data_00686A20, nLength, pMsg, &mask);
+    else
+        func_00615DE0(nMsgClass, data_00651178, -1, data_00686A20, nLength, pMsg);
+    return DME_OK;
+}
+
+extern int (*data_0067E848[])(int nClient, unsigned int nIndex);   /* each object filter (dme.c registers them) */
+
+/* SOCOM 1's NetGetFilteredObjectTargetClients grown (0x61A328): the clients of this client's world the object's
+ * filter accepts, as a target mask; guarded, and the world's client count bounds the walk. The clear loop has its
+ * own counter (round 13b's rule: a2 in the target, the walk's s0 shared otherwise); the filter is read before the
+ * mask's two stores (one order of six). */
+void func_0061A328(DmeTargetMask *pMask, unsigned int nIndex)
+{
+    DmeObject *pObject = 0;
+    DmeWorld *pWorld = 0;
+    void *pClient;
+    int (*pfnFilter)(int nClient, unsigned int nIndex);
+    int i;
+    int j;
+
+    if (pMask == 0)
+        return;
+    if (nIndex >= DME_MAX_OBJECTS)
+        return;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(data_00651178, &pWorld) != DME_OK)
+        return;
+    if (pWorld == 0)
+        return;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return;
+    pfnFilter = data_0067E848[pObject->field_01];
+    pMask->nFirst = pWorld->field_444;
+    pMask->nLast = -1;
+    for (j = 0; j < 33; j++)
+        pMask->abTarget[j] = 0;
+    for (i = 0; i < pWorld->field_444; i++) {
+        pClient = 0;
+        func_006126E8(&pClient, data_00651178, i);
+        if (pClient != 0 && i != pWorld->nMyClient && pfnFilter(i, nIndex))
+            func_00615330(pMask, i);
+    }
+}
+
+/* what a field's own comparison is handed (0x61B2A0 builds it on its stack) */
+typedef struct DmeFieldCompare {
+    int nIndex;                         /* 0x00: the object */
+    int nField;                         /* 0x04 */
+    int nSize;                          /* 0x08 */
+    int nCount;                         /* 0x0C */
+    void *pNew;                         /* 0x10 */
+    void *pOld;                         /* 0x14 */
+} DmeFieldCompare;
+
+/* an object structure's field, as the update path reads it (dme.c's NetField; its bytes from 0x10 are the
+ * name there, a structure field's kind, comparison and flag here) */
+typedef struct DmeField {
+    int nOffset;                        /* 0x00 */
+    int nSize;                          /* 0x04 */
+    int nCount;                         /* 0x08 */
+    int nType;                          /* 0x0C */
+    int nInterval;                      /* 0x10: added to the time it was last sent */
+    int nKind;                          /* 0x14: 5 -- compared by its own function */
+    int pfnCompare;                     /* 0x18: its comparison, an int cast at the call */
+    unsigned char bFlags;               /* 0x1C: or'ed into the message's flags */
+} DmeField;
+
+/* an object structure (dme.c's NetStructure, 16 of them) */
+typedef struct DmeStructure {
+    int nSize;                          /* 0x000 */
+    int nFields;                        /* 0x004 */
+    char szName[32];                    /* 0x008 */
+    DmeField *apFields[64];             /* 0x028 */
+    int anOffsets[64];                  /* 0x128 */
+} DmeStructure;                         /* 0x228 */
+
+extern DmeStructure NetStructureList[16];
+
+/* a networked object's record as the update path reads it (DmeObject's head, its data after the name) */
+typedef struct DmeObjectData {
+    unsigned char nClass;               /* 0x00 */
+    unsigned char field_01;
+    unsigned char nStatus;              /* 0x02 */
+    unsigned char field_03;
+    int nOwner;                         /* 0x04 */
+    int nCreator;                       /* 0x08 */
+    char szName[16];                    /* 0x0C */
+    char *pNew;                         /* 0x1C: the object's data */
+    char *pOld;                         /* 0x20: as last sent */
+    int field_24;
+    int field_28;
+    int field_2C;
+    int field_30;
+    unsigned int *pnSent;               /* 0x34: each field's time last sent */
+} DmeObjectData;
+
+extern unsigned char func_0061ACF0(DmeField *pField, char *pNew, char *pOld);
+
+/* SOCOM 1's GlobalFieldErrorExceedsThreshold grown (0x61B2A0): whether a field has changed enough to send --
+ * each element by func_0061ACF0 (SOCOM 1's ElementErrorExceedsThreshold), or a kind-5 field by its own
+ * comparison. Measured: the comparison is an int field cast at the call -- its load then shares the int
+ * stores' alias set and sched1 keeps it after the arguments are filled, so the null test's `return 0` is
+ * the target's annulled slot (a function-pointer or void * field is hoisted above the stores: 8 bytes
+ * short); the test positive (as a guard, 7 words). */
+unsigned char func_0061B2A0(DmeObjectData *pObject, int nIndex, unsigned char nField)
+{
+    DmeFieldCompare args;
+    DmeStructure *pStruct;
+    DmeField *pField;
+    char *pNew;
+    char *pOld;
+    int i;
+
+    if (pObject == 0)
+        return 0;
+    pStruct = &NetStructureList[pObject->nClass];
+    if (pStruct == 0)
+        return 0;
+    pField = pStruct->apFields[nField];
+    if (pField == 0)
+        return 0;
+    pNew = pObject->pNew + pStruct->anOffsets[nField];
+    if (pNew == 0)
+        return 0;
+    pOld = pObject->pOld + pStruct->anOffsets[nField];
+    if (pOld == 0)
+        return 0;
+    if (pField->nKind == 5) {
+        args.nIndex = nIndex;
+        args.nField = nField;
+        args.nSize = pField->nSize;
+        args.nCount = pField->nCount;
+        args.pNew = pNew;
+        args.pOld = pOld;
+        if (pField->pfnCompare != 0)
+            return ((int (*)(DmeFieldCompare *))pField->pfnCompare)(&args);
+        return 0;
+    }
+    for (i = 0; i < pField->nCount; i++) {
+        if (func_0061ACF0(pField, pNew, pOld))
+            return 1;
+        pNew += pField->nSize;
+        pOld += pField->nSize;
+    }
+    return 0;
+}
+
+/* SOCOM 1's NetSendObjectFullUpdate's body (0x61A488, its head is 0x61A6D8): each field due -- its interval
+ * passed since it was last sent -- that has changed (func_0061B2A0) and fits, as its index and its bytes;
+ * the bytes kept as last sent, the field's flags or'ed into the message class; the count returned */
+unsigned char func_0061A488(DmeObjectData *pObject, int nIndex, char *pnMsgClass, unsigned char *pData,
+                            unsigned int *pnLength)
+{
+    unsigned char nFields = 0;
+    DmeStructure *pStruct;
+    DmeField *pField;
+    char *pNew;
+    char *pOld;
+    unsigned char i;
+
+    if (pData == 0)
+        return 0;
+    if (pnLength == 0)
+        return 0;
+    if (pObject == 0)
+        return 0;
+    if (pObject->nClass >= 16)
+        return 0;
+    pStruct = &NetStructureList[pObject->nClass];
+    if (pStruct == 0)
+        return 0;
+    for (i = 0; i < pStruct->nFields; i++) {
+        if (*pnLength >= 511)
+            continue;
+        pField = pStruct->apFields[i];
+        if (pField == 0)
+            continue;
+        if (pField->nKind == 0)
+            continue;
+        if (pObject->pnSent[i] + pField->nInterval >= CurrentNetTime)
+            continue;
+        pNew = pObject->pNew + pStruct->anOffsets[i];
+        pOld = pObject->pOld + pStruct->anOffsets[i];
+        if (func_0061B2A0(pObject, nIndex, i) == 0)
+            continue;
+        if (510 - *pnLength < pField->nSize * pField->nCount + 1)
+            continue;
+        *pData = i;
+        pData++;
+        (*pnLength)++;
+        memcpy(pData, pNew, pField->nSize * pField->nCount);
+        pData += pField->nSize * pField->nCount;
+        nFields++;
+        *pnLength += pField->nSize * pField->nCount;
+        *pnMsgClass |= pField->bFlags;
+        memcpy(pOld, pNew, pField->nSize * pField->nCount);
+        pObject->pnSent[i] = CurrentNetTime;
+    }
+    return nFields;
+}
+
+/* the 12 bytes ahead of a data stream's packet */
+typedef struct DmeStreamPacket {
+    unsigned char nStream;              /* 0x00 */
+    unsigned char field_01;             /* 0x01: the slot's byte 5 */
+    unsigned char field_02;             /* 0x02: its byte 3 */
+    unsigned char field_03;             /* 0x03: its byte 1 */
+    unsigned char field_04;             /* 0x04: its byte 2 */
+    unsigned char field_05;
+    unsigned short nSize;               /* 0x06: the stream's buffer, end less start */
+    unsigned short nOffset;             /* 0x08: its read position less its start */
+    unsigned short nLength;             /* 0x0A: the bytes that follow */
+} DmeStreamPacket;
+
+extern int rt_circ_buf_is_wrapped(void *pCircBuf, unsigned char *pbWrapped);
+extern int rt_circ_buf_get_start_used_ptr(void *pCircBuf, void **ppStart);
+
+/* SOCOM 1's NetGetDataStreamPacket rewritten over the stream's ring (0x61B3E0): the packet's header, then
+ * nLength bytes from the ring's start (normalised first when it wraps); the packet's size, or 0. The getter's
+ * result and its pointer tested together (round 5b's shape): that `return 0` block has two predecessors, so
+ * it is not if-converted and jump2 cross-jumps the last guard's into it -- the target's in-line block. */
+int func_0061B3E0(unsigned char *pPacket, unsigned int nStream, int nLength)
+{
+    DmeStreamPacket hdr;
+    DmeStreamSlot *pStream = 0;
+    void *pStart = 0;
+    unsigned char bWrapped = 0;
+
+    if (pPacket == 0)
+        return 0;
+    if (nLength <= 0)
+        return 0;
+    if (nStream >= DME_MAX_STREAMS)
+        return 0;
+    if (func_00614F58(nStream, (void **)&pStream) != DME_OK || pStream == 0)
+        return 0;
+    hdr.nStream = nStream;
+    hdr.field_01 = pStream->field_00[5];
+    hdr.field_02 = pStream->field_00[3];
+    hdr.field_03 = pStream->field_00[1];
+    hdr.field_04 = pStream->field_00[2];
+    hdr.nSize = ((DmeStreamHead *)pStream)->field_14[0] - (int)((DmeStreamHead *)pStream)->pBuffer;
+    hdr.nOffset = ((DmeStreamHead *)pStream)->field_14[1] - (int)((DmeStreamHead *)pStream)->pBuffer;
+    hdr.nLength = nLength;
+    *(DmeStreamPacket *)pPacket = hdr;
+    if (rt_circ_buf_is_wrapped(pStream->circ, &bWrapped) != 0)
+        return 0;
+    if (bWrapped) {
+        if (rt_circ_buf_normalize(pStream->circ, 1) != 0)
+            return 0;
+        memcpy(((DmeStreamHead *)pStream)->pBuffer, ((DmeStreamHead *)pStream)->pCircBuf,
+               ((DmeStreamHead *)pStream)->nCircSize);
+    }
+    if (rt_circ_buf_get_start_used_ptr(pStream->circ, &pStart) != 0)
+        return 0;
+    memcpy(pPacket + sizeof(hdr), pStart, nLength);
+    return nLength + sizeof(hdr);
 }

@@ -202,7 +202,9 @@ public:
     static int m_numStreams;            /* 0x48DD80: streamed voices playing (name ours) */
     static int m_numActive;             /* 0x48DD88: voices acquired (name ours) */
     static bool m_hasreverb;            /* 0x48DD30 (SOCOM 1's) */
-    static int m_bnkoffset;             /* 0x3DFFD0: the bank archive's disc offset (SOCOM 1's) */
+    static bool m_vagEnabled;           /* 0x48DDA0: SOCOM 1's -- UIVagStreaming sets it before UIOpen
+                                           and clears it after Close, UIOpen reads it */
+    static int m_bnkoffset;            /* 0x3DFFD0: the bank archive's disc offset (SOCOM 1's) */
     static zar::CZAR m_bnkArchive;      /* 0x48DC70: the bank archive (SOCOM 1's) */
     static std::vector<CSnd *> m_soundlist;  /* 0x48DC08: every sound made (SOCOM 1's: AddNewCSnd
                                                 pushes onto it, UnloadAllSounds deletes them) */
