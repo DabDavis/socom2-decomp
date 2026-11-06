@@ -19,13 +19,14 @@
  * resize; LoadTable passes the constant zero's address, MW's anonymous static) */
 extern "C" void func_0028B0E0(void *v, unsigned int n, const unsigned int &x);
 
-/* a UTF-16 character appended to a string as one to three UTF-8 bytes (ours).
- * OPEN, 34 instructions, nearly all registers: the target keeps the int copy in s0 and the string
- * in s1 (here the other way round), and shifts right by 6 with srl in both places (the middle byte's through a copy,
- * `move v0,s0; srl v1,v0,6`) while its shift by 12 is sra and every % 64 signed; an int, an
- * unsigned short, (unsigned int) casts, divisions and an unsigned count all give sra or change
- * the size. Everything else -- the byte truncations (andi 0xff, then the char argument's
- * sign extension), the tests, the call order -- matches. */
+/* a value shifted down by six, unsigned (ours: the append's two six-bit shifts) */
+static inline int UTF8Shr6(unsigned int x) { return x >> 6; }
+
+/* a UTF-16 character appended to a string as one to three UTF-8 bytes (ours). Byte-exact since the
+ * UI lane's round 32 (open since round 21): the six-bit shifts through an inline taking `c` as an
+ * unsigned int -- srl, the middle byte's argument a copy of the int (`move v0,s0`: c's zero
+ * extension shared with u, while c itself stays live in s2), the remainders signed on u; the shifts
+ * written in place gave sra, the inline on u coalesced the copy and freed s2 */
 void UTF8Append(std::string &s, unsigned short c)
 {
     int u = c;
@@ -33,12 +34,12 @@ void UTF8Append(std::string &s, unsigned short c)
     if (u < 0x80)
         s.push_back((unsigned char)c);
     else if (u < 0x800) {
-        s.push_back((unsigned char)((c >> 6) + 0xC0));
-        s.push_back((unsigned char)(c % 64 + 0x80));
+        s.push_back((unsigned char)(UTF8Shr6(c) + 0xC0));
+        s.push_back((unsigned char)(u % 64 + 0x80));
     } else {
         s.push_back((unsigned char)((u >> 12) + 0xE0));
-        s.push_back((unsigned char)((c >> 6) % 64 + 0x80));
-        s.push_back((unsigned char)(c % 64 + 0x80));
+        s.push_back((unsigned char)(UTF8Shr6(c) % 64 + 0x80));
+        s.push_back((unsigned char)(u % 64 + 0x80));
     }
 }
 
@@ -313,24 +314,13 @@ int UTF8CharLen(const char *&s)
     return s[1] ? 3 : 1;
 }
 
-/* the UTF-8 character at s as UTF-16 (ours).
- * OPEN, 5 instructions at the target's size since round 30 (the round-30 shape below; the single
- * expression was 2 instructions short): the target loads the string pointer into a0 over the
- * parameter (there a1), so the three-byte block's first instruction is the load of the third byte into a0,
- * the second byte re-extended in place (`andi v1,v1,0xff`) after it and the branch's delay slot
- * left empty; here MW moves that re-extension, into a fresh register, into the slot. A pointer,
- * a reference, a by-value iterator, the expression's order, the third byte in a local first,
- * if/else nesting and a single exit (which gives the in-place re-extension, but with the bytes in
- * other registers) were measured in build/scratch/ui/probe/utf.cpp. Round 30, by igdump/igreplay:
- * the pointer takes a0 once the third byte's load (v62) is numbered below c1's re-extension (v54:
- * `--move 62=53.5`) -- the load first in the block, the extension in place in v1, the slot empty;
- * every single-expression spelling (the byte first, a local for it, assigned once or after a dead
- * definition: all propagated) numbers it after. The third byte into a local assigned twice
- * (`unsigned short ch = (unsigned short)(p[2] - 0x80); ch = hi + mid + ch;`) inside `if (c1) {
- * ... return ch; } return c;` (as written) gives the target's size and every register but three,
- * 5 off: the load in a1 (it wants a number near 41.5, among the front end's temporaries -- an
- * inline helper for the byte does not do it; `ch = ch + ...` and `+=` the same) and `addu
- * v0,v1,v0` for the target's `addu v0,v0,v1` */
+/* the UTF-8 character at s as UTF-16 (ours). Byte-exact since the UI lane's round 32 (open since
+ * round 21): the three-byte form an accumulator -- the high part first, the third byte read into a
+ * local assigned twice (so its load is numbered after the high part's shift and before the middle
+ * part's: `igreplay --movers` gave 52 -> 58.5..61.5, the pointer then free for it in a0), the
+ * middle part added, then the low part with `+=` (the sum first in the add; `ch = lo + ch`, `ch =
+ * ... + lo` in one statement and a low part assigned once put it second). Round 30's shape (the
+ * third byte first, one expression after) was 5 off; the single expression 2 instructions short */
 unsigned short UTF8GetChar(const char *&s)
 {
     const unsigned char *p = (const unsigned char *)s;
@@ -342,8 +332,11 @@ unsigned short UTF8GetChar(const char *&s)
     if (c < 0xE0)
         return c1 + ((c - 0xC0) << 6) - 0x80;
     if (c1) {
-        unsigned short ch = (unsigned short)(p[2] - 0x80);
-        ch = (unsigned short)((unsigned short)((c - 0xE0) << 12) + (unsigned short)((c1 - 0x80) << 6)) + ch;
+        unsigned short ch = (unsigned short)((c - 0xE0) << 12);
+        unsigned short lo = p[2];
+        lo = (unsigned short)(lo - 0x80);
+        ch = (unsigned short)(ch + (unsigned short)((c1 - 0x80) << 6));
+        ch += lo;
         return ch;
     }
     return c;

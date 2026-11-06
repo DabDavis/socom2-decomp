@@ -360,6 +360,13 @@ void CZKit::NVG_Enabled(bool on)
         m_nvg_enabled = false;
 }
 
+/* the reticule node's settle countdown (OVL2 0x5BE990, new in SOCOM II: 0x5BE6F0 below runs it; the
+ * explosive is placed only once it reads 0 -- the name ours) */
+float CZKit::GetReticuleSettle()
+{
+    return m_8a4;
+}
+
 /* the node under the reticule followed from frame to frame: one that an explosive's damage would
  * move (its extension's slot 0x10 asked with the kit's explosive damage) and was under the reticule
  * last frame too has its world place taken -- the countdown held at 0.2 while that place moves, run
