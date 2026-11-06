@@ -2066,6 +2066,33 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 37** (CAiMaps::RegisterPathPlan 0x52C5C0 -- 0x608, 105 off since round 32 -- and
+  CAiMaps::GetLocation(point) 0x52DC70 -- 0xA34, 172 off since round 31, its register order a marked modelling order --
+  byte-exact; THE FIVE CUT CLASS INSERTS byte-exact through a marked device, include/vector's `__insert_end_pointer<T>`:
+  CVehicleRdrEntry 0x534630 in the lane's own unit, and -- opted in by the integrator from its measurements, each +1 and
+  nothing lost -- AcctRecord 0x2FE3E0, CTurretDef 0x3ABD90, zrdr_sym 0x3325E0, CDlgDesignModel 0x384ED0; resize<line>
+  0x51C070 by a marked `#pragma inline_depth(6)` at ai_mapio.cpp's end, a "Level 6, or 8?" witness like util_loc.cpp's):
+  - SEARCH THE NUMBERING FIRST: annealing over the numbering (build/scratch/aicore-r37/ai/igallperm.py, iganneal.py) shows
+    whether a target numbering exists before any source is written; if `this` must sit above locals, named copies of
+    parameters can place it there (GetLocation -- what the original wrote behind those two copies is unknown);
+  - the class-insert dichotomy is settled for all five: each needs a pointer end numbered before m, chosen per element --
+    the trait is a no-op unless a unit specialises it (objcmp over 665 units: only the intended functions differ), a switch
+    per unit is too blunt where one unit emits both populations, and an explicit specialisation of insert generates before
+    the tail and so calls what the instance inlines. What the original wrote to number the two populations apart is still
+    not found: the trait stands for it;
+  - two frame slots below every temporary mean a reused variable's late webs from IRO_SplitLifetimes (RegisterPathPlan's one
+    iterator and one counter); `leg[1].y` stays `(&leg + 4) + 2` where `leg.to.y` folds to `&leg + 6`, so an array element's
+    address is hoisted in two steps and truly spilled where a frame constant would be rematerialised;
+    IRO_IsSubableExpression refuses `variable + constant` for a register-able local; a variable assigned an expression and
+    read once is expression-propagated in pass 0, a reference read twice keeps the two adds;
+  - `c ? (x = e, true) : false` with a dead value keeps `beqz L ... b L; L:`, the if / return form loses the jump and its L
+    gets a nop pad; the branch pass drops a branch to the next block only if no labelled block lies between -- dead bodies
+    are already empty at colouring; IRO_RegenerateExpressions rebuilds an if/else into a conditional when each arm is one
+    assignment, and that form has no labels or alignment pads;
+  - a void function's `.end` reads v0, so a call-free path to the end keeps v0 live back to the last call and temporaries
+    there avoid it, as when ~__vector_deleter is inlined; an inline's parameters get slots in order and are initialised in
+    reverse, its locals allocated first (mweppc's CInline.c, measured on remove_if's 4 off); explicit specialisations are
+    own functions, generated before the template tail.
 - **Tells from the zdb world, textures, rdr and sound, round 33** (nine byte-exact: Particle::BufferElement::DrawXZ
   0x325CC0, DrawRotated 0x325580 and DrawStreaked 0x326350, Particle::Source::Tick 0x329B40, zdb::CRenderMap::CRenderMap
   0x31A9A0 and Update 0x31A180 -- all but DrawXZ unwritten before -- zdb::CNode::DeleteVisuals 0x316100 (round 28),
