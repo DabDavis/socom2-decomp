@@ -643,39 +643,46 @@ inline bool traversable(const CAiMaps *maps, const CAiMapLoc &loc)
  * with the mask (or, failing that, with none), a leg added for each step of the route that stays
  * on its map, the two nodes deleted again. The plan aborted on the first failure, run otherwise
  * (SOCOM 1's, the demo's 0x199870; the mask, the second try and the map's IsTraversable new in
- * SOCOM II). Written in the AI core's round 32 (unstarted before), from the target's code:
- * OPEN, 0x5F8 against 0x608 (difflib distance 105 of 386), every call the target's. What fixed what:
- * the leg's two cells one 8-byte struct (from 288, to 292 -- plan_addleg's shape; &to hoisted into
- * s6), the route's two cells another, declared inside the route's block (264 / 268, below the route
- * at 272, &step hoisted into s0), `from` assigned (a word copy: the written copy constructor works
- * field by field), both list walks' iterators declared and then ASSIGNED from begin() (include/list:
- * kept in memory, re-read and re-stored at each step, as the target's 332 and 304). Left: the
- * target hoists &to.y (s6 + 2) out of the loop and spills it (176), so its frame is 16 bytes taller
- * (336) and every slot above sits 16 higher -- here to.y is rebuilt from sp at its use (a reference
- * local `CAiMapLoc &to = leg.to;` reads it as `lhu 2(s6)` instead, 113); the node walk's end is
- * `&m_nodes + 4` in two adds in the target (the list reached through a pointer or reference), and
- * mask / node take s2 / s3 there, s3 / s2 here; the route walk's begin copy (300) is one temporary
- * more in the target */
+ * SOCOM II). Written in the AI core's round 32 (unstarted before), from the target's code; BYTE-EXACT
+ * in round 37 (0x5F8 and 105 off before, build/scratch/ai/v_rpp37*.py). Each shape settles what the
+ * image shows, all but the last numbering or frame:
+ *  - the leg's two cells an ARRAY: `leg[1].y` is `(&leg + 4) + 2`, where `leg.to.y` is folded to `&leg + 6` by
+ *    the front end. IRO hoists &leg[1] (s6), then `s6 + 2`, which is no frame constant, so it is truly
+ *    spilled (176) and the frame 16 taller; `&leg[0].y` stays a constant, rematerialised at its use (290);
+ *  - one counter for both loops, one iterator for both walks: IRO_SplitLifetimes splits each later web
+ *    into a temporary made after every other (the route walk's two slots, 304 / 300, below all
+ *    the temporaries; the counter's spill slot, 160, the last);
+ *  - node declared ahead of mask (the kit's round 59): mask s2, node s3;
+ *  - the walk's end named, from a reference to the list used for begin() too: `nodes` read twice is
+ *    not expression-propagated (useCount, IRO_ExpressionPropagation), so `nodes + 4` keeps the image's
+ *    two adds -- propagated, the generator folds them to `s4 + 8` -- and the end, scalarised in pass 0, is
+ *    numbered ahead of the loop temporaries (spill slot 192, above &leg[1].y's 176). In the loop test
+ *    `nodes.end()` is no invariant at all: IRO_IsSubableExpression refuses variable + constant;
+ *  - the route's cell an if/else on !l (a ternary selects an address), the goals stepped in the loop's
+ *    increment after the leg's copy. The route's two cells stay one 8-byte struct declared inside its
+ *    block (264 / 268, below the route at 272, &step hoisted into s0) */
 bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, int count, CAiPath *path)
 {
     if (!traversable(this, start))
         return false;
-    for (int k = 0; k < count; k++)
-        if (!traversable(this, goals[k]))
+    int i;
+
+    for (i = 0; i < count; i++)
+        if (!traversable(this, goals[i]))
             return false;
     ai::PathPlanBegin(path);
     bool ok = true;
-    struct { CAiMapLoc from; CAiMapLoc to; } leg;
+    CAiMapLoc leg[2];
 
-    leg.from = start;
-    for (int i = 0; ok && i < count; i++) {
-        leg.to = *goals;
-        if (leg.from.m_mapid == leg.to.m_mapid) {
-            CAiMap *map = GetMapByIndex(leg.from.m_mapid);
+    leg[0] = start;
+    for (i = 0; ok && i < count; goals++, i++) {
+        leg[1] = *goals;
+        if (leg[0].m_mapid == leg[1].m_mapid) {
+            CAiMap *map = GetMapByIndex(leg[0].m_mapid);
 
             ok = map != 0;
             if (ok)
-                ai::PathPlanAddLeg(map, leg.from, leg.to);
+                ai::PathPlanAddLeg(map, leg[0], leg[1]);
         } else {
             CGraph *graph = m_graph;
 
@@ -683,25 +690,28 @@ bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, i
             if (ok) {
                 CGNode *n0 = graph->CreateNode();
                 CGNode *n1 = graph->CreateNode();
+                CGNode *node;
                 unsigned int mask = path->m_unk24;
 
                 std::list<CGNode *>::iterator it;
+                std::list<CGNode *> &nodes = graph->m_nodes;
+                std::list<CGNode *>::iterator last = nodes.end();
 
-                for (it = graph->m_nodes.begin(); it != graph->m_nodes.end(); ++it) {
-                    CGNode *node = *it;
+                for (it = nodes.begin(); it != last; ++it) {
+                    node = *it;
                     CAiMap::link *l = node->m_link;
 
                     if (l) {
-                        if (l->m_loc.m_mapid == leg.from.m_mapid) {
+                        if (l->m_loc.m_mapid == leg[0].m_mapid) {
                             CGEdge *e = graph->CreateEdge(n0, node);
 
-                            e->m_length = (int)loc_delta(l->m_loc, leg.from);
+                            e->m_length = (int)loc_delta(l->m_loc, leg[0]);
                             e->m_mask = mask;
                         }
-                        if (l->m_loc.m_mapid == leg.to.m_mapid) {
+                        if (l->m_loc.m_mapid == leg[1].m_mapid) {
                             CGEdge *e = graph->CreateEdge(n1, node);
 
-                            e->m_length = (int)loc_delta(l->m_loc, leg.to);
+                            e->m_length = (int)loc_delta(l->m_loc, leg[1]);
                             e->m_mask = mask;
                         }
                     }
@@ -710,14 +720,15 @@ bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, i
 
                 if (graph->BuildRoute(n0, n1, mask, &route) || (mask && graph->BuildRoute(n0, n1, 0, &route))) {
                     struct { CAiMapLoc from; CAiMapLoc to; } sub;
-                    std::list<CGNode *>::iterator r;
+                    it = route.m_nodes.begin();
+                    sub.from = leg[0];
+                    for (++it; it != route.m_nodes.end(); ++it) {
+                        CAiMap::link *l = (*it)->m_link;
 
-                    r = route.m_nodes.begin();
-                    sub.from = leg.from;
-                    for (++r; r != route.m_nodes.end(); ++r) {
-                        CAiMap::link *l = (*r)->m_link;
-
-                        sub.to = l ? l->m_loc : leg.to;
+                        if (!l)
+                            sub.to = leg[1];
+                        else
+                            sub.to = l->m_loc;
                         if (sub.from.m_mapid != sub.to.m_mapid) {
                             sub.from = sub.to;
                         } else {
@@ -732,8 +743,7 @@ bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, i
                 graph->DeleteNode(n1);
             }
         }
-        goals++;
-        leg.from = leg.to;
+        leg[0] = leg[1];
     }
     if (!ok)
         ai::PathPlanAbort();
