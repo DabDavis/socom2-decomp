@@ -154,6 +154,9 @@ public:
     /* (an accessor: the loop's test then reads the index apart from the body, as the target's
      * does -- written out, MW keeps the test's load for the shift) */
     bool Valid() const { return m_index < 32; }
+    /* the weapons list (an accessor: UpdateSelItemValves reads it off the frame, where a plain
+     * `it.m_weapons` shares the constructor's hoisted address -- a saved register more) */
+    void *Weapons() const { return m_weapons; }
 
     unsigned int m_mask;   // 0x0
     int m_index;   // 0x4
@@ -530,9 +533,9 @@ bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item);
 namespace {
 bool ChooseSlotForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
 }
-/* the selection's item valves brought up to date (SOCOM II's, not named yet: UpdateSelItemValves
- * 0x282410 is a jump to it) */
-extern "C" void func_00282140();
+/* the selection's item valves brought up to date (SOCOM II's, 0x282140, below; the command
+ * UpdateSelItemValves' handler 0x282410 is a jump to it) */
+bool UpdateSelItemValves();
 
 /* the secondary weapon given to one selected character: its second weapon set up as the item unless
  * it is that already, its UI variables and the selection's valves updated (SOCOM II's; the name ours,
@@ -545,7 +548,7 @@ inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM 
         return true;
     w.SetupCharacterWeapon(item);
     UpdateCharWeaponUiVars(it.m_index);
-    func_00282140();
+    UpdateSelItemValves();
     return true;
 }
 
@@ -657,7 +660,7 @@ bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
         ChooseSlotForCharacter(it, (EQUIP_ITEM)183, slot);
     }
     UpdateCharWeaponUiVars(it.m_index);
-    func_00282140();
+    UpdateSelItemValves();
     return true;
 }
 
@@ -929,7 +932,7 @@ void PutInSlot(const CSelectedCharsItr &it, const CCharacterWeap &w, int slot)
     }
     (*weapons)[slot] = w;
     UpdateCharWeaponUiVars(it.m_index);
-    func_00282140();
+    UpdateSelItemValves();
 }
 
 /* the slot of a character's first weapon of the item past the one to skip, among the first five,
@@ -1446,6 +1449,70 @@ bool UIChooseEquip3(C2DAnimCmdHdr *hdr, float *dT)
         if (ChooseSlotForCharacter(it, item, 4))
             chosen = true;
     return chosen;
+}
+
+/* "UpdateSelItemValves" (SOCOM II's command 9, the UI command table's record 8; the name ours, after
+ * the table's): the selection's item valves brought up to date (0x282410, a tail call) */
+bool UIUpdateSelItemValves(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return UpdateSelItemValves();
+}
+
+/* the selection's item valves brought up to date from the first selected character (SOCOM II's,
+ * 0x282140; the name ours, after the command UpdateSelItemValves, 0x282410's): its weapons padded to
+ * five with empty ones, then each slot's item's menu value set into the slot's valve -- primsel,
+ * secsel, equip1sel to equip3sel, each made when missing; true, or false with nothing selected.
+ * The weapons read through Weapons() (the frame's slot, no hoisted address) and the valve declared
+ * ahead of the item (its number below the item's: s2 / s1, the target's) */
+bool UpdateSelItemValves()
+{
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)it.Weapons();
+
+        while (weapons->size() < 5) {
+            CCharacterWeap w;
+
+            w.SetupCharacterWeapon(EQUIP_NONE);
+            weapons->push_back(w);
+        }
+        int i = 0;
+
+        for (CCharacterWeapList::iterator p = weapons->begin(); p != weapons->end(); ++p, ++i) {
+            CValve *v = 0;
+            EQUIP_ITEM item = p->m_wepId;
+
+            switch (i) {
+            case 0:
+                v = CValve::GetByName("primsel");
+                if (!v)
+                    v = CValve::Create("primsel", (VALVE_TYPE)2);
+                break;
+            case 1:
+                v = CValve::GetByName("secsel");
+                if (!v)
+                    v = CValve::Create("secsel", (VALVE_TYPE)2);
+                break;
+            case 2:
+                v = CValve::GetByName("equip1sel");
+                if (!v)
+                    v = CValve::Create("equip1sel", (VALVE_TYPE)2);
+                break;
+            case 3:
+                v = CValve::GetByName("equip2sel");
+                if (!v)
+                    v = CValve::Create("equip2sel", (VALVE_TYPE)2);
+                break;
+            case 4:
+                v = CValve::GetByName("equip3sel");
+                if (!v)
+                    v = CValve::Create("equip3sel", (VALVE_TYPE)2);
+                break;
+            }
+            v->SetValue(CZWeapon::GetMenuValue(item));
+        }
+        return true;
+    }
+    return false;
 }
 
 namespace {

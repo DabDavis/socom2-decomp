@@ -3311,8 +3311,8 @@
 0x00281BC0 0x20 func_00281BC0  # OVL1
 0x00281BE0 0x158 UIChooseDefaultEquipmentOnly__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 7: the handler registered as "ChooseDefaultEquipmentOnly" (id 0x8F, the UI command table's record at 0x3DDDB0; not in SOCOM 1's table) -- each selected character with two weapons given its type's defaults, its own primary and secondary set up again
 0x00281D40 0x400 func_00281D40  # OVL1
-0x00282140 0x2C8 func_00282140  # OVL1
-0x00282410 0x8 func_00282410  # OVL1
+0x00282140 0x2C8 UpdateSelItemValves__Fv  # OVL1; ours, the UI lane round 35 (zanim_menu.cpp: the body of the UI command table's record 8, "UpdateSelItemValves" -- its handler 0x282410 is a tail call here; the first selected character's weapons padded to five, then the primsel/secsel/equip1sel-equip3sel valves set to each slot's menu value; ChooseSecondaryForCharacter, ChoosePrimaryForCharacter 0x284360 and PutInSlot 0x282F20 call it)
+0x00282410 0x8 UIUpdateSelItemValves__FP13C2DAnimCmdHdrPf  # OVL1; ours, the UI lane round 35 (zanim_menu.cpp: the handler of the UI command table's record 8, id 9, "UpdateSelItemValves" -- a tail call to 0x282140; the name after the table's, as the lane's other SOCOM II handlers)
 0x00282420 0xD4 UIChooseEquip3__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip3" (id 0x8, record 7; slot 4)
 0x00282500 0xD4 UIChooseEquip2__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip2" (id 0x7, record 6; slot 3)
 0x002825E0 0xD4 UIChooseEquip1__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip1" (id 0x6, record 5; slot 2 to the per-character pick 0x282C20)
