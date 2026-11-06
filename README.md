@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 31** (CHandlerButtonSpec, LoadDlgObjects and CRadioStripSpec -- open since rounds 18, 16 and 29,
+  all three closed by one change --, LoadFromDesign and HddMountGame, both unwritten before; zui.cpp whole):
+  - IF VERSUS TERNARY IS FUNCTION-WIDE: an inline's `if (c) p = k;` on its own parameter changes the whole caller -- MW then
+    moves fall-through instructions into branch delay slots, collapses other inlined ternaries into triangles and pads the
+    then-label; written as a ternary the caller gets the target's shapes everywhere (empty slots, ternaries laid out with a
+    branch to the join and a dead copy of the else arm) -- CDesignDlgObj::SetName's empty-name test;
+    build/scratch/ui-r31/ui/orphan_scan.py finds the dead-else-copy shape (17 open rows in five lanes have it);
+  - two erase() tag temporaries at equal inline depth take frame slots in source order, the first higher; one a level
+    deeper takes the lower slot -- an inline setter evens the depth (SetChildOf); a local of exactly 16 bytes goes with the
+    large group (16-byte slots);
+  - `*p++` over a constant base keeps a stepped pointer, unrolled in pairs, where indexing folds the stores into absolute
+    addresses; a `(char)` cast of an int element narrows the load to lb; a callee the target calls with a0 untouched after
+    an earlier call is a static member (CMemCard::Init / Uninit).
 - **Tells from the zdb world, textures, rdr and sound, round 26** (CNode::DeleteVisual and its remove_copy,
   GetLightIntensity, CPipeEffect::Tick and Particle::Instance::Render -- open since round 22):
   - a float literal multiplying a value comes out `mul.s d,k,x` whichever side it is written on; the same constant in a
