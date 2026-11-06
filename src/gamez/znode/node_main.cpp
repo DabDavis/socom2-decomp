@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "znode.h"
+#include "vis_texfx.h"
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 #include "../zvid/zvid.h"
@@ -29,21 +30,19 @@ namespace zdb {
  * include/vector does, and the list's destructor calls the deleter's after two levels where
  * list<T *>'s inlines all three. With a vector of pointers in its place the initialiser matches */
 
-/* a mesh's decals all freed (SOCOM 1's mesh took the view as other visuals do; not named yet) */
+/* a mesh's decals all freed: CMesh::DereferenceDecals (0x3B8440). SOCOM 1's mesh took the view as
+ * other visuals do, and the map's row carries that (FUi), but SOCOM II's one call (RemoveDecals
+ * 0x3136A4) sets no a1 -- its delay slot a nop, where the CVisual call beside it passes the view --
+ * so SOCOM II's takes none (`DereferenceDecals__Q23zdb5CMeshFv`, reported in round 27); called as
+ * the member with the view the slot fills (`move a1,s2`). Until then, a placeholder */
 extern "C" void func_003B8440(CVisual *mesh);
 /* the world-to-texture projectors (zmath_main.cpp: SOCOM 1's CalcWorldToUV pair, given the
  * texture's width where SOCOM 1 passed the texture) */
 extern "C" void func_003079C0(const CPnt3D *eye, const CPnt3D *at, const CPnt3D *dir, float a, float b,
                               sceVu0FMATRIX out);
 extern "C" void func_00307810(const CPnt3D *eye, const CPnt3D *dir, float a, float b, sceVu0FMATRIX out);
-/* a decal onto a sub-mesh, through its mesh and its place there (new in SOCOM II; not named yet) */
-extern "C" void func_003B8680(CVisual *mesh, CMatrix *mtw, int index, float size, CPnt3D *normal,
-                              CTexHandle *tex, CMatrix *uv);
-/* the world told of a shadow-casting node: a new 0x70-byte object made from it, pushed on a list
- * at 0x580 (new in SOCOM II, not named yet; CWorld::AddChild calls it too) */
-extern "C" void func_0031F500(CWorld *world, CNode *node);
 /* the visual effects' ticks (SOCOM 1's VisualEffectsTick calls CDecal's, CRipple's and CTextureFX's
- * in this order; SOCOM II's third runs on an object of its own, not placed) */
+ * in this order; SOCOM II's third is theTextureFXManager's, vis_texfx.h) */
 class CDecal {
 public:
     static void Tick(float dt);
@@ -52,14 +51,15 @@ class CRipple {
 public:
     static void Tick(float dt);
 };
-extern "C" void func_003C0120(void *fx, float dt);
-/* a scrolling texture handed to the texture effects (SOCOM 1 took a CTextureFX from its pool and
- * initialised it in CNode::ScrollTexture; SOCOM II's call takes InitScrollTexture's arguments in
- * its order and an index, on the same object as the tick, and gives an index back -- not named
- * yet; the order is the one the target's argument set-up follows) */
-extern "C" int func_003C0460(void *fx, float u, float v, bool b, CVisual *visual, CNode *node,
+/* a scrolling texture handed to the texture effects: theTextureFXManager's Add (0x3C0460), SOCOM 1's
+ * CTextureFX::InitScrollTexture's arguments in its order -- (float u, float v, bool tick, CVisual *,
+ * CNode *) -- and an index, giving an index back. Spelled as the manager's member with the map's
+ * order (bool, CVisual *, CNode *, int, float, float) the set-up moves both floats after the ints (4
+ * instructions off, round 27); only u and v first give the target's interleaving: the map's row and
+ * vis_texfx.h's declaration want SOCOM 1's order (`Add__Q23zdb17CTextureFXManagerFffbPQ23zdb7CVisualPQ23zdb5CNodei`,
+ * reported). Until then, a placeholder at the manager's address */
+extern "C" int func_003C0460(CTextureFXManager *fx, float u, float v, bool b, CVisual *visual, CNode *node,
                              int index);
-extern "C" char data_004B50D0[];
 /* the mesh _Copy cloned last, which the sub-meshes after it are made over (node_main.cpp's
  * .bss, not named yet) */
 extern "C" CMesh *data_0045C2E8;
@@ -296,7 +296,7 @@ void CNode::AddChild(CNode *child)
     if (!child)
         return;
     if (child->m_shadow == 1)
-        func_0031F500(CWorld::m_world, child);
+        CWorld::m_world->AddShadowCaster(child);
     if (child->GetType() == 7 && GetType() == 3)
         m_char_common = child->m_char_common != 0;
     if (child->m_parent == this)
@@ -924,10 +924,11 @@ void CNode::DeleteDI()
 
 /* a decal projected onto the node's visuals that take decals (0x10000), and below unless one of
  * them is a sub-mesh: the projection from the texture's width, the world matrix built only once
- * a visual needs it (SOCOM 1 built it first), a sub-mesh handed to its mesh.
- * OPEN (2 of 0x278): the sub-mesh call loads its mesh (0x6c) before its index (0x68), the target
- * the index first -- not moved by locals for either, the call as the mesh's member, an inline
- * wrapper, accessors, or reading either through the iterator */
+ * a visual needs it (SOCOM 1 built it first), a sub-mesh handed to its mesh. Byte-exact since round
+ * 27 (the world lane) called the mesh's own ApplyDecal (0x3B8680, the weapons' round 33): a member
+ * call evaluates its arguments before it loads `this`, so the index (0x68) loads before the mesh
+ * (0x6c) as in the target -- the extern "C" placeholder, the mesh its first argument, had them the
+ * other way round (2 instructions) */
 void CNode::ApplyDecal(CNode *node, float size, CPnt3D *pos, CPnt3D *dir, CPnt3D *normal,
                        CTexHandle *tex, float depth, CPnt3D *up)
 {
@@ -946,7 +947,7 @@ void CNode::ApplyDecal(CNode *node, float size, CPnt3D *pos, CPnt3D *dir, CPnt3D
             if ((*it)->m_flags & 0x10000) {
                 if ((*it)->GetType() == 2) {
                     submesh = (CSubMesh *)*it;
-                    func_003B8680(submesh->m_mesh, &mtw, submesh->m_index, size, normal, tex, &uv);
+                    ((CMesh *)submesh->m_mesh)->ApplyDecal(&mtw, submesh->m_index, size, normal, tex, &uv);
                 } else {
                     if (build) {
                         BuildMTW(mtw);
@@ -968,7 +969,7 @@ int CNode::VisualEffectsTick(float dt, void *data)
 {
     CDecal::Tick(dt);
     CRipple::Tick(dt);
-    func_003C0120(data_004B50D0, dt);
+    theTextureFXManager.Tick(dt);
     return 0;
 }
 
@@ -1045,7 +1046,7 @@ int CNode::ScrollTexture(CNode *node, float u, float v, bool b, int index)
 
         if (visual->GetType() == 1)
             return index;
-        index = func_003C0460(data_004B50D0, u, v, b, visual, node, index);
+        index = func_003C0460(&theTextureFXManager, u, v, b, visual, node, index);
     }
     if (m_child.size()) {
         for (CNodeVector::iterator i = m_child.begin(), end = m_child.end(); i != end; ++i)
