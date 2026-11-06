@@ -2065,6 +2065,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 63** (hud_actionbitmap.cpp whole: CZActionBitmap::HudTick 0x21D9D0,
+  CActionTxtrMachine::SpecializeActionString 0x220350, Render_ver_2 0x21F210 and Open 0x21F850 -- all four unwritten before,
+  SOCOM 1's, 6,200 bytes -- byte-exact and named; nine data rows; the SEALs' and the states' respells in four units,
+  SAME-BY-ADDRESS):
+  - a dead first definition placed just before a deferred named local numbers it ahead of that local; the later local is
+    then pushed a sweep earlier and coloured last (HudTick's `count = 0` before the controller -- a marked modelling device,
+    found with `igreplay --move`);
+  - for an unsigned count `count > 1` branches on `sltiu at` as the target does, `count >= 2` computes the compare into a
+    register (8 bytes short); in MW's unrolled `a[i-1] = a[i]` copy the source address is made first -- taking the
+    destination as a reference first (`T *&dst = a[i-1]; dst = a[i];`) gives the target's register order;
+  - `if (t < 0) t = 0;` puts an alignment nop at its join, `t = t < 0 ? 0 : t;` does not; a one-bit field returned as `m_bit
+    ? true : false` keeps the target's sltu, a plain bool return, `!= 0`, an int return or a cast test the bit directly; a
+    signed char field read into a signed local and indexed through `(unsigned char)` gives lb plus andi, an unsigned char
+    local lbu with its constant a daddiu;
+  - a global array element's constant address passed to an inline is folded into every field access (0x9D8 against 0x870);
+    held in one named pointer local, reassigned per block, it stays in one saved register; `bool b = false;` declared before
+    another named local and set in nested ifs keeps the branch form -- declared after it, or tested with `&&`, it becomes a
+    set-on-condition, and a switch adds a case jump;
+  - func_003FE550 (0x1B0) is __sinit_hud_actionbitmap.cpp by its content (it builds g_arrActionTxtrs and
+    ActionTxtrMachine_HUD, registering 0x220C10 / 0x220B50); the unit's file statics stay data_ placeholders until it is
+    written.
 - **Tells from the UI, round 37** (cdeque<const void *>::push_back 0x2858B0 and reserve 0x285A50 byte-exact -- declared in
   include/deque but never defined: defined out of class, additively, so zanim_menu.cpp's tail emits them and the state
   queue's push 0x2852B0 keeps calling them, as the target does; CSnd::m_vagEnabled declared on zsnd.h's CSnd and
