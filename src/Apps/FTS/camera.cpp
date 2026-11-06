@@ -379,8 +379,8 @@ CAppCamera::CAppCamera(zdb::CCamera *cam)
     m_camera_mode = cam_mode_tether;
     m_camera_last_mode = cam_mode_tether;
     m_cam_death_state = 0;
-    m_150 = 0;
-    m_154 = 0;
+    m_killed = 0;
+    m_killer = 0;
     m_goal_t_len = m_camGoalPos.Length();
     func_002956E0(this, ftsGetPlayer(), 0);
     m_wiggle_cur_time = 0.0f;
@@ -1227,8 +1227,120 @@ inline float WrapPi(float a)
         a -= 6.2831855f;
     return a;
 }
-/* the death camera's own look (SOCOM II's, not written: VU0 transform loops) */
-extern "C" unsigned char func_00297A30(CAppCamera *cam, CPnt3D *pos, CPnt3D *aim, CMatrix *rot, float dT);
+
+/* a vector laid flat, its y dropped (ours: the frame proves an inline -- each difference handed
+ * to it lands among the caller's call-result temporaries, below the named points -- and x read
+ * before z, as the target loads them; the three-float constructor's own arguments go z first) */
+inline CPnt3D Flat(const CPnt3D &p)
+{
+    float x = p.x;
+    float z = p.z;
+
+    return CPnt3D(x, 0.0f, z);
+}
+
+/* a point's distance from the axis (ours: in place the point's x is kept in a register for the
+ * push out after it; through the pointer the target reloads it) */
+inline float LengthXZ(const CPnt3D *p)
+{
+    return sqrtf(p->x * p->x + p->z * p->z);
+}
+
+/* the death camera's state stepped (SOCOM 1's UpdateDeathCamState's place: GetDeadCamPoints calls
+ * it first in both; SOCOM II's, not written) */
+extern "C" void func_002980D0(CAppCamera *cam, float dT);
+
+/* the death camera's own look (SOCOM 1's GetDeadCamPoints' place and signature -- GetTetherCamPoints
+ * calls it, it calls UpdateDeathCamState first -- SOCOM II's body): the turn taken from the stick
+ * (the followed SEAL's, a player's, else the killed SEAL's), by state -- 7 the stick's turn, 6 a
+ * slow spin, 3 the point carried about the killed SEAL and turned toward the killer, looking at
+ * it -- the angles wrapped, the pitch held, the point turned by both and at state 3 raised and
+ * pushed out. Returns whether the camera looks at the killer.
+ * OPEN, 2 instructions (unwritten before round 23; build/scratch/core/v_dc*.py): the rotation's
+ * arguments -- the target moves rot_mtx into a1 first and into a0 in the call's delay slot (SOCOM
+ * 1's GetDeadCamPoints too, both its calls), ours a0 first. The no-op conversion that closed
+ * GetTetherCamPoints' (an address) does nothing to a register parameter: casts on either or both
+ * arguments, through unsigned int, int, void * or an address of an element, a void * or const
+ * prototype, the CMatrix conversion operator and member or free inlines taking the matrix all
+ * leave a0 first (build/scratch/core/t_rot*.cpp: every spelling of f(p->m, p->m) does). Settled
+ * on the way: the angle reuses turn_x (the target keeps it in turn_x's $f22), the turn's rate a
+ * local ahead of the right vector, which is built field by field (x read first) */
+extern "C" unsigned char func_00297A30(CAppCamera *cam, CPnt3D *CamPoint, CPnt3D *CamAimPoint, CMatrix *rot_mtx,
+                                       float dT)
+{
+    unsigned char dead_cam_aim_point = 0;
+
+    func_002980D0(cam, dT);
+    CEntityCtrl *control = 0;
+    float turn_x = 0.0f;
+    float turn_y = 0.0f;
+
+    if (cam->m_ctrl && cam->m_ctrl->IsPlayer())
+        control = (CEntityCtrl *)cam->m_ctrl;
+    else if (cam->m_killed)
+        control = cam->m_killed->m_control;
+    if (control) {
+        turn_x = control->m_throttle[2];
+        turn_y = control->m_throttle[3];
+    }
+    switch (cam->m_cam_death_state) {
+    case 7:
+        data_00416208 += 2.0f * turn_x * dT;
+        data_00416210 += 2.0f * turn_y * dT;
+        break;
+    case 6:
+        data_00416208 += 0.8725f * dT;
+        break;
+    case 3: {
+        float speed_multiplier = 1.5f;
+        CPnt3D cam_pos = *CamPoint;
+
+        sceVu0RotMatrixY(rot_mtx->m_matrix, rot_mtx->m_matrix, data_00416208);
+        TransformVectors(rot_mtx, &cam_pos, &cam_pos, 1);
+        rot_mtx->SetIdentity();
+        CPnt3D ent_pos = cam->m_killed->m_posW;
+        CPnt3D shooter_pos = cam->m_killer->m_posW;
+
+        cam->m_killed->GetMatrix()->Transform(&cam_pos, 1);
+        CPnt3D cam_dir = Flat(cam_pos - ent_pos);
+        CPnt3D shooter_dir = Flat(ent_pos - shooter_pos);
+
+        cam_dir.Normalize();
+        shooter_dir.Normalize();
+        dead_cam_aim_point = 1;
+        float rate = 0.8725f * speed_multiplier;
+        CPnt3D cam_right_vec;
+
+        cam_right_vec.x = shooter_dir.z;
+        cam_right_vec.y = 0.0f;
+        cam_right_vec.z = -shooter_dir.x;
+        turn_x = -(cam_dir.x * cam_right_vec.x + cam_dir.z * cam_right_vec.z);
+        *CamAimPoint = shooter_pos;
+        data_00416208 += dT * (rate * turn_x);
+        break;
+    }
+    }
+    data_00416208 = WrapPi(data_00416208);
+    float aim = WrapPi(data_00416210);
+
+    if (cam->m_bc && cam->m_bc->m_netlife != 1)
+        aim = ClampF(aim, -1.0f, -0.2f);
+    else
+        aim = ClampF(aim, -1.0f, 1.0f);
+    data_00416210 = aim;
+    CPnt3D euler(data_00416210, data_00416208, 0.0f);
+
+    rot_mtx->SetRotate(&euler);
+    TransformVectors(rot_mtx, CamPoint, CamPoint, 1);
+    if (cam->m_cam_death_state == 3) {
+        CamPoint->y += (20.0f - CamPoint->y) * data_00416218;
+        if (LengthXZ(CamPoint) < 56.0f) {
+            CamPoint->x += 1.05f * CamPoint->x;
+            CamPoint->z += 1.05f * CamPoint->z;
+        }
+    }
+    return dead_cam_aim_point;
+}
 
 /* the tether's points for a SEAL down (SOCOM II's): its death begun -- a dying blend or state 8, a
  * player's -- the death camera's look taken (unpaused) or the view turned about the SEAL as it

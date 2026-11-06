@@ -362,8 +362,11 @@ public:
     unsigned char _145[0x148 - 0x145];
     float m_death_state_timer;   // 0x148 (SOCOM 1: 0x98)
     unsigned char _14c[0x150 - 0x14c];
-    void *m_150;   // 0x150 (SOCOM II's, the constructor clears these two; the names ours)
-    void *m_154;   // 0x154
+    /* the SEAL killed and its killer (SOCOM 1's m_killed / m_killer at 0x9C / 0xA0, their names:
+     * the death camera's look carries its point about the first and aims at the second; the
+     * constructor clears both) */
+    CZSealBody *m_killed;   // 0x150
+    CZSealBody *m_killer;   // 0x154
     unsigned char _158[0x188 - 0x158];
 };   // 0x188 bytes (LoadWorld news 392)
 
