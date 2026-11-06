@@ -17,9 +17,9 @@
  * headers' round 17: the temporary's SECOND string's inlined destructor keeps the member's address in
  * a0 and reads the text pointer through it (`lw a0,8(a0)`) once include/string's destructor reads the
  * text as a `charT *` through the words (its comment).
- * OPEN, the tail's string pieces: the CSaferStr erase 0x383BC0 (15) and __copy 0x383D00 (the
- * copy here calls is_long() out of line) and the model vector's erase 0x384BD0 (20); the model's
- * copy constructor 0x3854C0 is byte-exact since the MSL headers' round 18 (include/string's copy
+ * The CSaferStr erase 0x383BC0, the dialog objects' 0x384410 and the model vector's 0x384BD0 are
+ * byte-exact since the MSL headers' round 40 (their end an object: the trait at this file's end); the
+ * model's copy constructor 0x3854C0 is byte-exact since the MSL headers' round 18 (include/string's copy
  * constructor reads the long size through a reference accessor: the second string's address of it
  * kept in s3 across reserve).
  * Round 39: the two big constructors written, byte-exact: CButtonSpec's 0x380620 (0xC8C) and CUIListBoxSpec's
@@ -42,6 +42,9 @@
  * target calls it after the out-of-line placement new -- include/vector's construct cut, the
  * integrator's accepted loss of round 20). */
 
+/* a class element's destroy a level of its own (include/vector, a modelling device): the tall elements' deleter destructor stays a call in
+ * their inserts -- insert<CDesignDlgObj> 0x384620 calls 0x36AC80 with -1 */
+#define __MSL_VECTOR_DESTROY_LEVEL
 #include "zui_2d.h"
 
 /* a real the rdr may give, else the default (ours: the counter's StartTime initialises its member
@@ -1250,6 +1253,16 @@ CUIMapCtrlSpec::CUIMapCtrlSpec(_zrdr *rdr) : CDlgObjSpec(rdr)
     }
 }
 
+/* erase<CSaferStr> 0x383BC0's, erase<CDesignDlgObj> 0x384410's and erase<CDlgDesignModel> 0x384BD0's end an object, coloured first:
+ * include/vector's __erase_end_object, a marked modelling device (the MSL headers round 40) */
+namespace std {
+template <> struct __erase_end_object<CSaferStr> { enum { value = 1 }; };
+template <> struct __erase_end_object<CDlgDesignModel> { enum { value = 1 }; };
+template <> struct __erase_end_object<CDesignDlgObj> { enum { value = 1 }; };
+}
+
 /* insert<CDlgDesignModel> 0x384ED0's end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the AI
  * core's round 37 measured this opt-in, +1 and nothing lost in this unit; what the original wrote is not found) */
 namespace std { template <> struct __insert_end_pointer<CDlgDesignModel> { enum { value = 1 }; }; }
+/* (insert<CDesignDlgObj> 0x384620's, the same) */
+namespace std { template <> struct __insert_end_pointer<CDesignDlgObj> { enum { value = 1 }; }; }

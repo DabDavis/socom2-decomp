@@ -94,6 +94,11 @@
 #ifndef _MSL_VECTOR
 #define _MSL_VECTOR
 
+/* (the opt-in's comment at the head of the 1-byte pod below) */
+#if defined(__MSL_POD_DTOR_ARGS) && !defined(__MSL_VECTOR_DESTROY_LEVEL)
+#define __MSL_VECTOR_DESTROY_LEVEL
+#endif
+
 #include <algorithm>
 #include <iterator>
 #include <memory>
@@ -178,7 +183,7 @@ public:
      * insert (LOD, CDesignDlgObj, the turret's) and once by vector<C2DPoly>::reserve (0x361790,
      * byte-exact so); a smaller element inlines both, as the loops always did. The name ours */
     static void construct(T *p, const T &x) { new (p) T(x); }
-#ifdef __MSL_POD_DTOR_ARGS
+#ifdef __MSL_VECTOR_DESTROY_LEVEL
     /* the element's destroy a level of its own (the opt-in's comment at the head of the 1-byte pod below) */
     static void __destroy(T *p) { p->~T(); }
 #endif
@@ -241,7 +246,7 @@ void __vector_deleter<T, Allocator>::clear()
     T *last = data_ + size_;
 
     while (first < last)
-#ifdef __MSL_POD_DTOR_ARGS
+#ifdef __MSL_VECTOR_DESTROY_LEVEL
         __destroy(--last);
 #else
         (--last)->~T();
@@ -1639,18 +1644,36 @@ void __vector_imp<T, Allocator, IsPOD>::reserve(unsigned int n)
  * want the plain local's low number -- the end's place is per ELEMENT (the elements whose destructor
  * inlines a string's free), as the insert's is. `end().m_p`, data() and a later declaration change
  * nothing or lose more: left as it was */
+/* THE END'S FORM, PER ELEMENT: A MODELLING DEVICE, the insert's __insert_end_pointer over this erase (the MSL headers round 40): round 18's measured
+ * `iterator e = end();` -- the end a scalarised class object, numbered after the named locals, coloured ahead of the count and the destroy cursor --
+ * chosen by the element, the plain local everywhere else (`value ? eo.m_p : ep` folds at the front end: objcmp, every other object byte-identical).
+ * A unit specialises it: erase<CSaferStr> 0x383BC0, erase<CDesignDlgObj> 0x384410, erase<CDlgDesignModel> 0x384BD0 (zui_spec.cpp); measured,
+ * erase<zrdr_sym> 0x3323F0 (the world's zrdr_parse.cpp). What the original wrote to number the two populations apart is not found: this stands for it */
+template <class T>
+struct __erase_end_object {
+    enum { value = 0 };
+};
+
+#define __VE_END (__erase_end_object<T>::value ? eo.m_p : ep)
+
 template <class T, class Allocator, bool IsPOD>
 T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
 {
     if (first == last)
         return first;
-    T *e = this->data_ + this->size_;
-    int n = e - last;
+    iterator eo;
+    T *ep;
+
+    if (__erase_end_object<T>::value)
+        eo = this->end();
+    else
+        ep = this->data_ + this->size_;
+    int n = __VE_END - last;
 
     if (n)
-        std::copy(last, e, first);
-    for (T *p = first + n; p < e; ++p)
-#ifdef __MSL_POD_DTOR_ARGS
+        std::copy(last, __VE_END, first);
+    for (T *p = first + n; p < __VE_END; ++p)
+#ifdef __MSL_VECTOR_DESTROY_LEVEL
         this->__destroy(p);
 #else
         p->~T();
@@ -1658,6 +1681,7 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
     this->size_ -= last - first;
     return first;
 }
+#undef __VE_END
 
 /* one element erased: the elements after it assigned down one place, the count cut, the position
  * handed back (the 4888-byte accounts' 0x2FE230: the count after it tested first, the source
