@@ -441,6 +441,7 @@ public:
     C2DMessage_Q();   /* 0x2B7610 */
     ~C2DMessage_Q();   /* 0x2B6EE0 */
     void Clear_Messages();   /* 0x2B6DE0 */
+    void ScrollUp(float dT);   /* 0x2B6430 (fts_message.cpp's: SOCOM 1's ScrollUp(), grown) */
     void ResetScroll();
 
     unsigned char _0[0x438];
@@ -2843,16 +2844,12 @@ bool CMission::ReOpen_Unload2()
     return true;
 }
 
-extern "C" {
-void func_002B6430(C2DMessage_Q *q, float dT);   /* (fts_message.cpp's: SOCOM 1's ScrollUp here) */
-}
-
 /* a queue's lines gone and its scroll put back (SOCOM 1's ScrollUp and the two members, SOCOM II's
  * clear first; the name ours) */
 inline void C2DMessage_Q::ResetScroll()
 {
     Clear_Messages();
-    func_002B6430(this, 0.0f);
+    ScrollUp(0.0f);
     m_moveTime = 2.0f;
     m_cur_top = (int)m_target_top;
 }

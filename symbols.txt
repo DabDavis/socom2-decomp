@@ -3994,8 +3994,8 @@
 0x002B5830 0x580 Draw__12C2DMessage_QFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the states lane, round 49): slot 0xC of C2DMessage_Q's vtable 0x4063B0 (after the destructor 0x2B6EE0, before C2D's inline Draw(matrix) copy), SOCOM 1's Draw__12C2DMessage_QFPQ23zdb7CCamera in the same slot (0x1FF9A0); IsOn, the lines placed and faded, the two backgrounds SetPos'd and drawn, C2D::Draw last as SOCOM 1's; fts_message.cpp, byte-exact
 0x002B5DB0 0x5FC Tick__12C2DMessage_QFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B63B0 0x78 __dt__16C2DMessageStringFv  # OVL1; s1:calls
-0x002B6430 0xF4 func_002B6430  # OVL1
-0x002B6530 0x7CC func_002B6530  # OVL1
+0x002B6430 0xF4 ScrollUp__12C2DMessage_QFf  # OVL1; s1:name by hand (the states lane, round 51): SOCOM 1's C2DMessage_Q::ScrollUp() (0x200100 there: -m_YMargin to m_target_top, the distance from m_cur_top, the move time cleared) is this function's descending-queue branch; SOCOM II adds the ascending queue's background fade-in by dT and the float; CMission::ReOpen_Load calls it with 0 for each of its three queues, Tick inlines it three times; fts_message.cpp
+0x002B6530 0x7CC Add_Message__12C2DMessage_QFPCc7MSGTYPEbif  # OVL1; s1:calls by hand (the states lane, round 51): SOCOM 1's C2DMessage_Q::Add_Message(text, r, g, b) grown -- the same new C2DMessageString and scratch C2DString, the same measure, strstr(text, " "), walk back to a space, strncpy into a 512-byte buffer and recursive call on the rest; SOCOM II's type indexes the colour table 0x440C70, the bool its m_isCentered, the int its display time, the float its scale (x1.1429); fts_message.cpp
 0x002B6D00 0x60 SetBkgColor__12C2DMessage_QFfff  # OVL1; s1:align
 0x002B6D60 0x78 LastMessage__12C2DMessage_QFv  # OVL1; s1:order by hand (the states lane, round 17): SOCOM 1's LastMessage (0x200890) sits between SetBkgColor and Clear_Messages as this does, and does the same -- the list's last line's text, "" with none; fts_message.cpp (open)
 0x002B6DE0 0xF4 Clear_Messages__12C2DMessage_QFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::ReleaseHUD's three calls on its message queues, as SOCOM 1's)
