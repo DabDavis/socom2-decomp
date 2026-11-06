@@ -14009,6 +14009,65 @@ superseded; `src/lib/asr` 585 of 614 (582 of 610 before). No rows renamed (all h
 tool changed (scratch: build/scratch/gcc/r36/ -- vt.py scores a unit's variants with their
 allocation priorities, allunits.py scores every asr unit, v_*.py the variants).
 
+**Round 37c: three of the casr object's unwritten rows by SOCOM 1's bodies -- the parameter setter, the
+acquisition, the context activation.**
+
+- **Which copy of a cross-jumped tail survives is decided by the jump chain's order** (casrSetParam,
+  281 words -> 0): jump2 walks the insns forward and tries each jump against the label's chain, which
+  lists the jumps last-first, so with every case ending in `break` (all in the exit label's chain from
+  the start) the first case's `_tosControl` tail is redirected into the LAST case's copy. The target kept
+  case 1's: its cases end in `return (unsigned char)c->last_error;` (the failure exits too) -- each such
+  return is first moved onto the copy after the switch (the code before the return label: one insn,
+  minimum 1), and only then joins the exit label's chain, as it is processed; so each later case finds
+  only the earlier ones and cross-jumps into case 1's send. A label in the way stops a merge (case 4's
+  failure return keeps its own first send), and jump optimisation inverts what is left into the
+  target's `beqz ...; b exit`.
+- **An inline's arguments are expanded as sums** (integrate.c, EXPAND_SUM): a pointer sum passed to an
+  inline puts the shift first (`addu t1,v1,a2`); computed into a variable by a statement it keeps the
+  source's order (`tab + tab[n]`: `addu t1,a3,v1`). **An inline that walks its own parameter** (`for (;
+  first <= last; first++)`) copies the argument before the body's first test -- a `p = first` per loop
+  copies it in each arm -- which moved a conflict and gave the target's dict a2, tab a3; a local `n`
+  (rather than `rc->n` twice) lets GCSE reuse `n * 4` for `tab[n]` across the join.
+- **The extern-inline redefinition carries a whole function into its later callers** (casrSetParam,
+  casrAcquisition): Set_EndBackTraceMask_In_StateDict and casrDoSecondPass, both rows near the object's
+  end, are inlined into callers above them -- an `extern __inline__` copy before the caller, the real
+  definition below; a caller above the inline (casrStop) keeps its jal. casrDoSecondPass is
+  `unsigned char` (the inlined store-flag's `andi v0,v1,0xff`); its own row and casrStop are the same
+  either way.
+- **A guard written as the condition, not an early return** (casrActivateContext, 206 words -> 6): `if
+  (c->state == 1) return 0; c->state = 1; ...cb(1, ...)` gives the compare's constant the callback's a0
+  (the call's own `li` then goes: measured, 206 words); `if (c->state != 1) { c->state = 1; ...cb(c->state, ...)
+  }` is the target's v1 for compare and store and a fresh `li a0,1` (CSE folds the reloaded halfword to
+  the constant). Then a `?:` of two function pointers called once against an if/else of two calls (the
+  store's place before the next call's argument), and two stores to a local record written in the
+  reverse of the target's order (round 27c's rule): 0.
+- **A declaration's initialiser is its statement's place**: `int err = casrCheckHandle(c); int acc =
+  0;` puts acc's zero after the inline's join (the target's `move s5,zero` between the movz and the
+  test); `int acc = 0;` first schedules it into the prologue.
+- **Two adjacent byte flags tested together are one halfword load** (fold_truthop): `c->use_dp == 0 &&
+  c->iso_word == 0` is the target's `lhu v0,576(s0)`.
+- **Open, diagnosed in place**: the older opens (their diagnoses stand; Calculate_NbrOfItemNodes_In_...:
+  the recursion loop's walker a variable of its own, block-scoped or not, 33; the counting loop's 32).
+  Not reached: BacktraceWordsParBT (the brief's block-scoping rule has nothing to act on: every variable
+  in the swap spans blocks, so all go to global-alloc), cbIsoWordRecognised (0x678, 20 frame slots,
+  floats), casrActivateData (0x620), cbCheckConfusion (0x42C: struct copies by ldl/sdl and soft-float
+  doubles), casrDoSpelling, casrCheckUserWordConfusion, casrCreateResult, the Chinese builders,
+  CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust, the distance passes, InitCalculateDistances.
+
+Hand-written in round 37c: `asr/casr.c` (casrSetParam, casrAcquisition and casrActivateContext new, each
+with SOCOM 1's body; the extern inlines of Set_EndBackTraceMask_In_StateDict and casrDoSecondPass; CTXVT's
+slots 15 and 20 named IsSpellingContext and IsIsoWordContext, contextv2.c's table; the object's RUNCTX,
+CTXDATA and UWTABLES as far as these read them: 61 of 61), `asr/casr.h` (+496 p496, +500 p500, +688
+`pending` (the part frame's bytes), +1072 `wtp`, +1092 f1092 from pads; LANGVT slots 26 and 27
+GetRecogWTP and GetSpellingWTP, language.c's table), `asr/chinese_tree.c` (Translate_Prons_Into_Items_
+And_Tones_TreeCtx written OPEN, 116 words and two short: the kind read once through the walker's first
+post-increment (161 read in the loop), then registers; 2 of 5) -- 3 rows new to the map's byte-exact rows
+(3,604 bytes), no draft superseded; `src/lib/asr` 588 of 618 (585 of 614 before). No rows renamed (all three
+had SOCOM 1's names). No tool changed (scratch: build/scratch/gcc/r37/ -- vt.py scores a unit's variants,
+open37.py lists the range's open rows and their units, rank.py ranks unwritten rows by SOCOM 1's
+mnemonic ratio, vsplit.py writes a `//==` probe's variants as units, sdiff.py side by side, p_xj.c the
+cross-jump probe).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
