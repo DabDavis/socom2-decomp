@@ -8451,9 +8451,11 @@
 0x004CCDF8 ASRSPICBRESULT
 0x004CCE90 CreateSecondPassInfo
 0x004CD190 CreateExEvCtxInfo
+0x004CD620 CreateCtxInfo
 0x004CE258 FreeCtxInfo
 0x004CE430 CalcAccuracyCtxInfo
 0x004CE4E8 CreateMenuMasks
+0x004CFB60 FillOut_Syntax_Statedict_And_Wordprops_ForChinese
 0x004D0008 FreeSecondPassContext_ForChinese
 0x004D0980 Tone_Of_Final
 0x004D09A8 Calculate_NbrOfStatesInDict_ForChinese
@@ -8461,8 +8463,11 @@
 0x004D1C18 GetSecondPassInfo
 0x004D1EA0 putWordInDict
 0x004D3318 AllocateNodeAndFreePrevious
+0x004D3450 func_004D3450
+0x004D3760 AddFollowers
 0x004D4050 intCreateCtxTree
 0x004D45A8 CalcNrNodes10
+0x004D47B0 GetIsolatedWordDpActiveWords
 0x004D5058 SetIsolatedWordDpActiveWords
 0x004D52F8 CreateCtxTree
 0x004D5318 CalcAccuracyCtxTree
@@ -8473,9 +8478,11 @@
 0x004D59B8 _GetWordsInTree
 0x004D5AA8 CompareIDs
 0x004D5AB8 CreateActiveWordsCtxTree
+0x004D6FC0 FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx
 0x004D7460 func_004D7460
 0x004D8140 Tone_Of_Final_TreeCtx
 0x004D8168 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx
+0x004D8398 casrCreateResult
 0x004D9278 cbIsoWordRecognised
 0x004D98F0 cbDoSecondPassIfEnabled
 0x004D9AC8 casrEnableGenders
@@ -8621,6 +8628,7 @@
 0x004E8AE8 InitIsoWordTokenDpContext
 0x004E8D78 FreeIsoWordTokenDp
 0x004E8EA8 InitNewUtterance
+0x004E9360 RePruneToPho
 0x004EAA28 ExpandGarbageArrays@isowdp
 0x004EAB30 IsoWordTokenDpProcess
 0x004EAE38 GetNBest
@@ -8744,6 +8752,8 @@
 0x004FD4E8 ResizeQueues
 0x004FD5C8 func_004FD5C8
 0x004FD7F8 LoadLanguage
+0x004FDE08 DistCalc
+0x004FE6C8 DistCalc4Bit
 0x004FF158 FreeLanguage
 0x004FF380 FreeDistCalc
 0x004FF5A8 InitDistSilProcess
