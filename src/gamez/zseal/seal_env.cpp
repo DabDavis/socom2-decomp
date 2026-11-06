@@ -805,11 +805,192 @@ static inline void HangDeathCallback(CZBodyAnimBlend *b)
     }
 }
 
+extern "C" {
+/* (OVL2 0x5A2390, 0x5A2490, 0x5A21B0, below; 0x539E90 and 0x545EE0, this unit's declarations further on) */
+CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type);
+CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type);
+CZBodyAnimBlend *func_005A21B0(CZSealBody *seal);
+CPnt3D *func_00539E90(CPnt3D *to, const CPnt3D *from);
+bool func_00588030(CZSealBody *seal);
+AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state);
+/* the sets of the two zombies' anims a hit does not show (OVL1 bss) */
+extern class AnimSet *data_0044D400;
+extern class AnimSet *data_0044D410;
+extern short data_003DEE08;
+extern short data_003DEE20;
+extern short data_003DEE48;
+extern short data_003DEE40;
+extern short data_003DEE18;
+extern short data_003DEE30;
+extern short data_003DEE38;
+extern short data_003DEDB0;
+extern short data_003DEDB8;
+extern short data_003DEF70;
+extern short data_003DEDF0;
+extern short data_003DEDF8;
+extern short data_003DEE00;
+}
+
+/* a blend's homing reset through CPnt3D's out-of-line assignment (an inline, the name ours: CHoming::Reset's
+ * order) */
+static inline void ResetHoming(CHoming *h)
+{
+    h->m_blend = 0;
+    func_00539E90(&h->m_refpt_m, &CPnt3D::zero);
+    func_00539E90(&h->m_norm_w, &CPnt3D::zero);
+    func_00539E90(&h->m_int_w, &CPnt3D::zero);
+    h->m_1c = 0;
+    h->m_2c = 0;
+    func_00539E90(&h->m_refvec_m, &CPnt3D::zero);
+    func_00539E90(&h->m_target_refpt_m, &CPnt3D::zero);
+}
+
+/* the anim a hit shows (SOCOM 1's WeaponHitAnim; OVL2 0x5A2690, grown): none named and dead: a death anim; a
+ * carried body's homing let go; in the fall's anims only the state, a corpse's twitch while it can; a new death
+ * by its anim; a living flinch unless a hold, a reload or its anim sets forbid */
+void CZSealBody::WeaponHitAnim(AnimType anim, SEAL_STATE state)
+{
+    if ((short)anim == -1) {
+        if ((unsigned char)state == 8 || !m_isAlive) {
+            bool b = false;
+
+            anim = FindRandomDeathAnim((DAMAGE_LOCATION)3, &b);
+            state = (SEAL_STATE)8;
+            if ((short)anim == -1)
+                return;
+        } else
+            return;
+    }
+    if (m_carry) {
+        if (TopBlend()->m_homing.m_blend) {
+            ResetHoming(&TopBlend()->m_homing);
+            if (m_carry) {
+                m_carry->m_carry = 0;
+                m_carry = 0;
+            }
+        } else if (m_carry->TopBlend()->m_homing.m_blend) {
+            ResetHoming(&m_carry->TopBlend()->m_homing);
+            if (m_carry) {
+                m_carry->m_carry = 0;
+                m_carry = 0;
+            }
+        }
+    }
+    CZBodyAnimBlend *hit;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    unsigned char topstate = top->m_state;
+
+    hit = 0;
+
+    if (func_00588030(this)) {
+        if ((unsigned char)state == 8 || !m_isAlive)
+            top->m_state = 8;
+        return;
+    }
+    unsigned char alive = m_isAlive;
+
+    if (!alive && m_state == 8)
+        return;
+    if (!alive && (unsigned char)state != 8) {
+        bool b = false;
+
+        state = (SEAL_STATE)8;
+        anim = FindRandomDeathAnim((DAMAGE_LOCATION)3, &b);
+    }
+    if (m_state == 9) {
+        if ((unsigned char)state != 8 || topstate == 8)
+            return;
+        if (m_carry)
+            DropBody();
+    } else if (IsCurrentBlend((AnimType)data_003DEE08) || IsCurrentBlend((AnimType)data_003DEE20)) {
+        if ((unsigned char)state != 8)
+            return;
+        if (m_carry)
+            DropBody();
+    } else if (IsCurrentBlend((AnimType)data_003DEE48)) {
+        if ((unsigned char)state != 8)
+            return;
+        CZSealBody *carry = m_carry;
+
+        if (carry) {
+            carry->DetachBody();
+            carry->PopBlend();
+        }
+    } else if (IsCurrentBlend((AnimType)data_003DEE40)) {
+        if ((unsigned char)state != 8)
+            return;
+        CZSealBody *carry = m_carry;
+
+        if (carry) {
+            carry->DropBody();
+            carry->ClearToBase(false);
+        }
+        return;
+    } else if (m_state == 10 || IsCurrentBlend((AnimType)data_003DEE18) || IsCurrentBlend((AnimType)data_003DEE30) ||
+               IsCurrentBlend((AnimType)data_003DEE38))
+        return;
+    if (topstate == 8) {
+        if (data_0045A0C1)
+            return;
+        if (IsCurrentBlend((AnimType)data_003DEDB0) || IsCurrentBlend((AnimType)data_003DEDB8))
+            return;
+        float t = top->m_tfrac;
+
+        if (!(t <= 0.35f) || t < 0.05f || !(m_14d0 < 3))
+            return;
+        if (GetRootPart()->m_pos.y < 5.0f)
+            anim = func_005A0950(this, (DAMAGE_LOCATION)3, (SEAL_STATE)2);
+        if ((short)anim == -1) {
+            bool b = false;
+
+            anim = FindRandomDeathAnim((DAMAGE_LOCATION)3, &b);
+        }
+        func_005A2490(this, anim);
+        m_14d0++;
+        return;
+    }
+    if ((unsigned char)state == 8) {
+        if (m_state == 5)
+            func_005A21B0(this);
+        else {
+            if (GetRootPart()->m_pos.y < 5.0f)
+                anim = func_005A0950(this, (DAMAGE_LOCATION)3, (SEAL_STATE)2);
+            if (IsCurrentBlend((AnimType)data_003DEF70)) {
+                if (top->m_callback.m_func)
+                    top->m_callback.m_func(this, top->m_callback.m_userdata);
+                top->m_callback.Clear();
+            }
+            if ((short)anim == -1) {
+                bool b = false;
+
+                anim = FindRandomDeathAnim((DAMAGE_LOCATION)3, &b);
+            }
+            func_005A2490(this, anim);
+        }
+        m_14d0++;
+        return;
+    }
+    if (IsChangingWeapons(true))
+        return;
+    if (IsCurrentBlend((AnimType)data_003DEDF0) || IsCurrentBlend((AnimType)data_003DEDF8) || IsCurrentBlend((AnimType)data_003DEE00))
+        return;
+    if (m_state == 5 || m_state == 9 || m_animset == data_0044D400 || m_animset == data_0044D410)
+        return;
+    if (func_005551A0(top->m_flags, 64)) {
+        if (IsCurrentBlend((AnimType)1) || IsCurrentBlend((AnimType)18) || IsCurrentBlend((AnimType)26))
+            hit = func_005A2390(this, anim);
+    } else
+        hit = func_005A2390(this, anim);
+    if (hit)
+        hit->m_flags = func_0058A920(hit->m_flags, 2, true);
+}
+
 /* a death by an anim type: the overlay's anims and 0x5A5DA0 first, the SEAL off its ladder and its
  * hold let go, unstunned, the blends cleared to the base and the anim pushed dead (state 8, kind 13)
  * with the death's callback, the push told to the network as event 14 (OVL2 0x5A2490, new in SOCOM
  * II; the name unknown). 0x5B14E0 inlined, its ladder lookup's load order the hold's unsigned index
  * (round 34, below). */
+#pragma auto_inline off
 extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
 {
     func_005781C0(seal);
@@ -824,6 +1005,7 @@ extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
     func_00588AB0(seal, 14, type);
     return b;
 }
+#pragma auto_inline reset
 
 /* an anim pushed on a living SEAL, kind 13 with the blend's bits 2 and 1 set -- refused when its top
  * blend or itself is dead, or while it holds the entity at 0xEB8 -- and the push told to the network
@@ -849,6 +1031,7 @@ extern "C" CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type)
  * cleared to the base and AnimTypes' 0x3DEED8 pushed dead with the death's callback; bit 9 set and
  * 10 cleared, the kept velocity zeroed, the altitude where it stands, the push of anim 34 told to the
  * network (OVL2 0x5A21B0, new in SOCOM II; the name unknown) */
+#pragma auto_inline off
 extern "C" CZBodyAnimBlend *func_005A21B0(CZSealBody *seal)
 {
     func_0059D750(seal);
@@ -866,6 +1049,7 @@ extern "C" CZBodyAnimBlend *func_005A21B0(CZSealBody *seal)
     func_00588B40(seal, 21);
     return b;
 }
+#pragma auto_inline reset
 
 /* an entity that is a SEAL (kind 2), or none (the inline cast HandleWeaponEvent's walk and ReportWeaponHitDamage show) */
 static inline CZSealBody *AsSeal(CEntity *e)
@@ -6484,6 +6668,7 @@ extern short data_003DEF08;
 extern AnimSet *data_0044D3F8;
 extern AnimSet *data_0044D410;
 bool func_00588030(CZSealBody *seal);
+AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state);
 bool func_00587FE0(CZSealBody *seal);
 bool func_00587F90(CZSealBody *seal);
 bool func_00587F50(CZSealBody *seal);

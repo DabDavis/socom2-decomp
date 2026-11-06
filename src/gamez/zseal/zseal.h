@@ -2945,7 +2945,9 @@ public:
     zdb::CNode *m_curr_firept;   // 0x14bc
     unsigned char _14c0[0x14cc - 0x14c0];
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
-    unsigned char _14ce[0x14e0 - 0x14ce];   // (0x14E0 bytes: Create news 5344)
+    unsigned char _14ce[0x14d0 - 0x14ce];
+    int m_14d0;   // 0x14d0: the hits a dying SEAL has shown (WeaponHitAnim; the name ours)
+    unsigned char _14d4[0x14e0 - 0x14d4];   // (0x14E0 bytes: Create news 5344)
 };
 
 inline void *CSealCtrlAi::GetSelect()

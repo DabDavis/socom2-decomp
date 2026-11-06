@@ -3828,6 +3828,87 @@ extern "C" float func_005698A0(CSealCtrlAi *ai)
 extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out,
                                       int n, int *got);
 
+/* OPEN, 3 instructions: `sw s1,180(sp)` and `addiu s7,sp,216` swapped (the first falls in the mask test's delay
+ * slot here, the second in the target's) -- every register right. Tried: the stores in both orders, the flags
+ * computed inside the block (a0 takes them), a named pointer for the cells.
+ * the direction with the most (or with mask bit 19 the fewest) cells to it around a spot: counted by travel (mask
+ * bit 16) or by sight, a sight's count its neighbours' too; the eight, or with a heading those nearest it first --
+ * three with bit 17, five with bit 18; the count and the last cell that way handed back (OVL2 0x559580, new in
+ * SOCOM II: the AI's states ask it; the name ours) */
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out,
+                                     int n, int *got)
+{
+    CAiMap::DIR best = (CAiMap::DIR)0;
+    CAiMap *map = AiMaps.GetMapByIndex(loc->m_mapid);
+    unsigned int flags = mask & 0xffff;
+
+    if (map) {
+        MAP_DIRCOUNT dc;
+        int totals[8];
+
+        dc.m_range = n;
+        dc.m_flags = flags;
+        if (mask & 0x10000) {
+            map->CountMapTravelDir(*loc, &dc);
+            memcpy(totals, dc.m_count, sizeof(totals));
+        } else {
+            map->CountMapVisDir(*loc, &dc);
+            int *c = dc.m_count;
+
+            totals[0] = dc.m_count[7] + (c[0] + dc.m_count[1]);
+            totals[1] = dc.m_count[0] + (c[1] + dc.m_count[2]);
+            totals[2] = dc.m_count[1] + (c[2] + dc.m_count[3]);
+            totals[3] = dc.m_count[2] + (c[3] + dc.m_count[4]);
+            totals[4] = dc.m_count[3] + (c[4] + dc.m_count[5]);
+            totals[5] = dc.m_count[4] + (c[5] + dc.m_count[6]);
+            totals[6] = dc.m_count[5] + (c[6] + dc.m_count[7]);
+            totals[7] = dc.m_count[6] + (c[7] + dc.m_count[0]);
+        }
+        int count = 8;
+        CAiMap::DIR order[8] = { (CAiMap::DIR)0, (CAiMap::DIR)1, (CAiMap::DIR)2, (CAiMap::DIR)3,
+                                 (CAiMap::DIR)4, (CAiMap::DIR)5, (CAiMap::DIR)6, (CAiMap::DIR)7 };
+
+        if (dir) {
+            CPnt3D d;
+
+            dir->Normalize(&d);
+            best = CAiMap::GetClosestDir(&d);
+            int b = (unsigned char)best;
+
+            order[0] = best;
+            order[1] = (CAiMap::DIR)((b + 7) % 8);
+            order[2] = (CAiMap::DIR)((b + 9) % 8);
+            order[3] = (CAiMap::DIR)((b + 6) % 8);
+            order[4] = (CAiMap::DIR)((b + 10) % 8);
+            order[5] = (CAiMap::DIR)((b + 5) % 8);
+            order[6] = (CAiMap::DIR)((b + 11) % 8);
+            order[7] = (CAiMap::DIR)((b + 12) % 8);
+            if (mask & 0x20000)
+                count = 3;
+            else if (mask & 0x40000)
+                count = 5;
+        }
+        int i;
+
+        if (!(mask & 0x80000)) {
+            for (i = 0; i < count; i++) {
+                if (totals[(unsigned char)order[i]] > totals[(unsigned char)best])
+                    best = order[i];
+            }
+        } else {
+            for (i = 0; i < count; i++) {
+                if (totals[(unsigned char)order[i]] < totals[(unsigned char)best])
+                    best = order[i];
+            }
+        }
+        if (got)
+            *got = dc.m_count[(unsigned char)best];
+        if (out)
+            *out = dc.m_loc[(unsigned char)best];
+    }
+    return best;
+}
+
 /* the AI's glance around before it creeps: while it has a target or acts the countdown is held at 0;
  * else run down, and on expiry restarted at a random 10 to 15 (a guarded function-local Rfloat,
  * 0x66B208/0x66B210) and -- with no look of a higher mode -- a normal look set toward a direction the
