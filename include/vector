@@ -1087,13 +1087,26 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
      * 24 request, measured again over every hand-written unit, master 2e5dc150): that symmetric end(),
      * the raw end a level below __iter as begin()'s raw begin is, is CountKeys' alone and costs 217 --
      * every walk whose end is a loop test's argument, a level deeper (its 65 "gains" are each unit's
-     * out-of-line copy of the pod's end(), 0x34D920's code, cut and emitted): a level-6 witness */
+     * out-of-line copy of the pod's end(), 0x34D920's code, cut and emitted): a level-6 witness.
+     * THE MSL HEADERS ROUND 39 READ WHY, IN MW'S INLINER (CInline_ExpandStatement, CInline_SetupArgsExpression): a call that is a whole
+     * statement is expanded without walking its arguments, so they wait a pass; a call inside an expression has its arguments expanded
+     * first, in the same pass. `__iter(__raw_end())` is a whole statement where end() is -- `e = end()`, and a `!=` test's end too, since
+     * a by-reference inline parameter takes the call's hidden result and hoists the call into a statement of its own -- so the raw end
+     * waits a pass in both; only where the `!=` itself sits inside an expression (NextFile's `?:`) do the two forms agree. So no form of
+     * end() tells CountKeys' `e = end()` from _countKeys' `i != end()`: an opt-in by unit, A MODELLING DEVICE: `#define __MSL_VECTOR_END_ARG`
+     * ahead of zar_key.cpp's includes makes CountKeys byte-exact, 0x257C30 and the rest of the unit holding (its other walks, Write and
+     * DeleteChildren, miss either way); by name it cannot be, the fourth copy's cut call must name end(). Measured; left to the engine core,
+     * whose unit it is (a member by another name is 1 reference off for that reason) */
+#ifdef __MSL_VECTOR_END_ARG
+    iterator end() { return __iter(__raw_end()); }
+#else
     iterator end()
     {
         unsigned int *const p = __raw_end();
 
         return __iter(p);
     }
+#endif
     /* the base's, cast: through end() it would be a level taller (CZAR::GetOpenKey inlines it) */
     T *&back() { return (T *&)__base::back(); }
     /* the range erased, the iterators read through pointer references: their addresses taken, MW
