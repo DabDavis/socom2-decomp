@@ -58,6 +58,10 @@ class CAppCamera {
 public:
     virtual void Tick(float dT);
     virtual bool AttachTo(CZSealBody *prey);
+    /* the camera given an entity, or a SEAL, to follow (OVL1 0x2956E0 and its 8-byte jump 0x295AF0: the
+     * engine core's round 23 named both; camera.cpp's AttachTo calls the first with (this, prey, 0)) */
+    void Follow(CEntity *prey, const char *part);
+    void Follow(CZSealBody *seal, const char *part);
 
     unsigned char _4[0x45 - 0x4];
     unsigned char m_45;   // 0x45 (camera.h's names)
@@ -2774,9 +2778,6 @@ extern "C" bool func_00546210(CZSealBody *seal, CEntity *e)
 }
 
 extern "C" {
-/* the camera given a SEAL to follow (OVL1 0x2956E0: camera.cpp's AttachTo calls it with (this, prey,
- * 0); unowned, the name unknown) */
-void func_002956E0(CAppCamera *cam, CEntity *prey, int n);
 /* the SEAL's weapon put away for the turret's (OVL2 0x5A6FC0, seal_env.cpp's range, its draft's: true
  * when the blends are to be homed onto the turret; the name unknown) */
 bool func_005A6FC0(CZSealBody *seal, char item, int n);
@@ -2828,7 +2829,7 @@ extern "C" bool func_005463C0(CZSealBody *seal, CEntity *e)
     if (ok) {
         e->m_control = seal->m_control;
         if (appCamera->m_bc == seal) {
-            func_002956E0(appCamera, e, 0);
+            appCamera->Follow(e, 0);
             CAppCamera *cam = appCamera;
 
             cam->m_45 = 1;
@@ -2894,9 +2895,6 @@ extern "C" bool func_005463C0(CZSealBody *seal, CEntity *e)
 }
 
 extern "C" {
-/* the camera given a SEAL to follow (OVL1 0x295AF0, a jump to 0x2956E0 -- camera.cpp's AttachTo
- * calls that with (this, prey, 0); unowned, the name unknown) */
-void func_00295AF0(CAppCamera *cam, CZSealBody *seal, int n);
 /* the SEAL's rifle or pistol drawn again by the item kept (OVL2 0x5A6EB0, seal_env.cpp's range,
  * unwritten: it pushes 0x3DF108 or 0x3DF110 and sets m_item; the name unknown -- the item a plain
  * char: the caller loads m_item with lb, an unsigned char or int parameter gives lbu) */
@@ -2930,7 +2928,7 @@ extern "C" void func_00545EE0(CZSealBody *seal, int force)
         if (e->m_control == seal->m_control) {
             e->m_control = 0;
             if (appCamera->m_bc == seal) {
-                func_00295AF0(appCamera, seal, 0);
+                appCamera->Follow(seal, 0);
                 CAppCamera *cam = appCamera;
 
                 cam->m_45 = 1;
