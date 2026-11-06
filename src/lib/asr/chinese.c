@@ -7,15 +7,35 @@
  * Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree; the five before the free and the last
  * two LOCAL there), ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0
  * -fno-strict-aliasing -funroll-loops (README "The GCC front"). The file's name is ours. Written:
- * SplitUp_Finals (round 32c, OPEN), Tone_Of_Final and the two counting walks after it; the rest of
- * the object is not
- * (FreeSecondPassContext_ForChinese stands as a matched draft). The trees' records are named by
- * use.
+ * SplitUp_Finals (round 32c, OPEN), Swap_Finals (round 39c, OPEN), Tone_Of_Final and the two
+ * counting walks after it, FillOut_Syntax_Statedict_And_Wordprops_ForChinese (round 40c); the rest
+ * of the object is not (FreeSecondPassContext_ForChinese stands as a matched draft). The trees'
+ * records are named by use.
  *
  * Tone_Of_Final is inlined into Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree (its
  * `unsigned char` result zero-extended once at the join, `andi 0xff`, as SOCOM 1's is) while its
  * own copy stays at its place: a GNU `extern __inline__` body above, the real function below
  * (tos.c's pattern). Nothing calls the copy in either build. */
+
+#include "casr.h"
+
+extern void *heap_Alloc(void *heap, unsigned int size);
+extern void *memset(void *dst, int c, unsigned int n);
+
+/* the second pass's context (ctxinfo.c's CTXINFO) */
+typedef struct SPCTX {
+    int f0;
+    unsigned int n;                     /* +4 */
+    int nstates;                        /* +8 */
+    unsigned short *props;              /* +12 */
+    unsigned short *dict;               /* +16 */
+    unsigned short *wtp;                /* +20 */
+    int *bounds;                        /* +24 */
+    int *tab;                           /* +28 */
+    unsigned char *mask;                /* +32 */
+} SPCTX;
+
+extern unsigned char CreateMenuMasks(CASR *c, SPCTX *m, unsigned int n);
 
 /* the dictionary tree the state count walks: items of 20 bytes, each with its first link; links
  * {node, next}, 0xFFFF ending a list; each pronunciation's first state in begin[] */
@@ -248,6 +268,131 @@ int Swap_Finals(unsigned short final, unsigned int prev, unsigned int node, FSTR
             c = t->newlinks[c].next;
         } while (c != 0xFFFF);
     }
+    return 0;
+}
+
+/* one word's states out of its item: a single state or the pronunciation's own, the last one
+ * marked, then the word's index in two halves */
+static __inline__ void FillOut_ItemStates(DICTITEM *it, int *su, unsigned int k, int *ptotal, unsigned short **po)
+{
+    unsigned short pron = it->pron;
+    unsigned short *q = *po;
+    unsigned short cnt = 0;
+    int nw;
+
+    if (it->kind == 0) {
+        *q++ = pron << 2;
+        cnt = 1;
+    } else {
+        unsigned short *a = (unsigned short *)su + su[pron] + 2;
+        unsigned short *e = (unsigned short *)su + su[pron + 1];
+
+        for (; a < e; a++) {
+            *q++ = *a << 2;
+            cnt++;
+        }
+    }
+    *(q - 1) |= 1;
+    q[0] = k;
+    q[1] = k >> 16;
+    q += 2;
+    nw = cnt + 2;
+    *ptotal += nw;
+    *po = q;
+}
+
+/* the second-pass context from the swapped tree: the mask, the words' properties and penalties, the
+ * map to the first pass's words, the state dictionary and the two offset tables, one word per item
+ * but the root; 1 when an allocation fails. SOCOM 1's body (round 40c). Measured:
+ * - total and o live in the frame because their addresses reach an inline (the target's sp+0 and
+ *   sp+4 are read directly in the first block and through a hoisted address past the join); a local
+ *   takes its slot when its address is parsed, so &total goes first.
+ * - items[i] everywhere, not a walker: SOCOM 1 recomputes it after the states, and the extra real
+ *   insns loop.c counts (116 with a walker, 122 here) are what leave -4 and -2 "not desirable" while
+ *   1 is hoisted (the threshold falls by 3 per register moved: 122 moves one, 124 none, 118 two).
+ * - k a local of the loop: passed as `i - 1` it is one insn more (123), and 1 stays in the loop.
+ * - `ctx->wtp = heap_Alloc(...); w = ctx->wtp;` stores v0 and copies: a local set first stores its
+ *   own register, one ref more; props is that form, the others this one.
+ * - `*w++` in both arms, cross-jumped to the one bump: 14 refs put w ahead of syn and t (s3); one
+ *   bump after the join is 10 refs (s8). `*p++` in the test puts p's bump in the branch's slot. */
+static int FillOut_Syntax_Statedict_And_Wordprops_ForChinese(CASR *c, DICTITEM *items, DICTLINK *links,
+                                                             unsigned int nstates, unsigned int n, int nl,
+                                                             SPCTX *ctx)
+{
+    int total;
+    unsigned short *o;
+    int *tbase;
+    int *su;
+    int size;
+    unsigned short *props;
+    unsigned short *p, *w;
+    WORDMAP *map;
+    int *b, *t;
+    int *syn, *off;
+    unsigned int l;
+    unsigned int i;
+    int msize;
+    int fsize;
+
+    total = 0;
+    if (CreateMenuMasks(c, ctx, n) != 0)
+        return 1;
+    size = n * 2;
+    msize = n * 8;
+    props = heap_Alloc(c->heap, size);
+    ctx->props = props;
+    p = props;
+    fsize = n * 4;
+    ctx->wtp = heap_Alloc(c->heap, size);
+    w = ctx->wtp;
+    c->map = heap_Alloc(c->heap, msize);
+    map = c->map;
+    ctx->bounds = heap_Alloc(c->heap, (n + nl) * 4 + 4);
+    b = ctx->bounds;
+    syn = (int *)((char *)b + fsize + 4);
+    ctx->tab = heap_Alloc(c->heap, msize + 8);
+    t = ctx->tab;
+    tbase = t;
+    off = (int *)((char *)t + fsize + 4);
+    su = c->lng->GetpSpeechUnit(c->lng);
+    ctx->dict = heap_Alloc(c->heap, nstates * 2);
+    o = ctx->dict;
+    if (p == 0 || w == 0 || map == 0 || b == 0 || t == 0 || o == 0)
+        return 1;
+    memset(p, 0, size);
+    for (l = items[0].child; l != 0xFFFF; l = links[l].next)
+        props[links[l].node - 1] = 1;
+    for (i = 1; i <= n; i++) {
+        unsigned int ch;
+        unsigned int k;
+
+        map->id = items[i].f4;
+        map->word = items[i].f8;
+        map++;
+        *b = syn - ctx->bounds;
+        b++;
+        *off = total;
+        *t = off - tbase;
+        off++;
+        t++;
+        k = i - 1;
+        FillOut_ItemStates(&items[i], su, k, &total, &o);
+        ch = items[i].child;
+        if (ch != 0) {
+            if (ch == 0xFFFF)
+                *p |= 2;
+            else if (*p != 1 && items[i].f8 != -4 && items[i].f8 != -2)
+                *p |= 0x80;
+            if (*p++ & 0x80)
+                *w++ = c->wtp;
+            else
+                *w++ = 0;
+            for (; ch != 0xFFFF; ch = links[ch].next)
+                *syn++ = links[ch].node - 1;
+        }
+    }
+    *b = syn - ctx->bounds;
+    *t = off - tbase;
     return 0;
 }
 
