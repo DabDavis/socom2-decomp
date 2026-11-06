@@ -1167,6 +1167,7 @@ void CZSealBody::ChangeToPistolMode(bool hand)
  * callback inlined keeps the member's address instead) --, the third part none, the rifle the item
  * in hand (OVL2 0x5A70F0; SOCOM 1's ChangeToRifleMode, its kit call ReParentToRifle -- OVL2
  * 0x5C6A40 -- in the same place) */
+#pragma auto_inline off
 void CZSealBody::ChangeToRifleMode(bool holster)
 {
     m_kit.ReParentToRifle();
@@ -1184,6 +1185,7 @@ void CZSealBody::ChangeToRifleMode(bool holster)
     SetBodyPart(data_003DF160, 0);
     m_item = ITEM_RIFLE;
 }
+#pragma auto_inline reset
 
 extern "C" {
 /* the blend on top of the body's stack (seal.cpp's tail copy, OVL2 0x555170) */
@@ -3290,7 +3292,7 @@ extern "C" int func_005A1620(CZSealBody *seal, const CPnt3D *from)
 
 extern "C" {
 /* (OVL2 0x5A60D0, below: a stance change, a kind and a flag) */
-void func_005A60D0(CZSealBody *seal, int a, int b);
+void func_005A60D0(CZSealBody *seal, unsigned char item, unsigned char mode);
 }
 
 /* a callback made, and made and cleared once (inlines, the names ours: the call's own test, through a
@@ -3307,6 +3309,69 @@ static inline void CallOnce(ANIM_CALLBACK &cb, void *body)
         CallBack(&cb, body);
         cb.Clear();
     }
+}
+
+extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item);
+extern AnimSet *data_0044D408;
+
+/* the launcher's part back on the spine and set as gear (an inline, four times in 0x5A60D0, once in
+ * PickupItem; the name ours) */
+static inline void StowLauncher(CZSealBody *seal)
+{
+    CZBodyPart *p = seal->m_item_gear[4].m_part;
+
+    if (p && p->m_node) {
+        p->m_parent->m_node->DeleteChild(p->m_node);
+        p->m_parent = seal->m_spinehi;
+        p->m_parent->m_node->AddChild(p->m_node);
+        p->SetActive(false);
+    }
+    seal->SetPartAsGear(seal->m_item_gear[4].m_part, seal->m_item_gear[4].m_gear);
+}
+
+/* a weapon change made at once: to a launcher (mode 4) out of the launcher's anim set, the item readied
+ * -- the given, else the last -- and the launcher stowed; otherwise, to the pistol, the rifle stowed on the
+ * lower spine as gear; to the rifle, its mode set, the item readied and the pistol as gear; for 4 both as
+ * gear -- then the aim and fire points found again (OVL2 0x5A60D0, new in SOCOM II; the name unknown) */
+extern "C" void func_005A60D0(CZSealBody *seal, unsigned char item, unsigned char mode)
+{
+    if (mode == 4) {
+        if (seal->m_animset == data_0044D408)
+            seal->BindAnimSet(seal->m_default_animset, false);
+        seal->m_desiredState = (SEAL_STATE)0;
+        if (item == 2) {
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+            StowLauncher(seal);
+        } else if (item == 1) {
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)1);
+            StowLauncher(seal);
+        } else if (seal->m_lastitem == 2) {
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+            StowLauncher(seal);
+        } else if (seal->m_lastitem == 1) {
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)1);
+            StowLauncher(seal);
+        }
+    } else if (item == 2) {
+        CZBodyPart *rifle = seal->m_rifle;
+
+        if (rifle->m_node) {
+            rifle->m_parent->m_node->DeleteChild(rifle->m_node);
+            seal->m_rifle->m_parent = seal->m_spinelo;
+            seal->m_rifle->m_parent->m_node->AddChild(seal->m_rifle->m_node);
+            seal->m_rifle->SetActive(false);
+        }
+        seal->SetPartAsGear(seal->m_item_gear[1].m_part, seal->m_item_gear[1].m_gear);
+    } else if (item == 1) {
+        seal->ChangeToRifleMode(false);
+        func_0057D5E0(seal, (SEAL_ITEM_BYTE)1);
+        seal->SetPartAsGear(seal->m_item_gear[2].m_part, seal->m_item_gear[2].m_gear);
+    } else if (item == 4) {
+        seal->SetPartAsGear(seal->m_item_gear[2].m_part, seal->m_item_gear[2].m_gear);
+        seal->SetPartAsGear(seal->m_item_gear[1].m_part, seal->m_item_gear[1].m_gear);
+    }
+    seal->m_curr_aimpt = seal->GetFirepointNode("aimpoint");
+    seal->m_curr_firept = seal->GetFirepointNode("firepoint");
 }
 
 /* a weapon change cut short: with none of the change's blends on top, the change's overlay -- the
