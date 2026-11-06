@@ -13778,16 +13778,19 @@ sizes rows against SOCOM 1's, rd.py reads the image's doubles and floats).
   the f16 == 0 arm's shape and GCSE keeping the head link's score for the swap), ProcessVad (no new
   shape: `cnt = sum / cnt` flips the priorities but loses $f0, 24 words), ExtendNodeWheel (if/else
   with one shared `return 0` gives the first path the target's `b` to it, 115 words with the four
-  stores reordered: the test's load and `old` still one pseudo). Not reached:
+  stores reordered: the test's load and `old` still one pseudo), SplitUp_Finals and its twin (now
+  written: the two rows' 299 instructions agree but for the recursion's target; the tone read
+  through a pointer value, four spellings, leaves PRE's reuse). Not reached:
   CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust, the distance passes,
-  InitCalculateDistances, SplitUp_Finals and its twin.
+  InitCalculateDistances.
 
 Hand-written in round 36c: `asr/acne.c` (ProcessAcne new, ControlAcne closed: the object whole, 6 of 6),
 `asr/ctxtree.c` (intCreateCtxTree new, with SetUserWordTables as its inline: 13 of 13; CTXVT's slots
 named as contextv2.c's table, the walk record AFREC 0x90), `asr/nbestdp.c` (BacktraceWordsParBT
-written OPEN: 12 of 14; NBRWORD and NBRESULT's fields typed, BTREC +16 the end state), `asr/casr.h`
-(+592 `uw_tables`, from pad584) -- 3 rows new to the map's byte-exact rows (3,708 bytes), no draft
-superseded; `src/lib/asr` 585 of 613 (582 of 610 before). No rows renamed (all had SOCOM 1's names). No
+written OPEN: 12 of 14; NBRWORD and NBRESULT's fields typed, BTREC +16 the end state),
+`asr/chinese_tree.c` (SplitUp_Finals_TreeCtx written OPEN as chinese.c's: 2 of 4), `asr/casr.h` (+592
+`uw_tables`, from pad584) -- 3 rows new to the map's byte-exact rows (3,708 bytes), no draft
+superseded; `src/lib/asr` 585 of 614 (582 of 610 before). No rows renamed (all had SOCOM 1's names). No
 tool changed (scratch: build/scratch/gcc/r36/ -- vt.py scores a unit's variants with their
 allocation priorities, allunits.py scores every asr unit, v_*.py the variants).
 
