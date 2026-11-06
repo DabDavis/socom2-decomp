@@ -789,6 +789,7 @@ public:
     virtual void Virtual24();
     virtual void Virtual28();
     virtual bool IsPlayer() const;   /* +0x2C */
+    virtual bool IsAi() const;   /* +0x30 */
 };
 
 /* the local player as the recoil's screen scale reads it: the point its view starts from and the
@@ -804,6 +805,11 @@ struct CKitPlayerView {
 static inline bool KitIsPlayer(CKitBody *body)
 {
     return body->m_control ? ((CKitSealCtrl *)body->m_control)->IsPlayer() : false;
+}
+
+static inline bool KitIsAi(CKitBody *body)
+{
+    return body->m_control ? ((CKitSealCtrl *)body->m_control)->IsAi() : false;
 }
 
 /* the kit set up (OVL2 0x5C7E00; SOCOM 1's Init, 0x2AE9E0, call for call): the reload, empty-click
@@ -885,6 +891,37 @@ void CZKit::UnInit()
         delete m_lightMap;
         m_lightMap = 0;
     }
+}
+
+/* the bomb gear, the one the kit's items ask for or the plain kit's (OVL2 0x5A0DA0, 0x5A0CD0, 0x5A0C00: the SEAL's) */
+extern "C" {
+void func_005A0DA0(CZSealBody *body);
+void func_005A0CD0(CZSealBody *body);
+void func_005A0C00(CZSealBody *body);
+}
+
+/* the items in place: the gear they ask for, a human player's kit made up (0x5C74E0), the 2X ammunition, the weapon
+ * information changed, the explosive's damage, and the MP bomb's gear on with item 152 or 154 loaded (OVL2 0x5C7840;
+ * SOCOM 1's, 0x1D8) */
+void CZKit::PostSetupItems()
+{
+    if (HasItem((EQUIP_ITEM)202))
+        func_005A0DA0(m_body);
+    else if (HasItem((EQUIP_ITEM)201))
+        func_005A0CD0(m_body);
+    else
+        func_005A0C00(m_body);
+    if (!KitIsAi((CKitBody *)m_body) && !(((CKitBombBody *)m_body)->m_team & 0x20000))
+        func_005C74E0(this);
+    KitIsAi((CKitBody *)m_body);
+    Setup2XAmmo();
+    m_weaponinfoChanged = true;
+    SetupExplosiveDamage();
+    if ((HasItem((EQUIP_ITEM)152) && ItemHasAmmo((EQUIP_ITEM)152))
+        || (HasItem((EQUIP_ITEM)154) && ItemHasAmmo((EQUIP_ITEM)154)))
+        EnableMPBombGear__10CZSealBodyFb(m_body, true);
+    else
+        EnableMPBombGear__10CZSealBodyFb(m_body, false);
 }
 
 /* the first explosive's (151) ammunition's damage kept, none without one (OVL2 0x5C77B0, new in

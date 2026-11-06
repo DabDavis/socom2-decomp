@@ -469,6 +469,8 @@ public:
     /* the explosive's damage taken from the first explosive's ammunition (OVL2 0x5C77B0, new in
      * SOCOM II: PostSetupItems calls it; the name ours) */
     void SetupExplosiveDamage();
+    /* the items in place (OVL2 0x5C7840; SOCOM 1's) */
+    void PostSetupItems();
     /* with item 194 held, each rifle's magazines doubled (SOCOM 1's; OVL2 0x5C75F0) */
     void Setup2XAmmo();
     /* the sounds found, the flashlight's light map made and the aim, kick, heartbeat and lase state
