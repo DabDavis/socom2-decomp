@@ -2066,6 +2066,35 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 60** (23 byte-exact, the most of any round: twelve long opens --
+  CAiSPickup::Tick 0x5F52D0, the seen-bit tests 0x5CB450 / 0x5CB630, CZKit::GetMaxAmmoCount, GetPickupSlot, CompactItems,
+  CAiSBreach::CanPushAiState, CAiSFollow::CheckMaster, CSealUnit::SetFormation, CAiGroup::TickStep and Start, 0x60AA20 --
+  and eleven unwritten before: CZKit::CZKit 0x5C8190, PostSetupItems, SetCurItemByIndex, SetCurItemEnum, 0x5C3EE0,
+  WillFireWeapon, CAiSScript::Tick and OnSignal, CAiSPlan::Tick, 0x5F0CD0, 0x5F7470; three rows named):
+  - ENUMS ARE NOT PROPAGATED, AGAIN (the game states' round 53): a mask or a bit through an enum-typed variable, local or an
+    inline's argument, stays numbered where written -- it closed CAiSPickup::Tick and both seen-bit tests after about 90
+    integer spellings;
+  - a one-member struct `struct { T *v; } x;` is scalarised, so numbered after every inline's locals and the linearizer's
+    temporaries and before the CSE pass (0x60AA20); `step::iterator &ir = i;`, otherwise unused, numbers the iterator after
+    later ends (TickStep); a plain `node_base *` local in the inner block is numbered as a named local but its definition is
+    hoisted past the walk's guard (SetFormation);
+  - `int r = call(); return r;` keeps the target's order of the return-0 block, then the call falling into the epilogue;
+    `return call();` lays the call first in every spelling; the `r = inline()` block at an inline's end keeps a b that a
+    statement in place would have threaded (CAiSPlan::Tick); the second -1 return's block order follows `if (w) {...} else
+    return -1; return -1;`;
+  - a node of degree just over K needs one more lower-numbered neighbour to be pushed in sweep 1: any inline's local will do
+    (GetPickupSlot, through UsesAmmo's w); a named local in a function's own body can stop its auto-inlining into a caller,
+    `inline_max_auto_size` restores it, a local in a deeper inline costs nothing; a compare generates its right operand
+    last, so `size > j + 2` numbers the back-end j + 2 after the size (CompactItems);
+  - `opt_propagation off` in a body keeps a bool's daddiu 1 unfolded and selectable: combine it with inline selects taking
+    the value by int, `s > 3` for slti at, and `r = false; if (s != 6 && s != 7) r = ok;` to avoid the range fold
+    (CanPushAiState, WillFireWeapon); an inline `return !(f(x) != 0);` over an int-returning view of the call gives sltu;
+    xori; bnez with no andi (SetCurItemEnum); a bool read before a loop and negated inside it gives the invariant hoist's
+    re-normalisation (Start);
+  - an item id read into a named local ahead of a call keeps the read ahead of the first inline's calls (SetCurItemByIndex);
+    slots 0x24 and 0x40 of CAiState take the AI in a1 and return an int in SOCOM II (seal_aistate.cpp's CAiStateFlagSlots
+    view); AiStateIs is no substitute in seal_aistate.cpp, GetState's in-unit inlining folding the first operand -- the Is()
+    opens stay new-idea-only.
 - **Tells from the AI core, round 37** (CAiMaps::RegisterPathPlan 0x52C5C0 -- 0x608, 105 off since round 32 -- and
   CAiMaps::GetLocation(point) 0x52DC70 -- 0xA34, 172 off since round 31, its register order a marked modelling order --
   byte-exact; THE FIVE CUT CLASS INSERTS byte-exact through a marked device, include/vector's `__insert_end_pointer<T>`:
