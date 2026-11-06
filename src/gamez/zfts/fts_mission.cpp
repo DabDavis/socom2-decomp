@@ -1428,17 +1428,13 @@ inline int ArrayCount(_zrdr *z)
  * the store), the counts through an inline (ArrayCount: the zooms' count numbered after the zoom items,
  * a1 against a2; the loops' `!list` hoisted as the target's materialised bool), the postfix copied
  * through CopyName (its test on the buffer's own address, the source read ahead of it).
- * OPEN, 10 instructions, registers only: the valves loop's type takes s1 and its item s0 where the
- * target has s0 and s1. MW's colouring (tools/igdump.py, igreplay.py --target) gives the target's
- * with `--move 42=53.5`: the type numbered after the Item() expansion's temporary (@N), the name
- * before it -- every placement of the type after the item works, none before. A named local
- * precedes every temporary, and the type through an inline (ValveType, PermType, a reference to
- * its result, the body as an inline taking the name, helpers one to three levels taller) merges into
- * an inline temporary the bottom-up inliner numbers BEFORE the item's (leaf inlines first: the zoom
- * section's items and reals, then the loops' Item()s, then ArrayCount); the item read as a named
- * local (declared between the name and the type, assigned, if-assigned, hand-expanded: the last two
- * 0x10-0x18 bytes longer), the type as an if/else or an int, Item() at every use, the arguments
- * as inline calls all fail */
+ * Byte-exact since round 53, by the valves loop's type: a named local precedes every temporary, and
+ * the target needs it numbered after the Item() expansion's (the item is the `?:`'s IRO_Linearize
+ * temporary, the colouring's `--move 42=53.5`). The PERSIST test written as a second `?:` with the
+ * type as its own else arm does that (igdump): the named `type` is gone, the first `?:`'s Linearize
+ * temporary (v53, the next one after the item's v52) holds it through both definitions, the second's
+ * is dead -- and the code is still the `beqz; nop; li s0,3` an `if` gives. An `if`, an if/else into a
+ * second local or a copy `type = t` keep a named local (10 off, as before). */
 void CMission::PreOpen(const char *database)
 {
     const char *postfix;
@@ -1477,8 +1473,7 @@ void CMission::PreOpen(const char *database)
         const char *name = zrdr_findstring(v, "NAME");
         VALVE_TYPE type = zrdr_findtag(v, "PERM") ? VALVE_PERM : VALVE_TEMP;
 
-        if (zrdr_findtag(v, "PERSIST"))
-            type = VALVE_PERSIST;
+        type = zrdr_findtag(v, "PERSIST") ? VALVE_PERSIST : type;
         int value = 0;
 
         zrdr_findint(v, "VALUE", &value, 1);
