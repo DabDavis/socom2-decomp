@@ -5624,6 +5624,8 @@ class CLadderList {
 public:
     /* the ladder at an index, or none (SOCOM 1's; OVL1 0x2A9210) */
     CLadderData *GetLadderByIndex(int index);
+    /* the ladder at a node (OVL1 0x2A90F0, the states lane's: a flag taken) */
+    CLadderData *GetLadderByNode(zdb::CNode *node, int b);
 };
 
 /* the mission (theMission, OVL1 bss 0x4364E0) -- only its ladders (SOCOM 1's at 0x580, beside the
@@ -6001,6 +6003,178 @@ extern "C" bool func_005B3A60(CZSealBody *seal, const CPnt3D *ends, CPnt3D *pos,
     m.Scale(0.5f, pos);
     return true;
 }
+
+extern "C" {
+/* the ladder's tests, the taking told to the others and the climb's place (OVL2 0x57F7D0, 0x57F9C0,
+ * seal_body.cpp's; OVL1 0x2B9F60, fts_remote.cpp's; OVL2 0x5B3A60, 0x5B1130, this unit's) */
+bool func_0057F7D0(CZSealBody *seal);
+bool func_0057F9C0(CZSealBody *seal);
+void func_002B9F60(int obj, int a, int b);
+}
+
+/* whether the SEAL has the climbs' anims (an inline: the `&&` a value; the name ours) */
+static inline bool HasAnim(CZSealBody *seal, AnimType t)
+{
+    return seal->m_animset->GetScript(t) != 0;
+}
+
+static inline bool HasClimbs(CZSealBody *seal)
+{
+    bool ok = HasAnim(seal, (AnimType)33);
+
+    if (ok)
+        ok = HasAnim(seal, (AnimType)44);
+    if (ok)
+        ok = HasAnim(seal, (AnimType)46);
+    if (ok)
+        ok = HasAnim(seal, (AnimType)AnimTypes::ClimbMedium);
+    if (ok)
+        ok = HasAnim(seal, (AnimType)42);
+    if (ok)
+        ok = HasAnim(seal, (AnimType)AnimTypes::StepUp);
+    return ok;
+}
+
+/* whether an AI may take a ladder at a node (0x5B1350's test by node: holding none, the ladder free, in the
+ * climb's mode with a leg of the climb's kinds; an inline, the name ours) */
+static inline bool LadderNodeFree(CZSealBody *seal, zdb::IntersectStruct *hit)
+{
+    if (seal->m_ladder != data_003F3438)
+        return false;
+
+    CLadderData *ladder = theMission.m_ladders->GetLadderByNode(hit->m_node, 1);
+    bool free = ladder ? !(ladder->m_users > 0) : false;
+
+    if (free) {
+        if (seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false) {
+            CSealCtrlAi *c = seal->GetSealCtrlAi();
+
+            free = c->m_3f4 == 7 && (c->m_448 & 7) != 0;
+        }
+    }
+    return free;
+}
+
+/* the wall ahead taken: by the face's kind a climb, a step over or a ladder -- refused when the anims are
+ * missing, in states 9 and 10, when facing off it or out of the edge's points -- the climb placed on the
+ * edge's point and aimed; a ladder only asked for, told to the others online (OVL2 0x5B2620: SOCOM 1's
+ * ImpactFront, its faces' kinds and its checks as they stand).
+ * OPEN, 24 instructions, all of them frame offsets -- every instruction the target's but a 16-byte slot at
+ * sp+176, between hi and edge, that no instruction touches (frame 256 against 240). No source gives a slot
+ * with no code: an unused CPnt3D, a dead copy, `(void)&x`, a dead pointer or reference to it, a class with an
+ * empty constructor and destructor, a by-value inline parameter ignored, or unreachable code using it
+ * (build/scratch/seal-r58/v_620*.py). Otherwise written to the word: the anims' test a bool chained through
+ * `if`, the x of d read twice by Length and Dot where y and z share their address temporaries */
+bool CZSealBody::ImpactFront(zdb::IntersectStruct *hit, CPnt3D *pos)
+{
+    if (!HasClimbs(this))
+        return false;
+    if (m_state == 9 || m_state == 10)
+        return false;
+
+    CPnt3D d = hit->m_pos;
+    CPnt3D at = hit->m_pos;
+    const CPnt3D *n = &hit->m_norm;
+
+    d.Sub(&m_2bc, &d);
+    d.y = 0.0f;
+    d.x = -d.x;
+    d.y = -d.y;
+    d.z = -d.z;
+    *pos = m_2bc;
+
+    unsigned char kind = (unsigned char)hit->m_poly->m_flags.m_appflags & 7;
+    float len = d.Length();
+    float dot = Dot(d, *n) / len;
+    CPnt3D lo, hi;
+
+    if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+        return false;
+    if (kind == 2) {
+        if (TargetIsAi(this) && !LadderNodeFree(this, hit))
+            return false;
+        if (hi.y - lo.y <= 15.0f) {
+            if (fabsf(dot) < 0.02f)
+                return false;
+        } else if (dot < 0.02f)
+            return false;
+    } else if (dot < 0.3f)
+        return false;
+    d.x = -d.x;
+    d.y = -d.y;
+    d.z = -d.z;
+
+    CPnt3D edge;
+
+    if (!hit->GetIntersectedEdgePointsY(&edge))
+        return false;
+
+    float h = hi.y + MaterialEx(hit->GetMaterial())->m_foot_step_offset - m_posW.y;
+
+    switch (kind) {
+    case 4:
+        func_005B3A60(this, &edge, &at, pos, false);
+        if (h > 5.0f) {
+            if (h <= 32.0f)
+                Climb(h);
+            else
+                return false;
+        }
+        break;
+    case 1:
+        func_005B3A60(this, &edge, &at, pos, true);
+        Climb(h);
+        break;
+    case 5:
+        func_005B3A60(this, &edge, &at, pos, false);
+        ClimbOver(h);
+        break;
+    case 2: {
+        bool up;
+
+        if (hi.y - lo.y <= 15.0f) {
+            if (!func_0057F7D0(this))
+                return false;
+            up = true;
+        } else {
+            if (!func_0057F9C0(this))
+                return false;
+            up = false;
+        }
+
+        CLadderData *ladder = theMission.m_ladders->GetLadderByNode(hit->m_node, 1);
+        int index = ladder->m_index;
+
+        bool held = m_climb.m_state == 1 && m_climb.m_active == 1 && index == m_climb.m_ladder;
+
+        if (!held) {
+            if (theNetwork.m_9) {
+                m_climb.m_active = 1;
+                m_climb.m_ladder = index;
+                m_climb.m_state = 1;
+                m_climb.m_up = up;
+                func_002B9F60(m_id, 1, index);
+            } else if (!(ladder->m_users > 0)) {
+                m_climb.m_active = 1;
+                m_climb.m_ladder = index;
+                m_climb.m_state = 1;
+                m_climb.m_up = up;
+                func_005B1130(1, index);
+            }
+        }
+        return false;
+    }
+    case 3:
+        func_005B3A60(this, &edge, &at, pos, false);
+        Climb(h);
+        break;
+    default:
+        return false;
+    }
+    AlignForClimb(false, at, hi, (CPnt3D *)n);
+    return true;
+}
+
 
 extern "C" void func_005B3890(CZSealBody *seal, int drop_now);
 

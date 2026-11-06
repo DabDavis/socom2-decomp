@@ -2114,6 +2114,7 @@ public:
      * ImpactFront in both, $f12 set: OVL2 0x580A80, 0x580B70 -- the SEALs, round 48; ClimbOver's
      * float is never read) */
     void ClimbOver(float h);
+    void Climb(float h);
     /* the stances' blends (SOCOM 1's seal_body.cpp, in its order: BlendedClimb 0x581110 to Stand
      * 0x581DC0 -- Stand_0 gained a float in SOCOM II) */
     CZBodyAnimBlend *BlendedClimb(float h);
@@ -2245,7 +2246,7 @@ public:
     void CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds, int id, CPnt3D *pos);
     void DropAmmo(int rounds);
     /* the wall ahead taken: the climb's or the impact's anim and damage (SOCOM 1's; OVL2 0x5B2620) */
-    void ImpactFront(zdb::IntersectStruct *hit, CPnt3D *pos);
+    bool ImpactFront(zdb::IntersectStruct *hit, CPnt3D *pos);
     /* a weapon of the kit dropped as a pickup where its part hangs, the anim of the drop run unless asked
      * not to (SOCOM 1's DropItem; OVL2 0x59F730) */
     CPickup *DropItem(int index, bool quiet);
@@ -2728,6 +2729,7 @@ public:
         unsigned int m_ladder;   // 0x4: unsigned (the SEALs, round 34) -- passed to GetLadderByIndex's
                                  // int, the conversion puts its load after the list's (0x5B14E0, 0x5A2490)
         unsigned char m_state;   // 0x8
+        unsigned char m_up;   // 0x9: whether it climbs up (ImpactFront; the name ours)
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
