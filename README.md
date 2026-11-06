@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 26** (48 functions from their drafts to source -- zNetDme.cpp whole, the voice
+  object and CZNetVoice's constructor named --; two new units, zNetVoiceCodec.cpp 0x3103D0-0x31097F and
+  zNetMediusStates.cpp 0x2ED460-0x2F3EDF):
+  - A PLACEHOLDER DEFINED WITH C++ LINKAGE (`func_X__F...`) IS no-target TO sccheck, so it is never compared -- define
+    placeholders inside extern "C" (0x2F11F0 hid a miss this way);
+  - out-of-class template members found in the middle of a unit mark that unit's end: the tail closes it (the vector's
+    erase 0x2F2740 and insert 0x2F2D90 split zNetMediusStates.cpp from zNetMediusChat.cpp, the new tail sort, erase,
+    insert, __sort132, __selection_sort in the image's own order); trivial checks called out of line inside their own unit
+    need a pin (a compiled-out debug print is the likely reason);
+  - a bool table returned as bool: an unsigned char table converts on return and is 8 bytes longer (0x30E550); `p = 0; if
+    (x) p = x; f(p);` gives the target's early `move a0,zero`, `f(x ? x : 0)` is 8 bytes longer (0x2F11F0); an inline
+    stand-in whose body is a same-unit draft's is that function auto-inlined (ObjectCount was zNetGetMyGameClientIndex).
 - **Tells from the UI, round 31** (CHandlerButtonSpec, LoadDlgObjects and CRadioStripSpec -- open since rounds 18, 16 and 29,
   all three closed by one change --, LoadFromDesign and HddMountGame, both unwritten before; zui.cpp whole):
   - IF VERSUS TERNARY IS FUNCTION-WIDE: an inline's `if (c) p = k;` on its own parameter changes the whole caller -- MW then
