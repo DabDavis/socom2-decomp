@@ -57,9 +57,9 @@ typedef struct DmeWorld {
     char szName[16];                    /* 0x408 */
     char szServerVersion[16];           /* 0x418 */
     void (*pfnClientCallback)(void *pInfo, DmeClientInfo *pClient, struct DmeWorld *pWorld); /* 0x428 */
-    int field_42C;
-    int field_430;
-    int field_434;
+    void *field_42C;                    /* 0x42C: pfnClientCallback's user word */
+    void (*field_430)(void *pReport);   /* 0x430: a client's leaving told */
+    void *field_434;                    /* 0x434: its user word */
     DmeWorldState field_438;            /* 0x438 */
     int field_43C;                      /* 0x43C */
     int field_440;                      /* 0x440 */
