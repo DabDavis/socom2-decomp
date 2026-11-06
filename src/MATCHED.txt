@@ -7323,6 +7323,7 @@
 0x003ACB00 UpdateAiMapLoc__8CVehicleFv
 0x003ACB50 GetNeckPosW__8CVehicleFP6CPnt3D
 0x003ACC00 OnMissionStart__8CVehicleFv
+0x003ACC10 func_003ACC10
 0x003AD1F0 func_003AD1F0
 0x003AD3B0 SampleDynamics__8CVehicleFf
 0x003AD4D0 ComputeNextPosition__8CVehicleFf
@@ -7382,6 +7383,7 @@
 0x003B18D0 WriteGsMemory__6CVideoFUiP1Ui
 0x003B1990 ReadGsMemory__6CVideoFUiP1Ui
 0x003B1A70 RestoreImage__6CVideoFPc
+0x003B1DD0 func_003B1DD0
 0x003B2450 func_003B2450
 0x003B28D0 func_003B28D0
 0x003B2C80 zVid_Assert__FbUiPci

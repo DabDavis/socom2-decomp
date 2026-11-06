@@ -2065,6 +2065,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 34** (the video thread's body 0x3B1DD0 and the vehicle's run-over pass 0x3ACC10, both
+  never written before):
+  - an unsigned-to-float conversion assigned to a dead local keeps its sign test and loses both arms -- 0x3B1DD0's
+    emptied if-body; IPNT2D / PNT2D locals stay in the frame, read once per use, volatile scalars re-read at every use;
+  - a loop-invariant division held in a named local is hoisted ahead of the loop, written in the step it stays in; a
+    count read into a local inside the loop body is hoisted with its preheader after the return, read in the inner loop's
+    condition or inside a member inline only one level;
+  - the kit's round-53 rule holds on 0x3ACC10: a kind test as a ternary inline keeps the dead else copies, in place it is
+    a movz, as an if it collapses them; `v > 0x7FFF` emits `li at,0x8000` in place, `v >= 0x8000` hoists the constant;
+    `(unsigned int)p & 0x0FFFFFFF` gives the bare dsll32 / dsrl32 pair, `(u_long)p` adds a sign-extension pair;
+  - frame slots: single CPnt3D locals in 16-byte slots in declaration order, then inline temporaries, then CPnt3D
+    arrays, then the matrix; a `short uv[4]` takes an 8-byte slot where `short uv[2]` takes 4; two constants OR'd at the
+    end of one expression fold together, built ahead in a local they stay apart.
 - **Tells from completing the MSL headers, round 34** (cdeque<PCv>::resize 0x285660 byte-exact; THE TAIL'S GENERATION
   ORDER READ OUT OF MW'S FRONT END; probes build/p34/, untracked -- e1-e4.cpp the order probes, olist.py / order.py
   a unit's functions in object order, dqboard.py the deque units' rows, vend.py / vR*.py the resize variants; the
