@@ -277,6 +277,12 @@
 0x003DC510 0x4 s_fAnchorScale  # OVL1 .data; hud_mapcompass.cpp's static (name ours, round 65); 3 references, MapCompass::Tick
 0x003DC518 0x4 s_fDistReject  # OVL1 .data; hud_mapcompass.cpp's static (name ours, round 65); 1 reference, MapCompass::Tick
 0x003DC520 0x4 s_fFadeFloor  # OVL1 .data; hud_mapcompass.cpp's static (name ours, round 65); 1 reference, MapCompass::Tick
+0x003DC528 0x4 s_scopeRangeX  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 415, the range text's x with the scope; BitmapReticule::ChangeReticule
+0x003DC530 0x4 s_scopeRangeY  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 215; BitmapReticule::ChangeReticule
+0x003DC538 0x4 s_binocRangeX  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 515, with the binoculars; BitmapReticule::ChangeReticule
+0x003DC540 0x4 s_binocRangeY  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 40; BitmapReticule::ChangeReticule
+0x003DC548 0x4 s_nvgRangeX  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 515, with the night vision; BitmapReticule::ChangeReticule
+0x003DC550 0x4 s_nvgRangeY  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 70; BitmapReticule::ChangeReticule
 0x003DC558 0x4 c_szDefusingValve__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_bitmapreticule.cpp's anonymous namespace, gp-30448 there): "hud_defuse_timer", the defuse timer's valve -- 1 reference (hudStartDefuseTimer, 0x219330, CValve::Create's name)
 0x003DC560 0x4 g_fDefuseTime__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_bitmapreticule.cpp's anonymous namespace, gp-30444 there; -1.0 here) -- 4 references in 2 functions: BitmapReticule's constructor stores -1, hudStartDefuseTimer (0x219330) the time and its address twice
 0x003DC568 0x4 s_laseBoxSize__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; ours (the HUD lane, round 59: hud_bitmapreticule.cpp's anonymous-namespace float after the defuse timer's, 10.0 -- the lased point's box half-size): 5 references in 1 function (DrawLaseTarget 0x217550)
@@ -291,6 +297,10 @@
 0x003DC5E0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@nw_y  # OVL1 data; SOCOM 1's (its DWARF; 0.6) -- 1 reference, UpdateAccuracy
 0x003DC5E8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@sw_x  # OVL1 data; SOCOM 1's (its DWARF; 0.65) -- 1 reference, UpdateAccuracy
 0x003DC5F0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@sw_y  # OVL1 data; SOCOM 1's (its DWARF; 0.52) -- 1 reference, UpdateAccuracy
+0x003DC5F8 0x4 s_scopeRangeSize  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 32, the scope's range box; BitmapReticule::ChangeReticule
+0x003DC600 0x4 s_barBackTrans  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 36, the grenade bar's back alpha; BitmapReticule::ChangeReticule
+0x003DC608 0x4 s_barTrans  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 64, the grenade bar's alpha; BitmapReticule::ChangeReticule
+0x003DC610 0x4 s_binocTrans  # OVL1 data; hud_bitmapreticule.cpp's static (name ours, the HUD lane round 66): 128, the binoculars' overlay; BitmapReticule::ChangeReticule
 0x003DC618 0x1 @LOCAL@SetGBarVal__14BitmapReticuleFf@first  # OVL1 data; ours (the HUD lane, round 57: hud_bitmapreticule.cpp -- SetGBarVal's static flag, 1 in data, cleared with the error flag at the first missing texture; SOCOM 1's DWARF: its `first`, 0x476B30 there) -- 4 references in 1 function
 0x003DC620 0x4 g_fFadeInTime__27@unnamed@hud_weaponsel_cpp@  # OVL1 data; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace, gp-30408 in the demo): the selector's backdrop fade-in clock, -1.0 in data (idle) -- 5 references in 2 functions (CWeaponSel::HudTick x4, OnOpen); the HUD lane
 0x003DC628 0x4 ACTIONICON_CENTERX  # OVL1 data; SOCOM 1's (its symbol table: hud_actionbitmap.cpp's file static, 0x47552C there): the main icon's centre x, 306 -- 4 references in 2 functions (Render_ver_2 x3, __sinit_hud_actionbitmap.cpp); the HUD lane, round 64
@@ -1282,6 +1292,8 @@
 0x0040C0D0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_EAST  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
 0x0040C0D8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_SOUTH  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
 0x0040C0E0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@PT_WEST  # OVL1 bss; SOCOM 1's (its DWARF) -- 3 references, UpdateAccuracy
+0x0040C0E8 0x1 @GUARD@ChangeReticule__14BitmapReticuleFi@s_barColor  # OVL1 bss; MW's guard for ChangeReticule's local static
+0x0040C0F0 0xc @LOCAL@ChangeReticule__14BitmapReticuleFi@s_barColor  # OVL1 bss; ChangeReticule's local static (name ours, round 66): (128, 70, 32), the grenade bar's colour
 0x0040C108 0x4 g_iBgRightX__27@unnamed@hud_weaponsel_cpp@  # OVL1 bss; SOCOM 1's (its symbol table: hud_weaponsel.cpp's anonymous namespace): the selector's backdrops' right edge, 160, stored by CWeaponSel::Init -- 6 references in 2 functions take 0x40C108 (Init x5, AfterOpenSecond); the HUD lane, round 16
 0x0040C110 0x50 tempstr$890  # OVL1 bss; SOCOM 1's PlaceWeaponText's function-local tempstr (tempstr$2861 in the demo, 80 bytes there too; the number is MW's counter in our hud_weaponsel.cpp, which names the row as the object does): 7 references in 1 function (CWeaponSel::PlaceWeaponText); the HUD lane, round 16
 0x0040C160 0x4 ACTIONICON_HWIDTH  # OVL1 bss; SOCOM 1's (its symbol table, 0x476B3C there): half ACTIONICON_WIDTH, made in __sinit_hud_actionbitmap.cpp -- 4 references in 2 functions (Render_ver_2 x3, the initialiser); the HUD lane, round 64

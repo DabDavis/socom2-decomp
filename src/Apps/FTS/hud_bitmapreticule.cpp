@@ -95,6 +95,7 @@ public:
     /* whether the seal looks through binoculars or a scope (kit.h's, SOCOM 1's) */
     bool IsUsingBinocs();
     bool IsUsingScope();
+    int GetCurItemEnum() const;
 };
 
 /* what the seal hit along the reticle: the point, and what it hit at 0x1c (zdb's CDI, as far as the
@@ -157,6 +158,9 @@ public:
     bool IsOn();
     static CZSealBody *GetHUDOwner();
     void SetRangeText(const char *text);
+    void ShowRangeText();
+    void HideRangeText();
+    void SetRangeTextPos(float x, float y);
 
     unsigned char _0[0xb0];
     signed char m_hudrettype;   // 0xb0
@@ -927,6 +931,268 @@ static inline void LoadBar(C2DBitmapPoly &poly, float right, float left, float e
                            zdb::CTexture *tex)
 {
     poly.Load(right, end, right, base, left, base, left, end, tex);
+}
+
+/* the range text's place for the scope, the binoculars and the night vision, the scope's range box and the bars'
+ * and binoculars' alphas (OVL1 .data; the names ours) */
+float s_scopeRangeX = 415.0f;
+float s_scopeRangeY = 215.0f;
+float s_binocRangeX = 515.0f;
+float s_binocRangeY = 40.0f;
+float s_nvgRangeX = 515.0f;
+float s_nvgRangeY = 70.0f;
+float s_scopeRangeSize = 32.0f;
+float s_barBackTrans = 36.0f;
+float s_barTrans = 64.0f;
+float s_binocTrans = 128.0f;
+
+/* the reticle's kind changed: nothing for a kind with no texture; the range text on for the scopes and the night
+ * vision; the floating pieces textured and placed; each kind's own pieces shown and the others hidden (SOCOM 1's;
+ * kinds -1 none, 0-3 and 9 a bitmap or the floating reticle's, 4 the grenade's bar, 5 the scope, 7 the binoculars) */
+void BitmapReticule::ChangeReticule(int type)
+{
+    signed char t = type;
+
+    if (t != -1 && !m_reticuleTex[t])
+        return;
+    m_rettype = type;
+    if (t == 5 || t == 7 || t == 8 || m_nvgenabled)
+        theHUD->ShowRangeText();
+    else
+        theHUD->HideRangeText();
+    if (t != -1) {
+        if (m_floatingreticuleTex[m_rettype]) {
+            for (int i = 0; i < 4; i++)
+                m_floatingreticule[i].Load(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                                           m_floatingreticuleTex[m_rettype]->m_texture);
+        }
+    }
+    if (m_rettype != -1) {
+        zdb::CTexHandle *tex = 0;
+
+        if (m_floatingreticuleTex[m_rettype])
+            tex = m_floatingreticuleTex[m_rettype];
+        else if (m_reticuleTex[m_rettype])
+            tex = m_reticuleTex[m_rettype];
+        if (tex) {
+            m_rettexsizex = (int)tex->m_texture->m_width;
+            m_rettexsizey = (int)tex->m_texture->m_height;
+            m_rettexsizex2 = m_rettexsizex;
+            m_rettexsizey2 = m_rettexsizey;
+            if (m_rettype == 4)
+                m_rettexsizex2 = m_rettexsizex2 * 0.5f;
+            else if (m_rettype == 5) {
+                m_rettexsizex2 = m_rettexsizey2 = s_scopeRangeSize;
+            }
+        }
+        UpdateAccuracy();
+        if (m_rettype == 4) {
+            for (int i = 0; i < 4; i++)
+                m_floatingreticule[i].Off();
+        } else {
+            for (int i = 0; i < 4; i++)
+                m_floatingreticule[i].On();
+        }
+    }
+    if (m_rettype == -1) {
+        for (int i = 0; i < 4; i++) {
+            m_floatingreticule[i].Off();
+            m_threatdirpoly[i].Off();
+            m_scopepoly[i].Off();
+            m_socom2_11f0[i].Off();
+        }
+    }
+    if (m_nvgenabled) {
+        for (unsigned int k = 0; k < 4; k++) {
+            m_nvglens[k].On();
+            m_socom2_3940[k].On();
+        }
+    } else {
+        for (unsigned int k = 0; k < 4; k++) {
+            m_nvglens[k].Off();
+            m_socom2_3940[k].Off();
+        }
+    }
+    int i;
+
+    if (t == -1) {
+        m_bitmap.Off();
+        for (i = 0; i < 4; i++) {
+            m_scopepoly[i].Off();
+            m_threatdirpoly[i].Off();
+            m_socom2_11f0[i].Off();
+        }
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].Off();
+        m_grenadeactive[1].Off();
+        m_grenadeback[0].Off();
+        m_grenadeback[1].Off();
+        m_enemy_name.Off();
+        m_healthbar.Off();
+    } else if ((t >= 0 && t < 4) || t == 9) {
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].Off();
+        m_grenadeactive[1].Off();
+        m_grenadeback[0].Off();
+        m_grenadeback[1].Off();
+        m_enemy_name.On();
+        m_healthbar.On();
+        m_bitmap.On();
+        for (i = 0; i < 4; i++) {
+            m_scopepoly[i].Off();
+            m_socom2_11f0[i].Off();
+            m_threatdirpoly[i].On();
+            m_floatingreticule[i].On();
+        }
+        if (t != 3) {
+            zdb::CTexHandle *tex = m_reticuleTex[t];
+            zdb::CTexture *pic = tex->m_texture;
+            float h = (int)pic->m_height / 2.0f;
+            float w = (int)pic->m_width / 2.0f;
+
+            m_bitmap.Load(m_posx - w, m_posy - h, m_posx + w, m_posy + h, tex);
+            m_bitmap.SetUV(0.0f, 0.0f, 1.0f, 1.0f);
+            m_bitmap.SetTrans(128.0f);
+
+            CZSealBody *seal = CHUD::GetHUDOwner();
+
+            if (t == 0 && seal->m_zoomstate == 2) {
+                for (int n = 0; n < 4; n++)
+                    m_socom2_11f0[n].On();
+            }
+        } else {
+            zdb::CTexture *pic = m_reticuleTex[t]->m_texture;
+            float w = 0.7f * (int)pic->m_width;
+            float h = 0.7f * (int)pic->m_height;
+            float left = 320.0f - w;
+            float right = 320.0f + w;
+            float top = 224.0f - h;
+            float bottom = 224.0f + h;
+
+            m_bitmap.Off();
+            m_scopepoly[0].On();
+            m_scopepoly[0].SetTrans(128.0f);
+            m_scopepoly[0].Load(left, top, 320.0f, top, 320.0f, 224.0f, left, 224.0f, m_reticuleTex[t] ? m_reticuleTex[t]->m_texture : 0);
+            m_scopepoly[1].On();
+            m_scopepoly[1].SetTrans(128.0f);
+            m_scopepoly[1].Load(right, top, 320.0f, top, 320.0f, 224.0f, right, 224.0f, m_reticuleTex[t] ? m_reticuleTex[t]->m_texture : 0);
+            m_scopepoly[2].On();
+            m_scopepoly[2].SetTrans(128.0f);
+            m_scopepoly[2].Load(left, bottom, 320.0f, bottom, 320.0f, 224.0f, left, 224.0f, m_reticuleTex[t] ? m_reticuleTex[t]->m_texture : 0);
+            m_scopepoly[3].On();
+            m_scopepoly[3].SetTrans(128.0f);
+            m_scopepoly[3].Load(right, bottom, 320.0f, bottom, 320.0f, 224.0f, right, 224.0f, m_reticuleTex[t] ? m_reticuleTex[t]->m_texture : 0);
+            m_scopepoly[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+            m_scopepoly[1].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+            m_scopepoly[2].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+            m_scopepoly[3].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+        }
+    } else if (t == 4) {
+        static CPnt3D s_barColor(128.0f, 70.0f, 32.0f);
+
+        SetGBarVal(0.0f);
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].On();
+        m_grenadeactive[1].On();
+        m_grenadeback[0].On();
+        m_grenadeback[1].On();
+        m_grenadeactive[0].SetColor(s_barColor.x, s_barColor.y, s_barColor.z);
+        m_grenadeactive[1].SetColor(s_barColor.x, s_barColor.y, s_barColor.z);
+        m_grenadeback[0].SetColor(200.0f, 200.0f, 0.0f);
+        m_grenadeback[1].SetColor(200.0f, 200.0f, 0.0f);
+        m_grenadeactive[0].SetTrans(s_barTrans);
+        m_grenadeactive[1].SetTrans(s_barTrans);
+        m_grenadeback[0].SetTrans(s_barBackTrans);
+        m_grenadeback[1].SetTrans(s_barBackTrans);
+        m_enemy_name.Off();
+        m_healthbar.Off();
+        m_bitmap.Off();
+        for (i = 0; i < 4; i++) {
+            m_scopepoly[i].Off();
+            m_socom2_11f0[i].Off();
+            m_threatdirpoly[i].On();
+        }
+        zdb::CTexHandle *tex = m_reticuleTex[t];
+        zdb::CTexture *pic = tex->m_texture;
+        float h = (int)pic->m_height / 2.0f;
+        float w = (int)pic->m_width / 2.0f;
+
+        m_bitmap.Load(m_posx - w, m_posy - h, m_posx + w, m_posy + h, tex);
+        m_bitmap.SetUV(0.0f, 0.0f, 1.0f, 1.0f);
+        m_bitmap.SetTrans(128.0f);
+    } else if (t == 5) {
+        bool laser = false;
+        CZSealBody *seal = CHUD::GetHUDOwner();
+        CZKit *kit = seal->GetKit();
+
+        if (seal)
+            laser = kit != 0 && (kit->GetCurItemEnum() & 0xff) == 0x3f;
+        m_enemy_name.Off();
+        m_healthbar.Off();
+        m_bitmap.Off();
+        for (i = 0; i < 4; i++) {
+            m_threatdirpoly[i].On();
+            m_floatingreticule[i].Off();
+            m_socom2_11f0[i].On();
+            if (laser)
+                m_scopepoly[i].Off();
+            else {
+                m_scopepoly[i].On();
+                m_scopepoly[i].SetTrans(128.0f);
+            }
+        }
+        SetGBarVal(0.0f);
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].Off();
+        m_grenadeactive[1].Off();
+        m_grenadeback[0].Off();
+        m_grenadeback[1].Off();
+        if (!laser) {
+            m_scopepoly[0].Load(0.0f, -96.0f, 0.0f, 224.0f, 320.0f, 224.0f, 320.0f, -96.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+            m_scopepoly[1].Load(320.0f, -96.0f, 320.0f, 224.0f, 640.0f, 224.0f, 640.0f, -96.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+            m_scopepoly[2].Load(0.0f, 224.0f, 0.0f, 544.0f, 320.0f, 544.0f, 320.0f, 224.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+            m_scopepoly[3].Load(320.0f, 224.0f, 320.0f, 544.0f, 640.0f, 544.0f, 640.0f, 224.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+        }
+        m_scopepoly[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+        m_scopepoly[1].SetUV(0.99f, 0.01f, 0.99f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+        m_scopepoly[2].SetUV(0.01f, 0.99f, 0.01f, 0.01f, 0.99f, 0.01f, 0.99f, 0.99f);
+        m_scopepoly[3].SetUV(0.99f, 0.99f, 0.99f, 0.01f, 0.01f, 0.01f, 0.01f, 0.99f);
+        theHUD->SetRangeTextPos(s_scopeRangeX, s_scopeRangeY);
+    } else if (t == 7) {
+        m_enemy_name.Off();
+        m_healthbar.Off();
+        m_bitmap.Off();
+        for (i = 0; i < 4; i++) {
+            m_floatingreticule[i].Off();
+            m_scopepoly[i].On();
+            m_scopepoly[i].SetTrans(128.0f);
+            m_threatdirpoly[i].On();
+        }
+        SetGBarVal(0.0f);
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].Off();
+        m_grenadeactive[1].Off();
+        m_grenadeback[0].Off();
+        m_grenadeback[1].Off();
+        m_scopepoly[0].Load(0.0f, 0.0f, 0.0f, 448.0f, 320.0f, 448.0f, 320.0f, 0.0f, m_reticuleTex[7] ? m_reticuleTex[7]->m_texture : 0);
+        m_scopepoly[1].Load(319.0f, 0.0f, 320.0f, 448.0f, 640.0f, 448.0f, 640.0f, 0.0f, m_reticuleTex[7] ? m_reticuleTex[7]->m_texture : 0);
+        m_scopepoly[2].Load(0.0f, 0.0f, 0.0f, 448.0f, 320.0f, 448.0f, 320.0f, 0.0f, binocs_tex ? binocs_tex->m_texture : 0);
+        m_scopepoly[3].Load(319.0f, 0.0f, 320.0f, 448.0f, 640.0f, 448.0f, 640.0f, 0.0f, binocs_tex ? binocs_tex->m_texture : 0);
+        m_scopepoly[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.97f, 0.99f, 0.97f, 0.01f);
+        m_scopepoly[1].SetUV(0.97f, 0.01f, 0.97f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+        m_scopepoly[2].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.97f, 0.99f, 0.97f, 0.01f);
+        m_scopepoly[3].SetUV(0.97f, 0.01f, 0.97f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+        m_scopepoly[2].SetTrans(s_binocTrans);
+        m_scopepoly[3].SetTrans(s_binocTrans);
+        theHUD->SetRangeTextPos(s_binocRangeX, s_binocRangeY);
+    }
+    if (m_nvgenabled)
+        theHUD->SetRangeTextPos(s_nvgRangeX, s_nvgRangeY);
 }
 
 /* the grenade bar (SOCOM 1's SetGBarVal, 0x3CD490 there; 0x213A60): for the grenade reticle only --
