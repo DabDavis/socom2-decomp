@@ -4009,7 +4009,7 @@
 0x002B7950 0x98 func_002B7950  # OVL1
 0x002B79F0 0x28 ftsNetworkGameUninit__Fv  # OVL1; s1:align
 0x002B7A20 0x70 ftsNetworkGameInit__Fv  # OVL1; s1:align
-0x002B7A90 0x200 func_002B7A90  # OVL1
+0x002B7A90 0x200 ftsNetworkSealInit__Fv  # OVL1; s1:calls by hand (the states lane, round 48): SOCOM 1's ftsNetworkSealInit -- SOCOM 1's CLoadState::Tick calls it just ahead of UnloadRemoteGuyList (0x37F090 / 0x37F098) where SOCOM II's Tick calls 0x2B7A90 just ahead of it, twice; its body calls ftsNetworkPlayerInit first, then CreateLocalSeal and UpdateLocalSeal, and RefreshTeamValves last, as SOCOM 1's (SOCOM II adds the turrets' CreateLocalPlatform)
 0x002B7C90 0x60 func_002B7C90  # OVL1
 0x002B7CF0 0x68 func_002B7CF0  # OVL1
 0x002B7D60 0x174 ftsNetworkPlayerInit__Fv  # OVL1; s1:align
