@@ -185,11 +185,25 @@ class CUIVariable;
 /* the online game (SOCOM 1's CZNetGame: only what this unit touches, at SOCOM II's offsets) */
 class CZNetGame {
 public:
-    unsigned char _0[0x44];
+    enum MP_MAJOR_GAME_STATE {
+        MP_MAJOR_0 = 0,
+        MP_MAJOR_1 = 1,
+        MP_MAJOR_GHOST = 14
+    };
+
+    unsigned char _0[0x28];
+    CValve *m_28;   // 0x28: mp_join_game (fts_mission.cpp's; SOCOM 1's m_pJoinGameValve at 0x24)
+    unsigned char _2c[0x44 - 0x2c];
     CValve *m_pPlayerJoinCountValve;   // 0x44 (SOCOM 1's at 0x40)
     unsigned char _48[0x6c - 0x48];
     CValve *m_6c;   // 0x6c: set from each action packet (SOCOM II's)
-    unsigned char _70[0x94 - 0x70];
+    unsigned char _70[0x84 - 0x70];
+    /* the teams' lists' UI variables, BSEALLISTVAR, BTERRLISTVAR and BSPECLISTVAR (fts_mission.cpp's
+     * m_84[5]; SOCOM 1's m_uiv_*List at 0x50) */
+    CUIVariable *m_84;   // 0x84
+    CUIVariable *m_88;   // 0x88
+    CUIVariable *m_8c;   // 0x8c
+    unsigned char _90[0x94 - 0x90];
     CUIVariable *m_chat;   // 0x94: the chat's history (SOCOM II's)
     unsigned char _98[0xac - 0x98];
     int m_persona_object_index;   // 0xac (SOCOM 1's at 0x70)
@@ -198,9 +212,11 @@ public:
     bool m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
     unsigned char _cd[0xcf - 0xcd];
     unsigned char m_persona_created;   // 0xcf (SOCOM 1's at 0x97)
-    unsigned char _d0[0xd2 - 0xd0];
+    unsigned char _d0;
+    unsigned char m_d1;   // 0xd1 (SOCOM 1's m_ghost_ok at 0x99)
     unsigned char m_d2;   // 0xd2: the player's SEAL made anew at its start (SOCOM II's; the name ours)
-    unsigned char _d3[0xda - 0xd3];
+    unsigned char _d3[0xd9 - 0xd3];
+    unsigned char m_d9;   // 0xd9: SOCOM II's (a client collision reported)
     unsigned char m_da;   // 0xda: set while held actions are handled at once (SOCOM II's)
     unsigned char _db[0xdc - 0xdb];
     unsigned char m_respawn;   // 0xdc: respawning on (fts_mission.cpp's)
@@ -210,10 +226,13 @@ public:
     CPnt3D m_104;   // 0x104: where the bomb is (SOCOM 1's at 0xcc; the name ours)
     unsigned char m_110;   // 0x110: a bomb is down there (SOCOM 1's at 0xd8; the name ours)
     char m_111;   // 0x111 (SOCOM 1's at 0xd9: m_game_type)
-    unsigned char _112;
+    unsigned char m_112;   // 0x112 (SOCOM 1's m_net_start_flag at 0xda)
     unsigned char m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
+    unsigned char m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
 
     bool LateJoiner(bool late);
+    MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);   /* 0x2A7490 */
+    MP_MAJOR_GAME_STATE MyMajorGameState(MP_MAJOR_GAME_STATE state);   /* 0x2A7420 */
 };
 
 class CMission {
@@ -258,6 +277,7 @@ public:
     void ForceStatusReport();   /* 0x2F8350 */
     void Censor(const char *text, void (*send)(const char *, void *), void *arg);
     bool IsIgnored(const char *name);
+    void SyncGameClock(int t);   /* 0x2DF560 */
 };
 
 /* a map's action (only the bits the action packet sets; SOCOM 1's at 0x2C) */
@@ -287,6 +307,7 @@ public:
 extern CZAnimMain ZAnim;
 
 const char *GetDatabase();
+void SetDatabase(const char *name);   /* 0x27F810 */
 
 /* an anim's extra data (only its flags: bit 0 an anim the network plays) */
 class CAnimAuxData {
@@ -1316,6 +1337,10 @@ public:
     bool push(const char *tag);
     bool pop();
     bool addstringnode(const char *s);
+    bool addintnode(int i);
+    bool addrdrnode(struct _zrdr *rdr);
+    bool addPNT3D(const char *tag, const PNT3D &p);
+    bool addSTRING(const char *tag, const char *s);
 
     unsigned char _0[0x4c];
 };
@@ -1839,7 +1864,7 @@ struct GameSignalPacket {
     unsigned char a;   // 0xc
     unsigned char b;   // 0xd
     unsigned char c;   // 0xe
-    char game_type;   // 0xf
+    unsigned char game_type;   // 0xf (the handler loads it lbu)
     unsigned char flag;   // 0x10
 };
 
@@ -1859,6 +1884,157 @@ void SendGameSignalMessage(int to, unsigned char a, unsigned char b, unsigned ch
         theNetwork.zNetSendApplicationMessage(64, theNetwork.GetGameConnectionIndex(), to,
             data_00440EB0, 20, (unsigned char *)&p, false);
     }
+}
+
+/* the UI's variables (zui.h's CUIVarManager: only its lookup) */
+class CUIVarManager {
+public:
+    CUIVariable *Find(const char *name);   /* 0x385900 */
+};
+extern CUIVarManager theUIVarManager;
+
+extern "C" {
+unsigned int func_002C32E0();   /* (fts_net_persona.cpp's: the terrorists' team mask) */
+unsigned int func_002C32C0();   /* (the SEALs' team mask) */
+}
+
+/* a game signal from the session master (SOCOM 1's GameSignalPacketHandler, grown; OVL1 0x2B9150):
+ * a refusal (b 4) told the lobby with its reason and taken as signal 0; then, with a game, signal 13
+ * forces a new database (the late joiner takes it and has the network's fixes 4 and 5 queued, a
+ * joiner not yet in the game marks its start flag), 14 sets the ghost flag, 2 and up join: the
+ * clock synchronised, a late joiner, every client's word cleared, the game type and database
+ * taken, both major states 1, and the team's list (b: 1, 2 or 3) given our name with our clan's
+ * tag in its colour; 0 and 1 only take the database and the team; and every one sets the join
+ * valve to 10. Byte-exact (the game states' round 47): the team an `int` local (an `unsigned char`
+ * one is a promoted temporary numbered after every named local: s1 where the target has s4), the
+ * join test `p->a > 1` (the target's fused `slti at`; `>= 2` materialises into v0), the colour three
+ * stores (an initialiser block-copies it from .rodata), and an `int` counter -- an `unsigned int` one
+ * matching Item()'s parameter is strength-reduced to an offset stepped by 8 */
+extern "C" int func_002B9150(int, int, int, void *data)
+{
+    GameSignalPacket *p = (GameSignalPacket *)data;
+    int team = p->b;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (team == 4) {
+        char text[48];
+
+        switch (p->c) {
+        case 0:
+            sprintf(text, "%s", "General Protection Fault");
+            break;
+        case 1:
+            sprintf(text, "%s", "Password Error");
+            break;
+        case 2:
+            sprintf(text, "%s", "Too many spectators");
+            break;
+        case 3:
+            sprintf(text, "%s", "Too many players");
+            break;
+        case 4:
+            sprintf(text, "%s", "Closed clan game");
+            break;
+        default:
+            sprintf(text, "%s", "Totally unknown error");
+            break;
+        }
+        if (data_0044F3C8)
+            data_0044F3C8("MP_EJECT_SPECTATOR", text);
+        p->a = 0;
+    }
+    if (game) {
+        if (p->a == 13) {
+            if (game->m_late_joiner) {
+                if (game->m_my_major_game_state == 1) {
+                    game->m_111 = p->game_type;
+                    SetDatabase(p->database);
+                    NetMessage m = {0};
+
+                    m.kind = 4;
+                    theNetwork.AddToFixList((CZNetwork::TypeRTimeFixStruct *)&m);
+                    m.kind = 5;
+                    theNetwork.AddToFixList((CZNetwork::TypeRTimeFixStruct *)&m);
+                } else {
+                    game->m_112 = 3;
+                }
+                if (data_0044F3C8)
+                    data_0044F3C8("ON_FORCE_NEW_DB", 0);
+            }
+        } else if (p->a == 14) {
+            game->m_d1 = 1;
+        } else if (p->a > 1) {
+            theLobby.SyncGameClock(p->arg);
+            game->LateJoiner(true);
+            if (game->m_d9 && data_0044F3C8)
+                data_0044F3C8("MP_MEDIUS_ERROR", "Client Collision Error");
+            for (int i = 0; i < 24; i++)
+                data_00440EC0[i] = 0;
+            game->m_111 = p->game_type;
+            SetDatabase(p->database);
+            game->MPMajorGameState(CZNetGame::MP_MAJOR_1);
+            game->MyMajorGameState(CZNetGame::MP_MAJOR_1);
+            CUIVariable *name = theUIVarManager.Find("PLAYERNAMEVAR");
+            CUIVariable *clan = theUIVarManager.Find("Clan_Description");
+            CUIVariable *list = 0;
+            PNT3D color;
+            color.x = 128.0f;
+            color.y = 64.0f;
+            color.z = 32.0f;
+            const char *player = name && name->IsString() ? name->String() : "Player";
+            const char *desc = clan && clan->IsString() ? clan->String() : 0;
+            char tag[32];
+
+            if (desc && *desc)
+                sprintf(tag, "[%s]", desc);
+            else
+                sprintf(tag, "");
+            func_002C0040(p->flag != 0);
+            if (team == 1) {
+                func_002C3330(func_002C32E0());
+                list = game->m_84;
+            } else if (team == 2) {
+                func_002C3330(func_002C32C0());
+                list = game->m_88;
+            } else if (team == 3) {
+                func_002C3330(0x10000);
+                list = game->m_8c;
+            }
+            if (list) {
+                CRdrEditor ed;
+
+                ed.push(0);
+                if (list->IsArray())
+                    for (int i = 0; i < list->Count(); i++)
+                        ed.addrdrnode((struct _zrdr *)list->Item(i));
+                ed.push(0);
+                ed.addstringnode(player);
+                ed.addintnode(0);
+                ed.addintnode(0);
+                ed.push(0);
+                ed.addSTRING("VALUE", tag);
+                ed.addPNT3D("COLOR", color);
+                ed.pop();
+                ed.pop();
+                ed.pop();
+                list->Set((struct _zrdr *)&ed);
+            }
+            func_002C34F0(p->c);
+        } else {
+            game->LateJoiner(false);
+            SetDatabase(p->database);
+            func_002C0040(p->flag != 0);
+            if (team == 1)
+                func_002C3330(func_002C32E0());
+            else if (team == 2)
+                func_002C3330(func_002C32C0());
+            else if (team == 3)
+                func_002C3330(0x10000);
+            func_002C34F0(p->c);
+        }
+        theMission.m_pNetGame->m_28->SetValue(10);
+    }
+    return 20;
 }
 
 /* ---- the network messages' descriptions (SOCOM II's; the structs' names ours, each laid out by its
