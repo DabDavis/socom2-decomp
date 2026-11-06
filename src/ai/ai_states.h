@@ -563,6 +563,7 @@ public:
         __ct__9CAiMapLocFv(&m_cell);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSPlan();
 
     union {
@@ -587,7 +588,8 @@ public:
     unsigned char m_pathState;   // 0xe4: its state (1-3 failed, 4 arrived)
     unsigned char _e5[0x100 - 0xe5];
     unsigned int m_100;   // 0x100
-    unsigned char _104[0x10c - 0x104];
+    class CAiMapLoc *m_104;   // 0x104: where the route ends
+    unsigned char _108[0x10c - 0x108];
     char *m_10c;   // 0x10c: a block of its own, freed
     unsigned char m_110;   // 0x110
     unsigned char _111[0x114 - 0x111];

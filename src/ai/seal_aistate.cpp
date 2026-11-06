@@ -692,6 +692,150 @@ extern "C" int func_005F15A0(CAiSPlan *plan, CSealCtrlAi *ai)
     return r;
 }
 
+extern "C" {
+/* the controller's hold on a route's end (OVL2 0x562790), its stop within a range (0x5621F0) and whether its route has
+ * run out (0x5629B0): the SEAL lane's rows */
+bool func_00562790(CSealCtrlAi *ai, void *path);
+void func_005621F0(CSealCtrlAi *ai, float range);
+bool func_005629B0(CSealCtrlAi *ai);
+void func_00570F90(CSealCtrlAi *ai, float t);
+float GetDistance__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc(CAiMaps *maps, const CAiMapLoc *a, const CAiMapLoc *b);
+}
+
+/* the margin on a plan's tolerance and the tolerance with none (OVL2 data) */
+extern float data_00650BC8;
+extern int data_00650BD0;
+
+/* whether the plan's route arrived (inline; the name ours) */
+inline bool PlanArrived(CAiSPlan *p)
+{
+    return !(p->m_100 == 0) && p->m_pathState == 4;
+}
+
+/* the state the plan covers stepped on, to the step for success or for failure, when it has one (inline; the names ours) */
+inline void PlanSucceeded(CAiSPlan *p)
+{
+    int k;
+    CAiState *s = (CAiState *)p->m_114;
+
+    if (s) {
+        k = p->m_124;
+        if (k != -1)
+            s->UpdatePhase(k);
+    }
+}
+
+inline void PlanFailed(CAiSPlan *p)
+{
+    int k;
+    CAiState *s = (CAiState *)p->m_114;
+
+    if (s) {
+        k = p->m_128;
+        if (k != -1)
+            s->UpdatePhase(k);
+    }
+}
+
+/* whether the AI holds the route's end (inline; the name ours) */
+inline bool PlanHolds(CAiSPlan *p, CSealCtrlAi *ai)
+{
+    bool a = !(p->m_100 == 0);
+
+    if (a)
+        a = p->m_pathState == 4;
+    bool ok = a;
+
+    if (a)
+        ok = func_00562790(ai, p->m_path);
+    return ok;
+}
+
+/* the route's end taken: the plan's block freed, the state it covers stepped; 3 when the AI holds the route's end, else 4
+ * (inline; the name ours) */
+inline int PlanEnd(CAiSPlan *p, CSealCtrlAi *ai)
+{
+    int r;
+
+    if (p->m_10c) {
+        delete p->m_10c;
+        p->m_10c = 0;
+    }
+    bool ok = PlanHolds(p, ai);
+
+    r = 4;
+    if (ok) {
+        PlanSucceeded(p);
+        r = 3;
+    } else
+        PlanFailed(p);
+    return r;
+}
+
+/* the stop's range: 3 within it, else 4, the state the plan covers stepped (inline; the name ours) */
+inline int PlanInRange(CAiSPlan *p, CEntity *seal)
+{
+    const CAiMapLoc *to = PlanArrived(p) ? p->m_104 : &CAiMapLoc::invalid;
+    float d = GetDistance__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc(&AiMaps, &seal->m_mapLocValid, to);
+    int tol = p->m_130;
+    int r;
+
+    tol = tol < 0 ? data_00650BD0 : tol;
+    r = 4;
+    if (d <= data_00650BC8 * (10.0f * (float)tol)) {
+        PlanSucceeded(p);
+        r = 3;
+    } else
+        PlanFailed(p);
+    return r;
+}
+
+/* a plan's frame: its route begun (step 0), then run; at its end the state it covers stepped and, flag 2, the AI stands
+ * guard there -- flag 0 and 1 its bits -- until the stop's range is left (step 2); a failed plan ends with 4 (OVL2
+ * 0x5F1160; new in SOCOM II) */
+int CAiSPlan::Tick(CSealCtrlAi *ai)
+{
+    int r;
+    STEP step = (STEP)m_phase;
+    CEntity *seal = ai->m_entity;
+
+    r = 0;
+    switch (step) {
+    case STEP_0:
+        r = func_005F15A0(this, ai);
+        if (!r)
+            step = (STEP)m_phase;
+        break;
+    case STEP_1:
+        if (m_pathState != 1 && !(m_pathState == 1 || m_pathState == 2 || m_pathState == 3)) {
+            if (PlanArrived(this)) {
+                r = PlanEnd(this, ai);
+                if (r == 3 && (m_flags & 4)) {
+                    ai->SetAiMode((AI_MODE)3);
+                    func_00570F90(ai, m_12c);
+                    ai->SetAiBit2((m_flags & 1) != 0);
+                    ai->m_aibit3 = (m_flags & 2) != 0;
+                    func_005621F0(ai, 10.0f * (float)m_130);
+                    r = 0;
+                    step = STEP_2;
+                }
+            } else
+                r = PlanEnd(this, ai);
+        }
+        break;
+    case STEP_2:
+        if (func_005629B0(ai))
+            r = PlanInRange(this, seal);
+        break;
+    case STEP_3:
+        r = 4;
+        break;
+    }
+    UpdatePhase(step);
+    m_done = r;
+    return r;
+}
+
 /* the plan's path flags (its CAiPath's word at 0x1C, the plan's 0x80) changed: `clear` cleared,
  * `set` set (inlined with constants, as the controller's own path's at 0x488; the name ours) */
 inline void SetPathFlags(CAiSPlan *plan, unsigned int set, unsigned int clear)
