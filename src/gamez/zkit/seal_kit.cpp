@@ -1484,6 +1484,79 @@ void CZKit::ChangeItemModel(int item, int kind, int x, bool now)
     }
 }
 
+/* whether a mission's world is at night (the world's byte at 0x5DC: the HUD's view; the name ours) and the scope settings
+ * for a primary and a sidearm: whether each is forced, and to what (OVL1 data; the names unknown) */
+struct CKitWorldView {
+    unsigned char _0[0x5dc];
+    unsigned char m_night_mission;   // 0x5dc
+};
+
+extern unsigned char data_00436674;
+extern int data_00436678;
+extern unsigned char data_0043667C;
+extern int data_00436680;
+
+extern "C" {
+void SetCurZoomState__10CZSealBodyF9ZOOMSTATE(CZSealBody *body, int state);
+void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
+void WepWaitOff__10CZSealBodyFv(CZSealBody *body);
+}
+
+/* an item made the current one: the same one only checks its reticle; else a night scope view left unless the item's
+ * forced setting keeps it, the zoom reset, the hot-swap flag marking a change, the wait for the weapon on or off by its
+ * class, the models changed, the reticle and the weapon information updated, the throw flag cleared, the camera's zoom
+ * eased back from a scope, and a fire mode chosen when the item has none (OVL2 0x5C4B10; SOCOM 1's) */
+void CZKit::SetCurItemByIndex(int index)
+{
+    int i = wrap(index, m_num_items);
+
+    if (i == -1)
+        return;
+    if (i == m_selected_item) {
+        SetCurReticule(false);
+        return;
+    }
+    if (((CKitBody *)m_body)->m_200 == 3) {
+        unsigned char night = zdb::CWorld::m_world ? ((CKitWorldView *)zdb::CWorld::m_world)->m_night_mission : 0;
+        CZFTSWeapon *w = (CZFTSWeapon *)GetItemByIndex(i);
+
+        if (data_00436674 && CZWeapon::IsPrimary(w->m_ID))
+            night = data_00436678 != 0;
+        else if (data_0043667C && CZWeapon::IsSecondary(w->m_ID))
+            night = data_00436680 != 0;
+        if (!night)
+            SetCurZoomState__10CZSealBodyF9ZOOMSTATE(m_body, 1);
+    }
+    m_cur_zoom = 0;
+    int prev = GetSelectedItemNum();
+
+    m_hotswap = index != prev;
+    m_selected_item = i;
+    if (m_selected_item >= m_num_items)
+        m_selected_item = 0;
+    EQUIP_ITEM t = m_item[m_selected_item]->GetIDType();
+
+    if (CZWeapon::IsPrimaryType(t) || CZWeapon::IsSecondaryType(t) || CZWeapon::IsLauncherType(t))
+        WepWaitOn__10CZSealBodyFv(m_body);
+    else
+        WepWaitOff__10CZSealBodyFv(m_body);
+    EQUIP_ITEM id = m_item[m_selected_item]->m_ID;
+
+    ChangeItemModel(FireClassOfId(m_item[prev]->m_ID), FireClassOfId(id), prev, false);
+    CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+    ctrl->SetBombPlaced(true);
+    SetCurReticule(false);
+    m_weaponinfoChanged = true;
+    ctrl->SetThrowing(false);
+    func_00592D40(ctrl);
+    if (GetCurZoom() > 1.01f)
+        SetCameraZoom__9CSealCtrlFff(ctrl, 1.0f, 0.5f);
+    m_cur_zoom = 0;
+    if (m_firemode[m_selected_item] == 0)
+        CycleFireMode();
+}
+
 /* (OVL2 0x5C48B0) */
 void CZKit::SetHandFireMode(int mode)
 {

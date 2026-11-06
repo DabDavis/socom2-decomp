@@ -402,6 +402,22 @@ public:
             c = FIRE_CLASS_THROWN;
         return c;
     }
+    /* the same over the kind, read ahead of the body (inline: SetCurItemByIndex's; the name ours) */
+    static FIRE_CLASS FireClassOfId(EQUIP_ITEM id)
+    {
+        EQUIP_ITEM t = CZWeapon::GetIDType(id);
+        FIRE_CLASS c = FIRE_CLASS_NONE;
+
+        if (CZWeapon::IsPrimaryType(t))
+            c = FIRE_CLASS_RIFLE;
+        else if (CZWeapon::IsSecondaryType(t))
+            c = FIRE_CLASS_PISTOL;
+        else if (CZWeapon::IsLauncherType(t))
+            c = FIRE_CLASS_145;
+        else if (t == IDTYPE_GRENADE || t == IDTYPE_EXPLOSIVE)
+            c = FIRE_CLASS_THROWN;
+        return c;
+    }
     int GetFireClassIndex(FIRE_CLASS c);
     /* whether a slot's item uses ammunition: held, and none of the ten kinds without (inline:
      * GetPickupSlot's; the name ours) and the slot a picked-up item takes (OVL2 0x5BAE60, new in
