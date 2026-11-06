@@ -432,6 +432,9 @@ public:
      * OVL2 0x5352D0) */
     bool WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
         void *data, float step);
+    /* how much of a line between two points the maps' cells let the eye through (ai_maps.h's, OVL2
+     * 0x538E30: the visibility score 0x60AA20 asks it of the ray, flags 1) */
+    float ComputeLineVisibility(const CPnt3D *from, const CPnt3D *to, unsigned int flags);
 };
 
 extern CAiMaps AiMaps;

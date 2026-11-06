@@ -3,8 +3,9 @@
  * at 0x60BF40 follows, seal_aiparams.cpp). SOCOM 1 had the same functions in the same place, right
  * after the response states' destructors; the unit's name is ours. So far the validity test, a
  * target's worth (0x60B7F0), one getter and, round 29, the visibility update 0x60AFA0 and, round 53,
- * ModifyAimDir (zkit.h included for Rfloat, code-neutral for the rest). Defined in reverse of their
- * image order (-inline deferred). */
+ * ModifyAimDir (zkit.h included for Rfloat, code-neutral for the rest) and, round 55, the visibility
+ * score 0x60AA20 with its two helpers 0x60B120 and 0x60B470 (int_material.h included for the
+ * materials). Defined in reverse of their image order (-inline deferred). */
 
 #include "../gamez/zentity/zentity.h"
 #include "../gamez/znode/int_material.h"
@@ -14,9 +15,21 @@
 /* the mission's clock, which the target's times are taken on (theMission's float at 0xE0, OVL1
  * 0x4365C0: SOCOM 1's at 0x60 of its theMission, as its GetTimeSinceLastSighting reads it) --
  * a view of the mission, fts_state.h's CMission not reaching it */
+struct CMissionVision {
+    float m_fog;   // 0x0 (theMission+0x144): the fog's weight in the far bands' score
+    unsigned char _4[0x1c - 0x4];
+    float m_spot;   // 0x1c: the weight of the lights of kind 4
+    float m_indoor;   // 0x20: their share indoors
+    float m_shadow;   // 0x24: the shadow's scale
+    float m_lit_shadow;   // 0x28: and again where lights of kind 3 reach
+};
 struct CMissionClock {
     unsigned char _0[0xe0];
     float m_time;   // 0xe0
+    unsigned char _e4[0x144 - 0xe4];
+    /* the visibility score's light and fog settings (SOCOM II's, read only by 0x60AA20; the names
+     * ours) */
+    CMissionVision m_vision;   // 0x144
 };
 extern CMissionClock theMission;
 
@@ -262,6 +275,44 @@ extern "C" void func_0060B470(const CAiMapLoc &loc, float *shadow, float *inside
     }
 }
 
+/* a blend of two values by a share (inline: its product by the second kept -- 1.0 here, through the
+ * parameter MW does not fold it, the target's mula.s / madd.s pair; the name ours) */
+static inline float Blend(float a, float b, float t)
+{
+    return a * t + b * (1.0f - t);
+}
+
+/* how lit an entity stands for the eye: the lights of kinds 4 and 3 within a radius, the first weighed
+ * down by the indoor share about its cell, all of it darkened by the shadow there (deeper where lights
+ * of kind 3 reach), held within the limits (inline: the visibility score 0x60AA20 inlines it twice --
+ * a SEAL's once a frame, kept at 0x42C --; its statics, 8-byte-spaced data before 0x60B120's, the
+ * radius and the limits; the name ours) */
+static inline float EntityLight(CEntity *e)
+{
+    static float radius = 75.0f;
+    static float light_lo = 0.0f;
+    static float light_hi = 2.0f;
+    const CPnt3D *pos = &e->m_posW;
+    float inside = 0.0f;
+    float shadow = 1.0f;
+
+    func_0060B470(e->m_mapLoc, &shadow, &inside);
+    zdb::CWorld *w = zdb::CWorld::m_world;
+    float spot = w->GetLightIntensity(pos, radius, 4);
+    float ambient = w->GetLightIntensity(pos, radius, 3);
+    const CMissionVision &p = theMission.m_vision;
+    float mix = Blend(p.m_indoor, 1.0f, inside);
+
+    if (ambient > 0.0f)
+        shadow *= p.m_lit_shadow;
+    shadow *= p.m_shadow;
+    spot *= p.m_spot;
+    float light = (1.0f - shadow) * (ambient + spot * mix);
+
+    _saturate(&light, light_lo, light_hi);
+    return light;
+}
+
 /* the ray's hits as the walk below leaves them: SOCOM 1's seal_sensors.cpp statics (diNonVolCount
  * 0x4760C0, diStopper 0x4760BC, range 0x508EE0, sorted 0x508F60 there), SOCOM II's 0x66BBC0, 0x66BBC8,
  * 0x66BBD0 and 0x66BC50 -- only 0x60B120 reads or writes them */
@@ -352,7 +403,7 @@ extern "C" float func_0060B120(void *viewer, zdb::DiIntersect *di, zdb::CNode *n
 }
 
 extern "C" {
-/* how well a viewer sees a target through its finished ray (OVL2 0x60AA20, this unit's, not written:
+/* how well a viewer sees a target through its finished ray (OVL2 0x60AA20, this unit's, below:
  * SOCOM 1's CSealCtrl::ComputeVisibility(DiIntersect *, CTarget *) by its place in the same stretch,
  * with the viewer's context (a stack record the OVL1 turret code and the sensors build) first) */
 float func_0060AA20(void *viewer, zdb::DiIntersect *di, CTarget *t);
@@ -412,6 +463,147 @@ extern "C" bool func_0060AFA0(void *viewer, CTarget *t)
         }
     }
     return visible;
+}
+
+/* how well a viewer perceives a target (ai_perception.cpp's class, declared there in its unit: the
+ * same members -- the constructor, SetRange and Compute out of line, the factor setters inline) */
+class CAiPerception {
+public:
+    CAiPerception(unsigned int viewer, unsigned int target);
+    void SetRange(float range);
+    float Compute();
+
+    unsigned int m_viewer;   // 0x0
+    unsigned int m_target;   // 0x4
+    unsigned char m_band;   // 0x8
+    float m_factor[6];   // 0xc
+    unsigned int m_valid;   // 0x24
+
+    void SetValid(unsigned int set, unsigned int clear)
+    {
+        m_valid &= ~clear;
+        m_valid |= set;
+    }
+    void SetFactor(int i, float v)
+    {
+        m_factor[i] = v;
+        SetValid(1 << i, 0);
+    }
+};
+
+/* the viewer's record (seal_sensors.cpp's CSensing, the OVL1 turret code's own): its entity and its
+ * AI parameters */
+struct CSensingView {
+    CEntity *m_entity;   // 0x0
+    AI_PARAMS *m_params;   // 0x4
+};
+
+/* a SEAL's light as the score last worked it out, and the frame it did (zseal.h's CZSealBody pads
+ * them, 0x42C-0x433) */
+struct CSealLightView {
+    unsigned char _0[0x42c];
+    float m_light;   // 0x42c
+    unsigned int m_light_frame;   // 0x430: zVid's frame number, its low word
+};
+
+/* the entity as a SEAL, or 0 (inline: a ternary, the dead-else copy where the result is a new
+ * variable; the name ours) */
+static inline CZSealBody *SealEntity(CEntity *e)
+{
+    return e && e->m_type == 2 ? (CZSealBody *)e : 0;
+}
+
+/* a SEAL's light, worked out once a frame (inline: its EntityLight a level deeper takes the frame's
+ * lower slots, as the target's; the name ours) */
+static inline float SealLight(CZSealBody *seal)
+{
+    CSealLightView *sl = (CSealLightView *)seal;
+
+    if (zVid.frameNumber != sl->m_light_frame)
+        sl->m_light = EntityLight(seal);
+    sl->m_light_frame = zVid.frameNumber;
+    return sl->m_light;
+}
+
+/* how well a viewer sees a target through its finished ray, -1 when nothing of the line is left
+ * (SOCOM 1's CSealCtrl::ComputeVisibility by its place, its walk now 0x60B120; OVL2 0x60AA20, the
+ * visibility update 0x60AFA0 asks it -- the name unknown): the perception's six factors -- the range
+ * (a tenth through item 190), the target's speed, its visibility, its light (a SEAL's once a frame),
+ * a SEAL's stance, the maps' line visibility -- scored, the far bands fogged, a target of flag 0x100
+ * doubled, all scaled by the viewer's visual sensitivity. Written in the kit's round 55 (unwritten
+ * before), from 0x56C to the target's size by four shapes: the indoor blend through an inline
+ * (Blend(a, 1.0f, t): MW folds a literal `1.0f *` at once, a constant reaching a parameter keeps the
+ * target's mula.s / madd.s), the final `* 1.0f` through a local (`scale`), the SEAL's light through
+ * SealLight (its EntityLight a level deeper takes the frame's lower slots: shadow 204 / inside 208 for
+ * the SEAL, 216 / 220 for the rest -- inside declared first), the fog's product from a local, the
+ * light's position before the 0x60B470 call (the target's delay slot) and `spot *= p.m_spot` (the
+ * product in the light's register).
+ * OPEN, 14 instructions, registers only: the target SEAL (ts, the ternary's temporary @6305) takes s2
+ * and its light's position (&ts->m_posW, @6342) s3, ours the other way round. igreplay --movers: ts
+ * numbered anywhere after the position and before &p.m_valid (43.5-46.5), or the position before ts
+ * as a named variable would be (34.5-39.5). The non-SEAL copy's position is created BEFORE the SEAL
+ * copy's (@6311): MW expands the inlines a level at a time, so SealLight's EntityLight comes last.
+ * Tried: the test written in place, through a wrapper inline, an if/return form (0x574), ts declared
+ * at the top or after `light`, one variable for both SEAL tests (vs and ts), the position as a
+ * reference, assigned twice, after a dead first definition, or a parameter (EntityLight(e, pos): a
+ * saved register lost, 0x570) */
+float func_0060AA20(void *viewer, zdb::DiIntersect *di, CTarget *t)
+{
+    static float flagged = 2.0f;
+    CSensingView *v = (CSensingView *)viewer;
+    CEntity *te = t->m_ent;
+    CEntity *ve = v->m_entity;
+    zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+    float vis = func_0060B120(viewer, di, te->GetNode());
+    float r = -1.0f;
+    float scale = 1.0f;
+    AI_PARAMS *params = v->m_params;
+    CAiPerception p(ve->m_id, te->m_id);
+
+    if (vis > 0.0f) {
+        float range = t->GetRange();
+        CZSealBody *vs = SealEntity(ve);
+
+        if (vs && vs->m_kit.IsUsingItem((EQUIP_ITEM)190))
+            range *= 0.1f;
+        p.SetRange(range);
+        p.SetFactor(1, te->m_velW.Length());
+        p.SetFactor(2, t->m_visibility);
+        CZSealBody *ts = SealEntity(te);
+        float light;
+
+        if (ts) {
+            switch (ts->GetStance(false)) {
+            case 2:
+                p.SetFactor(4, 0.0f);
+                break;
+            case 1:
+                p.SetFactor(4, 0.5f);
+                break;
+            default:
+                p.SetFactor(4, 1.0f);
+                break;
+            }
+            light = SealLight(ts);
+        } else
+            light = EntityLight(te);
+        p.SetFactor(3, light);
+        p.SetFactor(5, AiMaps.ComputeLineVisibility(&di->m_Tail, &di->m_Tip, 1));
+        r = p.Compute();
+        float fog = theMission.m_vision.m_fog;
+
+        if (fog != 0.0f && p.m_band >= 2)
+        {
+            float f = cam->GetFogVisibility(&di->m_Tail, &di->m_Tip);
+
+            r *= f * fog;
+        }
+        if ((t->m_flags & 0x100) && r > 0.0f)
+            r *= flagged;
+    }
+    r *= params->visual_sens;
+    r *= scale;
+    return r;
 }
 
 /* the time since the target was last seen (OVL2 0x60A590; SOCOM 1's, the same 0x14 bytes with the
