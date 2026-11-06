@@ -20,7 +20,12 @@ extern void heap_Free(void *heap, void *p);
 extern int userwordAcknowledge(CASR *c);
 extern int userwordStartUserWordTraining(CASR *c, int what, void *a, void *b);
 static int casrEnableGenders(CASR *c, int genders);
-extern int casrActivateContext(CASR *c, void *ctx, int a);
+int casrActivateContext(CASR *c, struct IMPORT *ctx, int params);
+extern int CreateCtxTree(CASR *c, struct CTXVT *vt);
+extern int CreateCtxInfo(CASR *c, struct CTXVT *vt);
+extern int CalcAccuracyCtxTree(CASR *c);
+extern unsigned int CalcAccuracyCtxInfo(CASR *c);
+extern int memcmp(const void *a, const void *b, unsigned int n);
 extern int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n);
 unsigned char casrDoSecondPass(CASR *c);
 extern void *qEnQueueOne(int queue);
@@ -946,6 +951,136 @@ int casrSetParam(CASR *c, int id, unsigned int value)
 
 /* the second pass over the labelled utterance: its own context (the Chinese one when the language
  * says so), the labels sent again with the timeout (parameter 1) off, then the context back */
+/* the user words' tables as the scheduler's command 36 takes them with the iso-word tree */
+typedef struct UWTABLES {
+    void *states;
+    int *offsets;
+} UWTABLES;
+
+/* a context's data (contextv2.c's CTXDATA), as far as the activation reads it */
+typedef struct CTXDATA {
+    int type;                           /* +0 */
+    int size;                           /* +4 */
+    char version[128];                  /* +8: the language's version info */
+    int ts;                             /* +136 */
+    int accuracy;                       /* +140 */
+    int rejection;                      /* +144 */
+    int garbage;                        /* +148 */
+} CTXDATA;
+
+/* a context activated (0 deactivates it: the engine back to state 1 and the host told): its
+ * language version checked against the data's, the old one let go (_tosControl 41), the kind read
+ * (spelling, isolated words or the parameter 16 choice), the language's word transition penalty,
+ * the engine's record 85 saved, then the iso-word tree or the context info built and sent (36), the
+ * gender record (84); with params the accuracy and the context's rejection, ts and garbage set as
+ * parameters 6, 7, 4 and 8. SOCOM 1's body (0x414). Round 37c, byte-exact: the state set only when
+ * it differs, `if (c->state != 1) { ... }` (with `if (c->state == 1) return 0;` the compare's 1 is
+ * the store's and the callback's a0, 206 words), the callback handed c->state (CSE folds it to a
+ * fresh `li`), err and acc declared with their initialisers (acc's zero after the handle check),
+ * the penalty getter an if/else (a `?:` of the two slots stores before the next call's 85), the
+ * tables written offsets first (the scheduler issues the later store first) */
+int casrActivateContext(CASR *c, struct IMPORT *ctx, int params)
+{
+    int err = casrCheckHandle(c);
+    int acc = 0;
+    int r;
+    CASRLOG *ev;
+    CTXVT vt;
+    int rec[8];
+    UWTABLES tables;
+
+    if (err)
+        return err;
+    if (c->state != 1 && c->state != 2 && c->state != 20)
+        return _tosErrorLog(c->event, 7);
+    c->last_error = 0;
+    if (ctx != 0 && memcmp(((CTXDATA *)ctx->data)->version, (*(LNGFILE **)c->data)->hdr.w, 128) != 0)
+        return _tosErrorLog(c->event, 19);
+    if (c->ctx != 0) {
+        if (_tosControl(c->event, 41, 0, 0) != 0)
+            return (unsigned char)c->last_error;
+        FreeCtxInfo(c);
+    }
+    if (ctx == 0) {
+        if (c->ctx != 0)
+            c->ctx = 0;
+        if (c->state != 1) {
+            c->state = 1;
+            if (c->cb.state_cb != 0) {
+                r = c->cb.state_cb(c->state, 0, c->info);
+                if (c->last_state == 0 && r != 0) {
+                    c->last_state = r;
+                    _tosErrorLog(c->event, 27);
+                }
+            }
+        }
+        return 0;
+    }
+    FillContextV2VirtualTable(&vt);
+    vt.data = ctx->data;
+    if (params == 0)
+        acc = c->p488;
+    c->f1092 = params;
+    c->use_dp = vt.IsSpellingContext(&vt);
+    c->iso_word = vt.IsIsoWordContext(&vt);
+    if (c->use_dp == 0 && c->iso_word == 0)
+        c->iso_word = c->f1088;
+    if (c->use_dp)
+        c->wtp = c->lng->GetSpellingWTP(c->lng);
+    else
+        c->wtp = c->lng->GetRecogWTP(c->lng);
+    ev = c->event;
+    if (_tosControl(ev, 85, (int)&c->f1096, 0) != 0)
+        return 1;
+    if (c->iso_word) {
+        if (CreateCtxTree(c, &vt) != 0)
+            return 1;
+        tables.offsets = c->uw_offsets;
+        tables.states = c->uw_states;
+        if (params != 0)
+            acc = CalcAccuracyCtxTree(c);
+        if ((unsigned int)(c->uw_state - 2) < 2)
+            c->f628 = (void *)ActiveBlocks_UTTFORMAT_LABELS_ISO;
+        if (_tosControl(ev, 85, (int)rec, 0) != 0
+            || _tosControl(ev, 98, (int)c->lng, 0) != 0
+            || _tosControl(ev, 86, (int)rec, 0) != 0
+            || _tosControl(ev, 90, 0, 0) != 0
+            || _tosControl(ev, 36, (int)c->iso_ctx, (int)&tables) != 0
+            || _tosControl(ev, 84, (int)&c->p488, 0) != 0) {
+            FreeCtxInfo(c);
+            return 1;
+        }
+    } else {
+        if (CreateCtxInfo(c, &vt) != 0)
+            return 1;
+        if (params != 0)
+            acc = CalcAccuracyCtxInfo(c);
+        if ((unsigned int)(c->uw_state - 2) < 2)
+            c->f628 = (void *)ActiveBlocks_UTTFORMAT_LABELS;
+        if (_tosControl(ev, 97, 0, 0) != 0
+            || _tosControl(ev, 87, 0, 0) != 0
+            || _tosControl(ev, 36, (int)c->run_ctx, 0) != 0
+            || _tosControl(ev, 84, (int)&c->p488, 0) != 0) {
+            FreeCtxInfo(c);
+            return 1;
+        }
+    }
+    if (params != 0) {
+        if (casrSetParam(c, 6, acc) != 0)
+            return 1;
+        if (casrSetParam(c, 7, ((CTXDATA *)vt.data)->rejection) != 0)
+            return 1;
+        if (casrSetParam(c, 4, ((CTXDATA *)vt.data)->ts) != 0)
+            return 1;
+        if (casrSetParam(c, 8, ((CTXDATA *)vt.data)->garbage) != 0)
+            return 1;
+    }
+    if (UpdateExevStatus(c) != 0)
+        return 1;
+    c->ctx = ctx;
+    return (unsigned char)c->last_error;
+}
+
 static int casrDoNormalSecondPass(CASR *c)
 {
     unsigned int timeout;
