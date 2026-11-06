@@ -94,7 +94,8 @@ typedef struct DmeClient {
 
 extern int func_0061C720(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient);
 extern int func_00614EC8(void **ppObject, unsigned int nIndex);
-extern int func_00615DE0(int nClass, int nConnection, int nTarget, int nMsgType, int nLen, void *pMsg);
+extern int func_00615DE0(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType, int nLength,
+                         void *pData);
 extern void (*data_0067A6E8[16])(int nClient, int nIndex);
 
 /* a data stream's slot (0x44 bytes, 2048 of them, made on first use by func_00614F58) */
@@ -959,8 +960,30 @@ int func_00615B48(char nMsgClass, unsigned int nWorld, unsigned int nType, unsig
     return result;
 }
 
+/* SOCOM 1's NetSendApplicationMessage and NetSendDmeMessage grown (0x615D88, 0x615DE0): a message of one of
+ * 256 types through NetSendMessage's body as kind 2 (the application's) or kind 0 (DME's own), now checked
+ * first; Dme.c's locked wrappers carry the names (round 7b). Round 25b wrote them here for func_0061A118:
+ * its first arm's owner test is the target's `bnel` only once the send it falls into is compiled above it
+ * (round 13c's rule, met the other way round). */
+int func_00615D88(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType, int nLength, void *pData)
+{
+    if (nType < 256) {
+        if (nLength > 0 && pData != 0)
+            return func_006158F8(nMsgClass, nWorld, nTarget, 2, nType, nLength, pData);
+        return DME_ERR_ARGUMENT;
+    }
+    return DME_ERR_ARGUMENT;
+}
 
-
+int func_00615DE0(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType, int nLength, void *pData)
+{
+    if (nType < 256) {
+        if (nLength > 0 && pData != 0)
+            return func_006158F8(nMsgClass, nWorld, nTarget, 0, nType, nLength, pData);
+        return DME_ERR_ARGUMENT;
+    }
+    return DME_ERR_ARGUMENT;
+}
 
 void RemoteObjectCreation(unsigned int nClient, unsigned int nIndex)
 {
@@ -1814,17 +1837,16 @@ extern int func_0061D448(int nClient);
 
 /* an object's ownership asked for (0x61A118, SOCOM 1's NetRequestObjectPrivateOwnership's place): taken
  * at once when this client made it, else asked of its creator.
- * OPEN (one word since round 25b: arm 1's owner test is `bne` here, the target's `bnel`, the same `li v0,11`
- * in its slot -- reorg's annul choice, from the opposite thread's live registers; twelve spellings of the
- * else-returns (a shared `busy:` label, returns inside, a result variable, the ask at the top, the creator
- * and owner read apart) give that word or worse). Round 24b came to registers: the ask a one-member struct
- * (an unsigned short is a promoted mode, forced to slot 16 before the pointers' ADDRESSOFs), pObject
+ * Byte-exact since round 25b (open since it was first written). Round 24b came to registers: the ask a one-member
+ * struct (an unsigned short is a promoted mode, forced to slot 16 before the pointers' ADDRESSOFs), pObject
  * declared before pWorld, the arms an if/else before one `return DME_OK` (a return in each let jump2
  * cross-jump the two sends), the creator read once into a local (passed on to RemoteObjectUpdate in a0).
  * Round 25b: the owner tests POSITIVE with their `return 11` in an else (round 14b's rule) -- as guards
  * the first if-conversion pass hoisted `li v0,11` above each branch, so v0 was live across the owner's
  * load and the -1 took v1 and the creator a2; positive, the -1 takes v0 and the creator a0 as the target's,
- * and func_00618F70 after it keeps its match (round 24b's guarded body moved it by 8 bytes). */
+ * and func_00618F70 after it keeps its match (round 24b's guarded body moved it by 8 bytes). The last
+ * word, arm 1's `bnel` (`bne` here), came with func_00615DE0 -- the send arm 1 falls into -- compiled above
+ * (round 13c's callee rule; arm 2's RemoteObjectUpdate was already above, its `bne` the target's). */
 int func_0061A118(unsigned int nIndex)
 {
     struct { unsigned char nOwner; unsigned char pad; unsigned short nIndex; } msg;
