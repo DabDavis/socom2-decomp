@@ -96,13 +96,13 @@ typedef struct RT_P2P {
     unsigned char nTag;                 /* 0x195: sent with every broadcast */
     char x196[2];
     void (*pfnReset)(int nIndex, int n, int nError);    /* 0x198: told (-2, 0, 6) when the table is reset */
-    int x19C;
+    void (*pfn19C)(int a);                              /* 0x19C */
     void (*pfnJoin)(int nIndex, int nLocal);            /* 0x1A0: the peer that takes a leaver's place */
-    void (*pfnLeave)(int nIndex, int n);                /* 0x1A4 */
-    int x1A8;
-    int x1AC;
+    void (*pfnLeave)(int nIndex, unsigned int n);       /* 0x1A4 */
+    void (*pfnData)(int nIndex, char *pData, unsigned short nLength);   /* 0x1A8: a peer's message that is not the layer's */
+    void (*pfnDatagram)(char *szAddress, unsigned short nPort, char *pData, unsigned short nLength); /* 0x1AC */
     void (*pfnAddress)(char *szAddress, unsigned short nPort, int nError); /* 0x1B0 */
-    int x1B4;
+    void (*pfn1B4)(void);                               /* 0x1B4 */
 } RT_P2P;                               /* 0x1B8 */
 
 typedef struct RT_P2P_MSG {             /* the broadcast (8 bytes) */
@@ -1244,5 +1244,173 @@ int func_0063C4F0(RT_P2P *pP2p, RT_P2P_INFO *pInfo, RT_P2P_ENTRY *pEntry)
             return 1;
         }
     }
+    return 0;
+}
+
+extern void *memcpy(void *d, const void *s, unsigned int n);
+extern int func_0063ECC8(RT_UDP *pUdp, int nConn, char *pBuf, unsigned int nSize, unsigned int *pnLength);
+extern int func_0063B9A0(RT_P2P *pP2p, int nIndex, char *pData, unsigned int nLength);
+
+/* the layer's receive poll (0x63B708): each peer with data waiting has both connections read until neither yields; a
+ * message with the magic is the layer's own (func_0063B9A0), the rest the application's; then the unconnected socket's
+ * datagrams go to their callback */
+int func_0063B708(RT_P2P *pP2p)
+{
+    char szAddress[16];
+    unsigned short nPort;
+    unsigned int nLength;
+    unsigned int nMagic;
+    int bRead;
+    int i;
+    int result;
+
+    for (i = 0; i < pP2p->nEntries; i++) {
+        while (pP2p->pEntries[i].bClosed2 != 0) {
+            bRead = 0;
+            if (pP2p->pEntries[i].nConn != -1) {
+                nMagic = 0;
+                if (func_0063ECC8(pP2p->pUdp, pP2p->pEntries[i].nConn, pP2p->pBuf, pP2p->nBufSize, &nLength) == 0
+                    && nLength != 0) {
+                    memcpy(&nMagic, pP2p->pBuf, sizeof(nMagic));
+                    if (nMagic != 0xEFF0CDAB) {
+                        pP2p->pfnData(i, pP2p->pBuf, nLength);
+                    } else {
+                        result = func_0063B9A0(pP2p, i, pP2p->pBuf, nLength);
+                        if (result != 0)
+                            return result;
+                    }
+                    bRead = 1;
+                }
+            }
+            if (pP2p->pEntries[i].nConn2 != -1) {
+                nMagic = 0;
+                if (func_0063ECC8(pP2p->pUdp, pP2p->pEntries[i].nConn2, pP2p->pBuf, pP2p->nBufSize, &nLength) == 0
+                    && nLength != 0) {
+                    memcpy(&nMagic, pP2p->pBuf, sizeof(nMagic));
+                    if (nMagic != 0xEFF0CDAB) {
+                        pP2p->pfnData(i, pP2p->pBuf, nLength);
+                    } else {
+                        result = func_0063B9A0(pP2p, i, pP2p->pBuf, nLength);
+                        if (result != 0)
+                            return result;
+                    }
+                    bRead = 1;
+                }
+            }
+            if (bRead == 0)
+                pP2p->pEntries[i].bClosed2 = 0;
+        }
+    }
+    while (pP2p->bClosed != 0) {
+        if (func_0063E4A0(pP2p->pUdp, -2, szAddress, &nPort) != 0)
+            return 7;
+        if (func_0063ECC8(pP2p->pUdp, -2, pP2p->pBuf, pP2p->nBufSize, &nLength) == 0 && nLength != 0)
+            pP2p->pfnDatagram(szAddress, nPort, pP2p->pBuf, nLength);
+        else
+            pP2p->bClosed = 0;
+    }
+    return 0;
+}
+
+typedef struct RT_P2P_PARAMS {          /* the create's parameters */
+    unsigned short nPort;               /* 0x00 */
+    unsigned int nEntries;              /* 0x04: at most 256 */
+    unsigned int nBufSize;              /* 0x08 */
+    int x0C;
+    int x10;
+    int x14;
+    int x18;
+    int x1C;                            /* KM_Initialize's second */
+    void (*pfn19C)(int a);                      /* 0x20 */
+    void (*pfnJoin)(int nIndex, int nLocal);    /* 0x24 */
+    void (*pfnLeave)(int nIndex, unsigned int n);   /* 0x28 */
+    void (*pfnData)(int nIndex, char *pData, unsigned short nLength);   /* 0x2C */
+    void (*pfnDatagram)(char *szAddress, unsigned short nPort, char *pData, unsigned short nLength);    /* 0x30 */
+    void (*pfn1B4)(void);                       /* 0x34 */
+} RT_P2P_PARAMS;
+
+typedef struct RT_UDP_PARAMS {          /* func_0063DD18's parameters (40 bytes) */
+    unsigned short nPort;               /* 0x00 */
+    int x04;
+    int nConns;                         /* 0x08 */
+    unsigned int x0C;
+    int x10;
+    int x14;
+    int x18;
+    int x1C;
+    void (*pfnEvent)();                 /* 0x20 */
+    void *pArg;                         /* 0x24 */
+} RT_UDP_PARAMS;
+
+extern int rt_memory_allocate(void **ppMemory, unsigned long nSize);
+extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
+extern int func_0063DD18(RT_UDP **ppUdp, RT_UDP_PARAMS *pParams);
+extern void func_0063A8C0();
+extern void KM_Initialize(int nKMID, int n);
+extern void KM_Create(int nKMID, int a, int b);
+
+/* the layer's create (0x6395B8): the record, 32 free slots, the peer table (every connection -1), the receive buffer and
+ * the UDP endpoint (func_0063DD18), then the key manager */
+int func_006395B8(RT_P2P_PARAMS *pParams, RT_P2P **ppP2p)
+{
+    RT_UDP_PARAMS udp;
+    RT_P2P *pP2p = 0;
+    unsigned int i;
+    int r1, r2, r3, r4;
+
+    if (pParams == 0)
+        return 2;
+    if (ppP2p == 0)
+        return 2;
+    if (pParams->nEntries >= 257)
+        return 2;
+    r1 = rt_memory_allocate_init_zero((void **)&pP2p, sizeof(RT_P2P));
+    if (pP2p == 0)
+        return 3;
+    if (r1 != 0)
+        return 3;
+    for (i = 0; i < 32; i++)
+        pP2p->aSlots[i].nConn = -1;
+    *ppP2p = pP2p;
+    pP2p->nEntries = pParams->nEntries;
+    pP2p->nBufSize = pParams->nBufSize;
+    pP2p->pfn19C = pParams->pfn19C;
+    pP2p->pfnJoin = pParams->pfnJoin;
+    pP2p->pfnLeave = pParams->pfnLeave;
+    pP2p->pfnData = pParams->pfnData;
+    pP2p->pfnDatagram = pParams->pfnDatagram;
+    pP2p->pfn1B4 = pParams->pfn1B4;
+    memset(&udp, 0, sizeof(udp));
+    udp.nPort = pParams->nPort;
+    udp.x04 = 0;
+    udp.nConns = 256;
+    udp.x0C = pParams->nBufSize;
+    udp.x10 = pParams->x0C;
+    udp.x14 = pParams->x10;
+    udp.x18 = pParams->x14;
+    udp.x1C = pParams->x18;
+    udp.pfnEvent = func_0063A8C0;
+    udp.pArg = pP2p;
+    r2 = rt_memory_allocate_init_zero((void **)&pP2p->pEntries, 256 * sizeof(RT_P2P_ENTRY));
+    if (pP2p == 0)
+        return 3;
+    if (r2 != 0)
+        return 3;
+    for (i = 0; i < 256; i++) {
+        pP2p->pEntries[i].nConn = -1;
+        pP2p->pEntries[i].nConn2 = -1;
+    }
+    r3 = rt_memory_allocate((void **)&pP2p->pBuf, pP2p->nBufSize);
+    if (pP2p == 0)
+        return 3;
+    if (r3 != 0)
+        return 3;
+    r4 = func_0063DD18(&pP2p->pUdp, &udp);
+    if (pP2p->pUdp == 0)
+        return 4;
+    if (r4 != 0)
+        return 4;
+    KM_Initialize(-1, pParams->x1C);
+    KM_Create(-1, 0, 0);
     return 0;
 }
