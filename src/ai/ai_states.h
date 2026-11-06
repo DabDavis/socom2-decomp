@@ -933,10 +933,11 @@ public:
     CAiMapLoc m_cell;   // 0x68 (the invalid cell on a reset)
     unsigned char m_6c;   // 0x6c
     unsigned char _6d[0x70 - 0x6d];
-    unsigned int m_70;   // 0x70
-    unsigned char _74[0x78 - 0x74];
-    unsigned int m_78;   // 0x78
-    unsigned char _7c[0x98 - 0x7c];
+    float m_70;   // 0x70: the time in the step (0x6067A0)
+    float m_74;   // 0x74: when the waiting step ends
+    unsigned int m_78;   // 0x78: the times the watch began
+    unsigned int m_ids[6];   // 0x7c: the SEALs seen, by id
+    unsigned int m_94;   // 0x94: how many
 };
 
 class CAiSSurrender : public CAiState {

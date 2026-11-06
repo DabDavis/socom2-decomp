@@ -1299,6 +1299,9 @@ inline void PlayCallout(CSnd *snd, CEntity *seal, float range)
 
 extern "C" float floorf(float);
 
+/* the hold's watch's step (a signed byte, kept at 0x6C; the name ours) */
+enum HOLD_STEP { HOLD_STEP_NONE = -1, HOLD_STEP_LAST = 127 };
+
 /* the callout of what the hold has seen (OVL2 0x606EC0: 0x6067A0 calls it with the SEALs counted, the first one's place and
  * velocity; new in SOCOM II, the name unknown): how many, how far by tens of metres, then a slow one's clock direction or a
  * moving one's heading, against the line to it or across it or by its own axes */
@@ -1375,6 +1378,177 @@ extern "C" void func_00606EC0(CAiState *s, CSealCtrlAi *ai, const CPnt3D *from, 
         }
     } else
         HoldCallout(ai, (HOLD_CALLOUT)(ai::get_clock_direction(&d) + 19));
+}
+
+/* an entity's id, none's for no entity (inline: 0x6067A0's, constant-folded on no entity with its dead block kept; the name
+ * ours) */
+static inline unsigned int HoldId(CEntity *e)
+{
+    return e ? e->m_id : CEntity::invalidId;
+}
+
+/* a SEAL by an entity (inline; the name ours) */
+static inline CZSealBody *HoldSeal(CEntity *e)
+{
+    return e && e->m_type == 2 ? (CZSealBody *)e : 0;
+}
+
+/* a seen SEAL by its place in the list (inline; the name ours) */
+static inline CZSealBody *HoldSeen(CAiSHold *h, unsigned int i)
+{
+    if (i <= h->m_94)
+        return HoldSeal(CEntity::m_list.GetEntityById(h->m_ids[i]));
+    return 0;
+}
+
+/* a point copied field by field through its address and its length squared through a reference (inlines; the names ours) */
+static inline void HoldCopy(CPnt3D *dst, const CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+static inline float HoldLenSq(const CPnt3D *v)
+{
+    return v->x * v->x + v->y * v->y + v->z * v->z;
+}
+
+static inline void HoldSubXZ(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+{
+    out->x = a->x - b->x;
+    out->y = 0.0f;
+    out->z = a->z - b->z;
+}
+
+static inline bool HoldEnemy2(unsigned int &team, CEntity *b)
+{
+    return !(team & b->m_team);
+}
+
+/* no team shared (inline, its test materialised; the name ours) */
+static inline bool HoldEnemy(CEntity *a, CEntity *b)
+{
+    return !(a->m_team & b->m_team);
+}
+
+/* the hold's watch, by its step -- the frame's time added and the step kept at the end: with the player gone or too far, the
+ * flags put back; the first time a callout, then the SEALs not of its team that it has seen for half a second or are near the
+ * first of them are counted and called out, the wait begun anew, a callout again after a minute with none; those called out
+ * dead, the watch begun again (OVL2 0x6067A0: CAiSHold::Tick calls it; the step's value before returned; the name unknown) */
+extern "C" signed char func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
+{
+#pragma opt_strength_reduction off
+    static int s_far = 3;
+    static float s_quiet = 60.0f;
+    static float s_again = 3.0f;
+    static float s_nearSq = 10000.0f;
+    static float s_seen = 0.5f;
+    CEntity *seal = ai->m_entity;
+    unsigned char r = h->m_phase;
+    HOLD_STEP step = (HOLD_STEP)h->m_6c;
+    CZSealBody *player = ftsGetPlayer__Fv();
+
+    if (!player)
+        step = (HOLD_STEP)4;
+    else if ((int)AiMaps.GetLocationDelta(player->m_mapLocValid, h->m_cell) >= s_far)
+        step = (HOLD_STEP)4;
+    switch ((unsigned char)step) {
+    case 0:
+        if (h->m_78 == 0)
+            HoldCallout(ai, (HOLD_CALLOUT)0);
+        data_0066AFE0 = 1;
+        h->m_70 = 0.0f;
+        step = (HOLD_STEP)2;
+        h->m_78++;
+        ai->m_aibit16 = true;
+        SetBit17(ai, false);
+        break;
+    case 1:
+        if (!(h->m_70 <= h->m_74))
+            step = (HOLD_STEP)2;
+        break;
+    case 2: {
+        CPnt3D pos;
+        CPnt3D vel;
+        CPnt3D d;
+        float &dy = d.y;
+        float &dz = d.z;
+        CTargetList &list = seal->m_targets;
+        unsigned int n;
+        unsigned int &team = seal->m_team;
+
+        h->m_94 = 0;
+        for (CTargetList::iterator i = list.begin(); (n = h->m_94) < 6 && i != list.end(); ++i) {
+            CZSealBody *t = HoldSeal((*i).m_ent);
+
+            if (t && HoldEnemy2(team, t) && t->m_isAlive) {
+                if ((*i).m_visibility < s_seen) {
+                    if (!n)
+                        continue;
+                }
+                if (!n) {
+                    HoldCopy(&pos, &t->m_posW);
+                    HoldCopy(&vel, &t->m_velW);
+                    unsigned int k = h->m_94++;
+
+                    h->m_ids[k] = HoldId(t);
+                } else {
+                    CZSealBody *first = HoldSeal(CEntity::m_list.GetEntityById(h->m_ids[0]));
+
+                    d.x = t->m_posW.x - first->m_posW.x;
+                    dy = 0.0f;
+                    dz = t->m_posW.z - first->m_posW.z;
+                    if (d.x * d.x + dy * dy + dz * dz < s_nearSq) {
+                        unsigned int k = h->m_94++;
+
+                        h->m_ids[k] = HoldId(t);
+                    }
+                }
+            }
+        }
+        if (n) {
+            func_00606EC0(h, ai, &seal->m_posW, &pos, &vel, n);
+            h->m_70 = 0.0f;
+            step = (HOLD_STEP)3;
+        } else if (!(h->m_70 <= s_quiet)) {
+            if (!(h->m_70 <= s_quiet)) {
+                HoldCallout(ai, (HOLD_CALLOUT)2);
+                step = (HOLD_STEP)0;
+            } else {
+                step = (HOLD_STEP)1;
+                h->m_74 = h->m_70 + s_again;
+            }
+        }
+        break;
+    }
+    case 3:
+        if (h->m_94) {
+            unsigned int alive = 0;
+
+            for (unsigned int i = 0; i < h->m_94; i++) {
+                CZSealBody *t = HoldSeen(h, i);
+
+                if (t && t->m_isAlive)
+                    alive++;
+                else
+                    h->m_ids[i] = HoldId(0);
+            }
+            if (!alive) {
+                h->m_94 = 0;
+                step = (HOLD_STEP)0;
+            }
+        }
+        break;
+    case 4:
+        data_0066AFE0 = 0;
+        h->m_flags |= 0x80000000;
+        h->m_flags &= ~0x80;
+        break;
+    }
+    h->m_70 += CAiState::m_dT;
+    h->m_6c = step;
+    return r;
 }
 
 /* a SEAL's callout on being hit, under the state's flag bit 7: "^CS_0288" when the shooter shares

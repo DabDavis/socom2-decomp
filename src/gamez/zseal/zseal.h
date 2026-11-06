@@ -454,6 +454,8 @@ public:
     CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     /* a named location's cell (ai_maps.h's, OVL2 0x52DB70) */
     bool GetLocation(const char *name, CAiMapLoc &loc);
+    /* the grid steps between two cells (ai_maps.h's; OVL2 0x52C320) */
+    unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
     /* a cell's map (ai_maps.h's, OVL2 0x52E6B0), and a location's (OVL2 0x52A180) */
