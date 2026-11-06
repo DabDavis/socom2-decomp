@@ -544,7 +544,16 @@ bool _invalid_route(CAiMap::route &r)
  * take a2. Measured there (build/scratch/ai/v_vr34*.py): the end passed as a const CAiMapLoc
  * pointer or reference, by value (0x4DC), the route by reference / pointer / const reference /
  * iterator by value, the iterator's operator->, `loc == (*j).m_loc` swapped, both finds through the
- * iterator (94), the y compare's operands swapped, `x ? y : false`: none splits the load */
+ * iterator (94), the y compare's operands swapped, `x ? y : false`: none splits the load.
+ * The AI core round 35, from the PowerPC front end's optimiser (doldecomp/mweppc IrOptimizer.c,
+ * IroCSE.c; build/scratch/ai/mweppc/ -- read, not yet proven on mwcps2): pass 0 hoists loop
+ * invariants (IRO_FindLoops) BEFORE common subexpressions (IRO_FindExpressions, ComputeAvail,
+ * CommonSubs), and CheckCommonSub gives a use the FIRST available identical expression in
+ * FindExpressions' order (flowgraph node by node). The far x is the second loop's unconditional
+ * test, so it is hoisted with its own load of i; y, behind the x test, stays in the loop -- the
+ * target's y then took the loop top's load (a1), this build's the hoisted x's: in the target the
+ * hoisted load is not the loop top's expression (or not available there), here the second find's
+ * loads are not the loop top's */
 inline CAiMap::region *find_far_region(CAiMap::regions &t, CAiMap::routes::iterator &r)
 {
     CAiMap::regions::iterator e = t.end();

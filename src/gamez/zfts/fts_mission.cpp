@@ -721,13 +721,10 @@ CLobbySaveManager *GetLobbySaveManager()
 
 extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 
-/* the world, the scheduler and the sound (their units'; called by their map names -- the entities
+/* the world, the scheduler (zanim.h's) and the sound (their units'; the entities
  * and their list are zentity.h's, CEntity::invalidId 0x3EFFB0 and m_list 0x4362E0, the AI events
  * ai.h's: CAiEvent::Open OVL2 0x50F150) */
 extern CSched_Manager zTaskScheduler;
-extern "C" void ClearFreeList__14CSched_ManagerFb(CSched_Manager *sched, bool all);
-extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, const char *name,
-                                                         bool (*func)(float dT, void *data), float priority, void *data);
 
 /* the mission completed (SOCOM 1's name, at its call; OVL1 0x2AA910, below) */
 void _OnMissionComplete();
@@ -2612,11 +2609,10 @@ bool CMission::Open(const char *name)
         m_database = 0;
     m_timer = 0.0f;
     m_chars_loaded = 0;
-    AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "diTick",
-                                            (bool (*)(float, void *))zdb::CWorld::diTick, 5.0f, 0);
-    AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "Mission", tick, 0.98f, this);
-    AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "Update visual effects",
-                                            (bool (*)(float, void *))zdb::CNode::VisualEffectsTick, 0.5f, 0);
+    zTaskScheduler.AddTask("diTick", (bool (*)(float, void *))zdb::CWorld::diTick, 5.0f, 0);
+    zTaskScheduler.AddTask("Mission", tick, 0.98f, this);
+    zTaskScheduler.AddTask("Update visual effects", (bool (*)(float, void *))zdb::CNode::VisualEffectsTick, 0.5f,
+                           0);
     CSnd::Close();
     CSnd::UnloadAllSounds();
     func_00344450(m_database);
@@ -2810,7 +2806,7 @@ void CMission::FadeToEndMission(float time, int counter)
         theMission.m_DelayEndMission = 1;
         m_fade_counter = counter;
         m_next_fade_time = time;
-        AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "MissionFadeToEnd", fadeToEndMissionTick, 0.98f, this);
+        zTaskScheduler.AddTask("MissionFadeToEnd", fadeToEndMissionTick, 0.98f, this);
     } else {
         if (time < m_next_fade_time)
             m_next_fade_time = time;
@@ -2834,7 +2830,7 @@ bool CMission::ReOpen_Unload2()
     world->ClearLightMapList();
     world->ClearShadowList();
     world->GarbageCollect();
-    ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
+    zTaskScheduler.ClearFreeList(true);
     Headset::Reset();
     CSndInstance::PostTick(0.0f, 0);
     return true;
@@ -3418,7 +3414,7 @@ bool CMission::ReOpen_Unload1()
     world->RemoveDecals();
     world->WipeoutTextureAssetCharacters();
     zTaskScheduler.RemoveTask("MissionFadeToEnd", true);
-    ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
+    zTaskScheduler.ClearFreeList(true);
     appCamera->AttachTo(0);
     m_chars_loaded = 0;
     ai::FlushPlannerQueue();
@@ -3562,7 +3558,7 @@ void CMission::Close()
     zTaskScheduler.RemoveTask("Mission", false);
     zTaskScheduler.RemoveTask("Update visual effects", false);
     zTaskScheduler.RemoveTask("diTick", false);
-    ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
+    zTaskScheduler.ClearFreeList(true);
     if (theNetwork.m_bNetwork) {
         CZNetGame *game = m_pNetGame;
 

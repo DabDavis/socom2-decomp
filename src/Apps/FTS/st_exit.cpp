@@ -449,7 +449,20 @@ float fabsf(float x);   /* 0x1B3620 */
  * materialises it too (0x80 against 0x78; an inline Next() with it, `++it` over Advance and a while
  * loop measured alike); with it the rest is the iterator temporaries' frame slots: here Advance's
  * end() temporaries take the slots above the loop test's, in the target below them, `it` between
- * (for, while and an inline increment give the same order) */
+ * (for, while and an inline increment give the same order).
+ * Round 48: an in-class inline Next() (`while (_it != GetEntityList().end() && !IsSeal())`) for
+ * the walk, the out-of-line Advance left direct, gives 0x680 with only the frame slots off (11).
+ * The four-byte slots, high to low (bt = a begin()/end() temporary, cp = the copy it is built into):
+ * the target  begin-bt 156, More-bt 152, it 148, Next-bt 144, More-cp 140, Next-cp 136, then the
+ *             bottom test's bt / cp 132 / 128;
+ * for / while  begin-bt, Next-bt, More-bt, it, Next-cp, More-cp (the increment's ahead of the test's);
+ * `if (it.More()) do { ... } while (it.More());`  begin-bt, More-bt, Next-bt, bottom-bt, it,
+ *             More-cp, Next-cp, bottom-cp (the test first, but the bottom pair interleaved);
+ * the test written in place (`it._it != GetEntityList().end()`)  More-bt 156, begin-bt 152,
+ *             Next-bt 148, More-cp 144, it 140, Next-cp 136.
+ * SetRoundStatUiVars (unwritten, its walk `count < 4 && More()` tested at the top only) holds
+ * begin-bt 284, More-bt 280, it 276, More-cp 272, Next-bt 268, Next-cp 264 -- C2DMessage_Q::Tick
+ * (fts_message.cpp, round 48) has a named iterator below every temporary too */
 extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
 {
     int down1 = 0;

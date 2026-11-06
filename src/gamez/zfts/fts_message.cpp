@@ -5,9 +5,10 @@
  * OVL1 0x2B5830-0x2B794F. Written so far: Clear_Messages, C2DMessageString's SetString and Tick, the
  * colour table's setter and accessor (0x2B7530, 0x2B7520), the constructor (0x2B7610), Init
  * (0x2B6FC0, the states' round 41), LastMessage (open); the unit's vtable copies of C2D's inline
- * virtuals and the implicit ~C2DMessageString (0x2B63B0) come out byte-exact with them. The rest --
- * Draw (0x2B5830), Tick (0x2B5DB0), Add_Message (0x2B6530), 0x2B6430 -- still to write. Defined in
- * reverse of their image order (-inline deferred). */
+ * virtuals and the implicit ~C2DMessageString (0x2B63B0) come out byte-exact with them; Tick
+ * (0x2B5DB0, the states' round 48: OPEN, 38 at the target's size). The rest -- Draw (0x2B5830),
+ * Add_Message (0x2B6530), 0x2B6430 -- still to write. Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include "../ztwod/ztwod.h"
 
@@ -61,6 +62,18 @@ public:
     }
 };
 
+/* the lines' fade: its speed (alpha a second) and the alpha a line fades in to (OVL1 data
+ * 0x3DE6D0, 0x3DE6D8: variables, read with lwc1; the unit's first statics, as C2DMessageString::Tick
+ * is its last function; the names ours) */
+static float s_fadeRate = 280.0f;
+static float s_fadeMax = 100.0f;
+/* the queue's own fade speed (OVL1 data 0x3DE6E0, 280.0: Tick and Add_Message read it, not written
+ * yet) and the backgrounds' transparency, a texture's and the subtitles' (0x3DE6E8 76.8, 0x3DE6F0
+ * 128.8: Init's; variables, read with lwc1; the names ours) */
+static float s_queueFadeRate = 280.0f;
+static float s_backgroundTrans = 76.8f;
+static float s_subtitlesTrans = 128.8f;
+
 /* a message's line: SOCOM 1's C2DMessageString (a C2DString), SOCOM II's members after the
  * string's 0x98 bytes -- how long it stays up, how long it has been up, how many characters a
  * second it types, and the whole text it is typing (the names ours) */
@@ -68,6 +81,10 @@ class C2DMessageString : public C2DString {
 public:
     virtual void Tick(float dT);
     virtual void SetString(const char *s, bool translate);
+    /* its time over, and faded out (the queue's Tick's tests; the names ours) */
+    bool TimeUp() const { return m_time > m_displayTime; }
+    bool Faded() const { return m_color[3] == 0.0f; }
+    bool Expired() const { return TimeUp() && Faded(); }
 
     float m_displayTime;   // 0x98
     float m_time;   // 0x9c
@@ -85,6 +102,52 @@ public:
     void Clear_Messages();
     const char *LastMessage();
     void SetScrolling(bool on) { m_scrolling = on; }
+    virtual void Tick(float dT);
+
+    /* a scroll begun: a descending queue's from its margin above, the others' backgrounds faded in
+     * (Tick's, three times; the name ours) */
+    void Scroll(float dT)
+    {
+        if (!m_descends) {
+            float trans = m_background2.GetTrans();
+            float max = m_subtitles ? s_subtitlesTrans : s_backgroundTrans;
+
+            if (trans != max) {
+                float t = trans + dT * s_queueFadeRate;
+
+                if (t > max)
+                    t = max;
+                m_background1.SetTrans(t);
+                m_background2.SetTrans(t);
+            }
+        } else {
+            m_440 = -m_ymargin;
+            m_450 = m_440 - m_438;
+            m_43c = 0.0f;
+        }
+    }
+    /* the queue empty: the backgrounds faded out, a descending queue's scroll put back at its top
+     * (Tick's; the name ours) */
+    void Unscroll(float dT)
+    {
+        if (!m_descends) {
+            float trans = m_background2.GetTrans();
+
+            if (trans != 0.0f) {
+                float t = trans - dT * s_queueFadeRate;
+
+                if (t < 0.0f)
+                    t = 0.0f;
+                m_background1.SetTrans(t);
+                m_background2.SetTrans(t);
+            }
+        } else {
+            m_440 = m_top;
+            m_43c = 0.0f;
+            m_44c = 0.0f;
+            m_450 = m_440 - m_438;
+        }
+    }
     void Init(C2DFont *font, CRdrFile *file);
 
     C2DFont *m_font;   // 0x18 (SOCOM 1's at 0x1C: Init's font)
@@ -104,12 +167,13 @@ public:
     int m_spacing;   // 0x42c
     float m_maxlength;   // 0x430: Init's "maxlength"
     float m_TtySpeed;   // 0x434: Init's "TtySpeed" (100000 until then: typed at once)
-    float m_438;   // 0x438
-    float m_43c;   // 0x43c: 1 once Init has a background
-    float m_440;   // 0x440: the background's margin above, negated
+    int m_438;   // 0x438: the lines' bottom, scrolling to m_top
+    float m_43c;   // 0x43c: the scroll's time (1 once Init has a background)
+    float m_440;   // 0x440: the scroll's start (the background's margin above, negated)
     int m_xmargin;   // 0x444: Init's "XMargin"
     int m_ymargin;   // 0x448: Init's "YMargin"
-    unsigned char _44c[0x454 - 0x44c];
+    float m_44c;   // 0x44c: the time since the last scroll
+    float m_450;   // 0x450: the scroll's distance
     int m_454;   // 0x454
     int m_458;   // 0x458
     unsigned char m_45c;   // 0x45c
@@ -122,17 +186,6 @@ public:
     unsigned char m_4dc_5 : 3;
 };   // 0x4e0 bytes (the mission's queues' stride)
 
-/* the lines' fade: its speed (alpha a second) and the alpha a line fades in to (OVL1 data
- * 0x3DE6D0, 0x3DE6D8: variables, read with lwc1; the unit's first statics, as C2DMessageString::Tick
- * is its last function; the names ours) */
-static float s_fadeRate = 280.0f;
-static float s_fadeMax = 100.0f;
-/* the queue's own fade speed (OVL1 data 0x3DE6E0, 280.0: Tick and Add_Message read it, not written
- * yet) and the backgrounds' transparency, a texture's and the subtitles' (0x3DE6E8 76.8, 0x3DE6F0
- * 128.8: Init's; variables, read with lwc1; the names ours) */
-static float s_queueFadeRate = 280.0f;
-static float s_backgroundTrans = 76.8f;
-static float s_subtitlesTrans = 128.8f;
 
 /* the messages' six colours, red, green, blue and alpha each (OVL1 BSS 0x440C70; the mission's
  * Init and the queue's set them, the name ours): the unit's one dynamically initialised static,
@@ -354,4 +407,67 @@ const char *C2DMessage_Q::LastMessage()
         return last->m_text.c_str();
     }
     return "";
+}
+
+/* a frame of the queue: the lines ticked; the scroll -- an ascending queue held at its top, its
+ * backgrounds faded in while it has lines and out without; a descending one starting a scroll
+ * once a line's fade time has passed at the top, else moving toward the scroll's end --; the
+ * oldest line dropped past the queue's size, then every line whose time is up and faded out, a
+ * scroll begun when the last goes (OVL1 0x2B5DB0, slot 0x38; SOCOM 1's, with SOCOM II's
+ * backgrounds).
+ * OPEN, 38 instructions at the target's size (the game states' round 48, unwritten before): every
+ * block, call and float register is the target's down to the oldest line's drop -- the first walk's
+ * iterator assigned from begin() (kept in memory) against a hoisted end, the fades through two
+ * variables (the trans a temporary, the new value sharing dT's $f20), Scroll / Unscroll inlined
+ * three times and once, the expiry one inline `&&` (materialised, as the target). Left: the frame
+ * slots and the second walk's saved registers. The target holds the first walk's iterator at 124,
+ * `next` at 120, the two begin() temporaries at 116 / 112, the erase result's copy at 108, the drop's
+ * erase temporaries at 104 / 100, the walk's at 96 / 92 and `cur` LAST at 88 -- below every
+ * temporary, which no named local here takes (declared at the top, in the for, or in a block, it
+ * sits just under `next`); and the second walk's end hoisted into s0 with the line in s1, here the
+ * line takes s0 and the end is recomputed. Tried: pop_front() for the drop (its temporaries a level
+ * deeper: worse), cur declared first, the walk in an inline (cut out of line at 0x51C), `e` reused or
+ * re-assigned for the second walk (0x5F8 / 0x61C) */
+void C2DMessage_Q::Tick(float dT)
+{
+    if (!IsOn())
+        return;
+    iterator i, next, cur, e = end();
+
+    for (i = begin(); i != e; ++i)
+        (*i)->Tick(dT);
+    m_43c += dT;
+    m_44c += dT;
+    if (!m_descends) {
+        m_438 = m_top;
+        if (size())
+            Scroll(dT);
+        else
+            Unscroll(dT);
+    } else if (m_44c > m_transstep && m_438 == m_top) {
+        Scroll(0.0f);
+        m_44c = 0.0f;
+    } else if (m_43c > 1.0f) {
+        m_438 = (int)m_440;
+    } else {
+        m_438 = (int)(m_440 - m_450 * (1.0f - m_43c));
+    }
+    if (size() > m_maxsize) {
+        C2D *m = *begin();
+
+        erase(begin());
+        delete m;
+    }
+    next = begin();
+    for (cur = next; cur != end(); cur = next) {
+        C2DMessageString *s = dynamic_cast<C2DMessageString *>(*cur);
+
+        ++next;
+        if (s && s->Expired()) {
+            next = erase(cur);
+            delete s;
+            if (!size())
+                Scroll(0.0f);
+        }
+    }
 }
