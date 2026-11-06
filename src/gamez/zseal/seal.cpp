@@ -56,6 +56,7 @@ extern "C" void *func_00555170(CIndexedArray *a)
  * two flags and the word 0x545EE0 resets, its zdb camera and the SEAL it shows) */
 class CAppCamera {
 public:
+    void SetZoom(float zoom);
     virtual void Tick(float dT);
     virtual bool AttachTo(CZSealBody *prey);
     /* the camera given an entity, or a SEAL, to follow (OVL1 0x2956E0 and its 8-byte jump 0x295AF0: the
@@ -1036,6 +1037,7 @@ struct CZoomPref {
 
 class CMission {
 public:
+    void RefreshTeamValves();
     unsigned char _0[0x194];
     CZoomPref m_primary_zoom;   // 0x194
     CZoomPref m_secondary_zoom;   // 0x19c
@@ -2990,6 +2992,115 @@ public:
     /* (OVL1 0x2C7A60, fts_net_platform.cpp's) */
     static void UpdateLocalPlatform(CTurret *t, bool b);
 };
+
+extern "C" {
+/* the kit told of the death (OVL2 0x5B8920, seal_weapon.cpp's) and the entity's sounds let go, by its
+ * id (OVL1 0x3428A0, zsnd's range) */
+void func_005B8920(CZKit *kit);
+void func_003428A0(unsigned int id);
+/* (OVL1 0x30E6E0, unowned: told of a death online, with the global at 0x45B718; seal_control.cpp's
+ * too) */
+void func_0030E6E0(void *obj, int a);
+extern void *data_0045B718;
+extern float data_004365C0;
+void func_00545EE0(CZSealBody *seal, int force);
+void func_0059D750(CZSealBody *seal);
+void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
+}
+
+/* the camera's zoom (thezoom.cpp's) */
+class CameraZoom {
+public:
+    static void ResetLensColors();
+    static void SetLensFx(unsigned char fx);
+};
+void SeeFarther(bool bEnable, float SeeFartherFactor);
+
+/* dead: the kit told, the entity's own death, its sounds let go, whatever it worked left, its map
+ * cell free; whoever followed it online forgets it; the time kept, the climb and the carried let go; a
+ * local player's view and heartbeat reset and the rumble's last kick; online the bomb dropped, the
+ * team valves refreshed; a remote SEAL's weapons hidden, a local one's net life over; the compass's
+ * anchor faded or dropped (OVL2 0x547AF0; SOCOM 1's OnDeath__10CZSealBodyFv, its followers, kit and
+ * lens moves new) */
+void CZSealBody::OnDeath()
+{
+    func_005B8920(&m_kit);
+    CEntity::OnDeath();
+    func_003428A0(m_id);
+    if (m_eb8)
+        func_00545EE0(this, 1);
+    AiMaps.SetOccupied(m_mapLocValid, CAiMapLoc::invalid, m_id);
+    if (m_followers) {
+        const CEntityList &list = CEntity::m_list;
+
+        for (CEntityList::const_iterator i = list.begin(); i != list.end(); ++i) {
+            CZSealBody *s = AsSeal(*i);
+            CSealCtrlAi *ai = s ? s->GetSealCtrlAi() : 0;
+
+            if (ai && (ai->m_stateStack.m_10 & 0x200) && ai->GetFollowMaster(false) == this)
+                ai->SetFollowMaster(0);
+        }
+    }
+    m_time_of_death = data_004365C0;
+    func_0059D750(this);
+    func_005B14E0(&m_climb, this);
+    m_1060_bit12 = true;
+    if (IsPlayer() && !IsRemote()) {
+        CSealCtrl *ctrl = (CSealCtrl *)m_control;
+
+        if (ctrl) {
+            m_kit.Apply_LensEffects(false, 0);
+            m_kit.NVG_Enabled(false);
+            m_kit.Binocs_Enabled(false);
+            SeeFarther(false, 0.0f);
+            CameraZoom::SetLensFx(1);
+            StopAllHeartbeatSounds();
+            ctrl->StopRumbler();
+            CZWeapon::ClearTimer(0);
+            m_iszooming = false;
+            SetCurZoomState((ZOOMSTATE)0);
+            appCamera->SetZoom(1.0f);
+        }
+        CameraZoom::ResetLensColors();
+        CSnd::OnListenerDeath();
+        if (theNetwork.m_9)
+            func_0030E6E0(data_0045B718, 0);
+        else
+            Headset::ftsGetHeadset()->Interrupt();
+        SetCurZoomState((ZOOMSTATE)0);
+        ctrl = (CSealCtrl *)m_control;
+        if (ctrl) {
+            ctrl->StopRumbler();
+            ctrl->SetLowRumbleTime(0.18f, 175.0f);
+            ctrl->SetHighRumbleTime(0.04f);
+        }
+    }
+    if (theNetwork.m_9 && IsPlayer())
+        DropMPBomb();
+    theMission.RefreshTeamValves();
+    if (IsRemote()) {
+        CZBodyPart *p = m_item_gear[1].m_part;
+
+        if (p && p->m_node)
+            p->m_node->SetActive(false);
+        p = m_item_gear[2].m_part;
+        if (p && p->m_node)
+            p->m_node->SetActive(false);
+        p = m_item_gear[4].m_part;
+        if (p && p->m_node)
+            p->m_node->SetActive(false);
+    }
+    if (!IsRemote() && m_netlife != (NET_LIFE)2) {
+        m_netlife = (NET_LIFE)2;
+        IsRemote();
+    }
+    if (m_compass_anchor && !theNetwork.m_9 && (m_team & 2))
+        m_compass_anchor->SetPoint(0);
+    else {
+        CCompass::DeleteAnchor(m_compass_anchor);
+        m_compass_anchor = 0;
+    }
+}
 
 /* whether an entity has a controller (an inline bool written `? true : false`: the target
  * materialises it, sltu, before the branch) */

@@ -318,6 +318,11 @@ public:
     void IncrScreenOffsetY(float dy);
     /* whether the night vision is on (OVL2 0x5C80F0, kit.h's) */
     bool NVG_Enabled() const;
+    /* the night vision and the binoculars put on or off, the lens's fog and colour (kit.h's: OVL2
+     * 0x5C8080, 0x5B9110, 0x5C1800) */
+    void NVG_Enabled(bool on);
+    void Binocs_Enabled(bool on);
+    void Apply_LensEffects(bool on, CPnt3D *color);
     /* whether the weapon in hand waits out a fire delay (kit.h's; OVL2 0x5C2400 -- IsReloading asks
      * it first) */
     bool IsFireDelayed();
@@ -457,6 +462,8 @@ public:
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
 class CAiMaps {
 public:
+    /* a cell taken and another freed for an id (SOCOM 1's; ai_maps.h's) */
+    void SetOccupied(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int id);
     /* a cell's centre, the point handed back -- none off the maps (ai_maps.h's, OVL2 0x52D480: a
      * `CPnt3D *`, not a bool -- the callers test v0 straight, with no `andi 0xff`) */
     CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
@@ -1954,6 +1961,8 @@ public:
     /* the character type taken and its model instanced, dynamic, with its LODs, in the world, its
      * textures added (SOCOM 1's; OVL2 0x59A7F0) */
     static const CCharacterType *PreCreateSeal(const CCharacterType *type, const char *name, zdb::CNode **node);
+    /* the bomb let go (SOCOM 1's; OVL2 0x59DD30) */
+    void DropMPBomb();
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
     /* the loops let go, and looked up (SOCOM 1's; OVL2 0x543AD0, 0x543B40) */
