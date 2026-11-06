@@ -9,8 +9,8 @@
  * (checked, round 6): a recursive search over the graph's edge lists through the pointer list's
  * out-of-line begin() (0x2A00B0) and tiny iterator helpers -- graph_tree.cpp's neighbourhood.
  * The node walk NodeGetIntersect 0x2D2890 (SOCOM 1's NodeGetIntersect and NodeGetAltitude in one)
- * since the engine core's round 25. Unwritten: the batch walk 0x2D3030 (SOCOM 1's
- * NodeGetIntersectBatch) and CGrid::GetIntersectBatch. */
+ * since the engine core's round 25; CGrid::GetIntersectBatch 0x2D3CF0 since round 26. Unwritten:
+ * the batch walk 0x2D3030 (SOCOM 1's NodeGetIntersectBatch). */
 
 #include "node_world.h"
 #include "int_material.h"
@@ -269,7 +269,21 @@ bool CGrid::GetIntersect(DiIntersect *di)
  * every cell inside marked clear, then each set's walk marks the cells it enters with the set's bit
  * (SOCOM 1 a flag per byte); then the marked cells' nodes, each once per walk (the tick), searched
  * for the whole batch -- the sets' tree marks cleared, the cell's props with collision under their
- * matrices (pushed unless the unit one, as GetIntersect), then the node itself */
+ * matrices (pushed unless the unit one, as GetIntersect), then the node itself.
+ * OPEN, 25 instructions (unwritten before the engine core's round 26; the target's size, 0xA90, its
+ * frame, every GPR and call): the four `ext[0].x` bounds (case 2's two, 4's and 1's first) swap
+ * $f0 and $f1 -- the bound, read at the array's offset 0, is a plain object to pass 0's
+ * IRO_CommonSubs, so its temporary is made in pass 1 (@3331, v64) where every other bound is read
+ * through a hoisted address (&ext + 8, + 12, + 20) and made in pass 0 ahead of its operand's;
+ * `igreplay --cls 1 --move 64=31.5` gives the target's colours. Tried: `(float)` casts, `ext->x`,
+ * `(void)&ext`, lo / hi pointer locals (123-139 off), the bound through a reference or pointer inline
+ * (21: the radius inline's order then lost), the extents loop as an inline (0xAE4). Measured on the
+ * way: one counter reused by all four loops gives every GPR (its later webs split off, numbered after
+ * the strength-reduced pointers: 77 -> 38); the min / max are value macros, the bound first (`<` and
+ * `>`: a reference min selects addresses); the radius through an inline, read ahead of the centre;
+ * NodeCheck stored and read back as a statement of its own, m_node assigned in the last call's
+ * argument (the store in its delay slot); the tick tested `m_TickNum > Ent->m_TickNum` through
+ * m_NextAtom (the address taken ahead of the test) */
 /* a sphere set's radius, its tip's x (inline: the walk reads it ahead of the centre; ours) */
 static inline float Radius(const DiIntersect *d) { return d->m_Tip.x; }
 
