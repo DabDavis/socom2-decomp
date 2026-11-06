@@ -10,6 +10,9 @@
 #include <iostream>
 #include "zparticle.h"
 
+extern "C" float sinf(float);
+extern "C" float cosf(float);
+
 /* the renderer's pipe, as much as the buffer reads: its camera (zrndr_pipe.cpp's class; the
  * camera's matrix set's view at 0x3F0 -- SOCOM 1's 0x3C0, in its m_mtxSet -- the names ours) */
 struct ZCAM_VIEW {
@@ -232,11 +235,13 @@ static inline float ScaleOf(const BufferElement *e) { return e->m_scale; }
  * and the scale -- an inline's temporaries are made ahead of the linearizer's, so the instance
  * loads number before the 1.0f constant (v1 / v0, igreplay --movers: the constant after them) and
  * the scale before the position (f1 / f0); written plainly both pairs swap (47 off).
- * OPEN, 2 instructions (the target's size, 0x68C): after the fog's qmfc2.i the target stores the
- * first corner's w BEFORE the cursor's load (`lui at; sw v0,172(sp); lw s0,m_spr; sw ...`; DrawRotated
- * has the same tail), this schedules the load ahead of all four stores -- not moved by the cursor
- * read first, after the first store or declared at the top, a chained store either way round, the
- * fog read through an inline or as an unsigned int or u_long128, or the stores in a loop */
+ * Byte-exact (the world lane's round 33; OPEN at 2 instructions since round 32): the fog's read is
+ * bracketed by `.set noreorder` / `.set reorder` -- A `.set` DIRECTIVE SPLITS THE SCHEDULING BLOCK,
+ * so the qmfc2.i takes its own cycle and the lui and the first store pair in the next, then the
+ * cursor's load (`lui at; sw v0,172(sp); lw s0,m_spr; sw ...`). Without it the lui pairs with the
+ * qmfc2.i and the load, ready first, goes ahead of all four stores; the C form, an inline, a
+ * chained store, a label, a do / while(0), an else arm and GCC-style asm all keep the one block
+ * (build/scratch/wld/v_xz8-11.py; DrawRotated has the same tail) */
 void BufferElement::DrawXZ(float (&m)[4][4])
 {
     sceVu0FVECTOR in;
@@ -309,7 +314,9 @@ void BufferElement::DrawXZ(float (&m)[4][4])
     int fog;
 
     asm {
+        .set noreorder
         qmfc2.i fog, vf14
+        .set reorder
     }
     p0[3] = fog;
     p1[3] = fog;
@@ -384,6 +391,170 @@ void BufferElement::DrawXZ(float (&m)[4][4])
     p++;
     sceVu0FTOI0Vector((int *)p, (float *)&c);
     p++;
+    p->u128 = *(u_long128 *)p2;
+    p++;
+    m_spr = p;
+    int qwc = m_spr - tag - 1;
+
+    tag->u32[0] = qwc | 0x10000000;
+    tag->u32[1] = 0;
+    tag->u32[2] = 0x11000000;
+    tag->u32[3] = qwc | 0x50000000;
+    CSPR::Kick(m_spr, false);
+}
+
+/* SOCOM 1's, its corners' tests SOCOM II's: one spinning particle -- its centre through the view to
+ * the screen (z kept to 16 bits, nothing drawn nearer than 10), the half-size the scale over the
+ * depth through the screen matrix's diagonal, turned by the instance's angle into its two screen
+ * offsets; the altitude fog on VU0 as Draw's; the four corners the centre plus the offsets a
+ * quarter-turn apart, each tested as DrawXZ's; the fog into each corner's w; two textured triangles
+ * (0, 2, 3) and (0, 1, 2), the colour converted once and copied for the others, the tags, the cursor
+ * kicked. The larger offset, SOCOM 1's range test's margin, is still worked out and unused: the
+ * target keeps its branches with nothing in them (the tests are now each corner's) */
+void BufferElement::DrawRotated(float (&m)[4][4])
+{
+    sceVu0FVECTOR in;
+    sceVu0IVECTOR out;
+    sceVu0IVECTOR p0;
+    sceVu0IVECTOR p1;
+    sceVu0IVECTOR p2;
+    sceVu0IVECTOR p3;
+    CPnt4D c;
+    _word128 *tag;
+
+    m_spr = CSPR::m_sprPacket = (_word128 *)zSysSprGetPacket((u_long128 **)&CSPR::m_sprPacketEnd);
+    in[0] = m_instance->m_pos[0];
+    in[1] = m_instance->m_pos[1];
+    in[2] = m_instance->m_pos[2];
+    in[3] = 1.0f;
+    sceVu0RotTransPers(out, m, in, 0);
+    out[2] >>= 4;
+    if (out[2] < 10)
+        return;
+    float scale = m_scale;
+    float s = 256.0f * scale / (float)out[3];
+    float aspect = 1.0f;
+    CPipeCamera *cam = thePipe.m_camera;
+    float angle = m_instance->m_10[0];
+    float r = s * cam->m_viewToScreen[0][0];
+    float cs = cosf(angle);
+    float sn = sinf(angle);
+    int dx = (int)(r * cs);
+    int dy = (int)(r * sn);
+    int adx = dx < 0 ? -dx : dx;
+    int ady = dy < 0 ? -dy : dy;
+    int margin = ady < adx ? adx : ady;
+    float *pin = in;
+
+    in[3] = *(float *)&out[3];
+    CPnt4D *fogAlt = thePipe.m_camera->m_vuFogAlt;
+
+    asm {
+        .set noreorder
+        lqc2 vf20, 0(pin)
+        lqc2 vf17, 0(fogAlt)
+        lqc2 vf18, 16(fogAlt)
+        vcallms 0x0
+        vnop
+        .set reorder
+    }
+    p0[0] = (int)((float)out[0] + (float)dx * aspect);
+    p0[1] = (int)((float)out[1] + (float)dy * aspect);
+    p0[2] = out[2] << 4;
+    if (OffScreen(p0))
+        return;
+    p1[0] = (int)((float)out[0] - (float)dy * aspect);
+    p1[1] = (int)((float)out[1] + (float)dx * aspect);
+    p1[2] = out[2] << 4;
+    if (OffScreen(p1))
+        return;
+    p2[0] = (int)((float)out[0] - (float)dx * aspect);
+    p2[1] = (int)((float)out[1] - (float)dy * aspect);
+    p2[2] = out[2] << 4;
+    if (OffScreen(p2))
+        return;
+    p3[0] = (int)((float)out[0] + (float)dy * aspect);
+    p3[1] = (int)((float)out[1] - (float)dx * aspect);
+    p3[2] = out[2] << 4;
+    if (OffScreen(p3))
+        return;
+    int fog;
+
+    asm {
+        .set noreorder
+        qmfc2.i fog, vf14
+        .set reorder
+    }
+    p1[3] = fog;
+    p0[3] = fog;
+    p2[3] = fog;
+    p3[3] = fog;
+    _word128 *p = m_spr;
+
+    if (m_texture != m_lastTexture) {
+        m_lastTexture = m_texture;
+        p->u128 = ((CTexDmaRef *)m_texture)->m_dmaRef;
+        p++;
+    }
+    tag = p++;
+
+    p->u64[0] = 0x3039C00000008006;
+    p->u64[1] = 0x412;
+    p++;
+    CPnt4D tint = func_003B7590(m_instance->m_source->m_tint);
+
+    func_003B59A0((_word128 *)this, (_word128 *)&tint, (_word128 *)&c);
+    float q = 1.0f / (float)out[2];
+
+    p->u32[0] = 0;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    _word128 *col = p;
+
+    p++;
+    p->u128 = *(u_long128 *)p0;
+    p++;
+    p->f32[0] = q;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    *p++ = *col;
+    p->u128 = *(u_long128 *)p2;
+    p++;
+    p->f32[0] = q;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    *p++ = *col;
+    p->u128 = *(u_long128 *)p3;
+    p++;
+    p->u32[0] = 0;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    *p++ = *col;
+    p->u128 = *(u_long128 *)p0;
+    p++;
+    p->u32[0] = 0;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    *p++ = *col;
+    p->u128 = *(u_long128 *)p1;
+    p++;
+    p->f32[0] = q;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    *p++ = *col;
     p->u128 = *(u_long128 *)p2;
     p++;
     m_spr = p;
