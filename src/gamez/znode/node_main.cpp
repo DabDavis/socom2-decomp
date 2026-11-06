@@ -869,7 +869,13 @@ int CNode::DeleteVisual(CVisual *visual, bool del)
  * OPEN (0x1A4 of 0x1A8): the final erase's end is the target's begin load (through &data_,
  * kept since entry) plus the size the loop's last test scaled, where here it is the loop's whole
  * end; and the insert's temporaries take the stack slots below the erase's there, above them
- * here. Not moved by begin() + size() for the end */
+ * here. Not moved by begin() + size() for the end. Round 29 (build/scratch/wld/v_dv*.py): begin()
+ * taken into a named local first shares the data load (0x1A8, the target's size, 15 off); the
+ * push_back one inline wrapper deeper (a static PushBack(list, x) around it) moves the insert's
+ * temporaries below the erase's, as the target's frame (10 off) -- an SOCOM 1-deep list push_back
+ * (through the base's) would do the same; left: the find's end compared fresh in the target (its
+ * `lui/addiu` reused by the insert), where MW here reuses the find's last (a1) -- not moved by an
+ * iterator local, `!(... != end())`, an end local or the wrapper calling insert(end(), x) */
 void CNode::DeleteVisuals()
 {
     bool drawn = m_frameRendered == zVid.frameNumber;
