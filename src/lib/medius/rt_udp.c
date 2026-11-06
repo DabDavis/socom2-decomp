@@ -1814,17 +1814,15 @@ int func_00640EA0(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, char *szAddress, unsigned 
             pConn->nState = 9;
             result = func_0063F948(pUdp, pConn, 4, &header);
             if (result != 0) {
+fail:
                 pConn->nState = 1;
                 func_006419E8(pUdp, pConn);
                 return result;
             }
             header.nType |= 0x40;
             result = func_0063FA28(pConn, &header, 0, 0);
-            if (result != 0) {
-                pConn->nState = 1;
-                func_006419E8(pUdp, pConn);
-                return result;
-            }
+            if (result != 0)
+                goto fail;
             result = func_00641B08(pUdp, pConn, pRecv);
         }
         break;
@@ -1840,4 +1838,155 @@ int func_00640EA0(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, char *szAddress, unsigned 
         break;
     }
     return result;
+}
+extern int func_0062FDD8(int nKMID, int nID, RSAKey *pKey);
+
+/* a peer's key exchange datagram (0x640940): its 64-byte RSA key follows the header; the first one sets the session id
+ * and acknowledges through the send ring, a changed key is taken and answered with this end's (0x640B70) */
+int func_00640940(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv, char *pData, unsigned short nLength)
+{
+    RSAKey key;
+    RT_UDP_HEADER header;
+    void *pMsg = 0;
+    int nKMID;
+    int result = 0;
+    int r;
+
+    if (nLength != sizeof(RSAKey))
+        return 7;
+    if (pConn == 0)
+        return 7;
+    if (pConn->nId == 0 && pRecv->nId != 0 && (unsigned int)(pConn->nState - 8) < 2) {
+        pConn->nId = pRecv->nId;
+        pMsg = 0;
+        pConn->nRecvSeq = pRecv->nSeq;
+        func_00631B10(&pConn->send, &pMsg);
+        if (pMsg == 0) {
+            pConn->nState = 6;
+            func_006419E8(pUdp, pConn);
+            return 7;
+        }
+        func_0063FE48(pMsg, &header);
+        header.nId = pConn->nId;
+        func_0063FEA8(pMsg, &header);
+    }
+    nKMID = pConn->nKMID;
+    key = *(RSAKey *)pData;
+    r = func_0062FDD8(-1, nKMID, &key);
+    if (r == 0) {
+        r = func_00641B08(pUdp, pConn, pRecv);
+        if (r != 0)
+            return r;
+    } else {
+        if (r > 0) {
+            KM_AddSymmetricKey(-1, nKMID, &key);
+            r = func_00641B08(pUdp, pConn, pRecv);
+            if (r != 0)
+                return r;
+        } else
+            func_0062FCD8(-1, nKMID, &key);
+        result = func_00640B70(pUdp, pConn, &key);
+        if (result != 0) {
+            pConn->nState = 6;
+            return 7;
+        }
+    }
+    return result;
+}
+
+/* a connection's send step (0x6400A8): each message of its send ring whose retry time has come goes out -- reliable ones
+ * again and again, counted; the key message under the peer's public key, the data encrypted once with its signature kept
+ * -- the first message not reliable taken off the ring once its successor is known */
+int func_006400A8(RT_UDP *pUdp, RT_UDP_CONN *pConn)
+{
+    RT_UDP_HEADER sent;
+    RT_UDP_HEADER header;
+    RSAKey key;
+    unsigned short nSent;
+    unsigned int nElapsed;
+    void *pMsg = 0;
+    unsigned int nRetry;
+    char *pData = 0;
+    unsigned int nLength = 0;
+    unsigned int nTrailer = 0;
+    void *pDone = 0;
+    int bExpired;
+    unsigned short nSend;
+    int result;
+
+    if (pConn->nState == 0)
+        return 0;
+    rt_time_elapsed(&pConn->tLastSend, &nElapsed);
+    if (pUdp->x3C >= nElapsed && pConn->nReliable == 0)
+        return 0;
+    if (func_00631B10(&pConn->send, &pMsg) != 0)
+        return 10;
+    while (pMsg != 0) {
+        if (func_0063FD68(pMsg, &sent) == 0) {
+            bExpired = 0;
+            if (sent.nType != 0) {
+                rt_time_elapsed((RT_TIME *)&sent.nId, &nRetry);
+                bExpired = pConn->nRto * sent.nType < nRetry;
+            }
+            if (bExpired == 0 && sent.nType != 0) {
+                pMsg = func_00631E88(pMsg);
+                continue;
+            }
+            func_0063FE48(pMsg, &header);
+            func_00640010(pMsg, &pData, &nLength);
+            if (header.nLength == nLength) {
+                nSent = 0;
+                func_0063FF08(pMsg, &nTrailer);
+                if (nTrailer == 0 && func_0063DC90() == 1) {
+                    if ((*(unsigned int *)&header & 0xFFFF8000) == 0x408000) {
+                        func_0062FCD8(-1, pConn->nKMID, &key);
+                        func_0062FE80(-1, pConn->nKMID);
+                        nTrailer = KM_Encrypt(-1, pConn->nKMID, pData, nLength);
+                        KM_AddSymmetricKey(-1, pConn->nKMID, &key);
+                    } else if (header.nLength != 0)
+                        nTrailer = KM_Encrypt(-1, pConn->nKMID, pData, nLength);
+                    if (nTrailer != 0) {
+                        func_0063FF98(pMsg, nTrailer);
+                        header.nType |= 0x80;
+                        func_0063FEA8(pMsg, &header);
+                    }
+                }
+                nSend = nLength + 12;
+                if (nTrailer != 0)
+                    nSend += 4;
+                result = rt_comm_send_to(pUdp->nChannel, pConn->szAddress, pConn->nPort,
+                                         (char *)func_00631E58(pMsg) + 12, nSend, &nSent);
+                if (nSent == 0)
+                    break;
+                if (result != 0 || nSend != nSent)
+                    return 16;
+                if (header.nSeq == pConn->nAwaitSeq) {
+                    if (bExpired)
+                        pConn->nAwaitSeq = 0;
+                    else
+                        rt_time_start(&pConn->tSent);
+                }
+                if (header.nType & 4) {
+                    rt_time_start((RT_TIME *)&sent.nId);
+                    if (sent.nType != 0)
+                        sent.nType++;
+                    else
+                        sent.nType = 2;
+                    func_0063FDE8(pMsg, &sent);
+                } else
+                    pDone = pMsg;
+                if (bExpired == 0 && (header.nType & 1))
+                    pConn->nReliable--;
+                rt_time_get_time_stamp(&pConn->tLastSend);
+            }
+        }
+        pMsg = func_00631E88(pMsg);
+        if (pDone != 0) {
+            void *p = pDone;
+
+            pDone = 0;
+            func_00631748(&pConn->send, p);
+        }
+    }
+    return 0;
 }
