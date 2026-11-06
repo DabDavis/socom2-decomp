@@ -1435,6 +1435,19 @@ public:
     }
     void pop_front();
     void pop_back();
+    /* the room behind the end, in elements, for pop_back's walk (ours: see pop_back) */
+    unsigned int __back_room()
+    {
+        enum __Zero { __zero_max = 0xffffffffu } z = (__Zero)0;
+        unsigned int n;
+
+        if (this->buf_.second_.size() != 0) {
+            n = (this->buf_.second_.size() - 1) * buf_size;
+        } else {
+            n = z;
+        }
+        return n - (this->start_ + this->size_);
+    }
     /* a no-op only the pointer deques' clear names (the MSL headers round 39): there clear waits past the walk that reaches cdeque<PCv>::pop_front, and
      * inlines it (game_main.cpp's 0x2CF120, 0xA8); the lobby's and the state machine's call it (0x2E1B20, 0x3A6FA0, 0x88: their pop_front, deferred, references it
      * only after that walk) */
@@ -1676,7 +1689,12 @@ void __deque_imp<T, Allocator>::pop_front()
  * emits pop_back to test it on: 0x3349C0 is a draft's) MEASURED (round 39,
  * build/p39/vx.py, zrdr_edit.cpp's copy): that spelling is beqz with the zero in its delay slot where the target's bnez jumps over
  * `b join` (start_'s load copied into that b's delay slot): 18 off, as with a helper returning the count or the test's operands
- * swapped; written with a break, 41 */
+ * swapped; written with a break, 41.
+ * BYTE-EXACT SINCE THE WORLD'S ROUND 34 (__back_room above): the target's `move a1,zero` in the bnez's delay slot is NOT the
+ * zero arm's -- it is a zero defined AHEAD of the test, the arm a copy of it that coalescing removes after the branches are
+ * laid out (so its `b join` takes start_'s load from the join, as CRdrFile::ReadArray's `array = this`, with no pad at the other
+ * arm's label): an if / else on `size() != 0`, the arm `n = z`, z an unsigned 4-byte enum so IRO does not propagate the zero
+ * (a `const` local is folded: 0xCC). The enum is A MARKED MODELLING DEVICE; the original's holder of the zero is unknown */
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::pop_back()
 {
@@ -1685,8 +1703,7 @@ void __deque_imp<T, Allocator>::pop_back()
         return;
     }
     --this->size_;
-    while ((this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0) - (this->start_ + this->size_) >=
-           2 * buf_size) {
+    while (__back_room() >= 2 * buf_size) {
         this->buf_.second_.pop_back();
         T *&b = this->buf_.second_.back();
 
