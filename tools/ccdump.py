@@ -147,18 +147,59 @@ def priorities(lreg: str, greg: str) -> list[str]:
     return lines
 
 
-def main(argv=None) -> int:
+# The options whose value is a compiler flag. argparse reads a lone value that starts with `-` as an
+# option of its own -- `--dump -dL` was refused ("expected one argument") and only `--dump=-dL`
+# worked (the GCC c lane's round 38c); `--dump -fsched-verbose=4` was worse, its value taken for
+# `-f sched-verbose=4`. So `--dump X` (or an unambiguous prefix of the option, `--du X`) is joined
+# into `--dump=X` before argparse sees it: the next argument is always the option's value, as the
+# `=` form's is, and `--dump=X` keeps its meaning (GCC round 43a).
+VALUE_OPTIONS = ("--dump", "--flags")
+
+
+def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("src", type=Path, help="a GCC unit (src/**/*.c) or a probe")
     ap.add_argument("-f", "--function", action="append", default=[], help="write and summarise this "
                     "function's sections (repeatable)")
     ap.add_argument("--unit", type=Path, help="take the directive from this unit instead (a probe's)")
     ap.add_argument("--compiler", help="override the directive's toolchain")
-    ap.add_argument("--flags", help="override the directive's flags (quoted)")
-    ap.add_argument("--dump", default=DEFAULT_DUMPS, help=f"the dump flags (default: {DEFAULT_DUMPS})")
+    ap.add_argument("--flags", help="override the directive's flags (quoted; `--flags -O1` and `--flags=-O1` alike)")
+    ap.add_argument("--dump", default=DEFAULT_DUMPS, help=f"the dump flags (default: {DEFAULT_DUMPS}; `--dump -dL` "
+                    "and `--dump=-dL` alike)")
     ap.add_argument("--out", type=Path, help="where the dumps go (default build/scratch/gcc/dumps/<stem>)")
     ap.add_argument("extra", nargs="*", help="more cc1 flags after the directive's")
-    a = ap.parse_args(argv)
+    return ap
+
+
+def join_values(argv: list[str], ap: argparse.ArgumentParser) -> list[str]:
+    """`argv` with each VALUE_OPTIONS option given apart from its value (`--dump -dL`) joined to it
+    (`--dump=-dL`); an abbreviation argparse would accept counts when it names one option alone, and
+    everything after `--` is left as it is."""
+    longs = sorted({s for act in ap._actions for s in act.option_strings if s.startswith("--")})
+    out, i = [], 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--":
+            out += argv[i:]
+            break
+        named = [o for o in longs if o.startswith(arg)] if arg.startswith("--") and "=" not in arg else []
+        opt = arg if arg in longs else (named[0] if len(named) == 1 else None)
+        if opt in VALUE_OPTIONS and i + 1 < len(argv):
+            out.append(f"{opt}={argv[i + 1]}")
+            i += 2
+            continue
+        out.append(arg)
+        i += 1
+    return out
+
+
+def parse_args(argv=None) -> argparse.Namespace:
+    ap = parser()
+    return ap.parse_args(join_values(list(sys.argv[1:] if argv is None else argv), ap))
+
+
+def main(argv=None) -> int:
+    a = parse_args(argv)
     src = a.src.resolve()
     if src.suffix not in (".c", ".cpp"):
         raise SystemExit(f"{src}: not C (an assembler unit has no RTL)")

@@ -488,6 +488,9 @@ public:
      * from the world's camera, as SOCOM 1's Load does) */
     static float m_basefog_near;
     static CMatrix m_WorldToModel;
+    /* the model-to-world matrix NodeSetup keeps (SOCOM 1's static, a pointer, gp-relative there: its
+     * NodeSetup stores the matrix argument in it, its BuildNodeLocalLightList reads it; data.txt's) */
+    static CMatrix *m_ModelToWorld;
     /* new in SOCOM II (__sinit_vis_vu.cpp builds them; the names ours): the light maps' tint colours
      * now, the ones they blend to and the blend's rate per second (0x3B7170 steps them), the lens
      * colours (the zoom's CLensColors: CameraZoom sets them) and their product -- xyz multiplied, w

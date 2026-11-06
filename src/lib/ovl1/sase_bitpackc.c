@@ -3,7 +3,8 @@
  * eight bits appended at the stream's bit position, the byte position wrapping at the buffer's
  * size. Asserting as the codec does (file and line by `#line`, as in sase_encsc.c). Written in
  * the GCC lane's round 18a: the packer 0x2484A0. 0x2485D0 (max.s/madda.s: the R5900's float
- * accumulator, assembly or a body of inline asm, as the dot product 0x248F60) is not written.
+ * accumulator, assembly or a body of inline asm, as the dot product 0x248F60) is the assembler unit
+ * sase_harmcost.s (GCC round 43a: no 2.9x/2.96 cc1 has an adda.s or madda.s template).
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0

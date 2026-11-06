@@ -22,6 +22,9 @@ struct PNT4D {
     float x, y, z, w;
 };
 
+/* a quadword seen every way (zsys_public.h's union; BufferElement's cursor points at them) */
+union _word128;
+
 /* Sony's libvu0 (MAIN) */
 extern "C" void sceVu0AddVector(float *v0, float *v1, float *v2);
 extern "C" void sceVu0SubVector(float *v0, float *v1, float *v2);
@@ -62,6 +65,9 @@ public:
     }
     /* in place (SOCOM 1's Destruction_Instance::Tick adds a product's temporary onto the point) */
     void operator+=(const CPnt4D &b) { sceVu0AddVector((float *)this, (float *)this, (float *)&b); }
+
+    /* zmath.h's (0x3F6510): BufferElement::Draw copies it as a quadword */
+    static const CPnt4D zero;
 };   // 0x10 bytes
 
 /* a matrix (zmath.h's CMatrix: `CMatrix m;` costs a sceVu0UnitMatrix) */
@@ -550,6 +556,10 @@ public:
     void DrawXZ(float (&m)[4][4]);
     void DrawStreaked(float (&m)[4][4]);
 
+    /* the scratchpad packet's cursor the draws write at (SOCOM 1's static, gp-relative there:
+     * 0x45C4B8, data.txt's) */
+    static _word128 *m_spr;
+
     CPnt4D m_color;   // 0x0: the properties' colour, its alpha by the opacity, all by 128
     Instance *m_instance;   // 0x10
     float m_scale;   // 0x14
@@ -620,7 +630,10 @@ public:
     unsigned char m_frozen;   // 0x2 (SOCOM 1's: an instance of a frozen source is not ticked)
     unsigned char m_outOfRange;   // 0x3 (SOCOM 1's)
     CPnt3D m_oldPosW;   // 0x4 (SOCOM 1's)
-    unsigned char _10[0x19 - 0x10];   // 0x10: SOCOM 1's m_applyGlobalLighting .. m_landmark, and SOCOM II's word
+    /* SOCOM II's word: the light tint its particles are coloured by (an index of CVisual's
+     * m_lightTint, 0x3B7590's argument: BufferElement::Draw; the name ours) */
+    int m_tint;   // 0x10
+    unsigned char _14[0x19 - 0x14];   // 0x14: SOCOM 1's m_applyGlobalLighting .. m_landmark
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
     unsigned char _1a[0x2c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_streakFade
     float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)

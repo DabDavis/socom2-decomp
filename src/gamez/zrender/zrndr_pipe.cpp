@@ -867,11 +867,10 @@ static inline void BoxCorners4(PNT4D *c, const CBBox *b)
     c[7].w = 1.0f;
 }
 
-/* vis_vu.cpp's: the model-to-world matrix NodeSetup leaves (not named) */
-extern "C" CMatrix *data_004B4E60;
 /* the light walk's stamp: a light already taken for the node this walk carries it (OVL1 data
- * 0x3DFF78, SOCOM 1's gp-relative word; not named) */
-extern "C" unsigned int data_003DFF78;
+ * 0x3DFF78, initialised 1: SOCOM 1's file static AppliedToNodeNum, gp-relative there -- data.txt's;
+ * the model-to-world matrix is CVisual::m_ModelToWorld, NodeSetup's, SOCOM 1's static) */
+extern unsigned int AppliedToNodeNum;
 
 /* a point set from three values (ours; int_shapes.cpp's PntSet) */
 static inline void CornerSet(CPnt3D &p, float x, float y, float z)
@@ -919,8 +918,8 @@ static inline float MaxOf(const float &a, const float &b) { return a >= b ? a : 
 /* whether the walk has taken the light already: stamped with the walk's stamp the first time (ours) */
 static inline bool LightTaken(zdb::CLight *light)
 {
-    if (data_003DFF78 != light->m_appliedToNode) {
-        light->m_appliedToNode = data_003DFF78;
+    if (AppliedToNodeNum != light->m_appliedToNode) {
+        light->m_appliedToNode = AppliedToNodeNum;
         return false;
     }
     return true;
@@ -941,22 +940,27 @@ static inline bool LightTaken(zdb::CLight *light)
  * the box's first field once in the widening (its own address CSE'd), where PointBox through its
  * pointer copies field by field and MinOf's reference re-reads it (a direct ternary for that field
  * alone: d=69 against 74 before the light walk's fixes); an in-place pair assigned, a reference
- * PointBox, an inline returning the box (not inlined: 0x3D0), placement new: no better; (2) the
- * world pointer in s4 and the light in s3 (the target's s3 / s4), and &box.m_max (s1) set after
- * SetCellBoundary's call where the target sets it ahead and passes it (`move a2,s1`) */
+ * PointBox, an inline returning the box (not inlined: 0x3D0), placement new: no better (the world
+ * lane's round 32: `#pragma opt_common_subs off` in the body d=167, opt_propagation off d=109);
+ * (2) &box.m_max (s1) set after SetCellBoundary's call where the target sets it ahead and passes it
+ * (`move a2,s1`). The world pointer and the light took s4 / s3 (the target's s3 / s4) until the
+ * round-32 `igreplay --permute` (movers world, light: the light numbered first) -- the light
+ * declared at the top, its first definition still in the walk: d 57 -> 48 */
 void BuildNodeLocalLightList(zdb::CNode *node)
 {
+    zdb::CLight *light;
+
     zdb::CVisual::m_local_light_cnt = 0;
-    data_003DFF78++;
+    AppliedToNodeNum++;
     CBBox box;
 
-    if (!Scales(data_004B4E60)) {
-        data_004B4E60->Transform(&NodeBBox(node)->m_min, &box.m_min, 2);
+    if (!Scales(zdb::CVisual::m_ModelToWorld)) {
+        zdb::CVisual::m_ModelToWorld->Transform(&NodeBBox(node)->m_min, &box.m_min, 2);
         func_002A94E0(&box);
     } else {
         CBBox8 c(node->GetBBox());
 
-        data_004B4E60->Transform(c.m_pts, 8);
+        zdb::CVisual::m_ModelToWorld->Transform(c.m_pts, 8);
         CPnt3D p = c.m_pts[0];
 
         PointBox(&box, p, p);
@@ -980,7 +984,7 @@ void BuildNodeLocalLightList(zdb::CNode *node)
 
             for (it = lights->begin(); it != e; ++it) {
                 if ((unsigned int)zdb::CVisual::m_local_light_cnt < 10) {
-                    zdb::CLight *light = *it;
+                    light = *it;
 
                     if (light->m_active && !LightTaken(light) && !(light->m_region_mask & node->m_region_mask)) {
                         const CPnt3D *pos = &light->m_WorldPosition;
