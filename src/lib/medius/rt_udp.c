@@ -74,7 +74,7 @@ extern void *func_00631E58(void *pMsg);
 extern void *func_00631E88(void *pMsg);
 
 typedef struct RT_UDP_CONN {
-    int nState;                         /* 0x00: 12 connected */
+    enum RT_UDP_STATE { RT_UDP_IDLE } nState;  /* 0x00: 12 connected; an enum (unsigned), as 0x640D38's switch tests it */
     int x04;
     char szAddress[16];                 /* 0x08 */
     unsigned short nPort;               /* 0x18 */
@@ -1060,6 +1060,55 @@ int func_00640408(RT_UDP *pUdp)
         }
     } while (nReceived != 0);
     return 0;
+}
+
+/* a datagram with a session id on connection nConn: a connection still without one (state 8 or 9)
+ * takes it, its first queued datagram's header restamped (none queued: state 6, closed, 7); then in
+ * states 8, 9, 11 and 12 the datagram is handled (func_00641B08), in any other but 7 the connection is
+ * closed with state 1 */
+int func_00640D38(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, int nConn)
+{
+    void *pMsg = 0;
+    RT_UDP_HEADER header;
+    int result = 0;
+    RT_UDP_CONN *pConn;
+
+    if (nConn == -1)
+        return 7;
+    pConn = &pUdp->pConns[nConn];
+    if (pRecv->nId == 0)
+        return 0;
+    if (pConn->nId == 0 && (pConn->nState == 8 || pConn->nState == 9)) {
+        pConn->nId = pRecv->nId;
+        pMsg = 0;
+        pConn->nRecvSeq = pRecv->nSeq;
+        func_00631B10(&pConn->send, &pMsg);
+        if (pMsg == 0) {
+            pConn->nState = 6;
+            func_006419E8(pUdp, pConn);
+            return 7;
+        }
+        func_0063FE48(pMsg, &header);
+        header.nId = pConn->nId;
+        func_0063FEA8(pMsg, &header);
+    }
+    if (pConn->nState == 7)
+        return 0;
+    switch (pConn->nState) {
+    case 8:
+    case 9:
+    case 11:
+    case 12:
+        if (pConn->nRecvSeq == 0)
+            pConn->nRecvSeq = pRecv->nSeq;
+        result = func_00641B08(pUdp, pConn, pRecv);
+        break;
+    default:
+        pConn->nState = 1;
+        func_006419E8(pUdp, pConn);
+        break;
+    }
+    return result;
 }
 
 int func_006410E0(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, unsigned int nConn)
