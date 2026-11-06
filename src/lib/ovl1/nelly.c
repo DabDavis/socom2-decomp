@@ -170,7 +170,16 @@ void func_00251678(const float *pfIn, float *pfOut)
  * on the EE, where long is 64 bits -- and passes the rebuilt mantissa and the exponent through
  * one stack word (sw, lwc1; cvt.s.w from memory). Eighteen spellings (pointer casts, unions of
  * float and int or long, volatile, BLKmode unions: build/scratch/gcc/v_flog*.c) reach neither: a
- * register union ORs in the undefined upper word, a pointer cast stays in registers (ADDRESSOF). */
+ * register union ORs in the undefined upper word, a pointer cast stays in registers (ADDRESSOF).
+ * GCC round 39a, the log2 (build/scratch/gcc/r39/v_log2*.py, 23 shapes; try.py's distance): each half
+ * reproduced apart, not yet together -- the input's `mfc1; and 0xFFFFFFFF` is a float/long union in
+ * a REGISTER cleared first (`x.l = 0; x.f = fX;`: store_bit_field's OR with the upper word folds
+ * away, the mask is the zero-extension), and the output's stack word (sw, lwc1; sw, lwc1, cvt.s.w)
+ * a float/int union kept in the frame only once its FLOAT member is written (`union_x.l =
+ * union_x.l * 0.5F - 1.0F`: written only as an int it moves through mtc1). Left: each DImode value
+ * stored to the int member is truncated here (dsll32/dsra32) where the target stores the 64-bit
+ * register as it is -- d=19 of 29 words at best ((int) casts, an int member of the input union, a
+ * 32-bit copy of the bits: right size, d=21). */
 
 float func_00251700(float x)                    /* a frequency warp (the .lit4 constants) */
 {

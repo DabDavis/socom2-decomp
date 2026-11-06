@@ -30,7 +30,10 @@ its name). SYMBOL is scored against its row (the copy in the unit's overlay when
 --all scores every function the object defines and lists the ones that miss (exp.py's all-functions
 score: a header change's other users); --order REGEX prints the object's function order.
 
-Prints one line per variant: MATCH, or the differ's verdict.
+Prints one line per variant: MATCH, or the differ's verdict and, beside it, the variant's difflib
+distance from its row -- `d=N (0xCAND vs 0xTARGET)`: the words of every unequal stretch of the two
+bodies, each masked by the candidate's relocations, the longer side counted (the AI core's round-34
+vd.py, GCC round 39a) -- so variants of another size are ranked too; --no-dist prints the verdict alone.
 """
 
 from __future__ import annotations
@@ -128,6 +131,40 @@ def score_obj(obj: Path, unit: Path, symbol: str, target: str | None = None, sho
     return "MATCH" if r.match else r.verdict
 
 
+def distance(obj: Path, unit: Path, symbol: str, target: str | None = None) -> tuple[int, int, int] | None:
+    """(distance, the candidate's words, the target's) -- difflib's edit distance between SYMBOL's
+    words and its scoring row's (or --target's), both masked by the candidate's relocations: the
+    longer side of every opcode that is not `equal` (the AI core's round-34 vd.py, folded in by the
+    GCC lane's round 39a). 0 for a byte-exact body (a reference may still be wrong); None when the
+    symbol or its row is missing. It ranks near misses, which a verdict's count of differing words
+    at fixed offsets does not once the sizes differ."""
+    import difflib
+    img, st = E.image(), E.symbols()
+    try:
+        elf = E.Elf.read(obj)
+        if target:
+            sym = target_row(st, target)
+        else:
+            overlay = sccheck.tu_options(_in_tree(unit)).get("overlay")
+            sym = sccheck.scoring_row(st, symbol, sccheck.unit_overlay(elf, st, overlay))
+        cand, relocs, _ = elf.function(symbol)
+    except (KeyError, SystemExit):
+        return None
+    if sym is None:
+        return None
+    tw = E.words(D.mask(img.read(sym.addr, sym.size), relocs))
+    cw = E.words(D.mask(cand, relocs))
+    sm = difflib.SequenceMatcher(None, tw, cw, autojunk=False)
+    d = sum(max(i2 - i1, j2 - j1) for tag, i1, i2, j1, j2 in sm.get_opcodes() if tag != "equal")
+    return d, len(cw), len(tw)
+
+
+def dist_note(obj: Path, unit: Path, symbol: str, target: str | None = None) -> str:
+    """`d=N (0xCAND vs 0xTARGET)` for a verdict's line, '' when distance() has none."""
+    r = distance(obj, unit, symbol, target)
+    return "" if r is None else f"d={r[0]} ({r[1] * 4:#x} vs {r[2] * 4:#x})"
+
+
 def score_all(obj: Path, unit: Path) -> tuple[int, int, list[str]]:
     """Every function the object defines against its scoring row: (matched, scored, the misses)."""
     img, st = E.image(), E.symbols()
@@ -205,6 +242,8 @@ def main(argv=None) -> int:
     ap.add_argument("--order", help="print the object's functions (in its order) whose names match this regex")
     ap.add_argument("-n", "--newlines", action="store_true", help="`\\n` in OLD and NEW is a newline, `\\t` a tab")
     ap.add_argument("-d", "--diff", action="store_true", help="print the diff of a variant that fails")
+    ap.add_argument("--no-dist", action="store_true",
+                    help="print each verdict alone, without its difflib distance (the output before GCC round 39a)")
     a = ap.parse_args(argv)
     unit = a.unit or a.file
     base = a.file.read_text()
@@ -227,6 +266,9 @@ def main(argv=None) -> int:
             verdict = f"{ok} of {n} match" + (f"; miss: {', '.join(m[:40] for m in misses[:8])}" if misses else "")
         else:
             verdict = score_obj(obj, unit, a.symbol, a.target, a.diff)
+            if verdict != "MATCH" and not a.no_dist:
+                note = dist_note(obj, unit, a.symbol, a.target)
+                verdict += f"  {note}" if note else ""
         if obj is not None and a.order:
             rx = re.compile(a.order)
             fs = sorted(E.Elf.read(obj).functions(), key=lambda f: (f.shndx, f.value))

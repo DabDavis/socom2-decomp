@@ -530,8 +530,8 @@
 0x001A2708 0x140 sceGsSetDefStoreImage  # MAIN unaligned; s1:exact
 0x001A2848 0x17C sceGsExecLoadImage  # MAIN unaligned; s1:exact
 0x001A29C8 0x68C sceGsExecStoreImage  # MAIN unaligned; s1:exact
-0x001A3058 0x3C func_001A3058  # MAIN unaligned
-0x001A3098 0x1C func_001A3098  # MAIN unaligned
+0x001A3058 0x3C sceGsPutIMR  # MAIN unaligned; by body (the weapons' round 34): GsGetIMR, then GsPutIMR(a0), the old mask returned -- Sony's libgraph sceGsPutIMR; src/lib/sdk/gs_imr.c -- the GCC lane r39a
+0x001A3098 0x1C sceGsGetIMR  # MAIN unaligned; by body (the weapons' round 34): one call of GsGetIMR -- Sony's libgraph sceGsGetIMR; src/lib/sdk/gs_imr.c -- the GCC lane r39a
 0x001A30B8 0x74 setD3_CHCR  # MAIN unaligned; s1:callee
 0x001A3130 0x74 setD4_CHCR@libipu  # MAIN; s1~ setD4_CHCR (one of 2); s1:order (the demo's libipu DMA object 0x15AA38 holds setD3_CHCR, setD4_CHCR, sceIpuStopDMA ... as here; sceIpuStopDMA and sceIpuRestartDMA call it; src/lib/sdk/libipu.c) -- the GCC lane r22a
 0x001A31A8 0xE4 sceIpuStopDMA  # MAIN unaligned; s1:exact
