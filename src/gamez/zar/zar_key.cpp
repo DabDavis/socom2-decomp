@@ -56,15 +56,13 @@ static void ForgetKey(CKey *key)
  * one five down is called -- so the deep copy calls for_each's pieces, DeleteKey, the base clear
  * 0x25BAD0 and FreeVector's four, the copy under ~CKey for_each 0x25BA50, clear and FreeVector
  * 0x25B9D0 whole (all five rows byte-exact from here, as are DeleteKey 0x25BAE0 and ForgetKey
- * 0x25BB20). OPEN, 0x33C of 0x398, the tail only (every instruction before it the target's, the
- * frame 16 bytes smaller): the outer FreeVector reaches the pointer pod's pieces at depth five, and
- * the image's pod is not include/vector's -- its constructor calls a piece storing the capacity
- * passed by value (0x25B9C0, `sw a1,0(a0)`), its member swap calls three distinct std::swap copies
- * (0x25B9A0 the capacity at +0, 0x25B980 the data at +8, 0x25B960 the count at +4) where ours calls
- * the free swap, and its destructor is `if (*data()) alloc().deallocate(*data(), *cap())` with each
- * accessor a call (0x25B950 data() by reference, 0x25B940 alloc(), 0x25B930 cap(), 0x25B920 the
- * deallocate's operator delete) -- SOCOM 1's compressed pair, include/vector's "LEVEL 8, MEASURED
- * AND NOT ADOPTED" shape: an MSL header change, not this unit's */
+ * 0x25BB20). BYTE-EXACT SINCE THE ENGINE CORE'S ROUND 28: the outer FreeVector reaches the pointer pod's pieces at
+ * depth five, and the image's pod is SOCOM 1's compressed pair -- its constructor calls a piece storing the capacity
+ * passed by value (0x25B9C0, `sw a1,0(a0)`), its member swap calls three distinct std::swap copies (0x25B9A0 the
+ * capacity at +0, 0x25B980 the data at +8, 0x25B960 the count at +4), its destructor is
+ * `if (*data()) alloc().deallocate(*data(), *cap())` with each accessor a call (0x25B950 data() by reference, 0x25B940
+ * alloc(), 0x25B930 cap(), 0x25B920 the deallocate's operator delete) -- include/vector's __MSL_VECTOR_POD_PAIR above,
+ * with the inline level 8 at this unit's end below */
 void CKey::DeleteChildren(bool del)
 {
     if (del)
@@ -92,11 +90,17 @@ struct CKeyNamed {
  * callees one level (the count's size() 0x25B2E0, the raw begin and __iter, end(), ==, the postfix
  * ++'s pieces called), the third calls them all (WriteFile 0x25B2C0, Count 0x25B2B0, begin, end,
  * !=, *, postfix ++) and Write itself; every loop is entered at its bottom test by a `b`.
- * OPEN, 0x2CC of 0x280: the outer copy and the second's prologue are the target's -- the loop a
- * `while` (a `for` gets a guard: 0x2C4), the count through a Count() over size() (the second copy
- * calling size() as the target's) -- but the inlined copies' while loops are rotated behind a
- * duplicated test where the target's enter by a jump; a named key local in the body, a `for (;;)`
- * with a break, a goto into a do-while, prefix ++: 0x264-0x2D4 (build/scratch/core/v_write19*.py) */
+ * OPEN, 0x2CC of 0x280: every instruction but the loops' entries is the target's (`#pragma opt_rotateloops off` in
+ * effect at this unit's end: 0x280, d=0, the two calls above named -- but CountKeys, DeleteChildren and for_each 0x25BA50
+ * lose theirs, their loops the target rotates). The difference is IRO_RotateLoop (mwccps2 0x538CD0, read in the
+ * compiler): a loop is rotated unless the optimiser is off for the function (an asm barrier, the DisableDueToAsm byte
+ * 0x5B7F7D: why camera mode 6's `while`s keep their `b`), its test is not its header, or its header's one predecessor
+ * from outside does not end in a goto with the body's first block next. Nothing in a plain `while` fails those, so the
+ * target's source fails one for all three copies, unseen: a `?:` in the test does (`i != end() ? true : false`: 0x284,
+ * unrotated, d=24: the bool's andi and a folded bne in the test instead); `&& 1`, `|| 0`, an if (1) or a do ... while (0)
+ * around it, goto spellings of the same flow, an asm with no code: rotated, 0x2CC (build/scratch/core/v_wr_shape.py);
+ * a body-level pragma, or defer_codegen off around it, has no effect on it. A hidden unit boundary at 0x25B030-0x25B2EF
+ * is not excluded by the rows, but Read above it inlines InsertKey below it */
 bool CKey::Write(CZAR *zar)
 {
     zar->WriteFile(&m_name, 4);
