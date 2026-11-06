@@ -220,6 +220,13 @@ public:
     /* the walk begun, and whether it has ended (st_mpexit.cpp's; the teamwork rating's walk) */
     CEntityItr() : _it(GetEntityList().begin()), _iIdx(0) {}
     bool More() const { return _it != GetEntityList().end(); }
+    void Next()
+    {
+        do {
+            ++_it;
+            _iIdx++;
+        } while (_it != GetEntityList().end() && !IsSeal());
+    }
 
     std::list<CEntity *>::const_iterator _it;   // 0x0
     int _iIdx;   // 0x4
@@ -235,7 +242,7 @@ static inline int Percent(float f) { return Round(100.0f * f); }
 /* a SEAL's stats (zseal.h's CSealStats: SOCOM II's halfword counters at the SEAL's +0x58C) */
 class CSealStats {
 public:
-    unsigned short m_count[0x3c / 2];   // 0x0
+    unsigned short m_count[0x48 / 2];   // 0x0 (0x48 bytes: its constructor, 0x545200, zeroes them all)
 };
 
 /* a valve's kind (zanim.h's: only the one made here) */
@@ -287,6 +294,7 @@ struct _zrdr {
 class CUIVariable : public _zrdr {
 public:
     void UpdateDependents();
+    CUIVariable &operator=(const char *s);   /* 0x3862A0 */
     /* an integer, the watchers told only when it changes (st_mpexit.cpp's) */
     CUIVariable &operator=(int i)
     {
@@ -347,7 +355,7 @@ extern "C" float func_001F3550(CObjectiveCounts *counts)
  * the alarms' `li s2,35` lands between the name's lui and the jal, the name's addiu in the delay
  * slot, as the target (as an if-statement MW put the li in the slot whatever its placement --
  * round 34's measurements, every one 2 off) */
-extern "C" float func_001F3290(CSealStats **stats)
+extern "C" float func_001F3290(CSealStats **stats, int)
 {
     int score = 35;
 
@@ -558,6 +566,95 @@ extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
     return 0.01f * pct;
 }
 
+extern "C" {
+void func_00545200(CSealStats *stats);   /* (CSealStats' constructor, OVL2: every counter zeroed) */
+char *strcpy(char *dst, const char *src);
+}
+
+/* the round's stats into the UI's variables (OVL1 0x1F21B0; SOCOM 1's SetRoundStatUiVars, the
+ * single-player half): the player and the SEALs of his team (bit 2) gathered, up to four, each
+ * with its stats -- a missing one's a zeroed default --, the four ratings computed (objectives,
+ * stealth, accuracy, teamwork), the career taken up in a single-player game (theMission's byte at
+ * 0x18 2), the overall rating -- 45 % objectives, 20 % stealth, 10 % accuracy, 25 % teamwork,
+ * at least 60 in that game -- shown and kept in a valve, and the time in the game as "hhh:mm:ss" */
+extern "C" void func_001F21B0(CObjectiveCounts *counts)
+{
+    CSealStats none;
+
+    func_00545200(&none);
+    CZSealBody *seals[4] = {0};
+    CSealStats *stats[4] = {0};
+
+    for (int k = 0; k < 4; k++)
+        stats[k] = &none;
+    int n = 0;
+    int count = 0;
+    CEntityItr it;
+
+    do {
+        if (!it.More())
+            break;
+        CZSealBody *seal = &it.GetSeal();
+
+        if (seal) {
+            if (seal == ftsGetPlayer() || seal->m_team & 2) {
+                seals[count] = seal;
+                stats[count] = (CSealStats *)&seal->m_58c;
+                count++;
+                n++;
+            }
+        }
+        it.Next();
+    } while (count < 4);
+    float objectives = func_001F3550(counts);
+    float stealth = func_001F3290(stats, n);
+    float accuracy = func_001F2E40(stats, n);
+    float teamwork = func_001F27C0(seals, stats, n);
+
+    if (theMission.m_18 == 2) {
+        CZSealBody *player = ftsGetPlayer();
+        int hit = player->m_590;
+        int fired = player->m_594;
+        float acc;
+
+        if (fired > 0)
+            acc = 100.0f * ((float)hit / (float)fired);
+        else
+            acc = 0.0f;
+        ((CCareerStats *)((char *)&theMission + 0x1950))
+            ->AddMission(0.01f * Round(acc), accuracy, stealth, teamwork, objectives);
+    }
+    int total = Round(100.0f * (0.45f * objectives + 0.2f * stealth + 0.1f * accuracy + 0.25f * teamwork));
+
+    if (theMission.m_18 == 2)
+        total = total < 60 ? 60 : total;
+    UIVar("StatOverallPct") = total;
+    CValve::Create("StatOverallPct", total, VALVE_TYPE_1);
+    char szTime[] = "000:00:00";
+    int iSec = (int)theMission.m_timer;
+
+    if (iSec < 3600000) {
+        int h = iSec / 360000;
+
+        szTime[0] = h > 0 ? '0' + h : ' ';
+        iSec %= 360000;
+        szTime[1] = '0' + iSec / 36000;
+        iSec %= 36000;
+        szTime[2] = '0' + iSec / 3600;
+        iSec %= 3600;
+        szTime[4] = '0' + iSec / 600;
+        iSec %= 600;
+        szTime[5] = '0' + iSec / 60;
+        iSec %= 60;
+        szTime[7] = '0' + iSec / 10;
+        iSec %= 10;
+        szTime[8] = '0' + iSec;
+    } else {
+        strcpy(szTime, "999:59:59");
+    }
+    UIVar("TimeInGame") = szTime;
+}
+
 /* a mission taken into the career (OVL1 0x1F1FB0; SetRoundStatUiVars 0x1F21B0 calls it on
  * theMission +0x1950, the name ours): each percentage averaged in over the missions so far, the
  * count up one, the player's counters added.
@@ -649,10 +746,6 @@ CZSealBody &CEntityItr::GetSeal() const
     CEntity *e = (CEntity *)*_it;
 
     return *(CZSealBody *)(e && e->m_type == 2 ? e : 0);
-}
-
-extern "C" {
-void func_001F21B0(CObjectiveCounts *counts);   /* SetRoundStatUiVars */
 }
 
 
