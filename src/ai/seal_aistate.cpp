@@ -1700,7 +1700,11 @@ extern "C" void func_005F3100(CAiSBreach *b, CAiMapLoc *out)
  * `open` and `ok`), and tests steps 6 and 7 with two beqs; here MW folds `ok` to its constant --
  * `!(...)` and `c ? false : ok` both materialise with sltu/xori -- and folds 6/7 into a range test
  * (a nested switch on the step gives a compare chain, 0x10C). The valve's SetValue(3) inline and
- * the outer switch are the target's */
+ * the outer switch are the target's. Round 56: `#pragma opt_propagation off` in the body keeps `ok`'s
+ * 1 in s0 and selects it as the target does (`daddiu s0,zero,1`, `move a1,s0`; d 43 -> 32, still
+ * 0x104); over it the avoid arm as `c ? false : ok` or an if, the grenade arm as `c ? false : ok`,
+ * an if, or `!= && != ? ok : false`: 0xEC-0x114, the step test still a range (build/scratch/kit/
+ * v_cpas.py) */
 bool CAiSBreach::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 {
     bool open = false;

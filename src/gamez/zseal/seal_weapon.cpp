@@ -369,6 +369,14 @@ void CZSealBody::SetWeaponState(WEAPON_STATE state)
  * hold, down, then currT (the sum's operands first); hold in a named local (propagated: 6), the sum
  * through an inline accessor on the view, `down + hold` or `hold + down`, in a local or twice, or the
  * test reversed (5-7) do not reorder them */
+/* OPEN, 5 instructions, the hold time's sum only: the target loads the hold time first ($f2) and the
+ * down time second ($f0), adds them as `add.s $f0,$f0,$f2` (the down time the first source, the sum in
+ * its register) with the current time in $f1; MW puts the first-loaded operand first. Round 56: the
+ * sum either way round in the test, the store or both, `>=` with the sum on the left, the sum in a
+ * local (in one statement or two), and every declaration order of named locals for the hold, down
+ * and current times (2 and 3 of them, each sum and compare way round, 36 variants): 5-7 off
+ * (build/scratch/kit/v_wt.py); igreplay's float record: the colouring follows the numbering, the
+ * operand order does not */
 void CZSealBody::WeaponsTick(float dT)
 {
     CSealWepView *v = (CSealWepView *)this;

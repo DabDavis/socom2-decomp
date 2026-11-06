@@ -547,7 +547,13 @@ static inline float SealLight(CZSealBody *seal)
  * level-at-a-time reading does not reach the ternary's temporary), an if/return form (0x574), ts declared
  * at the top or after `light`, one variable for both SEAL tests (vs and ts), the position as a
  * reference, assigned twice, after a dead first definition, or a parameter (EntityLight(e, pos): a
- * saved register lost, 0x570) */
+ * saved register lost, 0x570). Round 56, with igdump --origins (the GCC front's round 40a): the SEAL
+ * held is SealLight's own `sl` (@6305), the position EntityLight's `pos` inside SealLight's copy
+ * (@6342, level 1), and the s0/s1 holders (@6434, @6436, @6442) come from no inline -- an optimiser
+ * pass's; SealLight without `sl` (the casts in place, 0x588), `sl` declared after the EntityLight
+ * arm or the light through a local (14, unchanged), SealLight over a CSealLightView parameter (0x588)
+ * -- every SealLight-level variable is numbered before a level-1 one, so the SEAL wants a variable
+ * made one level deeper or by that pass */
 float func_0060AA20(void *viewer, zdb::DiIntersect *di, CTarget *t)
 {
     static float flagged = 2.0f;
