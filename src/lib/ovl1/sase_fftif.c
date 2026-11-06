@@ -9,7 +9,14 @@
  *
  * OPEN: func_00251A98, the setter (7 words: the target stores modes 0 and 1 through a copy in v0
  * from a bnezl's slot and reaches mode 2's set-up by a bnel; this if-chain and a switch storing
- * first both come to 7, a switch per case to 20s -- build/scratch/gcc/gen_fft.py). */
+ * first both come to 7, a switch per case to 20s -- build/scratch/gcc/gen_fft.py). Round 38a: the
+ * target's layout is a SWITCH WITH CASE 2 FIRST -- `switch (mode) { case 2: ...; case 0: case 1: ...;
+ * default: ... }`, its decision tree `< 0`, `<= 1`, `== 2` and the arms in source order (case 2's call,
+ * the 0/1 store stolen into the bnezl, the default's two stores the bltz and bnel reach), as the query
+ * 0x251A28 above tests case 1 first -- right size, every branch and store the target's but the copy:
+ * `move v0,a0` in the bltz's slot (a second pseudo of the mode, which slti's v1 then avoids); no
+ * spelling made one (an inline setter, a local, short/char/unsigned/long/enum parameters, a cast:
+ * build/scratch/gcc/r38/v_a98*.py; unsigned short/char come to 4 with an andi). */
 
 extern int data_001D55A0;
 extern void func_00252150(void);

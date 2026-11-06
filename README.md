@@ -10787,6 +10787,87 @@ unwritten before, both OPEN; `sase_libtran.c` 8 of 11). No rows named. What they
   libnetb_udp_init_buffer, libquan.c's 0x24B2F8/0x24B028, libtran.c's radix passes 0x24DBB8/0x24DFB8,
   the codec's unwritten 0x24CD28 (a band search over a 256-point spectrum, up to 100 peaks).
 
+**The tools, round 38a** (the integrator's two requests): (1) **objcmp's verdict depended on where its work
+directory lies -- METROWERKS' CODE DEPENDS ON THE LENGTH OF THE PATHS IT IS GIVEN.** The world's round 26: a
+first `tools/objcmp.py master` in the default build/objcmp printed `DIFF ai/ai_mapwalk.cpp`, 0x5350C0, a fresh
+--work none. Nothing persists between runs (the tree is removed and recopied, every object unlinked before
+its compile, the base map rewritten): the two directories' PATHS were of different LENGTHS. Reproduced
+against d14aeea6^1 (the world's base): `--work build/objcmq` (the default's length) DIFF, `build/objcmpXYZ`
+and `build/o` none, every time. MAP_DIRCOUNT::GetBestDir compiles a word short -- the heading's direction
+masked straight into s0 (`andi s0,v0,0xff`) where the target masks it into a0 and copies v0 to s0 -- when the
+tree's path is 108, 109, 125, 126, 180 or 202 characters (of 122 lengths from 98 to 219) for the tree's text,
+89, 110, 137, 173 or 215 for d14aeea6^1's; the path's characters, the object path's length (four tried), the
+environment's size (40), the working directory, the toolchains' own path (40 and 82 characters) and twelve
+repeated builds change nothing, and GetBestDir alone in a fixture compiles one way at all 98 lengths -- the
+heap's layout, which the path strings shift, reaching a choice in the whole unit. **How wide**
+(`build/scratch/gcc/r38/census.py`, all 658 hand-written units, MW and GCC, at tree lengths 98, 103, 108, 121,
+135; again at 98, 160, 167): that one function at one length; nothing else, and nothing at 160 or 167. So a
+worktree whose path length hit a flip would see a byte-exact row miss in its own sccheck; the main tree (27
+characters) and the agents' worktrees (71) do not, today. And past ~200 characters mwccps2 breaks: at a
+220-character tree ai_mapwalk.cpp fails on `zentity.h:340`, then "declaration syntax error" at its own line
+1046. The fix: **both sides are built at a path of one FIXED length** wherever the work directory lies
+(`side_root`: `<work>/tree___...`, 160 characters; refused past 200 or when the work path is longer), and a
+unit differing there is built again, both sides, at 167 -- equal there it is `PATH-DEPENDENT ...` (the same
+source, the compiler's layout), listed and not counted (rc 0). `--path-lengths A,B` picks the lengths (`0`:
+the old unpadded `<work>/tree`, one path), `--tree REV|DIR` builds the tree's side from a revision or a
+directory (BASE may be a directory too), each side's `scdiff.shared_stems` is read again (cached per path,
+BASE's set had stood for the tree's: a stem the tree adds would have qualified its statics as BASE's), and
+BASE's tree is reverted with `git diff --no-renames` (by rename detection `--name-only` named a renamed file's
+new path alone and BASE's side lacked the old one). **Proved** (against d14aeea6^1, all 658 hand-written units):
+master's objcmp, this one with `--path-lengths 0` and this one by default print the same 17 DIFF lines (the
+merge's real changes). The canary's `test_objcmp_verdict_is_independent_of_its_work_directory` (10
+assertions): a GCC fixture whose BASE returns `sizeof(__FILE__) % 2 == 0` -- code that is a function of the
+path's length -- against a tree returning 0: from two work directories of different lengths the same
+PATH-DEPENDENT line, rc 0; unpadded, directories one character apart disagree (the negative); one length
+alone DIFF; a real change DIFF at both; the stems re-read. (2) **sccheck --files tells a row held elsewhere
+from a real loss.** zsys_init.cpp built alone lost 0x39CD40 (its inline ~vector<CIOPManager::CRegistrant> 6
+off; util_main.cpp's copy matches), as the drafts' thirteen in "Working in parallel" did. A row a partial
+check loses ONLY by inline copies (MW's binding 13, GCC's linkonce) is tried against its other emitters
+outside --files -- its draft `src/auto/<seg>/<VA>.c`, and the hand-written units whose code (or a header they
+include) names every identifier of the copy's mangled name that include/'s code does not (comments stripped:
+include/vector's notes name CRegistrant) -- built and scored, and printed `not lost -- an inline copy missed
+here, another emitter outside --files still matches: 0x39cd40 ... by gamez/zutil/util_main.cpp`, rc 0; a
+strong definition's miss is never held. **Proved**: `--files '^(?!auto/)'` -- master's sccheck 13 regressions
+(0x1EF8C0, 0x2E0D90, 0x2E0DC0, 0x2F6230, 0x322370, 0x32C5F0, 0x333330, 0x3340B0, 0x3340F0, 0x3929C0, 0x3B7FA0,
+0x3C6880, 0x510080), this one none and the same 13 `not lost`, each by its draft; every row line identical
+(11,043 byte-exact of 11,440 scored both); `--files '^auto/'` identical output (1,288 of 1,288). The canary's
+`test_partial_check_holds_a_row_another_emitter_matches` (6 assertions: a synthetic name on 0x39CDC0's real
+row in copies of the map and MATCHED.txt -- a definition loading +8, an inline copy loading +0; held by the
+definition, then a regression without it, never for a strong miss, held by the row's draft; master's sccheck
+fails its third). 43 of 43 canary tests, 306 assertions (the full check not run). **automatch** over the
+lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private build): MAIN
+`18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 36
+tried, 0 hits (2 build failures, 5 refusals, 29 misses): 47 tried, none byte-exact (round 37a: 47, 0).
+
+**Round 38a** (2026-11-06, the tools first, then Nellymoser's decoder): 3 rows newly byte-exact (1,612 bytes)
+and one draft superseded -- **DecSC.c whole** (`ovl1/sase_decsc.c`, 9 of 9): a frame's parameters from its
+bit fields 0x253C00 and the two frame unpackers 0x253DF8 (the decoder API's) and 0x254020 (0x255028's and
+0x255490's), all unwritten before, and the block's release 0x254250 over its draft. The object is DecSC.c by
+its .rodata: the voicing (8), energy (64) and field-width (17) tables at 0x3EC2B8, 0x3EC2D8, 0x3EC3D8 end four
+bytes before the setters' "../../SaseDec/source/DecSC.c", so they are this file's statics, defined first. No
+rows named (the codec is not in SOCOM 1). What they showed:
+
+- **A table read once and stored twice is the stored copy**: `pPrm->fVoice = pPair->fVoice` keeps the
+  table's address in `lui at; addu at,at,idx; lwc1 %lo(at)`; read twice, CSE builds it apart (`addiu`) first.
+  Each clamp-then-index is its own variable (`if (i >= 64) i = 0; t[i]`): `t[i < 64 ? i : 0]` shifts before
+  the clamp, and one variable for two clamps took v1 for both.
+- **A value loaded before an if fills the first branch's slot unannulled**: the voicing read before the
+  pitch test gives `bc1f` + the load, then `bc1f` + nop -- the target's; read in the else arm, both `bc1fl`.
+- **The frame unpackers' shapes**: the PCM loop's index a variable of its own (the field loop's, live across
+  the reader's calls, gave the conversion's counter a saved register); the second history copy's source
+  computed before the first memcpy (in s0 across the call); the reader's length stored first (its andi's
+  pseudo then s0, the frame pointer s1); the envelope's energy a float parameter BEFORE the history pointer in
+  0x253510's prototype (loaded first; EABI's float registers are counted apart, so the call is the same); 16
+  frame bytes between the reader and the field byte that nothing names; both unpackers set the reader up in
+  one order. 0x254458, after the setters, is 0x253C00's pitch test exactly: an inline helper's out-of-line
+  copy, deferred to the object's end.
+- **Open, diagnosed in place**: func_00251A98 -- the target's layout is a switch with case 2 first (the
+  decision tree `< 0`, `<= 1`, `== 2`, the arms in source order, as the query 0x251A28 tests case 1 first):
+  every branch and store but the copy `move v0,a0` in the bltz's slot (a second pseudo of the mode, no
+  spelling made one); func_001C46D0 (sched1 hoists the 16's `li` above the port's `sh` and v0 is taken: seven
+  tail spellings and four htons return types alike). Not reached: round 37a's opens (their diagnoses stand),
+  and the decoder's other unwritten rows (0x254510, 0x254730, 0x254A88, 0x255028, 0x255490, 0x255E68).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
