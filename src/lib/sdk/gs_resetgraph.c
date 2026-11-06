@@ -7,13 +7,13 @@
  * CRT without the reset. The SetGsCrt tail calls are 991111's void-context sibling calls. Names:
  * SOCOM 1's (s1:exact, sceGsGetGParam s1:callee).
  *
- * OPEN: sceGsResetGraph (4 words, registers only): mode 0's `ffmode != 0` takes v0 and the callback
- *   load v1 here, the other way round in the target (`ffmode ? 1 : 0`, an if/else, the store first,
- *   int parameters, a register gp: no change, or the wrong size); the callback's two fields are
- *   cleared function pointer first. */
+ * sceGsResetGraph's mode 0 (open since round 6a, 4 words, registers only): `ffmode != 0` takes v1 and the callback load
+ * v0 because the kernel's GsPutIMR returns the old mask -- declared void, the call leaves v0 to the first temporary after
+ * it (GCC round 44a, tools/retsweep.py; the Medius lane's round 25b). The callback's two fields are cleared function
+ * pointer first. */
 #include "libgraph.h"
 
-extern void GsPutIMR(u_long);
+extern u_long GsPutIMR(u_long);
 extern int DisableIntc(int);
 extern int RemoveIntcHandler(int, int);
 extern void SetGsCrt(short, short, short);

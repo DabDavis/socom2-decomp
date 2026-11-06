@@ -90,6 +90,14 @@ SEARCHED in the bare name -- `proc` with its `@0xK` suffix stripped -- so `-f '^
 and `-f Read` every name containing it; `--link` searches the mangled name instead (two `__dt`s apart:
 `--link '^__dt__Q23zdb11CNodeVector'`).
 
+--compiler BUILD (GCC round 44a, the kit's round 59) compiles the unit with BUILD, its directive's flags kept, in
+place of the toolchain its directive names -- seal_aistate.cpp is 3.0b50 by its first line, and the breakpoints are
+3.0b52's addresses, so only `--compiler mwcps2-3.0b52-030722` runs (the kit's temporary copy with the directive changed
+dumped and replayed faithfully for the rows it checked; this is that copy without the copy). The records are then 3.0b52's
+colouring of the unit, not its own build's, and say so: each carries `built_by` and `unit_compiler`, and igdump
+(--read too) and tools/igreplay.py print a NOTE line naming both. A GCC unit stays refused; `--compiler` naming the
+unit's own build is the plain dump, no note and no field.
+
 Writes build/ig/<stem>.jsonl (or -o); the scratch object is deleted.
 """
 
@@ -815,23 +823,31 @@ else:                   # ------------------------------------------------------
         if unit.suffix == ".s" or D.is_gcc(compiler):
             return f"{unit.name}: a GCC unit ({compiler}): its allocation is cc1's -- tools/ccdump.py"
         if compiler != MW_BUILD:
-            return f"{unit.name}: built by {compiler}; igdump's breakpoints are {MW_BUILD}'s addresses"
+            return (f"{unit.name}: built by {compiler}; igdump's breakpoints are {MW_BUILD}'s addresses "
+                    f"(--compiler {MW_BUILD} dumps it under that build, and says so)")
         if not D.WIBO.is_file() or os.environ.get("SC_WINE"):
             return f"igdump runs the compiler under wibo ({D.WIBO}), not wine"
         return ""
 
     def dump(unit: Path, out: Path | None = None, *, compiler: str | None = None,
              flags: list[str] | None = None, includes: list[Path] | None = None,
-             timeout: int = 600, iro: Path | None = None, iro_func: str | None = None
-             ) -> tuple[list[dict], Path]:
+             timeout: int = 600, iro: Path | None = None, iro_func: str | None = None,
+             override: str | None = None) -> tuple[list[dict], Path]:
         """Compile `unit` under gdb and return its colourings (and the file they were written to).
         `compiler`/`flags` default to the unit's directive; `includes` to sccheck's [include/, src/].
         `iro` (GCC round 41a): also write the optimiser's own log there -- every phase's flowgraph of
-        the functions whose bare name `iro_func` (a regex, searched) matches, every function without."""
+        the functions whose bare name `iro_func` (a regex, searched) matches, every function without.
+        `override` (GCC round 44a): build with this toolchain, the unit's flags kept, not the one its
+        directive names; every record then says so (`built_by`, `unit_compiler`)."""
         unit = Path(unit).resolve()
         if compiler is None:
             compiler, dflags = unit_build(unit)
             flags = dflags if flags is None else flags
+        other = None
+        if override and override != compiler:
+            if unit.suffix != ".s" and not D.is_gcc(compiler):      # a GCC unit stays refused, by its own name
+                other = dict(built_by=override, unit_compiler=compiler)
+                compiler = override
         bad = refusal(unit, compiler)
         if bad:
             raise RuntimeError(bad)
@@ -868,10 +884,23 @@ else:                   # ------------------------------------------------------
         if not recs:
             raise RuntimeError(f"igdump: {unit.name} built but no colouring was recorded "
                                f"(gdb's breakpoints missed: not {MW_BUILD}?)")
+        if other:
+            for r in recs:
+                r.update(other)
+            out.write_text("".join(json.dumps(r) + "\n" for r in recs))
         return recs, out
 
     def read(path: Path) -> list[dict]:
         return [json.loads(ln) for ln in open(path)]
+
+    def build_note(recs: list[dict]) -> str | None:
+        """The line that says a dump came from another build than its unit's (--compiler, GCC round
+        44a); None for a dump of the unit's own build."""
+        r = next((r for r in recs if r.get("built_by")), None)
+        if r is None:
+            return None
+        return (f"NOTE: this dump came from {r['built_by']}, not the unit's own {r['unit_compiler']} (igdump "
+                f"--compiler): its colourings are that build's, not the build the unit is scored under")
 
     # --- the optimiser's own log (GCC round 41a) ---------------------------------------------------
     def iro_read(path: Path) -> list[dict]:
@@ -1155,6 +1184,9 @@ else:                   # ------------------------------------------------------
         ap.add_argument("--origins", action="store_true", help="per record: each `@N` variable's maker -- the "
                         "inline expansion (function, role, call site) or the pass (GCC round 40a)")
         ap.add_argument("--flags", help="compile with these flags, not the unit's")
+        ap.add_argument("--compiler", metavar="BUILD", help="compile with this toolchain, not the one the unit's "
+                        f"directive names -- {MW_BUILD}, whose addresses the breakpoints are: a 3.0b50 unit's "
+                        "colouring under 3.0b52, every record and this output saying so (GCC round 44a)")
         ap.add_argument("--iro", nargs="?", const="", metavar="LOG", help="also write the optimiser's own log "
                         "(mwccps2's IRO dumps: every phase's flowgraph, each common subexpression replaced, "
                         "each lifetime split -- GCC round 41a) for -f's functions (every one without -f), "
@@ -1171,12 +1203,15 @@ else:                   # ------------------------------------------------------
         elif a.unit:
             try:
                 recs, out = dump(a.unit, a.out, flags=a.flags.split() if a.flags else None,
-                                 iro=iro, iro_func=a.func)
+                                 iro=iro, iro_func=a.func, override=a.compiler)
             except RuntimeError as e:
                 print(e, file=sys.stderr)
                 return 1
         else:
             ap.error("a unit, or --read DUMP")
+        note = build_note(recs)
+        if note:
+            print(note)
         if iro is not None:
             if not iro.is_file():
                 print(f"{iro}: no IRO log written", file=sys.stderr)
