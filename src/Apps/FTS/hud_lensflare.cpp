@@ -5,8 +5,8 @@
  * static 0x409080, so it is hud_pausemenu.cpp's first function; this unit's bss runs 0x408FD0-0x40901B,
  * the pause menu's from 0x409020). Written: the manager's Tick, PreDITick, Init, ReInit, Reset,
  * LoadRdr and LoadLightSource; the wildcard name pair; the entry's constructor, destructor and Init;
- * the element's Place and (round 54) its Load -- all byte-exact; unwritten: the entry's
- * Tick 0x1FF8A0 and LoadFlare 0x1FFF40. Defined in reverse of their image order (-inline deferred).
+ * the element's Place and (round 54) its Load; the entry's Tick 0x1FF8A0 and LoadFlare 0x1FFF40
+ * (round 66) -- all byte-exact. Defined in reverse of their image order (-inline deferred).
  * Its initialiser, 0x3FDAB0, builds only <iostream>'s two init objects (SOCOM 1's built only the
  * header CSTable SOCOM II dropped: SOCOM II's unit includes <iostream>). */
 

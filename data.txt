@@ -289,6 +289,12 @@
 0x003DC570 0x4 s_laseTickSize__32@unnamed@hud_bitmapreticule_cpp@  # OVL1 data; ours (the HUD lane, round 59: hud_bitmapreticule.cpp's anonymous-namespace float, 4.0 -- the box's corner ticks' length): 4 references in 1 function (DrawLaseTarget 0x217550)
 0x003DC578 0x4 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@DIAGONAL_SCALAR  # OVL1 data; SOCOM 1's (its DWARF: ThreatDirTick's local static, 0x476A9C there and made under a guard; 0.5 in data here): the diagonal arrows' share of their two neighbours -- 4 references in 1 function; the HUD lane, round 64
 0x003DC580 0x4 @LOCAL@ThreatDirTick__14BitmapReticuleFP10CZSealBody@ONE_OVER_90  # OVL1 data; ours (1/90): an arrow's share per degree -- 16 references in 1 function; the HUD lane, round 64
+0x003DC588 0x4 s_colorBlockedR  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 3 references; the name is ours
+0x003DC590 0x4 s_colorBlockedG  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 3 references; the name is ours
+0x003DC598 0x4 s_colorBlockedB  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 3 references; the name is ours
+0x003DC5A0 0x4 s_colorFoeR  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 4 references; the name is ours
+0x003DC5A8 0x4 s_colorFoeG  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 3 references; the name is ours
+0x003DC5B0 0x4 s_colorFoeB  # OVL1 .data; the HUD lane round 66: read by BitmapReticule::UpdateColor 0x215C10, 2 references; the name is ours
 0x003DC5B8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@ne_x  # OVL1 data; SOCOM 1's (its DWARF; 0.9) -- 1 reference, UpdateAccuracy
 0x003DC5C0 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@ne_y  # OVL1 data; SOCOM 1's (its DWARF; 0.6) -- 1 reference, UpdateAccuracy
 0x003DC5C8 0x4 @LOCAL@UpdateAccuracy__14BitmapReticuleFv@se_x  # OVL1 data; SOCOM 1's (its DWARF; 0.65) -- 1 reference, UpdateAccuracy

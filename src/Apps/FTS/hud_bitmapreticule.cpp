@@ -3,11 +3,10 @@
  * (0x218D50-0x21932F), hudStartDefuseTimer (0x219330, the unit's last), On, Off and the pause test's
  * OnPauseTest (0x215180-0x215243), in SOCOM 1's order, HideTimer (0x213610, the unit's first) and
  * TimerProgressTick (0x213680, round 41) and SOCOM II's second bar after it, ReloadTimerTick
- * (0x213840), and SetGBarVal (0x213A60, round 57); still to write: 0x213E20-0x215170 (by SOCOM 1's
- * order ChangeReticule
- * -- UpdateGBarColor is not 0x213840), Init (0x2178C0), UpdateAccuracy (0x215250) and UpdateColor
- * (0x215C10); HudTick (0x216770: round 64) and DrawLaseTarget (0x217550: written in round 59, byte-exact
- * since round 61) are done, ThreatDirTick (0x216DE0: round 64) written and open. BitmapReticule is 0x12F0
+ * (0x213840), SetGBarVal (0x213A60, round 57); ChangeReticule (0x213E20, the block to 0x215170), Init
+ * (0x2178C0), UpdateAccuracy (0x215250) and ThreatDirTick (0x216DE0) byte-exact in round 66, HudTick
+ * (0x216770: round 64) and DrawLaseTarget (0x217550: round 59, byte-exact since round 61) done;
+ * UpdateColor (0x215C10) written and open. BitmapReticule is 0x12F0
  * bytes longer in SOCOM II, laid out whole
  * (SOCOM 1's names, SOCOM II's offsets; the reticle type is a byte now). Defined in reverse of their
  * image order (-inline deferred). */
@@ -19,7 +18,10 @@
 #include "hud_mpinfobox.h"
 
 class CHUD;
-class CEntity;
+class CEntity {
+public:
+    zdb::CNode *GetNode();
+};
 
 namespace zdb {
 /* a node's name (znode.h's) */
@@ -172,7 +174,6 @@ public:
     float GetThreatScale(unsigned int i) const { return m_threatscale[i]; }
     CZSealBody *GetReticuleSeal();
     void GetFP(CPnt3D &fp);
-    zdb::CNode *GetNode();
     /* its name, else its node's (SOCOM 1's CEntity::GetName) */
     const char *GetName()
     {
@@ -180,7 +181,7 @@ public:
 
         if (n)
             return n;
-        return GetNode()->GetName();
+        return ((CEntity *)this)->GetNode()->GetName();
     }
     /* the barrel's part (the entity's vtable slot +0x88: this view has no table) */
     CZBodyPart *GetBarrelPart() { return (*(CZBodyPart *(**)(CZSealBody *))(*(char **)this + 0x88))(this); }
@@ -506,15 +507,38 @@ public:
 };
 extern CZNetwork theNetwork;
 
-/* an ally's name: blank unless the network game's HUD names them */
+/* an ally's name: blank where the HUD hides names */
+static inline const char *MateName(CZSealBody *seal)
+{
+    const char *n;
+
+    if (theHUD->m_17b64)
+        n = " ";
+    else
+        n = seal->m_name;
+    return n;
+}
+
 static inline const char *AllyName(CZSealBody *seal)
 {
-    if (theNetwork.m_bNetwork) {
-        if (theHUD->m_17b64)
-            return " ";
-        return seal->m_name;
-    }
-    return " ";
+    const char *n;
+
+    if (theNetwork.m_bNetwork)
+        n = MateName(seal);
+    else
+        n = " ";
+    return n;
+}
+
+static inline float ArmDist(CZWeapon *w, float d)
+{
+    float r;
+
+    if (w)
+        r = w->GetArmingDistance();
+    else
+        r = d;
+    return r;
 }
 
 /* the reticle's blocked and foe colours (.data, in threes: 130, 130, 130 and 200, 200, 24; the names ours) */
@@ -568,11 +592,23 @@ public:
 /* the reticle's colours and the name under it (SOCOM 1's UpdateColor, on SOCOM II's friend tests, ammo and health
  * bar): grey when blocked or the weapon can't reach, the no-ammo and ready colours; the seal it is on named in red,
  * green or blue by side, with the clan tag and an ally's health */
+/* OPEN, 28 structural differences and 9 instructions differing in registers alone (0xB40 against
+ * 0xB50; the GPRs and FPRs are right now: `scale` assigned, named and declared ahead of r, g, b, for
+ * a `?:` value is a temporary numbered above them, coloured first and taking f20). What differs:
+ * (1) three nops short, all between an FPR def ending a block and the label it falls to: `madd.s;
+ * nop` after the muzzle's distance, `mov.s f0,f23; nop` in the arming distance's else, `lwc1 f20; nop`
+ * ahead of Top -- and `b; nop` where mine steals the `mul.s` at the arm's join. Unused labels, gotos
+ * to labels there and an inline's early return leave the size at 0xB40. (2) The frame: the zero copy
+ * is the last object created (288, op+'s r 304), mine has them swapped whatever the depth of either's
+ * wrappers (depth 1-4 tried); and the target copies it by block through a2 (`ld/lwc1 ...(a2)` twice),
+ * mine reads it as scalars (a reference and a pointer copy alike; a by-value parameter as well).
+ * (3) The last arm's two constants live together in the target (`lui v1; lui v0; mtc1 v1; mtc1 v0`). */
 void BitmapReticule::UpdateColor()
 {
     CZSealBody *seal = CHUD::GetHUDOwner();
 
     if (seal && seal->m_socom2_e1_4) {
+    float scale;
     float r, g, b;
     float RetSize = m_retsize;
     bool grenade = false;
@@ -688,9 +724,9 @@ void BitmapReticule::UpdateColor()
                 m_healthbar.Off();
             } else if (isMate) {
                 if (data_00437CE8->GetMode() == 3 && func_002C30B0(seal)) {
+                    r = s_colorFoeR;
                     g = 24.0f;
                     b = 44.0f;
-                    r = s_colorFoeR;
                 } else {
                     r = 24.0f;
                     g = s_colorFoeG;
@@ -704,9 +740,9 @@ void BitmapReticule::UpdateColor()
                 display_name = AllyName(pRetSeal);
             } else {
                 r = s_colorFoeR;
-                display_name = pRetSeal->m_name;
                 g = 24.0f;
                 b = 44.0f;
+                display_name = pRetSeal->m_name;
             }
         }
         if (display_name) {
@@ -719,7 +755,10 @@ void BitmapReticule::UpdateColor()
                 strcpy(text, display_name);
             m_enemy_name.SetString(text, true);
 
-            float scale = m_rettype == 5 ? 0.5f : 1.0f;
+            if (m_rettype == 5)
+                scale = 0.5f;
+            else
+                scale = 1.0f;
 
             m_enemy_name.SetPos((int)(m_posx + (scale * m_rettexsizex) / 2.0f), (int)(m_posy - (scale * m_rettexsizey) / 2.0f));
             m_enemy_name.On();
@@ -745,12 +784,7 @@ void BitmapReticule::UpdateColor()
 
         CPnt3D v = target - fp;
         float d2 = v.x * v.x + v.y * v.y + v.z * v.z;
-        float arm;
-
-        if (cur)
-            arm = cur->GetArmingDistance();
-        else
-            arm = d2;
+        float arm = ArmDist(cur, d2);
 
         if (d2 < arm * arm) {
             r = s_colorBlockedR;
