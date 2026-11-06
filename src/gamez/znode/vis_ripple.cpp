@@ -310,7 +310,11 @@ void CWaterRippleManager::ClearRipples()
     }
 }
 
-/* OPEN, 0xD8 against 0xF8: the group's delete -- the target inlines its destructor whole (the
+/* BYTE-EXACT since the weapons' round 40, at level 5: the group's delete written out, the name's free,
+ * the clear and ~CNodeVector called on the member from here, so ~CNodeVector (five high) inlines whole.
+ * A marked stand-in for "Level 6, or 8?" (`#pragma inline_depth(6)` at the unit's end also gives it,
+ * 42 of 42, the source as it was): the original's delete of a destructor six high.
+ * Before: OPEN, 0xD8 against 0xF8: the group's delete -- the target inlines its destructor whole (the
  * name freed, the vector's size zeroed in the first this-test's delay slot, then four this-tests and
  * the data's delete), here the destructor's body is inlined and calls clear() and ~CNodeVector:
  * ~CNodeVector is five high (four this-tested levels and the pod's deallocate, include/vector) and
@@ -325,7 +329,15 @@ void CWaterRippleManager::ClearGroups()
         CWaterRippleGroup *g = *i;
 
         i = m_groups.erase(i);
-        delete g;
+        if (g) {
+            if (g->m_name) {
+                _free(g->m_name, 0, 0);
+                g->m_name = 0;
+            }
+            g->m_nodes.clear();
+            g->m_nodes.~CNodeVector();
+            operator delete(g);
+        }
     }
 }
 
