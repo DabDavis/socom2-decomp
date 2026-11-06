@@ -1669,6 +1669,104 @@ CZBodyAnimBlend *CZSealBody::Hang_0(int stance, int n)
 }
 
 
+/* a climb by its height: the blends cleared to one standing, to two otherwise; over 5, by bands of the
+ * height and the state -- a step (10), anim 42 (12), the blend of the two heights (26.5), the medium climb
+ * (28) or a hang (32) -- prone the rise pushed under it or, in the first two, anim 19 alone and the
+ * crouch asked, no hang from prone; none for another state (OVL2 0x580B70: SOCOM 1's Climb, its bands) */
+CZBodyAnimBlend *CZSealBody::Climb(float h)
+{
+    CZBodyAnimBlend *b = 0;
+    SEAL_STATE stance = (SEAL_STATE)m_state;
+
+    if (m_state == stateStand)
+        ClearStack(1, true);
+    else
+        ClearStack(2, true);
+    if (h > 5.0f) {
+        if (h <= 10.0f) {
+            switch (stance) {
+            case stateStand:
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::StepUp, 0, 0, 0);
+                break;
+            case stateCrouch:
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::StepUp, 0, 0, 0);
+                break;
+            case stateProne:
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)19, 1, 1, 0);
+                b->Representative()->SetBit1(false);
+                m_desiredState = stateCrouch;
+                break;
+            default:
+                return 0;
+            }
+        } else if (h <= 12.0f) {
+            switch (stance) {
+            case stateStand:
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)42, 0, 0, 0);
+                break;
+            case stateCrouch:
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)42, 0, 0, 0);
+                break;
+            case stateProne:
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)19, 1, 1, 0);
+                b->Representative()->SetBit1(false);
+                m_desiredState = stateCrouch;
+                break;
+            default:
+                return 0;
+            }
+        } else if (h <= 26.5f) {
+            switch (stance) {
+            case stateStand:
+                b = BlendedClimb(h);
+                break;
+            case stateCrouch:
+                b = BlendedClimb(h);
+                break;
+            case stateProne:
+                func_00588BC0(this, (AnimType)17, 1, 0, 0);
+                BlendedClimb(h);
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)19, 1, 1, 0);
+                break;
+            default:
+                return 0;
+            }
+        } else if (h <= 28.0f) {
+            switch (stance) {
+            case stateStand:
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::ClimbMedium, 0, 0, 0);
+                break;
+            case stateCrouch:
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::ClimbMedium, 0, 0, 0);
+                break;
+            case stateProne:
+                func_00588BC0(this, (AnimType)17, 1, 0, 0);
+                func_00588BC0(this, (AnimType)AnimTypes::ClimbMedium, 0, 0, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)19, 1, 1, 0);
+                break;
+            default:
+                return 0;
+            }
+        } else if (h <= 32.0f) {
+            switch (stance) {
+            case stateStand:
+                func_00588BC0(this, (AnimType)34, 4, 0, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)33, 4, 0, 0);
+                break;
+            case stateCrouch:
+                func_00588BC0(this, (AnimType)34, 4, 0, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)33, 4, 0, 0);
+                break;
+            case stateProne:
+                return 0;
+            default:
+                return 0;
+            }
+        }
+    }
+    return b;
+}
+
 /* a climb blended by its height: the medium climb's blend pushed, its list filled with anim 42 at a
  * weight falling from 1 at 12 to 0 at 26.5 and the medium climb at the rest (OVL2 0x581110: SOCOM 1's
  * BlendedClimb, the same weights; anim 42 where SOCOM 1 had 44) */
@@ -3680,6 +3778,180 @@ bool CZSealBody::SetStance(SEAL_STATE state)
         return false;
     }
     return false;
+}
+
+extern "C" {
+extern short data_003DEF40;
+extern short data_003DEF50;
+extern short data_003DEEE8;
+extern short data_003DEEF0;
+extern short data_003DF108;
+extern short data_003DF110;
+extern short data_003DF0E0;
+extern short data_003DF0E8;
+/* (OVL2 0x594C90, seal_control.cpp's: whether the controller's bomb is...) */
+bool func_00594C90(CEntityCtrl *ctrl);
+void func_005B3890(CEntity *seal, int x);
+}
+
+/* whether the SEAL climbs on: none for a remote SEAL, else as 0x589900 says (an inline, the name ours) */
+static inline bool CanGoOn(CZSealBody *seal)
+{
+    if (seal->IsRemote())
+        return false;
+    if (!func_00589900(seal))
+        return false;
+    return true;
+}
+
+/* either of two blends up, as a value (inlines: the target's sltu on each) */
+static inline bool EitherBlend0(CZSealBody *seal)
+{
+    return seal->IsCurrentBlend((AnimType)data_003DEED0) || seal->IsCurrentBlend((AnimType)data_003DEED8);
+}
+
+static inline bool EitherBlend1(CZSealBody *seal)
+{
+    return seal->IsCurrentBlend((AnimType)data_003DEEE8) || seal->IsCurrentBlend((AnimType)data_003DEEF0);
+}
+
+/* the blend's callback run and cleared (an inline: the target reads the function again) */
+static inline void RunCallback(ANIM_CALLBACK *cb, void *body)
+{
+    if (cb->m_func)
+        cb->m_func(body, cb->m_userdata);
+    cb->Clear();
+}
+
+/* the top blend's end: on the ladder's start (46) a controller's first moments may climb instead; else
+ * when it is done the blend's flag 16 set, its control moved on from 1 to 2, and by the anim that ends
+ * -- the state or the set put back, the body carried let go -- whether the next may start (OVL2 0x582540:
+ * SOCOM 1's CheckAnim, the same tests; the stunned and ladder tests new) */
+bool CZSealBody::CheckAnim()
+{
+    bool r;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    bool done = top->IsDone(m_2e0);
+
+    if (IsCurrentBlend((AnimType)46) && func_005551A0(top->m_flags, 32) && top->m_tfrac < 0.2f &&
+        IsPlayer() && func_00594C90(m_control) && CanGoOn(this)) {
+        ClearStack(1, true);
+        func_00588BC0(this, (AnimType)data_003DEF50, 5, 0, 13);
+        BodySetState(5);
+        SetBit9(true);
+        SetBit10(false);
+        m_alt = m_posW.y;
+        func_00588B40(this, 8);
+        return false;
+    }
+    if (!done)
+        return false;
+    top->m_flags = func_0058A920(top->m_flags, 16, true);
+    if (top->m_ctrl == 1)
+        top->m_ctrl = 2;
+    if (top->m_ctrl == 2)
+        return false;
+
+    bool back = func_005551A0(top->m_flags, 32);
+
+    r = false;
+    switch (top->Representative()->m_id) {
+    case 44:
+        func_005B3890(this, 0);
+        break;
+    case 53:
+    case 54:
+    case 55:
+        if (back)
+            func_005A60D0(this, 1, 0);
+        else
+            func_005A60D0(this, 2, 0);
+        break;
+    }
+    if (top->m_20)
+        func_005781C0(this);
+    if (IsCurrentBlend((AnimType)data_003DEF40))
+        m_airborne = true;
+    if (EitherBlend0(this)) {
+        top->m_tfrac = 1.0f;
+        return false;
+    }
+    if (EitherBlend1(this)) {
+        if (m_am_stunned)
+            return false;
+        if (m_airborne)
+            return false;
+        if (IsRemote() && m_isAlive) {
+            top->m_tfrac = 1.0f;
+            return false;
+        }
+    }
+    if (IsCurrentBlend((AnimType)data_003DEF08))
+        return false;
+    if (m_bit9) {
+        top->m_tfrac = 1.0f;
+        return false;
+    }
+    if (IsCurrentBlend((AnimType)data_003DF108) && back) {
+        BindAnimSet(m_default_animset, false);
+        return false;
+    }
+    if (IsCurrentBlend((AnimType)data_003DF110) && back) {
+        BindAnimSet(m_default_animset, false);
+        return false;
+    }
+    if (IsCurrentBlend((AnimType)data_003DF0E0)) {
+        if (back) {
+            func_005A60D0(this, 1, 4);
+            return false;
+        }
+        func_005A60D0(this, 4, 1);
+    }
+    if (IsCurrentBlend((AnimType)data_003DF0E8)) {
+        if (back) {
+            func_005A60D0(this, 2, 4);
+            return false;
+        }
+        func_005A60D0(this, 4, 2);
+    }
+    if (IsCurrentBlend((AnimType)AnimTypes::BuddyCarryPickup)) {
+        if (m_carry) {
+            if (m_carry->IsCurrentBlend((AnimType)AnimTypes::BuddyCarriedPickup))
+                m_carry->PopBlend();
+            if (back) {
+                m_carry->BodySetState(10);
+                m_carry->DetachBody();
+            }
+        }
+        r = true;
+    } else {
+        if (IsCurrentBlend((AnimType)AnimTypes::BuddyCarriedPickup))
+            return false;
+        if (IsCurrentBlend((AnimType)AnimTypes::BuddyCarryBody) && m_airborne)
+            return false;
+    }
+    if (IsCurrentBlend((AnimType)AnimTypes::Stab)) {
+        if (m_carry) {
+            m_carry->BodySetState(8);
+            m_carry->DetachBody();
+        }
+        r = true;
+    } else if (IsCurrentBlend((AnimType)AnimTypes::Stabbed))
+        return false;
+    if (IsCurrentBlend((AnimType)AnimTypes::ApplyRestraints)) {
+        if (m_carry) {
+            if (m_carry->IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints))
+                m_carry->PopBlend();
+            m_carry->DetachBody();
+        }
+        r = true;
+    } else if (IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints))
+        return false;
+    if (((const CZBodyAnimBlend *)top)->m_callback.m_func) {
+        RunCallback(&top->m_callback, this);
+        return r;
+    }
+    return true;
 }
 
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */

@@ -2153,6 +2153,8 @@ public:
      * states 0, 1, 2, 10 and 9, as SOCOM 1's does) */
     CZBodyAnimBlend *InStateStand();
     CZBodyAnimBlend *InStateCrouch();
+    /* the top blend at its end: whether the next may start (SOCOM 1's CheckAnim: OVL2 0x582540) */
+    bool CheckAnim();
     CZBodyAnimBlend *InStateProne();
     CZBodyAnimBlend *InStateCarried();
     CZBodyAnimBlend *InStateCarrying();
@@ -2217,7 +2219,7 @@ public:
      * ImpactFront in both, $f12 set: OVL2 0x580A80, 0x580B70 -- the SEALs, round 48; ClimbOver's
      * float is never read) */
     void ClimbOver(float h);
-    void Climb(float h);
+    CZBodyAnimBlend *Climb(float h);
     /* the stances' blends (SOCOM 1's seal_body.cpp, in its order: BlendedClimb 0x581110 to Stand
      * 0x581DC0 -- Stand_0 gained a float in SOCOM II) */
     CZBodyAnimBlend *BlendedClimb(float h);
