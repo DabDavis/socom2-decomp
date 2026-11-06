@@ -87,16 +87,14 @@ __inline__ unsigned char Tone_Of_Final_TreeCtx(unsigned short final, unsigned sh
 }
 
 /* item n copied into the split tree's slot i, its child link apart (the pointers the block's own) */
-#define COPYITEM(t, i, n)                                               \
-    {                                                                   \
-        DICTITEM *d = &(t)->newitems[i];                                \
-        DICTITEM *s = &(t)->items[n];                                   \
-        d->kind = s->kind;                                              \
-        d->f4 = s->f4;                                                  \
-        d->f8 = s->f8;                                                  \
-        d->pron = s->pron;                                              \
-        d->tone = s->tone;                                              \
-    }
+static __inline__ void Copy_Item(DICTITEM *d, DICTITEM *s)
+{
+    d->kind = s->kind;
+    d->f4 = s->f4;
+    d->f8 = s->f8;
+    d->pron = s->pron;
+    d->tone = s->tone;
+}
 
 typedef struct TREEITEM {
     int id;
@@ -296,9 +294,9 @@ static void Translate_Prons_Into_Items_And_Tones_TreeCtx(unsigned int node, unsi
         p = t->lex + t->begin[t->nodes[node].pron];
         end = t->lex + t->begin[t->nodes[node].pron + 1];
         leaf = t->nodes[node].child == 0xFFFF;
-        kind = *p++ == 1;
+        kind = *p++;
         for (; p < end; p++) {
-            t->items[*nitems].kind = kind;
+            t->items[*nitems].kind = kind == 1;
             if (p == end - 1) {
                 t->items[*nitems].f4 = t->nodes[node].f0;
                 t->items[*nitems].f8 = t->nodes[node].pron;
@@ -309,14 +307,11 @@ static void Translate_Prons_Into_Items_And_Tones_TreeCtx(unsigned int node, unsi
             t->items[*nitems].pron = *p;
             t->items[*nitems].tone = ((unsigned short *)t->tones)[t->tones[*p] + 1];
             if (leaf && p == end - 1) {
-                t->items[*nitems].child = 0xFFFF;
-                (*nitems)++;
+                t->items[(*nitems)++].child = 0xFFFF;
             } else {
                 t->items[*nitems].child = *nlinks;
-                (*nitems)++;
-                t->ilinks[*nlinks].node = *nitems;
-                t->ilinks[*nlinks].next = 0xFFFF;
-                (*nlinks)++;
+                t->ilinks[*nlinks].node = ++(*nitems);
+                t->ilinks[(*nlinks)++].next = 0xFFFF;
             }
         }
         if (!leaf)
@@ -324,8 +319,9 @@ static void Translate_Prons_Into_Items_And_Tones_TreeCtx(unsigned int node, unsi
         c = t->nodes[node].child;
     }
     while (c != 0xFFFF) {
+        node = t->links[c].node;
         prev = (*nlinks)++;
-        Translate_Prons_Into_Items_And_Tones_TreeCtx(t->links[c].node, nitems, nlinks, t);
+        Translate_Prons_Into_Items_And_Tones_TreeCtx(node, nitems, nlinks, t);
         c = t->links[c].next;
         if (c == 0xFFFF)
             t->ilinks[prev].next = c;
@@ -349,7 +345,7 @@ static unsigned int SplitUp_Finals_TreeCtx(FSTREE *t, unsigned int node, unsigne
     while (c != 0xFFFF && t->links[c].next == 0xFFFF) {
         if (first)
             first = 0;
-        COPYITEM(t, *nitems, node);
+        Copy_Item(&t->newitems[*nitems], &t->items[node]);
         t->newitems[(*nitems)++].child = *nlinks;
         t->newlinks[*nlinks].node = *nitems;
         t->newlinks[(*nlinks)++].next = 0xFFFF;
@@ -357,12 +353,12 @@ static unsigned int SplitUp_Finals_TreeCtx(FSTREE *t, unsigned int node, unsigne
         c = t->items[node].child;
     }
     if (c == 0xFFFF) {
-        COPYITEM(t, *nitems, node);
+        Copy_Item(&t->newitems[*nitems], &t->items[node]);
         t->newitems[(*nitems)++].child = 0xFFFF;
     } else if (Tone_Of_Final_TreeCtx(t->items[node].tone, t->ntones)) {
         last = *nlinks - 1;
         while (c != 0xFFFF) {
-            COPYITEM(t, *nitems, node);
+            Copy_Item(&t->newitems[*nitems], &t->items[node]);
             t->newitems[(*nitems)++].child = *nlinks;
             t->newlinks[*nlinks].node = *nitems;
             t->newlinks[(*nlinks)++].next = 0xFFFF;
@@ -378,7 +374,7 @@ static unsigned int SplitUp_Finals_TreeCtx(FSTREE *t, unsigned int node, unsigne
             *nlinks = last + 1;
         }
     } else {
-        COPYITEM(t, *nitems, node);
+        Copy_Item(&t->newitems[*nitems], &t->items[node]);
         t->newitems[(*nitems)++].child = *nlinks;
         last = *nlinks;
         t->newlinks[last].node = *nitems;
@@ -432,6 +428,83 @@ static __inline__ void FillOut_ItemStates_TreeCtx(DICTITEM *it, int *su, unsigne
     nw = cnt + 2;
     *ptotal += nw;
     *po = q;
+}
+
+/* the split tree's finals swapped for their tone-carrying forms, down the tree, as chinese.c's Swap_Finals; only the silence's
+ * tone is not asked of an item without one (round 41c) */
+int Swap_Finals_TreeCtx(unsigned short final, unsigned int prev, unsigned int node, FSTREE *t)
+{
+    unsigned short pron = t->newitems[prev].pron;
+    unsigned int c = t->newitems[node].child;
+    unsigned int tone = 0xFFFF;
+    unsigned short i;
+
+    while (c != 0xFFFF) {
+        {
+            if (Tone_Of_Final_TreeCtx(t->newitems[node].tone, t->ntones)) {
+                if (prev != 0) {
+                    tone = t->newitems[node].tone;
+                    t->newitems[prev].pron = t->table[t->na * final + t->nb * tone + pron];
+                    final = t->newitems[prev].tone;
+                    pron = t->newitems[node].pron;
+                    prev = node;
+                } else {
+                    if (final == 0xFFFF) {
+                        final = 0;
+                        pron = t->newitems[node].pron;
+                        prev = node;
+                    } else {
+                        pron = t->newitems[node].pron;
+                        prev = node;
+                    }
+                }
+            } else if (t->newitems[node].kind == 0) {
+                if (node != 0) {
+                    if (prev != 0)
+                        t->newitems[prev].pron = t->table[t->na * final + t->nb * t->ntones + pron];
+                    final = t->ntones;
+                    prev = 0;
+                }
+            }
+            if (t->newlinks[c].next != 0xFFFF)
+                break;
+            node = t->newlinks[t->newitems[node].child].node;
+            c = t->newitems[node].child;
+        }
+    }
+    if (t->newitems[node].child == 0xFFFF) {
+        if (Tone_Of_Final_TreeCtx(t->newitems[node].tone, t->ntones)) {
+            if (prev != 0) {
+                tone = t->newitems[node].tone;
+                t->newitems[prev].pron = t->table[t->na * final + t->nb * tone + pron];
+                final = t->newitems[prev].tone;
+                pron = t->newitems[node].pron;
+                t->newitems[node].pron = t->table[t->na * final + pron];
+            } else {
+                if (final == 0xFFFF)
+                    final = 0;
+                pron = t->newitems[node].pron;
+                t->newitems[node].pron = t->table[t->na * final + pron];
+            }
+        } else if (prev != 0) {
+            if (t->newitems[node].kind == 0)
+                tone = t->ntones;
+            else
+                tone = 0;
+            t->newitems[prev].pron = t->table[t->na * final + t->nb * tone + pron];
+        }
+    } else {
+        for (i = 0; c != 0xFFFF; i++) {
+            if (i != 0 && prev != 0) {
+                final = t->newitems[prev].tone;
+                prev = 0;
+            }
+            if (Swap_Finals_TreeCtx(final, prev, t->newlinks[c].node, t) != 0)
+                return 1;
+            c = t->newlinks[c].next;
+        }
+    }
+    return 0;
 }
 
 /* chinese.c's body for the tree context: the word test is -4 alone (round 40c) */
@@ -595,8 +668,6 @@ typedef struct IMPORT {
     void *data;
     void *heap;
 } IMPORT;
-
-extern int Swap_Finals_TreeCtx(unsigned short final, unsigned int prev, unsigned int node, FSTREE *t);
 
 static __inline__ unsigned short IsStartWord(unsigned short f)
 {
