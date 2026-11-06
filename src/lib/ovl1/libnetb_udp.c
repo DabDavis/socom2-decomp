@@ -72,7 +72,11 @@ int libnetb_is_data_waiting(LIBNETB_RING *n, u_char type, u_char peek, u_char *w
 
 /* OPEN (12 words and one more): the target copies hdr to v1 and computes size - 64 into a0 -- the
  * allocator's answer to a pseudo local to the last block; neither a local copy, the size computed
- * first, a combined test nor a result variable reproduces it. */
+ * first, a combined test nor a result variable reproduces it. Round 40a (build/scratch/gcc/r40/
+ * v_init*.py, 14 shapes): `size -= 64`, a volatile view, byte-offset stores, a chained read-back, an
+ * int subtraction, the success path first (nested or `&&`: the right size, d=28), an if-else chain
+ * into a result -- every one keeps hdr's parameter pseudo in a0 (tools/ccdump.py: 84=a0, 85=a1,
+ * the difference v1); the target's needs a second pseudo for hdr born in the last block. */
 int libnetb_udp_init_buffer(UDP_HDR *hdr, u_int size)
 {
 	if (hdr == 0)

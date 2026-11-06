@@ -111,11 +111,19 @@ typedef struct STREAM_SESSION {
     STREAM_QUERY query;                 /* 0x218 */
 } STREAM_SESSION;                       /* 0x228 */
 
+/* an address's kind in STREAM_INFO (gcc r21b): an enum -- its own alias class, so func_00644610 loads
+ * each port before it stores the kind word, as the target does (an int kind orders the load after) */
+typedef enum STREAM_ADDR_KIND {
+    STREAM_ADDR_0,
+    STREAM_ADDR_1,                      /* 1: the peer's own address */
+    STREAM_ADDR_2                       /* 2: its second address */
+} STREAM_ADDR_KIND;
+
 typedef struct STREAM_INFO {            /* a client as the voice library is told of it (48) */
-    int nType;                          /* 0x00: 2 */
+    STREAM_ADDR_KIND nType;             /* 0x00: 2 */
     char szAddr[16];                    /* 0x04 */
     int nPort;                          /* 0x14 */
-    int nType2;                         /* 0x18: 1 */
+    STREAM_ADDR_KIND nType2;            /* 0x18: 1 */
     char szAddr2[16];                   /* 0x1C */
     int nPort2;                         /* 0x2C */
 } STREAM_INFO;
@@ -680,8 +688,7 @@ int func_00644588(STREAM_SESSION *pSession, int nMember, STREAM_MEMBER **ppMembe
     return 0;
 }
 
-/* OPEN (5 words): store order -- the target loads each port before storing the type word (`li;
- * lw; addiu; sw; sw`), here the type is stored first; both groups of two. */
+/* the peer's two addresses in the voice library's form (STREAM_INFO's kinds an enum: above) */
 int func_00644610(STREAM_PEER *pPeer, STREAM_INFO *pInfo)
 {
     if (pPeer == 0)

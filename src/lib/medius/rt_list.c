@@ -11,8 +11,11 @@
  * returned: 1 not found, 2 a bad argument or list, 3 no room.
  *
  * The end marker's writer returns a narrow type (`unsigned char`): the clear and init return its
- * result through a jal, not a sibling call. OPEN: func_006313D8 (the init, 28s: the target returns
- * the allocation's known-zero result when the buffer is null and keeps nSize in s2).
+ * result through a jal, not a sibling call. OPEN: func_006313D8 (the init, one word long since
+ * round 21b -- guards to the end, `return func_00631ED0(pList)` (d 27 -> 14): the allocation's
+ * `return 3` tests the call's v0 itself, so if-conversion cannot hoist it and the target branches
+ * to it with `li v0,3` in the slot where this compile lays it out as the fall-through with a `b`;
+ * pList takes s0 here, s1 there; a positive allocation test is 8-16 bytes longer).
  * Round 14b: the store after a message (0x631508: its room test a positive `if (nFree >= nLength)
  * {...} else return 3;`, as rt_circ_buf's), the store at the head, the removal, the compaction and
  * the resize (the header copied out as a struct -- ldl/ldr -- and rebuilt message by message), the
@@ -56,21 +59,17 @@ extern void *memcpy(void *dst, const void *src, unsigned int n);
 
 int func_006313D8(RT_LIST *pList, unsigned int nSize)
 {
-    int result;
-
     if (pList == 0)
         return 2;
     if (nSize < 9)
         return 2;
     memset(pList, 0, sizeof(RT_LIST));
-    result = rt_memory_allocate((void **)&pList->pBuf, nSize);
-    if (result != 0)
+    if (rt_memory_allocate((void **)&pList->pBuf, nSize) != 0)
         return 3;
-    if (pList->pBuf != 0) {
-        pList->nSize = nSize;
-        result = func_00631ED0(pList);
-    }
-    return result;
+    if (pList->pBuf == 0)
+        return 0;
+    pList->nSize = nSize;
+    return func_00631ED0(pList);
 }
 
 int func_00631460(RT_LIST *pList)

@@ -38,6 +38,16 @@ typedef struct DmeClientInfo {
     unsigned char field_2A;
 } DmeClientInfo;
 
+/* a world's connection state (DmeWorld 0x438; 3 is tested by func_0061D3C8): an enum too (gcc r21b) --
+ * the two link-lost reports 0x617560 and 0x61D530 load it ahead of their int report's stores, which an
+ * int field would order (the report's address is taken; the world pointer has no known base) */
+typedef enum DmeWorldState {
+    DME_WORLD_STATE_0,
+    DME_WORLD_STATE_1,
+    DME_WORLD_STATE_2,
+    DME_WORLD_STATE_3                   /* 3: func_0061D3C8 closes the world */
+} DmeWorldState;
+
 /* a world (4 of them; func_0061C600 hands one out): its clients' records, then this client's index
  * and the world's state */
 typedef struct DmeWorld {
@@ -50,7 +60,7 @@ typedef struct DmeWorld {
     int field_42C;
     int field_430;
     int field_434;
-    int field_438;                      /* 0x438 */
+    DmeWorldState field_438;            /* 0x438 */
     int field_43C;                      /* 0x43C */
     int field_440;                      /* 0x440 */
     int field_444;

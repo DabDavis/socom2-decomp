@@ -986,11 +986,6 @@ bool TexListHolds(CTexList *have, CTexList *want)
 }
 #pragma auto_inline reset
 
-/* a node's mesh textures gathered into a dynamic list (0x312D00, znode's, not named: SOCOM 1's
- * CNode::FindMeshTextures() took the node alone; SOCOM II's takes whether the library is the
- * custom set's and the list to fill, and returns the list or none) */
-extern "C" CDynTexList *func_00312D00(CNode *node, bool custom, CDynTexList *list);
-
 /* SOCOM 1's: a node drawn with a library's character textures -- the common set made first if
  * there is none; the node's mesh textures gathered (but for the common phase) with the textures
  * every character shares, the decals for the custom characters' phase, and their mip levels;
@@ -1011,7 +1006,7 @@ void CWorld::AddTextureAssetCharacter(CAssetLib *lib, CNode *node)
         m_TextureAssetCharacters.push_back(new CTextureAssetCharacters(common, 0, 0));
     }
     if (phase != CHARSETCOMMON)
-        dyn = func_00312D00(node, phase == CHARSETCUSTOM, &list);
+        dyn = FindMeshTextures(node, phase == CHARSETCUSTOM, &list);
     if (dyn && !node->m_landmark) {
         for (CTexList::iterator it = m_TextureCharacterCommon.begin(); it != m_TextureCharacterCommon.end();
              ++it)
