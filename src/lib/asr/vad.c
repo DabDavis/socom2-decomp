@@ -6,10 +6,11 @@
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
  * -funroll-loops (README "The GCC front"). Names are SOCOM 1's. The constructor reads two
  * profile entries through a log record of its own: 45, the inputs, and 37, a flag that adds a
- * second output and that the block keeps. Written so far: ControlVad and ProcessVad (OPEN) (round 32c), the session pair (round 15c: the
+ * second output and that the block keeps. Written so far: InitVad (round 34c), ControlVad and ProcessVad (OPEN) (round 32c), the session pair (round 15c: the
  * state copied field by field, the arrays by loops 2.96 unrolls by ten, the two ring positions
  * kept as unsigned indices), ChangeMike, TestChangeMike and CheckForAbnormalConditions
- * (round 19c; ChangeMike closed in 20c) and the constructor; the rest are declared, not yet defined. */
+ * (round 19c; ChangeMike closed in 20c) and the constructor; VadFastTrackProcess is declared, not yet
+ * defined. */
 #include "tosblk.h"
 
 typedef struct TOSLOG {
@@ -22,22 +23,27 @@ typedef struct VAD {
     unsigned char f40;                  /* +40 */
     char pad41[3];
     float f44[6];                       /* +44 */
-    int pad68;
+    float f68;                          /* +68: 6.5 with profile 46, else 10.5 */
     unsigned short f72[4];              /* +72 */
     float f80;                          /* +80 */
     float hist[20];                     /* +84 */
-    int pad164;
+    float *histend;                     /* +164: hist's end */
     float *histpos;                     /* +168: in hist */
     short f172[150];                    /* +172 */
-    char pad472[600];
+    float f472[150];                    /* +472: f68 up to f68 + 20.5 */
     int f1072;                          /* +1072 */
     short f1076[40];                    /* +1076 */
-    int pad1156;
+    short *end1156;                     /* +1156: f1076's end */
     short *pos1160;                     /* +1160: in f1076 */
     unsigned char second;               /* +1164: profile 37 */
-    char pad1165[7];
+    char pad1165;
+    unsigned short f1166;               /* +1166: profile 10 */
+    unsigned short f1168;               /* +1168: profile 8 */
+    unsigned short f1170;               /* +1170: profile 9 */
     float noise;                        /* +1172 */
-    char pad1176[12];
+    float f1176;                        /* +1176: profile 13, thousandths of a dB in nepers */
+    float f1180;                        /* +1180: profile 11, dB in nepers */
+    float f1184;                        /* +1184: profile 36, dB in nepers, less 1 */
     float f1188;                        /* +1188: the first output's value */
     float floor;                        /* +1192 */
     unsigned char speech;               /* +1196 */
@@ -63,7 +69,8 @@ typedef struct VAD {
     unsigned char check;                /* +1240: abnormal conditions checked */
     char pad1241[3];
     unsigned int timeout;               /* +1244 */
-    int pad1248;
+    unsigned char f1248;                /* +1248: profile 46 */
+    char pad1249[3];
     float mean;                         /* +1252: the inputs' mean */
 } VAD;                                  /* 1256 */
 
@@ -503,8 +510,66 @@ static int ControlVad(VAD *v, unsigned char cmd, void *arg, int *off)
     return 1;
 }
 
+/* the block's init: every input's frame 4 bytes, the first output's 4, the second's (when kept) 24;
+ * the profile's entries read into the block -- 46 picks the low end of a 150-step scale (6.5, else
+ * 10.5, rising 20.5 over the scale), 43 the floor, 11 and 36 dB values in nepers (the vendor's
+ * 4.3429 dB a neper, a double multiplier: soft-float calls), 13 thousandths of a decade, 27 a level
+ * above the floor, 41 a percentage, 40 the timeout (kept x 100), 39 the mode (the range follows it),
+ * 42 the abnormal-conditions check -- and the history filled with 2^63 less an ulp. SOCOM 1's LOCAL,
+ * written from SOCOM II's code (round 34c), byte-exact: the f68 base read into a local before its
+ * loop (read through the block inside it, 0x480: the loop's stores are not known apart from it);
+ * the inputs' loop counting down as SOCOM 1's (counting up, 0x3E8); the three stores after the
+ * timeout's read written
+ * timeout, floor2, changed (sched1 issues the clear where the target has it only so). The ln 10
+ * per thousand is `2.302585f / 1000`, folded to the target's 0x3B16E6F6 (`0.0023025851f` is an
+ * ulp high); 36's default 21.7145f is 5 x 4.3429 (`5 * 4.3429f` folds to the same bits). */
+static int InitVad(VAD *v)
+{
+    int i;
+    float f;
 
-extern int InitVad(VAD *v);
+    for (i = v->b.ninputs - 1; i >= 0; i--)
+        v->b.inputs[i].size = 4;
+    v->b.outputs[0].size = 4;
+    if (v->second)
+        v->b.outputs[1].size = 24;
+    v->f1248 = _tosGetProfileU32(v, 46, 0);
+    if (v->f1248)
+        v->f68 = 6.5f;
+    else
+        v->f68 = 10.5f;
+    f = v->f68;
+    for (i = 0; i < 150; i++)
+        v->f472[i] = f + i * 20.5f * (1.0f / 149);
+    v->end1156 = &v->f1076[40];
+    v->pos1160 = v->f1076;
+    v->floor = _tosGetProfileFloat(v, 43, 0.0f);
+    v->f72[2] = _tosGetProfileU32(v, 6, 2);
+    v->f1168 = _tosGetProfileU32(v, 8, 40);
+    v->f1170 = _tosGetProfileU32(v, 9, 50);
+    v->f1166 = _tosGetProfileU32(v, 10, 10);
+    v->f1180 = _tosGetProfileFloat(v, 11, 8.69f) * (1 / 4.3429);
+    v->f1176 = (short)_tosGetProfileU32(v, 13, 1000) * (2.302585f / 1000);
+    v->f1184 = _tosGetProfileFloat(v, 36, 21.7145f) * (1 / 4.3429) - 1.0;
+    v->f80 = _tosGetProfileFloat(v, 27, -1000.0f) * 0.23025851f + v->floor;
+    v->histend = &v->hist[20];
+    for (i = 0; i < 20; i++)
+        v->hist[i] = 9.2233715e18f;
+    v->histpos = v->hist;
+    v->reported = 0;
+    v->factor = _tosGetProfileFloat(v, 41, 100.0f) * 0.01f;
+    v->timeout = _tosGetProfileU32(v, 40, 10) * 100;
+    v->floor2 = v->floor - 1.842068f;
+    v->changed = 0;
+    v->mode = _tosGetProfileU32(v, 39, 0);
+    if (v->mode)
+        v->range = 13107;
+    else
+        v->range = 7864;
+    v->check = _tosGetProfileU32(v, 42, 0);
+    v->mean = 0;
+    return 0;
+}
 
 TOSBLOCK *ConstructVad(TOS *tos, unsigned char id)
 {
