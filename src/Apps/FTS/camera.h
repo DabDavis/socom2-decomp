@@ -67,10 +67,14 @@ class CHUD;
 class CEntity;
 class CZBodyPart;
 
-/* a seal's controller: its mode at 0x221 (5 hands the zoom to the camera) */
+/* a seal's controller: its throttle (zentity.h's CEntityCtrl: SOCOM 1's three axes at 0x8, SOCOM
+ * II's four -- the death camera turns by the third and fourth) and its mode at 0x221 (5 hands the
+ * zoom to the camera) */
 class CEntityCtrl {
 public:
-    unsigned char _0[0x221];
+    unsigned char _0[8];
+    float m_throttle[4];   // 0x8
+    unsigned char _18[0x221 - 0x18];
     unsigned char m_221;   // 0x221
 };
 
@@ -117,6 +121,9 @@ public:
     /* the reticule's hit taken along the camera's matrix (OVL2 0x5AA6E0, SOCOM 1's CheckDIShoot:
      * the SEALs' round 48) */
     void CheckDIShoot(CPnt3D *pos, CMatrix *cTw);
+    /* the SEAL's life as the network reports it, 1 up (zseal.h's m_netlife, a NET_LIFE byte at
+     * 0xF7A -- inside this stand-in's kit, so read in place) */
+    unsigned char NetLife() const { return ((const unsigned char *)this)[0xf7a]; }
 
     unsigned char _4[0xc0 - 4];
     CEntityCtrl *m_control;   // 0xc0

@@ -72,7 +72,10 @@ extern "C" bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool ani
 extern "C" bool func_005A78D0(CZSealBody *body);
 extern "C" bool func_005A77E0(CZSealBody *seal, int state33, int anim36, int anim35);
 /* the death camera's pad handling (SOCOM II's: a member of the object at 0xF4) */
-extern "C" void func_00295260(void *deathcam, CAppCamera *cam, CPad *pad);
+struct CDeathCam;
+extern "C" void func_00295260(CDeathCam *dc, CAppCamera *cam, CPad *pad);
+/* the SEAL nearest the death camera's view line taken to watch (SOCOM II's, not written) */
+extern "C" void func_00294F40(CDeathCam *dc, CAppCamera *cam);
 
 /* what the tick reaches for (SOCOM 1's names in the comments) */
 extern "C" {
@@ -495,7 +498,7 @@ void CAppCamera::FTSTick()
                    m_ctrl_view == cam_view_peek_left || m_ctrl_view == cam_view_peek_right)
                 m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
         }
-        func_00295260(&m_f4, this, pad);
+        func_00295260((CDeathCam *)&m_f4, this, pad);
     }
     if (m_ctrl_view != m_save_view) {
         ResetView();
@@ -1085,4 +1088,176 @@ void CAppCamera::ResetDeathCam()
     m_108 = 0.0f;
     m_10c = 0;
     m_118 = 1.0f;
+}
+
+/* a value held within [lo, hi] (ours: an inline's own join -- the clamp's arms end on it, then
+ * branch to the caller's; written in place they branch to the caller's join directly, 8 off) */
+inline float ClampF(float a, float lo, float hi)
+{
+    if (a < lo)
+        a = lo;
+    else if (a > hi)
+        a = hi;
+    return a;
+}
+
+/* the death camera (SOCOM II's, CAppCamera's 0xF4-0x11B: ResetDeathCam puts its fields back; the
+ * class and the names ours) -- its state, the view's rotation built each tick, the yaw and pitch the
+ * player's stick has added up, and the SEAL it watches */
+struct CDeathCam {
+    /* what the camera does: 0 follows, 1 watches the SEAL it was killed by (SOCOM II's watch of
+     * m_seal), 2 runs along the mission's camera path -- CROSS steps it to the state saved in m_1
+     * (lbu: every value non-negative) */
+    unsigned char m_state;   // 0x0 (CAppCamera's m_f4)
+    signed char m_next;   // 0x1 (CAppCamera's m_f5: lb)
+    unsigned char _2[2];
+    CPnt3D m_rot;   // 0x4
+    float m_yaw;   // 0x10
+    float m_pitch;   // 0x14
+    CZSealBody *m_seal;   // 0x18
+    int m_point;   // 0x1c: the camera path's point (-1 none)
+    const char *m_pointName;   // 0x20: its name
+    float m_zoom;   // 0x24
+
+    /* the app camera's zoom set when it moved off it (the inlined CAppCamera::SetZoom) */
+    void SetZoom(float zoom)
+    {
+        if (fabsf(m_zoom - zoom) > 0.01f) {
+            m_zoom = zoom;
+            appCamera->SetZoom(zoom);
+        }
+    }
+
+    /* an angle brought into [-pi, pi], then held to the pitch the view allows: looking down at a
+     * SEAL that is not up, anywhere in [-1, 1] else */
+    float ClampPitch(float a)
+    {
+        while (a < -3.1415927f)
+            a += 6.2831855f;
+        while (a > 3.1415927f)
+            a -= 6.2831855f;
+        if (m_seal && m_seal->NetLife() != 1)
+            a = ClampF(a, -1.0f, -0.2f);
+        else
+            a = ClampF(a, -1.0f, 1.0f);
+        return a;
+    }
+};
+
+/* the death camera turned by the player's stick: the yaw and pitch added up at twice the stick's
+ * throttle a second, the rotation rebuilt from them -- the yaw within a turn, the pitch held --
+ * set into the view's matrix and read back, the yaw then carried along with the watched SEAL's
+ * (SOCOM II's; func_00297410 calls it with the SEAL's matrix) */
+extern "C" void func_00294B40(CDeathCam *dc, CMatrix *sealMat, CMatrix *view, float dT);
+
+/* the mission's camera path (fts_mission.cpp's CCamPath and CMission: only the path, at 0x1910) */
+class CCamPath {
+public:
+    /* a point `step` on from `index`, its place, direction and name given (-1: none) */
+    int GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name);
+};
+
+class CMission {
+public:
+    unsigned char _0[0x1910];
+    CCamPath m_campath;   // 0x1910
+};
+
+extern CMission theMission;
+
+/* the death camera's pad, online with the player down and the player's controller not
+ * zooming: TRIANGLE picks the SEAL nearest the view line, CROSS steps the camera to its next
+ * state -- following, back to the player's own view, the camera path -- and UP / DOWN run along
+ * the mission's camera path (SOCOM II's; FTSTick calls it with the followed SEAL's pad) */
+extern "C" void func_00295260(CDeathCam *dc, CAppCamera *cam, CPad *pad)
+{
+    if (theNetwork.m_9 && func_002C2FD0(ftsGetPlayer())) {
+        if (dc->m_state != 2)
+            dc->m_pointName = 0;
+        if (ftsGetPlayer()->m_control->m_221)
+            return;
+        if (pad->m_state[PAD_TRIANGLE] == KEY_RISING)
+            func_00294F40(dc, cam);
+        if (pad->m_state[PAD_CROSS] == KEY_RISING) {
+            switch (dc->m_state) {
+            case 0:
+                dc->m_state = dc->m_next;
+                if (dc->m_state == 2)
+                    dc->m_point = theMission.m_campath.GetPoint(dc->m_point, 0, &cam->m_wPos, &dc->m_rot,
+                                                                &dc->m_pointName);
+                else if (dc->m_state == 1) {
+                    cam->m_camera_mode = cam_mode_tether;
+                    func_002956E0(cam, dc->m_seal, 0);
+                }
+                break;
+            case 1:
+                cam->m_entity = ftsGetPlayer();
+                cam->m_bc = ftsGetPlayer();
+                cam->m_camera_mode = cam_mode_6;
+                cam->m_44 = 0;
+                dc->m_next = 1;
+                dc->m_state = 0;
+                dc->m_yaw = 0.0f;
+                dc->m_pitch = 0.0f;
+                break;
+            case 2:
+                dc->m_next = 2;
+                dc->m_state = 0;
+                dc->SetZoom(1.0f);
+                break;
+            }
+        } else if (pad->m_state[PAD_UP] == KEY_RISING) {
+            dc->m_point = theMission.m_campath.GetPoint(dc->m_point, 1, &cam->m_wPos, &dc->m_rot,
+                                                        &dc->m_pointName);
+            if (dc->m_point >= 0) {
+                dc->SetZoom(1.0f);
+                cam->m_camera_mode = cam_mode_6;
+                dc->m_state = 2;
+                cam->m_entity = ftsGetPlayer();
+                cam->m_bc = ftsGetPlayer();
+                cam->m_44 = 0;
+            }
+        } else if (pad->m_state[PAD_DOWN] == KEY_RISING) {
+            dc->m_point = theMission.m_campath.GetPoint(dc->m_point, -1, &cam->m_wPos, &dc->m_rot,
+                                                        &dc->m_pointName);
+            if (dc->m_point >= 0) {
+                dc->SetZoom(1.0f);
+                cam->m_camera_mode = cam_mode_6;
+                dc->m_state = 2;
+                cam->m_entity = ftsGetPlayer();
+                cam->m_bc = ftsGetPlayer();
+                cam->m_44 = 0;
+            }
+        }
+    }
+}
+
+extern "C" void func_00294B40(CDeathCam *dc, CMatrix *sealMat, CMatrix *view, float dT)
+{
+    float dx = 0.0f;
+    float dy = 0.0f;
+
+    dc->m_rot = CPnt3D::zero;
+    CEntityCtrl *ctrl = ftsGetPlayer()->m_control;
+
+    if (ctrl) {
+        dx = ctrl->m_throttle[2];
+        dy = ctrl->m_throttle[3];
+    }
+    dc->m_yaw += 2.0f * dx * dT;
+    dc->m_rot.y += dc->m_yaw;
+    dc->m_pitch += 2.0f * dy * dT;
+    dc->m_rot.x += dc->m_pitch;
+    while (dc->m_rot.y < 0.0f)
+        dc->m_rot.y += 6.2831855f;
+    while (dc->m_rot.y > 6.2831855f)
+        dc->m_rot.y -= 6.2831855f;
+    dc->m_pitch = dc->ClampPitch(dc->m_pitch);
+    dc->m_rot.x = dc->ClampPitch(dc->m_rot.x);
+    view->SetRotate(&dc->m_rot);
+    view->ToEuler(&dc->m_rot);
+    CPnt3D seal;
+
+    sealMat->ToEuler(&seal);
+    dc->m_rot.y += seal.y;
 }
