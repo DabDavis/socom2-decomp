@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -fno-optimize-sibling-calls */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -fno-optimize-sibling-calls -ffast-math */
 /* casr: the recogniser's engine API and the engine's callbacks (OVL2 0x4D8398-0x4DF46C, SOCOM 1's
  * casr object at 0x348248 whole: rounds 1 and 2b wrote its tail as cb.c, merged here in round 9c),
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
@@ -36,8 +36,27 @@ extern int CreateExEvCtxInfo(CASR *c);
 extern void FreeCtxInfo(CASR *c);
 extern int GetIsolatedWordDpActiveWords(CASR *c, int **words, int *n);
 extern int qQueueControl(int queue, int what, int id, int arg);
-extern int casrDoSpelling(CASR *c);
+int casrDoSpelling(CASR *c);
+extern int SendPartOfLabelsToEngine(CASR *c, const unsigned char *blocks, int n, int start, int end);
+extern float logf(float x);
 extern float expf(float x);
+
+/* the N best as the N-best block sends them (nbestdp.c): its word and result records, as far as this reads them */
+typedef struct NBRWORD {
+    int state;                          /* +0: the word's end state, an index into the lexicon */
+    int score;                          /* +4 */
+    int word;                           /* +8: its id */
+    int f12;                            /* +12 */
+    struct NBRWORD *next;               /* +16 */
+} NBRWORD;
+
+typedef struct NBRESULT {
+    int f0;
+    int score;                          /* +4 */
+    int f8;
+    NBRWORD *words;                     /* +12 */
+    struct NBRESULT *next;              /* +16 */
+} NBRESULT;
 
 typedef struct IMPORT {
     void *data;
@@ -153,7 +172,7 @@ typedef struct TREEWORD {
 } TREEWORD;
 
 extern void casrCreateResult(CASR *c, RESULT **r, int frame, int how);
-int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *nb, int n);
+int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, int nb, int n);
 int casrGetParam(CASR *c, int id, unsigned int *value);
 int casrSetParam(CASR *c, int id, unsigned int value);
 extern int CreateSecondPassContext(CASR *c);
@@ -224,14 +243,14 @@ static __inline__ void casrFreeResult(CASR *c, RESULT *r)
  * first entry spelled `-word - 1` in both loops (with `word = -word` GCSE's PRE copies the first
  * `word - 1` into the second and combine folds the lone negation into a `nor`; spelled so, the
  * negation is CSE's common value and combine folds each pre-test into `beqz` on it); vt.data before
- * frames (sched1's order of the head). OPEN, 31 words, the right size: registers in the head block
- * only -- sched1 issues the garbage list's load (`nb->garbage2`, an argument-based address, which
- * alias.c separates from the vt store on the frame) at t=4 beside len, before the vt store and the
- * index shift, so local-alloc gives it a0 and reload takes v0 for nb; the target's registers (the
- * list's pointer in v1, nb reloaded into a0, n into a1, base reloaded in the preheader) are those
- * of the load issued after the store and the shift. Every order of the head's four statements,
- * `*(p + len)`, a temporary, a volatile read: no change. */
-int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *nb, int n)
+ * frames (sched1's order of the head). Round 39c, byte-exact (31 words before): the N best an `int`
+ * as the callback's arguments are (cbDoSecondPassIfEnabled hands its arg1 on), cast at each use, its
+ * offset-0 field read through `*(int **)` -- alias.c's find_base_term takes an argument's VOIDmode
+ * ADDRESS as a base only when the register is known to be a pointer, and it is one only as a declared
+ * pointer (assign_parms) or once a field at offset 0 has been read through it (expr.c's COMPONENT_REF:
+ * `mark_reg_pointer` when the address stays a bare REG). So `nb->garbage2`'s load has no base, may alias
+ * the vt store on the frame, and sched1 issues it after the store and the index shift. */
+int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, int nb, int n)
 {
     int i;
     unsigned int base, garbage, frames, len;
@@ -244,7 +263,7 @@ int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *n
     float x, conf;
 
     base = *c->frame_base;
-    p = nb->best;
+    p = *(int **)nb;
     r = heap_Alloc(c->heap, sizeof(RESULT));
     if (r == 0)
         return 1;
@@ -257,7 +276,7 @@ int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *n
     vt.data = c->ctx->data;
     frames = c->frames;
     len = frames - base;
-    garbage = nb->garbage2[len];
+    garbage = ((ISONBEST *)nb)->garbage2[len];
     for (i = 0; i < n; i++) {
         word = *p++;
         score = *p++;
@@ -307,8 +326,8 @@ int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *n
     else {
         thr = -1;
         best = -1;
-        if (nb->best != 0)
-            best = nb->best[1];
+        if (*(int **)nb != 0)
+            best = (*(int **)nb)[1];
         if (_tosControl(c->event, 99, (int)&thr, 0) != 0)
             return 1;
         if (thr < best)
@@ -351,7 +370,7 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         if (_tosControl(c->event, 7, 0, 0) != 0)
             return 1;
         if (c->iso_word)
-            err = cbIsoWordRecognised(c, a1, a2, (ISONBEST *)arg1, arg2);
+            err = cbIsoWordRecognised(c, a1, a2, arg1, arg2);
         else {
             casrCreateResult(c, &r, arg1, 1);
             ret = c->cb.result_cb(r, c->info);
@@ -1420,6 +1439,142 @@ static int casrDoIsoWordSecondPass(CASR *c)
     return 0;
 }
 
+/* the spelling pass: the best word sequence's result built, each of its letters (the first and the last aside)
+ * recognised again over its own labels with the timeouts off and the N best 10000, its alternatives scored
+ * from the best (e^(difference / 1000), normalised, -868.6 ln) and hung off the letter's word; then the
+ * callback, and every parameter put back. SOCOM 1's body with the floats in single precision. */
+int casrDoSpelling(CASR *c)
+{
+    RESULT *r;
+    unsigned int p1, p13;
+    int err;
+    unsigned int cap;
+    int w;
+    float *scores;
+    unsigned short *lex;
+    CASRLOG *ev;
+    int *cbs;
+    RESREC *recs;
+    RESWORD *words;
+    NBRESULT *q, *next;
+    unsigned int n, min, t, i;
+    float sum;
+    int ret;
+
+    err = 0;
+    cap = 30;
+    lex = *(unsigned short **)((char *)c->run_ctx + 16);
+    scores = heap_Alloc(c->heap, 120);
+    if (scores == 0)
+        return _tosErrorLog(c->event, 1);
+    ev = c->event;
+    next = (*(NBRESULT **)c->sp_arg1)->next;
+    (*(NBRESULT **)c->sp_arg1)->next = 0;
+    casrCreateResult(c, &r, c->sp_arg1, 0);
+    (*(NBRESULT **)c->sp_arg1)->next = next;
+    words = r->items->words;
+    if (_tosControl(ev, 36, (int)c->f584, 0) != 0)
+        goto fail;
+    cbs = &c->p488;
+    if (_tosControl(ev, 84, (int)cbs, 0) != 0)
+        goto fail;
+    if (_tosControl(ev, 17, 0, 0) != 0)
+        goto fail;
+    if (casrGetParamNoClearErrorLog(c, 1, &p1) != 0)
+        goto fail;
+    if (casrSetParamNoClearErrorLog(c, 1, 0) != 0)
+        goto fail;
+    if (casrGetParamNoClearErrorLog(c, 13, &p13) != 0)
+        goto fail;
+    if (casrSetParamNoClearErrorLog(c, 13, 10000) != 0)
+        goto fail;
+    for (w = 1; w < r->items->n - 1; w++) {
+        n = 0;
+        if (DoLabelStart(c) != 0)
+            goto fail;
+        if (SendPartOfLabelsToEngine(c, ActiveBlocks_UTTFORMAT_LABELS, 0, words[w].start, words[w].end) != 0)
+            goto fail;
+        if (DoLabelStop(c, ActiveBlocks_UTTFORMAT_LABELS) != 0)
+            goto fail;
+        heap_Free(c->heap, words[w].p);
+        q = *(NBRESULT **)c->sp_arg1;
+        if (q == 0) {
+            words[w].n = 0;
+            words[w].p = 0;
+            continue;
+        }
+        min = -1;
+        do {
+            t = q->score;
+            n++;
+            q = q->next;
+            if (t < min)
+                min = t;
+        } while (q != 0);
+        words[w].n = n;
+        recs = heap_Alloc(c->heap, n * sizeof(RESREC));
+        words[w].p = recs;
+        if (recs == 0)
+            goto fail;
+        if (cap < n) {
+            heap_Free(c->heap, scores);
+            cap = n;
+            scores = heap_Alloc(c->heap, n * sizeof(float));
+            if (scores == 0)
+                goto done1;
+        }
+        sum = 0.0f;
+        q = *(NBRESULT **)c->sp_arg1;
+        for (i = 0; i < n; i++) {
+            float e = expf((float)(int)(min - q->words->score) * 0.001);
+
+            scores[i] = e;
+            sum += e;
+            q = q->next;
+        }
+        q = *(NBRESULT **)c->sp_arg1;
+        for (i = 0; i < n; i++) {
+            float f = scores[i] / sum;
+
+            if (f > 0.001f)
+                recs[i].f0 = (int)(logf(f + 0.5) * -868.58896f);
+            else
+                recs[i].f0 = 6000;
+            recs[i].score = q->words->score;
+            recs[i].word = lex[q->words->state + 1] + (lex[q->words->state + 2] << 16);
+            q = q->next;
+        }
+    }
+    ret = c->cb.result_cb(r, c->info);
+    if (c->last_state == 0 && ret != 0) {
+        c->last_state = ret;
+        err = 27;
+    }
+    casrFreeResult(c, r);
+    heap_Free(c->heap, scores);
+    if (_tosControl(ev, 7, 0, 0) != 0)
+        return 1;
+    if (_tosControl(ev, 21, 0, 0) != 0)
+        return 1;
+    if (casrSetParamNoClearErrorLog(c, 1, p1) != 0)
+        goto done1;
+    if (casrSetParamNoClearErrorLog(c, 13, p13) != 0)
+        goto done1;
+    if (_tosControl(ev, 36, (int)c->run_ctx, 0) != 0)
+        return 1;
+    if (_tosControl(ev, 84, (int)cbs, 0) != 0) {
+        return 1;
+fail:
+        heap_Free(c->heap, scores);
+done1:
+        return 1;
+    }
+    c->second_pass = 0;
+    if (err != 0)
+        _tosErrorLog(ev, err);
+    return err;
+}
+
 static int casrInitSampleFormat(CASR *c, unsigned int fmt)
 {
     c->uw_state = fmt;
@@ -1693,15 +1848,24 @@ int cbCheckConfusion(RESULT *r, CASRINFO *info)
  * trained transcription (a pronunciation of type 2 of its length, phoneme for phoneme), each word's
  * record cleared, then the three training utterances recognised again under the context with
  * cbCheckConfusion as the only callback (timeouts off, the N best 20, no second pass) and every
- * callback and parameter put back. SOCOM 1's body (round 38c): the handle check's result and every
- * later result one variable (the target's s3 throughout), each loop its own counter (one counter
- * over the four loops crosses the calls and takes s1: round 25c's rule). OPEN, 584 words of 591:
- * every s-register of c, the result, found, conf, size, ctx and the lexicon's walker and base is the
- * target's; the target keeps &c->cb, &c->lab_buf[0], &c->lab_pos[0], &bufs[0] and &sizes[0] in
- * s7, s5, s6, s4 and s1 for the whole function (index 0 through them too), so the saved host pointer
- * spills to 196(sp), where ours addresses them by offset and keeps &saved in s7 (the missing words
- * are those address set-ups, the spill and its reload); tlen and trans also land in a0/a1 swapped
- * (both statement orders and both declaration orders tried). */
+ * callback and parameter put back. SOCOM 1's body (round 38c); byte-exact since round 39c (584 of 591
+ * words before), its six causes each read off the compiler:
+ * - the first record's save and restore index through j = 0, not [0]: an ARRAY_REF with a variable index
+ *   forces the array's address into a register (expr.c), CSE folds the `j * 4` away, and what remains is
+ *   the target's `sw v0,0(s1)` -- no pass could have written that (cse.c's find_best_addr leaves a frame
+ *   slot's address alone), and only those four long-lived address registers crowd &saved out of s7 and
+ *   the host pointer onto the stack;
+ * - the five saved parameters are five scalars, not an array: an array of 20 bytes is rounded to 32 on the
+ *   frame (the spill at 208), each scalar takes 4 from purge_addressof (the target's 196);
+ * - the run loop is a `while` with j++ inside: expand_end_loop redirects a body-ending `if (...) break;`
+ *   straight to the top and skips the rolling, where a `for` ends in its increment and is rolled up to the
+ *   last exit in its first 30 insns -- the entry jump into the loop's middle; j is shared with the copy loop;
+ * - err = 1 in the failure arm (SOCOM 1's `b restore; li s3,1`): jump.c hoists it later, but CSE1 has not
+ *   seen it on the fall-through, so the next loop's first test keeps j. Set above the call, insert_regs makes
+ *   j equivalent to err (both 1) and err, the longer-lived, is canonical: `sltu v0,s3,t6`;
+ * - `w = bow + nword` is a statement of its own above the size test, and above tlen and trans (only that
+ *   order makes the loaded word's span outlast the pointer's: local-alloc's tie gives the pointer a0);
+ * - the state's 20 is a local set before its test (li before lhu; `c->state != 20` is lhu first). */
 int casrCheckUserWordConfusion(CASR *c, IMPORT *ctx, CONFREC *conf, unsigned int size)
 {
     CTXVT vt;
@@ -1709,13 +1873,14 @@ int casrCheckUserWordConfusion(CASR *c, IMPORT *ctx, CONFREC *conf, unsigned int
     unsigned char *bufs[3];
     int sizes[3];
     CONFCHECK cc;
-    unsigned int params[5];
+    unsigned int p1, p2, p13, p15, p16;
     int err = casrCheckHandle(c);
     int found = -1;
     unsigned short *lex, *lp, *next, *q, *trans;
-    int *bow, *p, *end;
-    unsigned int nword, tlen, i, k, j, n;
+    int *bow, *p, *end, *w;
+    unsigned int nword, tlen, i, k, j;
     int r2, ret;
+    int st;
     void *user;
 
     if (err)
@@ -1734,11 +1899,12 @@ int casrCheckUserWordConfusion(CASR *c, IMPORT *ctx, CONFREC *conf, unsigned int
     lp = lex;
     bow = vt.GetpBeginOfWords(&vt);
     nword = vt.GetNbrWord(&vt);
+    w = bow + nword;
     tlen = (unsigned int)*c->trans_size >> 1;
     trans = *c->trans;
     if (size < nword * sizeof(CONFREC))
         return _tosErrorLog(c->event, 38);
-    p = &bow[nword + 2];
+    p = w + 2;
     for (i = 0; i < nword; i++) {
         for (end = &bow[bow[i + 1]]; p <= end; p++) {
             next = &lex[*p];
@@ -1767,13 +1933,13 @@ int casrCheckUserWordConfusion(CASR *c, IMPORT *ctx, CONFREC *conf, unsigned int
     cc.conf = conf;
     saved = c->cb;
     user = c->info->user;
-    err = casrGetParamNoClearErrorLog(c, 1, &params[0]);
-    err |= casrGetParamNoClearErrorLog(c, 2, &params[1]);
-    err |= casrGetParamNoClearErrorLog(c, 13, &params[2]);
-    err |= casrGetParamNoClearErrorLog(c, 15, &params[3]);
-    err |= casrGetParamNoClearErrorLog(c, 16, &params[4]);
+    err = casrGetParamNoClearErrorLog(c, 1, &p1);
+    err |= casrGetParamNoClearErrorLog(c, 2, &p2);
+    err |= casrGetParamNoClearErrorLog(c, 13, &p13);
+    err |= casrGetParamNoClearErrorLog(c, 15, &p15);
+    err |= casrGetParamNoClearErrorLog(c, 16, &p16);
     if (err)
-        return err;
+        goto done;
     c->cb.ts_cb = 0;
     c->cb.start_cb = 0;
     c->cb.result_cb = (int (*)(void *, void *))cbCheckConfusion;
@@ -1789,56 +1955,64 @@ int casrCheckUserWordConfusion(CASR *c, IMPORT *ctx, CONFREC *conf, unsigned int
     err |= casrSetParamNoClearErrorLog(c, 15, 1);
     err |= casrSetParamNoClearErrorLog(c, 16, 0);
     if (err == 0) {
-        sizes[0] = c->lab_pos[0] - c->lab_buf[0];
-        err = 1;
-        bufs[0] = heap_Alloc(c->heap, sizes[0]);
-        if (bufs[0] != 0) {
-            memcpy(bufs[0], c->lab_buf[0], sizes[0]);
-            for (j = 1; j < c->uw_recs_needed; j++) {
-                bufs[j] = c->lab_buf[j];
-                sizes[j] = c->lab_pos[j] - c->lab_buf[j];
+        j = 0;
+        sizes[j] = c->lab_pos[j] - c->lab_buf[j];
+        bufs[j] = heap_Alloc(c->heap, sizes[j]);
+        if (bufs[j] == 0) {
+            err = 1;
+            goto restore;
+        }
+        memcpy(bufs[j], c->lab_buf[j], sizes[j]);
+        for (j = 1; j < c->uw_recs_needed; j++) {
+            bufs[j] = c->lab_buf[j];
+            sizes[j] = c->lab_pos[j] - c->lab_buf[j];
+        }
+        err = casrActivateContext(c, ctx, 1);
+        if (err == 0) {
+            j = 0;
+            while (j < c->uw_recs_needed) {
+                err = casrStart(c);
+                if (err != 0)
+                    break;
+                err = casrAcquisition(c, 3, bufs[j], sizes[j]);
+                if (err != 0)
+                    break;
+                j++;
+                err = casrStop(c);
+                if (err != 0)
+                    break;
             }
-            err = casrActivateContext(c, ctx, 1);
-            if (err == 0) {
-                for (n = 0; n < c->uw_recs_needed; n++) {
-                    err = casrStart(c);
-                    if (err != 0)
-                        break;
-                    err = casrAcquisition(c, 3, bufs[n], sizes[n]);
-                    if (err != 0)
-                        break;
-                    err = casrStop(c);
-                    if (err != 0)
-                        break;
-                }
-                r2 = casrActivateContext(c, 0, 1);
-                if (err == 0)
-                    err = r2;
-                if (c->state != 20) {
-                    c->state = 20;
-                    if (c->cb.state_cb != 0) {
-                        ret = c->cb.state_cb(c->state, 0, c->info);
-                        if (c->last_state == 0 && ret != 0) {
-                            c->last_state = ret;
-                            _tosErrorLog(c->event, 27);
-                        }
+            r2 = casrActivateContext(c, 0, 1);
+            if (err == 0)
+                err = r2;
+            st = 20;
+            if (c->state != st) {
+                c->state = st;
+                if (c->cb.state_cb != 0) {
+                    ret = c->cb.state_cb(st, 0, c->info);
+                    if (c->last_state == 0 && ret != 0) {
+                        c->last_state = ret;
+                        _tosErrorLog(c->event, 27);
                     }
                 }
             }
-            memcpy(c->lab_buf[0], bufs[0], sizes[0]);
-            c->lab_pos[0] = c->lab_buf[0] + sizes[0];
-            heap_Free(c->heap, bufs[0]);
         }
+        j = 0;
+        memcpy(c->lab_buf[j], bufs[j], sizes[j]);
+        c->lab_pos[j] = c->lab_buf[j] + sizes[j];
+        heap_Free(c->heap, bufs[j]);
     }
+restore:
     c->cb = saved;
     c->info->user = user;
-    r2 = casrSetParamNoClearErrorLog(c, 1, params[0]);
-    r2 |= casrSetParamNoClearErrorLog(c, 2, params[1]);
-    r2 |= casrSetParamNoClearErrorLog(c, 13, params[2]);
-    r2 |= casrSetParamNoClearErrorLog(c, 15, params[3]);
-    r2 |= casrSetParamNoClearErrorLog(c, 16, params[4]);
+    r2 = casrSetParamNoClearErrorLog(c, 1, p1);
+    r2 |= casrSetParamNoClearErrorLog(c, 2, p2);
+    r2 |= casrSetParamNoClearErrorLog(c, 13, p13);
+    r2 |= casrSetParamNoClearErrorLog(c, 15, p15);
+    r2 |= casrSetParamNoClearErrorLog(c, 16, p16);
     if (err == 0)
         err = r2;
+done:
     return err;
 }
 

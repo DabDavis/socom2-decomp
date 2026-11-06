@@ -50,7 +50,10 @@ typedef struct FSTREE {
     DICTLINK *links;                    /* +16 */
     DICTITEM *newitems;                 /* +20 */
     DICTLINK *newlinks;                 /* +24 */
-    char pad28[20];
+    char pad28[12];
+    unsigned short *table;              /* +40: the swapped final of (a, tone, pron), na x a + nb x tone + pron */
+    unsigned short na;                  /* +44 */
+    unsigned short nb;                  /* +46 */
     unsigned short ntones;              /* +48 */
 } FSTREE;
 
@@ -157,6 +160,94 @@ unsigned char Tone_Of_Final(unsigned short final, unsigned short n)
 {
     if (final != 0 && final < n)
         return 1;
+    return 0;
+}
+
+/* the split tree's finals swapped for their tone-carrying forms, down the tree: on a chain of single children
+ * the pending final is carried along, an item with a valid tone settling the one before it. SOCOM 1's body.
+ * OPEN (round 39c, written: 275 words of 280, the layout the target's). Measured: a `while` rather than `for (;;)`
+ * (the bottom test on the register of 0xFFFF), the pron read before prev moves in both arms of the pending-final
+ * test (the target's branch; one `if` gives xor/movz), the leaf's `if (final == 0xFFFF) final = 0` plain (the
+ * target's xori/movz there). Open: the target keeps the head's 0xFFFF in a register of its own (t3, issued early),
+ * which moves every t-register up one here; five words of the two table stores' arms. */
+int Swap_Finals(unsigned short final, unsigned int prev, unsigned int node, FSTREE *t)
+{
+    unsigned int c = t->newitems[node].child;
+    unsigned short pron = t->newitems[prev].pron;
+    unsigned short i;
+
+    while (c != 0xFFFF) {
+        {
+            if (Tone_Of_Final(t->newitems[node].tone, t->ntones)) {
+                if (prev != 0) {
+                    t->newitems[prev].pron = t->table[t->na * final + t->nb * t->newitems[node].tone + pron];
+                    final = t->newitems[prev].tone;
+                    pron = t->newitems[node].pron;
+                    prev = node;
+                } else {
+                    if (final == 0xFFFF) {
+                        final = 0;
+                        pron = t->newitems[node].pron;
+                        prev = node;
+                    } else {
+                        pron = t->newitems[node].pron;
+                        prev = node;
+                    }
+                }
+            } else if (t->newitems[node].kind == 0) {
+                if (t->newitems[node].tone == 0) {
+                    if (prev != 0)
+                        t->newitems[prev].pron = t->table[t->na * final + pron];
+                    prev = 0;
+                    final = 0;
+                } else if (node != 0) {
+                    if (prev != 0)
+                        t->newitems[prev].pron = t->table[t->na * final + t->nb * t->ntones + pron];
+                    final = t->ntones;
+                    prev = 0;
+                }
+            }
+            if (t->newlinks[c].next != 0xFFFF)
+                break;
+            node = t->newlinks[t->newitems[node].child].node;
+            c = t->newitems[node].child;
+        }
+    }
+    if (t->newitems[node].child == 0xFFFF) {
+        if (Tone_Of_Final(t->newitems[node].tone, t->ntones)) {
+            if (prev != 0) {
+                t->newitems[prev].pron = t->table[t->na * final + t->nb * t->newitems[node].tone + pron];
+                final = t->newitems[prev].tone;
+                pron = t->newitems[node].pron;
+            } else {
+                if (final == 0xFFFF)
+                    final = 0;
+                pron = t->newitems[node].pron;
+            }
+            t->newitems[node].pron = t->table[t->na * final + pron];
+        } else if (prev != 0) {
+            unsigned int tone;
+
+            if (t->newitems[node].kind == 0 && t->newitems[node].tone != 0)
+                tone = t->ntones;
+            else
+                tone = 0;
+            t->newitems[prev].pron = t->table[t->na * final + t->nb * tone + pron];
+        }
+    }
+    i = 0;
+    if (c != 0xFFFF) {
+        do {
+            if (i != 0 && prev != 0) {
+                final = t->newitems[prev].tone;
+                prev = 0;
+            }
+            i++;
+            if (Swap_Finals(final, prev, t->newlinks[c].node, t) != 0)
+                return 1;
+            c = t->newlinks[c].next;
+        } while (c != 0xFFFF);
+    }
     return 0;
 }
 

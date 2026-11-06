@@ -2066,6 +2066,31 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 38** (six byte-exact: SkbParseKoreanRules 0x390C40 -- open since round 10, 205 off --,
+  SkbParseComplete 0x392130 -- 140 off --, both from the pragma scan's leads; LoadHddIconFile 0x39D650, util_sonyio.cpp
+  whole; CSoftKeyboard::ParseKeyProps 0x38DCB0 -- round 15 --, SkbPressKey 0x38D200 -- the key handler, round 29 -- and
+  ChooseEquipmentForCharacter 0x282A90; deque<SSMState>() 0x3A6410 from source over its draft; zanim_menu.cpp's
+  COnlineArmoryView respelled as the CZNetVoice view, SAME-BY-ADDRESS):
+  - A SCAN LEAD CAN NEED THE PAIR AND THE SHAPE: `opt_loop_invariants` and `opt_strength_reduction` both off keep
+    IRO_FindLoops from running (read in IrOptimizer.c) -- SkbParseComplete was 0x2B0 under one, exact under both with bare
+    locals in the target's order; SkbParseKoreanRules needed an AddSeq inline and named Val / Val2 record locals besides. A
+    unit's template tail wants the optimiser on: off at the unit's end gained none and lost 3;
+  - a union read through two members: the two loads of different types share only their address, and a local object's
+    inlined copy keeps the built address and jump form while the out-of-line copy folds to the value form, from one source
+    (LoadHddIconFile's IsOpen, `m_file != -1 && m_cd != 0`);
+  - a class holding one pointer numbers it after an inlined callee's counter, which a plain local never does
+    (CSkbRdrHolder);
+  - a ternary arm under an inlined copy constructor expands one pass late, so a top-level inline's locals take earlier frame
+    slots; deferring a find through an inline's argument cuts its end() at level 5 -- pass the end in; `inline_depth(6)`
+    cost SkbMoveAlong;
+  - `#pragma bool off`: an int chain of ifs gives un-narrowed comparisons in one register, where a nested `&&` adds an sltu
+    at each stage (SkbPressKey); `(char &)c` binds a byte-enum parameter's own frame byte with no temporary; `id =
+    w.m_wepId; item == id` numbers the load before the narrowing, which casts on either operand do not;
+  - the extern "C" trap: renaming a placeholder declared in such a block leaves a mangled row no-target and its callers
+    WRONG REFERENCE -- re-score after every rename;
+  - devices, each marked in the source: CSkbRdrHolder, SkbSetSpec / SkbFindProps, SSMQueueImp (src/ABSENT.txt), and `inline
+    CSkbRect::CSkbRect` defined only for zui_skb.cpp while zui_skbview.cpp keeps its out-of-line definition -- a deliberate
+    ODR stretch across the two units, not evidence of the original's shape.
 - **Tells from the online lobby, round 29** (the lobby's deque<LOBBY_STATE>() 0x2E0D90 -- through a marked dead-stripped
   device, zNetMedius.cpp's LobbyQueueImp in src/ABSENT.txt -- and the chat's deque<MediusChatMessage>() 0x2F6230 byte-exact
   from source, two of the twelve draft-held rows; 0x30E710 / 0x30E790 named CZNetVoice::IsTalking / IsReceiving by every
@@ -14670,6 +14695,74 @@ language.c's table; CASR +616 `anyspeech`) -- 2 rows new to the map's byte-exact
 draft superseded; `src/lib/asr` 590 of 622 (588 of 618 before). No rows renamed (all four had SOCOM 1's
 names). No tool changed (scratch: build/scratch/gcc/r38/ -- dscore.py counts a function's differing
 instructions after alignment, vt.py and the iso/v*.py variant sets, fbits.py, rd.py).
+
+**Round 39c: the casr object's opens closed by reading the compiler -- a parameter's declared type, an index that is
+0, a `while`; PRE's critical edge behind loop.c's block motion; the object now -ffast-math.**
+
+- **A parameter declared `int` has no base term** (cbIsoWordRecognised, 31 words -> 0): alias.c's find_base_term takes an
+  argument's VOIDmode ADDRESS as the base of `(plus reg const)` only when the register is known to be a pointer, and
+  it is one only as a declared pointer (assign_parms' mark_reg_pointer) or once a field at offset 0 has been read
+  through it (expr.c's COMPONENT_REF marks the register when the address stays a bare REG). So the callback's `int`
+  argument, cast at each use, gives `nb->garbage2`'s load no base: it may alias the frame's vt store and sched1 issues it
+  after the store and the index shift (SOCOM 1 and SOCOM II both). The offset-0 read must then be an INDIRECT_REF
+  (`*(int **)nb`), or the first `->best` marks it and the fix silently does nothing. This is the shape to try wherever a
+  load through a parameter stays below a frame store.
+- **An array read through an index that is 0 at that point** (casrCheckUserWordConfusion, 584 of 591 words -> 0): cse.c's
+  find_best_addr never rewrites a frame slot's address, so the target's `sw v0,0(s1)` cannot be `sizes[0]`. It is
+  `j = 0; sizes[j]`: an ARRAY_REF with a variable index forces the array's address into a register (expr.c), CSE folds
+  `j * 4` away and the register stays -- which is what fills s1, s4, s5 and s6 for the whole function and pushes &saved
+  and the host pointer out of the s-registers. A hoisted `move t5,s4` in the unrolled copy loop is the same register.
+- **Five scalars, not an array** (the same function): `unsigned int params[5]` is rounded to 32 bytes on the frame, each
+  address-taken scalar takes 4 from purge_addressof -- the spill at 196, not 208. -g's stabs (`tools/ccdump.py --dump "-g
+  -save-temps"`) print every local's frame offset, which is how the 12-byte hole was found.
+- **A `while` whose body ends in `if (...) break;`** (the same): expand_end_loop redirects that conditional jump straight
+  to the top and skips the rolling (the target's `beqzl s3,top`); a `for` ends in its increment, so it is rolled up to
+  the last exit in its first 30 insns -- the entry jump into the loop's middle. The rolling's count (`if (last_test_insn &&
+  num_insns > 30)`) read one insn over here; scratch `rtlsum.py` counts it from `--dump -dr`.
+- **A constant set in the failure arm is not in CSE1's table on the fall-through** (the same): SOCOM 1's `b restore; li
+  s3,1` becomes a hoisted `li s3,1` in SOCOM II, but written above the call insert_regs makes the next loop's `j = 1`
+  equivalent to err (both 1), err being the longer-lived and canonical: `sltu v0,s3,t6`. `if (p == 0) { err = 1; goto
+  restore; }` keeps j.
+- **PRE's edge insertion is what lets loop.c move error blocks** (SendPartOfLabelsToEngine, 36s -> 0, open since round 13c):
+  a load partially redundant around a back edge is inserted on that critical edge, whose split block lands ahead of the
+  loop with a jump and a BARRIER; find_and_verify_loops moves an `if (...) { ...; return; }` block out of a loop only when
+  it finds a BARRIER at the target's depth. A first read that is another expression at GCSE time -- through a pointer to
+  the queue's slot (`CBSLOT *s = &c->slot[3]`), folded back only by CSE2 -- means no PRE, no barrier, and the blocks stay in
+  place, the target's shape. (A `goto` loop also keeps them, but loses the LOOP note's alignment nop.)
+- **casr.c is a -ffast-math object** (casrDoSpelling): `mov.s $f20,$f0` in the first unrolled copy is `0 + f` folded, which
+  simplify_binary_operation does only under that flag; none of the other 65 functions moves.
+  **A float variable per loop**: the unroller renames a pseudo per copy only when its whole life is inside the loop, so one
+  `f` shared by two loops gives every copy one register where the target's differ.
+- **Halfword arithmetic and the 0xfffe constant** (CreateSecondPassInfo): `(unsigned short)((unsigned short)(a - b) - 2)`
+  widens the HImode constant unsigned, `li t5,0xfffe` hoisted out of the loop; `(unsigned short)(a - b - 2)` is `addiu -2`.
+  `(x - nun - 1) & 0xFFFF` is `addiu; andi`, a cast of the same goes through `li at,0xffff` (FrameDPacoust).
+- **An address-taken variable has a register twin** (FrameDPacoust): `in` lives in its slot, and the wheel's head is read,
+  tested and stepped through a local (`hd`), the slot written beside it; a guarded do-while with `done = 0` inside the
+  guard puts that store in the entry test's delay slot.
+- **A local assigned before its test** (casrCheckUserWordConfusion's tail): `st = 20; if (c->state !=
+  st)` is `li; lhu`, `c->state != 20` is `lhu; li`.
+- **Measured, not closed**: qEnQueue's unroll margin (loop.c's second pass: 49 real insns, "Unrolling loop 2 times"; 50 would
+  leave it alone: the vendor has one RTL insn more that a later pass removes, and it is no copy CSE1 can see through);
+  func_004C8D10's swap (&gGSAPI 4 refs over 40, 2000; id 4 over 41, 1951: one insn or one reference); tosBaseBlockConstruct
+  (an extern-inline logger computing inside the test, 38s; the stores reversed, 25).
+- **Open, diagnosed in place**: FrameDPacoust (written, 586 of 587 words: the target re-reads t->word in the first arm and
+  keeps an `andi` on the follower's word there, as if the arm began after a label in CSE1's view; a bitfield gives the
+  andi on the first read too), Swap_Finals (written, 275 of 280: the head's 0xFFFF in a register of its own moves every
+  t-register up one), ProcessVad (2: the zero's two registers swap, four constant spellings). Not reached: casrCreateResult,
+  CreateSecondPassTreeContext, RePruneToPho, the distance passes, InitCalculateDistances, CreateCtxInfo, the other Chinese builders.
+
+Hand-written in round 39c: `asr/casr.c` (cbIsoWordRecognised and casrCheckUserWordConfusion closed, casrDoSpelling new, the
+directive -ffast-math: 66 of 66 written, the object all but casrCreateResult), `asr/userword.c` (SendLabelsToEngine and
+SendPartOfLabelsToEngine closed: the object whole, 21 of 21), `asr/ctxinfo.c` (CreateSecondPassInfo and CreateExEvCtxInfo new:
+4 of 4 written, CreateCtxInfo left), `asr/isowdp.c` (FrameDPacoust written OPEN: 12 of 14), `asr/chinese.c` (Swap_Finals written
+OPEN: 2 of 5), `asr/casr.h` (LANGVT slots 23, 50, 68-70, 75, 76 and 78 named from language.c's table; CASR +584 and +588) --
+6 rows new to the map's byte-exact rows (6,440 bytes), and casrDoSpelling (2,392 bytes) a seventh once scdiff stops a
+literal's extent at the next relocated word (below); none superseding a draft; `src/lib/asr` 596 of 627 (590 of 622 before).
+No rows renamed. **The scorer's false negative**: scdiff.local_object_ok extends an unnamed literal to its first NUL, so
+casrDoSpelling's seven doubles run into casrInitSampleFormat's jump table, whose raw addends it compares byte for byte (R,
+"CONTENT-MISMATCH", every instruction equal). No tool changed in this round (scratch: build/scratch/gcc/r39/ -- ndiff.py and
+cdiff.py normalised alignments, rtlsum.py expand_end_loop's insn count, tr1.py a compare through the pass dumps, nohard.py
+the pseudos without a register, dlit.py a C constant's bits, rdd.py the image's literals, v_*.py the variants).
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
