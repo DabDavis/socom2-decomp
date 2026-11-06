@@ -116,6 +116,8 @@ int func_00249EE0(Blk48 **pp)
  * 41a (build/scratch/gcc/r41/v_1748*.py, 10 shapes): a nested ternary returned or assigned, an
  * else-if chain, the last test as a ternary, 161 through an int local (in the 48 case, the final
  * return or both), an unsigned char or float 161 -- every one 0x70, the 56 and 48 tests gone whole. */
+/* OPEN (0x70 against 0x8C; GCC round 45a: no last `return` gives 0x7C, d=9): the target's chain ends `li v0,161` in the 56's slot and a
+ * dead `c.lt.s` for 48 before `jr ra`: a jump deleted after flow's last pass, one test deeper than falling off the end leaves it. */
 int func_00251748(float fX)
 {
     if (fX > 96.0F)

@@ -11,7 +11,7 @@
  * word short). Round 19a: the noise generator 0x256380. Round 18a: the onset phase 0x256AB0 (its rounded turn count an int
  * of its own: the conversion inside the product puts 2 pi's lui/ori in both arms, 32 words; an
  * if/else into a float, 7). Placeholders: the codec's names
- * are not in SOCOM 1. Built as sase_decapi.c is (ee-gcc 2.96, -O2 -G0). */
+ * are not in SOCOM 1. Built as sase_decapi.c is (ee-gcc 2.96, -O2 -G0). Round 45a: the frames 0x256420, 0x2566D8. */
 
 #define NellyNull 0
 extern void __assert(const char *file, int line, const char *expr);
@@ -51,7 +51,7 @@ extern float func_00251850(float fX);	/* the encoder's fast exp2 (shared) */
 /* the bands' phases advanced by a growing step, the even bands' by an offset from 1/pi that grows
  * by 1/(20 pi) a band past fX * 0.1875; the second array's log gains raised by the fast exp2
  * (GCC round 26a) */
-void func_00256BC8(int n, float *pfPhase, float *pfGain, float fStep, float fX)
+void func_00256BC8(float fStep, int n, float fX, float *pfPhase, float *pfGain)
 {
 	int i, iLimit;
 	float fAcc, fOff;
@@ -130,7 +130,7 @@ void func_00256DB0(int iStart, int iEnd, int *plSeed, float *pfPhase)
 
 /* the phase advanced by the mean of the last and current frequencies over iLength samples,
  * wrapped into [-pi, pi] by the nearest whole turn */
-void func_00256AB0(HFRegenMblk *pvHFRegenMblk, float *pfOnsetPhase, int iLength, float fFreq)
+void func_00256AB0(HFRegenMblk *pvHFRegenMblk, float *pfOnsetPhase, float fFreq, int iLength)
 {
 	float fPhase, fTurns;
 	int iTurns;
@@ -171,14 +171,14 @@ typedef struct {
 	int iState;
 } SWSynthFrame;
 
-extern void func_00256420(void *pv0, int iX, void *pv4, void *pv8, void *pv12, void *pv16, void *pv20,
-                          int *piState, float fA, float fB, float fRatio);
-extern void func_002566D8(void *pv0, int iX, void *pv4, void *pv8, void *pv12, void *pv16, void *pv20,
-                          int *piState, int iY, int iZ, float fA, float fB, float fRatio);
+void func_00256420(HFRegenMblk *hHFRegenMblk, short *psSynSpeech, float *pfMemBuffer, float *pfEnv_1, float *pfPhase_1, float *pfPhase,
+		   float *pfAmp, int *plUVPhaseRandSeed, float fPitch, float fVoice, float fMix);
+void func_002566D8(HFRegenMblk *hHFRegenMblk, short *psSynSpeech, float *pfMemBuffer, float *pfEnv_1, float *pfPhase_1, float *pfPhase,
+		   float *pfAmp, int *plUVPhaseRandSeed, float *pfStepOut, int *piNOut, float fPitch, float fVoice, float fMix);
 
 /* one frame synthesised while the position lies inside the period (from the pair of gains for
  * its first or last quarter), the position stepped by 80 and wrapped unless held */
-void func_00256190(SWSynthFrame *p, const float *pfPair, int iX, int *piPos)
+void func_00256190(SWSynthFrame *p, const float *pfPair, short *iX, int *piPos)
 {
 	const float *pf;
 	float fLen, fRatio;
@@ -199,7 +199,7 @@ void func_00256190(SWSynthFrame *p, const float *pfPair, int iX, int *piPos)
 }
 
 /* the same through the other synthesiser, two more arguments passed on */
-void func_00256280(SWSynthFrame *p, const float *pfPair, int iX, int *piPos, int iY, int iZ)
+void func_00256280(SWSynthFrame *p, const float *pfPair, short *iX, int *piPos, float *iY, int *iZ)
 {
 	const float *pf;
 	float fLen, fRatio;
@@ -243,4 +243,88 @@ void func_00256EC0(int iLength, float *pf)
 		*pf *= fScale;
 		pf++;
 	}
+}
+
+extern void (*data_001D55B0)(void *p, int c, int n);	/* the host's memset */
+extern void func_00255E68(float fGain, float fF0, float fUnused, float fMix, int iNumHarm, int iFrom, float *pfHist, float *pfAmp, float *pfEnv_1, float *pfPhaseOut, float *pfPhase_1);
+extern void func_00254510(float fPitch, int iPeaks, int iLength, short *psOut, float *pfSpec, const float *pfPhase, const float *pfAmp);
+
+/* a frame of the high-frequency regeneration: the harmonics of the pitch (at most 100, below the spectrum's top), each spread by a
+ * factor over its band when the voicing leaves room; their amplitudes and phases set, the onset phase, the noise above the voicing,
+ * the amplitude smoothing, and the inverse transform into the caller's samples */
+void func_00256420(HFRegenMblk *hHFRegenMblk, short *psSynSpeech, float *pfMemBuffer, float *pfEnv_1, float *pfPhase_1, float *pfPhase,
+		   float *pfAmp, int *plUVPhaseRandSeed, float fPitch, float fVoice, float fMix)
+{
+	float fOnset;
+	float fF0, fV, fStep, fGain;
+	int iHarm, iFactor, iN, iFrom, iNoise;
+
+#line 166 "../../SaseDec/source/SWSynth.c"
+	assert(hHFRegenMblk != NellyNull && psSynSpeech != NellyNull);
+	assert(pfMemBuffer != NellyNull);
+	assert(plUVPhaseRandSeed != NellyNull);
+	fF0 = 512.0F / fPitch;
+	fV = fVoice * 256.0F;
+	iHarm = (int)(fPitch * 0.5F);
+	if ((int)(fF0 * iHarm + 0.5F) >= 256)
+		iHarm--;
+	if (iHarm > 100)
+		iHarm = 100;
+	if (fV < 256.0F)
+		iFactor = 100 / iHarm;
+	else
+		iFactor = 1;
+	fStep = fF0 / iFactor;
+	iN = iHarm * iFactor;
+	iFrom = (int)(fV * 0x1p-9F * fPitch);
+	fGain = func_00256A18(fPitch, fStep);
+	data_001D55B0(pfMemBuffer, 0, 2056);
+	func_00255E68(fGain, fF0, fStep, fMix, iHarm, iFrom, pfMemBuffer, pfAmp, pfEnv_1, pfPhase, pfPhase_1);
+	iNoise = iFrom * iFactor;
+	func_00256AB0(hHFRegenMblk, &fOnset, fF0, 80);
+	func_00256BC8(fOnset, iHarm, fPitch, pfPhase, pfAmp);
+	func_00256CC8(iN, iHarm, iFactor, pfPhase, pfAmp, iFrom);
+	func_00256DB0(iNoise, iN, plUVPhaseRandSeed, pfPhase);
+	func_00256EC0(iN, pfAmp);
+	func_00254510(fStep, iN, 160, psSynSpeech, pfMemBuffer, pfPhase, pfAmp);
+}
+
+/* the same frame prepared and not transformed: the step and the count returned for the caller's own (0x256280, the three- and
+ * four-handle frames) */
+void func_002566D8(HFRegenMblk *hHFRegenMblk, short *psSynSpeech, float *pfMemBuffer, float *pfEnv_1, float *pfPhase_1, float *pfPhase,
+		   float *pfAmp, int *plUVPhaseRandSeed, float *pfStepOut, int *piNOut, float fPitch, float fVoice, float fMix)
+{
+	float fOnset;
+	float fF0, fV, fStep, fGain;
+	int iHarm, iFactor, iN, iFrom, iNoise;
+
+#line 273 "../../SaseDec/source/SWSynth.c"
+	assert(hHFRegenMblk != NellyNull && psSynSpeech != NellyNull);
+	assert(pfMemBuffer != NellyNull);
+	assert(plUVPhaseRandSeed != NellyNull);
+	fF0 = 512.0F / fPitch;
+	fV = fVoice * 256.0F;
+	iHarm = (int)(fPitch * 0.5F);
+	if ((int)(fF0 * iHarm + 0.5F) >= 256)
+		iHarm--;
+	if (iHarm > 100)
+		iHarm = 100;
+	if (fV < 256.0F)
+		iFactor = 100 / iHarm;
+	else
+		iFactor = 1;
+	fStep = fF0 / iFactor;
+	iN = iHarm * iFactor;
+	iFrom = (int)(fV * 0x1p-9F * fPitch);
+	fGain = func_00256A18(fPitch, fStep);
+	data_001D55B0(pfMemBuffer, 0, 2056);
+	func_00255E68(fGain, fF0, fStep, fMix, iHarm, iFrom, pfMemBuffer, pfAmp, pfEnv_1, pfPhase, pfPhase_1);
+	iNoise = iFrom * iFactor;
+	func_00256AB0(hHFRegenMblk, &fOnset, fF0, 80);
+	func_00256BC8(fOnset, iHarm, fPitch, pfPhase, pfAmp);
+	func_00256CC8(iN, iHarm, iFactor, pfPhase, pfAmp, iFrom);
+	func_00256DB0(iNoise, iN, plUVPhaseRandSeed, pfPhase);
+	func_00256EC0(iN, pfAmp);
+	*pfStepOut = fStep;
+	*piNOut = iN;
 }
