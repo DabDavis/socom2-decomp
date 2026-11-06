@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 61** (CZLineMap::TickAnchors 0x20E750, open since round 60, and BitmapReticule::DrawLaseTarget
+  0x217550, open since round 59, byte-exact; SeekGlyph / Advance's shared SetPiece registers fixed, OPEN by one
+  scheduling move each):
+  - A POINTER RETURNED BY AN INLINE (`static inline T *F(U *p) { return &p->m; }`) IS A TEMPORARY MW DOES NOT PROPAGATE:
+    its fields are read at offsets from one register, and only loads in the block that computes it fold into the base's
+    offsets -- the target's a0 / a1 address registers with y and z read at offsets (TickAnchors' `*AnchorPos(pExtract) ==
+    *AnchorPos(pAnchor)`, DrawLaseTarget's `KitOf(seal)`); a reference returned by an inline, pointer or reference
+    locals and a cast pointer all fold, or hoist the field addresses out of the loop; a global object's address
+    propagates through any temporary, so the trick cannot keep it in a register;
+  - that pointer taken before an `if` test puts its address computation in the test's delay slot, and the test's own
+    load still folds;
+  - `x = a * b - c; x += k;` keeps the product's register for the sum; written as one expression MW puts the constant
+    first, shifting two float registers and adding two alignment nops; a float declared from a load and then scaled in
+    place is numbered before the constant, so the constant is coloured first ($f0);
+  - an anchor type held as an `int` makes the objective tests slti (TickAnchors).
 - **Tells from the game states, round 50** (no new row: SetRoundStatUiVars 0x1F21B0, unwritten before, written at the
   size, OPEN by its walk's six frame slots; five rows named -- SOCOM 1's CZPersonaState::GetPersonaName 0x2C3A70 and
   GetSOUPString 0x2C3C30, ours GetPersonaClanTag 0x2C3AC0, EnableExternalWhispers 0x2A41F0, IsNewestVersion 0x2C94F0):
