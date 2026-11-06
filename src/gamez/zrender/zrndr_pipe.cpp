@@ -34,6 +34,7 @@
 #include "../zsys/zsys_public.h"
 #include "../zsys/zsys.h"
 #include "../znode/node_world.h"
+#include "../znode/int_shapes.h"
 #include "../zcamera/zcamera.h"
 #include "../zvid/zvid.h"
 
@@ -872,30 +873,8 @@ static inline void BoxCorners4(PNT4D *c, const CBBox *b)
  * the model-to-world matrix is CVisual::m_ModelToWorld, NodeSetup's, SOCOM 1's static) */
 extern unsigned int AppliedToNodeNum;
 
-/* a point set from three values (ours; int_shapes.cpp's PntSet) */
-static inline void CornerSet(CPnt3D &p, float x, float y, float z)
-{
-    p.x = x;
-    p.y = y;
-    p.z = z;
-}
-
-/* a box's eight corners: the bottom four, then the top four, each ring from the low x, high z
- * corner -- AN INLINE IN THE ORIGINAL (node_world.cpp's note: 0x2DCCD0 is int_shapes.cpp's
- * out-of-line copy of SOCOM 1's CBBox8::Build), defined here again with int_shapes.cpp's body */
-inline void zdb::GetBBoxCorners(CPnt3D *out, const CBBox *b)
-{
-    CornerSet(out[0], b->m_min.x, b->m_min.y, b->m_max.z);
-    out[1] = b->m_min;
-    CornerSet(out[2], b->m_max.x, b->m_min.y, b->m_min.z);
-    CornerSet(out[3], b->m_max.x, b->m_min.y, b->m_max.z);
-    CornerSet(out[4], b->m_min.x, b->m_max.y, b->m_max.z);
-    CornerSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
-    CornerSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
-    out[7] = b->m_max;
-}
-
-/* a box's eight corners as an object (SOCOM 1's class CBBox8; node_world.cpp's) */
+/* a box's eight corners as an object (SOCOM 1's class CBBox8; node_world.cpp's -- GetBBoxCorners
+ * int_shapes.h's inline, the engine core's round 26) */
 class CBBox8 {
 public:
     CBBox8(const CBBox *b) { zdb::GetBBoxCorners(m_pts, b); }

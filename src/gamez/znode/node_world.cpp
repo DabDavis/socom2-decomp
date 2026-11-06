@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "node_world.h"
+#include "int_shapes.h"
 #include "../zanim/zanim.h"
 #include "../zcamera/zcamera.h"
 #include "../zsys/zsys.h"
@@ -233,35 +234,9 @@ static inline const CBBox *NodeBBox(CNode *node)
     return node->GetBBox();
 }
 
-/* a point set from three values (ours; int_shapes.cpp's PntSet) */
-static inline void CornerSet(CPnt3D &p, float x, float y, float z)
-{
-    p.x = x;
-    p.y = y;
-    p.z = z;
-}
-
-/* a box's eight corners: the bottom four, then the top four, each ring from the low x, high z
- * corner. AN INLINE IN THE ORIGINAL (the world lane's round 31): 0x2DCCD0 is int_shapes.cpp's
- * out-of-line copy of it -- SOCOM 1's CBBox8::Build, the same stores in the same order -- since only
- * a body MW can see makes the corners' constructor below too big to expand whole (then inlined one
- * level: the member array's CPnt3D() constructions a loop, this called). int_shapes.cpp defines it
- * out of line under the same name (an engine core unit; node_world.h declares it), so it is defined
- * here again, inline, with int_shapes.cpp's body */
-inline void GetBBoxCorners(CPnt3D *out, const CBBox *b)
-{
-    CornerSet(out[0], b->m_min.x, b->m_min.y, b->m_max.z);
-    out[1] = b->m_min;
-    CornerSet(out[2], b->m_max.x, b->m_min.y, b->m_min.z);
-    CornerSet(out[3], b->m_max.x, b->m_min.y, b->m_max.z);
-    CornerSet(out[4], b->m_min.x, b->m_max.y, b->m_max.z);
-    CornerSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
-    CornerSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
-    out[7] = b->m_max;
-}
-
-/* a box's eight corners as an object (SOCOM 1's class CBBox8, its Build SOCOM II's GetBBoxCorners
- * above) */
+/* a box's eight corners as an object (SOCOM 1's class CBBox8, its Build SOCOM II's GetBBoxCorners --
+ * int_shapes.h's inline, the engine core's round 26: AN INLINE IN THE ORIGINAL, 0x2DCCD0 its
+ * out-of-line copy; a body MW can see makes this constructor too big to expand whole) */
 class CBBox8 {
 public:
     CBBox8(const CBBox *b) { GetBBoxCorners(m_pts, b); }
