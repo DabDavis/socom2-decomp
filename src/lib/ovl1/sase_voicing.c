@@ -5,7 +5,7 @@
  * correlation between two bounds (0x251348, the estimate's). The encoder's objects link in the
  * alphabetical order of their files (PostFilt.c, PtchCand.c, RefineC0.c, Voicing.c, VoicLD.c), so
  * the two after the estimate are this object's. Written in the GCC lane's round 26a: 0x251270 and
- * 0x251348; the estimate 0x250F60 is not written. The constants are the vendor's truncated
+ * 0x251348; round 44a: the estimate 0x250F60. The constants are the vendor's truncated
  * conversions (0.8 as 0x3F4CCCCC: round 12a's decimal conversion), so they are hex floats.
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
@@ -124,4 +124,76 @@ float func_002513F0(const float *pfSW, int iEnd, float fPitch)
 		fSum += fD / fE;
 	}
 	return 1.0F - fSum / (float)nH;
+}
+
+extern void func_0024ECF8(const float *pfX, int iLength, int *piMaxIndex, float *pfXmax);
+extern void func_0024EF30(const float *pfIn, int iLength, float fNorm, float *pfOut);
+extern void func_0024D190(const float *pfMag, const float *pfFreq, int iNPeaks, float *pfAmp, float *pfDist, int *piCount, float fThresh);
+extern int func_00250CD8(float fPitch, const float *pfAmp, const float *pfFreq, int iLength, float *pfSum, float *pfPitch, float *pfGain);
+
+#define NFFT 512
+
+/* the frame's voicing estimate: the peaks below the base band normalised and weighted against the fourth root of the spectrum's
+ * envelope, their pairs fed to the pitch's refinement, and the comb's gain placed between two bounds that follow the last value.
+ * i's address is taken (its last value unused: 0x24ECF8's index): the count loop is on memory, and loop.c's load_mems shadows it
+ * in a register, its store on the loop's exit alone (the two tests that skip the loop skip the store). The two floats' places in
+ * the prototypes order the argument moves, as the target's: 0x24EF30's third, 0x250CD8's first. */
+void func_00250F60(float *pfV, const float *pfMag, float *pfPitch, float *pfOut, float *pfAmp, const float *pfFreq, int iNPeaks)
+{
+	float afNorm[256];
+	float afPairA[100], afPairD[100];
+	int i;
+	float fMax, fY;
+	int iPairs;
+	float fSum, fPitchOut, fGain;
+	float fPitch0, fSpacing, fBand, fF, fT, fV;
+	int k, iBaseBand, n, j;
+
+	fPitch0 = *pfPitch;
+	fT = fPitch0 * 0.16796875F;
+	fSpacing = 512.0F / fPitch0;
+	if (fT >= 0.0F)
+		k = (int)fT;
+	else
+		k = (int)(fT - 1.0F);
+	if (k < 5)
+		k = 5;
+	fBand = ((float)k + 0.125F) * fSpacing;
+	if (fBand > 160.0F)
+		fBand = 160.0F;
+	iBaseBand = (int)(fBand + 0.5F);
+	iBaseBand++;
+#line 139 "../../SaseEncVad/source/Voicing.c"
+	assert(iBaseBand <= NFFT);
+	for (i = 0; i < iNPeaks && !(fBand < pfFreq[i]); i++)
+		;
+	n = i;
+	if (n > 0) {
+		func_0024ECF8(pfAmp, n, &i, &fMax);
+		func_0024ECF8(pfMag, iBaseBand, &i, &fY);
+		fMax = (fY < fMax) ? fMax : fY;
+		func_0024EF30(pfAmp, n, fMax, pfAmp);
+		func_0024EF30(pfMag, iBaseBand, fMax, afNorm);
+		for (j = 0; j < n; j++) {
+			float fA, fN;
+
+			fY = pfFreq[j];
+			fN = afNorm[(int)(fY + 0.5F)];
+			fA = pfAmp[j];
+			if (fA < fN) {
+				fY = fA / fN;
+				fY *= fY;
+				pfAmp[j] = fA * (fY * fY);
+			}
+		}
+		func_0024D190(pfAmp, pfFreq, n, afPairA, afPairD, &iPairs, 0x1.b33330p+5F);
+		func_00250CD8(fPitch0, afPairA, afPairD, iPairs, &fSum, &fPitchOut, &fGain);
+	} else {
+		fPitchOut = fPitch0;
+		fGain = 0.0F;
+	}
+	fV = func_00251348(*pfV * -0.5F + 4.5F, 13.0F, fGain);
+	*pfV = fV;
+	*pfPitch = fPitchOut;
+	*pfOut = fV;
 }
