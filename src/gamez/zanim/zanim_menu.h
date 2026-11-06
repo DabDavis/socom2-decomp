@@ -7,6 +7,7 @@
 #define ZANIM_MENU_H
 
 #include <string>
+#include <queue>
 
 #include "zanim.h"
 #include "../ztwod/ztwod.h"
@@ -787,13 +788,15 @@ const char *GetCustomCharTypeName(int index);
 /* a state machine whose states are member functions, each told what happens to it: 0 entered, 1
  * ticked, 2 left (SOCOM II's CSimpleStateMachine, by its RTTI at 0x3EF738, its unit at 0x3A5xxx; the
  * members' names ours). It runs on a thread when it has one (at 4); a state change goes through a
- * queue (at 0x14: a deque of the 12-byte member pointers, 42 to a block, 0x2852B0 its push) */
+ * queue (at 0x14: a std::queue over a deque of the 12-byte member pointers, 42 to a block) whose
+ * push_back this unit emits in its template tail, the copy linked (0x2852B0: include/deque's
+ * __deque_imp::push_back, byte-exact as it stands -- the UI lane's round 34) */
 class CSimpleStateMachine;
 typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
 
-extern "C" {
-void func_002852B0(void *queue, SSMState state);    /* the state queue's push */
-}
+/* the state queue (util_ssm.cpp's: a class of its own around std::queue) */
+class CStateQueue : public std::queue<SSMState> {
+};
 
 class CSimpleStateMachine {
 public:
@@ -812,7 +815,7 @@ public:
     {
         SSMState s = state;   /* (copied first: passed straight, the reference is handed on) */
 
-        func_002852B0(m_queue, s);
+        m_queue.push(s);
     }
 
     void Idle(unsigned char event);     /* 0x3A5CB0: nothing */
@@ -824,7 +827,7 @@ public:
 
     unsigned int m_thread;   // 0x4
     SSMState m_state;   // 0x8
-    unsigned char m_queue[0x18];   // 0x14
+    CStateQueue m_queue;   // 0x14
     unsigned char m_done;   // 0x2c
     int m_30;   // 0x30
     int m_thread_id;   // 0x34
