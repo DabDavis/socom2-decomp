@@ -4,6 +4,8 @@
  * SOCOM II's 0x4003A0 does). OVL1 0x2B4190-0x2B582F. Defined in reverse of their image order
  * (-inline deferred). */
 
+/* the pods' destructors through alloc() and cap() (include/vector's opt-in, with the level at this file's end): CNodeAction::Close */
+#define __MSL_POD_DTOR_ARGS
 #include <algorithm>
 
 #include "../zentity/zentity.h"
@@ -250,7 +252,7 @@ void _actionValveCallback(CValve *valve, void *data)
  * and its slot left null (std::transform's operation, inlined; the name ours) */
 static inline CNodeAction *_close_action(CNodeAction *action)
 {
-    if (action && action->m_node && action->m_node->m_nodeEx == action)
+    if (action && action->m_node && action == action->m_node->m_nodeEx)
         action->m_node->SetNodeEx(0, false);
     delete action;
     return 0;
@@ -259,13 +261,13 @@ static inline CNodeAction *_close_action(CNodeAction *action)
 /* every action deleted and the list emptied (SOCOM 1's CNodeAction::Close, the walk a
  * std::transform as SOCOM 1's two iterators show; OVL1 0x2B55E0, CMission::Close's call). It is
  * also what makes the unit's tail call ~__list_imp from ~Container, as the target does: the clear
- * instantiates the range erase (README "Out-of-class template members"). OPEN, 0xE0 of 0x154
- * bytes: the target inlines the delete's ~CNodeAction into the op with the anims' vector's chain
- * (three this-tests), whose pod destructor calls two 8-byte pieces out of line (0x2B5750 and
- * 0x2B5740, each returning its argument: CW 2.5's alloc()/cap()-style accessors, cut a level
- * short); here the op's tree is six high (op, ~CNodeAction, the vector's four), so the op is
- * inlined one level and ~CNodeAction called (with flag 1, SOCOM 1's shape) -- the level-6
- * question (README "Level 6, or 8?") */
+ * instantiates the range erase (README "Out-of-class template members"). Byte-exact since the MSL
+ * headers' round 40, under `#pragma inline_depth(7)` at the file's end and `__MSL_POD_DTOR_ARGS`
+ * (a modelling device, a "Level 6, or 8?" witness): transform (pass 0), the op (1), ~CNodeAction
+ * (2), the vector's three this-tests (3, 4, 5), deallocate (6), and its two accessor arguments would
+ * be expanded at pass 7, so they stay calls, the capacity pair's second() 0x2B5750 then first() 0x2B5740,
+ * the data word held across them. The height check does not count an argument's wait, so all of it is
+ * admitted */
 void CNodeAction::Close()
 {
     std::transform(m_actions.begin(), m_actions.end(), m_actions.begin(), _close_action);
@@ -767,3 +769,6 @@ extern "C" void func_002B4190()
 {
     ZAnim.AddCmd("EXECUTE_ACTION", func_002B4230, 0, func_002B41C0, 0);
 }
+
+/* a modelling device, a "Level 6, or 8?" witness: CNodeAction::Close's note */
+#pragma inline_depth(7)

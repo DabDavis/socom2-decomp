@@ -2449,6 +2449,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - devices, each marked in the source: CSkbRdrHolder, SkbSetSpec / SkbFindProps, SSMQueueImp (src/ABSENT.txt), and `inline
     CSkbRect::CSkbRect` defined only for zui_skb.cpp while zui_skbview.cpp keeps its out-of-line definition -- a deliberate
     ODR stretch across the two units, not evidence of the original's shape.
+- **Tells from completing the MSL headers, round 40** (A CHAIN CUT AT ITS LEAVES, read in MW's inliner and reproduced; probes build/p40/, untracked: lv.py scores a unit under a
+  level and the opt-in, lvscan.py every unit with an open row, accscan.py the image's leaf cuts, open_rows.py every open std template row, ordd.py the generation order; runs in
+  build/scratch/msl-r40/):
+  - THE LEAF CUT (mweppc's CInline_ExpandStatement, CInline_EstimateSizeOfExpr; measured): a whole-statement call of an inline is expanded without walking its arguments, they
+    become the first statement of the copy and wait a pass (round 39's rule), while the height check counts a call's arguments at THE CALL'S OWN LEVEL. So `alloc().deallocate(data_,
+    cap())` passes the check as two high and needs three passes: with the destructor at pass L-2 of level L the whole chain is admitted and the passes run out with the two accessors
+    unexpanded -- out-of-line calls at the very bottom of a chain whose every this-test is inlined, what round 12 called "a destructor chain cut at its LEAVES, which the one-level
+    model does not produce". MW's right-to-left SetupArgs gives the image's order: n = cap(), p = data_ (the held saved register), this = alloc(). accscan.py: eight functions in
+    the image hold it. THE ORIGINAL IS AT LEVEL 8 ON THIS EVIDENCE: alloc() and cap() over the pair's first() and second() (SOCOM 1's symbols for the demo's copies, 0x173590 / 0x1735A0)
+    put the cut at the destructor's pass 5 of 8 -- Close 0x2B55E0: transform 0, the op 1, ~CNodeAction 2, the vector 3 4 5, and clear<SKBCOMPLETE> 0x393E40: a destroy level 0, then five
+    this-tests 1-5, while ~SKBPIECE 0x390760, the same five this-tests from pass 0, is whole;
+  - include/vector's `__MSL_POD_DTOR_ARGS` (by unit, with a level pragma: at level 5 every member destructor inlined into its class's would call them, where the image does not): the
+    pods' and the class deleter's destructors as SOCOM 1's, first()/second() called straight (the fit at 7, one pass shallower than 8); a class element destroyed through the
+    allocator in clear and the class erase, `first().destroy(--last)` (`__MSL_VECTOR_DESTROY_LEVEL`, also alone: below) -- the image shows the same wait there, find_or_insert<C2DGlyph> 0x35C3A0's temporary's clear calling first() 0x35C620 once per trivial element, the destroy's own
+    `this` argument left at the bottom; the pods' default constructors two levels taller and the class capacity's one (the pair's: the fit's SKBPIECE() is
+    eight high and cut to its own body, SKBCOMPLETE() seven and whole). Byte-exact with it: fts_action.cpp's CNodeAction::Close 0x2B55E0, in the natural std::transform (level 7);
+    zui_hangul.cpp's clears, erases, insert and resize<SKBPIECE> (level 7; SkbCodeCtorRow retired); ai_mapio.cpp whole, 90 of 90 (level 7); zui_skb.cpp's insert<vector<CSkbKey>> 0x38F7D0 (level 7, FindKeyProps
+    kept too tall by a no-code chain); zui_skbview.cpp's insert 0x3982F0 (level 7); c2dfont.cpp's C2DFont::Load, erase and insert<CLayout> (level 6); char_type.cpp whole (level 6). The engine core's
+    round 28 reached DeleteChildren by round 32's pair meanwhile (`__MSL_VECTOR_POD_PAIR`, side by side): that destructor one pass deeper, its own body at the last pass, calls data(), alloc(),
+    data(), cap(), deallocate(p, n) -- the pod's accessors, other rows than the pair's;
+  - AN OUT-OF-CLASS MEMBER TOO TALL IS CALLED AT ANY PASS, SO ITS TALL ELEMENT'S `-1` CALL IS A HEIGHT: insert<CDesignDlgObj> 0x384620 calls ~__vector_deleter with -1 where insert<ActionItem> beside it inlines it. The destroy level alone
+    at level 5 gives both (zui_spec.cpp whole with the end traits, 107 of 107); char_type.cpp's insert<LOD> 0x540410 needs the element's destructor three levels taller: a no-code chain;
+  - A NO-CODE CHAIN SETS A HEIGHT EXACTLY: empty inline functions calling each other, called from the function to pad, leave no code and count in the estimator (`SkbLevel6()` in FindKeyProps, `__level3()` in ~LOD). A cut kept at a deeper level for one function, no other shape disturbed;
+  - THE FIRST WALK'S MEMBERS ARE THOSE OWN CODE NAMES, AND A DEAD OWN FUNCTION NAMES THEM: vis_data.cpp's three class inserts (0x3BB7E0, 0x3BBFE0, 0x3BC680), the last misses of the weapons' round 40, inline their temporary's deleter destructor and call its clear, so they are generated ahead of clear: both builds' tails read insert, resize per band vector, then the destructors, the erases, the clears. BandInsertsDevice (src/ABSENT.txt) pushes onto the three vectors: all three byte-exact, 53 of 53, no header change;
+  - THE SECOND T-FREE CHAIN IS THE SAME CHAIN IN CLASS (request 3, include/deque's `__MSL_DEQUE_DEFAULT_INLINE`): game_main's deque<T *>() calls __deque_buf<PCv>() 0x2CEE40 -> cdeque<PPCv>() 0x2CEE70, out of class; with __deque_buf() and cdeque<T *>() in class deque<PCv>() is eight high, admitted at the last pass, so deque<T *>() calls __deque_imp<PCv>() 0x334120, whose own copy calls compressed_pair() 0x334150, the rdr editor's and the vid stack's pair -- both named, 0x3B7FA0 from source, vis_vu.cpp whole. zrdr_edit.cpp (a running lane's) takes one `#define` at merge for 0x3340F0;
+  - THE CLASS ERASE'S END BY ELEMENT: `__erase_end_object<T>`, the insert's trait over round 18's `iterator e = end()`: erase<CSaferStr> 0x383BC0, erase<CDesignDlgObj> 0x384410, erase<CDlgDesignModel> 0x384BD0, every other object byte-identical but one auto-inline decision (the erase's longer text left the explicit specialisation resize<reader> inlinable into ReadCellTable: pinned). erase<zrdr_sym> 0x3323F0 (the world's) the same, measured. VALUE 2, the end the LAST parameter of the tail's copy (an inline's argument objects are numbered in parameter order, so it comes after the walkers', which `igreplay --want` asked of erase<CSkbBgPiece> 0x3980D0): that erase byte-exact, 22 and 45 off before. A dead branch's call of a function template instantiates it and every element's implicit operator= (three new no-target rows): named through a class specialised on the live flag, nothing else moves;
+  - THE LIST DELETER'S `erase(begin(), end())`, BY UNIT (include/list's `__MSL_LIST_DTOR_ERASE`, round 36's +4 / -15 made an opt-in): ~__list_imp 0x3C6880 holds that body, begin() and end() and the erase all calls: the deleter's destructor too tall, admitted at the last pass -- at level 5 by a no-code chain in the range erase, four high, so its own copy and the deleter's copy still inline it whole. zwep_global.cpp takes it (the row with 0x3C6900, 0x3C6910 from source). OVL2's 0x510080 not: ai_events.cpp's remove_if 0x50F890 inlines the erase a pass deeper than the chain allows; sort 0x33E510 (zsav_manager.cpp, the world's) goes 0x1A4 -> 0x180 of 0x178 under it, 80 off;
+  - pop_back 0x3349C0 (open since the rdr lane; `b join` over the zero arm): the ternary's test written `size() != 0` (or `> 0`, `>= 1`) keeps the arms in the target's order; bare `size() ?`, `== 0`, `!`, `<= 0` move the zero into beqz's delay slot, 8 bytes short;
+  - a user-declared empty constructor makes the implicit copy member-wise in a second unit too: util_main.cpp's CRegistrant wanted zsys_init.cpp's `CRegistrant() {}` (insert 0x39C7F0, 126 off to 0: lw/sw and lbu/sb against the FPU block);
+  - frame slots follow creation: named locals, then temporaries as the inliner makes them, so `int v = 0; zrdr_findint(..., &v, 1)` in an inline takes its slot below every named local of the caller (C2DFont::Load's three ints; `op`, a named local after them in the source, sits above them in the frame). A local assigned from an inline two levels down numbers after a one-level inline's local (FontShadow: the shadow block s0, ReadPoint's tag s1);
+  - NOT MET: remove_if 0x50F670 / 0x352500 (9 off, the slots: read in CInline_SetupArgsExpression -- a by-value parameter's object is made in parameter order and evaluated right to left, so no argument form gives "first's slot higher and first's copy first", which only an inline's locals could, and they would be calls there); the buffer's copy 0x2F6090 (no new idea); AddKeyProps, OnIsEquipmentSelected, DistributeNotify / CreateMultiPlayerUnits untouched.
 - **Tells from completing the MSL headers, round 39** (the deque's instances; request 2's make_iterators and the whole copy chain from
   the header, no unit device left for them; probes build/p39/, untracked: rows.py / mi.py / vq.py score header variants over one unit or the
   deque units, ord.py lists a unit's functions in generation order with each row's verdict, sa.py diffs a row against any shadow, vchat.py
@@ -9982,7 +10013,8 @@ outside --files still matches: <row> by <emitter>`, rc 0 -- the thirteen each by
 `REGRESSIONS` line is a loss; a strong definition's miss is never held ("The GCC front: the prebuilt
 libraries", "The tools, round 38a").
 Since the UI's round 39 seven remain: 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3B7FA0, 0x3C6880, 0x510080 (0x2E0D50, 0x2E0DC0, 0x2F6260 and 0x3340B0 match from source since the
-MSL headers' round 39, 0x3929C0 since the UI's round 39, in zui_hangul.cpp under its level).
+MSL headers' round 39, 0x3929C0 since the UI's round 39, in zui_hangul.cpp under its level). Since the MSL headers' round 40 five: 0x3B7FA0 and 0x3C6880 match from source; 0x3340F0 goes with
+zrdr_edit.cpp's `#define __MSL_DEQUE_DEFAULT_INLINE`.
 
 ## The generated tier: `src/auto/`
 
@@ -16023,9 +16055,11 @@ What is open across lanes, and what comes next:
   6800 over every hand-written unit) and leaves 39 open; the FreeVector/TrimVector cuts (27 rows) need
   swap levels nothing shows, the list's (about 10) SOCOM 1's whole list shape, and the strings,
   element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
-  at their level-5 shapes, seal_ai.cpp's pragma with them.
+  at their level-5 shapes, seal_ai.cpp's pragma with them. EIGHT, ON THE LEAF CUT'S EVIDENCE (the MSL headers round 40): the image's eight functions that call the capacity pair's first()
+  and second() out of line and inline all the rest all put the pod's or the deleter's destructor at pass 5, which is level 8 with alloc() over first(); units that need it say so
+  by `__MSL_POD_DTOR_ARGS` and a level pragma, seven units so far, the tree staying at 5.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
-  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short --
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() since round 40 --
   round 34: the image's chain is the exported out-of-line copies of inline functions cut at their
   callers, depth first, so it wants the chain refitted as inline functions, not reordered) and
   its iterator classes (every do_assign calls separate source and destination operators out of line,

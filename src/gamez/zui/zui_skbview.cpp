@@ -39,6 +39,8 @@
  * is two levels too tall for include/vector, include/algorithm and include/string (the MSL headers'
  * round 9 note at include/vector's erase). */
 
+/* (this file's end: THE LEVEL) */
+#define __MSL_POD_DTOR_ARGS
 #include <string>
 #include "zui.h"
 #include "zui_skb.h"
@@ -1469,3 +1471,14 @@ bool SkbTwoEdits()
 {
     return s_captionMode == CAPTION_1;
 }
+
+/* insert<CSkbBgPiece> 0x3982F0's end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the AI core's round 37) */
+namespace std { template <> struct __insert_end_pointer<CSkbBgPiece> { enum { value = 1 }; }; }
+
+/* A MODELLING DEVICE, a "Level 6, or 8?" witness, with `__MSL_POD_DTOR_ARGS` at this file's head (include/vector; the MSL headers round 40): copy's tree
+ * over the pieces is eight high (include/vector's erase note), so at level 7 and with the pieces' copy taller the insert 0x3982F0 and the erase 0x3980D0 are
+ * byte-exact. The erase: the target colours the end after `this` (s3, this s2, first s1, last s0) where a named end goes first; `igreplay --want` puts it past __copy's two
+ * argument temporaries, so an object end handed to a copy whose LAST parameter it is (__erase_end_object's value 2: the object alone 45 off) */
+namespace std { template <> struct __erase_end_object<CSkbBgPiece> { enum { value = 2 }; }; }
+
+#pragma inline_depth(7)

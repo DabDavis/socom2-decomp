@@ -153,12 +153,24 @@ public:
     /* the first node read through a reference to the sentinel, as begin() reads it, the end built
      * from the member (one level of inlines below it, so the four this-tested levels of a member
      * list's implicit destructor still inline it whole: CValve's). See begin() */
+#ifdef __MSL_LIST_DTOR_ERASE
+    /* SOCOM 1's shape, BY UNIT (the MSL headers round 40, a modelling device, a "Level 6, or 8?" witness; `#define __MSL_LIST_DTOR_ERASE` ahead of the includes): the image's ~__list_imp copies
+     * 0x510080 and 0x3C6880 hold this body with begin() and end() calls, erase inlined nowhere near -- ~__list_deleter too tall, admitted at the last pass, its own body only, as an original
+     * level's taller erase makes it. At level 5 the range erase carries the height (the no-code chain below, four high: its tree five, so its own copy and remove_if still inline
+     * it whole and the deleter's copy 0x510110 too, while this destructor is six). Globally +4 / -15 (round 36's measurement, the user destructors it cuts) */
+    ~__list_deleter() { erase(begin(), end()); }
+    static void __erase_level1() {}
+    static void __erase_level2() { __erase_level1(); }
+    static void __erase_level3() { __erase_level2(); }
+    static void __erase_level4() { __erase_level3(); }
+#else
     ~__list_deleter()
     {
         node_base &t = end_;
 
         erase(iterator(t.next_), iterator(&end_));
     }
+#endif
     /* the elements of a range appended one by one, out of line (0x317720 for the pointer lists'
      * const iterators: the iterators by value, homed, end() and insert called). THROUGH push_back
      * (the MSL headers round 36), as the sized init(n, x) is: where the unit generated insert first
@@ -326,6 +338,9 @@ template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::erase(iterator first, iterator last)
 {
+#ifdef __MSL_LIST_DTOR_ERASE
+    __erase_level4();
+#endif
     node_base *f = first.node_;
 
     if (f == last.node_)
