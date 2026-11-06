@@ -189,7 +189,7 @@ public:
     /* SOCOM 1's RenderVisual (0x3374C0): whether every visual passed its level of detail */
     bool RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     /* RenderAtom's callees: SOCOM II's lighting and fog set-up (0x33B230, ours), SOCOM 1's RenderMesh
-     * (0x338480, not written) and RenderNode (0x3389C0, the world lane's round 31) */
+     * (0x338480) and RenderNode (0x3389C0), both the world lane's round 31 */
     void PrepareAtom(zdb::CNode *node);
     void BuildLightMapList(zdb::CNode *node);
     void RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov);
@@ -952,6 +952,96 @@ void CPipe::RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
     if (pushed)
         m_opacity_stack_index--;
     PopVid();
+}
+
+/* vis_mesh.cpp's (0x3B9170, not named): a word of that unit's stored into the mesh at 0x74 */
+extern "C" void func_003B9170(zdb::CMesh *mesh);
+
+/* SOCOM 1's: a node of a skinned mesh drawn with its children -- an active one; with a mesh of its
+ * own, unless it is all but transparent or its region out of the camera's sight, that mesh taken
+ * over; its matrix multiplied onto the stack; the own mesh's box tested against the view unless the
+ * caller's verdict is "inside" (dropped when outside, a character's in-view flag cleared), a
+ * character node dropped (its flag set) unless the characters are drawn, the unit matrix pushed for
+ * the mesh and the added colour cleared; its opacity pushed, a node of neither kind kept for later;
+ * a sub-mesh's matrix written into its mesh's palette (uncached); each child a sub-mesh or a mesh
+ * again or kept for later; its own mesh's level of detail set by its range and its visuals drawn;
+ * everything popped. Unwritten before the world lane's round 31: byte-exact through RenderNode's
+ * corners and NodeBBox, the corners declared ahead of the box (the box takes the lower slot), the
+ * added colour cleared through a zero declared at the top and a copy of it -- CAlpha::Render's shape:
+ * a colour built in place is folded into three stores of zero */
+void CPipe::RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov)
+{
+    CPnt3D zero;
+
+    if (!node->m_active)
+        return;
+    zdb::CMesh *own = node->GetMesh();
+
+    if (own) {
+        if (node->m_Opacity < 1.0f / 128)
+            return;
+        if (!m_camera->CanSeeRegion(1 << node->m_region_shift))
+            return;
+        mesh = own;
+    }
+    CMatrix *m = s_stack.Multiply(&node->m_matrix, true);
+
+    if (own) {
+        if (fov != 1) {
+            PNT4D corners[8];
+            CBBox box = *NodeBBox(node);
+
+            BoxCorners4(corners, &box);
+            m->Transform((CPnt4D *)corners, (CPnt4D *)corners, 8);
+            fov = m_camera->TestFOV(corners, &data_004B4E58, true);
+            if (fov == 2) {
+                if (node->m_bumpmap)
+                    node->m_socom2_a1_bits.bit4 = false;
+                s_stack.Pop();
+                return;
+            }
+        }
+        if (node->m_bumpmap && !m_drawCharacters) {
+            node->m_socom2_a1_bits.bit4 = true;
+            s_stack.Pop();
+            return;
+        }
+        s_stack.Push(&CMatrix::identity);
+        zero = CPnt3D(0.0f, 0.0f, 0.0f);
+        CPnt3D color(zero);
+
+        zdb::CVisual::m_addColor = color;
+        matrix = m;
+    }
+    bool pushed = PushNodeOpacity(node);
+
+    node->GetFirstVisual();
+    zdb::CSubMesh *sub = node->GetSubMesh();
+
+    if (!own && !sub)
+        SaveDelayedNode(matrix, node, fov);
+    if (sub)
+        sceVu0CopyMatrix((float (*)[4])((unsigned int)mesh->m_palette[sub->m_index] | 0x20000000), m->m_matrix);
+    zdb::CNodeVector &c = node->m_child;
+
+    for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i) {
+        zdb::CNode *child = *i;
+
+        if (child->GetSubMesh() || child->GetMesh())
+            RenderMesh(child, mesh, matrix, fov);
+        else
+            SaveDelayedNode(matrix, child, fov);
+    }
+    if (own) {
+        s_stack.Pop();
+        func_003B9170(own);
+        own->SetLOD(0u, m_camera->GetScaledRangeSquared((CPnt3D *)m->m_matrix[3]));
+        RenderVisual(node, fov);
+    }
+    if (pushed)
+        m_opacity_stack_index--;
+    if (&node->m_matrix)
+        s_stack.Pop();
 }
 
 /* SOCOM II's: the dynamic textures of a node's visuals added to the alpha pass's. The list's
