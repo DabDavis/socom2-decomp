@@ -2066,6 +2066,34 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 59** (20 byte-exact, 18 unwritten before: seal_control.cpp's PostTick 0x5970B0,
+  ThrottlesPreTick 0x5966A0, PerformProximityActions 0x5937C0; seal_ai.cpp's CSealCtrl::CreepTick 0x566DC0,
+  CSealCtrlAi::OnDeath 0x5714B0; seal.cpp's CZSealBody::OnDeath 0x547AF0, 0x54D620, 0x552EC0; seal_body.cpp's ProneControl
+  0x583500, InStateProne, InStateStand, InStateCrouch, SetStance, Climb, CheckAnim, 0x57D810, 0x57E1B0, 0x57E770, and Crouch
+  and InStateHang, open before; six rows named, the five helpers among them ours and unsure):
+  - a value-mode `xori; bnez X; sltu; X: bnez R` is `!a || b`, not `a && b`: read the branch target, X being the second
+    bnez; a pad-less byte-zero loop with its count loaded before the address's null test is `float t[3] = { 0.0f }`, inline
+    and placement-new forms pad the join and move the count;
+  - STATEMENT ORDER SETS FLOAT COLOURS through the pre-colour schedule: `igreplay --move` found a numbering that matched the
+    colours, but moving the clamp's bounds after the value closed CreepTick; a named local set from an inline disappears
+    into the inline's @N, numbered after all named locals, and `--saved` shows `s0=@N` -- the next local must also come
+    through an inline to number after it (`unit = UnitOf(this)`, a marked device);
+  - a `const CEntityList &` walk gives the target's lwc1 / swc1 temporary pairs with the iterator in a saved register, walks
+    over the non-const list fold them: const and non-const views split CSE classes; a counter passed as `int &n` from a
+    caller's named local numbers an inner inline's counter early (it closed Crouch, InStateHang, InStateCrouch, SetStance);
+    a stack pointer held across two inlined clears gives the target's numbering where a one-member struct gets the late
+    number;
+  - an in-class inline's local statics are emitted by every unit that sees the body, even uncalled -- hence the new header
+    seal_throw.h for CDynGrenade::Initalize, whose statics landed in eight other units in zseal.h; inline statics' row names
+    carry MW's @0 / @1, and const statics go to another section; the one-level cut's frame tell: a cut inline's locals sit
+    below every other temporary, and even CPnt3D() is called;
+  - an if/else chain into a result local gives a direct b plus alignment nops, returns lose them; an inline with an assigned
+    result keeps the b after an if-join; a by-value `0.0f` argument, or `float goal = 0.0f`, keeps the multiply or add by
+    zero where a literal folds; float literals can be products, `14.8f*14.8f`, `9.81f*10.0f`; `a >= b` has no xori where
+    `!(a < b)` does; switch cases emit in reverse source order and avoid the `||` range fold; a value `a<K && f()==0` gives
+    two li / move pairs with no andi; a `(float)` parameter copy lets locals number below a parameter; an explicit template
+    instantiation makes the template auto-inline at calls in that unit; self-recursive auto functions obey the 15-statement
+    limit.
 - **Tells from the kit and AI states, round 61** (11 rows new: CZKit::HasPickupSlot 0x5BAC30, PickupAmmo 0x5BB000 and
   0x5BB990, SetCurAccuracy 0x5BD100, FirstFrame 0x5C0250, CZKit::Tick 0x5C0FD0, the goto's move 0x5DB8F0,
   CZSealBody::UpdateAimDir 0x5DEEC0, WeaponsTick 0x5DFC80 -- open since round 52 --, the hold's callout 0x606EC0 and watch
