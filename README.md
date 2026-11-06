@@ -2066,6 +2066,39 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 59** (LookAt 0x60DCF0 by camera.cpp's own CAppCamera::LookAt source shape,
+  CAiGroup::act_camera::Tick 0x60DB60 -- open since round 17 -- and CAiSSuspended::Tick 0x5F1C70 -- open since round 6 --
+  byte-exact; 0x60A850 measured to return bool by its own code):
+  - WHEN TWO FUNCTIONS ARE THE SAME CODE, LOOK FOR EITHER ALREADY MATCHED ELSEWHERE AND REUSE ITS SOURCE SHAPE: camera.cpp's
+    byte-exact LookAt (CSE on, its LaRight / LaNegRow / LaSet3 reference inlines, the translation through a by-value
+    setter), minus the eye store, was the whole fix for ai_group.cpp's -- after seven of the lane's own spellings;
+  - one expression's address shared by CSE across blocks where the target recomputes it needs CSE off in the body plus
+    hand-sharing of what the target does share (a flags word in a local); an identical pair of call arguments needs a
+    per-call block local under propagation off (act_camera::Tick);
+  - variables declared uninitialised at a block's top are numbered at that declaration, ahead of an initialised local
+    declared after them -- a lever for pushing a named local later in the saved-register order (`igreplay --permute` named
+    the order first);
+  - an address-taken local re-read from its frame in each arm of a test is reproduced by testing a register copy that
+    initialises it; testing the copy itself lets MW forward the load into the arms (CAiSSuspended::Tick);
+  - a function's own code settles its return type: 0x60A850 as int adds `andi v0,s1,0xff` where the target moves s1, and an
+    int local turns `r = true` into li where the target has daddiu -- its callers' sltu is an `&&` materialising its
+    operand, which a bool return also gives.
+- **Tells from the engine core, round 26** (no new row: grid_di.cpp complete in source -- CGrid::GetIntersectBatch 0x2D3CF0,
+  0xA90, 25 off in float registers, and NodeGetIntersectBatch 0x2D3030, 0xCB4, 101 off, both at the target's size --;
+  camera.h gains the SEAL's zoom fields and CZKit's members for the states' HandleNewZoom; GetBBoxCorners' inline in a new
+  int_shapes.h for the world; the integrator then applied the world's bool CDI::GetIntersect):
+  - one loop counter declared at the top and reused by several loops: its later uses are split off and numbered after the
+    strength-reduced pointers, which gives those loops' saved registers (GetIntersectBatch 77 -> 38 -> 25);
+  - an offset-0 member of a local array read directly gets its common-subexpression temporary only in the second optimiser
+    pass; members at other offsets go through a hoisted address and get theirs in the first (`igreplay --cls 1 --move
+    64=31.5` gives the target's float colours, no source shape yet);
+  - an MSL-style `min` returning a reference selects between addresses, the target's value select comes from value
+    ternaries; an explicit `!(a < b)` inside an inline materialises the not, `a >= b` keeps it a branch;
+  - a global assigned in its own statement and then tested is stored and read back; assigned inside a call's argument (`f(g
+    = x)`) the value is passed and the store lands in the delay slot; an inline taking a vector by reference keeps the
+    vector's address in a register (`addiu a1,s5,116; lw 8(a1)`) where `node->m_di.begin()` folds the offset;
+  - the pragma scan's LoadNodeNames lead: strength reduction off is 40 off at the size, as round 21 found -- no pragma kept;
+    CSE off over all 30 written opens: no hit.
 - **Tells from the SEALs, round 57** (five rows, all unwritten before, byte-exact: CSealCtrl::CSealCtrl 0x598280 -- 0x5B8,
   on the first compile --, the grenade stretch 0x564D20-0x5657BF complete -- the choice 0x565110, the throw test 0x565460,
   the deploy 0x564D20 -- and the vehicle dodge 0x569550; zseal.h: CAiDecay's third word SOCOM 1's one-byte TYPE, sixteen
