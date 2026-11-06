@@ -13293,6 +13293,57 @@ changed (scratch: build/scratch/gcc/r34/ -- vprio.py scores variants with their 
 fbits.py and fexpr.py find a float's 2.96 spellings and folded forms, sdiff.py aligns a function by
 mnemonics to find size misses).
 
+**Round 35c: the 2^31 constant's register by expand_preferences, the scheduler's architecture, the VAD's fast track, the distance block's control.**
+
+- **A constant inherits a dying neighbour's preferences** (InitDistSilProcess, 3 words -> 0): global.c's
+  `expand_preferences` merges hard-register preferences across an insn that sets an allocno where another
+  dies -- local-alloc's pseudos included, all being allocnos -- so the float-to-unsigned conversion's 2^31
+  constant takes what `v` prefers where both die into `v - 2^31`. With the log less lmax in `v` first,
+  `v - d->f296` (fptodp's argument, set straight into $f12 with `v` its first operand) gives `v` a $f12
+  preference and the constant $f12; one expression, or a temporary of its own, gives $f3, the first
+  call-clobbered register no neighbour holds. The .greg dump's `;; N preferences:` lines show the merge.
+- **An index into a member array splits the member's offset at its 16-byte alignment** (the EE's
+  BIGGEST_ALIGNMENT): `v->f172[i]` is `(v + 12) + (i * 2 + 160)` -- the field's DECL_FIELD_OFFSET into the
+  index, its bit offset into the base -- where pointer arithmetic, `*(v->f172 + i)`, adds 172 whole after
+  the index (`sll; addu v; addiu 172`). VadFastTrackProcess reads its histogram's bins so and its levels'
+  table indexed (`v + 8`, then 464): the target's two forms side by side.
+- **CSE's skip-blocks forwards a stored value through an if-then**: a field stored before
+  `if (speech) off = ...;` and read after it is the stored register; the target reloads it, so the source's
+  test is a `?:` (an if/else is not skipped). **A float operation is never moved speculatively** (it may
+  trap): an early `sub.s` above a branch is the source's statement there. **fold pushes a conversion into a
+  `?:`'s arms** (a unary operation over a COND_EXPR): one conversion after a select is an if on a double
+  variable, converted into a float afterwards (and the double compared first is the one evaluated first).
+- **Per-case locals in a switch** (ControlDistSilProcess, 18 commands): one walking pointer and one set of
+  counters for three session cases are one pseudo each across the cases, and GCSE's single reaching
+  register for every `d->ncb` load then takes t0 where the target's has t1 (83 words of registers;
+  separate counters 96 -> 83, the pointer too 0). The bodies are laid out as written after the compare
+  tree (28, 29, 23, ...: not in value order); cross-jumping merges equal tails across cases.
+- **`!` of an inline's 0/1 value is `sltiu`; the target's `xori` is the value xored** (`InputControl(d, 5) ^
+  1`): combine sees the value's two bits only through the xor.
+- **Each loop's block pointer a block local of its own** (ConstructArchitecture: a3, s2 and t2 in the target
+  -- one function-level variable lives across the writers' calls and takes s2 in all three); the queue
+  tests compare `last != w[0]` (`beql s3,v0`).
+- **ProcessVad, a data point**: `cnt = sum = 0.0f` (SOCOM 1's shape: sum zeroed, cnt copied) gives sum 25
+  weighted refs over 156 insns (6,410) against cnt's 24 over 152 (6,315) -- one weighted ref more on cnt or
+  three live insns more on sum would flip them with the code unchanged; `if (i < n)` threads a flag
+  through the scan loop (`li a0,1` on its break: the 2 words). Still OPEN.
+- **Open, diagnosed in place**: ProcessVad (2) and the older opens (their diagnoses stand). Not reached:
+  CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust, the two distance passes (0x4FDE08 0x8C0,
+  0x4FE6C8 0xA90: twice SOCOM 1's DistCalc / DistCalc4Bit, mnemonic ratio 0.5), InitCalculateDistances
+  (0.62), SplitUp_Finals and its twin; BacktraceWordsParBT (0.89 against SOCOM 1's, its result records still
+  padding) and ProcessAcne (0.87) are the closest unwritten bodies.
+
+Hand-written in round 35c: `asr/distsil.c` (InitDistSilProcess closed, ControlDistSilProcess new: every
+function written byte-exact, 15 of 15), `asr/tos.c` (ConstructArchitecture new: 19 of 21; TOSPROC's +1 build
+flag and TOSCB's +4 host callback typed), `asr/vad.c` (VadFastTrackProcess new: 9 of 10; f72[0..2], f1166 and
+f1170 retyped short, f1072 unsigned -- copies and stores elsewhere, no other function changed) -- 4 rows new to
+the map's byte-exact rows (6,608 bytes), no draft superseded; `src/lib/asr` 582 of 610 (578 of 607 before).
+Named (1): 0x5006E8 InitCalculateDistances (s1:ref, s1:order: SOCOM 1's ControlDistSilProcess stores
+InitCalculateDistances at the distance interface's +8 where ours stores this row, and both objects end with
+it). No tool changed (scratch: build/scratch/gcc/r35/ -- mkv.py writes one variant of a unit with its
+headers beside it for structdiff, s1cmp.py ranks a row against SOCOM 1's body by mnemonic ratio, s1sizes.py
+sizes rows against SOCOM 1's, rd.py reads the image's doubles and floats).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
