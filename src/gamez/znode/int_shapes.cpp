@@ -226,31 +226,29 @@ bool CDIPoly::GetIntersect(DiIntersect *di)
     return 1;
 }
 
+/* the back-face mask as the tail's w, through an enum-typed by-value parameter (ours -- the mask's
+ * type in no DWARF -- the engine core's round 27): enums are not propagated, so the mask stays in the
+ * inline's temporary, numbered after the asm's operands and ahead of the 1.0f constant */
+enum BackfaceMask { MASK_NONE = 0, MASK_ALL = 0x7FFFFFFF };
+static inline void SetMaskW(CPnt4D &p, BackfaceMask m)
+{
+    *(int *)&p.w = m;
+}
+
 /* the model-space tip and tail as points (w 1), the tail's w then the back-face mask's bits, loaded
  * into VU0 -- the tip in vf1, the tail in vf2 -- for the polygon queries' microprograms (SOCOM 1's,
- * which wrote the pair to VU0's data memory instead).
- * OPEN, 5 instructions (the right size, every store in the target's order): the mask's load and the
- * 1.0f constant trade v1/a1 (the target loads the mask into a1). The asm's operands listed tail
- * first fixed the address pair; tried for the rest (build/scratch/core/v_ltt*.py): the mask in a
- * const or plain local (top, middle, a dead first definition), the 1.0f in a local before or after,
- * the w through an int pointer, an int array index, unsigned, a float cast, tip built first.
- * Round 16, the replay: the target's registers need the mask's load numbered ahead of the 1.0f
- * constant (v36 below v35: every one of the 15 hits) -- the mask read before the tail's CPnt4D is
- * made; a named local is folded back into the store (README: a local read once), and a dead first
- * definition, a reference to the w or the 1.0f in a local give 6 (build/scratch/core/v_ltt3.py).
- * Round 18: the mask read in an outer inline ahead of the inner constructor (15), set through an
- * inline taking it (6), through a const reference or a pointer to the w (0xA8), from an inline
- * getter (6) (build/scratch/core/v_ltt.py). Round 22: the mask stored FIRST, the tail then given
- * the temporary's x, y and z alone (a 3-word copy through an inline taking the CPnt4D by reference)
- * gives the target's registers (the mask a1, the 1.0f v1) but schedules the mask's store ahead of
- * the this-loads (12); a comma in the constructor's w, the whole load in an inline taking the mask
- * (15) -- build/scratch/core/v_ltt22*.py */
+ * which wrote the pair to VU0's data memory instead). Byte-exact since the engine core's round 27
+ * (5 off since round 10): the mask's load and the 1.0f constant traded v1 / a1 until the mask went
+ * through SetMaskW's enum parameter -- every other mask local, const or dead first definition
+ * folded back into the store, a named enum local took the first number (a3), an `int` parameter
+ * was substituted (build/scratch/core/v_ltt1-3.py). The asm's operands listed tail first fix the
+ * address pair. */
 void DiIntersect::LoadTipAndTail()
 {
     CPnt4D tip, tail;
 
     tail = CPnt4D(m_MTail.x, m_MTail.y, m_MTail.z, 1.0f);
-    *(int *)&tail.w = CDI::m_backface_mask;
+    SetMaskW(tail, (BackfaceMask)CDI::m_backface_mask);
     tip = CPnt4D(m_MTip.x, m_MTip.y, m_MTip.z, 1.0f);
     asm __volatile__ (
         "lqc2 $vf1, 0(%1)\n"
@@ -350,17 +348,12 @@ void CDI::SetEdgeVecsAndNorm()
  * target computes the tip's address first and gives the pair t3/t2).
  * The zero is made inside the asm block, as in CDIPoly::GetIntersect (above), which gives the target's
  * lwc1-mtc1-nop order and its size.
- * OPEN, 2 instructions (the target's size, 0x280): the return 0's `move v0,zero` sits in the `b`'s
- * delay slot where the target has it in the bc1f's -- MW's filler does not hoist it across the
- * branch when the branch's block also writes or reads v0 (the normal's address here: a probe with the
- * normal in a3 hoists it, build/scratch/core/p6.cpp), yet the target's block holds the same v0 uses;
- * tried a C, GCC-style or split asm zero, `else`, a ternary, `!=` first, result locals
- * (build/scratch/core/v_bbt*.py); round 18: the flag a ternary (24), with the return as a ternary
- * or `z != w` (24, 0x278) */
-/* OPEN, 2 instructions (the core lane round 22): the last test's zero -- the target fills bc1f's
- * delay slot with `move v0,zero` (as the early return's beqz is filled), MW fills the following b's;
- * twelve return spellings (ternaries, a result local, if / else, !, != , a bool) and the 0.0f as a
- * C constant instead of the asm's mtc1 the same or longer (build/scratch/core/v_bbox*.py) */
+ * Byte-exact since the engine core's round 27 (2 off since round 14): the return 0's `move v0,zero` in
+ * the bc1f's delay slot. MW's filler does not hoist it across the branch while the branch's scheduling
+ * block also writes or reads v0 (the normal's address); the `.set reorder` after the last store splits
+ * that block off (the zdb world's round 33: a `.set` in an asm block splits MW's scheduling block at no
+ * code cost; ahead of the store or after the block's last instruction it changes nothing; `.set
+ * noreorder` is 8 bytes shorter -- it drops the mtc1's load-delay nop). */
 bool CDIBBox::GetIntersect(DiIntersect *di)
 {
     const CBBox *box = m_bbox;
@@ -399,6 +392,7 @@ bool CDIBBox::GetIntersect(DiIntersect *di)
         qmtc2.i a0, vf0
         sqc2 vf10, 0(is)
         sqc2 vf30, 0(norm)
+        .set reorder
         lwc1 w, 12(is)
         mtc1 zero, z
     }
