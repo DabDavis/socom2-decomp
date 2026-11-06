@@ -1378,6 +1378,36 @@ extern "C" bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float 
     return true;
 }
 
+/* Stand(1) with ClearStack's counter the caller's (InStateCrouch's first arm: the counter numbered ahead of
+ * the stance -- round 42's replay of Crouch, the same miss) */
+static inline CZBodyAnimBlend *StandN(CZSealBody *seal, int &n, int count)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int stance = seal->m_state;
+
+    if (stance == 0 || b->m_state == 0)
+        return b;
+    float t = b->m_tfrac;
+
+    {
+        CZBodyAnimBlend *c = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+        CBodyAnimBlendStack *stack;
+
+        n = 12;
+        stack = &seal->m_blends;
+        while (BlendCount(stack) > 1 && n > 0)
+            c = seal->PopBlend(), n--;
+        if (n <= 0)
+            func_00555170((char *)seal + 0x1c0);
+        else {
+            if (c)
+                c->m_ctrl = 0;
+            seal->m_desiredStance = STANCE_PRONE;
+        }
+    }
+    return seal->Stand_0(stance, count, t);
+}
+
 /* whether the SEAL can take a stance now (OVL2 0x5857E0, below: Crouch inlines it) */
 extern "C" bool func_005857E0(CZSealBody *seal);
 
@@ -2294,6 +2324,123 @@ extern "C" bool func_00584C10(CZSealBody *seal)
     return true;
 }
 
+extern "C" {
+extern AnimSet *data_0044D408;
+extern AnimSet *data_0044D410;
+/* (OVL2 0x5B56C0, seal_env.cpp's span, unwritten: the throttles turned by the SEAL's slope) */
+void func_005B56C0(CZSealBody *seal, float *z, float *x);
+}
+
+/* whether a body is carried with the top blend's word set (an inline, the name ours) */
+static inline bool CarryHolds(CZSealBody *seal)
+{
+    if (seal->m_carry && ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_homing.m_blend)
+        return true;
+    return false;
+}
+
+/* the stand's move: unless a move anim (2 to 4) is up the blends cleared to the base and anim 2 pushed in
+ * the state -- not limping, that alone; the turn's envelope cleared, the moving flag set, the move
+ * controlled (an inline: InStateStand has it thrice, SOCOM 1's as well; the name ours) */
+static inline CZBodyAnimBlend *StandMove(CZSealBody *seal, float x, float z)
+{
+    func_00555170(&seal->m_blends);
+    if (!seal->IsCurrentBlend((AnimType)2) && !seal->IsCurrentBlend((AnimType)3) &&
+        !seal->IsCurrentBlend((AnimType)4)) {
+        seal->ClearToBase(false);
+
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)2, seal->m_state, 0, 0);
+
+        if (!seal->m_limp)
+            return b;
+    }
+    seal->m_turnip.Clear();
+    seal->SetIsTurning(false);
+    seal->SetIsMoving(true);
+    return seal->MoveControl(x, z);
+}
+
+/* standing: while a carried body's blend holds, its playback a quarter; in the two sets that forbid it a
+ * crouch asked or nothing; else the throttles' zeros read, moved ones eased and kept, and by the flags --
+ * moving, turning or neither -- a stop, a turn or the move (OVL2 0x586570: SOCOM 1's InStateStand, its
+ * throttles read at 0x240, 0x244 and 0x23C). The tail one if/else chain into a result local in $v0: each
+ * arm's `b` goes straight to the end, with the alignment nops the labels take -- returns from the arms lose
+ * the nops, four words short */
+CZBodyAnimBlend *CZSealBody::InStateStand()
+{
+    if (CarryHolds(this)) {
+        ((CZBodyAnimBlend *)func_00555170(&m_blends))->Representative()->SetPlayback(0.25f);
+        return (CZBodyAnimBlend *)func_00555170(&m_blends);
+    }
+    float x = m_240;
+    float z = m_244;
+    float t = m_23c;
+
+    if (m_animset == data_0044D3F8)
+        IdleSet(this, x, t, z);
+    if (m_animset == data_0044D408) {
+        m_desiredState = stateCrouch;
+        return (CZBodyAnimBlend *)func_00555170(&m_blends);
+    }
+    if (m_animset == data_0044D410)
+        return (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    static float zero_z = 0.0f;
+    static float zero_x = 0.0f;
+    static float zero_t = 0.0f;
+    bool still_z = _close_enough(z, zero_z, data_003F3428);
+    bool still_x = _close_enough(x, zero_x, data_003F3428);
+    bool still_t = _close_enough(t, zero_t, data_003F3420);
+
+    if (!still_z || !still_x) {
+        func_005B56C0(this, &z, &x);
+        SmoothXZThrottles(z, x);
+    }
+    CZBodyAnimBlend *top;
+
+    m_244 = z;
+    m_240 = x;
+    func_00555170(&m_blends);
+    if (m_is_moving) {
+        if (still_z && still_x) {
+            if (still_t)
+                top = StandStill(x, z);
+            else
+                top = StandTurning(t);
+        } else
+            top = StandMove(this, x, z);
+    } else if (m_is_turning) {
+        if (still_z && x < data_003F3428 + t * (t * (0.3f - data_003F3428)) &&
+            x > -(1.5f * data_003F3428 + t * (t * (0.5f - 1.5f * data_003F3428)))) {
+            if (still_t)
+                top = StandStill(x, z);
+            else
+                top = StandTurning(t);
+        } else
+            top = StandMove(this, x, z);
+    } else if (!still_z || !still_x)
+        top = StandMove(this, x, z);
+    else if (still_t)
+        top = StandStill(x, z);
+    else
+        top = StandTurning(t);
+    return top;
+}
+
+/* the move blendables of the bound set (anim.cpp's AnimSet holds them whole from 0x60: a view, the
+ * names SOCOM 1's) */
+struct AnimSetMoves {
+    unsigned char _0[0x60];
+    CBlendable m_move_anims;   // 0x60
+    CBlendable m_moveback_anims;   // 0x90
+    CBlendable m_strafeL_anims;   // 0xc0
+    CBlendable m_strafeR_anims;   // 0xf0
+    CBlendable m_crouchmove_anims;   // 0x120
+    CBlendable m_crouchmoveback_anims;   // 0x150
+    CBlendable m_crouchstrafeL_anims;   // 0x180
+    CBlendable m_crouchstrafeR_anims;   // 0x1b0
+};
+
 /* ClearStack (below) over a stack pointer already held: InStateProne's second clear keeps the first's
  * saved register (ClearStack's own local recomputes it) */
 static inline CZBodyAnimBlend *ClearStackOf(CZSealBody *seal, CBodyAnimBlendStack *stack, unsigned int count)
@@ -2309,6 +2456,192 @@ static inline CZBodyAnimBlend *ClearStackOf(CZSealBody *seal, CBodyAnimBlendStac
         b->m_ctrl = 0;
     seal->m_desiredStance = STANCE_PRONE;
     return b;
+}
+
+/* Stand(n) over a stack pointer already held (as ClearStackOf) */
+static inline CZBodyAnimBlend *StandOf(CZSealBody *seal, CBodyAnimBlendStack *stack, int n)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    int stance = seal->m_state;
+
+    if (stance == 0 || b->m_state == 0)
+        return b;
+    float t = b->m_tfrac;
+
+    ClearStackOf(seal, stack, 1);
+    return seal->Stand_0(stance, n, t);
+}
+
+/* crouched: a SEAL this console plays that cannot crouch stands up instead; else the set of 0x44D3F8
+ * undone by a throttle; at a stop anim 18 taken -- the foot's side kept from the crouch's strafe weights
+ * (past 0.6 either way), or from the turn or the foot -- and a stand asked if it does not take, the rise
+ * anim 17 for bit 2 of 0x21C, else the top made whole, the flags cleared, the bit cleared; turning anim 21
+ * with its foot and envelope; moving fast enough with room to stand the bit set and the stand's move, else
+ * the crouch's own at the throttles slowed to its top speed (OVL2 0x584C60: SOCOM 1's InStateCrouch, its
+ * throttles read at 0x240, 0x244 and 0x23C) */
+CZBodyAnimBlend *CZSealBody::InStateCrouch()
+{
+    CZBodyAnimBlend *top;
+    CZBodyAnimBlend *first;
+    int stand_n;
+    int foot;
+
+    if (!IsRemote() && !func_005857E0(this)) {
+        m_desiredState = stateStand;
+        m_stancechanged = true;
+        top = StandN(this, stand_n, 1);
+    } else {
+        float x = m_240;
+        float z = m_244;
+        float t = m_23c;
+
+        if (m_animset == data_0044D3F8)
+            IdleSet(this, x, t, z);
+
+        float move_x = x;
+        float move_z = z;
+
+        UpdateQuadrant(z, x, false);
+
+        first = (CZBodyAnimBlend *)func_00555170(&m_blends);
+        foot = first->ThisFoot();
+
+        if (IsStopped(x, z, t)) {
+            static float zero_t = 0.0f;
+
+            if (_close_enough(t, zero_t, data_003F3420)) {
+                if (!IsCurrentBlend((AnimType)18)) {
+                    CBlendable *strafe = &((AnimSetMoves *)m_animset)->m_crouchstrafeR_anims;
+                    float sum = 0.0f;
+
+                    for (ACTIVE_ANIM *a = first->m_anims.Begin(); a; a = first->m_anims.Next())
+                        if (strafe->Contains((AnimType)a->m_id))
+                            sum += a->m_wt;
+
+                    /* (a one-member struct, scalarised: numbered after the inlines' locals) */
+                    struct {
+                        CBodyAnimBlendStack *v;
+                    } stack;
+
+                    {
+                        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+                        int n = 12;
+
+                        stack.v = &m_blends;
+                        while (BlendCount(stack.v) > 2 && n > 0)
+                            b = PopBlend(), n--;
+                        if (n <= 0)
+                            func_00555170((char *)this + 0x1c0);
+                        else {
+                            if (b)
+                                b->m_ctrl = 0;
+                            m_desiredStance = STANCE_PRONE;
+                        }
+                    }
+                    if (sum > 0.6f)
+                        m_last_foot = 2;
+                    else if (sum < -0.6f)
+                        m_last_foot = 32;
+                    else if (m_is_turning)
+                        m_last_foot = 2;
+                    else {
+                        short last;
+
+                        if (foot >= 17 && foot < 48)
+                            last = 32;
+                        else
+                            last = 2;
+                        m_last_foot = last;
+                    }
+                    if (!IsCurrentBlend((AnimType)18)) {
+                        if (SignedBlendCount(stack.v) > 1)
+                            PopBlend();
+                        func_00588BC0(this, (AnimType)18, 1, 0, 0);
+                    }
+                    if (!IsCurrentBlend((AnimType)18)) {
+                        m_desiredState = stateStand;
+                        m_stancechanged = true;
+                        return StandOf(this, stack.v, 1);
+                    }
+                }
+                m_turnip.Clear();
+                if (m_21c_bit2)
+                    top = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)17, 1, 0, 0);
+                else {
+                    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+                    b->SetRepresentativeWt(1.0f);
+                    SetIsMoving(false);
+                    SetIsTurning(false);
+                    top = b;
+                }
+                m_21c_bit2 = false;
+            } else {
+                m_21c_bit2 = false;
+                if (!IsCurrentBlend((AnimType)21)) {
+                    ClearStack(2, true);
+
+                    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)21, 1, 0, 0);
+
+                    if (!IsCurrentBlend((AnimType)21))
+                        return b;
+
+                    short last;
+
+                    if (foot >= 17 && foot < 48)
+                        last = 32;
+                    else
+                        last = 2;
+                    m_last_foot = last;
+                    if (m_last_foot == 32)
+                        b->m_tfrac = 0.5f;
+                    TurnSetup(foot);
+                    m_turnip.Start(0.8f, 3000.0f, 0.4f);
+                    m_turnip.m_currT = m_turnip.m_holdT + m_turnip.m_downT;
+                }
+                SetIsTurning(true);
+                SetIsMoving(false);
+                top = TurnControl(t);
+            }
+        } else {
+            float len2 = move_z * move_z + move_x * move_x;
+            bool run = 14.8f * 14.8f * len2 >= 12.4f * 12.4f;
+
+            if (run && m_root->m_pos.y < 9.0f)
+                run = OKToStand(this, stateStand);
+            if (run) {
+                m_21c_bit2 = true;
+                func_005B56C0(this, &move_z, &move_x);
+                SmoothXZThrottles(move_z, move_x);
+                m_244 = move_z;
+                m_240 = move_x;
+                top = StandMove(this, move_x, move_z);
+            } else {
+                m_21c_bit2 = false;
+                if (!IsCurrentBlend((AnimType)20) && !IsCurrentBlend((AnimType)9)) {
+                    ClearToBase(false);
+
+                    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)20, 1, 0, 0);
+
+                    if (!IsCurrentBlend((AnimType)20))
+                        return b;
+                }
+
+                float scale = 14.0f / (14.8f * sqrtf(len2));
+
+                move_z *= scale;
+                move_x *= scale;
+                func_005B56C0(this, &move_z, &move_x);
+                SmoothXZThrottles(move_z, move_x);
+                m_244 = move_z;
+                m_240 = move_x;
+                SetIsTurning(false);
+                SetIsMoving(true);
+                top = CrouchMoveControl(move_x, move_z);
+            }
+        }
+    }
+    return top;
 }
 
 /* prone: a SEAL this console plays too deep to lie down crouches instead; else the set of 0x44D3F8 undone
@@ -3134,19 +3467,6 @@ extern "C" {
 void func_0058BAB0(CZSealBody *seal, CActiveAnimList *list, CBlendable *blendable, float scale);
 }
 
-/* the move blendables of the bound set (anim.cpp's AnimSet holds them whole from 0x60: a view, the
- * names SOCOM 1's) */
-struct AnimSetMoves {
-    unsigned char _0[0x60];
-    CBlendable m_move_anims;   // 0x60
-    CBlendable m_moveback_anims;   // 0x90
-    CBlendable m_strafeL_anims;   // 0xc0
-    CBlendable m_strafeR_anims;   // 0xf0
-    CBlendable m_crouchmove_anims;   // 0x120
-    CBlendable m_crouchmoveback_anims;   // 0x150
-    CBlendable m_crouchstrafeL_anims;   // 0x180
-    CBlendable m_crouchstrafeR_anims;   // 0x1b0
-};
 
 /* the strafe's share read through a const reference (an inline, the name ours: MoveControl's strafe
  * test) */
