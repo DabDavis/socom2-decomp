@@ -2066,6 +2066,45 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the zdb world, round 34** (fifteen rows by the full check, 19,652 bytes, and the two it also closed through
+  the MSL's round 40, 0x3323F0 and 0x3349C0; open rows in the range 20 to 3: CPipe::RenderWorld 0x339DE0, unwritten before,
+  RenderVisual 0x3374C0, CAlpha::Insert 0x336F60, BuildNodeLocalLightList 0x338FA0, CNode::BuildMTW 0x3109F0,
+  CWorld::~CWorld 0x31FE00, the list sort 0x33E510; scratch build/scratch/world-r34/wld/):
+  - A FRAME IS READ TOP DOWN, AND TWO SLOTS OF ONE CLASS THAT NEVER COEXIST ARE ONE VARIABLE: named locals, parse-level
+    temporaries, inline temporaries by depth, IRO's objects, then the homed parameter. Two slots of one class that never
+    coexist, the lower below every inline temporary, are one source variable split by `IRO_SplitLifetimes`
+    (`create_temp_object`): `pos` beside `it` could never reach that frame. Return slots all above position copies mean the
+    copy sits a level deeper than the slot (two wrappers); one wrapper interleaves them; frame slots follow creation order.
+  - A HOISTED PREHEADER IS APPENDED AT THE FUNCTION'S END: an explicit `return;` in each arm sends the arms past it; without
+    it they branch to a lone `b`. Cases inside the switch with `break` avoid a branch to a lone `b` as well (the engine
+    core's round 28 confirmed), so hoists return.
+  - 3.0b52's CSE COMPARES THE ADDRESS'S POINTER TYPE: `box.m_max` never shares with `b->m_max.x`, but a reference to the
+    corner does. `t = a[j = i];` keeps the read on the inner `&a[j]`, where `j = i; t = a[j];` is copy-propagated to `a[i]`.
+    A product written twice in a compare generates the left side first; a named local generates the product first. A
+    reference bound ahead of a compare stays in a register; bound in the block it is forwarded.
+  - A `const` short local read once is not expression-propagated, so `PullOutInvariantAssignments` pulls it; an enum holder
+    of an address assigned at first use in a loop is hoisted and keeps a saved register. A `const T *` inline parameter's
+    `ETYPCON` makes `p + k` subable across copies, where a non-const one folds displacements.
+  - `if (x == 0) { y = this; } else { y = call(); }`, y uninitialised, gives `bnez; slot; b over; slot`, because coalescing
+    empties the arm after layout; `!x` swaps the arms and loses it. `set = *it` before the end test fills the branch's slot
+    from before it. A do-while's `if (i > j) break;` raised a CSE's spill cost from 19 to 131, so a spill pick can be
+    structure rather than numbering.
+  - INLINES: a class's empty inline destructor gives `delete`'s null test, and a class over a vector adds the fourth this-
+    test; a second statement (`(void)0;`) in an in-class destructor leaves its callees called, one statement inlines whole;
+    a trait `if` in a template member is not neutral, the dead arm counts toward callers' inlining; an inline's by-reference
+    argument that is a call is not substituted, so saved registers follow each call and non-call arguments stay frame-
+    relative; conversions held in two inline locals make IR-numbered temporaries, three locals cut a level; moving
+    statements into an inline can bring a function under the 15-statement auto-inline limit with its out-of-line copy
+    unchanged.
+  - COPIES: `CPnt3D p = *(CPnt3D *)q` copy-constructs through FPRs, assignment is member-wise, and `return CPnt3D(x, y, z)`
+    is frame-relative.
+  - Open: Create3Sided 0x322800 (0x5EC of 0x5E4, one block: `igreplay` reproduces the target if the high half is numbered
+    before the constant, about 20 forms in its OPEN comment), CreateVisuals 0x322DF0 (0x17EC of 0x17BC, frame 1616 of 1584:
+    its comment holds the target's frame and colour maps, the split-lifetime rule not yet tried on it), remove_if 0x352500
+    (9, slots only; 0x50F670 is the same miss). Marked stand-ins: the enum holders in RenderVisual and RenderWorld,
+    FaceCorners' int holders, FifoPacket, line_erase and string_erase2, include/list's __sort_list and insert_at. Not
+    measured: `insert_at` renamed `insert` in list<T *>, the first evidence that the pointer list has an insert of its own,
+    which may close slot misses like LoadVehicles.
 - **Tells from the engine core, round 28** (ten byte-exact, 26,568 bytes; body.cpp and zanim_cmd_parse.cpp whole: CPad::Tick
   0x2DA930, zAnimObjectMotionTick 0x261370 with GetBBox's copy 0x262550, zAnimObjectMotionBegin 0x262690,
   zAnimParticleSourceTick 0x266830, camera mode 6 0x2964F0, CAppCamera::UpdateDeathCamState 0x2980D0, CBody::Destroy
