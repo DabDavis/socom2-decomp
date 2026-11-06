@@ -2077,7 +2077,6 @@ int func_00618AD0(int *pParams, int *pStatus)
     return pStatus[1] = func_00618B38(pParams);
 }
 
-/*<func_00618B38>*/
 /* SOCOM 1's NetJoin grown (0x618B38, under func_00618AD0's checks): the world's callbacks kept, this client's record made, the others
  * told, session master when nobody else is here, and the wait for the join's answer when no callback will take it. */
 typedef struct DmeJoinParams {
@@ -2250,7 +2249,6 @@ int func_00618B38(DmeJoinParams *pParams)
     }
     return MyClientIsJoined != 0 ? 0 : 7;
 }
-/*</func_00618B38>*/
 
 
 extern int DmeToRtMsgConnectionIndex(int nConnection);
@@ -5180,7 +5178,6 @@ void func_00617250(unsigned short nConnection, unsigned char nStatus, unsigned s
     }
 }
 
-/*<func_0061A800>*/
 /* SOCOM 1's NetSendObjectFullUpdate grown (0x61A800, by its calls and fields): every field that fits a message of 510 bytes, sent to one
  * client or (nTarget -1) to the object's filter's. */
 typedef struct DmeFullUpdate {
@@ -5276,9 +5273,7 @@ int func_0061A800(int nTarget, unsigned int nIndex)
     func_00615DE0(80, data_00651178, nTarget, data_00686A24, nLength, data_0066C6F8);
     return 0;
 }
-/*</func_0061A800>*/
 
-/*<func_006199D0>*/
 /* SOCOM 1's NetCreateObject grown (0x6199D0, under dme.c's locked wrapper): a free index in this client's block, the record and its
  * buffers made, all undone when one of them will not allocate. */
 int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int nField01, int nField28, int nField03, void *pInit,
@@ -5286,7 +5281,8 @@ int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int 
 {
     DmeObjectData *pObject = 0;
     DmeClient *pClient = 0;
-    struct { DmeWorld *p; } world;
+    DmeWorld *pWorld = 0;
+    DmeWorld *pW;
     DmeStructure *pStruct;
     DmeStructure *pField = 0;
     int nSize;
@@ -5296,7 +5292,6 @@ int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int 
     int i;
     int n;
 
-    world.p = 0;
     if (pnIndex == 0)
         return DME_ERR_ARGUMENT;
     *pnIndex = -1;
@@ -5306,14 +5301,14 @@ int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int 
         return DME_ERR_ARGUMENT;
     if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
         return 15;
-    result = func_0061C600(data_00651178, &world.p);
+    result = func_0061C600(data_00651178, &pWorld);
     if (result != DME_OK)
         return result;
-    if (world.p == 0)
+    if (pWorld == 0)
         return result;
-    if ((int)world.p->nMyClient < 0 || (int)world.p->nMyClient >= world.p->field_444)
+    if ((int)pWorld->nMyClient < 0 || (int)pWorld->nMyClient >= pWorld->field_444)
         return 21;
-    func_006126E8((void **)&pClient, data_00651178, world.p->nMyClient);
+    func_006126E8((void **)&pClient, data_00651178, pWorld->nMyClient);
     if (pClient == 0)
         return 21;
     if (pClient->nObjects == 0)
@@ -5338,15 +5333,19 @@ int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int 
         NetObjectStatus[n] = 2;
         if (ActiveNetObjectCount < n + 1)
             ActiveNetObjectCount = n + 1;
-        pObject->nOwner = nOwnerKind == 2 ? -1 : (int)world.p->nMyClient;
-        pObject->nCreator = world.p->nMyClient;
+        pW = pWorld;
+        if (nOwnerKind == 2)
+            pObject->nOwner = -1;
+        else
+            pObject->nOwner = pW->nMyClient;
+        pObject->nCreator = pW->nMyClient;
         pObject->nStatus = nStatus;
         pObject->field_03 = nField03;
         pObject->field_01 = nField01;
         pObject->field_24 = CurrentNetTime + nInterval;
         pObject->pNew = DMEmalloc(nSize);
         pObject->pOld = DMEmalloc(nSize);
-        pObject->field_30 = (int)DMEmalloc(world.p->field_444 << 2);
+        pObject->field_30 = (int)DMEmalloc(pWorld->field_444 << 2);
         pObject->pnSent = DMEmalloc(pStruct->nFields << 2);
         if (pObject->pNew == 0 || pObject->pOld == 0 || pObject->field_30 == 0 || pObject->pnSent == 0) {
             if (pObject->pNew != 0) {
@@ -5367,8 +5366,8 @@ int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int 
             }
             func_00614888((void **)&pObject);
             ActiveNetObjectCount = nSaved;
-            NetObjectStatus[n] = nOldStatus;
             data_006766E0[n] = 0;
+            NetObjectStatus[n] = nOldStatus;
             return 22;
         }
         strncpy(pObject->szName, szName, 15);
@@ -5383,9 +5382,7 @@ int func_006199D0(int *pnIndex, int nOwnerKind, int nStatus, int nInterval, int 
     }
     return 19;
 }
-/*</func_006199D0>*/
 
-/*<func_0061ACF0>*/
 /* SOCOM 1's ElementErrorExceedsThreshold grown (0x61ACF0): how far an element has moved against its field's threshold, by the element's
  * type: 0-5 the integers, 6 float, 7 double, 8-15 vectors of two and three (short, int, float, double). */
 /* the threshold shares the field's word at 0x18 with the comparison's address */
@@ -5524,4 +5521,3 @@ unsigned char func_0061ACF0(DmeField *pField, char *pNew, char *pOld)
     }
     return 0;
 }
-/*</func_0061ACF0>*/
