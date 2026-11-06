@@ -481,9 +481,9 @@ extern "C" int data_004B45D8;
 /* the brightness measured last (new in SOCOM II, not named) */
 extern "C" float data_003E1420;
 extern sceGsStoreImage data_004A43E0;
-/* libgraph's sceGsGetIMR and sceGsPutIMR (MAIN's GCC-built rows, not named) */
-extern "C" u_long func_001A3098();
-extern "C" u_long func_001A3058(u_long imr);
+/* libgraph's GS interrupt-mask pair (MAIN 0x1A3058 / 0x1A3098: src/lib/sdk/gs_imr.c) */
+extern "C" u_long sceGsGetIMR(void);
+extern "C" u_long sceGsPutIMR(u_long imr);
 extern "C" int SleepThread(void);
 extern "C" float cosf(float);
 
@@ -523,7 +523,7 @@ extern "C" void func_003B1DD0(void *arg)
         asm volatile { sync }
         while (*ZV_VIF1_STAT & 0xC00)
             ;
-        u_long imr = func_001A3058(func_001A3098() | 0x200);
+        u_long imr = sceGsPutIMR(sceGsGetIMR() | 0x200);
 
         *ZV_GS_CSR = 2;
         func_003B28D0(si);
@@ -585,7 +585,7 @@ extern "C" void func_003B1DD0(void *arg)
         if ((unsigned int)data_004A45A0 >= 16)
             data_004A45A0 = 0;
         *ZV_VIF1_FIFO = data_003E1430;
-        func_001A3058(imr);
+        sceGsPutIMR(imr);
         *ZV_GS_CSR = 2;
         zSysFifoResume(true);
         EIntr();

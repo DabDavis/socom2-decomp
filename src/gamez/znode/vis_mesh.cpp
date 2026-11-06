@@ -155,6 +155,10 @@ extern "C" unsigned char data_003E14B8;
 extern "C" float data_003E14B0;
 extern "C" unsigned int *data_004B5018;
 
+/* set while hookupVisuals trims a visual's level-of-detail views (CVisual::SetBuffer then leaves the
+ * buffer's owner's count alone): this unit's bss byte, 0x4B5010, right ahead of data_004B5018 */
+unsigned char CVisual::m_noBufferRefs;
+
 /* the UV test (vis_decal.cpp's) */
 bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
 
@@ -477,7 +481,7 @@ void CMesh::RemoveMeshDecal(CMeshDecal *decal)
 
 /* every decal of the mesh let go of: freed, cleared, and given back to the pool its life says it
  * came from (SOCOM 1's gave each back as temporary) */
-void CMesh::DereferenceDecals(unsigned int vid)
+void CMesh::DereferenceDecals()
 {
     CMeshDecal *d = m_decals;
 

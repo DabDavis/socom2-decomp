@@ -674,8 +674,9 @@ public:
     /* a copy of the mesh, its own data, for a node (SOCOM 1's took no node) */
     CMesh *Clone(CNode *owner);
     /* its decals let go of, each to the pool it came from (SOCOM 1's gave every one back as
-     * temporary; the view unused) */
-    void DereferenceDecals(unsigned int vid);
+     * temporary, and took the view; SOCOM II's takes none -- its one caller, CNode::RemoveDecals
+     * 0x3136A4, sets no a1 where the CVisual call beside it passes the view: the world's round 27) */
+    void DereferenceDecals();
     /* a decal unlinked from its list (SOCOM 1's) */
     void RemoveMeshDecal(CMeshDecal *decal);
     /* a decal added over a strip, last in its list (0x3B8550, SOCOM II's: the name ours) */
