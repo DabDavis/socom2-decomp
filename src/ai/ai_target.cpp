@@ -7,6 +7,7 @@
  * image order (-inline deferred). */
 
 #include "../gamez/zentity/zentity.h"
+#include "../gamez/znode/int_material.h"
 #include "../gamez/zseal/seal_dipool.h"
 #include "../gamez/zkit/zkit.h"
 
@@ -199,6 +200,155 @@ extern "C" float func_0060B7F0(const CEntity *self, const CTarget *t)
         r *= 1.0f - distScale * t->m_distSq;
     }
     return r;
+}
+
+/* the cell a step from a cell in a direction reaches and its first layer's cell, and whether a step may
+ * end on it; false off the map (inline -- too tall to inline whole: 0x60B470 inlines it one level and
+ * calls GetMapId, GetCell and the cell's test out of line; the name ours). The map BY REFERENCE: taken
+ * by pointer MW holds the addresses of its two dimensions in saved registers across the loop (s7 and
+ * s8 more, 0x394), through the reference it reads them off the map's register as the target does */
+static inline bool TraversableNeighbor(const CAiMap &map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out,
+                                       CAiCell *&cell)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map.m_nx && y >= 0 && y < map.m_ny) {
+        out.x = x;
+        out.y = y;
+        out.m_mapid = map.GetMapId();
+        cell = map.GetCell(out, 0);
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+/* the shadow and the indoor share about a cell: the cell's and each neighbour's a step may end on,
+ * averaged -- a shadow counted (its bits + 1) / 4, an indoor cell 1; nothing written without the cell
+ * (OVL2 0x60B470, new in SOCOM II: the visibility score 0x60AA20 asks it for both ends of the ray; the
+ * name unknown). The map's GetCell inlined one level (its pieces called: 0x512140, 0x512120, 0x512100,
+ * 0x5120C0, 0x5120B0) */
+extern "C" void func_0060B470(const CAiMapLoc &loc, float *shadow, float *inside)
+{
+    CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+    if (map) {
+        float s = 0.0f;
+        float in = s;
+        CAiCell *cell = map->GetCell(loc, 0);
+
+        if (cell) {
+            s += 0.25f * (cell->GetShadow() + 1);
+            in += cell->IsInside() ? 1.0f : 0.0f;
+            CAiCell *c = 0;
+            float n = 1.0f;
+
+            for (int i = 0; i < 8; i++) {
+                CAiMapLoc l;
+
+                if (TraversableNeighbor(*map, loc, (CAiMap::DIR)i, l, c)) {
+                    s += 0.25f * (c->GetShadow() + 1);
+                    in += c->IsInside() ? 1.0f : 0.0f;
+                    n += 1.0f;
+                }
+            }
+            if (n > 0.0f) {
+                float k = 1.0f / n;
+
+                *shadow = s * k;
+                *inside = in * k;
+            }
+        }
+    }
+}
+
+/* the ray's hits as the walk below leaves them: SOCOM 1's seal_sensors.cpp statics (diNonVolCount
+ * 0x4760C0, diStopper 0x4760BC, range 0x508EE0, sorted 0x508F60 there), SOCOM II's 0x66BBC0, 0x66BBC8,
+ * 0x66BBD0 and 0x66BC50 -- only 0x60B120 reads or writes them */
+static int vis_nonvol_count;
+static int vis_stopper;
+static float vis_range[32];
+static int vis_sorted[32];
+
+/* whether any of the line of sight is left (inline: the walk's test materialises it, then branches on
+ * its negation; the name ours) */
+static inline bool Positive(float f)
+{
+    return f > 0.0f;
+}
+
+/* a node or one of its parents being a node (inline: materialised, `daddiu 1` on the found arm; the name
+ * ours) */
+static inline bool NodeUnder(const zdb::CNode *n, const zdb::CNode *root)
+{
+    const zdb::CNode *c = n;
+    bool r = false;
+
+    while (c) {
+        if (root == c) {
+            r = true;
+            break;
+        }
+        c = c->GetParent();
+    }
+    return r;
+}
+
+/* what is left of the line of sight past the ray's hits, near to far (SOCOM 1's ComputeVisibility's
+ * first half, its own function in SOCOM II: OVL2 0x60B120, the visibility score 0x60AA20 calls it with
+ * the target's node; the name unknown): each hit's material -- none stops the ray dead -- until the
+ * target's own node or one under it; a SEAL's body passes, an opaque material takes its opacity off,
+ * a volumetric one a random share by the hit's squared distance (within 50, 300 and 500) */
+extern "C" float func_0060B120(void *viewer, zdb::DiIntersect *di, zdb::CNode *node)
+{
+    static float opacity_lo = 0.0f;
+    static float opacity_hi = 1.0f;
+    static float near_sq = 2500.0f;
+    static float mid_sq = 90000.0f;
+    static float far_sq = 250000.0f;
+    static float vis_lo = 0.0f;
+    static float vis_hi = 1.0f;
+
+    vis_nonvol_count = 0;
+    if (!di)
+        return 0.0f;
+    int n = di->m_Cnt;
+    float vis = 1.0f;
+
+    di->SortNearToFar(vis_sorted, vis_range);
+    for (int i = 0; Positive(vis) && i < n; i++) {
+        int k = vis_sorted[i];
+        float d = vis_range[k];
+
+        vis_stopper = k;
+        zdb::IntersectStruct *is = &di->m_Intersects[k];
+        zdb::CNode *hit = is->m_node;
+        CMaterialEx *mat = CMaterialExArray::GetMaterialEx(is->GetMaterial());
+
+        if (node && NodeUnder(hit, node))
+            break;
+        if (!mat) {
+            vis = 0.0f;
+            vis_nonvol_count = 1;
+            break;
+        }
+        if (!CZSealBody::GetSeal(hit)) {
+            if (!(mat->m_volumetric ? true : false)) {
+                vis_nonvol_count++;
+                float t = mat->m_opacity;
+
+                _saturate(&t, opacity_lo, opacity_hi);
+                vis -= t;
+            } else if (d < near_sq)
+                vis -= Rfloat(0.5f, 1.0f);
+            else if (d < mid_sq)
+                vis -= Rfloat(0.25f, 0.65f);
+            else if (d < far_sq)
+                vis -= Rfloat(0.0f, 0.3f);
+        }
+    }
+    _saturate(&vis, vis_lo, vis_hi);
+    return vis;
 }
 
 extern "C" {
