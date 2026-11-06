@@ -971,11 +971,11 @@ public:
          * as the target colours it (the online lane's round-24 window, 34.5-35.5). By const reference,
          * or the start read straight from the member, the shift stays a code-generation temporary (14
          * off); by value through end()'s constructor end() 0x2E0C10 is lost (round 22) */
-        iterator(T **data, unsigned int start, const unsigned int &cap)
-            : p_(data + start), data_(data), first_(data_ + start), last_(data_ + cap)
+        iterator(T **const &data, unsigned int start, const unsigned int &cap)
+            : p_(data + start), data_(data), first_(*&data_ + start), last_(*&data_ + cap)
         {
         }
-        iterator(const iterator &x) { p_ = x.p(); data_ = x.data(); first_ = x.first(); last_ = x.last(); }
+        iterator(const iterator &x) { const iterator &y = x; p_ = y.p_; data_ = y.data_; first_ = y.first_; last_ = y.last_; }
         T **const &p() const { return p_; }
         T **const &data() const { return data_; }
         T **const &first() const { return first_; }
@@ -990,21 +990,21 @@ public:
         iterator &operator+=(int n)
         {
             int cap = last_ - data_;
-            int i = (p_ - data_) + n;
 
-            if (i < 0)
-                i += cap;
-            else if (i >= cap)
-                i -= cap;
-            p_ = data_ + i;
+            n += p_ - data_;
+            if (n < 0)
+                n += cap;
+            else if (n >= cap)
+                n -= cap;
+            p_ = data_ + n;
             return *this;
         }
         iterator operator+(int n) const
         {
             iterator t(*this);
+            iterator &r = t;
 
-            t += n;
-            return t;
+            return r += n;
         }
         friend bool operator==(const iterator &x, const iterator &y) { return x.p_ == y.p_; }
         friend bool operator!=(const iterator &x, const iterator &y) { return !(x == y); }
@@ -1042,21 +1042,21 @@ public:
         const_iterator &operator+=(int n)
         {
             int cap = last_ - data_;
-            int i = (p_ - data_) + n;
 
-            if (i < 0)
-                i += cap;
-            else if (i >= cap)
-                i -= cap;
-            p_ = data_ + i;
+            n += p_ - data_;
+            if (n < 0)
+                n += cap;
+            else if (n >= cap)
+                n -= cap;
+            p_ = data_ + n;
             return *this;
         }
         const_iterator operator+(int n) const
         {
             const_iterator t(*this);
+            const_iterator &r = t;
 
-            t += n;
-            return t;
+            return r += n;
         }
         friend bool operator==(const const_iterator &x, const const_iterator &y) { return x.p_ == y.p_; }
         friend bool operator!=(const const_iterator &x, const const_iterator &y) { return !(x == y); }
@@ -1113,10 +1113,19 @@ public:
         return t;
     }
     /* the first slot's iterator (begin()'s; the name ours): built in the frame as make_iterator's t is */
+    /* the first slot's iterator in the frame (the non-const begin(), in class: only make_iterator names it,
+     * and inlines it) */
+    iterator begin()
+    {
+        unsigned int s = this->start_;
+        iterator t((T **const &)this->data_, s, this->capacity_);
+
+        return t;
+    }
     const_iterator make_begin() const
     {
         unsigned int s = this->start_;
-        iterator t((T **)this->data_, s, this->capacity_);
+        iterator t((T **const &)this->data_, s, this->capacity_);
 
         return t;
     }
@@ -1435,12 +1444,28 @@ void __deque_imp<T, Allocator>::destroy(iterator first, iterator last)
     }
 }
 
+/* MAKE_ITERATOR (the MSL headers round 39, open since the online lane's round 10; build/p39/, untracked): BYTE-EXACT in
+ * every unit -- the lobby's 0x2E18A0 / 0x2E1BB0, the chat's 0x2F5D10 / 0x2F6A70, the state machine's 0x3A6CF0 / 0x3A7030,
+ * the pointer deques' 0x334AA0 / 0x334BE0 -- with no device in any unit, from five shapes: (1) the buffer iterator's
+ * operator+ steps a copy THROUGH A REFERENCE LOCAL (`T t(*this); T &r = t; return r += n;`): r's copy of &t is forwarded
+ * only inside the first block, so the target's a3 holds &t for +='s store and the copy-out after the wrap tests (70 off
+ * with `return t += n`, rounds 14 and 29); (2) += steps n itself (`n += p_ - data_`, the cap taken first), as cdeque<PCv>::
+ * iterator's; (3) the zero arm of `*i` first (`size() == 0 ? 0 : *i`, the target's bnez); (4) THE FIRST SLOT'S DATA BY
+ * CONST REFERENCE (`T **const &data`, begin passing `(T **const &)this->data_`): the storage's load is then the shift's
+ * neighbour in the first pass's order, so s's last use comes before the block index's `srl` and the two share v1 -- by
+ * value s and that index interfere (`igreplay --drop` of that one edge gives the target's colours), 9 off; and the storage
+ * read back through the field's own address (`*&data_`, cdeque<PCv>::iterator's) for a const-qualified element (0x334BE0:
+ * `data_` plain folds the store to sp+4, 2 off); (5) the const one INLINES make_begin() (in class) and the non-const one a
+ * non-const begin() of its own -- begin() const stays out of class for the copy constructor, which calls it (0x2E0AC0 ->
+ * 0x2E0CB0), so no device has to generate it early. The non-const one's copy reads the source's fields through a reference
+ * local, `const iterator &y = x` (read straight, x is forwarded a pass early and CSE shares the addresses, 24 off), the two
+ * objects at sp+0 and sp+16 as the target's */
 template <class T, class Allocator>
 typename __deque_imp<T, Allocator>::const_iterator __deque_imp<T, Allocator>::make_iterator(unsigned int n) const
 {
     n += this->start_;
-    typename iterator::buf_iterator i = this->buf_.second_.begin() + n / buf_size;
-    T *b = this->buf_.second_.size() ? *i : 0;
+    typename iterator::buf_iterator i = this->buf_.second_.make_begin() + n / buf_size;
+    T *b = this->buf_.second_.size() == 0 ? 0 : *i;
 
     return const_iterator(i, b + n % buf_size, b + buf_size);
 }
@@ -1450,7 +1475,7 @@ typename __deque_imp<T, Allocator>::iterator __deque_imp<T, Allocator>::make_ite
 {
     n += this->start_;
     typename iterator::buf_iterator i = this->buf_.second_.begin() + n / buf_size;
-    T *b = this->buf_.second_.size() ? *i : 0;
+    T *b = this->buf_.second_.size() == 0 ? 0 : *i;
 
     return iterator(i, b + n % buf_size, b + buf_size);
 }
