@@ -255,7 +255,16 @@ namespace {
  * reference gives that test (d 20, still 0x120: end() hoisted), by value 0x178; with it, `#pragma
  * opt_common_subs off` gives the size (0x138, 34 off), opt_propagation off 0x130, opt_loop_invariants
  * off 0x118 -- so the original iterator is a class whose comparison re-reads the vector's end
- * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py) */
+ * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py).
+ * The MSL headers round 36 (build/p36/oies.py, untracked): include/vector's class-vector iterator IS
+ * a class (__MSL_VECTOR_ACCESS: m_p, != as !(==)) -- the materialised test above is today's code
+ * already -- and the target's loop is plain: its latch re-reads size and data through the list's
+ * register and adds size*12 (scdiff printed that addu masked, round 33's tell). Ten header
+ * forms of end() and == (a reference or const count, size(), straight data_ + size_, begin() + n,
+ * base() compares, == by value, const references to the fields) all hoist the end (0x120); a const
+ * view's size() re-reads only the size (0x140), a const self pointer the data (0x128). SOCOM 1's
+ * DWARF and symtab: vector's iterators are raw pointers there (do_assign<PC14CCharacterWeap>), the
+ * only vector iterator class vector<bool>'s {vec_, pos_}. No header change */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));

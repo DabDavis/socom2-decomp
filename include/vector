@@ -905,7 +905,14 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
      * now: over a reference bound through a pointer local taken from an inline's result (seal_aivehicle
      * .cpp's TargetsOf: byte-exact under this end(); the pointer alone, the inline alone, or the walk
      * inside a helper keep size*48 or the whole end), and CountAwareness's in-place walk takes the
-     * same register form through the inline (`TargetsOf(e)->begin()`) -- its IsEnemy read still off */
+     * same register form through the inline (`TargetsOf(e)->begin()`) -- its IsEnemy read still off.
+     * THE UI'S ROUND 34 REQUEST, MEASURED (the MSL headers round 36, build/p36/oies.py, untracked):
+     * OnIsEquipmentSelected 0x280790's latch re-reads size AND data through the list's register and
+     * adds size*12 each pass (the "dropped" addu was scdiff's masked word); this iterator is already a
+     * class, its != materialised. Ten forms of this end() and the iterator's == (a reference or const
+     * count, size(), data_ + size_ straight, begin() + n, base() compares, == by value, const
+     * references to the fields) hoist the whole end (0x120 of 0x138); a const view's size() re-reads
+     * the size alone (0x140), a const self pointer hoists it (0x128). Not met, nothing changed */
     iterator end()
     {
         T *const p = this->data() + this->size_;
