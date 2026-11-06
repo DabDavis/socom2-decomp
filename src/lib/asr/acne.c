@@ -272,15 +272,13 @@ static __inline__ void FreeResourcesAcne(ACNE *a)
 }
 
 /* 2 marks the block (f52); 3 saves the block's state into the session buffer at *pos (or only
- * counts its size), 4 restores it (or, without a buffer, resets the block); 255 destroys it.
- * OPEN (48 words, the right size): every instruction is the target's but the session pointer and
- * the array size take each other's saved register (the target: p in s0, size in s1). Tried: the
- * reset first or in the else, the record read through p or its own base (this one: the base, as
- * the target's lbu 4/8 off a3), size declared at the top, in the block, before or after rec. */
+ * counts its size), 4 restores it (or, without a buffer, resets the block); 255 destroys it. The
+ * record read through its own base (the target's lbu 4/8 off a3). The session pointer is each
+ * case block's own (round 36c, 48 words -> 0): one p for both cases spans two blocks, a global
+ * pseudo, and local-alloc -- which runs first -- had given the block's own size s0; declared in
+ * each block both are local and local-alloc ranks them by references (p s0, size s1). */
 static int ControlAcne(ACNE *a, unsigned char cmd, unsigned char *buf, int *pos)
 {
-    unsigned char *p;
-
     switch (cmd) {
     case 2:
         a->f52 = 1;
@@ -289,6 +287,7 @@ static int ControlAcne(ACNE *a, unsigned char cmd, unsigned char *buf, int *pos)
         if (buf != 0) {
             unsigned int size = a->n * sizeof(float);
             unsigned char *rec = buf + *pos;
+            unsigned char *p;
 
             p = rec + 12;
             a->state = *(int *)rec;
@@ -321,6 +320,7 @@ static int ControlAcne(ACNE *a, unsigned char cmd, unsigned char *buf, int *pos)
         if (buf != 0) {
             unsigned int size = a->n * sizeof(float);
             unsigned char *rec = buf + *pos;
+            unsigned char *p;
 
             p = rec + 12;
             *(int *)rec = a->state;
