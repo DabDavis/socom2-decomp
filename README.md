@@ -2065,6 +2065,48 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 37** (func_003B1BF0 -- 17 off since round 29 -- and func_003B24C0 -- 15 off since round 30
+  -- byte-exact; Flatten, Ripple, zVid_Init and 0x3B0A70 measured with the optimiser's own log, `igdump --iro`):
+  - REUSING ONE VARIABLE ACROSS TWO LOOPS gives the later loop's use a temporary numbered after the loop passes'
+    temporaries (IRO_SplitLifetimes) -- the first use must be live, a dead first assignment does not split (0x3B1BF0's
+    counter and walk index in one `unsigned int`);
+  - a same-size signedness cast on a loop counter used as an index (`dst[(int)k]`, k unsigned) blocks MW's strength
+    reduction at no code cost -- PowerPC MW's IroLoop.c counts only widening casts as safe; indexing by the counter instead
+    of a pointer of your own puts MW's pointer after the rotated loop's guard, a pointer in the for-init is set before it;
+  - `#pragma opt_propagation` applies to the whole function as it stands at the function's end -- scoped around one
+    declaration it is ignored;
+  - MW hands stores to the back end in source order and the back end groups stores of the constant 0 with the function's
+    last run of them (zVid_Init's open); only `#pragma peephole off` stops it, `scheduling off` does not.
+- **Tells from the SEALs, round 55** (nine byte-exact: 0x54A3D0 -- open since round 51 --, CSealStats::Reset 0x545200,
+  CSealCtrl::SetEnabled 0x598840, the turret seat 0x585CD0, CZSealBody::CalcGoalDir 0x5AE040, CLook::SetLookDir 0x5ADC70,
+  InStateCarried 0x583AF0, InStateCarrying 0x583E70, UpdateQuadrant 0x5858A0; SetEyeLookDir's signature corrected):
+  - A `(float)` CAST OF A FLOAT IS AN EXPRESSION NODE THAT COSTS NO CODE but makes that operand the heavier one, so MW
+    numbers it first and emits the other operand first -- 0x54A3D0's `r * (float)(1.3f - t) * 0.6f` and both carry
+    states' `x * (float)rep->m_anim->m_1c`: the lever for any float operand order;
+  - a float tested as a bool (`if (len)`, `!a && !b`) compiles to `c.eq.s x,0`; `x != 0.0f`, `x == 0.0f` and `0.0f != x`
+    all put the zero first;
+  - an inline returning from two places keeps its loop variable in v0 when the caller assigns the result; with one result
+    variable for both arms MW merges it into the caller's saved-register variable and a fourth saved register appears;
+  - a float declared bare and assigned later is numbered at its declaration (CLook::SetLookDir's pitch $f24 -> $f20);
+    globals read into locals are loaded ahead of the computation, the computed value declared after them takes the lowest
+    register; a copy constructed inside an `if` loads all three fields, then stores through the next call's argument
+    register;
+  - a parameter the only caller never sets does not exist (SetEyeLookDir: SOCOM II dropped SOCOM 1's direction); a
+    "constructor" without `move v0,a0` is not a constructor (0x545200 is SOCOM 1's Reset, called twice by CZSealBody's
+    constructor in both games).
+- **Tells from the engine core, round 24** (GetDeadCamPoints 0x297A30 -- the weapons' round-36 rule: the rotation's second
+  argument through a `static inline MatrixRows(CMatrix *)` that assigns a local and returns it -- and CZAnim::Copy 0x26D940,
+  unwritten before, byte-exact; zdb::CDIBBox::SetCDIBBox 0x2DC7A0 written under its name, OPEN at the size, 32):
+  - an argument made of an inline with a body of its own is set up first even when it is a register parameter; casts and
+    one-expression inlines do not change the order;
+  - `&local.member[0]` at offset 0 (the object's own address) is never a common subexpression -- only a no-op integer
+    conversion makes MW hold it in a register (SetCDIBBox's first corner, a marked stand-in);
+  - one loop counter shared by every loop of a function changes a later loop's counter / offset numbering and allows
+    strength reduction, a fresh counter per loop merges with the count or is not reduced (CZAnim::Copy);
+  - `*p++` loads and then steps the pointer; the target's step-then-load-at-minus-4 is `p++; ... p[-1]`; a member pointer
+    read into a local before a `new` stays in a saved register, read through `this` it is reloaded after the call;
+  - `struct { ctor(box) { GetBBoxCorners(m_pts, box); } CPnt3D m_pts[8]; }` gives the CPnt3D() construction loop -- the
+    device of zparticle_source.cpp's FaceCorners and node_model.cpp's BoxCorners.
 - **Tells from the zdb world, textures, rdr and sound, round 30** (zdb::CSaveLoad::Load 0x318DA0, 0x7D8 and unwritten
   before, byte-exact -- SOCOM 1's FilterMissionFolder inlined with root "/run"; UpdateBBoxFromDI's children call corrected
   to vtable slot 0x40; CVisual::m_basefog_near named, SOCOM 1's):
@@ -13967,6 +14009,65 @@ superseded; `src/lib/asr` 585 of 614 (582 of 610 before). No rows renamed (all h
 tool changed (scratch: build/scratch/gcc/r36/ -- vt.py scores a unit's variants with their
 allocation priorities, allunits.py scores every asr unit, v_*.py the variants).
 
+**Round 37c: three of the casr object's unwritten rows by SOCOM 1's bodies -- the parameter setter, the
+acquisition, the context activation.**
+
+- **Which copy of a cross-jumped tail survives is decided by the jump chain's order** (casrSetParam,
+  281 words -> 0): jump2 walks the insns forward and tries each jump against the label's chain, which
+  lists the jumps last-first, so with every case ending in `break` (all in the exit label's chain from
+  the start) the first case's `_tosControl` tail is redirected into the LAST case's copy. The target kept
+  case 1's: its cases end in `return (unsigned char)c->last_error;` (the failure exits too) -- each such
+  return is first moved onto the copy after the switch (the code before the return label: one insn,
+  minimum 1), and only then joins the exit label's chain, as it is processed; so each later case finds
+  only the earlier ones and cross-jumps into case 1's send. A label in the way stops a merge (case 4's
+  failure return keeps its own first send), and jump optimisation inverts what is left into the
+  target's `beqz ...; b exit`.
+- **An inline's arguments are expanded as sums** (integrate.c, EXPAND_SUM): a pointer sum passed to an
+  inline puts the shift first (`addu t1,v1,a2`); computed into a variable by a statement it keeps the
+  source's order (`tab + tab[n]`: `addu t1,a3,v1`). **An inline that walks its own parameter** (`for (;
+  first <= last; first++)`) copies the argument before the body's first test -- a `p = first` per loop
+  copies it in each arm -- which moved a conflict and gave the target's dict a2, tab a3; a local `n`
+  (rather than `rc->n` twice) lets GCSE reuse `n * 4` for `tab[n]` across the join.
+- **The extern-inline redefinition carries a whole function into its later callers** (casrSetParam,
+  casrAcquisition): Set_EndBackTraceMask_In_StateDict and casrDoSecondPass, both rows near the object's
+  end, are inlined into callers above them -- an `extern __inline__` copy before the caller, the real
+  definition below; a caller above the inline (casrStop) keeps its jal. casrDoSecondPass is
+  `unsigned char` (the inlined store-flag's `andi v0,v1,0xff`); its own row and casrStop are the same
+  either way.
+- **A guard written as the condition, not an early return** (casrActivateContext, 206 words -> 6): `if
+  (c->state == 1) return 0; c->state = 1; ...cb(1, ...)` gives the compare's constant the callback's a0
+  (the call's own `li` then goes: measured, 206 words); `if (c->state != 1) { c->state = 1; ...cb(c->state, ...)
+  }` is the target's v1 for compare and store and a fresh `li a0,1` (CSE folds the reloaded halfword to
+  the constant). Then a `?:` of two function pointers called once against an if/else of two calls (the
+  store's place before the next call's argument), and two stores to a local record written in the
+  reverse of the target's order (round 27c's rule): 0.
+- **A declaration's initialiser is its statement's place**: `int err = casrCheckHandle(c); int acc =
+  0;` puts acc's zero after the inline's join (the target's `move s5,zero` between the movz and the
+  test); `int acc = 0;` first schedules it into the prologue.
+- **Two adjacent byte flags tested together are one halfword load** (fold_truthop): `c->use_dp == 0 &&
+  c->iso_word == 0` is the target's `lhu v0,576(s0)`.
+- **Open, diagnosed in place**: the older opens (their diagnoses stand; Calculate_NbrOfItemNodes_In_...:
+  the recursion loop's walker a variable of its own, block-scoped or not, 33; the counting loop's 32).
+  Not reached: BacktraceWordsParBT (the brief's block-scoping rule has nothing to act on: every variable
+  in the swap spans blocks, so all go to global-alloc), cbIsoWordRecognised (0x678, 20 frame slots,
+  floats), casrActivateData (0x620), cbCheckConfusion (0x42C: struct copies by ldl/sdl and soft-float
+  doubles), casrDoSpelling, casrCheckUserWordConfusion, casrCreateResult, the Chinese builders,
+  CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust, the distance passes, InitCalculateDistances.
+
+Hand-written in round 37c: `asr/casr.c` (casrSetParam, casrAcquisition and casrActivateContext new, each
+with SOCOM 1's body; the extern inlines of Set_EndBackTraceMask_In_StateDict and casrDoSecondPass; CTXVT's
+slots 15 and 20 named IsSpellingContext and IsIsoWordContext, contextv2.c's table; the object's RUNCTX,
+CTXDATA and UWTABLES as far as these read them: 61 of 61), `asr/casr.h` (+496 p496, +500 p500, +688
+`pending` (the part frame's bytes), +1072 `wtp`, +1092 f1092 from pads; LANGVT slots 26 and 27
+GetRecogWTP and GetSpellingWTP, language.c's table), `asr/chinese_tree.c` (Translate_Prons_Into_Items_
+And_Tones_TreeCtx written OPEN, 116 words and two short: the kind read once through the walker's first
+post-increment (161 read in the loop), then registers; 2 of 5) -- 3 rows new to the map's byte-exact rows
+(3,604 bytes), no draft superseded; `src/lib/asr` 588 of 618 (585 of 614 before). No rows renamed (all three
+had SOCOM 1's names). No tool changed (scratch: build/scratch/gcc/r37/ -- vt.py scores a unit's variants,
+open37.py lists the range's open rows and their units, rank.py ranks unwritten rows by SOCOM 1's
+mnemonic ratio, vsplit.py writes a `//==` probe's variants as units, sdiff.py side by side, p_xj.c the
+cross-jump probe).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -14376,6 +14477,59 @@ Hand-written in round 22b: `medius/rt_table.c` (+1, 0x63C950: 5 of 7), `medius/r
 0x6418A0; 42 of 49), `medius/sha1.c` (+1, 0x643018: 3 of 3), `medius/rt_mt_platform.c` (new, 0 of 1) -- 8 rows
 new to the map's byte-exact rows (`src/lib/medius` 958 -> 966 of 1,013), none superseding a draft; no rows
 named (all are placeholders without strings or a SOCOM 1 counterpart). No tool changed.
+
+**Round 23b: the platform objects' code in the data section, rt_window.c whole, shapes read off the target.**
+
+- **md5_platform.c's and SHA1_platform.c's code is in OVL2's DATA section** (0x64F778-0x669FF8, the MWo3
+  header's data): md5.c's callees 0x6641D0/0x664F80 and SHA1.c's 0x665B30/0x667AA0/0x667AD0, which had no
+  map rows, sit right after their own object's `$Header` strings (rt_crypt/src/ps2/md5_platform.c and
+  md5_platform.h at 0x664100/0x664168; SHA1_platform.c and .h at 0x665A60/0x665AC8) and before the next
+  object's (RSA.c's assert path 0x664FE0, StreamMedia.c's `$Header` 0x667B50) -- the data run is each object's
+  .data in link order, so the code is those objects' own, assembled into the section their strings were
+  written in (a top-level asm block or a `.s`; neither libc copies nor GCC runtime). R5900 assembly: sq/lq
+  saves, every delay slot a nop, the byte swap the MMI's pextlb/prevh/ppacb. Five rows (`OVL2 data area`,
+  each with this evidence; placeholders, SOCOM 1 has neither object), transcribed by tools/asmunit.py under
+  2.96's as: `medius/md5_platform.s` (2 of 2), `medius/sha1_platform.s` (3 of 3). `build/scratch/gcc/codescan.py
+  LO HI` lists every jal into a range with the prologues and returns there.
+- **The rt_window / SHA1 boundary is 0x642DA8**: 0x642C48, the first row sha1.c's header claimed, reads
+  rt_window.c's 64 slots of 256 bytes and its state word -- the window's read; SHA1.c starts at its init.
+  rt_window.c is a jitter window (fragments stored by sequence, read in order once two are held), whole.
+- **A slot indexed through its table, not a slot pointer**: rt_window's store forms `&aSlots[i].nLength` as
+  `(pWindow + 4) + (i * 256 + 16)` -- 2.96's expander sums the array's and the outer field's offsets as the
+  variable part and adds the 4-byte inner field offset to the base first; `pSlot = &aSlots[i]` gives `pSlot +
+  4`. A table walk whose sums put a small constant on the base register is direct indexing.
+- **A `while` whose body ends in `if (x) break;` is never rotated** (stmt.c's expand_end_loop: that test's
+  `goto end; barrier; label` tail makes its conditional jump the back edge and needs_end_jump 0); a `for`
+  ends at its continue label, so its leading exits rotate to the bottom with a copy at the entry --
+  rt_window's read (`for (; nSize != 0;)`, 10 words) and rt_p2p's state search 0x63B480 (open since 11b: each
+  state its own if, the arm written three times, the first one inside the 30-insn scan and moved; the 7 and
+  5 arms cross-jumped -- one `||` test is one arm, 16 bytes short).
+- **An unsigned 32-bit value into a `long` is two shifts that combine leaves apart**: setNewSeed_platform (round
+  22b's d=19) reads the EE timer counts as eeregs.h declares T0_COUNT, `volatile u_int *` -- the zero
+  extension is 2.96's dsll32/dsrl32 expansion, and the narrowing back stays two insns sched2 splits; read as
+  `int`, the extension is a move and the narrowing one truncdisi2 insn. The same zero extension (`dsll32;
+  dsrl32` into rt_memory_allocate's `unsigned long`) types rt_table's init's buffer size unsigned.
+- **Read each path's return value off the target**: rt_list's init (open since 14b) returns 3 for a null buffer
+  as for a failed allocation -- the `li v0,3` in the allocation test's slot is still live when the null test
+  branches to the epilogue; rt_table's init (open since 14b) is guard clauses (round 14b's rule: each `return
+  1`/`return 2` hoisted into v0, the two bounds tests two guards -- an `||` gives the second its own block),
+  the success path returning the last call's known-zero v0. SHA1.c's update keeps the buffered index and
+  then its room in one variable (round 22b's rule); its row counted the alignment nop after its last sibling
+  call (0x1A8 -> 0x1A4: the map's sizes leave padding out).
+- **Open, diagnosed in place**: 0x63B5D0 (sched2 ranks nLocal's reload over the magic's lui: purge_addressof
+  gives that reload a bare MEM -- alias set 0, no MEM_SCALAR_P -- so the two stores through pInfo carry
+  REG_DEP_ANTI on it, three dependants to one; fourteen spellings), 0x63C170 (five more: the target's beq slot
+  means nLocal's load sat before the branch at reorg time), rt_frag's store 0x645290 (twelve: the target's
+  0x0FFFFFFD constant takes a0 in local-alloc, crowding the 29-bit sequence into a3), ClientConnectsPacketHandler
+  (the port global reloaded in the bnezl's slot: volatile gives neither), and the earlier opens.
+
+Hand-written in round 23b: `medius/md5_platform.s` (2 of 2, new), `medius/sha1_platform.s` (3 of 3, new),
+`medius/rt_window.c` (+2: the store 0x642A58, the read 0x642C48; 6 of 6, whole), `medius/sha1.c` (+1, the
+update 0x642E70: 4 of 4, whole), `medius/rt_mt_platform.c` (setNewSeed_platform: 1 of 1), `medius/rt_list.c`
+(the init: 22 of 22, whole), `medius/rt_table.c` (the init: 6 of 7), `medius/rt_p2p.c` (0x63B480: 29 of 34) --
+12 rows new to the map's byte-exact rows (`src/lib/medius` 966 -> 978 of 1,013 -> 1,021: five new rows, three
+written for the first time), none superseding a draft; 5 rows given (the platform code), 1 resized
+(0x642E70), no names. No tool changed.
 
 ## Open, and next
 

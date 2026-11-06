@@ -20,9 +20,10 @@
  * inlined (the destructor's out-of-line copy is generated mid-unit, after the constructor, before
  * the tail: taken out with the constructor and destructor, the destructor is inlined one level and
  * both erases are called, 0x170), so the original generated the destructor after do_assign and the
- * erase before it. OPEN, 0x70 against 0x78: init 0x5EF8D0 calls end() out of line (0x50FED0)
- * before each insert, as OVL1's 0x317720 does; here end() is inlined. Defined in reverse of their image
- * order (-inline deferred) where it matters. */
+ * erase before it. The list init 0x5EF8D0 (end() out of line, 0x50FED0, before each insert, as OVL1's
+ * 0x317720) byte-exact since the MSL headers' include/list on master (merged in the kit's round 57; the
+ * unit's own text unchanged): open from round 49 to 56 at 0x70 of 0x78. Defined in reverse of their
+ * image order (-inline deferred) where it matters. */
 
 #include <list>
 #include <stdio.h>

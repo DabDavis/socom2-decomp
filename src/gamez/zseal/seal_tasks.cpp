@@ -17,6 +17,8 @@ namespace ai {
  * -- 0 and anything past 6 true (the names ours: SOCOM 1's DWARF has no such enum) */
 enum TEST_OP {
     TEST_NONE = 0, TEST_NE = 1, TEST_EQ = 2, TEST_GT = 3, TEST_LT = 4, TEST_GE = 5, TEST_LE = 6,
+    /* 11: the parameter set to the value, not tested (the parameter test 0x5D4770's) */
+    TEST_SET = 11,
     TEST_LAST = 255
 };
 
@@ -44,12 +46,10 @@ bool test(const T &a, TEST_OP op, const T &b)
 }
 }
 
-/* the two instances, explicit until their caller (0x5D4770, ai::PARAM's tick) is written */
-template bool ai::test<int>(const int &, ai::TEST_OP, const int &);
-template bool ai::test<float>(const float &, ai::TEST_OP, const float &);
+/* the two instances: no longer explicit, their caller (0x5D4770, ai::PARAM's tick) written */
 /* and ai::_max over bytes (OVL2 0x5DEE70: 0x5D4770 calls it on a byte it computed and the controller's
- * byte at 0x5D0, its result read with lbu -- the copy after the two tests, as their tail) */
-template const unsigned char &ai::_max<unsigned char>(const unsigned char &, const unsigned char &);
+ * byte at 0x5D0, its result read with lbu -- the copy after the two tests, as their tail; no longer
+ * explicit either) */
 
 /* the reader's queries (zrdr.h's, which declares a _zrdr of its own: zanim.h's here) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
@@ -1066,8 +1066,8 @@ struct CTParam : TASK_HDR {
 };
 
 extern "C" {
-/* the parameter's test on a SEAL and its AI (OVL2 0x5D4770, this unit's, unwritten: the int and
- * float ai::test instances' caller; the name a placeholder) */
+/* the parameter's test on a SEAL and its AI (OVL2 0x5D4770, this unit's, below: the int and float
+ * ai::test instances' caller; the name a placeholder) */
 bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd);
 }
 
@@ -1087,6 +1087,19 @@ struct CTState : TASK_HDR {
         float m_range;   // 0x20: the rush's "range"
     };
     TASK_NAME m_name;   // 0x2c: the state's entity, vehicle or action -- else the pushed state's name
+
+    /* the n'th name (inline: SOCOM 1's CTState walked a list of names, SOCOM II's block holds one --
+     * Tick asks for the first. A body of its own, so a call taking it as an argument loads it before
+     * the entity list's address: the target's `addiu a1` ahead of the list's low half, where the name
+     * written in place goes last, into the call's delay slot; the name ours) */
+    const char *GetName(int n)
+    {
+        const char *p = m_name.m_str;
+
+        while (n--)
+            p += strlen(p) + 1;
+        return p;
+    }
 
     /* a block of a state, sized to the name (inline: its name's length 0 for none computed at run
      * time -- the pops' `strlen(0)` arm emitted unreached) */
@@ -1183,17 +1196,44 @@ struct CTGroup : TASK_HDR {
     static void Begin(_zanim_cmd_hdr *hdr);
 };
 
-/* ai::GOTO (SOCOM 1's CTGoto) */
+/* ai::GOTO (SOCOM 1's CTGoto): a route through cells -- the nodes named, else the regions -- at a
+ * speed, the block sized to the cells (the layout read off Parse; the names ours but the tags') */
 struct CTGoto : TASK_HDR {
-    /* (the names ours) */
+    /* the bits set through bool setters (true `daddiu`, false `andi zero,1`; the names ours) */
+    void SetBit0(bool b) { m_bit0 = b; }
     void SetBit1(bool b) { m_bit1 = b; }
+    void SetMode(unsigned int m) { m_mode = m; }
+    void SetWaypts(bool b) { m_waypts = b; }
+    void SetRegion(bool b) { m_region = b; }
+    void SetDone(bool b) { m_done = b; }
 
-    unsigned char _8[0xc - 0x8];
-    unsigned char m_bit0 : 1;   // 0xc bit 0
-    unsigned char m_bit1 : 1;   // bit 1
-    unsigned char _c2 : 6;
-    unsigned char _d;
-    unsigned char m_done : 1;   // 0xe bit 0: the tick done at once
+    float m_speed;   // 0x8: the tag "speed" (1 unless read)
+    unsigned short m_bit0 : 1;   // 0xc bit 0
+    unsigned short m_bit1 : 1;   // bit 1
+    unsigned short m_count : 8;   // bits 2-9: the cells
+    unsigned short m_mode : 4;   // bits 10-13 (0 when parsed)
+    unsigned short m_waypts : 1;   // bit 14: the tag "waypts"
+    unsigned short m_region : 1;   // bit 15: the cells are regions'
+    unsigned char m_done : 1;   // 0xe bit 0: the tag "teleport" -- the tick done at once
+    unsigned int m_cells[1];   // 0x10: the cells, packed as TaskLocWord packs them
+
+    /* a block for a count of cells at a speed (inline: the speed read before the allocation, held in
+     * $f20 across it -- the target's saved float register) */
+    static CTGoto *Create(float speed, unsigned int n)
+    {
+        unsigned int size = (n - 1) * 4 + sizeof(CTGoto);
+        CTGoto *cmd = (CTGoto *)_calloc(size, 1, 0, 0);
+
+        cmd->hdr.data_size = size;
+        cmd->hdr.data_type = ai_cmdid[0];
+        cmd->SetBit0(true);
+        cmd->m_count = n;
+        cmd->SetBit1(true);
+        cmd->m_speed = speed;
+        cmd->SetMode(0);
+        cmd->SetWaypts(false);
+        return cmd;
+    }
 
     static void Begin(_zanim_cmd_hdr *hdr);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
@@ -2532,6 +2572,74 @@ void CTGoto::End(_zanim_cmd_hdr *hdr)
         if (script)
             func_005F3FC0(script, ai, false);
     }
+}
+
+/* a point and its flags as a group's step holds them (CTGroup::Parse's; the names ours) */
+struct TASK_GROUPPOS {
+    float m_pos[3];   // 0x0
+    unsigned int m_flags;   // 0xc: 0x800 the group's own point, 0x400 a member's (its number the low byte)
+};
+
+/* an item a string of a name (inline: false for an item no string; the name ours) */
+static inline bool TaskItemIs(_zrdr *item, const char *name)
+{
+    return item->Type() == 3 ? strcmp(name, item->string) == 0 : false;
+}
+
+/* a point read for a group's step: three numbers, or "grp" and three (flag 0x800), or "rel", a
+ * member's number and three (flag 0x400 and the number) -- the point and the flags stored, true for
+ * the two tagged forms only (OVL2 0x5DAF50, CTGroup::Parse's three calls; new in SOCOM II -- the name
+ * a placeholder). The items read by an unsigned index (no strength reduction of i*8: CTGoto::Parse's
+ * reading), the plain form's point stepped, the tagged forms' through an unsigned index too (`p[i - 1]`
+ * plain is strength-reduced); the type read in place, its load kept for Count()'s test (through
+ * Type() MW loads it again) */
+extern "C" bool func_005DAF50(TASK_GROUPPOS *out, _zrdr *r, unsigned int flags)
+{
+    bool ok = false;
+
+    if (r && r->type == 4) {
+        float p[3];
+
+        switch (r->Count()) {
+        case 3:
+            for (int i = 0; i < 3; i++)
+                p[i] = r->Item((unsigned int)i)->Real();
+            out->m_pos[0] = p[0];
+            out->m_pos[1] = p[1];
+            out->m_pos[2] = p[2];
+            out->m_flags = flags;
+            break;
+        case 4:
+            if (zrdr_isitemtype(r, 0, 3)) {
+                for (int i = 1; i < 4; i++)
+                    p[(unsigned int)(i - 1)] = r->Item((unsigned int)i)->Real();
+                if (TaskItemIs(r->Item(0), "grp")) {
+                    ok = true;
+                    out->m_pos[0] = p[0];
+                    out->m_pos[1] = p[1];
+                    out->m_pos[2] = p[2];
+                    out->m_flags = flags | 0x800;
+                }
+            }
+            break;
+        case 5:
+            if (zrdr_isitemtype(r, 0, 3) && zrdr_isitemtype(r, 1, 1)) {
+                for (int i = 2; i < 5; i++)
+                    p[(unsigned int)(i - 2)] = r->Item((unsigned int)i)->Real();
+                if (TaskItemIs(r->Item(0), "rel")) {
+                    unsigned char n = r->Item(1)->Int();
+
+                    ok = true;
+                    out->m_pos[0] = p[0];
+                    out->m_pos[1] = p[1];
+                    out->m_pos[2] = p[2];
+                    out->m_flags = n | (flags | 0x400);
+                }
+            }
+            break;
+        }
+    }
+    return ok;
 }
 
 /* running until the group is gone (OVL2 0x5D9710) */
@@ -4091,6 +4199,308 @@ _zanim_cmd_hdr *CTParam::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
+extern "C" {
+/* the AI's courage, scaled; its courage set (and kept when the flag says so); its speed set (OVL2
+ * 0x570D50, 0x570D60, 0x570F90: seal_ai.cpp's, unnamed); a sleep region and its teams set, none for
+ * the teams' default (OVL2 0x56D450, seal_ai.cpp's) */
+float func_00570D50(CSealCtrlAi *ai, float scale);
+void func_00570D60(CSealCtrlAi *ai, int keep, float f);
+void func_00570F90(CSealCtrlAi *ai, float t);
+bool func_0056D450(CSealCtrlAi *ai, const CAiMapLoc *loc, int n);
+/* a map's cell inside (OVL2 0x5561C0, seal_ai.cpp's: the map's own test) */
+bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
+/* the AI busy talking, and an anim of its sound playing (OVL2 0x572190, 0x5712F0: seal_ai.cpp's) */
+bool func_00572190(CSealCtrlAi *ai);
+bool func_005712F0(CSealCtrlAi *ai, short anim);
+/* an alertness's band (OVL2 0x560AC0, seal_ai.cpp's) */
+unsigned char func_00560AC0(float x);
+}
+
+/* whether a cell's map holds it, none for no map (seal_ai.cpp's CellInside, the cell by pointer) */
+static inline bool TaskCellInside(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? func_005561C0(map, loc) : false;
+}
+
+/* whether the AI may chat: its SEAL alive, not talking and no anim of its sound playing (inline; the
+ * name ours) */
+static inline bool TaskCanChat(CSealCtrlAi *ai)
+{
+    return ((CZSealBody *)ai->m_entity)->m_isAlive && !func_00572190(ai) && !func_005712F0(ai, ai->m_sound);
+}
+
+
+/* a parameter's value tested against the task's (inline: the value taken by value -- copied through
+ * the FPU, the union's float its first member -- each test's two operands in temporaries of their
+ * own; the names ours) */
+static inline bool TaskTestF(float a, ai::TEST_OP op, TASK_VALUE v)
+{
+    return ai::test(a, op, v.f);
+}
+static inline bool TaskTestI(int a, ai::TEST_OP op, TASK_VALUE v)
+{
+    return ai::test(a, op, v.i);
+}
+static inline bool TaskTestB(bool a, ai::TEST_OP op, TASK_VALUE v)
+{
+    return ai::test((int)a, op, v.i);
+}
+
+/* the AI's chat level (inline; the name ours) */
+static inline int TaskChatLevel(CSealCtrlAi *ai)
+{
+    bool ok = TaskCanChat(ai);
+    int n = 5;
+
+    if (ok)
+        n = ::ai::_max(func_00560AC0(ai->m_aware.m_value), (const unsigned char &)ai->m_awarePending);
+    return n;
+}
+
+/* the parameter on a SEAL and its AI set to the block's value (operator 11), or tested against it
+ * with the block's operator -- the AI's parameters first, then the SEAL's; true for a parameter
+ * neither has (OVL2 0x5D4770, new in SOCOM II as a function: SOCOM 1's CTParam::Tick held its test,
+ * over parameters partly other; the name a placeholder). The value copied once, each test copying it
+ * again into its inline's by-value parameter; each AI test `ai ? Test(...) : false` (the re-test of
+ * the AI the target makes in every case); a bool's test through an inline converting it (its int
+ * temporary made after the value's copy: the slots' order); the chat level an inline whose bool local
+ * keeps the && chain a value (andi before the branch, the 5 in its delay slot); the cell held by a
+ * reference local (s0 across GetMap); the set cases' if-else arm ending `r = true` before the one
+ * return -- the target's `daddiu v0,zero,1` at the join (an early `return true` / `return r` loads
+ * it with li; r live across the arm's calls would take s5) */
+bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd)
+{
+    ::ai::TEST_OP op = (::ai::TEST_OP)cmd->m_op;
+    AI_PARAMS *params = ai ? &ai->m_aiParams : 0;
+    bool r = true;
+    bool done = false;
+    TASK_VALUE value = cmd->m_value;
+
+    if (op == ::ai::TEST_SET) {
+        if (ai) {
+            done = true;
+            switch (cmd->m_which) {
+            case PARAM_COURAGE:
+                func_00570D60(ai, 1, value.f);
+                break;
+            case PARAM_SPEED:
+                func_00570F90(ai, value.f);
+                break;
+            case PARAM_ACCURACY:
+                params->accuracy = value.f;
+                break;
+            case PARAM_STANCE:
+                ai->SetStanceDelayed((SEAL_STANCE)value.i, -1.0f);
+                break;
+            case PARAM_AWARE:
+                ai->SetAiAware((AI_AWARE)value.i, 0, -1.0f);
+                break;
+            case PARAM_SLEEP:
+                ai->SetSleeping(value.i != 0);
+                break;
+            case PARAM_WEAPON_UP:
+                ai->m_aibit11 = value.i != 0;
+                break;
+            case PARAM_SPRAY:
+                ai->SetSprayTimer(value.f);
+                break;
+            case PARAM_DOCORPSE:
+                ai->m_aibit12 = value.i != 0;
+                break;
+            case PARAM_DEEPSLEEPER:
+                ai->m_aibit15 = value.i != 0;
+                break;
+            case PARAM_NOFADE:
+                ai->m_aibit5 = value.i != 0;
+                break;
+            case PARAM_VISRANGE:
+                ai->SetViewRange(value.f);
+                break;
+            case PARAM_THROTTLE:
+                ai->m_throttle[0] = value.f;
+                break;
+            case PARAM_ROLE:
+                ai->m_26e = value.i;
+                break;
+            case PARAM_SLEEP_REGION: {
+                unsigned int v = value.i;
+                CAiMapLoc loc;
+
+                loc.m_mapid = v >> 26;
+                loc.x = v >> 13 & 0x1fff;
+                loc.y = v & 0x1fff;
+
+                func_0056D450(ai, &loc, 0);
+                break;
+            }
+            case PARAM_AWARE_DECAY:
+            case PARAM_INSIDE:
+            case PARAM_OUTSIDE:
+                break;
+            case PARAM_CANCHAT:
+            default:
+                done = false;
+                break;
+            }
+        }
+        if (!done && seal) {
+            switch (cmd->m_which) {
+            case PARAM_HEALTH:
+                func_005A5790(seal, 3, value.f);
+                break;
+            case PARAM_AWARE_COUNT:
+                break;
+            }
+        }
+        r = true;
+    } else {
+        if (ai) {
+            done = true;
+            switch (cmd->m_which) {
+            case PARAM_COURAGE:
+                r = ai ? TaskTestF(func_00570D50(ai, 1.0f), op, value) : false;
+                break;
+            case PARAM_SPEED:
+                r = ai ? TaskTestF(ai->m_speed, op, value) : false;
+                break;
+            case PARAM_AWARE:
+                r = ai ? TaskTestI(ai->GetAiAware(), op, value) : false;
+                break;
+            case PARAM_ACCURACY:
+                r = ai ? TaskTestF(params->accuracy, op, value) : false;
+                break;
+            case PARAM_SLEEP:
+                r = ai ? TaskTestB(ai->m_aibit8 != 0, op, value) : false;
+                break;
+            case PARAM_AWARE_DECAY:
+                r = ai ? TaskTestF(params->aware_decay, op, value) : false;
+                break;
+            case PARAM_STANCE:
+                r = ai ? TaskTestI(ai->m_stance, op, value) : false;
+                break;
+            case PARAM_DOCORPSE:
+                r = ai ? TaskTestB(ai->m_aibit12 != 0, op, value) : false;
+                break;
+            case PARAM_DEEPSLEEPER:
+                r = ai ? TaskTestB(ai->m_aibit15 != 0, op, value) : false;
+                break;
+            case PARAM_WEAPON_UP:
+                r = ai ? TaskTestB(ai->m_aibit11 != 0, op, value) : false;
+                break;
+            case PARAM_SPRAY:
+                r = ai ? TaskTestF(ai->m_spraytimer, op, value) : false;
+                break;
+            case PARAM_NOFADE:
+                r = ai ? TaskTestB(ai->m_aibit5 != 0, op, value) : false;
+                break;
+            case PARAM_VISRANGE:
+                r = ai ? TaskTestF(params->visual_range, op, value) : false;
+                break;
+            case PARAM_ROLE:
+                r = ai ? TaskTestI(ai->m_26e, op, value) : false;
+                break;
+            case PARAM_CANCHAT:
+                r = ai ? TaskTestI(TaskChatLevel(ai), op, value) : false;
+                break;
+            default:
+                done = false;
+                break;
+            }
+        }
+        if (!done && seal) {
+            switch (cmd->m_which) {
+            case PARAM_HEALTH:
+                r = TaskTestF(seal->m_health, op, value);
+                break;
+            case PARAM_AWARE_COUNT:
+                r = TaskTestI(seal->m_aware_counter, op, value);
+                break;
+            case PARAM_INSIDE: {
+                const CAiMapLoc &loc = seal->m_mapLocValid;
+
+                r = TaskTestB(TaskCellInside(loc), op, value);
+                break;
+            }
+            case PARAM_OUTSIDE: {
+                const CAiMapLoc &loc = seal->m_mapLocValid;
+
+                r = TaskTestB(!TaskCellInside(loc), op, value);
+                break;
+            }
+            case PARAM_REDSMOKE: {
+                CZKit *kit = &seal->m_kit;
+                int i = kit->GetItemIndex((EQUIP_ITEM)127);
+                int n = i != -1 ? kit->GetAmmoTotal(i) : 0;
+
+                r = TaskTestI(n, op, value);
+                break;
+            }
+            }
+        }
+    }
+    return r;
+}
+
+/* a route read: the speed (1 unless given) and a timer read and dropped (SOCOM 1's), the nodes named --
+ * else the regions named, the route then a region's -- each cell found added, "waypts" and "teleport";
+ * a block made only for a route of at least one cell (OVL2 0x5DBF70; SOCOM 1's, its route a list of
+ * names there). One tag and one count reused for the regions (their second webs split: the regions'
+ * tag, count and counter take the nodes' count's, counter's and tag's registers -- separate locals
+ * colour them the other way round); the items read by an unsigned index (`Item((unsigned int)i)`: the
+ * conversion keeps the target's `sll` each pass -- read straight, MW strength-reduces i*8; written by
+ * an int counter, the cells' source the same while their destination steps); the flag declared ahead
+ * of the vector (its zero ahead of the vector's last store, which fills the call's delay slot) */
+_zanim_cmd_hdr *CTGoto::Parse(_zrdr *rdr)
+{
+    float speed = 1.0f;
+    Rfloat timer(-1.0f);
+
+    zrdr_findreal(rdr, "speed", &speed, 1);
+    zrdr_findRfloat(rdr, "timer", &timer);
+    bool region = false;
+    std::vector<CAiMapLoc> locs;
+    _zrdr *t = zrdr_findtag(rdr, "node");
+    int n = t ? t->Count() : 0;
+
+    if (n > 0) {
+        locs.reserve(n);
+        for (int i = 0; i < n; i++) {
+            CAiMapLoc loc;
+
+            if (AiMaps.GetLocation(t->Item((unsigned int)i)->String(), loc))
+                locs.push_back(loc);
+        }
+    } else {
+        t = zrdr_findtag(rdr, "region");
+        n = t ? t->Count() : 0;
+        if (n > 0) {
+            locs.reserve(n);
+            for (int i = 0; i < n; i++) {
+                CAiMapLoc loc;
+
+                if (AiMaps.GetRegion(t->Item((unsigned int)i)->String(), loc)) {
+                    locs.push_back(loc);
+                    region = true;
+                }
+            }
+        }
+    }
+    bool waypts = zrdr_findtag(rdr, "waypts") != 0;
+    CTGoto *cmd = 0;
+
+    if (locs.size()) {
+        cmd = Create(speed, locs.size());
+        for (int i = 0; i < locs.size(); i++)
+            cmd->m_cells[i] = TaskLocWord(locs[i]);
+        cmd->SetWaypts(waypts);
+        cmd->SetRegion(region);
+        cmd->SetDone(zrdr_findtag(rdr, "teleport") != 0);
+    }
+    return &cmd->hdr;
+}
+
 /* a state push read: the state by name, and for the follow, the vehicle, the action and the rush the
  * entity, vehicle or action named (the follow's and the rush's entity, the vehicle and the action
  * required), the follow's offset (20 ahead unless read), the action's state, the rush's timer, range
@@ -4177,6 +4587,152 @@ _zanim_cmd_hdr *CTState::Parse(_zrdr *rdr)
         }
     }
     return &cmd->hdr;
+}
+
+extern "C" {
+/* a node action of a name (OVL1 0x2B4E80, fts_action.cpp's), the action state's action taken
+ * (OVL2 0x5F0180, seal_aistate.cpp's), the follow state's master set through its AI (OVL2 0x5FD010,
+ * unnamed: SetFollowMaster, then the AI's master copied to the state's) and a vehicle of an id
+ * boarded (OVL2 0x60F6C0, seal_aivehicle.cpp's) */
+CNodeAction *func_002B4E80(const char *name);
+void func_005F0180(CAiSAction *s, CSealCtrlAi *ai, CNodeAction *na, int mode);
+void func_005FD010(CAiSFollow *s, CSealCtrlAi *ai, CZSealBody *master);
+bool func_0060F6C0(CSealCtrlAi *ai, unsigned int id);
+/* a world unit in cells (OVL2 data 0x64FC68, 0.1: read as a variable, as the follow's cell size
+ * 0x64FC60) */
+extern float data_0064FC68;
+float ceilf(float x);
+}
+CZSealBody *ftsGetPlayer();
+
+/* the state pushed on the SEAL's AI -- the task's SEAL's, or with an entity named that SEAL's (found
+ * three times over, as CTSignal::Tick's) -- and set up from the block: the action's action named (else
+ * the state let go), the rescued step 2, the rush's timer, range and flags and its target (the entity
+ * named, else the AI's target, else the player when no friend), the follow's master and its offset in
+ * cells, the vehicle's timeout once boarded; or the stack popped -- by a state, to one, or the top;
+ * done at once (OVL2 0x5CF930; SOCOM 1's, which pushed only the rush and the follow). The AI declared
+ * with the SEAL and its controller ahead of the find's locals gives the target's numbering (the block
+ * s0, the list and the AI s1 -- declared after the find, as CTSignal's, they swap); the kinds an if-else
+ * chain, the states a switch written in the target's layout order; the entity named tested through a
+ * bool set in two steps -- `e && e->m_type == SEAL ? e : 0` in any spelling (a local, an inline with
+ * a body, a bool inline, a select inline) folds into branches, where the target keeps the materialised
+ * `sltu; beqz; xori; sltiu; movz` GetTyped's statement-level copy gets from CInline_LoadToTemp */
+bool CTState::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *dest;
+    CEntityCtrl *ctrl;
+    CSealCtrlAi *ai;
+    TASK_SEAL(CTState);
+    dest = seal;
+    ctrl = dest ? dest->m_control : 0;
+    ai = dest ? SealAi(dest) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type) {
+        dest = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        CZSealBody *s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+
+        ctrl = s ? s->m_control : 0;
+        s = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL);
+        ai = s ? SealAi(s) : 0;
+    }
+    if (!ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    AI_STATE state = (AI_STATE)cmd->m_state;
+
+    if (cmd->m_kind == POP)
+        ai->PopAiState();
+    else if (cmd->m_kind == POPIF)
+        ai->PopAiState(state);
+    else if (cmd->m_kind == POPTO)
+        ai->PopToAiState(state, false);
+    else if (cmd->m_kind == PUSH && ai->PushAiState(state, 8)) {
+        CAiState *s = ai->GetAiState();
+
+        switch (state) {
+        case AI_STATE_ACTION: {
+            CAiSAction *action = s && s->m_state == AI_STATE_ACTION ? (CAiSAction *)s : 0;
+            CNodeAction *na = func_002B4E80(cmd->m_name.m_str);
+
+            if (na)
+                func_005F0180(action, ai, na, cmd->m_flags);
+            else
+                action->SetActive(false);
+            break;
+        }
+        case AI_STATE_RESCUED: {
+            CAiState *rescued = s && s->m_state == AI_STATE_RESCUED ? s : 0;
+
+            rescued->UpdatePhase(2);
+            break;
+        }
+        case AI_STATE_RUSH: {
+            CAiSRush *rush = s && s->m_state == AI_STATE_RUSH ? (CAiSRush *)s : 0;
+            float t = cmd->m_timer;
+
+            rush->m_time = t;
+            rush->SetFlags(t != 0.0f, t == 0.0f);
+            float r = cmd->m_range;
+
+            rush->m_range2 = r * r;
+            rush->SetFlags(r != 0.0f ? 2 : 0, r != 0.0f ? 0 : 2);
+            rush->SetFlags(cmd->m_flags | 0x20, 0);
+            CEntity *e = CEntity::GetEntityList().GetEntity(cmd->GetName(0));
+            bool ok = (bool)e;
+
+            if (ok)
+                ok = e->m_type == CEntity::ENT_TYPE_SEAL;
+            CZSealBody *target = ok ? (CZSealBody *)e : 0;
+
+            if (target)
+                rush->SetTarget(target);
+            else if (func_0060A850(ai->m_67c)) {
+                CEntity *t = *(CEntity **)ai->m_67c;
+
+                rush->SetTarget(t && t->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)t : 0);
+            } else {
+                CZSealBody *player = ftsGetPlayer();
+
+                if (player && player->IsEnemy(dest))
+                    rush->SetTarget(player);
+            }
+            break;
+        }
+        case AI_STATE_FOLLOW: {
+            CAiSFollow *follow = s && s->m_state == AI_STATE_FOLLOW ? (CAiSFollow *)s : 0;
+            CEntity *e = CEntity::GetEntityList().GetEntity(cmd->GetName(0));
+            bool ok = (bool)e;
+
+            if (ok)
+                ok = e->m_type == CEntity::ENT_TYPE_SEAL;
+            CZSealBody *master = ok ? (CZSealBody *)e : 0;
+
+            if (master) {
+                int cells[2];
+
+                func_005FD010(follow, ai, master);
+                cells[0] = (int)ceilf(-cmd->m_offset.z * data_0064FC68);
+                cells[1] = (int)ceilf(cmd->m_offset.x * data_0064FC68);
+                follow->SetOffset(cells);
+            }
+            break;
+        }
+        case AI_STATE_USEVEHICLE: {
+            CEntity *e = CEntity::GetEntityList().GetEntity(cmd->GetName(0));
+
+            if (e && func_0060F6C0(ai, e->m_id)) {
+                CAiState *v = ai->GetAiState();
+                CAiSUseVehicle *vehicle = v && v->m_state == AI_STATE_USEVEHICLE ? (CAiSUseVehicle *)v : 0;
+
+                vehicle->SetTimeout(cmd->m_timer);
+            }
+            break;
+        }
+        }
+    }
+    *dT = 0.0f;
+    return true;
 }
 
 /* an AI valve's compare read: the SEAL valve named first (none for an unknown name), then as

@@ -441,6 +441,7 @@ public:
     C2DMessage_Q();   /* 0x2B7610 */
     ~C2DMessage_Q();   /* 0x2B6EE0 */
     void Clear_Messages();   /* 0x2B6DE0 */
+    void ScrollUp(float dT);   /* 0x2B6430 (fts_message.cpp's: SOCOM 1's ScrollUp(), grown) */
     void ResetScroll();
 
     unsigned char _0[0x438];
@@ -2147,6 +2148,12 @@ class CCamera {
 public:
     static void RegisterAnimCommands();   /* 0x293890 */
 };
+/* a box-shaped DI (node_world.h's CDIBBox: only its static, the unit box's six faces built once --
+ * OVL1 0x2DC7A0, named by the engine core's round 23) */
+class CDIBBox {
+public:
+    static void SetCDIBBox();
+};
 }
 
 /* the application's camera (camera.h's CAppCamera: its two virtuals, declared only, the zoom, the
@@ -2215,7 +2222,6 @@ extern "C" {
 int CreateSema(SemaParam *param);
 extern SemaParam data_00440BE0;
 extern void *data_0045B718;   /* (an OVL1 object of 4316 bytes Init makes) */
-void func_002DC7A0();
 void func_0059AC60();
 void func_002B4190();
 bool func_00259240();
@@ -2276,7 +2282,7 @@ bool StopImageRecorderTick(_zanim_cmd_hdr *hdr, float *dT);
  * the turrets and vehicles; the archives dropped and the HUD's string table loaded */
 bool CMission::Init()
 {
-    func_002DC7A0();
+    zdb::CDIBBox::SetCDIBBox();
     ZAnim.Open();
     CSealCtrlAi::RegisterCommands();
     func_0059AC60();
@@ -2838,16 +2844,12 @@ bool CMission::ReOpen_Unload2()
     return true;
 }
 
-extern "C" {
-void func_002B6430(C2DMessage_Q *q, float dT);   /* (fts_message.cpp's: SOCOM 1's ScrollUp here) */
-}
-
 /* a queue's lines gone and its scroll put back (SOCOM 1's ScrollUp and the two members, SOCOM II's
  * clear first; the name ours) */
 inline void C2DMessage_Q::ResetScroll()
 {
     Clear_Messages();
-    func_002B6430(this, 0.0f);
+    ScrollUp(0.0f);
     m_moveTime = 2.0f;
     m_cur_top = (int)m_target_top;
 }

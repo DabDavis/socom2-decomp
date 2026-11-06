@@ -169,11 +169,12 @@ _zrdr *zrdr_read(const char *name, const char *path, int flags);
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 int zrdr_free(CRdrFile *file);
+/* the HDD's reboot callback registered once (util_sonyio.cpp's, OVL1 0x39D8C0: the UI's round 34) */
+void HddRegisterReboot();
 
 extern "C" {
 void func_0030E340(void *net);
 void func_003448E0(const char *bank);
-void func_0039D8C0();
 bool func_001F53D0(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data);
 }
 
@@ -291,7 +292,7 @@ bool CMenuState::Init()
     zVid.m_7d = 0;
     zVid_Sync0();
     m_skip_swap = 0;
-    func_0039D8C0();
+    HddRegisterReboot();
     m_iopregh = theIOPManager.RegisterRebootCallback(func_001F53D0, 0);
     CValve::Create("NETCNF_REQUIRED", VALVE_TEMP)->SetValue(data_0045A1C9);
     return true;
