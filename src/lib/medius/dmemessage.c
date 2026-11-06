@@ -415,7 +415,7 @@ typedef struct DmeFragment {
 
 extern DmeFragment data_0066F408[256];
 extern int rt_time_get_local(unsigned int *pTime);
-extern int func_00614888(void **ppMemory);
+extern void func_00614888(void **ppMemory);
 
 int func_006203C8(void)
 {
@@ -437,4 +437,113 @@ int func_006203C8(void)
         }
     }
     return 0;
+}
+
+extern int func_00614F58(int nStream, unsigned char **ppStream);
+extern int rt_circ_buf_destroy(void *pCirc);
+extern void (*data_006869C8[])(int nClient, int nStream);   /* the streams' end callbacks, by type */
+extern int data_0067E948[];
+
+/* a data stream's end (0x61F2B8; SOCOM 1 has none): the type's callback told, the stream closed unless this
+ * client is the session's own and the type wants it kept. Round 25b, unwritten before. */
+int func_0061F2B8(int nConnection, int nUnused, int nClient, unsigned char *pMsg)
+{
+    unsigned char *pStream = 0;
+    DmeWorld *pWorld = 0;
+    int nValue = 256;
+
+    if (pMsg == 0)
+        return -1;
+    if (func_00614F58(pMsg[0], &pStream) != 0)
+        return 1;
+    if (pStream != 0 && pStream[0] == 2) {
+        if (data_006869C8[pStream[3]] != 0)
+            data_006869C8[pStream[3]](nClient, pMsg[0]);
+        if (func_0061C600(data_00651178, &pWorld) != 0)
+            return 1;
+        if (pWorld != 0) {
+            func_00615090(&nValue, nConnection);
+            if (pWorld->nMyClient == nValue && pStream[5] != 0 && data_0067E948[pStream[3]] != 0)
+                pStream[4] = 1;
+            else {
+                pStream[0] = 1;
+                if (pStream[2] != 0) {
+                    func_00614888((void **)(pStream + 16));
+                    rt_circ_buf_destroy(pStream + 44);
+                    *(int *)(pStream + 16) = 0;
+                    *(int *)(pStream + 20) = 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+extern int func_006200D0(int nConnection, int nClient, void *pMsg, unsigned char **ppFrag);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern int func_0063CB48(int nA, int nB, int (**ppfn)(int, int, int, void *));
+
+/* a fragmented message's fragment (0x61E510; the record is func_006200D0's): copied in by its offset, its
+ * slot marked, and once every slot holds the whole message handed to its handler and the buffers freed.
+ * Round 25b, unwritten before. */
+typedef struct DmeFragMsg {
+    unsigned char nA;                   /* 0x00: the handler's two keys */
+    unsigned char nB;                   /* 0x01 */
+    unsigned short nLength;             /* 0x02: this fragment's */
+    unsigned short x04;
+    unsigned short nSlot;               /* 0x06 */
+    int x08;
+    int x0C;
+    int nOffset;                        /* 0x10 */
+    unsigned char abData[4];            /* 0x14 */
+} DmeFragMsg;
+
+typedef struct DmeFrag {
+    int bInUse;                         /* 0x00 */
+    unsigned int nSlots;                /* 0x04 */
+    int x08;
+    int nHave;                          /* 0x0C */
+    char x10[16];
+    int tLast;                          /* 0x20 */
+    unsigned char *pSlots;              /* 0x24 */
+    unsigned char *pData;               /* 0x28 */
+} DmeFrag;
+
+int func_0061E510(int nConnection, int nUnused, int nClient, DmeFragMsg *pMsg)
+{
+    DmeFrag *pFrag = 0;
+    int (*pfn)(int, int, int, void *);
+    int bWhole = 1;
+    unsigned int i;
+
+    if (pMsg == 0)
+        return -1;
+    if (func_006200D0(nConnection, nClient, pMsg, (unsigned char **)&pFrag) == 0 && pFrag != 0) {
+        memcpy(pFrag->pData + pMsg->nOffset, pMsg->abData, pMsg->nLength);
+        pFrag->nHave += pMsg->nLength;
+        rt_time_get_local((unsigned int *)&pFrag->tLast);
+        pFrag->pSlots[pMsg->nSlot] = bWhole;
+        for (i = 0; i < pFrag->nSlots; i++) {
+            if (pFrag->pSlots[i] == 0) {
+                bWhole = 0;
+                break;
+            }
+        }
+        if (bWhole != 0) {
+            pfn = 0;
+            func_0063CB48(pMsg->nA, pMsg->nB, &pfn);
+            if (pfn != 0)
+                pfn(nConnection, nUnused, nClient, pFrag->pData);
+            if (pFrag->pData != 0) {
+                func_00614888((void **)&pFrag->pData);
+                pFrag->pData = 0;
+            }
+            if (pFrag->pSlots != 0) {
+                func_00614888((void **)&pFrag->pSlots);
+                pFrag->pSlots = 0;
+            }
+            pFrag->bInUse = 0;
+        }
+    }
+    return pMsg->nLength + 20;
 }
