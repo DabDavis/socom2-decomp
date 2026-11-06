@@ -9,7 +9,7 @@
  * it, as its first user, a class vector's destructor copy (0x22BAD0: two this tests, then the
  * deleter's destructor 0x22E460 with 0) -- then hudTurnOffScorePopup (0x22BB30), the two pop-up
  * triggers (0x22BC40, 0x22BD50), the tick (0x22BE20, SOCOM 1's hudTickScorePopup by its place),
- * hudIsScorePopupOn (0x22CBF0) and 0x22CC10. Written, all byte-exact: CScorePopup's destructor
+ * hudIsScorePopupOn (0x22CBF0) and hudTurnOnScorePopup (0x22CC10, round 65). Written, all byte-exact: CScorePopup's destructor
  * and Draw, CHudPopups' Draw and destructor, hudTurnOffScorePopup, the triggers and
  * hudIsScorePopupOn; and (round 33) the message pop-ups' third trigger (0x22D270, by names), their
  * reset (0x22D190) and hud.rdr's common look (0x22D3F0). The unit's statics are anonymous-namespace globals in SOCOM 1 (g_bOn,
@@ -31,8 +31,18 @@ extern float data_003E3000;
 extern float data_003E3018;
 extern float data_003E2FF0;
 
-class CZNetGame;
 class CZSealBody;
+/* the online game (SOCOM 1's zfts.h: only the two wins; their addresses are the pop-up's column's, so
+ * they are emitted here, 0x22D170 and 0x22D180, as in SOCOM 1) */
+class CZNetGame {
+public:
+    int GetE3ScoreTeam00() const { return m_e3score00; }
+    int GetE3ScoreTeam08() const { return m_e3score08; }
+
+    unsigned char _0[0x120];
+    int m_e3score00;   // 0x120
+    int m_e3score08;   // 0x124
+};
 /* the game (theMission's, no data row yet: the wins come from it) */
 extern CZNetGame *data_00437CE8;
 int FormatString(char *buf, int size, int id, const char **args, int count);
@@ -57,7 +67,7 @@ class CTeamDisplay {
 public:
     /* the column's title, its three headers, its stripes and its rows (SOCOM 1's SetupTeam, 0x421140
      * there: the team's name by string id now, its wins through the game's member function) */
-    void SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam, int (CZNetGame::*pWinsFunc)(),
+    void SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam, int (CZNetGame::*pWinsFunc)() const,
                    bool bTeam0);
     /* one row: the name, its clan's tag and the three scores (SOCOM 1's AddRow, 0x421510 there; the
      * kills gone from its arguments) */
@@ -429,6 +439,9 @@ public:
 class CEntity {
 public:
     static std::list<CEntity *> m_list;
+
+    unsigned char _0[0x10];
+    unsigned char m_type;   // 0x10: 2 a SEAL
 };
 
 /* a walk over the world's entities, counting (SOCOM 1's DWARF; st_exit.cpp writes its members) */
@@ -639,6 +652,107 @@ void hudReadPopupCommon(_zrdr *rdr)
     zrdr_findreal(rdr, "ForceOpenTime", &data_0040F618, 1);
     g_strPopup0 = zrdr_findstring(rdr, "OpeningSound");
     g_strPopup1 = zrdr_findstring(rdr, "ClosingSound");
+}
+
+/* the frame's layout floats (OVL1 .data 0x3DC908, 0x3DC910, 0x3DC918 -- 153, 477, 100 -- and
+ * 0x3DC8C8, 430: this function's alone; by address, the names to come), the HUD text's frame the
+ * pop-up's top comes from (0x436AA8, 0x436AE8: read here only) */
+extern const char *data_003E3048;
+extern float data_003DC908;
+extern float data_003DC910;
+extern float data_003DC918;
+extern float data_003DC8C8;
+extern int data_00436AA8;
+extern int data_00436AE8;
+extern float data_003DC8F8;
+extern int data_0040F628;
+extern int data_0040F630;
+extern int data_0040F638;
+extern int data_0040F640;
+extern int data_0040F648;
+extern int data_0040F650;
+extern int data_0040F658;
+
+namespace {
+void SetupBackgroundBox();
+void SetupSpectatorBox();
+/* a thing in the list as a SEAL (the entity test the walks use) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == 2 ? (CZSealBody *)e : 0;
+}
+}
+
+/* the pop-up opened (SOCOM 1's hudTickScorePopup had it inline: the frame laid out, the box, the
+ * spectators' box and both teams' columns set up; in a network game the living spectators' names
+ * listed, shortened to fit, the rest cleared; the name ours, after hudTurnOffScorePopup) */
+void hudTurnOnScorePopup()
+{
+    data_0040F608 = true;
+    data_0040F640 = 10;
+    data_0040F628 = (int)data_003DC908;
+    data_0040F630 = (int)(data_0040F628 + data_003DC910);
+    data_0040F638 = data_00436AA8 + data_00436AE8 + 5;
+    data_0040F648 = data_0040F628 - 1;
+    data_0040F650 = data_0040F638;
+    data_0040F658 = (int)(25.0f + data_0040F650 + data_003DC918);
+    g_bmpBoxOverlay.Load(0.0f, 0.0f, 26.0f, 26.0f, zdb::CAssetMgr::m_assets.GetTexHandle("hud_satchel.tif"));
+    g_bmpBoxOverlay.Off();
+    SetupBackgroundBox();
+
+    zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle(data_003E3048);
+    C2DFont *font = theHUD->GetFont();
+
+    g_bmpHeaderBar.Load(data_0040F640, data_0040F650, data_0040F648, 25.0f + data_0040F650, tex);
+    g_bmpHeaderBar.SetColor(g_vSpecBoxColor);
+    g_bmpHeaderBar.SetTrans(80.0f);
+    {
+        float y = 25.0f + data_0040F650;
+
+        g_bmpHeaderBg.Load(data_0040F640, y, data_0040F648, y + data_003DC918, tex);
+    }
+    g_strHeader.Load(1.0f, "GAME DETAILS", font, 0.0f, 0.0f, false);
+    g_strHeader.SetPos((int)(10.0f + data_0040F640), (int)(20.0f + data_0040F650));
+    g_strHeader.m_color[3] = data_003DC8F8;
+    SetupSpectatorBox();
+    g_bmpBoxOverlay.Off();
+    g_oSeals2Ds.SetupTeam(data_0040F638, 32.0f, 32.0f, 64.0f, 0xEC69, &CZNetGame::GetE3ScoreTeam00, true);
+    g_oTerrs2Ds.SetupTeam(0.5f * (data_0040F638 + data_003DC8C8), 64.0f, 32.0f, 32.0f, 0xEC6A,
+                          &CZNetGame::GetE3ScoreTeam08, false);
+    if (theNetwork.m_bNetwork) {
+        const std::list<CEntity *> &list = CEntity::m_list;
+        unsigned int count = 0;
+        std::list<CEntity *>::const_iterator it = list.begin();
+
+        for (; it != list.end() && count < 8; ++it) {
+            CZSealBody *seal = AsSeal(*it);
+
+            if (func_002C2FD0(seal)) {
+                g_arrStrSpecNames[count].SetString(seal->m_name, true);
+
+                int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
+
+                g_arrStrSpecNames[count].UpdatePos();
+                if (g_arrStrSpecNames[count].GetLength() > width) {
+                    do {
+                        char buf[64];
+
+                        strcpy(buf, g_arrStrSpecNames[count].m_string + g_arrStrSpecNames[count].m_firstCharPos);
+
+                        int n = strlen(buf);
+
+                        buf[n - 2] = '-';
+                        buf[n - 1] = 0;
+                        ((C2DString *)&g_arrStrSpecNames[count])->SetString(buf, true);
+                        g_arrStrSpecNames[count].UpdatePos();
+                    } while (g_arrStrSpecNames[count].GetLength() > width);
+                }
+                count++;
+            }
+        }
+        for (; count < 8; count++)
+            g_arrStrSpecNames[count].SetString(0, true);
+    }
 }
 
 /* whether the pop-up is up (only in a network game; the name ours) */
@@ -872,7 +986,7 @@ void CTeamDisplay::AddRow(CZSealBody *const *arrSeals, int iRow, float fTopY)
 }
 
 void CTeamDisplay::SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam,
-                             int (CZNetGame::*pWinsFunc)(), bool bTeam0)
+                             int (CZNetGame::*pWinsFunc)() const, bool bTeam0)
 {
     char arrWinsStr[16];
     char arrTitle[64];
