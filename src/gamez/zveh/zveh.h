@@ -460,12 +460,27 @@ public:
 };
 
 /* the AI-map region a vehicle marks (0x28 bytes): a region and the cells it covers (the names ours).
- * CVehicle's constructor inlines it whole (five high: the region's bitfields, then the vector's three
- * words) -- with the cells a vector subclass, as CAiMapLocVec, it would be six and inlined one level;
- * ~CVehicle wants that subclass level (see there) */
+ * The cells are a std::vector<CAiMapLoc>; A MARKED STAND-IN (the weapons' round 40, ~CVehicle's note)
+ * holds it as three words, so its construction is the three stores inline (CVehicle's constructor
+ * inlines the region whole: with a vector subclass, as CAiMapLocVec, six high and inlined one level)
+ * and its destruction a written-out this-test over ~vector (the subclass's level ~CVehicle wants) */
 class CVehicleRegion : public CVehicleAiRegion {
 public:
-    std::vector<CAiMapLoc> m_cells;   // 0x1c
+    CVehicleRegion()
+    {
+        m_cells[0] = 0;
+        m_cells[1] = 0;
+        m_cells[2] = 0;
+    }
+    ~CVehicleRegion()
+    {
+        std::vector<CAiMapLoc> *v = (std::vector<CAiMapLoc> *)m_cells;
+
+        if (v)
+            v->~vector();
+    }
+
+    unsigned int m_cells[3];   // 0x1c
 };
 
 /* a vehicle (new in SOCOM II, CEntity's type 4; CTurret's unit's twin -- the names ours). Its
