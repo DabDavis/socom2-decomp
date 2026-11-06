@@ -568,9 +568,6 @@ bool CAiLinePtItr::IsValid() const
 /* whether a label overlaps a box (hud_teammatenames.cpp's, 0x227130) */
 unsigned char WordIntersectionTest(int tx1, int ty1, int tx2, int ty2, C2DString *target);
 
-/* the wide line's polygons along a point walk (the C2D library's, OVL1 0x357F30; unwritten) */
-extern "C" void func_00357F30(CPolySet *polys, CPtItr *itr, float width);
-
 /* a wide line's polygons: a new set kept, built along the line's cells, coloured and faded as the type
  * says (SOCOM II's; the name ours -- SOCOM 1's SetupPolygon is the polygon fill, 0x20F5C0) */
 void CZLineMap::SetupWideLine(const CAiMap::line &line, const LINE_DATA &data)
@@ -581,7 +578,8 @@ void CZLineMap::SetupWideLine(const CAiMap::line &line, const LINE_DATA &data)
 
     CAiLinePtItr itr(line, *this);
 
-    func_00357F30(polys, &itr, data._fWidth);
+    /* the C2D library's wide line (OVL1 0x357F30), the polygon set its vector */
+    ((C2DWidePolyline *)polys)->SetSegments(&itr, data._fWidth);
     polys->SetColor(data.color);
     polys->SetTrans((1.0f / 128.0f) * data.opacity);
 }

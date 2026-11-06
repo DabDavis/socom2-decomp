@@ -35,7 +35,7 @@ public:
 static float s_tcm_dd8 = 0.3f;
 
 /* the layout's colours (OVL1 bss 0x4130C0-0x41310B, 16 bytes apart; the fifth a copy of the
- * fourth -- the initialiser copies it, 8 bytes and 4; func_00236430 reads them; the names ours) */
+ * fourth -- the initialiser copies it, 8 bytes and 4; CTCM::Update 0x236430 reads them; the names ours) */
 static CPnt3D s_tcmColor0(255.0f, 0.0f, 16.0f);
 static CPnt3D s_tcmColor1(255.0f, 128.0f, 64.0f);
 static CPnt3D s_tcmColor2(0.0f, 255.0f, 64.0f);
@@ -43,16 +43,7 @@ static CPnt3D s_tcmColor3(48.0f, 48.0f, 48.0f);
 static CPnt3D s_tcmColor4 = s_tcmColor3;
 
 /* the menu, and the item caches by name: the network game's and the single-player game's (the
- * tree's cache builders 0x232BC0/0x2344E0 fill them).
- * OPEN, 2 instructions (__sinit_hud_tcm.cpp, 0x160 against 0x168): the colours, theTCM and both
- * caches' vector stores are the target's, but for each cache's strcpy the target materialises the
- * object (`addiu v0,v0,lo(cache)`) and takes the name off it (`addiu a0,v0,12`), where MW folds the
- * name's address into one lui/addiu pair. Tried: the name through a pointer or reference local, a
- * cast of this, &m_name[0], an inline setter or accessor, a member class holding the name, the
- * constructor out of class, member-initialised, copy- or converting-initialised globals -- all fold.
- * Round 61: the name or `this` through a pointer-returning inline (member or free: the device that
- * keeps TickAnchors' and DrawLaseTarget's addresses), the name as a second base class -- all fold
- * too (the object's address is a constant, propagated through any temporary) */
+ * tree's cache builders 0x232BC0/0x2344E0 fill them; __sinit_hud_tcm.cpp byte-exact since round 65: CTCMCache's constructor) */
 CTCM theTCM;
 CTCMCache mpCache("mpCache");
 CTCMCache spCache("spCache");
@@ -61,7 +52,7 @@ CTCMCache spCache("spCache");
  * item's two lines set to its prompt (0x236260: the tree's builder calls it; the name ours). The
  * child and its action are declared ahead of the inner walk: inside it they take the walk's index's
  * saved register and it theirs (MW spills the node to the frame either way, as the target does) */
-void tcmSetNodeActions()
+void CTCM::SetNodeActions()
 {
     std::vector<CNodeAction *> actions;
 
@@ -156,7 +147,7 @@ CTCM::CTCM() : m_cache(0), m_da8(0), m_dac(0), m_db0(1.0f), m_hold(-1.0f)
 
 void CTCM::Init()
 {
-    func_002344E0();
+    tcmBuildCaches();
     m_path.reserve(5);
     m_children.reserve(32);
 }
@@ -322,6 +313,160 @@ void CTCM::Hold(bool reset, float t)
             m_hold = t;
     } else {
         m_hold = 0.0f;
+    }
+}
+
+/* the network game (fts_net_game's theNetwork, 0x45A0C0): whether it is one */
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_bNetwork;   // 0x1
+};
+
+extern CZNetwork theNetwork;
+
+/* the voice recogniser (reco.cpp's theReco, 0x414680): its engine running, its context asked for, the
+ * input's level and the last result's confidence */
+class CReco {
+public:
+    float GetLevel();
+    void SetConfidence(int conf);
+    float GetConfidence();
+
+    unsigned char _0[0x38];
+    unsigned int m_init : 1;   // 0x38 bit 0
+    unsigned int m_running : 1;   // bit 1
+    unsigned int m_startReq : 1;   // bit 2
+    unsigned int m_stopReq : 1;   // bit 3
+    unsigned int m_contextReq : 1;   // bit 4
+};
+
+extern CReco theReco;
+
+/* the display's rates and the microphone meter's place (OVL1 .data 0x3DCB10-0x3DCB8F; the names ours) */
+static float s_tcmUpdatePulseRate = 8.0f;
+static float s_tcmColumnRate = 7.0f;
+static float s_tcmFadeRate = 2.0f;
+static float s_tcmMicFadeRate = 100.0f;
+static float s_tcmMicX = 288.0f;
+static float s_tcmMicY = 390.0f;
+static float s_tcmMicW = 42.0f;
+static float s_tcmMicH = 42.0f;
+static float s_tcmMicGap = 4.0f;
+static float s_tcmLevelW = 4.0f;
+static float s_tcmLevelH = 42.0f;
+static float s_tcmConfLow = 0.5f;
+static float s_tcmConfMid = 1.0f;
+static float s_tcmConfDecay = 0.5f;
+
+/* the menu's per-frame display (no SOCOM 1 counterpart; the name ours): the layout and the talk button,
+ * the clocks, the pulse, the columns' fade to the menu's mode, the tree; offline with the recogniser
+ * running or asked for a context, the microphone meter placed, its colour flashed by the last result's
+ * confidence and fading; otherwise the meter fading out.
+ * OPEN, 2 instructions (round 65): the column's rate arm opens `lui at; lwc1 f3,0(v1); lwc1 f2,rate(at)` in the
+ * target, `lwc1 f3,0(v1); lui at; lwc1 f2,rate(at)` here: every register agrees, the longer path from the direction's
+ * load keeps it first. Tried, none moves the lui ahead: the column through a pointer, a reference or a walker (an
+ * indexed store lets the rate's load be hoisted out of the loop, which the target does not); step, product, direction
+ * or rate in a local, plain or const (const or a cast rate only renumbers: 5) */
+void CTCM::Update(float dt)
+{
+    Layout(dt);
+    TalkTick(dt);
+    m_dc8 += dt;
+    m_dac += s_tcmUpdatePulseRate * (dt * m_db0);
+    if (1.0f == m_db0) {
+        if (!(m_dac <= 1.0f)) {
+            m_dac = 1.0f;
+            m_db0 *= -1.0f;
+        }
+    } else if (m_dac < 0.0f) {
+        m_dac = 0.0f;
+        m_db0 *= -1.0f;
+    }
+
+    for (unsigned int i = 0; i < 8; i++) {
+        CTCMColumn &c = g_tcmColumns[i];
+        float cur = c.m_4;
+        float v;
+
+        if (m_mode.m_mode == 0)
+            v = 0.0f;
+        else
+            v = cur + s_tcmColumnRate * (dt * c.m_dir);
+        if (!(v <= 1.0f))
+            v = 1.0f;
+        else if (v < 0.0f)
+            v = 0.0f;
+        if (v != cur)
+            c.m_4 = v;
+    }
+
+    float fade = m_da0 + s_tcmFadeRate * (dt * m_da4);
+
+    m_da0 = fade;
+    if (!(fade <= 1.0f))
+        m_da0 = 1.0f;
+    else if (fade < 0.0f)
+        m_da0 = 0.0f;
+    CTCMNode::Tick(dt);
+    if (!theNetwork.m_bNetwork && (theReco.m_running || theReco.m_contextReq)) {
+        static float x = s_tcmMicGap + (s_tcmMicX + s_tcmMicW);
+        static float y = s_tcmMicY + s_tcmMicH;
+
+        m_items.SetPos(s_tcmMicX, s_tcmMicY, s_tcmMicW, s_tcmMicH);
+        m_11c0.SetPos(x, y, s_tcmLevelW, -1.0f * s_tcmLevelH);
+        m_fd0.SetPos(x, y, s_tcmLevelW, -1.0f * s_tcmLevelH * theReco.GetLevel());
+
+        float conf = theReco.GetConfidence();
+
+        if (!(conf <= 0.0f)) {
+            if (conf < s_tcmConfLow) {
+                CPnt3D d = s_tcmColor0 - s_tcmColor3;
+
+                s_tcmColor4.x = d.x;
+                s_tcmColor4.y = d.y;
+                s_tcmColor4.z = d.z;
+            } else if (conf < s_tcmConfMid) {
+                CPnt3D d = s_tcmColor1 - s_tcmColor3;
+
+                s_tcmColor4.x = d.x;
+                s_tcmColor4.y = d.y;
+                s_tcmColor4.z = d.z;
+            } else {
+                CPnt3D d = s_tcmColor2 - s_tcmColor3;
+
+                s_tcmColor4.x = d.x;
+                s_tcmColor4.y = d.y;
+                s_tcmColor4.z = d.z;
+            }
+            m_13b0 = 1.0f;
+            theReco.SetConfidence(0);
+        }
+
+        float flash = m_13b0 - s_tcmConfDecay * dt;
+
+        m_13b0 = flash;
+        if (flash < 0.0f)
+            m_13b0 = 0.0f;
+        m_items.SetColor(s_tcmColor3.x + s_tcmColor4.x * m_13b0, s_tcmColor3.y + s_tcmColor4.y * m_13b0,
+                         s_tcmColor3.z + s_tcmColor4.z * m_13b0);
+        m_items.SetTrans(128.0f);
+        m_11c0.SetTrans(128.0f);
+        m_fd0.SetTrans(128.0f);
+        m_items.On();
+        m_11c0.On();
+        m_fd0.On();
+    } else {
+        float trans = m_items.GetTrans();
+
+        if (!(trans <= 0.0f)) {
+            trans -= s_tcmMicFadeRate * dt;
+            if (trans < 0.0f)
+                trans = 0.0f;
+        }
+        m_items.SetTrans(trans);
+        m_11c0.SetTrans(trans);
+        m_fd0.SetTrans(trans);
     }
 }
 

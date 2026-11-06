@@ -430,6 +430,7 @@ public:
 class CShadowCaster {
 public:
     CShadowCaster(CNode *node);
+    ~CShadowCaster() {}
     void Update();
 
     CMatrix m_matrix;   // 0x0: the unit matrix at first

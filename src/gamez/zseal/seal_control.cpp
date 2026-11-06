@@ -4,6 +4,7 @@
  * of their image order (-inline deferred). */
 
 #include "zseal.h"
+#include "seal_throw.h"
 #include "../zinput/zinput.h"
 #include "../zanim/zanim.h"
 #include "../zweapon/zweapon.h"
@@ -153,19 +154,80 @@ CSealCtrl::CSealCtrl()
     m_244 = 0.0f;
 }
 
-/* a vector's length squared on the ground plane (OVL2 0x5975B0: an inline's copy, before the
- * grenade's statics; PostTick and the kit call it) */
-extern "C" float func_005975B0(const CPnt3D *v)
-{
-    return v->x * v->x + v->z * v->z;
+namespace ai {
+bool PushLineColor(const CPnt3D &color);
+void PopLineColor();
+void SetLineFuncOpacity(float start, float end);
 }
 
-/* points turned by a matrix's rotation, in place (OVL2 0x597530: an inline's copy, right after its
- * first caller CSealCtrl::PostTick -- zmath.h's TransformVectors with one array for both, so the
- * input cursor is a copy of the output's; the kit calls it too, 0x5B8920 and 0x5C1970) */
-extern "C" void func_00597530(const CMatrix *m, CPnt3D *p, int count)
+/* the time a grenade thrown with a velocity flies from a height (the two views const: `&g + 16` of the
+ * launch's own stores and the velocity's y here are told apart -- read straight, one saved register
+ * holds it from the launch's arms on) */
+inline float FlightTime(const CPnt3D &v, const CPnt3D &p)
 {
-    TransformVectors(m, p, p, count);
+    float t0, t1;
+
+    return ai::quadratic(-49.0f, v.y, p.y, t0, t1) ? ai::_max(t0, t1) : 0.0f;
+}
+
+/* the thrown grenade's arc drawn while the SEAL throws (OVL2 0x5970B0, slot 0x3C; SOCOM 1's, the switch
+ * added, not through binoculars or a scope, its colour by the night vision). Byte-exact from SOCOM 1's
+ * body once CDynGrenade::Initalize (seal_throw.h) is an inline over inline_max_size, as the three calling
+ * functions' out-of-line calls say. The matrix declared first takes its number ahead of the seal and the
+ * kit: `igreplay --permute`'s four placements all have it below them */
+bool CSealCtrl::PostTick(float dT)
+{
+    const CMatrix *m;
+
+    if (!data_003DF1B0)
+        return false;
+
+    SensorTick(dT);
+
+    static unsigned int steps = 100;
+
+    if (steps != 0) {
+        CZSealBody *seal = (CZSealBody *)m_entity;
+        CZKit *kit = &seal->m_kit;
+
+        if (m_throwing && !m_justthrew && !kit->IsUsingBinocs()) {
+            float power = m_trigger_power;
+            bool standing = seal->m_state == stateStand;
+            CharacterDynamics::throw_params *params = &seal->GetDynamics()->m_throw_params;
+            float dist = standing ? params->max_distance_stand : params->max_distance_crouch;
+            AnimType type;
+            float frac, base;
+            CPnt3D p;
+
+            seal->GetThrowAnim(power, type, frac, base, p);
+
+            CDynGrenade g;
+
+            m = &seal->m_node->m_matrix;
+            g.Initalize(m, seal->m_aim_goal, dist, power, p);
+
+            float tmax = FlightTime(g.m_vel, p);
+
+            g(FlightTime(g.m_vel, p));
+
+            static float k_opacity0 = 0.75f;
+            static float k_opacity1 = 0.1f;
+            static float k_scale = 2.0f;
+
+            tmax *= k_scale;
+            if (!kit->IsUsingScope()) {
+                if (!kit->NVG_Enabled()) {
+                    ai::PushLineColor(CPnt3D(0.78f, 0.78f, 0.0f));
+                } else {
+                    ai::PushLineColor(CPnt3D(1.0f, 1.0f, 0.8f));
+                }
+                ai::SetLineFuncOpacity(k_opacity0, k_opacity1);
+                ai::DrawFunc(ai::LINE_ANY, -1.0f, tmax, steps, g);
+                ai::PopLineColor();
+            }
+        }
+    }
+    return true;
 }
 
 extern "C" {
@@ -317,6 +379,271 @@ extern "C" bool func_00596D60(CSealCtrl *ctrl, signed char side, float d)
     }
     zdb::SetCameraCollideFlagRequired(false);
     return true;
+}
+
+extern "C" {
+/* the pad's sticks (OVL1 0x2C6230, 0x2C6110, 0x2C6280: SOCOM 1's GetRotateStickPosDilated,
+ * GetStrafeStickPos and GetPitchStickPosDilated; GetFwdBackStickPos named: CCtrlrConfigs') */
+float func_002C6230(CPad *pad);
+float func_002C6110(CPad *pad);
+float func_002C6280(CPad *pad);
+float GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad(CPad *pad);
+/* the first steps' mark on the aim's pitch (OVL2 bss, a static of SOCOM 1's by its place) */
+extern unsigned char data_0066B3D8;
+/* SOCOM 1's globals (hackPitchFactor, m_bobbing1stperson_enabled, the bob's two pairs by the stance) */
+extern float hackPitchFactor;
+extern float data_0044D4E8[2];
+extern float data_0044D4F0[2];
+/* the bob's phase (OVL2 bss; a function static) */
+extern float data_0066B3F0;
+}
+
+/* a stick's dead band: within the band a line to the dilation, past it the rest, the sign kept (an inline:
+ * SOCOM 1's two copies; the turn throttle's and the pitch's pairs in theCharacterDynamics) */
+static inline float Dilated(float v, float dead, float dilate)
+{
+    float sign = 1.0f;
+
+    if (v < 0.0f) {
+        sign = -1.0f;
+        v = -v;
+    }
+    if (v <= dead)
+        v *= dilate / dead;
+    else
+        v = dilate + (1.0f - dilate) * ((v - dead) / (1.0f - dead));
+    return sign * v;
+}
+
+/* the throttles read off the pad: with the input off or a menu up, all zero, the trigger let go, the
+ * weapon's state 2, the rumble and pickups ticked -- and true; else the sticks scaled, slowed by the zoom
+ * and in scope or binoculars, the first-person bob run for a player's stances, the throttles kept and the
+ * aim's pitch ticked (OVL2 0x5966A0: SOCOM 1's ThrottlesPreTick; hackPitchFactor stays, the pad's first
+ * byte asked) */
+bool CSealCtrl::ThrottlesPreTick(CPad *pad, float dT0)
+{
+    float speed;
+    float bob;
+    float dT = (float)dT0;
+    float pitch;
+    float turn;
+    float side;
+    float fwd;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CZKit *kit = &seal->m_kit;
+
+    if ((m_menustate > 1 && m_menustate < 6) || !m_input_enabled) {
+        SetThrottle(0, 0.0f);
+        SetThrottle(2, 0.0f);
+        SetThrottle(1, 0.0f);
+        SetTrigger(false);
+        seal->SetWeaponState((WEAPON_STATE)2);
+        TickRumbler(dT);
+        TickPickups(dT);
+        TickVictims();
+        return true;
+    }
+    pitch = 0.0f;
+
+    if (pad->m_0) {
+        turn = -func_002C6230(pad);
+        side = func_002C6110(pad);
+        fwd = GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad(pad);
+        static float k_pitch = 1.72f;
+        static float k_turn = 1.72f;
+        static bool dilate = false;
+
+        float raw = func_002C6280(pad);
+
+        m_138 = raw;
+        pitch = hackPitchFactor * raw;
+        pitch *= k_pitch;
+        turn *= k_turn;
+        if (data_0066B3D8 == 1 && fwd)
+            data_0066B3D8 = 2;
+        if (dilate) {
+            turn = Dilated(turn, theCharacterDynamics.m_turnThrottleA, theCharacterDynamics.m_turnThrottleB);
+            pitch = Dilated(pitch, theCharacterDynamics.m_pitchThrottleA, theCharacterDynamics.m_pitchThrottleB);
+        }
+
+        float zoom = kit->GetCurZoom();
+
+        if (zoom)
+            zoom = 1.0f / zoom;
+        turn *= zoom;
+        pitch *= zoom;
+        if (kit->IsUsingBinocs()) {
+            static float k_binocs = 0.2f;
+
+            turn *= k_binocs;
+            pitch *= k_binocs;
+        }
+        if (kit->IsUsingScope() || kit->IsUsingBinocs()) {
+            fwd *= 0.2f;
+            side *= 0.2f;
+        }
+        if (m_bobbing1stperson_enabled && seal->IsPlayer() && !seal->m_eb8) {
+            int mode = seal->m_zoomstate;
+
+            if (mode == 1 || mode == 2 || mode == 3) {
+                int stance = seal->GetStance(false);
+
+                if (stance < 3 && !(fwd == 0.0f && side == 0.0f)) {
+                    bob = cosf(data_0066B3F0);
+                    int i = stance == 2;
+
+                    if (fwd != 0.0f && side != 0.0f)
+                        speed = 0.5f * (fabsf(fwd) + fabsf(side));
+                    else if (fwd != 0.0f)
+                        speed = fwd;
+                    else
+                        speed = side;
+                    kit->IncrScreenOffsetY(bob * data_0044D4E8[i]);
+                    data_0066B3F0 += speed * (dT * data_0044D4F0[i]);
+                    if (data_0066B3F0 > 6.2831855f)
+                        data_0066B3F0 -= 6.2831855f;
+                }
+            }
+        }
+        float &t0 = m_throttle[0];
+        float &t2 = m_throttle[2];
+        float &t1 = m_throttle[1];
+
+        if (fwd == 0.0f)
+            t0 = 0.0f;
+        else
+            t0 = fwd;
+        t2 = turn;
+        if (side == 0.0f)
+            t1 = 0.0f;
+        else
+            t1 = side;
+    }
+    TickAimPitch(dT, pitch);
+    return false;
+}
+
+enum TWO { TWO_0, TWO_1, TWO_2, TWO_BIG = 0x7fff };
+
+/* an arc cosine kept to its domain (an inline, seal_env.cpp's) */
+static inline float ClampAcos(float c)
+{
+    if (c >= 1.0f)
+        return 0.0f;
+    if (c <= -1.0f)
+        return 3.1415927f;
+    return acosf(c);
+}
+
+/* the aim's pitch ticked: its limits by the stance -- prone added the ground's tilt, or for the first steps
+ * the initial pitch held -- moved by the throttle (500 times the rate over the zoom), set as throttle 3, and
+ * back inside its limits at half a unit a second; online kept to the game's limits; the head turned to it and
+ * the rate of the change kept (OVL2 0x594600: SOCOM 1's TickAimPitch with the tilt, the zoom's and the
+ * limits new). OPEN, 2 instructions, the first test of the mark: the target has `li v1,2` before the load and
+ * `bne v0,v1` -- the 2 coloured v1, the value v0, where the later test of the same mark (read `== 2`) has the
+ * value v1 and the 2 v0. Only a non-propagated holder on the LEFT (an enum local, below) takes the
+ * colours, at `daddiu` and `bne v1,v0`; `data == 2` (either way round), a const, cast, int or byte holder, an
+ * inline's parameter, a local read, propagation off and `!(two != data)` are 8-9 off */
+void CSealCtrl::TickAimPitch(float dT, float throttle)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CharacterDynamics *dyn = seal->GetDynamics();
+    float lo = dyn->m_proneMinAimPitch;
+    float hi = dyn->m_proneMaxAimPitch;
+    bool prone = seal->m_state == stateProne;
+    float prev = m_aimPitch;
+
+    TWO two = TWO_2;
+
+    if (two == data_0066B3D8) {
+        if (prone) {
+            float init = dyn->m_initAimPitch;
+
+            if (init > hi)
+                lo = hi;
+            else if (init < lo)
+                hi = lo;
+            else {
+                hi = init;
+                lo = init;
+            }
+        } else {
+            hi = dyn->m_initAimPitch;
+            lo = hi;
+        }
+    } else {
+        lo = prone ? lo : dyn->m_minAimPitch;
+        hi = prone ? hi : dyn->m_maxAimPitch;
+    }
+    if (prone) {
+        CPnt3D up;
+
+        TransformVectors(&seal->m_node->m_matrix, &CPnt3D::unit_nz, &up, 1);
+
+        float dot = seal->m_1344.x * up.x + seal->m_1344.y * up.y + seal->m_1344.z * up.z;
+        float tilt = 1.5707964f - ClampAcos(fabsf(dot));
+
+        if (dot > 0.0f)
+            tilt = -tilt;
+        lo += tilt;
+        hi += tilt;
+    }
+    if (throttle != 0.0f) {
+        float zoom = seal->m_zoomval;
+        float rate = 500.0f * dyn->m_pitchRate / zoom;
+        float step = rate * throttle;
+
+        SetThrottle(3, step);
+        step *= dT;
+        if (!seal->m_eb8) {
+            if (throttle > 0.0f && m_aimPitch < hi) {
+                m_aimPitch += step;
+                if (m_aimPitch > hi)
+                    m_aimPitch = hi;
+            } else if (throttle < 0.0f && m_aimPitch > lo) {
+                m_aimPitch += step;
+                if (m_aimPitch < lo)
+                    m_aimPitch = lo;
+            }
+        }
+    } else
+        SetThrottle(3, 0.0f);
+    if (m_aimPitch > hi) {
+        m_aimPitch -= 0.5f * dT;
+        if (m_aimPitch < hi)
+            m_aimPitch = hi;
+    } else if (m_aimPitch < lo) {
+        m_aimPitch += 0.5f * dT;
+        if (m_aimPitch > lo)
+            m_aimPitch = lo;
+    }
+    if (data_0066B3D8 == 2 && lo == m_aimPitch)
+        data_0066B3D8 = 0;
+    if (theNetwork.m_9 && data_00437CE8->m_cc) {
+        if (seal->m_netlife != 1) {
+            if (m_aimPitch > 0.5f)
+                m_aimPitch = 0.5f;
+            else if (m_aimPitch < 0.0f)
+                m_aimPitch = 0.0f;
+        } else {
+            if (m_aimPitch > 1.0f)
+                m_aimPitch = 1.0f;
+            else if (m_aimPitch < 0.0f)
+                m_aimPitch = 0.0f;
+        }
+    } else if (seal->m_netlife != 1) {
+        if (m_aimPitch > -0.1f)
+            m_aimPitch = -0.1f;
+        else if (m_aimPitch < -0.4f)
+            m_aimPitch = -0.4f;
+    } else {
+        if (m_aimPitch > 1.4f)
+            m_aimPitch = 1.4f;
+        else if (m_aimPitch < -1.4f)
+            m_aimPitch = -1.4f;
+    }
+    seal->RotateHead(m_aimPitch);
+    *(float *)&seal->m_unk60 = (prev - m_aimPitch) / dT;
 }
 
 /* the reload button: double-clicked, or held past the limit, reloads the SEAL's kit; while held its
@@ -1123,6 +1450,150 @@ void CSealCtrl::SetMenuState(MENU_STATE state, bool keep)
     }
 }
 
+extern "C" {
+/* whether the SEAL is held by a rope or so (OVL2 0x5A8850, seal_env.cpp's), a corpse it may take in a
+ * network game (0x57DDF0, seal_body.cpp's), the kit's thrown item's something (0x5B82D0, the kit lane's),
+ * the action 19's test (0x5A88C0, seal_env.cpp's) */
+bool func_005A8850(CZSealBody *seal);
+bool func_0057DDF0(CZSealBody *seal, CZSealBody *corpse);
+float func_005B82D0(CZKit *kit);
+bool func_005A88C0(CZSealBody *seal);
+bool func_00588080(CZSealBody *seal);
+}
+
+/* the bomb's defusal open to the SEAL: planted, and the side the game's mode asks (an inline) */
+static inline bool CanDefuseBomb(CSealCtrl *ctrl)
+{
+    CNetGameState *game = data_00437CE8;
+    CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
+    const CZBombState::STATUS &st = CZBombState::m_BombStatus;
+
+    if (seal && st.m_state == 3) {
+        bool side = func_002C30B0(seal);
+
+        if (!game->m_1c)
+            return false;
+        unsigned short mode = game->m_1c->m_4;
+
+        if (mode == 1 && side)
+            return true;
+        if (mode == 2 && !side)
+            return true;
+    }
+    return false;
+}
+
+/* a victim the SEAL can take: the reticule's SEAL, one of its team, or a target it holds with bit 9 set
+ * (an inline; else none) */
+static inline bool TargetBit9(CZSealBody *seal, CZSealBody *victim)
+{
+    CTarget *t = seal->m_targets.FindTarget(victim);
+
+    return t ? (t->m_flags & 0x200) != 0 : false;
+}
+
+static inline bool VictimInReach(CZSealBody *seal, CZSealBody *reticule, CZSealBody *victim)
+{
+    bool ok = false;
+
+    if (victim) {
+        if (victim == reticule)
+            ok = true;
+        else if (victim->m_team & seal->m_team)
+            ok = true;
+        else
+            ok = TargetBit9(seal, victim);
+    }
+    return ok;
+}
+
+/* the actions in reach marked: the rope's alone; the reticule's action, the victims' knife, restraint and
+ * CQB and the corpse (online only the corpse's own), the satchel, the action's kind, the pickups, the
+ * bomb's defusal, the charge at the feet and the entity (OVL2 0x5937C0, slot 0x80; SOCOM 1's, the online arm
+ * and the last two new) */
+void CSealCtrl::PerformProximityActions()
+{
+    CNodeAction *action;
+    CZSealBody *victim;
+    CZSealBody *corpse;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CZSealBody *reticule;
+    bool charge;
+    bool fire;
+    zdb::CNode *node;
+    CZKit *kit;
+    CZSealBody *self;
+
+    if (func_005A8850(seal)) {
+        seal->ActionAvailableMask(20, true);
+        return;
+    }
+    action = seal->GetReticuleAction(true);
+    victim = m_victimbody;
+    corpse = m_corpsebody;
+
+    if (!theNetwork.m_9) {
+        reticule = seal->GetReticuleSeal();
+
+        if (!VictimInReach(seal, reticule, victim))
+            victim = 0;
+        if (victim) {
+            if (seal->CanUseCQB(victim))
+                seal->ActionAvailableMask(12, true);
+            if (seal->CanUseRestraint(victim))
+                seal->ActionAvailableMask(11, true);
+            if (seal->CanUseKnife(victim))
+                seal->ActionAvailableMask(10, true);
+        }
+        if (corpse && seal->CanUseBodyCarry(corpse))
+            seal->ActionAvailableMask(8, true);
+    } else if (corpse && func_0057DDF0(seal, corpse))
+        seal->ActionAvailableMask(21, true);
+
+    kit = &seal->m_kit;
+    if (kit)
+        kit->GetCurItem();
+    fire = seal->CanFire(true, true);
+
+    if (kit && fire && kit->HasItemWithAmmo((EQUIP_ITEM)151)) {
+        bool near = seal->m_208 < 396.0f && seal->m_kit.GetReticuleSettle() == 0.0f;
+
+        if (near) {
+            node = seal->m_last_reticule.m_node;
+            zdb::CNodeEx *ex = node ? node->m_nodeEx : 0;
+
+            if (ex && ex->Slot10(kit ? func_005B82D0(kit) : 0.0f))
+                seal->ActionAvailableMask(18, true);
+        }
+    }
+    if (action && CanPerformAction(action)) {
+        if (action->m_type == 4)
+            seal->ActionAvailableMask(7, true);
+        else if (action->m_type == 6)
+            seal->ActionAvailableMask(17, true);
+        else
+            seal->ActionAvailableMask(13, true);
+        m_action = false;
+    }
+    if (seal->CurrentPickup())
+        seal->ActionAvailableMask(4, true);
+    if (seal->CurrentPickupSecondary())
+        seal->ActionAvailableMask(5, true);
+    if (m_bomb_defusal_node && CanDefuseBomb(this))
+        seal->ActionAvailableMask(7, true);
+
+    self = (CZSealBody *)m_entity;
+    charge = false;
+    if (self && self->m_kit.HasItem((EQUIP_ITEM)154) && m_244 <= 0.0f && !func_00588080(self) &&
+        m_throttle[0] == 0.0f && m_throttle[1] == 0.0f && self->CanFire(true, false) &&
+        func_005C0AD0(&self->m_kit) <= 0.0f && self->m_aim_goal.y < -0.25f)
+        charge = true;
+    if (charge)
+        seal->ActionAvailableMask(6, true);
+    if (func_005A88C0(seal))
+        seal->ActionAvailableMask(19, true);
+}
+
 /* the reticle's actions: the squad asked whether orders 4 and 5 are allowed now, actions 14 and
  * 15 offered if so (OVL2 0x593D00; SOCOM 1's without its flag and the reticle seal's tail). The
  * squad declared first: the SEAL takes s0, the squad s1, as the target's. */
@@ -1211,6 +1682,172 @@ void CSealCtrl::SampleActionAvailable()
     }
     if (seal->m_state == 5)
         seal->ActionAvailableMask(16, true);
+}
+
+extern "C" {
+/* whether a door's action needs its charge (OVL2 0x58...: the kit's), the mission's action flag (OVL1 data
+ * 0x4365DC), the fire-team order's test (0x57F530, 0x57F3E0, seal_body.cpp's), the buddy's lift (0x546C00),
+ * the entity's use (0x546210), the carried body's drop (0x545EE0) and the corpse's take (0x57DCC0) */
+int func_002B46F0(CNodeAction *action);
+bool func_0057F530(CZSealBody *seal);
+void func_0057F3E0(CZSealBody *seal);
+void func_00546C00(CZSealBody *seal, CZSealBody *other);
+void func_00546210(CZSealBody *seal, CEntity *e);
+void func_00545EE0(CZSealBody *seal, int x);
+void func_0057DCC0(CZSealBody *seal, int x);
+extern struct { unsigned char m_bit0 : 1, m_bit1 : 1, m_bit2 : 1; } data_004365DC;
+}
+/* an entity's team bits (an inline, the name ours: read ahead of the `&`, seal_command.cpp's TeamOf) */
+static inline unsigned int TeamBits(const CEntity *e) { return e->m_team; }
+/* the door's anim index for a SEAL at an action (SOCOM 1's, the kit lane's seal_tasks.cpp) */
+unsigned int CanUseDoorAction(CZSealBody *seal, CNodeAction *action, float f);
+
+/* the action a press of the button takes, by the selection's bit (SOCOM 1's OnActionButton; OVL2 0x592D50,
+ * slot 0x74): no display: the delayed jump; else in the mask's order; the selection cleared after */
+void CSealCtrl::OnActionButton()
+{
+    CNodeAction *breach;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (!seal->m_action_display_on) {
+        seal->ExecuteDelayedAction_Jump();
+        m_action = true;
+    } else {
+        unsigned int sel = seal->m_action_selection;
+
+        if (sel & 2) {
+            m_action = false;
+            seal->m_action_display_on = 0;
+        } else if (sel & 0x2000) {
+            CNodeAction *action = seal->GetReticuleAction(true);
+
+            if (action && CanPerformAction(action)) {
+                bool ok = (action->m_teams & TeamBits(seal)) != 0 && func_002B46F0(action) != 0;
+
+                if (ok) {
+                    if (action->m_3f_2 ? true : false)
+                        data_004365DC.m_bit2 = true;
+                    else if (action->m_type != 4) {
+                        action->ExecuteAction(seal, CanUseDoorAction(seal, action, *(float *)&m_120));
+                        seal->m_538 = action->m_10;
+                    }
+                }
+            }
+        } else {
+            if (sel & 0x40000) {
+                bool near;
+                zdb::CNode *node;
+                CZKit *kit;
+                zdb::CNodeEx *ex;
+
+                kit = &seal->m_kit;
+                if (kit)
+                    kit->GetCurItem();
+                if (kit && seal->CanFire(true, false) && kit->HasItemWithAmmo((EQUIP_ITEM)151)) {
+                    near = seal->m_208 < 396.0f && seal->m_kit.GetReticuleSettle() == 0.0f;
+
+                    if (near && seal->GetReticuleDi()) {
+                        node = seal->m_last_reticule.m_node;
+                        ex = 0;
+                        ex = node ? node->m_nodeEx : ex;
+                        if (ex && ex->Slot10(kit ? func_005B82D0(kit) : 0.0f))
+                            seal->m_kit.HandlePlacingExlosive((EQUIP_ITEM)151, 1.0f, 0.2f);
+                    }
+                }
+            } else if (sel & 0x20000) {
+                breach = seal->GetReticuleAction(true);
+
+                if (breach && breach->m_type == NODEACTION_BREACH) {
+                    bool ok = (breach->m_teams & TeamBits(seal)) != 0 && func_002B46F0(breach) != 0;
+
+                    if (ok) {
+                        CZSealBody *body = (CZSealBody *)m_entity;
+                        CValve *valve = breach->m_valve;
+                        bool has;
+
+                        if (body && body->m_kit.HasItem((EQUIP_ITEM)152) && body->m_kit.ItemHasAmmo((EQUIP_ITEM)152) &&
+                            valve && valve->m_value == 0)
+                            has = true;
+                        else
+                            has = false;
+                        if (has) {
+                            breach->ExecuteAction(body, 0);
+                            body->m_kit.HandlePlacingExlosive((EQUIP_ITEM)152, 1.0f, 0.2f);
+                            valve->SetValue(1);
+                        }
+                    }
+                }
+            } else if (sel & 4) {
+                seal->ExecuteDelayedAction_Climb();
+                m_action = true;
+            } else if (!(sel & 8)) {
+                if (sel & 0x10) {
+                    CPickup *pickup = seal->CurrentPickup();
+
+                    if (pickup) {
+                        m_weapon_pickup_timer = 3.0f;
+                        if (pickup->m_type == 11)
+                            seal->PickupObject(pickup);
+                        else {
+                            seal->PickupObject(pickup);
+                            seal->m_echo_pickup = true;
+                        }
+                    }
+                } else if (sel & 0x20) {
+                    CPickup *pickup = seal->CurrentPickupSecondary();
+
+                    if (pickup) {
+                        m_weapon_pickup_timer = 3.0f;
+                        seal->PickupObject(pickup);
+                        seal->m_echo_pickup = true;
+                    }
+                } else if (sel & 0x40) {
+                    seal->DropMPBomb();
+                    m_bombpickuptimer = 4.0f;
+                } else if (sel & 0x100)
+                    func_00546C00(seal, m_corpsebody);
+                else if (sel & 0x200)
+                    seal->PutdownBuddy();
+                else if (sel & 0x400)
+                    seal->ExecuteAction_KnifeAttack(m_victimbody);
+                else if (sel & 0x800)
+                    seal->ExecuteAction_ApplyRestraint(m_victimbody);
+                else if (sel & 0x1000)
+                    seal->ExecuteAction_CQBAttack(m_victimbody);
+                else if (sel & 0x4000) {
+                    CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
+
+                    if (unit->AllowCommand(seal, (FT_COMMAND)4, 0))
+                        unit->IssueCommand(ftsGetPlayer(), (FT_COMMAND)4, 0, false);
+                } else if (sel & 0x8000) {
+                    CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
+
+                    if (unit->AllowCommand(seal, (FT_COMMAND)5, 0))
+                        unit->IssueCommand(ftsGetPlayer(), (FT_COMMAND)5, 0, false);
+                } else if (sel & 0x10000) {
+                    if (func_0057F530(seal))
+                        func_0057F3E0(seal);
+                } else if (sel & 0x80000) {
+                    CEntity *e = m_16c;
+
+                    if (e) {
+                        CTurret *typed = e && e->m_type == 3 ? (CTurret *)e : 0;
+
+                        if (e->Virtual5C(seal, typed))
+                            func_00546210(seal, e);
+                    }
+                } else if (sel & 0x100000) {
+                    if (seal->m_eb8)
+                        func_00545EE0(seal, 0);
+                } else if (sel & 0x200000 && func_0057DDF0(seal, m_corpsebody))
+                    func_0057DCC0(seal, -1);
+            }
+        }
+    }
+    if (!(seal->m_action_selection & 4))
+        m_action = false;
+    seal->m_action_available = 0;
+    seal->m_action_selection = 0;
 }
 
 /* the scope's zoom (OVL2 0x592C70, 0x592C30, 0x592C10, 0x592BF0) */

@@ -285,6 +285,19 @@ static float s_tcmCursorH = 27.0f;   // 0x3DCA08
 static float s_tcmCursorTextX = 10.0f;   // 0x3DCA10
 static float s_tcmCursorTextY = 21.0f;   // 0x3DCA18
 static float s_tcmCursorSplit = 0.6f;   // 0x3DCA20
+/* a column's items (0x3DCA28-0x3DCA78): their top, width, height, the columns' gap, the rows' overlap;
+ * the arrow's offset and size, and the caption's offset in an item */
+static float s_tcmItemTop = 55.0f;   // 0x3DCA28
+static float s_tcmItemW = 164.0f;   // 0x3DCA30
+static float s_tcmItemH = 22.0f;   // 0x3DCA38
+static float s_tcmColumnGap = 20.0f;   // 0x3DCA40
+static float s_tcmRowGap = -2.0f;   // 0x3DCA48
+static float s_tcmArrowX = 4.0f;   // 0x3DCA50
+static float s_tcmArrowW = 8.0f;   // 0x3DCA58
+static float s_tcmArrowH = 14.0f;   // 0x3DCA60
+static float s_tcmArrowY = 4.0f;   // 0x3DCA68
+static float s_tcmItemTextX = 10.0f;   // 0x3DCA70
+static float s_tcmItemTextY = 17.0f;   // 0x3DCA78
 static float s_tcmLeftX = -256.0f;   // 0x3DCA80
 /* the root column's slide rates, in and out (0x3DCA88, 0x3DCA90: pixels a second) */
 static float s_tcmSlideIn = 1200.0f;   // 0x3DCA88
@@ -296,6 +309,10 @@ static float s_tcmFadeOut = 600.0f;   // 0x3DCAA0
 static float s_tcmCloseHold = 1.0f;   // 0x3DCAA8
 static float s_tcmPulseRate = 12.0f;   // 0x3DCAB0
 static float s_tcmPulseDir = 1.0f;   // 0x3DCAB8
+/* a dead item's caption grey and the highlight's colours, the pulse's reach and the base (0x3DCAC0-0x3DCAE0) */
+static float s_tcmDeadText = 32.0f;   // 0x3DCAC0
+static PNT3D s_tcmHighPulse = { 85.0f, 130.0f, 130.0f };   // 0x3DCAC8
+static PNT3D s_tcmHighBase = { 80.0f, 120.0f, 120.0f };   // 0x3DCAD8
 /* computed by the unit's initialiser (0x3FF430), in this order: the first column's left, the
  * columns' span, the cursor's colour (the layout reads its three components, the slide its alpha) */
 static float s_tcmLeft = s_tcmColumnX;   // 0x413020
@@ -322,10 +339,6 @@ public:
 
 extern CHUD *theHUD;
 
-/* the layout of one column and its children from a depth on (0x230870, not written yet: recursive;
- * the parameter order is the call's set-up order) */
-extern "C" void func_00230870(CTCM *tcm, CTCMNode *cur, float x, float y, float dir, unsigned int depth,
-                              bool b);
 
 
 /* the menu laid out for its mode (0x231690; the tree's Open and ShowRoot call it with 0, the menu
@@ -356,7 +369,7 @@ void CTCM::Layout(float t)
                 settled = false;
         }
         if (!settled) {
-            func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+            LayoutColumn(cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
         } else if (m_dce) {
             m_dd0 += t;
             if (m_dd0 > s_tcmCloseHold) {
@@ -371,7 +384,7 @@ void CTCM::Layout(float t)
                 s_tcmPulse = 0.0f;
                 s_tcmPulseDir *= -1.0f;
             }
-            func_00230870(this, cur, s_tcmLeft, 1.0f, s_tcmPulse, 0, false);
+            LayoutColumn(cur, s_tcmLeft, 1.0f, s_tcmPulse, 0, false);
         } else {
             bool faded = FadeCursor(cur, false, t);
             bool slid = SlideRoot(cur, true, t);
@@ -390,7 +403,7 @@ void CTCM::Layout(float t)
     }
     case 1:
         PlaceCursor(cur);
-        func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+        LayoutColumn(cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
         if (cur->m_state == TCM_HIDDEN) {
             m_sounds.Play(TCM_SND_SLIDE);
             Close(false);
@@ -399,7 +412,7 @@ void CTCM::Layout(float t)
     case 5:
     case 6:
         PlaceCursor(cur);
-        func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+        LayoutColumn(cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
         break;
     case 4:
         AlignRoot(cur);
@@ -499,7 +512,7 @@ bool CTCM::SlideRoot(CTCMNode *cur, bool out, float dt)
      * nop and schedules the call's set-up into the shadow) */
     float t = x - s_tcmLeftX > 0.0f ? x / s_tcmSpan : 0.0f;
 
-    func_00230870(this, cur, x, t, -1.0f, 0, true);
+    LayoutColumn(cur, x, t, -1.0f, 0, true);
     return done;
 }
 
@@ -525,7 +538,113 @@ void CTCM::AlignRoot(CTCMNode *cur)
         }
     }
     if (x != s_tcmLeftX)
-        func_00230870(this, cur, s_tcmLeftX, 0.0f, -1.0f, 0, false);
+        LayoutColumn(cur, s_tcmLeftX, 0.0f, -1.0f, 0, false);
+}
+
+/* one column's items placed and coloured, then the next column's (recursive; the parameter order is the
+ * call's set-up order, the name ours): hidden ones off and skipped, the back and bar in a row, the
+ * caption, the arrow of an item with children; the selected node pulses, the path's item holds */
+void CTCM::LayoutColumn(CTCMNode *cur, float x, float y, float dir, unsigned int depth, bool b)
+{
+    CTCMNode *col = GetColumn(depth);
+    CTCMColumn *state = &g_tcmColumns[depth];
+
+    if (col && col->GetNumChildren()) {
+        C2DFont *font = theHUD->m_myfont;
+        const CPnt4D *hud = &CHUD::m_hud_textcolor;
+        CPnt4D greyv(128.0f, 128.0f, 128.0f, 100.0f);
+        const CPnt4D *grey = &greyv;
+        float colx = x + y * ((float)depth * (s_tcmItemW + s_tcmColumnGap));
+        float row = 0.0f;
+        CTCMNode *node;
+        unsigned int n = col->GetNumChildren();
+
+        for (unsigned int j = 0; j < n; j++) {
+            node = col->GetChild(j);
+
+            if (node->m_state || node->m_741) {
+                node->m_root.Off();
+                continue;
+            }
+            node->m_root.On();
+
+            float rowy = row * (s_tcmItemH + s_tcmRowGap);
+
+            rowy *= state->m_4;
+            rowy += s_tcmItemTop;
+
+            node->m_back.SetPos(colx, rowy, colx, rowy + s_tcmItemH, colx + s_tcmItemW * s_tcmCursorSplit, rowy + s_tcmItemH,
+                                colx + s_tcmItemW * s_tcmCursorSplit, rowy);
+            node->m_bar.SetPos(colx + s_tcmItemW * s_tcmCursorSplit, rowy, colx + s_tcmItemW * s_tcmCursorSplit,
+                               rowy + s_tcmItemH, colx + s_tcmItemW, rowy + s_tcmItemH, colx + s_tcmItemW, rowy);
+            node->m_text.SetFont(font);
+            node->m_text.SetPos((int)(colx + s_tcmItemTextX), (int)(rowy + s_tcmItemTextY));
+
+            CTCMEntry *entry = node->m_entry;
+
+            if (dir != -1.0f) {
+                static CPnt3D s_pulse(128.0f, 128.0f, 64.0f);
+
+                node->m_text.SetColor(s_pulse.x, s_pulse.y, s_pulse.z + s_pulse.z * dir);
+            } else if (!node->GetNumChildren() && entry && !entry->m_action) {
+                /* a reference: its read is no common subexpression of the two plain reads, loaded apart */
+                const float &r = s_tcmDeadText;
+
+                node->m_text.SetColor(r, s_tcmDeadText, s_tcmDeadText);
+                node->m_text.m_color[3] = 80.0f;
+            } else {
+                node->m_text.m_color[0] = hud->x;
+                node->m_text.m_color[1] = hud->y;
+                node->m_text.m_color[2] = hud->z;
+                node->m_text.m_color[3] = hud->w;
+            }
+            node->m_back.SetTrans(100.0f * state->m_4);
+            node->m_bar.SetTrans(0, 100.0f * state->m_4);
+            node->m_bar.SetTrans(1, 100.0f * state->m_4);
+            node->m_text.SetTrans(80.0f * state->m_4);
+            node->m_icon.SetTrans(100.0f * state->m_4);
+            if (!node->GetNumChildren() || b)
+                node->m_icon.Off();
+            else {
+                float iconx = s_tcmArrowX + (colx + s_tcmItemW);
+
+                node->m_icon.On();
+                node->m_icon.SetPos(iconx, rowy + s_tcmArrowY, iconx, rowy + (s_tcmArrowY + s_tcmArrowH), iconx + s_tcmArrowW,
+                                    rowy + (s_tcmArrowY + s_tcmArrowH), iconx + s_tcmArrowW, rowy + s_tcmArrowY);
+            }
+            if (node == cur) {
+                node->m_text2.On();
+                node->m_back.SetColor(s_tcmHighBase.x + s_tcmHighPulse.x * m_dac, s_tcmHighBase.y + s_tcmHighPulse.y * m_dac,
+                                      s_tcmHighBase.z + s_tcmHighPulse.z * m_dac);
+                node->m_bar.SetColor(s_tcmHighBase.x + s_tcmHighPulse.x * m_dac, s_tcmHighBase.y + s_tcmHighPulse.y * m_dac,
+                                     s_tcmHighBase.z + s_tcmHighPulse.z * m_dac);
+                node->m_back.SetTrans(100.0f);
+                node->m_bar.SetTrans(0, 100.0f);
+                node->m_bar.SetTrans(1, 100.0f);
+                node->m_text.SetTrans(80.0f);
+            } else if (j == m_path[depth]) {
+                float pulse = dir != -1.0f ? m_dac : 0.0f;
+
+                node->m_text2.Off();
+                node->m_back.SetColor(s_tcmHighBase.x + s_tcmHighPulse.x * pulse, s_tcmHighBase.y + s_tcmHighPulse.y * pulse,
+                                      s_tcmHighBase.z + s_tcmHighPulse.z * pulse);
+                node->m_bar.SetColor(s_tcmHighBase.x + s_tcmHighPulse.x * pulse, s_tcmHighBase.y + s_tcmHighPulse.y * pulse,
+                                     s_tcmHighBase.z + s_tcmHighPulse.z * pulse);
+                node->m_back.SetTrans(100.0f);
+                node->m_bar.SetTrans(0, 100.0f);
+                node->m_bar.SetTrans(1, 100.0f);
+                node->m_icon.SetTrans(100.0f);
+                node->m_text.SetTrans(80.0f);
+            } else {
+                node->m_back.SetColor(grey->x, grey->y, grey->z);
+                node->m_bar.SetColor(grey->x, grey->y, grey->z);
+                node->m_text2.Off();
+            }
+            row += 1.0f;
+        }
+    }
+    if (depth < m_path.size())
+        LayoutColumn(cur, x, y, dir, depth + 1, false);
 }
 
 /* an item made and kept, unless the name is too long or already held (its out-of-line Find is
@@ -674,7 +793,10 @@ int tcmSelectTeam(CZSealBody *player, int team)
  * holder interferes with it there -- here the player's neighbours are r, m and unit only (caption,
  * the target's s3, is born after the player's last use): the original keeps the player live
  * longer, or numbers something else there. Round 62: igreplay --want 32=s4,34=s2,35=s1 over every
- * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge */
+ * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge. Round 65: the edge is a read of
+ * the player while caption lives -- `asm { beq player, player, L1; L1: }` (the weapons' round 40's no-code read) at the return gives
+ * the size and the frame, 10 off: an int member (`int m = (unsigned char)member`, the compare through a KEY cast) passes it with no andi,
+ * but the player then takes s3 and caption s4, and the virtual call's arguments go a0, a1, a2 where the target's go a2, a1, a0 */
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;
@@ -930,7 +1052,9 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
  * `igreplay --permute` over the three movers (v39 the sides' CSE, v47 the end copy's address, v53 the
  * 2) -- none of their 6 orders gives the target, a single --want over v53 again only 46.5; the end
  * iterator set up first (25), s_tcmTarget cleared before the iterators or both iterators in the for's
- * init (16), the walk a while loop (7) */
+ * init (16), the walk a while loop (7) 
+ * Round 65: the replay wants the constant 2 numbered between nodes 46 and 47, a code-generation temporary inside the
+ * iterators' set-up; const and enum holders do not reach it. */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;

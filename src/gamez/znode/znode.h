@@ -1733,8 +1733,10 @@ public:
     void ClearEffectors();
     /* every animation deleted, the list emptied (SOCOM 1's) */
     void ClearAnimations(bool detach);
-    /* an owner's effector taken off (SOCOM 1's) */
+    /* an owner's effector taken off (SOCOM 1's), and one put on: a body pushing the props within a radius
+     * (SOCOM 1's, OVL1 0x2D7F30; the SEAL's creation calls it) */
     void UnRegisterEffector(const void *owner);
+    void RegisterEffector(const void *owner, const CPnt3D *pos, float r, const CPnt3D *vel);
     /* whether an effector is near a cell: m_CellAnimate set when one is (SOCOM 1's) */
     void TestCellMid(CPnt3D *mid, CPnt3D *pos);
     /* a prop's animation ticked, its node handed back (SOCOM 1's, 0x217BA0) */
@@ -1818,6 +1820,11 @@ void LightList_Search(CNode *node, CLightList &lights);
 
 /* the world's shadows (SOCOM 1's DWARF: CRenderMapVector : vector) */
 class CRenderMapVector : public std::vector<CRenderMap *> {
+};   // 0xc bytes
+
+/* the world's shadow casters (new in SOCOM II, the name ours: a class over the vector, ~CWorld tests the member's
+ * address four times as it does its neighbours', where a plain vector's destructor has three) */
+class CShadowCasterVector : public std::vector<CShadowCaster *> {
 };   // 0xc bytes
 
 /* the world's characters with textures of their own (SOCOM 1's DWARF: a list) */
@@ -2200,7 +2207,7 @@ public:
     CLightList m_lights;   // 0x55c
     CRenderMapVector m_shadows;   // 0x568
     CLightMapVector m_lightMaps;   // 0x574
-    std::vector<CShadowCaster *> m_shadow_casters;   // 0x580: SOCOM II's (the name ours)
+    CShadowCasterVector m_shadow_casters;   // 0x580: SOCOM II's (the name ours)
     CLOD_Object m_LOD_Object;   // 0x58c
     CMaterial_Object m_Material_Object;   // 0x59c
     CSubSurf_Object m_SubSurf_Object;   // 0x5ac

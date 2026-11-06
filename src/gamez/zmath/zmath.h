@@ -79,6 +79,12 @@ public:
         Add(&b, this);
         return *this;
     }
+    /* (the free camera's strafe, camera.cpp's mode 6) */
+    CPnt3D &operator-=(const CPnt3D &b)
+    {
+        Sub(&b, this);
+        return *this;
+    }
     /* by value through a temporary, const members as SOCOM II's own copies are named
      * (__pl__6CPnt3DCFRC6CPnt3D 0x557DC0, __ml__6CPnt3DCFf 0x557E10, the minus 0x557E90): CQuat::
      * ToMatrix keeps exactly this copy (ld/sd + lwc1/swc1 from the add's result slot into a second
@@ -202,7 +208,10 @@ public:
     /* out = b * this (SOCOM 1's Multiply, out of line wherever an inlining runs out) */
     void Multiply(const CMatrix *b, CMatrix *out) const
     {
-        sceVu0MulMatrix((Rows &)*out, (float (*)[4])(CRows &)*b, (float (*)[4])(CRows &)*this);
+        float (*a)[4] = (float (*)[4])(CRows &)*this;
+        float (*c)[4] = (float (*)[4])(CRows &)*b;
+
+        sceVu0MulMatrix((Rows &)*out, c, a);
     }
     /* copied on VU0 (CNode::ComputeFacadeMatrix: a product's return copied out, then assigned) */
     CMatrix(const CMatrix &m) { sceVu0CopyMatrix(m_matrix, (float (*)[4])m.m_matrix); }

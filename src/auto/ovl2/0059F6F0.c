@@ -6,10 +6,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_005BB990(char *);                      /* extern */
+M2C_UNK PickupAmmo__5CZKitFP7CPickup(char *);                      /* extern */
 
 void func_0059F6F0(char *arg0) {
     if (((u64) ((s64) M2C_FIELD(arg0, u8 *, 0xE1) << 0x3B) >> 0x3F) != 0) {
-        func_005BB990(arg0 + 0x5E0);
+        PickupAmmo__5CZKitFP7CPickup(arg0 + 0x5E0);
     }
 }

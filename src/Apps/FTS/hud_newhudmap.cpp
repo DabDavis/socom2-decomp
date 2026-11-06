@@ -212,6 +212,8 @@ class MapCompass {
 public:
     void Off();
     void On();
+    zdb::CTexHandle *GetAnchorImg(unsigned int type);
+    CPnt3D GetAnchorColor(unsigned int type);
 };
 
 /* the HUD (hud_main.cpp's CHUD): its owner, its font (0x498) and compass (0x4FE0), its own switch
@@ -226,11 +228,18 @@ public:
     C2DFont *m_myfont;   // 0x498
     unsigned char _49c[0x4fe0 - 0x49c];
     MapCompass m_compass;   // 0x4fe0
+    MapCompass *GetCompass() { return &m_compass; }
 };
 
 extern CHUD *theHUD;
 
+/* a string by its id (c2dstring.cpp's) */
+const char *GetString(int id);
+
 namespace {
+/* the legend's pictures' anchor types (.data 0x3E4070) */
+int s_legendTypes[8] = { 7, 8, 14, 37, 4, 12, 13, 6 };
+
 /* the north indicator turned to the viewer's facing: the facing on the x/z plane normalised, the
  * front shaft from 10 to 30 ahead of (600, cy), the rear shaft from 10 to 30 behind, the barb from
  * 20 ahead and 10 aside to the front's end, and the "N" (the legend's first label) above. SOCOM 1's
@@ -241,6 +250,209 @@ namespace {
  * cy as named locals ahead of the first Load -- the target computes every cy expression before
  * the first call and reloads the static only for the label; written in place, each Load reloads
  * it, and the y's of the front shaft's start may be named or not */
+/* the full-screen map's legend (0x20C080: InitMap's call; the name ours): the rows made once, the backing
+ * untextured and black, each picture an anchor type's image and colour, each label its string */
+void SetupLegend()
+{
+    static int row0 = (int)(4.0f + g_fHudLayout60);
+    static int row1 = row0 + 18;
+    static int row2 = row1 + 18;
+    static int row3 = row2 + 18;
+    static int row4 = row3 + 18;
+    static int row5 = row4 + 18;
+    static int row6 = row5 + 18;
+    static int bottom = row6 + 20;
+
+    g_bmpLegend[0].SetHasTexture(false);
+    g_bmpLegend[0].SetColor(0.0f, 0.0f, 0.0f);
+    g_bmpLegend[0].Load(230.0f, g_fHudLayout60, 445.0f, (float)bottom, 0);
+    {
+        CPlainBmp *bmp = &g_bmpLegend[1];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[0];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row0;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[2];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[1];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row1;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[3];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[2];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row2;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(234.0f, y, 250.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[4];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[3];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row2;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[5];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[4];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row3;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[6];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[5];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row4;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[7];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[6];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row5;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[8];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[7];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row6;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec50);
+
+        C2DString *str = &g_strLegend[1];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row0 + 14), true);
+    }
+    g_strLegend[1].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[1].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec51);
+
+        C2DString *str = &g_strLegend[2];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row1 + 14), true);
+    }
+    g_strLegend[2].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[2].SetTrans(80.0f);
+    g_strLegend[4].Load(0.71999997f, "-", theHUD->m_myfont, 252.0f, (float)(row2 + 14), true);
+    g_strLegend[4].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[4].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec52);
+
+        C2DString *str = &g_strLegend[3];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row2 + 14), true);
+    }
+    g_strLegend[3].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[3].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec53);
+
+        C2DString *str = &g_strLegend[5];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row3 + 14), true);
+    }
+    g_strLegend[5].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[5].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec54);
+
+        C2DString *str = &g_strLegend[6];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row4 + 14), true);
+    }
+    g_strLegend[6].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[6].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec55);
+
+        C2DString *str = &g_strLegend[7];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row5 + 14), true);
+    }
+    g_strLegend[7].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[7].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec56);
+
+        C2DString *str = &g_strLegend[8];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row6 + 14), true);
+    }
+    g_strLegend[8].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[8].SetTrans(80.0f);
+}
+
 void SetupNorthIndicator(CZSealBody *pViewer)
 {
     static float cy = 40.0f + g_fHudLayout60;
@@ -412,8 +624,6 @@ public:
 };
 
 zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
-/* the legend's builder (0x20C080: its nine labels and pictures; unwritten) */
-extern "C" void func_0020C080();
 
 /* the map made ready (SOCOM 1's InitMap, 0x3C5D90 there: its compass bitmap and map background gone,
  * SOCOM II's three sounds): the sounds, the objectives, the line map as the first item, the items'
@@ -499,7 +709,7 @@ void CZNewHudMap::InitMap(zdb::CWorld *world)
         g_arrVertGridLines[iVert].SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
         g_arrVertGridLines[iVert].SetTrans(s_gridTrans);
     }
-    func_0020C080();
+    SetupLegend();
 }
 
 /* an item taken off the map if it is on it, given back for the caller to delete (HudTick's dead
@@ -688,7 +898,9 @@ inline const CBBox *CZNewHudMap::GetScrollBounds() const
  * pointers to x and z, or a reference to the named facing, are further off. Round 61: the facing
  * returned by value from an inline keeps the inline's local in memory at the target's sp+112 with
  * the target's three stores, but copies it into the named local (0x3A4; a reference bound to it
- * 0x3A8, a CPnt3D built by its constructor 0x36C) */
+ * 0x3A8, a CPnt3D built by its constructor 0x36C) 
+ * Round 65's tries: `SealDir *keep = &ptDir` keeps the point in memory but holds &z in s5 (0x398); `(void)&ptDir` stays
+ * 0x36C; `#pragma opt_common_subs off` 0x3C4. */
 CScrollBools CZNewHudMap::GetScrollPermissions() const
 {
     CScrollBools bools;
@@ -958,43 +1170,41 @@ static float s_fScrollSpeed = 36.0f;
  * lookup (the target's s1 = sp+72, as SOCOM 1's s0); the two early returns one `||` (they share one
  * `b` to the epilogue); the speed a static (loaded from data), the fallback box an inline's guarded
  * static (GetScrollBounds 0x20AAC0 reads the same box and guard).
- * OPEN, 2 instructions and 16 registers, one swap: `this` takes s1 and the z pointer s0 (SOCOM 1's
- * own colouring), the target the reverse. Replayed (build/scratch/hud-r48/ig: rl_hs.py), z has 25
- * neighbours -- this, the node pointer, the box, the guard's load and its 1, bMoveX -- one at K, so
- * it is deferred with `this` (27) and coloured first; any one interference fewer, or `this`
- * numbered above z, gives the target. MW hoists z's `addiu` to the block's top (right after the
- * node load) wherever it is written. Tried: z declared first / at the top / after the length / in
- * the length, through the facing inline's returned pointer, a reference (the store then goes
- * through it), the move tests without bool locals or with one bool, a copy of `this` for the
- * moves, the bounds an inline member, a dead first definition of the box pointer */
+ * Byte-exact since round 65 (open since round 48, 2 instructions and 16 registers): the replay wanted `this` numbered above z --
+ * a parameter cannot be, so a MODELLING DEVICE, a `const` copy of it (the engine core's round 27: not folded back, it keeps a
+ * named number) declared after z; and the target's `c.eq.s x,K` is a float local holding the zero, the literal gives `c.eq.s K,x`
+ * (the world's round 33) */
 void CZNewHudMap::HandleScrolling(float fStickX, float fStickY)
 {
     float fZMove;
     float fXMove;
     float fConst;
     float fDirLength;
+    float kZero = 0.0f;
+    const float *z;
+    CZNewHudMap *const self = this;
 
-    if ((fStickX == 0.0f && fStickY == 0.0f) || !m_viewer)
+    if ((fStickX == kZero && fStickY == kZero) || !self->m_viewer)
         return;
     SealDir ptDir;
 
-    GetSealDir(m_viewer, &ptDir);
-    const float *z = &ptDir.z;
+    GetSealDir(self->m_viewer, &ptDir);
+    z = &ptDir.z;
 
     fDirLength = sqrtf(ptDir.x * ptDir.x + *z * *z);
     fConst = s_fScrollSpeed / fDirLength;
-    const CBBox *box = GetScrollBounds();
+    const CBBox *box = self->GetScrollBounds();
 
     fXMove = fConst * (fStickX * *z + fStickY * ptDir.x);
-    bool bMoveX = fXMove > 0.0f ? m_centerx < box->m_max.x : m_centerx > box->m_min.x;
+    bool bMoveX = fXMove > 0.0f ? self->m_centerx < box->m_max.x : self->m_centerx > box->m_min.x;
 
     if (bMoveX)
-        m_centerx += fXMove;
+        self->m_centerx += fXMove;
     fZMove = fConst * (fStickX * -ptDir.x + fStickY * *z);
-    bool bMoveZ = fZMove > 0.0f ? m_centerz < box->m_max.z : m_centerz > box->m_min.z;
+    bool bMoveZ = fZMove > 0.0f ? self->m_centerz < box->m_max.z : self->m_centerz > box->m_min.z;
 
     if (bMoveZ)
-        m_centerz += fZMove;
+        self->m_centerz += fZMove;
 }
 
 /* the player (zfts's) and the network's flags (hud_mpinfobox.cpp's view) */
@@ -1013,14 +1223,9 @@ static inline CEntity *AsSeal(CEntity *e)
     return e && e->m_type == 2 ? e : 0;
 }
 
-static inline void ListPush(std::list<CZMapItem *> &list, CZMapItem *const &x)
-{
-    list.push_back(x);
-}
-
 inline void CZNewHudMap::AddItem(CZMapItem *item)
 {
-    ListPush(m_itemlist, item);
+    m_itemlist.__push_back_deep(item);
 }
 
 /* a seal's controller, and whether its input is on (ours: the two ternaries, inline) */
@@ -1061,7 +1266,8 @@ inline void CZNewHudMap::TickCompassMap(CPad *pad, MENU_STATE menustate)
  * versus ternary is function-wide"); a `for` lowers to init, body, increment, test, which reads the
  * frame: the temporaries of the third push_back sit between the walk's begin and its end's, so its
  * expansion is a pass deeper than the first's -- SOCOM 1's two-level push_back (include/list's vc,
- * not applied: ListPush models the level here, AddItem the third's by-value new).
+ * not applied: include/list's __push_back_deep models the level here -- the MSL headers' round 39 opt-in, by call site --,
+ * AddItem the third's by-value new).
  * OPEN, 11 instructions, all s1 against s2 (0x3F8 of 0x3F8, frame exact): the target numbers the
  * scalarised member holding &m_list + 4 (const_iterator(base::end()), IRO_ScalarizeClassDataMembers
  * in pass 1, @2417) before the common subexpression (&removelist + 4) + 4 (pass 0's IRO_CommonSubs,
@@ -1071,7 +1277,8 @@ inline void CZNewHudMap::TickCompassMap(CPad *pad, MENU_STATE menustate)
  * reference temporary pass 0 cannot forward ("Level 6, or 8?") -- or hoists &m_list + 4 in pass 0.
  * Tried: the list a local subclass; a reference or pointer local for the second walk (both reads,
  * either read); an iterator copy; five spellings of the const end(); &end_ direct or a named base
- * iterator (then &m_list + 4 is rematerialised at each use, 0x3EC) */
+ * iterator (then &m_list + 4 is rematerialised at each use, 0x3EC) 
+ * Round 65: the MSL's level-6 opt-ins (__push_back_deep) hold at 11 and retire ListPush; the D and C destructor variants are worse. */
 void CZNewHudMap::HudTick(CPad *pad, float dT)
 {
     MENU_STATE menustate = CHUD::GetHUDOwner()->m_ctrl->GetMenuState();
@@ -1094,7 +1301,7 @@ void CZNewHudMap::HudTick(CPad *pad, float dT)
         bool deleteitem = item->Tick(this, dT);
 
         if (deleteitem)
-            ListPush(removelist, item);
+            removelist.__push_back_deep(item);
     }
 
     for (it = removelist.begin(); it != removelist.end(); ++it) {

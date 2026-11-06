@@ -70,28 +70,15 @@ void CRipple::Uninit()
     m_ripplefreepool = 0;
 }
 
-/* OPEN, 0xB8 against 0xF0: the up normal -- the target multiplies 32767.5 by 0.0 and by 1.0 at run
- * time and hoists the products, converted to shorts, out of the walk (s2 for the two zeros, s1 for
- * the one), where MW here folds them to constants: vis_ripple.cpp's CWaterRipple::Flatten has the
- * same loop and the same miss. Tried: the point outside the walk, float locals, a struct
- * copy, an assignment, a brace-initialised PNT3D, a packing helper or a normal setter taking the
- * floats (0x90-0x98), a const reference to a temporary (0xF0, the products in the walk), the shorts
- * computed ahead of the walk; a function-scoped `#pragma opt_propagation off` comes nearest (0xF4:
- * the products hoisted into f20/f21, their conversions left in the walk). The world lane's round 14
- * (build/scratch/wld/v_flat*.py): the target's dsll32/dsra32 in its preheader say the hoisted values
- * are narrowed shorts held in registers -- under the pragma, `int x = (short)(sc * up.x)` (and y, z)
- * with `float sc = 32767.5f` hoists the whole conversion and reaches the right size, 8 instructions
- * off (the two products computed y first, and the constants in f3/f2 against the target's f2/f1/f0;
- * every declaration and operand order tried keeps 8 or more); a const reference to a temporary
- * gives the target's out-of-line preheader (the entry test repeated) with the vector in memory.
- * Round 26 (build/scratch/wld/v_flat_*.py): a const CPnt3D, the products written factor first,
- * short locals in the walk (0xB8 each), a const float[3] in the walk or outside it (0x104 / 0x10C),
- * a function-local static const float[3] (0xE8: loaded from data), short locals off a const
- * reference to a temporary (0x118). Round 33 (build/scratch/wld/v_fl*.py), under the same pragma with
- * `float sc, a, b` and `int x = (short)(sc * a)`: the right size, 8 off; the constants' registers
- * and the products' order are one interference apart (a ahead of b puts b's mtc1 and product first; b
- * declared first gives the target's order with the two swapped, 9 off) -- no order of the three
- * statements or the locals closes it */
+/* the ripple's vertices given the up normal (ours), the walk's stores from two narrowed shorts held in saved
+ * registers (s2 for the two zeros, s1 for the one), computed once in the walk's out-of-line preheader.
+ * Byte-exact since round 34 (0xB8 against 0xF0 since round 11; the weapons' round 40 on CWaterRipple::Flatten, the
+ * same walk): the products `32767.5f * (float)x`, x a float local holding 0 or 1 -- a MARKED DEVICE, the no-op cast
+ * is what IRO leaves unfolded (what the original wrote for the 0 and the 1 is not known) -- and the shorts named
+ * locals at the walk's top, so IRO_PullOutInvariantAssignments pulls them with the sign extension a short variable
+ * costs. The second is `const`: a variable read once is expression-propagated (0xE8, the conversion left in the
+ * walk), a const local is not -- CWaterRipple::Flatten has an `if` between the definition and the read instead;
+ * a late-folding guard around the stores or a copy into a second short give the same bytes */
 #pragma auto_inline off
 void CRipple::Flatten()
 {
@@ -100,11 +87,14 @@ void CRipple::Flatten()
     CVisData *v;
 
     for (v = data.SelectVertex(m_visual, view, 0); v; v = v->NextVertex(1)) {
-        CPnt3D up(0.0f, 1.0f, 0.0f);
+        float x = 0.0f;
+        float y = 1.0f;
+        short sx = (short)(32767.5f * (float)x);
+        const short sy = (short)(32767.5f * (float)y);
 
-        ((short *)v->m_vertex)[3] = (short)(32767.5f * up.x);
-        ((short *)v->m_vertex)[6] = (short)(32767.5f * up.y);
-        ((short *)v->m_vertex)[7] = (short)(32767.5f * up.z);
+        ((short *)v->m_vertex)[3] = sx;
+        ((short *)v->m_vertex)[6] = sy;
+        ((short *)v->m_vertex)[7] = sx;
     }
     m_active = false;
 }

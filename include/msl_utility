@@ -61,6 +61,8 @@ class compressed_pair_imp;
 template <class T1, class T2>
 class compressed_pair_imp<T1, T2, 1> : public T1 {
 public:
+    /* (the MSL headers round 40: what include/vector's __MSL_POD_DTOR_ARGS calls out of line, SOCOM 1's 0x173590) */
+    T1 &first() { return *this; }
     T2 &second() { return second_; }
     const T2 &second() const { return second_; }
 

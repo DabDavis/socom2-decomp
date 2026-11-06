@@ -91,16 +91,10 @@ static inline bool InRange(CSndPosition *p)
  * int cast: the unsigned short alone takes the unsigned conversion), the dropped walk's record read
  * once ahead of its search, the last walk's push through a copy of the record (the add's `q`: the
  * two pushes' and the erase's temporaries then take the target's slots).
- * OPEN, 15 instructions at the target's size: (1) the first walk's range block -- its reload of
- * the record (v77) is numbered ahead of the 1.15 constant's lui/ori (v81/v82), so it takes a0 and is
- * scheduled first, where the target's takes v1 after the constant (`igreplay --want 77=v1 --movers
- * 77`: any place after 82.5); not moved by the range as a named product, a named factor, `*=`, an
- * int or float local for the range, the product's operands swapped, the distance first or as a
- * local, inline helpers for the range, the far range or the product (15 each); the world lane's
- * round 31: the SEALs' round-55 lever, a no-op (float) cast on the constant, the converted range,
- * the whole product, the squared sums or the squared range (build/scratch/wld/v_pos1.py), 15 each --
- * the reload is a GPR node, which the float operand weight does not move; (2) the last walk's
- * far-range lhu is scheduled ahead of the y product (2) */
+ * Byte-exact since round 34 (15 off since round 26): the range's product is WRITTEN TWICE in the compare (a macro's
+ * squared expansion, most likely): the distance's chain is generated first and the product a common subexpression at its
+ * first use, so the scheduler takes the constant and the distance's loads ahead of the record's reload -- a named range
+ * (or an inline's argument) generates the far range's chain first, which no float cast or local had moved */
 extern "C" void func_0034BEC0(float dT)
 {
     data_0049E240 -= dT;
@@ -117,9 +111,8 @@ extern "C" void func_0034BEC0(float dT)
 
             m->Transform((const CPnt3D *)&p->m_pos, &d, 1);
             if (inst) {
-                float range = 1.15f * (int)p->m_sound->m_range_max;
-
-                if (!(d.x * d.x + d.y * d.y + d.z * d.z < range * range)) {
+                if (!(d.x * d.x + d.y * d.y + d.z * d.z <
+                      (1.15f * (int)p->m_sound->m_range_max) * (1.15f * (int)p->m_sound->m_range_max))) {
                     inst->Stop();
                     p->m_instance = 0;
                     CSndInstance::ReleaseSoundInstance(inst);
@@ -143,9 +136,9 @@ extern "C" void func_0034BEC0(float dT)
 
             m->Transform((const CPnt3D *)&p->m_pos, &d, 1);
             if (!InRange(p)) {
-                float range = 1.15f * (int)p->m_sound->m_range_max;
-
-                if (d.x * d.x + d.y * d.y + d.z * d.z < range * range && p->m_sound) {
+                if (d.x * d.x + d.y * d.y + d.z * d.z <
+                        (1.15f * (int)p->m_sound->m_range_max) * (1.15f * (int)p->m_sound->m_range_max) &&
+                    p->m_sound) {
                     p->m_instance = p->m_sound->PlaySound3D((const CPnt3D *)&p->m_pos, 1.0f, 0, 0, 255);
                     CSndPosition *q = p;
 

@@ -237,6 +237,8 @@ public:
      * FPR pair in both products; round 50) */
     float GetLength() const { return m_length; }
     float GetTrans() const { return m_color[3]; }
+    /* the string's two scales and the font's (inline: the packet writer's four corners) */
+    inline float GetFullScale();
 
     C2DFont *m_font;   // 0x18
     char *m_string;   // 0x1c
@@ -417,6 +419,15 @@ public:
     C2DPoly m_tris[2];   // 0x40
     zdb::CTexture *m_texture;   // 0x1e0
 } __attribute__((aligned(16)));   // 0x1f0 bytes
+
+class CPtItr;
+
+/* a wide line's polygons (SOCOM 1's C2DWidePolyline, its DWARF 0xC bytes: a vector of them; hud_linemap.cpp's
+ * polygon sets) */
+class C2DWidePolyline : public std::vector<C2DBitmapPoly *> {
+public:
+    void SetSegments(CPtItr *itr, float width);
+};
 
 /* a textured line (SOCOM 1's DWARF; m_x and m_y moved up with C2D, SOCOM II's PRIM word at 0x20) */
 class C2DLine : public C2D {

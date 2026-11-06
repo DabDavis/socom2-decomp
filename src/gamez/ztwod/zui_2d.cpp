@@ -276,6 +276,7 @@ public:
 class CWrappedText : public CRenderableString {
 public:
     virtual ~CWrappedText();
+    virtual void SetString(const char *s, bool translate);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
@@ -520,7 +521,7 @@ public:
     float GetScale() { return m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f); }
 
     CSaferStr m_text;   // 0xc0
-    int m_cc;   // 0xcc
+    float m_cc;   // 0xcc: the cursor's pulse, an angle (or, fading, the fade)
     int m_len;   // 0xd0: the text's length
     int m_typed;   // 0xd4: the characters shown
     int m_d8;   // 0xd8
@@ -532,7 +533,7 @@ public:
     float m_f0;   // 0xf0
     unsigned char _f4[0x100 - 0xf4];
     CPlainBmp m_cursor;   // 0x100
-    int m_1a0;   // 0x1a0
+    float m_1a0;   // 0x1a0: the pause's time left (the text's #P)
     bool m_showCursor;   // 0x1a4: no NOCURSOR
     bool m_fadeCursor;   // 0x1a5: FADECURSOR
     int m_1a8;   // 0x1a8
@@ -628,6 +629,7 @@ public:
 };
 
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 
 extern CZAnimMain ZAnim;
 
@@ -1963,6 +1965,86 @@ void CWrappedText::LoadSpec(const CWrapSpec &spec, zdb::CTextureRelocMgr *mgr)
     m_displayOneLine = spec.m_displayOneLine;
 }
 
+/* the text laid out in lines (SOCOM 1's CWrappedText::SetString, 0x391630 there, with SOCOM II's
+ * flag and colour codes): the old lines deleted, then a new line after a new line in the running
+ * colour and bold state -- leading spaces skipped, characters added until the width is passed with a
+ * space to go back to, or a newline; "#C" and three bytes change the colour and end the line, "#B"
+ * toggles the bold -- backed up to the last space, and kept if anything was added */
+void CWrappedText::SetString(const char *s, bool translate)
+{
+    bool bold = false;
+
+    if (!s || !*s)
+        return;
+
+    const char *str = translate ? TranslateString(s) : s;
+    int len = strlen(str);
+    int pos = 0;
+    iterator i;
+    iterator e = end();
+
+    for (i = begin(); i != e;) {
+        C2D *p = *i;
+        iterator next;
+
+        next = erase(i);
+        delete p;
+        i = next;
+    }
+
+    CPnt3D color = *(const CPnt3D *)m_color;
+
+    while (pos < len) {
+        CRenderableString *line = new CRenderableString;
+        int lastspace = 0;
+        bool any = false;
+
+        line->m_scale = m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f);
+        line->SetFont(m_font);
+        line->SetString("", false);
+        line->m_height = GetSpacing();
+        line->SetColor(color.x, color.y, color.z);
+        line->UpdatePos();
+        line->m_socom2_8c = bold;
+        while ((str[pos] == ' ' || str[pos] == '\n') && pos < len)
+            pos++;
+        while (pos < len && (line->GetLength() < m_width || !lastspace)) {
+            if (str[pos] == ' ')
+                lastspace = pos;
+            if (str[pos] == '#' && str[pos + 1] == 'C' && pos + 4 < len) {
+                color.x = str[pos + 2];
+                color.y = str[pos + 3];
+                color.z = str[pos + 4];
+                pos += 5;
+                break;
+            }
+            if (str[pos] == '#' && str[pos + 1] == 'B')
+                bold = !bold;
+            line->AddCharacter(str[pos]);
+            any = true;
+            line->UpdatePos();
+            pos++;
+            if (str[pos] == '\n')
+                break;
+        }
+        if (!(line->GetLength() < m_width) && lastspace > 0 && lastspace < pos) {
+            do {
+                if (str[pos] == '#' && str[pos + 1] == 'B')
+                    bold = !bold;
+                line->DeleteCharacter();
+                pos--;
+            } while (lastspace < pos);
+        }
+        if (any)
+            push_back(line);
+        else
+            delete line;
+    }
+    m_numLines = -1;
+    if (m_autoScroll)
+        m_offset = 0;
+}
+
 /* the lines deleted, each taken off the list first (SOCOM 1's ~CWrappedText, 0x391480 there: the
  * same walk, ~CUIMapCtrl's shape), then the arrows and the renderable string */
 CWrappedText::~CWrappedText()
@@ -2059,6 +2141,132 @@ int CTeleType::GetZAnimCmdType(const char *name)
     if (!strcasecmp("finish", name))
         return CRenderableString::GetZAnimCmdType(0) + 4;
     return CRenderableString::GetZAnimCmdType(name);
+}
+
+class CGameMenu {
+public:
+    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
+};
+
+class CMenuNode;
+CMenuNode *UiGetCurMenu();
+
+/* slot 12: typed out (SOCOM 1's CTeleType::Tick, SOCOM II's codes and word wrap): at the speed's
+ * factor; while a #P pause runs only the cursor pulses; past the text's end the rest is added and the
+ * cursor pulses or fades; else the next word measured -- it goes down a line when it would not fit --,
+ * the clock advanced, a line break or a #N, #P code taken, or the next (UTF-8) character added; the
+ * menu told (event 21) when the text ends */
+void CTeleType::Tick(float dT)
+{
+    if (!IsOn())
+        return;
+    dT *= g_fTtySpeedFactor;
+    if (m_1a0 > 0.0f) {
+        m_1a0 -= dT;
+        m_cc += dT * m_pulseRate;
+        if (m_cc > 6.2831855f)
+            m_cc -= 6.2831855f;
+        m_cursor.SetTrans(96.0f + 32.0f * sinf(m_cc));
+        C2DString::Tick(dT);
+        return;
+    }
+    UpdatePos();
+    if (!(m_typed < m_len)) {
+        if (m_text[m_typed]) {
+            while (m_text[m_typed])
+                AddCharacter(m_text[m_typed++]);
+            if (m_typed > 0 && g_bTtyNoise)
+                PlayCountSound();
+        }
+        m_cc += dT * m_pulseRate;
+        if (m_fadeCursor) {
+            if (m_cc > 1.0f)
+                m_cc = 1.0f;
+            m_cursor.SetTrans(128.0f * (1.0f - m_cc));
+        } else {
+            if (m_cc > 6.2831855f)
+                m_cc -= 6.2831855f;
+            m_cursor.SetTrans(96.0f + 32.0f * sinf(m_cc));
+        }
+        C2DString::Tick(dT);
+        return;
+    }
+
+    float last = m_e8;
+    bool wrap = false;
+
+    if (dT > 0.0f || (m_typed > 0 && m_text[m_typed - 1] == ' ')) {
+        C2DString word;
+
+        word.SetFont(m_font);
+        word.m_scale = m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f);
+        word.C2DString::SetString("", true);
+
+        int i = m_typed;
+
+        while (i < m_len && m_text[i] != ' ' && m_text[i] != '\n')
+            word.AddCharacter(m_text[i++]);
+        word.UpdatePos();
+        if (word.m_length + m_shortLength > m_maxLength) {
+            wrap = true;
+            m_typed--;
+        }
+    }
+    m_cursor.SetTrans(128.0f);
+    m_e8 += dT * m_interval * (m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f));
+    if ((m_e8 > m_maxLength && m_text[m_typed] == ' ' && m_shortLength > m_maxLength) || wrap) {
+        NewLine();
+        m_f0 += m_shortLength;
+        m_e8 -= m_shortLength;
+        m_typed++;
+        if (m_e8 < 0.0f)
+            m_e8 = 0.0f;
+        else
+            Tick(0.0f);
+    } else if (m_text[m_typed] == '\n') {
+        NewLine();
+        m_f0 = m_length;
+        m_e8 = 0.01f;
+        m_typed++;
+    } else if (m_text[m_typed] == '#') {
+        m_typed++;
+        if (m_text[m_typed] == 'N') {
+            NewLine();
+            m_f0 = m_length;
+            m_e8 = 0.01f;
+            m_typed++;
+        } else if (m_text[m_typed] == 'P') {
+            m_typed++;
+
+            char buf[256] = {0};
+
+            while (m_text[m_typed] != ' ' && m_typed < m_len) {
+                sprintf(buf, "%s%c", buf, m_text[m_typed]);
+                m_typed++;
+            }
+            m_typed++;
+            m_1a0 = (float)atof(buf);
+        }
+    } else if (m_e8 + m_f0 > m_length) {
+        if (m_typed < m_len) {
+            if (dT > 0.0f && m_typed > 0 && g_bTtyNoise)
+                PlayCountSound();
+
+            const char *p = &m_text[m_typed];
+            int n = UTF8CharLen(p);
+
+            for (int i = 0; i < n; i++) {
+                AddCharacter(m_text[m_typed]);
+                m_typed++;
+            }
+            UpdatePos();
+            if (m_typed == m_len)
+                ((CGameMenu *)UiGetCurMenu())->RunEventAnim((ActionItem::EVENT)21, 0);
+            Tick(0.0f);
+        } else if (last + m_f0 <= m_length)
+            ((CGameMenu *)UiGetCurMenu())->RunEventAnim((ActionItem::EVENT)21, 0);
+    }
+    C2DString::Tick(dT);
 }
 
 /* the slider's command after the button's two: SetValue (its count, as SOCOM 1's, two) */
@@ -2715,6 +2923,10 @@ public:
  * and the image's size). Round 56: its texture names are a ZRDR value with a string table of its
  * own after it -- the box's destructor (0x375710) inlines the teardown: the names' children freed
  * unless packed, then the table and the value destroyed as members (-1), then the texture list */
+/* a column's textures (ours: a class over the pointer vector, ~CUIListBox's four tests) */
+class CColumnTexList : public std::vector<zdb::CTexHandle *> {
+};
+
 class ColumnData {
 public:
     ~ColumnData()
@@ -2731,7 +2943,7 @@ public:
     int m_y;   // 0x10
     unsigned char m_justify;   // 0x14: the string's 0x6A
     float m_scale;   // 0x18: the string look's scale when not 0
-    std::vector<zdb::CTexHandle *> m_textures;   // 0x1c: an image column's, prepared by the box
+    CColumnTexList m_textures;   // 0x1c: an image column's, prepared by the box
     _zrdr m_texNames;   // 0x28: their names, a ZRDR array (read as zui_2d.cpp's variable reads one)
     CSTable m_strings;   // 0x30: the names' strings
 };   // 0x50
@@ -2775,6 +2987,8 @@ public:
  * inlines it) */
 class ListItem {
 public:
+    /* (SOCOM II's: the array look's reader constructor news one and gives it its look) */
+    ListItem() : m_text(0), m_24(true), m_impl(0) {}
     ListItem(const char *s);
     ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols);
     ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font, float scale);
@@ -2788,6 +3002,9 @@ public:
 
     void MakeTimedText();
     void MakeWrappedText();
+    /* the item's look a picture of the size given (ours: an inline, its arguments evaluated and
+     * `this` taken ahead of the allocation -- the array look's reader constructor's s2) */
+    void MakeImage(int w, int h, zdb::CTexHandle *tex);
     void SetString(const char *s);
     void SetFont(C2DFont *font);
     void SetScale(float scale);
@@ -2946,6 +3163,8 @@ class CUIListBox : public CPlainBmp {
 public:
     /* slot 0 (0x375710: its items, columns and font freed) */
     virtual ~CUIListBox();
+    /* slot 2: the box, its rows and arrows (0x373850) */
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     /* slot 22: the box's commands parsed (SOCOM 1's; SOCOM II's eleven) */
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
@@ -3348,20 +3567,19 @@ void CUIListBox::RemoveAllItems()
  * kept in a register over the delete), then the box's own font under its own test (two null tests,
  * as the target's); then the members: the actions, four plain bitmaps (0x1A0-0x41F), the columns'
  * and items' lists, the plain bitmap's base.
- * OPEN, 2 instructions short (0x54C of 0x554) and one swap (round 56, written): the target tests a
- * column's texture list FOUR times before freeing it -- a class over the pointer vector (zdb::CTexList's
- * shape, round 27's rule), one level more than this plain vector's three -- and with ColumnData's
- * written destructor that chain is six high: `#pragma inline_depth(6)` gives the four tests (0x54C ->
- * the target's column teardown), at level 5 a derived list is called out of line (0x524): a "Level 6,
- * or 8?" witness. Left besides: the items' end node (this+0xC4) wants s2 and the column's erase
- * result s1 -- `igreplay --want 41=s1,42=s2` puts the end node's temporary right after the named
- * locals (35.5-37.5) and the result after it; here the end is CSE'd later than the result */
+ * Byte-exact since round 65 (open since round 56): the target tests a column's texture list FOUR times before freeing it
+ * -- a class over the pointer vector (zdb::CTexList's shape, round 27's rule), one level more than a plain vector's three --
+ * and with ColumnData's written destructor that chain is six high. A MODELLING DEVICE closes it at level 5 with no pragma
+ * (the weapons' round 40: a member's destructor called from the function's own text inlines whole): `delete col` written
+ * out, ColumnData's destructor and its members' in their order; a "Level 6, or 8?" witness, the original likely a plain
+ * `delete col`. The items' end a local iterator: scalarised ahead of the column's erase result, as the replay asked */
 CUIListBox::~CUIListBox()
 {
     std::list<ListItem *>::iterator it;
+    std::list<ListItem *>::iterator e = m_items.end();
 
     it = m_items.begin();
-    while (it != m_items.end()) {
+    while (it != e) {
         ListItem *item = *it;
         std::list<ListItem *>::iterator next;
 
@@ -3376,7 +3594,14 @@ CUIListBox::~CUIListBox()
         ColumnData *col = *c;
         std::vector<ColumnData *>::iterator next = m_columns.erase(c);
 
-        delete col;
+        if (col) {
+            if (!col->m_texNames.m_packed)
+                col->m_texNames.DeleteChildren();
+            col->m_strings.~CSTable();
+            col->m_texNames.~_zrdr();
+            col->m_textures.~CColumnTexList();
+            operator delete(col);
+        }
         c = next;
     }
     if (m_ownFont)
@@ -3509,11 +3734,6 @@ void CWrappedText::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
 
 /* the slider's menu (zui.cpp's CGameMenu: the event it runs, SLIDER_MOVED; PlaySelectionSound is
  * zui.cpp's too) */
-class CGameMenu {
-public:
-    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
-};
-
 /* the slider's value written to its variable: the left half of the bar scaled below the centre
  * value, the right half above it (ours: the inverse of UpdateUIVar below) */
 inline void CSliderBar::ApplyValue()
@@ -3827,6 +4047,110 @@ void CUIListBox::AddItem(ListItem *item, int where)
         for (; i < m_highlighted && it != m_items.end(); i++)
             ++it;
         m_items.__insert_deep(it, item);
+    }
+}
+
+/* the scissor's top against the first row's line (a variable: read with lw; .data 0x3E0378, -3; the
+ * name ours) */
+static int s_listClipDY = -3;
+
+/* drawn (SOCOM 1's CUIListBox::Draw, SOCOM II's rows of several lines): with rows, the highlight's
+ * and the bar's rectangles found -- the rows before the highlighted one each push it down by their
+ * extra lines -- and the bar drawn; the box itself; then, scissored, the highlight and each row on
+ * the screen, the highlighted row's opacity kept for the two scroll arrows, each drawn while there is
+ * scroll to go that way. The walk's item and height are MODELLING DEVICES, one-member structs (the
+ * kit's round 60: scalarised, so numbered after the iterator -- the replay wants the iterator between
+ * rowy and them, and no plain local can follow a scalarised member) */
+void CUIListBox::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+
+    int hy = (int)(m_offset + (m_190 + (p.y + m_a8)) - 0.75f * m_lineHeight);
+    int hx = (int)p.x;
+    int x = (int)(p.x + m_a4);
+    int y = (int)(p.y + m_a8);
+    int barx = (int)(p.x + m_rect100.l);
+    int bary = (int)(p.y + m_rect100.t);
+    float trans;
+    CMatrix unit;
+
+    unit.m_matrix[3][0] = 0.0f;
+    unit.m_matrix[3][1] = 0.0f;
+    unit.m_matrix[3][2] = p.z;
+    if (m_items.size()) {
+        int height = 0;
+        int i = 0;
+        std::list<ListItem *>::iterator it = m_items.begin();
+        std::list<ListItem *>::iterator e = m_items.end();
+
+        for (; it != e; ++it) {
+            if (i == m_highlighted) {
+                height = m_lineHeight * (*it)->GetNumLines();
+                break;
+            }
+            hy += m_lineHeight * ((*it)->GetNumLines() - 1);
+            i++;
+        }
+        m_highlight.Load(hx, hy, hx + m_iWidth, hy + height, m_texF8);
+        m_bar.Load(barx, bary, barx + m_rect100.r, bary + m_rect100.b, m_texFC);
+        m_bar.Draw(unit, mgr);
+    }
+    CPlainBmp::Draw(m, mgr);
+
+    int row = 0;
+
+    zVid_Scissor(0, s_listClipDY + (y - m_lineHeight), zVid.renderWidth, (int)(p.y + m_iHeight));
+    if (!m_noHighlight)
+        m_highlight.Draw(unit, mgr);
+
+    int offset = 0;
+    std::list<ListItem *>::iterator it = m_items.begin();
+    std::list<ListItem *>::iterator e = m_items.end();
+
+    for (; it != e; ++it) {
+        int rowy = (int)(offset + (y + m_scrollY));
+        struct { ListItem *p; } row_item;
+        row_item.p = *it;
+
+        if (row == m_highlighted)
+            trans = row_item.p->GetTrans();
+
+        struct { int v; } row_lh;
+        row_lh.v = m_lineHeight;
+        int bottom = (int)(10.0f + (row_lh.v + (p.y + m_iHeight)));
+
+        offset += m_lineHeight * row_item.p->GetNumLines();
+        if (rowy >= y - row_lh.v + 1 && rowy <= bottom) {
+            row_item.p->DrawPrep(*this, x, rowy, row);
+            row_item.p->VisualGratification(mgr, p.z);
+        }
+        row++;
+    }
+    zVid_Scissor(0, 0, 640, 448);
+    if (m_tex18c) {
+        float y0 = p.y + m_rect120.t;
+        float x0 = p.x + m_rect120.l;
+
+        m_2e0.Load(x0, y0, m_rect120.r + x0, m_rect120.b + y0, m_tex18c);
+        if (m_scrollY < 0.0f && m_items.size())
+            m_2e0.SetTrans(trans);
+        else
+            m_2e0.SetTrans(0.0f);
+        m_2e0.Draw(unit, mgr);
+    }
+    if (m_tex188) {
+        float y0 = p.y + m_rect110.t;
+        float x0 = p.x + m_rect110.l;
+
+        m_380.Load(x0, y0, m_rect110.r + x0, m_rect110.b + y0, m_tex188);
+        if (m_iHeight - m_lineHeight >= (int)(m_scrollY + m_lineHeight * (m_items.size() - 1)) ||
+            !m_items.size())
+            m_380.SetTrans(0.0f);
+        else
+            m_380.SetTrans(trans);
+        m_380.Draw(unit, mgr);
     }
 }
 
@@ -4252,6 +4576,11 @@ public:
     zdb::CTexHandle *m_tex;   // 0xb8
 };
 
+inline void ListItem::MakeImage(int w, int h, zdb::CTexHandle *tex)
+{
+    m_impl = new CListItemImageTypeImpl(w, h, tex);
+}
+
 /* a list item of several columns (SOCOM 1's CListItemArrayTypeImpl, table 0x407B90; 0x14 bytes): an
  * item per column out of the reader's array of strings, each slot walking them -- through the
  * items' own looks where the item would only forward, through the items where they do more */
@@ -4432,20 +4761,20 @@ void CListItemStringTypeImpl::DrawPrep(const CUIListBox &box, int x, int y, int 
 
 /* a reader node as the array look reads it (zrdr.h's _zrdr: its type -- 3 a string, 4 an array --,
  * an array's count at 2 and its 8-byte elements, or a string's text, through the word at 4) */
-struct ZRdrNode {
-    unsigned char type;   // 0x0
-    unsigned short count;   // 0x2
-    union {
-        ZRdrNode *array;   // 0x4
-        const char *str;
-    };
-};
-
-static inline unsigned int RdrCount(const ZRdrNode *r) { return r->type == 4 ? r->count : 0; }
-static inline const char *RdrString(const ZRdrNode *r) { return r->type == 3 ? r->str : 0; }
-static inline ZRdrNode *RdrElem(const ZRdrNode *r, unsigned int i)
+static inline unsigned int RdrCount(_zrdr *r) { return r->m_type == 4 ? r->m_length : 0; }
+static inline const char *RdrString(_zrdr *r) { return r->m_type == 3 ? r->m_str : 0; }
+/* a number's value as an int (zrdr's int reader, inline: 1 an int, 2 a float -- ours) */
+static inline int RdrInt(_zrdr *r)
 {
-    return i < RdrCount(r) ? &r->array[i] : 0;
+    if (r->m_type == 1)
+        return r->m_int;
+    if (r->m_type == 2)
+        return (int)r->m_real;
+    return 0;
+}
+static inline _zrdr *RdrElem(_zrdr *r, unsigned int i)
+{
+    return i < RdrCount(r) ? &r->m_array[i] : 0;
 }
 
 /* the string table's id for a name, 0 if it has none (ztwod's, 0x361B20) */
@@ -4457,7 +4786,7 @@ int GetStringId(const char *name);
 C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
 {
     C2DAnimCmdHdr *cmd;
-    const ZRdrNode *r = (const ZRdrNode *)zrdr_findtag(rdr, "CAPTION");
+    _zrdr *r = zrdr_findtag(rdr, "CAPTION");
     const char *valve = zrdr_findstring(rdr, "VALVE");
 
     if (r) {
@@ -4465,12 +4794,12 @@ C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
         cmd->header.timeless = 1;
         cmd->header.data_size = sizeof(C2DAnimCmdHdr);
         cmd->m_type = GetZAnimCmdType("CAPTION");
-        if (r->type == 4 && RdrCount(r) > 1) {
+        if (r->m_type == 4 && RdrCount(r) > 1) {
             CSaferStr name;
 
             name = "";
             for (int i = 0; i < RdrCount(r); i++) {
-                if (RdrElem(r, i)->type == 3)
+                if (RdrElem(r, i)->m_type == 3)
                     name += RdrString(RdrElem(r, i));
             }
             cmd->m_arg = ZAnim.m_CurAnim->AddName(name.c_str());
@@ -4498,24 +4827,22 @@ C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
 }
 
 /* an item per string of the reader's array, as many as there are columns (SOCOM 1's; ready while
- * every item is).
- * OPEN, 10 instructions, all in the prologue: the target builds CListItemTypeImpl's table address,
- * stores it, then builds this class's and stores it (one register, v0, serialised); here both
- * addresses are built up front in v1/v0 (as the string look's constructor 0x36B330 does in the
- * target too). The rest -- the reader's count clamped to the columns (RdrCount evaluated twice),
- * the walk, the push_back through the pod insert -- is byte-exact. Round 56: an empty user
- * constructor for CListItemTypeImpl, an explicit `: CListItemTypeImpl(), m_items()` -- 10 each (the
- * target's serialised stores read as the two addresses in two blocks, or one register reused) */
-CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols)
+ * every item is). Byte-exact since round 65 (10 off since round 25, all in the prologue): the
+ * parameter read directly, no local copy. The scheduler issues two a cycle, so one instruction more
+ * ahead of the first table address -- the parameter's copy at entry -- is what turns "both addresses
+ * up front" into the target's serialised stores here, and the reverse in the sibling below; its
+ * helpers take `_zrdr *`, not const: an inline's const conversion makes `(const _zrdr *)r + 2` a
+ * subable expression (no longer IRO_IsSubableExpression's `variable + constant`), hoisted out of
+ * the walk */
+CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *r, const std::vector<ColumnData *> &cols)
 {
-    const ZRdrNode *r = (const ZRdrNode *)rdr;
     int n = RdrCount(r) < cols.size() ? RdrCount(r) : cols.size();
 
     m_ready = true;
     for (int i = 0; i < n; i++) {
-        ZRdrNode *e = RdrElem(r, i);
+        _zrdr *e = RdrElem(r, i);
 
-        if (e && e->type == 3) {
+        if (e && e->m_type == 3) {
             ListItem *item = new ListItem(RdrString(e));
 
             if (!item->m_24)
@@ -4523,6 +4850,58 @@ CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<Col
             item->SetString(RdrString(e));
             m_items.push_back(item);
         }
+    }
+}
+
+/* an item per entry of the reader's array in a font and scale, as many as there are columns (SOCOM
+ * II's, the plain constructor's walk grown; ready while every item is): a picture column's look a
+ * bitmap of the column's size, its texture picked by the entry's number; the others' look by the
+ * column's type, then the font, scale and size, and the entry's text -- from an array's VALUE, COLOR
+ * and DISABLED, or formatted from anything else */
+CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *r, const std::vector<ColumnData *> &cols,
+                                               C2DFont *font, float scale)
+{
+    int n = RdrCount(r) < cols.size() ? RdrCount(r) : cols.size();
+
+    m_ready = true;
+    for (int i = 0; i < n; i++) {
+        _zrdr *e = RdrElem(r, i);
+        ListItem *item = new ListItem;
+
+        if (cols[i]->m_type == 0) {
+            item->MakeImage(cols[i]->m_width, cols[i]->m_height,
+                            cols[i]->m_textures[RdrInt(e) % cols[i]->m_textures.size()]);
+        } else {
+            if (cols[i]->m_type == 2)
+                item->MakeTimedText();
+            else if (cols[i]->m_type == 3)
+                item->MakeWrappedText();
+            item->SetFont(font);
+            item->SetScale(scale);
+            item->SetHeight(cols[i]->m_height);
+            item->SetWidth(cols[i]->m_width);
+            if (e->m_type == 4) {
+                const char *value = zrdr_findstring(e, "VALUE");
+
+                if (value)
+                    item->SetString(value);
+                if (zrdr_findtag(e, "COLOR")) {
+                    PNT3D c;
+
+                    zrdr_findPNT3D(e, "COLOR", &c);
+                    item->SetColor((int)c.x, (int)c.y, (int)c.z);
+                }
+                if (zrdr_findtag(e, "DISABLED")) {
+                    item->m_24 = false;
+                    m_ready = false;
+                }
+            } else {
+                char buf[800];
+
+                item->SetString(CUIVariable::Format(e, buf, 800));
+            }
+        }
+        m_items.push_back(item);
     }
 }
 
@@ -4601,7 +4980,7 @@ ListItem::ListItem(const char *s) : m_text(0), m_24(true), m_impl(new CListItemS
 ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols)
     : m_text(0), m_24(true), m_impl(0)
 {
-    const ZRdrNode *r = (const ZRdrNode *)rdr;
+    _zrdr *r = rdr;
 
     if (r && RdrCount(r))
         m_impl = new CListItemArrayTypeImpl(rdr, cols);
@@ -4612,9 +4991,9 @@ ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols)
 ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font, float scale)
     : m_text(0), m_24(true), m_impl(0)
 {
-    const ZRdrNode *r = (const ZRdrNode *)rdr;
+    _zrdr *r = rdr;
 
-    if (r->type == 3)
+    if (r->m_type == 3)
         m_impl = new CListItemStringTypeImpl(RdrString(r));
     else if (RdrCount(r)) {
         m_impl = new CListItemArrayTypeImpl(rdr, cols, font, scale);
@@ -4843,15 +5222,10 @@ unsigned char UiGetDirStickMoved();
  * and the press tested first: every saved register and both spills (this, the count and the item
  * pointer at sp+236/208/160, two stick answers at 192/176) are the target's (tools/perm.py over the
  * six action tests and the four combinations, 1,000 orders).
- * OPEN, 10 instructions: the action's event, state and the pad's state for it take a1, a0, a2 in
- * the target and a2, a1, a0 here -- MW colours the three temporaries highest-index first (igdump:
- * the pad state's load numbered last); named locals for any of them (dead first definitions too)
- * are copy-propagated away and change nothing, the compare's operands swapped reorders the loads
- * (18), the tests in SOCOM 1's order (event tests first) gets the temporaries but not the saved
- * registers (22). Round 53: the pad's state as a two-armed value (`a->State == (a->Event ?
- * pad->m_state[a->Event] : pad->m_state[a->Event])`, CUIListBox::HandlePad's close) gives the
- * state a0, 8 off: the event and the pad's state then swap (a2/a1); the replay wants the pad's
- * load numbered before the event's (v83 -> 78.5) or the event's after it (v79 -> 84.5) */
+ * Byte-exact since round 65: the action's state, event and the pad's state for it held in byte-enum locals, declared pad's
+ * state, event, state (open since round 53 at 8-10): enums are not propagated (the game states' round 53, the kit's round 60),
+ * so each keeps its declared number where every plain or const local was copy-propagated away; the replay had asked for the
+ * pad's load below the event's (v83 -> 78.5). The enum is a modelling device, the original's fields may be such enums */
 bool C2DButton::HandlePad(const CPad *pad, int port)
 {
     if (!CanHandleInput())
@@ -4873,12 +5247,21 @@ bool C2DButton::HandlePad(const CPad *pad, int port)
         const ActionItem *a = &m_actions[i];
 
         if (a->Type != 1) {
-            bool pressed = a->State == pad->m_state[a->Event];
-            bool falling = a->State == 1;
-            bool isUp = a->Event == 4;
-            bool isDown = a->Event == 5;
-            bool isLeft = a->Event == 3;
-            bool isRight = a->Event == 2;
+            enum EActionByte { kB0, kB1, kB2, kB3, kB4, kB5, kB6, kB7 };
+            EActionByte padState;
+            EActionByte event;
+            EActionByte state;
+
+            event = (EActionByte)a->Event;
+            state = (EActionByte)a->State;
+            padState = (EActionByte)pad->m_state[event];
+
+            bool pressed = state == padState;
+            bool falling = state == 1;
+            bool isUp = event == 4;
+            bool isDown = event == 5;
+            bool isLeft = event == 3;
+            bool isRight = event == 2;
             bool stickUp = UiGetDirStickMoved() == 3;
             bool stickDown = UiGetDirStickMoved() == 4;
             bool stickLeft = UiGetDirStickMoved() == 1;

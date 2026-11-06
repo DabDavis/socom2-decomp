@@ -27,9 +27,12 @@ public:
     enum RebootMode { FirstBoot = 0 };
     typedef bool (*RebootCallback)(RebootPhase phase, RebootMode mode, void *data);
 
-    /* a registered callback (SOCOM 1's CRegistrant; the members' names ours) */
+    /* a registered callback (SOCOM 1's CRegistrant; the members' names ours). Its user-declared constructor builds nothing,
+     * but makes the implicit copy member by member (zsys_init.cpp's: the insert 0x39C7F0's words and flag through a GPR) */
     class CRegistrant {
     public:
+        CRegistrant() {}
+
         RebootCallback m_callback;   // 0x0
         void *m_data;                // 0x4
         int m_id;                    // 0x8
@@ -198,3 +201,4 @@ PAKENTRY *CPackage::Find(const char *name)
             return e;
     return 0;
 }
+

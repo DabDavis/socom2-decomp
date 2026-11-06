@@ -58,8 +58,16 @@ public:
  * them with their names) */
 class CTCMCache {
 public:
-    /* named (the initialiser's: the vector's three words zeroed, then the name copied) */
-    CTCMCache(const char *name) { strcpy(m_name, name); }
+    /* named (the initialiser's: the vector's three words zeroed, then the name copied). `this` through an
+     * unsigned 4-byte enum, a MODELLING DEVICE (enums are not propagated -- the weapons' round 40: such an enum
+     * holds a pointer): __sinit_hud_tcm.cpp materialises the object and takes the name off it, `addiu a0,v0,12`,
+     * where every pointer, reference and inline folded the name's address (open since round 49) */
+    CTCMCache(const char *name)
+    {
+        enum Self { kSelfMax = 0xffffffffu } self = (Self)(unsigned int)this;
+
+        strcpy(((CTCMCache *)self)->m_name, name);
+    }
     CTCMEntry *Find(const char *name);
     CTCMEntry *Add(const char *name, TCMFunc action, int actionArg, TCMFunc update, int updateArg);
     ~CTCMCache();
@@ -176,10 +184,13 @@ public:
     CTCMNode *GetSelected();
     /* hud_tcmcmds.cpp's layout (the names ours) */
     void AlignRoot(CTCMNode *cur);
+    void LayoutColumn(CTCMNode *cur, float x, float y, float dir, unsigned int depth, bool b);
     bool FadeCursor(CTCMNode *cur, bool in, float dt);
     bool SlideRoot(CTCMNode *cur, bool out, float dt);
     void PlaceCursor(CTCMNode *cur);
     void Layout(float t);
+    /* the per-frame display (0x236430; hud_tcm.cpp's) */
+    void Update(float dt);
     /* the tree unit's (hud_tcmtree.cpp; the names ours) */
     void Tick(CPad *pad, float dt);
     /* the open menu's input (0x235D40, Tick's mode 1) */
@@ -201,6 +212,10 @@ public:
     void SetupItemBars();
     void ClearItems();
     void Init();
+    /* the menu built for the game's kind (the tree's 0x232BC0; the name ours) and the node actions on it (hud_tcm.cpp's
+     * 0x236260: the builder's call passes theTCM, unused) */
+    void Build(unsigned char mode);
+    void SetNodeActions();
 
     CTCMMode m_mode;   // 0x750
     std::vector<int> m_path;   // 0x754: the open column's selections, one per depth
@@ -212,7 +227,7 @@ public:
     float m_da0;   // 0xda0 (a float: the cursor's text fades by it)
     float m_da4;   // 0xda4
     int m_da8;   // 0xda8
-    int m_dac;   // 0xdac
+    float m_dac;   // 0xdac (a float: the pulse)
     float m_db0;   // 0xdb0
     float m_hold;   // 0xdb4
     CTCMSounds m_sounds;   // 0xdb8
@@ -226,7 +241,7 @@ public:
     C2DBitmapPoly m_items;   // 0xde0: the item list's bitmap (ClearItems empties its list)
     C2DBitmapPoly m_fd0;   // 0xfd0
     C2DBitmapPoly m_11c0;   // 0x11c0
-    int m_13b0;   // 0x13b0
+    float m_13b0;   // 0x13b0 (a float: the microphone's flash)
 
     /* the menu's depth and its path (reco.cpp's: a push through the reference loads the vector's
      * words off its address, the target's tcmOpenNode) */
@@ -248,10 +263,8 @@ public:
 
 extern CTCMColumn g_tcmColumns[8];
 
-/* the tree's menu builder (0x2344E0, hud_tcmtree.cpp's: not written yet) */
-extern "C" {
-void func_002344E0();
-}
+/* the tree's menu builder (0x2344E0, hud_tcmtree.cpp's) */
+void tcmBuildCaches();
 
 /* an item's node from the current cache's entry of that name, under every node named `parent`
  * (hud_tcm.cpp's 0x237000: the tree's cache builders call it) */

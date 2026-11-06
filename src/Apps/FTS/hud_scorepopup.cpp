@@ -9,7 +9,7 @@
  * it, as its first user, a class vector's destructor copy (0x22BAD0: two this tests, then the
  * deleter's destructor 0x22E460 with 0) -- then hudTurnOffScorePopup (0x22BB30), the two pop-up
  * triggers (0x22BC40, 0x22BD50), the tick (0x22BE20, SOCOM 1's hudTickScorePopup by its place),
- * hudIsScorePopupOn (0x22CBF0) and 0x22CC10. Written, all byte-exact: CScorePopup's destructor
+ * hudIsScorePopupOn (0x22CBF0) and hudTurnOnScorePopup (0x22CC10, round 65). Written, all byte-exact: CScorePopup's destructor
  * and Draw, CHudPopups' Draw and destructor, hudTurnOffScorePopup, the triggers and
  * hudIsScorePopupOn; and (round 33) the message pop-ups' third trigger (0x22D270, by names), their
  * reset (0x22D190) and hud.rdr's common look (0x22D3F0). The unit's statics are anonymous-namespace globals in SOCOM 1 (g_bOn,
@@ -31,8 +31,18 @@ extern float data_003E3000;
 extern float data_003E3018;
 extern float data_003E2FF0;
 
-class CZNetGame;
 class CZSealBody;
+/* the online game (SOCOM 1's zfts.h: only the two wins; their addresses are the pop-up's column's, so
+ * they are emitted here, 0x22D170 and 0x22D180, as in SOCOM 1) */
+class CZNetGame {
+public:
+    int GetE3ScoreTeam00() const { return m_e3score00; }
+    int GetE3ScoreTeam08() const { return m_e3score08; }
+
+    unsigned char _0[0x120];
+    int m_e3score00;   // 0x120
+    int m_e3score08;   // 0x124
+};
 /* the game (theMission's, no data row yet: the wins come from it) */
 extern CZNetGame *data_00437CE8;
 int FormatString(char *buf, int size, int id, const char **args, int count);
@@ -57,7 +67,7 @@ class CTeamDisplay {
 public:
     /* the column's title, its three headers, its stripes and its rows (SOCOM 1's SetupTeam, 0x421140
      * there: the team's name by string id now, its wins through the game's member function) */
-    void SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam, int (CZNetGame::*pWinsFunc)(),
+    void SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam, int (CZNetGame::*pWinsFunc)() const,
                    bool bTeam0);
     /* one row: the name, its clan's tag and the three scores (SOCOM 1's AddRow, 0x421510 there; the
      * kills gone from its arguments) */
@@ -306,8 +316,8 @@ struct CMessageTriggerByName : public CTriggerByName {
 };
 
 
-/* the message pop-up opened (0x22B4A0: true once shown; not written yet) */
-extern "C" bool func_0022B4A0(void *message);
+/* the message pop-up opened (0x22B4A0: true once shown; defined below) */
+bool hudOpenPopup(CPopupMessage *message);
 
 /* what a trigger is given: an object with its name at 0x20 (no name yet) */
 /* a message keyed by the map and any of several objects' names (0x22D270's records: the done flag,
@@ -405,9 +415,14 @@ public:
     unsigned char m_hidden;   // 0xfd1
 };
 
+/* its controller's menu state (zseal.h's, a byte) */
+enum MENU_STATE { MENU_STATE_NONE = 0, MENU_STATE_POPUP = 3, MENU_STATE_ANY = 0x7f };
+
 /* its controller: whether a player drives it (slot +0x2c: zseal.h's) */
 class CSealCtrl {
 public:
+    void SetMenuState(MENU_STATE state, bool now);
+    void StopRumbler();
     virtual ~CSealCtrl();
     virtual bool PreTick(float dT);
     virtual bool Tick(float dT);
@@ -418,6 +433,9 @@ public:
     virtual void PlayAiSound();
     virtual void AllowCommand();
     virtual bool IsPlayer() const;   /* +0x2c */
+
+    unsigned char _4[0x221 - 4];
+    signed char m_menustate;   // 0x221
 };
 
 class CZPersonaState {
@@ -429,6 +447,9 @@ public:
 class CEntity {
 public:
     static std::list<CEntity *> m_list;
+
+    unsigned char _0[0x10];
+    unsigned char m_type;   // 0x10: 2 a SEAL
 };
 
 /* a walk over the world's entities, counting (SOCOM 1's DWARF; st_exit.cpp writes its members) */
@@ -599,7 +620,7 @@ void hudTriggerPopup(CNamedObject *source)
             if (found) {
                 if (t->m_done)
                     return;
-                if (!func_0022B4A0(&t->m_message))
+                if (!hudOpenPopup(&t->m_message))
                     return;
                 t->m_done = true;
                 return;
@@ -641,6 +662,107 @@ void hudReadPopupCommon(_zrdr *rdr)
     g_strPopup1 = zrdr_findstring(rdr, "ClosingSound");
 }
 
+/* the frame's layout floats (OVL1 .data 0x3DC908, 0x3DC910, 0x3DC918 -- 153, 477, 100 -- and
+ * 0x3DC8C8, 430: this function's alone; by address, the names to come), the HUD text's frame the
+ * pop-up's top comes from (0x436AA8, 0x436AE8: read here only) */
+extern const char *data_003E3048;
+extern float data_003DC908;
+extern float data_003DC910;
+extern float data_003DC918;
+extern float data_003DC8C8;
+extern int data_00436AA8;
+extern int data_00436AE8;
+extern float data_003DC8F8;
+extern int data_0040F628;
+extern int data_0040F630;
+extern int data_0040F638;
+extern int data_0040F640;
+extern int data_0040F648;
+extern int data_0040F650;
+extern int data_0040F658;
+
+namespace {
+void SetupBackgroundBox();
+void SetupSpectatorBox();
+/* a thing in the list as a SEAL (the entity test the walks use) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == 2 ? (CZSealBody *)e : 0;
+}
+}
+
+/* the pop-up opened (SOCOM 1's hudTickScorePopup had it inline: the frame laid out, the box, the
+ * spectators' box and both teams' columns set up; in a network game the living spectators' names
+ * listed, shortened to fit, the rest cleared; the name ours, after hudTurnOffScorePopup) */
+void hudTurnOnScorePopup()
+{
+    data_0040F608 = true;
+    data_0040F640 = 10;
+    data_0040F628 = (int)data_003DC908;
+    data_0040F630 = (int)(data_0040F628 + data_003DC910);
+    data_0040F638 = data_00436AA8 + data_00436AE8 + 5;
+    data_0040F648 = data_0040F628 - 1;
+    data_0040F650 = data_0040F638;
+    data_0040F658 = (int)(25.0f + data_0040F650 + data_003DC918);
+    g_bmpBoxOverlay.Load(0.0f, 0.0f, 26.0f, 26.0f, zdb::CAssetMgr::m_assets.GetTexHandle("hud_satchel.tif"));
+    g_bmpBoxOverlay.Off();
+    SetupBackgroundBox();
+
+    zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle(data_003E3048);
+    C2DFont *font = theHUD->GetFont();
+
+    g_bmpHeaderBar.Load(data_0040F640, data_0040F650, data_0040F648, 25.0f + data_0040F650, tex);
+    g_bmpHeaderBar.SetColor(g_vSpecBoxColor);
+    g_bmpHeaderBar.SetTrans(80.0f);
+    {
+        float y = 25.0f + data_0040F650;
+
+        g_bmpHeaderBg.Load(data_0040F640, y, data_0040F648, y + data_003DC918, tex);
+    }
+    g_strHeader.Load(1.0f, "GAME DETAILS", font, 0.0f, 0.0f, false);
+    g_strHeader.SetPos((int)(10.0f + data_0040F640), (int)(20.0f + data_0040F650));
+    g_strHeader.m_color[3] = data_003DC8F8;
+    SetupSpectatorBox();
+    g_bmpBoxOverlay.Off();
+    g_oSeals2Ds.SetupTeam(data_0040F638, 32.0f, 32.0f, 64.0f, 0xEC69, &CZNetGame::GetE3ScoreTeam00, true);
+    g_oTerrs2Ds.SetupTeam(0.5f * (data_0040F638 + data_003DC8C8), 64.0f, 32.0f, 32.0f, 0xEC6A,
+                          &CZNetGame::GetE3ScoreTeam08, false);
+    if (theNetwork.m_bNetwork) {
+        const std::list<CEntity *> &list = CEntity::m_list;
+        unsigned int count = 0;
+        std::list<CEntity *>::const_iterator it = list.begin();
+
+        for (; it != list.end() && count < 8; ++it) {
+            CZSealBody *seal = AsSeal(*it);
+
+            if (func_002C2FD0(seal)) {
+                g_arrStrSpecNames[count].SetString(seal->m_name, true);
+
+                int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
+
+                g_arrStrSpecNames[count].UpdatePos();
+                if (g_arrStrSpecNames[count].GetLength() > width) {
+                    do {
+                        char buf[64];
+
+                        strcpy(buf, g_arrStrSpecNames[count].m_string + g_arrStrSpecNames[count].m_firstCharPos);
+
+                        int n = strlen(buf);
+
+                        buf[n - 2] = '-';
+                        buf[n - 1] = 0;
+                        ((C2DString *)&g_arrStrSpecNames[count])->SetString(buf, true);
+                        g_arrStrSpecNames[count].UpdatePos();
+                    } while (g_arrStrSpecNames[count].GetLength() > width);
+                }
+                count++;
+            }
+        }
+        for (; count < 8; count++)
+            g_arrStrSpecNames[count].SetString(0, true);
+    }
+}
+
 /* whether the pop-up is up (only in a network game; the name ours) */
 bool hudIsScorePopupOn()
 {
@@ -654,7 +776,7 @@ void hudTriggerPopup(const char *name)
         if (!strcasecmp(g_vecTriggersByName[i]->m_name.c_str(), name)) {
             CMessageTriggerByName *t = g_vecTriggersByName[i];
 
-            if (!t->m_done && func_0022B4A0(&t->m_message))
+            if (!t->m_done && hudOpenPopup(&t->m_message))
                 t->m_done = true;
             break;
         }
@@ -670,7 +792,7 @@ void hudTriggerPopup(CTriggerSource *source)
         if (!strcasecmp(t->m_map.c_str(), GetDatabase()) && !strcasecmp(t->m_name.c_str(), source->GetName())) {
             CMessageTrigger *t = g_vecTriggers[i];
 
-            if (!t->m_done && func_0022B4A0(&t->m_message))
+            if (!t->m_done && hudOpenPopup(&t->m_message))
                 t->m_done = true;
             break;
         }
@@ -694,6 +816,139 @@ void hudTurnOffScorePopup()
         g_arrStrSpecNames[i].ClearAndWipe();
     if (theHUD)
         theHUD->On();
+}
+
+/* the sound the pop-up opens with (zsnd.h's: found by name, played through slot +0x1C) */
+class CSndPopup {
+public:
+    virtual ~CSndPopup();
+    virtual void Slot0C();
+    virtual void Slot10();
+    virtual void Slot14();
+    virtual void Slot18();
+    virtual void Play(int a, int b, int c);   // +0x1C
+};
+/* (a view of CSnd, by its own static's name) */
+class CSnd {
+public:
+    static CSndPopup *GetSoundByName(const char *name);
+};
+/* reco.cpp's */
+class CReco {
+public:
+    void Suspend(bool now);
+};
+extern CReco theReco;
+/* the player (fts_main's) */
+CZSealBody *ftsGetPlayer();
+bool hudHelpWindowsEnabled();
+const char *TranslateString(const char *name);
+bool SkbWrapText(std::vector<CSaferStr> &lines, const char *text, C2DFont *font, bool byWord, float scale,
+                 float width);
+/* the mission's abort valve, a halfword at +4 (fts_state.h's CMission::m_valve_abort, theMission + 0x1AC) */
+struct CAbortValve {
+    unsigned char _0[4];
+    unsigned short m_value;   // 0x4
+};
+extern CAbortValve *data_0043668C;
+/* the pop-ups are on at all (OVL2 bss 0x64FF90; no row yet), and what the opener keeps while one is up */
+extern unsigned char data_0064FF90;
+extern signed char data_0040F610;
+extern int data_0040F620;
+
+/* the pop-up's layout: the text's inset and the bottom margin (.data, the names ours) */
+float s_fPopupMargin = 20.0f;
+float s_fPopupTextX = 20.0f;
+float s_fPopupTextY = 10.0f;
+float s_fPopupTextScale = 1.0f;
+
+/* the message pop-up opened, if the player can be interrupted: its text wrapped to the window's width
+ * and laid out in lines, the prompt below, the backdrop and frame round them, the opening sound.
+ * OPEN, 33 instructions, size equal (round 66, written): the target's colours are x s2, the text's new temporary
+ * s3, i s4 where this gives the temporary s2, i s3, x s4 -- x needs a number above the new's CInline temporary (same
+ * sweep, igreplay): a one-member coord local is scalarised and then reloaded (one saved register fewer), an accessor at
+ * one or two levels or a reused local changes nothing else useful; and a few float orders at the first block. The
+ * rest is the target's shape: `state` declared before ctrl, bottom before right, wrap and ptext named ahead of their
+ * calls, the two widths const */
+bool hudOpenPopup(CPopupMessage *message)
+{
+    signed char state;
+    CZSealBody *owner = ftsGetPlayer();
+    CSealCtrl *ctrl = owner->m_ctrl;
+
+    state = ctrl->m_menustate;
+
+    if ((MENU_STATE)state != MENU_STATE_NONE)
+        return false;
+    if (!owner->m_socom2_e1_4)
+        return false;
+    if (!(data_0064FF90 && !data_0040E480 && hudHelpWindowsEnabled()))
+        return false;
+    if (data_0043668C && (data_0043668C->m_value == 1 || data_0043668C->m_value == 2))
+        return false;
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player && !player->m_socom2_e1_4)
+        return false;
+    theReco.Suspend(true);
+    data_0040F610 = state;
+    data_0040E480 = true;
+    data_0040F620 = 0;
+    ctrl->SetMenuState(MENU_STATE_POPUP, false);
+    ctrl->StopRumbler();
+
+    int x = message->m_pos.x.v;
+    float textx = (float)x + s_fPopupTextX;
+    int y = message->m_pos.y.v;
+    float textSize = message->m_textSize;
+    float texty = (float)y + s_fPopupTextY;
+    const CSaferStr &id = message->m_textId;
+    std::vector<CSaferStr> lines;
+
+    const char *wrap = TranslateString(id.c_str());
+
+    const float scale = s_fPopupTextScale * message->m_textSize;
+    const float wide = (float)(int)((float)message->m_width - 2.0f * s_fPopupTextX);
+
+    SkbWrapText(lines, wrap, theHUD->m_myfont, false, scale, wide);
+
+    float interval = message->m_lineInterval;
+
+    for (int i = 0; i < lines.size(); i++) {
+        const char *line = lines[i].c_str();
+        CHudBrightText *text = new CHudBrightText;
+
+        g_vecPopupItems.push_back(text);
+        text->Load(textSize, line, theHUD->m_myfont, textx, texty + interval * (float)(i + 1), false);
+    }
+    CHudBrightText *prompt = new CHudBrightText;
+
+    g_vecPopupItems.push_back(prompt);
+
+    const char *ptext = g_strPopup2.c_str();
+
+    texty = 14.0f + (texty + interval * (float)(lines.size() + 1));
+    prompt->Load(textSize, ptext, theHUD->m_myfont, textx, texty, true);
+    g_bmpPopupBg.SetHasTexture(false);
+    g_bmpPopupFrame.SetHasTexture(false);
+
+    int bottom;
+    int right = message->m_pos.x.v + message->m_width;
+
+    bottom = (int)(texty + s_fPopupMargin);
+
+    g_bmpPopupBg.Load((float)x, (float)y, (float)right, (float)bottom, 0);
+    g_bmpPopupBg.SetColor(11.0f, 21.0f, 24.0f);
+    g_bmpPopupFrame.Load((float)(x - 7), (float)(y - 7), (float)(right + 7), (float)(bottom + 7), 0);
+    g_bmpPopupFrame.SetColor(35.0f, 51.0f, 56.0f);
+    g_bmpPopupBg.SetTrans(100.0f);
+    g_bmpPopupFrame.SetTrans(80.0f);
+
+    CSndPopup *snd = CSnd::GetSoundByName(g_strPopup0.c_str());
+
+    if (snd)
+        snd->Play(1, 0, 255);
+    return true;
 }
 
 /* the spectators' box (SOCOM II's; the names ours): its tuning, plain initialised data 8 bytes
@@ -872,7 +1127,7 @@ void CTeamDisplay::AddRow(CZSealBody *const *arrSeals, int iRow, float fTopY)
 }
 
 void CTeamDisplay::SetupTeam(float fTopY, float fBgR, float fBgG, float fBgB, int iTeam,
-                             int (CZNetGame::*pWinsFunc)(), bool bTeam0)
+                             int (CZNetGame::*pWinsFunc)() const, bool bTeam0)
 {
     char arrWinsStr[16];
     char arrTitle[64];
