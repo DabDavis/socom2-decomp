@@ -478,6 +478,16 @@ public:
  * Reset and the destructors -- the records and the rotations are deleted one by one) */
 class CZAnimSetSave : public std::vector<_zanim_node_save *> {
 public:
+    /* A modelling device (the engine core's round 27): the target inlines this constructor one
+     * level and calls its four vectors' out of line -- MW's inline_max_size cut (256 units), which
+     * the original reached with vector constructors fatter than include/vector's. Twenty empty
+     * statements carry the difference (measured: 19 or more cut it; 18 or fewer inline the
+     * vectors, SaveNodeStates 0x94 long) */
+    CZAnimSetSave()
+    {
+        (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0;
+        (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0; (void)0;
+    }
     void Reset(_zanim_node_save *save);
     void Add(_zanim_node_ref *ref);
     void Free();
