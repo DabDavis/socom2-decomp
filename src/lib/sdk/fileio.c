@@ -220,7 +220,7 @@ struct _sceFsLseek64 {
 extern void sceSifWriteBackDCache(void *, int);
 extern void *memcpy(void *, const void *, unsigned int);
 
-int _sceFs_q[32] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+volatile int _sceFs_q[32] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 		     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static int _fs_init = 0;
 static int _fs_semid = -1;
@@ -296,6 +296,93 @@ static struct _sceFsIob *get_iob(int fd)
 	io = &_iob[fd];
 	SignalSema(_fs_iob_semid);
 	return io;
+}
+
+/* The reply interrupt: which of the two receive buffers the server filled (the packet's +12, when
+ * it double-buffers), the reply's header word by word out of the uncached buffer, the reply's data
+ * to its destination, the extra payload of the calls that have one, then the request's semaphore
+ * -- or, for a no-wait request (negative), the slot in _sceFs_q that holds it. */
+struct _sceFsRdata {
+	int size1;
+	int size2;
+	char *dest1;
+	char *dest2;
+	char buf1[64];
+	char buf2[64];
+};
+
+extern int data_001CCD48;	/* the receive buffer the last reply used */
+extern int iSignalSema(int);
+
+void _sceFs_Rcv_Intr(void *pkt, void *arg)
+{
+	int h_sema; int h_code; char *h_dest; int h_size; void *h_to; int h_len;
+	char *p;
+	struct _sceFsRdata *r;
+	char *d, *u;
+	int i;
+	int n = 0;
+	char *q;
+	u_int len;
+
+	if (data_001CCD50)
+		n = ((int *)pkt)[3];
+	q = _rcv_data_cmd + n * 1088;
+	data_001CCD48 = n;
+	n = 0x20000000;
+	p = (char *)((u_int)q | n);
+	memcpy(&h_sema, p, 4);
+	memcpy(&h_code, p + 4, 4);
+	memcpy(&h_dest, p + 8, 4);
+	memcpy(&h_size, p + 12, 4);
+	if (h_sema >= 0)
+		memcpy(h_dest, p + 16, h_size);
+	switch (h_code) {
+	case 2:
+		r = (struct _sceFsRdata *)(p + 20);
+		if (r->size1 > 0) {
+			d = r->dest1;
+			u = (char *)UNCACHED(d);
+			for (i = 0; i < r->size1; i++)
+				d[i] = u[i] = r->buf1[i];
+		}
+		if (r->size2 > 0) {
+			d = r->dest2;
+			u = (char *)UNCACHED(d);
+			for (i = 0; i < r->size2; i++)
+				d[i] = u[i] = r->buf2[i];
+		}
+		break;
+	case 11:
+		memcpy(&h_to, p + 20, 4);
+		memcpy(h_to, p + 24, 324);
+		break;
+	case 12:
+		memcpy(&h_to, p + 20, 4);
+		memcpy(h_to, p + 24, 64);
+		break;
+	case 23:
+	case 25:
+	case 26:
+		memcpy(&h_to, p + 20, 4);
+		memcpy(&h_len, p + 24, 4);
+		len = h_len;
+		if (len > 1024) {
+			h_len = 1024;
+			len = 1024;
+		}
+		memcpy(h_to, p + 28, len);
+		break;
+	}
+	if (h_sema < 0) {
+		h_sema = -h_sema;
+		for (i = 0; i < 32; i++)
+			if (_sceFs_q[i] == h_sema) {
+				_sceFs_q[i] = -1;
+				break;
+			}
+	} else
+		iSignalSema(h_sema);
 }
 
 static void _sceFsSemInit(void)
@@ -595,7 +682,7 @@ int sceLseek(int fd, int offset, int whence)
 		DeleteSema(sema);
 		return -11;
 	}
-	if (flag & 0x8000) {
+	if ((short)flag & 0x8000) {
 		DeleteSema(sema);
 		return 0;
 	}
@@ -685,7 +772,7 @@ int sceRead(int fd, void *buf, int nbyte)
 		DeleteSema(sema);
 		return -11;
 	}
-	if (flag & 0x8000) {
+	if ((short)flag & 0x8000) {
 		DeleteSema(sema);
 		return 0;
 	}
@@ -759,7 +846,7 @@ int sceWrite(int fd, const void *buf, int nbyte)
 		DeleteSema(sema);
 		return -11;
 	}
-	if (flag & 0x8000) {
+	if ((short)flag & 0x8000) {
 		DeleteSema(sema);
 		return 0;
 	}
@@ -1492,7 +1579,7 @@ long sceLseek64(int fd, long offset, int whence)
 		DeleteSema(sema);
 		return -11;
 	}
-	if (flag & 0x8000) {
+	if ((short)flag & 0x8000) {
 		DeleteSema(sema);
 		return 0;
 	}
