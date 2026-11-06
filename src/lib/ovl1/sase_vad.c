@@ -303,9 +303,8 @@ signed char func_002533B0(VadState *p, short sFlag, float fLevel)
 	if (p->bSpeech == 1 && sFlag == p->bSpeech) {
 		c = p->bActive;
 		if (c == sFlag) {
-			ret = c;
-			if (fLevel < 0x1.cccccccccccccp-2)
-				ret = 0;
+			if (!(fLevel < 0x1.cccccccccccccp-2))
+				ret = c;
 		}
 	}
 	return ret;
