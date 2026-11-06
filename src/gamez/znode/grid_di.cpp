@@ -10,7 +10,7 @@
  * out-of-line begin() (0x2A00B0) and tiny iterator helpers -- graph_tree.cpp's neighbourhood.
  * The node walk NodeGetIntersect 0x2D2890 (SOCOM 1's NodeGetIntersect and NodeGetAltitude in one)
  * since the engine core's round 25; the batch walk 0x2D3030 (SOCOM 1's NodeGetIntersectBatch) and
- * CGrid::GetIntersectBatch 0x2D3CF0 since round 26 (both open). The unit is now whole. */
+ * CGrid::GetIntersectBatch 0x2D3CF0 since round 26 (both byte-exact since round 27). The unit is whole. */
 
 #include "node_world.h"
 #include "int_material.h"
@@ -270,14 +270,14 @@ bool CGrid::GetIntersect(DiIntersect *di)
  * (SOCOM 1 a flag per byte); then the marked cells' nodes, each once per walk (the tick), searched
  * for the whole batch -- the sets' tree marks cleared, the cell's props with collision under their
  * matrices (pushed unless the unit one, as GetIntersect), then the node itself.
- * OPEN, 25 instructions (unwritten before the engine core's round 26; the target's size, 0xA90, its
- * frame, every GPR and call): the four `ext[0].x` bounds (case 2's two, 4's and 1's first) swap
- * $f0 and $f1 -- the bound, read at the array's offset 0, is a plain object to pass 0's
- * IRO_CommonSubs, so its temporary is made in pass 1 (@3331, v64) where every other bound is read
- * through a hoisted address (&ext + 8, + 12, + 20) and made in pass 0 ahead of its operand's;
- * `igreplay --cls 1 --move 64=31.5` gives the target's colours. Tried: `(float)` casts, `ext->x`,
- * `(void)&ext`, lo / hi pointer locals (123-139 off), the bound through a reference or pointer inline
- * (21: the radius inline's order then lost), the extents loop as an inline (0xAE4). Measured on the
+ * Byte-exact since the engine core's round 27 (25 off in round 26, unwritten before). The four
+ * `ext[0].x` bounds (case 2's two, 4's and 1's first) are each a `const float` local: the bound, read
+ * at the array's offset 0, is a plain object to pass 0's IRO_CommonSubs, so without a local its
+ * temporary comes from pass 1, above its operand's, and they swap $f0 and $f1 (`igreplay --cls 1 --move
+ * 64=31.5` gave the target's colours; every other bound goes through a hoisted address, &ext + 8,
+ * + 12, + 20, and is made in pass 0 ahead of its operand's). A plain local is folded back, a `(float)`
+ * cast, `ext->x`, `(void)&ext`, lo / hi pointer locals (123-139 off), the bound through a reference or
+ * pointer inline (21) and the extents loop as an inline (0xAE4) do not give it. Measured on the
  * way: one counter reused by all four loops gives every GPR (its later webs split off, numbered after
  * the strength-reduced pointers: 77 -> 38); the min / max are value macros, the bound first (`<` and
  * `>`: a reference min selects addresses); the radius through an inline, read ahead of the centre;
@@ -313,23 +313,39 @@ int CGrid::GetIntersectBatch(DiIntersect **di, int n)
         di[i]->m_Cnt = 0;
         switch (di[i]->m_Type & ~0x8000) {
         case 2:
-            ext[0].x = BATCH_MIN(ext[0].x, di[i]->m_Tail.x);
+            {
+                const float b = ext[0].x;
+
+                ext[0].x = BATCH_MIN(b, di[i]->m_Tail.x);
+            }
             ext[0].z = BATCH_MIN(ext[0].z, di[i]->m_Tail.z);
             ext[1].x = BATCH_MAX(ext[1].x, di[i]->m_Tail.x);
             ext[1].z = BATCH_MAX(ext[1].z, di[i]->m_Tail.z);
-            ext[0].x = BATCH_MIN(ext[0].x, di[i]->m_Tip.x);
+            {
+                const float b = ext[0].x;
+
+                ext[0].x = BATCH_MIN(b, di[i]->m_Tip.x);
+            }
             ext[0].z = BATCH_MIN(ext[0].z, di[i]->m_Tip.z);
             ext[1].x = BATCH_MAX(ext[1].x, di[i]->m_Tip.x);
             ext[1].z = BATCH_MAX(ext[1].z, di[i]->m_Tip.z);
             break;
         case 4:
-            ext[0].x = BATCH_MIN(ext[0].x, di[i]->m_Tail.x - Radius(di[i]));
+            {
+                const float b = ext[0].x;
+
+                ext[0].x = BATCH_MIN(b, di[i]->m_Tail.x - Radius(di[i]));
+            }
             ext[0].z = BATCH_MIN(ext[0].z, di[i]->m_Tail.z - Radius(di[i]));
             ext[1].x = BATCH_MAX(ext[1].x, di[i]->m_Tail.x + Radius(di[i]));
             ext[1].z = BATCH_MAX(ext[1].z, di[i]->m_Tail.z + Radius(di[i]));
             break;
         case 1:
-            ext[0].x = BATCH_MIN(ext[0].x, di[i]->m_Tail.x);
+            {
+                const float b = ext[0].x;
+
+                ext[0].x = BATCH_MIN(b, di[i]->m_Tail.x);
+            }
             ext[0].z = BATCH_MIN(ext[0].z, di[i]->m_Tail.z);
             ext[1].x = BATCH_MAX(ext[1].x, di[i]->m_Tail.x);
             ext[1].z = BATCH_MAX(ext[1].z, di[i]->m_Tail.z);
