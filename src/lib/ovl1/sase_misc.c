@@ -32,7 +32,7 @@ extern void func_00248A18(float *pfMax, int n, const float *pfAmp, float fStep, 
 /* RefineC0.c, kept here by address: the pitch refined around its table entry by the harmonic comb, twice, the second search
  * narrower: the comb's best fundamental, its value over the amplitudes' sum. The comb's float parameters sit before its last
  * two pointers (`mov.s $f15` before `move a3`); the first window is a local, the second two expressions, CSE's temporary. */
-int func_00250CD8(const float *pfAmp, const float *pfFreq, int iLength, float *pfSum, float *pfPitch, float *pfGain, float fPitch)
+int func_00250CD8(float fPitch, const float *pfAmp, const float *pfFreq, int iLength, float *pfSum, float *pfPitch, float *pfGain)
 {
 	int aiHarm[100];
 	const float *pfTable;

@@ -3088,6 +3088,44 @@ def test_pragmascan_report_lists_rows_at_the_targets_size():
     ck(not any("hit_row" in l or "miss_row" in l for l in rows), "a HIT is not a lead, nor a row never at size")
 
 
+def test_retsweep_flips_a_callees_declared_return_type():
+    """tools/retsweep.py (GCC round 44a; the Medius lane's round 25b measured the rule): sceGsResetGraph with the kernel's
+    GsPutIMR declared void -- round 6a's text, open 38 rounds on 4 words of swapped registers -- is found open, the callee
+    found in the object and its declaration in the unit, the flip (void -> int) makes it byte-exact with nothing lost; the
+    NEGATIVE: flipping the other callee does not. A definition is not a declaration, a pointer's stars go with the type."""
+    import importlib
+    R = importlib.import_module("retsweep")
+    T = R.T
+    unit = HERE / "src" / "lib" / "sdk" / "gs_resetgraph.c"
+    real = unit.read_text()
+    decl = "extern u_long GsPutIMR(u_long);"
+    ck(decl in real, "the fixture's premise: the unit declares GsPutIMR as the kernel's")
+    text = real.replace(decl, "extern void GsPutIMR(u_long);")
+    old = os.environ.get("SC_TRY_WORK")
+    T.WORK = BUILD / "retsweep"
+    try:
+        T.prepare()
+        T._in_tree(unit).write_text(text)
+        fn = "sceGsResetGraph"
+        u = R.Unit(unit, text)
+        ck(fn in u.open and u.dist[fn][0] == 4, f"open, 4 words off, as declared void ({u.open}, {u.dist.get(fn)})")
+        ck("GsPutIMR" in u.calls[fn] and "DisableIntc" in u.calls[fn], f"its callees read off the object ({u.calls[fn]})")
+        file, flip, label = R.edits_for(u, "GsPutIMR")
+        ck(file == unit and label == "void -> int" and "extern int GsPutIMR(u_long);" in flip,
+           f"the declaration found and flipped ({label})")
+        r = R.try_variant(u, fn, {file: flip})
+        ck(r["match"] and not r["lost"], f"the flip: byte-exact, nothing lost ({r})")
+        file, flip, label = R.edits_for(u, "DisableIntc")
+        r = R.try_variant(u, fn, {file: flip})
+        ck(not r["match"], f"NEGATIVE: another callee's flip does not close it ({r['verdict']})")
+    finally:
+        T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
+    ck(R.declaration("int f(void)\n{\n\treturn 0;\n}\n", "f") is None, "a definition is not a declaration")
+    m = R.declaration("extern char *strdup(const char *s);\n", "strdup")
+    ck(m is not None and R.flipped("extern char *strdup(const char *s);\n", m)[0] == "extern void strdup(const char *s);\n",
+       "a pointer's stars go with the type")
+
+
 def test_everything_baselined_still_matches():
     rc = C.main([])
     ck(rc == 0, "sccheck: no regressions against MATCHED.txt, every TU builds")

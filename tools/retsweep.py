@@ -111,9 +111,10 @@ def callees(elf: E.Elf, name: str) -> list[str]:
 class Unit:
     """A unit's base build in try.py's scratch tree: `matched`, and each open function's distance and callees."""
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, text: str | None = None):
+        """`text`: the scratch tree's copy of the unit holds this, not the file's text (the canary's fixture)."""
         self.path = path
-        self.text = path.read_text(errors="surrogateescape")
+        self.text = path.read_text(errors="surrogateescape") if text is None else text
         self.headers = headers_of(path)
         self.error = ""
         obj, err = T.build(path, path, None)
@@ -162,7 +163,7 @@ def edits_for(u: Unit, name: str) -> tuple[Path, str, str] | None:
         at = j + 1 if j >= 0 else 0
         return u.path, u.text[:at] + f"extern void {name}();\n" + u.text[at:], "implicit int -> void"
     path, m = w
-    text = path.read_text(errors="surrogateescape")
+    text = u.text if path == u.path else path.read_text(errors="surrogateescape")
     new, label = flipped(text, m)
     return path, new, label
 
