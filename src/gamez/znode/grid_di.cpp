@@ -435,18 +435,6 @@ IntersectStruct *DiIntersect::GetHighestAltitude(const CPnt3D *p, float alt)
     return best;
 }
 
-/* CDI's slots as the walks call them: GetIntersect (slot 0x14) answers a bool -- the walk narrows
- * the result (andi 0xff) and keeps it unconverted, as SOCOM 1's NodeGetIntersect did -- where
- * znode.h's CDI declares an int (a marked stand-in: a virtual's return type is in no symbol, and
- * CDI's overrides are node_world.h's) */
-class CDIHit : public tag_DI_HEAD {
-public:
-    virtual ~CDIHit();
-    virtual void Allocate(int n);
-    virtual void Free();
-    virtual bool GetIntersect(DiIntersect *di) = 0;
-};
-
 /* the set's tail and its model-space pair (ours, inline: MW sets up a call's arguments holding an
  * inline's call first, right to left -- Transform's and the segment test's a2, a1, a0 order) */
 static inline const CPnt3D *TailOf(DiIntersect *di) { return &di->m_Tail; }
@@ -684,7 +672,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                                 int cnt = d->m_Cnt;
 
                                 if (cnt < d->m_BufCnt) {
-                                    hit = ((CDIHit *)p)->GetIntersect(d);
+                                    hit = p->GetIntersect(d);
                                     if (hit) {
                                         hit = stop;
                                         CMatrix *m = CStack::m_top;
@@ -715,7 +703,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                                 int cnt = d->m_Cnt;
 
                                 if (cnt < d->m_BufCnt) {
-                                    hit = ((CDIHit *)p)->GetIntersect(d);
+                                    hit = p->GetIntersect(d);
                                     if (hit) {
                                         CMatrix *m = CStack::m_top;
                                         IntersectStruct *is = &d->m_Intersects[cnt];
@@ -768,21 +756,22 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
  * turn, each hit taken back to the world through the stack's top and recorded, the first stopping
  * the search when the vector says so; then its children (SOCOM II's one walk under GetIntersect
  * and GetAltitude, where SOCOM 1 had NodeGetIntersect and NodeGetAltitude).
- * OPEN, 1 instruction (unwritten before the engine core's round 25; the target's size, 0x560, its
- * frame, every register and call): `done = stop` narrows the spilled flag (andi 0xff, MW's 8-bit
- * zero-extension in the PCode) where the target moves it -- bool, unsigned char, char or int flags,
- * `!!stop`, `(bool)`, `!= 0`, const, the flag assigned apart or declared at the top, read through an
- * inline: the same or worse (build/scratch/core/v_ngi3-9.py). Measured on the way: a PLAIN `asm { }`
- * block -- a volatile one disables the whole IR optimiser for the function (DisableDueToAsm: no CSE,
- * no loop invariants, the hit's n * 32 recomputed after the block, 0x568); MW passes a call's
- * arguments that hold a call -- an inline accessor's, one expression is enough -- first, right to
- * left, then the plain ones in parameter order (mweppc's evaluate_nested_function_calls): the tail
- * pair through accessors gives Transform's and the segment test's a2, a1, a0 order; the iterators
- * declared at the top and assigned from begin() (their slots 348 / 344, begin's temporaries above
- * the postfix copies); the DI vector a POINTER declared after the flag (its address in s1 for the
- * flag reads, the size read through the node) and the children through a reference (end()'s
- * vector address held in s0, begin read through the node), SOCOM 1's shape too; GetIntersect
- * answering a bool (the CDIHit stand-in above: SOCOM 1's caller narrows it the same way) */
+ * Byte-exact since the engine core's round 27: the last word, `done = stop` moved where it had been
+ * narrowed (andi 0xff), is the asm block's leading `.set noreorder` -- the zdb world's round 33: a
+ * `.set` directive in a plain `asm {}` splits MW's scheduling block there at no code cost (bool, char
+ * and int flags, casts, `!!`, `!= 0`, an enum-typed flag -- which turns the call's andi into a move --
+ * had all failed; build/scratch/core/p2gen.py is the type matrix). Measured on the way: a PLAIN
+ * `asm { }` block -- a volatile one disables the whole IR optimiser for the function
+ * (DisableDueToAsm: no CSE, no loop invariants, the hit's n * 32 recomputed after the block, 0x568);
+ * MW passes a call's arguments that hold a call -- an inline accessor's, one expression is enough --
+ * first, right to left, then the plain ones in parameter order (mweppc's
+ * evaluate_nested_function_calls): the tail pair through accessors gives Transform's and the segment
+ * test's a2, a1, a0 order; the iterators declared at the top and assigned from begin() (their slots
+ * 348 / 344, begin's temporaries above the postfix copies); the DI vector a POINTER declared after
+ * the flag (its address in s1 for the flag reads, the size read through the node) and the children
+ * through a reference (end()'s vector address held in s0, begin read through the node), SOCOM 1's
+ * shape too; GetIntersect answering a bool (znode.h's pure slot: SOCOM 1's caller narrows it the
+ * same way) */
 void CGrid::NodeGetIntersect(CNode *node, DiIntersect *di)
 {
     CDIVector::iterator it;
@@ -839,7 +828,7 @@ void CGrid::NodeGetIntersect(CNode *node, DiIntersect *di)
                         int n = di->m_Cnt;
 
                         if (n < di->m_BufCnt) {
-                            done = ((CDIHit *)d)->GetIntersect(di);
+                            done = d->GetIntersect(di);
                             if (done) {
                                 done = stop;
                                 CMatrix *m = CStack::m_top;
@@ -847,6 +836,7 @@ void CGrid::NodeGetIntersect(CNode *node, DiIntersect *di)
                                 CPnt3D *norm = &is->m_norm;
 
                                 asm {
+                                    .set noreorder
                                     lqc2 vf4, 0(m)
                                     lqc2 vf5, 16(m)
                                     lqc2 vf6, 32(m)
