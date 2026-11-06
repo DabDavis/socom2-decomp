@@ -1165,9 +1165,9 @@ bool CMission::Sample_ExtractionLoc()
     return false;
 }
 
-/* the external whispers' option: its global (0x3DE620, the HUD reads it) and the setter (the name ours,
+/* the external whispers' option: its global (g_bExternalWhispers, 0x3DE620: the HUD reads it) and the setter (the name ours,
  * its valve's: EnableExternalWhispers -- SOCOM II's; the options' store and the HUD call it; OVL1 0x2A41F0) */
-extern "C" bool data_003DE620;
+extern "C" bool g_bExternalWhispers;
 
 void EnableExternalWhispers(bool on)
 {
@@ -1180,7 +1180,7 @@ void EnableExternalWhispers(bool on)
     valve->m_value = on;
     if (state != VALVE_SAME)
         valve->MakeCallbacks(state);
-    data_003DE620 = on;
+    g_bExternalWhispers = on;
 }
 
 /* ---- the single-player career's stats (theMission's at 0x1950, the UI's CLEAR_CAREER_STATS and
