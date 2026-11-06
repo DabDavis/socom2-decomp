@@ -2256,6 +2256,115 @@ void CSealCtrlAi::RestoreAiMode()
     m_3f5 = (AI_MODE)1;
 }
 
+extern "C" {
+/* the time the mode 1 glance starts at (OVL2 0x650098), the SEAL's top test (0x54F6E0, below), the path's
+ * deploy (0x56C080, below) */
+extern float data_00650098;
+bool func_0054F6E0(CZSealBody *seal, bool a, bool b, bool c);
+void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *loc);
+}
+
+/* the four throttles put to rest through their slot (an inline, one order everywhere) */
+static inline void RestThrottles(CSealCtrlAi *ai)
+{
+    ai->SetThrottle(1, 0.0f);
+    ai->SetThrottle(2, 0.0f);
+    ai->SetThrottle(0, 0.0f);
+    ai->SetThrottle(3, 0.0f);
+}
+
+/* the throttles' values zeroed too (the order the stores keep) */
+static inline void ZeroThrottles(CSealCtrlAi *ai)
+{
+    RestThrottles(ai);
+    ai->m_throttle[1] = 0.0f;
+    ai->m_throttle[2] = 0.0f;
+    ai->m_throttle[0] = 0.0f;
+    ai->m_throttle[3] = 0.0f;
+}
+
+/* a mode set: a held AI stays 6, one on top of something or staying on it 7; leaving 6 for a held AI and leaving
+ * 7 while still on top are refused; leaving 7 puts the AI-map collision back, and for 3 the path's next point
+ * deployed; entering each mode rests the throttles or sets its own (OVL2 0x56CBF0; SOCOM 1's with the top test,
+ * modes 7 and the path's point new).
+ * OPEN, 6 instructions and the branch offsets past them (0x18 short): leaving mode 3 the target evaluates a test
+ * whose result nothing uses -- the held 4 materialised, then `(state - 1) < 3` with its `sltiu at; beqz at`, an
+ * empty arm `b J; nop` (SOCOM 1's had a body there). A dead bool, an empty inline or `if (0)` in the arm drop the
+ * second term (here, everything else byte-exact). `int x = (a || b) ? 1 : 0` keeps it at the right size but MW then
+ * stops putting `li` and the stack's address in the delay slots before them, all through the function (102 off);
+ * `{}` or `(void)0` do the same and drop the term. */
+void CSealCtrlAi::SetAiMode(AI_MODE mode)
+{
+    AI_MODE old;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    old = m_3f4;
+    if (mode != 7 && AiStateIs((AI_STATE)9))
+        mode = (AI_MODE)6;
+    else if (func_0054F6E0(seal, true, true, true))
+        mode = (AI_MODE)7;
+    else if (old == 7 && m_440)
+        mode = (AI_MODE)7;
+    if (old == mode)
+        return;
+    switch (old) {
+    case 6:
+        if (mode != 7 && AiStateIs((AI_STATE)9))
+            return;
+        break;
+    case 3:
+        {
+            bool on = false;
+
+            if (IsState4Held(this) || (unsigned int)(m_path.m_state - 1) < 3)
+                on = true;
+        }
+        break;
+    case 7:
+        if (func_0054F6E0(seal, true, true, true))
+            return;
+        SetDoAiMapCollide((m_448 & 0x80000) != 0);
+        m_bit17 = 1;
+        if ((m_448 & 0x100000) && mode == 3) {
+            CEntity *e = m_entity;
+            CAiMapLoc loc;
+            CAiPath *path = (CAiPath *)&m_path;
+
+            if (!path->PopPoint(&loc))
+                loc = e->m_mapLocValid;
+            func_0056C080(this, path, &loc);
+        }
+        break;
+    }
+    switch (mode) {
+    case 6:
+        ZeroThrottles(this);
+        break;
+    case 2:
+        ZeroThrottles(this);
+        break;
+    case 3:
+        func_0056C080(this, (CAiPath *)&m_path, &CAiMapLoc::invalid);
+        break;
+    case 1:
+        RestThrottles(this);
+        m_3fc = data_00650098;
+        break;
+    case 7:
+        m_3fc = 0.0f;
+        if (m_do_aimap_collide)
+            m_448 |= 0x80000;
+        else
+            m_448 &= ~0x80000;
+        m_448 |= 0x200000;
+        SetDoAiMapCollide(false);
+        break;
+    }
+    m_3f4 = mode;
+    m_3f8 = 0;
+    m_3f5 = old;
+}
+
 /* the AI's turn rate (OVL2 data 0x64FD98, 2.0: read with lwc1, so a variable; the name ours) */
 extern "C" float data_0064FD98;
 
@@ -3300,9 +3409,9 @@ static inline bool NotNavySeal(const CSealCtrlAi *ai)
  * SOCOM II: DoSetStance and 0x591520 ask it -- 0x591520 masks the result as a bool; the name unknown;
  * written the round 56). Each test a bool of its own, the cell's ors CellBarsProne's nested bools,
  * the state test AiStateIs's explicit false arm through a bool local (an inline negation, `!` in the
- * `&&` or a bool local in StackIs fold it into branches), 0x60A850 an int here (`(bool)` gives the
- * target's sltu; as a bool it is andi -- the unit's other callers unchanged), `exposed` declared bare
- * ahead of the SEAL (igreplay --movers: numbered before it, s1 and s0 as the target).
+ * `&&` or a bool local in StackIs fold it into branches), 0x60A850 a bool (round 58: 0x60A850 returns
+ * bool in the row's own unit, the test `bool ok = func_0060A850(t) && (t->m_flags & 0x200)`), `exposed`
+ * declared bare ahead of the SEAL (igreplay --movers: numbered before it, s1 and s0 as the target).
  * OPEN, 17 instructions -- ONE WORD: the bit-16-without-17 test's merge gets an `andi v0,0xff` the
  * target lacks (the other 16 are branch offsets it shifts, until the 8-byte pad after `exposed = true`
  * absorbs it). The andi is MW converting the `!` of the bit-17 bool into the && value (igdump: op1087

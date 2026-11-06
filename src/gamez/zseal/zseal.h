@@ -1234,7 +1234,9 @@ public:
     /* a mode (7 keeps the AI-map collision off; the name ours): an AI_MODE, copied with lb (0x557F60) */
     AI_MODE m_3f4;   // 0x3f4
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
-    unsigned char _3f6[0x3fc - 0x3f6];
+    unsigned char _3f6[0x3f8 - 0x3f6];
+    /* (zeroed as the mode changes: SetAiMode; the name ours) */
+    int m_3f8;   // 0x3f8
     /* the countdown to the next glance around: 0x567690 runs it down and restarts it at a random 10
      * to 15, zeroed while the AI has a target or acts (SetAiMode sets it; the name ours) */
     float m_3fc;   // 0x3fc
@@ -2219,7 +2221,7 @@ public:
     bool CanClimbWall();
     /* a ladder's polygons crossed (SOCOM 1's, a tail call: OVL2 0x59DA60) and the bomb's defusal
      * handled (SOCOM 1's, empty in both builds: OVL2 0x59DA70) */
-    int CanClimbLadder();
+    bool CanClimbLadder();
     void HandleBombDefuse();
     void AttemptBombDefuse();
     /* the action under the reticule, or near it (SOCOM 1's GetReticuleAction, by its order after the

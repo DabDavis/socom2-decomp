@@ -2147,7 +2147,7 @@ AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 }
 
 extern "C" {
-/* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind -- CanTraverse and
+/* (OVL2 0x5B4340, defined below: a test of the SEAL's state against a kind -- CanTraverse and
  * PreTick ask it too; the name unknown) */
 bool func_005B4340(CZSealBody *seal, unsigned char kind);
 }
@@ -5542,7 +5542,7 @@ void CZSealBody::HandleBombDefuse()
 }
 
 /* a ladder's polygons crossed (OVL2 0x59DA60; SOCOM 1's tail call with type 2) */
-int CZSealBody::CanClimbLadder()
+bool CZSealBody::CanClimbLadder()
 {
     return CanTraverse((CDIType)2);
 }
