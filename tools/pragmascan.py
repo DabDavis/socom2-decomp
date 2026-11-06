@@ -46,6 +46,13 @@ digest (src/**/*.h, include/) and the variant; a re-run skips what is recorded a
 it already scored. --unit-budget SECONDS (default 900) stops a unit's variants when its time is up
 (a `budget` line says how many were left; the next run takes them up). --jobs (default 2) units at
 once, each in its own scratch tree.
+
+The report ends with THE LIKELIEST NEXT HITS (GCC round 44a, the UI's round 38): `opt_loop_invariants` and
+`opt_strength_reduction` both off keep IRO_FindLoops from running at all (IrOptimizer.c), and SkbParseComplete was exact
+only under that pair, 0x2B0 under either alone -- the pairs run had reported it only as nearer, its source shape still
+wrong. So a row whose best variant reaches the target row's SIZE is listed, nearest first: `at size` a variant brings
+it there from another size (the strongest lead: a whole loop or block now exists or has gone), `closer at size` one
+already there that a variant brings nearer. A variant that loses another function is shown with the loss.
 """
 
 from __future__ import annotations
@@ -444,6 +451,7 @@ def score_unit(obj: Path, wunit: Path, text: str) -> dict[str, dict]:
         rec = {"match": bool(res.match), "verdict": "MATCH" if res.match else res.verdict, "addr": sym.addr}
         if not res.match:
             rec["d"], rec["size"] = distance(elf, fs.name, sym, img)
+            rec["tsize"] = sym.size
         out[fs.name] = rec
     return out
 
@@ -705,8 +713,40 @@ def classify(r: dict) -> str:
     return ""
 
 
+def likeliest(results: Results, bases: dict, sizes: dict[int, int] | None = None) -> list[dict]:
+    """The rows a variant brings to the target's size (GCC round 44a): per open function not made
+    byte-exact, its best variant whose candidate is exactly the target row's size -- nearest first, a
+    variant that loses nothing before one that does. `kind` is `at size` when the function as it stands
+    is another size, `closer at size` when it is already that size and the variant is nearer. `sizes`
+    ({address: the row's size}) is for a results file older than the `tsize` field: else the map's."""
+    if sizes is None:
+        sizes = {s.addr: s.size for s in E.symbols().symbols}
+    best: dict[tuple, dict] = {}
+    hit = {(k[:3], r["func"]) for k, r in results.variants.items() if r.get("match")}
+    for k, r in results.variants.items():
+        key = k[:3]
+        if key not in bases or "error" in bases[key] or r.get("match") or (key, r["func"]) in hit:
+            continue
+        score = bases[key]["scores"].get(r["func"], {})
+        tsize = score.get("tsize", sizes.get(score.get("addr")))
+        d0, d1, size0, size1 = r.get("d0"), r.get("d1"), r.get("size0"), r.get("size1")
+        if tsize is None or size1 != tsize or d1 is None or d0 is None:
+            continue
+        kind = "at size" if size0 != tsize else ("closer at size" if d1 < d0 else "")
+        if not kind:
+            continue
+        row = dict(unit=key[0], func=r["func"], addr=score.get("addr"), pragma=r["pragma"], d0=d0, d1=d1,
+                   size0=size0, tsize=tsize, kind=kind, lost=len(r.get("lost") or []))
+        rank = (row["lost"] > 0, d1, len(r["pragma"].split("+")))
+        if (key, r["func"]) not in best or rank < best[(key, r["func"])][0]:
+            best[(key, r["func"])] = (rank, row)
+    rows = [row for _, row in best.values()]
+    return sorted(rows, key=lambda x: (x["kind"] != "at size", x["lost"] > 0, x["d1"], x["func"]))
+
+
 def report(results: Results, hdr: str | None = None, rels: list[str] | None = None, out=print) -> dict:
-    """Print the hits and the near ones unit by unit, then the totals; return the counts."""
+    """Print the hits and the near ones unit by unit, then the totals and the likeliest next hits;
+    return the counts."""
     current = {}
     for p in rels or []:
         t = (sccheck.SRC / p).read_text(errors="surrogateescape")
@@ -757,6 +797,17 @@ def report(results: Results, hdr: str | None = None, rels: list[str] | None = No
         f"unit's text, {counts['skipped']} skipped), {counts['variants']} variants built "
         f"({counts['build-fail']} build failures): {counts['HIT']} HIT, {counts['hit-loses']} byte-exact but "
         f"losing another function, {counts['closer']} closer")
+    rows = likeliest(results, bases)
+    counts["at-size"] = sum(1 for r in rows if r["kind"] == "at size")
+    counts["closer-at-size"] = len(rows) - counts["at-size"]
+    out(f"\nTHE LIKELIEST NEXT HITS: {counts['at-size']} open rows a variant brings to the target's size, "
+        f"{counts['closer-at-size']} already there and brought nearer (best variant per row, nearest first):")
+    for r in rows:
+        at = "" if r["addr"] is None else f"{r['addr']:#x}"
+        lost = f"  loses {r['lost']}" if r["lost"] else ""
+        was = "" if r["kind"] != "at size" else f"size {r['size0']:#x} -> {r['tsize']:#x}, "
+        out(f"  {r['kind']:<14} {r['func'][:58]:<58} {at:>9}  {r['pragma']:<42} {was}d {r['d0']} -> {r['d1']}"
+            f"  {r['unit']}{lost}")
     return counts
 
 

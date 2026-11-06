@@ -19,7 +19,7 @@ extern char *strstr(const char *s, const char *t);
 extern char *strncpy(char *d, const char *s, unsigned int n);
 extern int atoi(const char *s);
 extern void *memset(void *d, int c, unsigned int n);
-extern int FlushCache(int mode);
+extern void FlushCache(int mode);
 extern u_int sceSifSetDma(void *dma, int n);
 extern int sceSifDmaStat(u_int id);
 extern int sceSifMCallRpc(void *cd, int fno, int mode, void *send, int ssize, void *recv, int rsize,
@@ -264,12 +264,9 @@ int sceBInetClose(void *cd, u_int *net_buf, LIBNETB *s, int ms)
 /* a stream socket's receive from its ring (the demo's sceBInetRecv, by its object's order between
  * Close and RecvFrom, the body the demo's own grown by the peer check): the waiting bytes copied
  * out, the read position advanced, and once the ring is drained its header DMAed back to the IOP.
- * OPEN (GCC round 31a, 6 words, right size, registers only -- tools/structdiff.py): the state's
- * load takes v1 where the target's takes v0, and the descriptor's two words trade v0/v1 as in
- * sceBInetSend below: local-alloc gives the constant 4 (a REG_EQUIV constant, its life the shorter)
- * v0 first in every spelling tried -- the size through a variable, dst stored first, self read into
- * a local (before the flush: 29), Sony's u_int descriptor fields, an __inline__ helper (0x13C)
- * (build/scratch/gcc/v_recvdma.py, v_sifdma.py). The peer check returns its result both ways
+ * The state's load takes v0 and the descriptor's two words v0/v1 in the target's order only with FlushCache void (GCC
+ * round 44a, tools/retsweep.py: open since round 31a, 6 words; the call otherwise sets v0 and keeps the next block's first
+ * temporaries off it, the Medius lane's round 25b). The peer check returns its result both ways
  * (`return ret` when chk is 0: the target's v0 kept, no `move v0,zero`). The timeout `ms` is
  * unread, but its one caller passes it (rt_comm_platform2_receive 0x62E1E8: `li t2,2` before the
  * jal, the seventh argument), as sceBInetRecvFrom's (which tests it) and sceBInetSend's. */
@@ -346,10 +343,10 @@ int func_002476D0(void *cd, u_int *net_buf, LIBNETB *s, void *ptr, sceBInetAddre
     return err ? err : -501;
 }
 
-/* OPEN (8 words, all registers): both DMA descriptors take their two loaded words in the other
- * registers (the target loads src into v0 and dst into v1, then dst into v0 and the size into v1).
- * Every order of the four field stores leaves the same 8 (tools/ccperm.py); an __inline__ helper
- * per transfer gives each its own descriptor (frame 80, the target's 64), so the vendor wrote both
+/* A stream socket's send (open since round 13a, 8 words, every order of the four field stores the same): FlushCache is
+ * void -- GCC round 44a, tools/retsweep.py: as an int call it keeps v0 from the descriptors' two loaded words, each pair in
+ * the other registers. An __inline__ helper per transfer gives each its own descriptor (frame 80, the target's 64), so the
+ * vendor wrote both
  * out. The ring's size is an int here (slt), its header size unsigned (the prepare calls' sltu).
  * The flags and the timeout are unread, but its one caller passes both (rt_comm_platform2_send
  * 0x62DFA0: `move t1,sp` and `move t2,zero` before the jal, the sixth and seventh arguments). */

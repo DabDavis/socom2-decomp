@@ -507,6 +507,7 @@
 0x001A12A8 __make_dp
 0x001A12D8 dptofp
 0x001A1330 dptoul
+0x001A13D0 sceGsResetGraph
 0x001A1560 sceGsGetGParam
 0x001A1570 sceGsResetPath
 0x001A15D8 checkModelVersion
@@ -851,6 +852,7 @@
 0x001AC500 _kTLBException
 0x001AC640 _kExitTLBHandler
 0x001AC740 _kDebugException
+0x001AC860 DIntr
 0x001AC8A8 EIntr
 0x001AC8C0 supplement_crt0
 0x001AC908 Copy@initsys
@@ -2313,8 +2315,10 @@
 0x002471A8 sceBInetCreate
 0x002472C8 sceBInetOpen
 0x00247460 sceBInetClose
+0x002474F8 sceBInetRecv
 0x00247640 sceBInetRecvFrom
 0x002476D0 func_002476D0
+0x00247738 sceBInetSend
 0x00247888 sceBInetSendTo
 0x00247920 func_00247920
 0x00247988 sceBInetControl
@@ -2362,8 +2366,11 @@
 0x00249C50 func_00249C50
 0x00249C60 func_00249C60
 0x00249C78 func_00249C78
+0x00249C88 func_00249C88
 0x00249EE0 func_00249EE0
 0x00249F68 func_00249F68
+0x00249FA8 func_00249FA8
+0x0024A210 func_0024A210
 0x0024A438 func_0024A438
 0x0024A7C0 func_0024A7C0
 0x0024A840 func_0024A840
@@ -2371,6 +2378,7 @@
 0x0024A908 func_0024A908
 0x0024A9F0 func_0024A9F0
 0x0024AAE8 func_0024AAE8
+0x0024AB48 func_0024AB48
 0x0024AD48 func_0024AD48
 0x0024AEB0 func_0024AEB0
 0x0024AF50 func_0024AF50
@@ -2385,6 +2393,7 @@
 0x0024BF50 func_0024BF50
 0x0024C078 func_0024C078
 0x0024C150 func_0024C150
+0x0024C1F0 func_0024C1F0
 0x0024C458 func_0024C458
 0x0024C4D8 func_0024C4D8
 0x0024C5D0 func_0024C5D0
@@ -2393,10 +2402,14 @@
 0x0024C7D0 func_0024C7D0
 0x0024C8C0 func_0024C8C0
 0x0024C8E8 func_0024C8E8
+0x0024CAE8 func_0024CAE8
+0x0024CD28 func_0024CD28
+0x0024CF10 func_0024CF10
 0x0024D190 func_0024D190
 0x0024D330 func_0024D330
 0x0024D370 func_0024D370
 0x0024D498 func_0024D498
+0x0024D560 func_0024D560
 0x0024D770 func_0024D770
 0x0024D8B8 func_0024D8B8
 0x0024DA70 func_0024DA70
@@ -2414,6 +2427,7 @@
 0x0024F010 func_0024F010
 0x0024F108 func_0024F108
 0x0024F170 func_0024F170
+0x0024F250 func_0024F250
 0x0024F468 func_0024F468
 0x0024F518 func_0024F518
 0x0024F568 func_0024F568
@@ -2430,9 +2444,11 @@
 0x0024FA30 func_0024FA30
 0x0024FAC0 func_0024FAC0
 0x0024FAE8 func_0024FAE8
+0x0024FBE8 func_0024FBE8
 0x0024FE38 func_0024FE38
 0x0024FF58 func_0024FF58
 0x0024FFB8 func_0024FFB8
+0x0024FFF8 func_0024FFF8
 0x002504F0 func_002504F0
 0x00250708 func_00250708
 0x002508F0 func_002508F0
@@ -2440,6 +2456,8 @@
 0x00250BE0 func_00250BE0
 0x00250C68 func_00250C68
 0x00250CC0 func_00250CC0
+0x00250CD8 func_00250CD8
+0x00250F60 func_00250F60
 0x00251270 func_00251270
 0x00251348 func_00251348
 0x00251638 func_00251638
@@ -2481,6 +2499,7 @@
 0x00253288 func_00253288
 0x00253420 func_00253420
 0x002534D0 func_002534D0
+0x00253510 func_00253510
 0x00253760 func_00253760
 0x00253888 func_00253888
 0x00253920 func_00253920
@@ -2647,6 +2666,7 @@
 0x0025E630 zAnimWhileTick__FP14_zanim_cmd_hdrPf
 0x0025E6A0 zAnimEndIfTick__FP14_zanim_cmd_hdrPf
 0x0025E6D0 zAnimGoToEndIf__FP14_zanim_cmd_hdrPf
+0x0025E7A0 zAnimIfTick__FP14_zanim_cmd_hdrPf
 0x0025E960 ProcExpr__16CZAnimExpressionFPf
 0x0025EC50 zAnimWaitTick__FP14_zanim_cmd_hdrPf
 0x0025ED50 zAnimWaitBegin__FP14_zanim_cmd_hdr
@@ -2656,10 +2676,13 @@
 0x0025F050 zAnimMultiObjectMotionScriptTick__FP14_zanim_cmd_hdrPf
 0x0025F140 zAnimMultiObjectMotionScriptBegin__FP14_zanim_cmd_hdr
 0x0025F1B0 zAnimObjectMotionScriptTick__FP14_zanim_cmd_hdrPf
+0x0025F3C0 apply_script_frame__FP27_zanim_object_motion_scriptP16_zanim_si_scriptPQ23zdb5CNodeP25zanim_script_frame_headerfPf
 0x0025F880 zAnimObjectOpacityFromToTick__FP14_zanim_cmd_hdrPf
 0x0025F960 zAnimObjectOpacityFromToBegin__FP14_zanim_cmd_hdr
 0x0025F9B0 zAnimObjectMotionFromToTick__FP14_zanim_cmd_hdrPf
+0x0025FE70 zAnimObjectMotionFromToBegin__FP14_zanim_cmd_hdr
 0x002606F0 Tick__15CZAnimFromToAccFfP6CPnt3D
+0x00260910 ComputeRunTime__15CZAnimFromToAccFP6CPnt3DP6CPnt3D
 0x00260FB0 func_00260FB0
 0x00261080 func_00261080
 0x00261300 func_00261300
@@ -2759,7 +2782,11 @@
 0x0026C1D0 __dt__Q23std74vector<P20_zanim_node_rotation,Q23std34allocator<P20_zanim_node_rotation>>Fv
 0x0026C240 func_0026C240
 0x0026C2E0 Stop__9CZAnimSetFv
+0x0026C3E0 SaveNodeStates__9CZAnimSetFP15_zanim_node_ref
 0x0026C470 __ct__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv
+0x0026C490 __ct__Q23std74vector<P20_zanim_node_rotation,Q23std34allocator<P20_zanim_node_rotation>>Fv
+0x0026C4B0 __ct__Q23std42vector<6CPnt3D,Q23std18allocator<6CPnt3D>>Fv
+0x0026C4D0 __ct__Q23std66vector<P16_zanim_node_save,Q23std30allocator<P16_zanim_node_save>>Fv
 0x0026C4F0 Reset__9CZAnimSetFv
 0x0026C600 Start__9CZAnimSetFv
 0x0026C7D0 Init__9CZAnimSetFv
@@ -2782,6 +2809,7 @@
 0x0026D560 Unload__6CZAnimFv
 0x0026D870 ExecuteSpecialSequence__6CZAnimFi
 0x0026D940 Copy__6CZAnimFv
+0x0026DEA0 LoadNodeNames__6CZAnimFP5_zrdrPCcii
 0x0026E2D0 func_0026E2D0
 0x0026E2F0 AddNewNodeRef__6CZAnimFiii
 0x0026E4C0 GetCallAnimRef__6CZAnimFi
@@ -3415,6 +3443,7 @@
 0x0029B3C0 AttachTo__10CAppCameraFP10CZSealBody
 0x0029B570 __dt__10CAppCameraFv
 0x0029B5D0 __ct__10CAppCameraFPQ23zdb7CCamera
+0x0029B8D0 CmdBeginShake__10CAppCameraFP14_zanim_cmd_hdr
 0x0029BAA0 CmdParseShake__10CAppCameraFP5_zrdr
 0x0029BB90 CmdTick3rdPersonTest__10CAppCameraFP14_zanim_cmd_hdrPf
 0x0029BBB0 CmdParse3rdPersonTest__10CAppCameraFP5_zrdr
@@ -3546,6 +3575,7 @@
 0x002A2730 PreTick__11CEntityCtrlFf
 0x002A2740 __dt__11CEntityCtrlFv
 0x002A2790 __ct__11CEntityCtrlFi
+0x002A27E0 DeleteAnchor__8CCompassFP14CCompassAnchor
 0x002A28F0 CreateAnchor__8CCompassFRC6CPnt3DPCc
 0x002A2AC0 Close__8CCompassFv
 0x002A2B10 __dt__Q23std62vector<P14CCompassAnchor,Q23std28allocator<P14CCompassAnchor>>Fv
@@ -4266,8 +4296,11 @@
 0x002D2700 insert__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>RC11CGQueueAtom
 0x002D2810 __ct__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>Fv
 0x002D2830 __dt__10CGTreePoolFv
+0x002D2890 NodeGetIntersect__Q23zdb5CGridFPQ23zdb5CNodePQ23zdb11DiIntersect
 0x002D2DF0 InitDescendantsVisuals__Q23zdb5CGridFv
 0x002D2F10 InitDescendantsDI__Q23zdb5CGridFv
+0x002D3030 NodeGetIntersectBatch__Q23zdb5CGridFPQ23zdb5CNodePPQ23zdb11DiIntersecti
+0x002D3CF0 GetIntersectBatch__Q23zdb5CGridFPPQ23zdb11DiIntersecti
 0x002D4780 GetIntersect__Q23zdb5CGridFPQ23zdb11DiIntersect
 0x002D49C0 GetAltitude__Q23zdb5CGridFPQ23zdb11DiIntersect
 0x002D4C20 GetHighestAltitude__Q23zdb11DiIntersectFPC6CPnt3Df
@@ -4276,6 +4309,7 @@
 0x002D4F70 _cmpdi__FPCvPCv
 0x002D4FD0 SetCameraCollideFlagRequired__3zdbFb
 0x002D4FE0 __dt__6CStackFv
+0x002D5060 ReadClutter__Q23zdb5CGridFPCcPCc
 0x002D5420 Read__Q23zdb5CGridFRQ23zdb9CSaveLoad
 0x002D54F0 GetCell__Q23zdb9CGridAtomFv
 0x002D5520 DeleteClutter__Q23zdb5CGridFv
@@ -4299,6 +4333,8 @@
 0x002D6C40 SetTraversalExtents__Q23zdb5CGridFPC6CPnt3Dib
 0x002D6E40 buildOrderedCellAtomList__Q23zdb5CGridFPC6CPnt3D
 0x002D7030 addOrderedCellAtom__Q23zdb5CGridFiib
+0x002D71C0 GetNextCell__Q23zdb5CGridFv
+0x002D7370 SetCellBoundary__Q23zdb5CGridF6CPnt3D6CPnt3D
 0x002D74C0 gridRemoveNodeFromGrids__Q23zdb5CGridFPQ23zdb5CNode
 0x002D7580 gridAddNodeToGrids__Q23zdb5CGridFPQ23zdb5CNode
 0x002D78A0 gridGetAtomBasePtr__Q23zdb5CGridFii
@@ -4332,6 +4368,7 @@
 0x002D9560 __ct__Q23zdb8CClutterFPQ23zdb5CNode
 0x002D96B0 Free__Q23zdb12CClutterListFv
 0x002D97B0 Render__Q23zdb12CClutterListFPQ23zdb5CCell
+0x002D9AA0 Add__Q23zdb12CClutterListFPQ23zdb8CClutter
 0x002D9CC0 DeletePad__6CInputFUi
 0x002D9D00 CreatePad__6CInputFUi
 0x002D9E00 Flush__6CInputFv
@@ -4376,14 +4413,18 @@
 0x002DC400 Allocate__Q23zdb3CDIFi
 0x002DC450 __dt__Q23zdb3CDIFv
 0x002DC4C0 __ct__Q23zdb3CDIFv
-0x002DC620 func_002DC620
+0x002DC620 TestMask__Q23zdb11DiIntersectFUi
 0x002DC660 SetMask__Q23zdb11DiIntersectFUi
 0x002DC680 __dt__Q23zdb11DiIntersectFv
 0x002DC6E0 __ct__Q23zdb11DiIntersectFi
+0x002DC7A0 SetCDIBBox__Q23zdb7CDIBBoxFv
 0x002DCCD0 GetBBoxCorners__3zdbFP6CPnt3DPC5CBBox
+0x002DCDA0 GetIntersect__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect
 0x002DD020 GetAltitude__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect
 0x002DD030 SetEdgeVecsAndNorm__Q23zdb3CDIFv
 0x002DD130 LoadPlaneVU0__Q23zdb3CDIFv
+0x002DD150 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect
+0x002DD210 LoadTipAndTail__Q23zdb11DiIntersectFv
 0x002DD2B0 GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D
 0x002DD4D0 GetEdgeIntersects__Q23zdb3CDIFP6CPnt3DP6CPnt3DP6CPnt3D
 0x002DD690 intersect2d__FPC6CPnt3DPC6CPnt3DPC6CPnt3DP6CPnt3D
@@ -8421,6 +8462,7 @@
 0x004DB970 casrActivateContext
 0x004DBDB0 casrDoNormalSecondPass
 0x004DBF70 casrDoIsoWordSecondPass
+0x004DC178 casrDoSpelling
 0x004DCAD0 casrInitSampleFormat
 0x004DCC58 casrAcquisition
 0x004DD070 casrStartUserWordTraining
@@ -10408,12 +10450,14 @@
 0x005B9990 IsUsingScope__5CZKitFv
 0x005B99B0 SetWeaponInfoChanged__5CZKitFv
 0x005B99D0 PendingPickupHandled__5CZKitFv
+0x005B9A00 CompactItems__5CZKitFv
 0x005B9BB0 RemoveItemAndAmmo__5CZKitFi
 0x005B9E10 RemoveItem__5CZKitF10EQUIP_ITEM
 0x005B9F00 RemoveAmmo__5CZKitFi
 0x005BA040 FillAmmoPickupInstance__5CZKitFP11CZItemStashi
 0x005BA3D0 AddAmmo__5CZKitFii
 0x005BA5B0 CanAddAmmo__5CZKitFii
+0x005BAE60 GetPickupSlot__5CZKitFi
 0x005BBF10 PickupMPBomb__5CZKitFv
 0x005BC200 HandlePlaceMPBomb__5CZKitFPC6CPnt3D
 0x005BC2A0 SetHotSwap__5CZKitFb
@@ -10466,6 +10510,7 @@
 0x005C0940 GetShotCount__5CZKitFv
 0x005C09F0 GetFireDelay__5CZKitFv
 0x005C0AD0 func_005C0AD0
+0x005C0AE0 WillFireWeapon__5CZKitFv
 0x005C1660 PreTick__5CZKitFf
 0x005C1800 Apply_LensEffects__5CZKitFbP6CPnt3D
 0x005C2400 IsFireDelayed__5CZKitFv
@@ -10483,6 +10528,8 @@
 0x005C38A0 GetAmmoCount__5CZKitFi
 0x005C3C10 GetAmmoTotal__5CZKitFi
 0x005C3CE0 GetCurMaxAmmoCount__5CZKitFv
+0x005C3CF0 GetMaxAmmoCount__5CZKitFi
+0x005C3EE0 func_005C3EE0
 0x005C4480 NextFireMode__5CZKitFi
 0x005C45C0 func_005C45C0
 0x005C4600 CycleFireMode__5CZKitFv
@@ -10492,6 +10539,7 @@
 0x005C4960 func_005C4960
 0x005C4970 GetNumMags__5CZKitFi
 0x005C49B0 GetCurNumMags__5CZKitFv
+0x005C4B10 SetCurItemByIndex__5CZKitFi
 0x005C4FD0 CanChangeItem__5CZKitFv
 0x005C5030 unwrap__5CZKitFii
 0x005C50B0 ChangeItemModel__5CZKitFiiib
@@ -10513,12 +10561,14 @@
 0x005C75F0 Setup2XAmmo__5CZKitFv
 0x005C77B0 SetupExplosiveDamage__5CZKitFv
 0x005C7830 func_005C7830
+0x005C7840 PostSetupItems__5CZKitFv
 0x005C7CE0 UnInit__5CZKitFv
 0x005C7E00 Init__5CZKitFv
 0x005C8040 GetCurItemIDType__5CZKitFv
 0x005C8080 NVG_Enabled__5CZKitFb
 0x005C80F0 NVG_Enabled__5CZKitCFv
 0x005C8110 __dt__5CZKitFv
+0x005C8190 __ct__5CZKitFv
 0x005C85D0 HasSniperRifle__5CZKitFv
 0x005C8640 HasItemWithAmmo__5CZKitF10EQUIP_ITEM
 0x005C86F0 HasItem__5CZKitCF10EQUIP_ITEM
@@ -10527,6 +10577,7 @@
 0x005C8930 GetSecondaryEnum__5CZKitCFv
 0x005C8980 GetPrimaryEnum__5CZKitCFv
 0x005C89D0 GetCurItemEnum__5CZKitCFv
+0x005C8A20 SetCurItemEnum__5CZKitF10EQUIP_ITEM
 0x005C91A0 func_005C91A0
 0x005C91B0 sealSaveFireModes__Fv
 0x005C9230 __ct__Q222@unnamed@seal_kit_cpp@18CSavedFireModeInfoFv
@@ -10547,6 +10598,8 @@
 0x005CA170 OnSetTargetVisible__9CSealCtrlFR7CTargetbPQ23zdb11DiIntersect
 0x005CA460 SetTarget__9CSealCtrlFP7CTarget
 0x005CA9F0 SensorPreTick__9CSealCtrlFf
+0x005CB450 func_005CB450
+0x005CB630 func_005CB630
 0x005CB870 func_005CB870
 0x005CC0D0 func_005CC0D0
 0x005CC100 func_005CC100
@@ -10793,6 +10846,7 @@
 0x005EAEB0 func_005EAEB0
 0x005EB190 func_005EB190
 0x005EB580 FollowSeal__9CSealUnitFP10CZSealBody14UNIT_FORMATION
+0x005EB6D0 SetFormation__9CSealUnitF14UNIT_FORMATIONi
 0x005EB8A0 func_005EB8A0
 0x005EB910 func_005EB910
 0x005EBB50 func_005EBB50
@@ -10863,6 +10917,8 @@
 0x005F0830 func_005F0830
 0x005F0990 func_005F0990
 0x005F0B30 func_005F0B30
+0x005F0CD0 func_005F0CD0
+0x005F1160 Tick__8CAiSPlanFP11CSealCtrlAi
 0x005F15A0 func_005F15A0
 0x005F1760 func_005F1760
 0x005F1800 OnSignal__8CAiSPlanFQ28CAiState6SIGNALP11CSealCtrlAi
@@ -10877,7 +10933,10 @@
 0x005F3270 func_005F3270
 0x005F33A0 GetStatus__10CAiSBreachCFv
 0x005F34D0 Virtual34__10CAiSBreachFP11CSealCtrlAiP8CAiEventP10CZSealBodyb
+0x005F3520 CanPushAiState__10CAiSBreachF8AI_STATEP11CSealCtrlAi
 0x005F3620 OnSignal__10CAiSBreachFQ28CAiState6SIGNALP11CSealCtrlAi
+0x005F37C0 Tick__10CAiSScriptFP11CSealCtrlAi
+0x005F3BA0 OnSignal__10CAiSScriptFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F3FC0 func_005F3FC0
 0x005F3FF0 Virtual0C__10CAiSScriptFP6CZAnim9AI_SIGNALP11CSealCtrlAi
 0x005F4080 CanAttack__10CAiSScriptCFv
@@ -10888,6 +10947,7 @@
 0x005F4360 func_005F4360
 0x005F5010 OnSignal__8CAiSGotoFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F51A0 func_005F51A0
+0x005F52D0 Tick__10CAiSPickupFP11CSealCtrlAi
 0x005F5520 SetPickup__10CAiSPickupFP7CPickupUi
 0x005F5590 OnSignal__10CAiSPickupFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F5AD0 func_005F5AD0
@@ -10922,6 +10982,7 @@
 0x005F6F70 func_005F6F70
 0x005F6FA0 Signal__8CAiStateFP13CAiStateStackP8CAiStateQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F7420 Signal__8CAiStateFP13CAiStateStackQ28CAiState6SIGNALP11CSealCtrlAi
+0x005F7470 func_005F7470
 0x005F7920 PopAll__13CAiStateStackFP11CSealCtrlAi
 0x005F7A40 PopTo__13CAiStateStackFP11CSealCtrlAiP8CAiStateb
 0x005F7C40 Pop__13CAiStateStackFP11CSealCtrlAi
@@ -10979,6 +11040,7 @@
 0x005FD790 func_005FD790
 0x005FDAD0 SetHideLook__10CAiSFollowFP11CSealCtrlAi
 0x005FDD00 Virtual3C__10CAiSFollowFP11CSealCtrlAi
+0x005FDD40 CheckMaster__10CAiSFollowFP11CSealCtrlAi
 0x005FDEC0 GetStatus__10CAiSFollowCFv
 0x005FDF80 OnSignal__10CAiSFollowFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005FE1F0 func_005FE1F0
@@ -11115,6 +11177,7 @@
 0x0060A6A0 func_0060A6A0
 0x0060A850 func_0060A850
 0x0060A940 __ct__9CAiTargetFv
+0x0060AA20 func_0060AA20
 0x0060AFA0 func_0060AFA0
 0x0060B120 func_0060B120
 0x0060B470 func_0060B470
@@ -11133,8 +11196,10 @@
 0x0060C170 func_0060C170
 0x0060C190 __dt__Q28CAiGroup10act_cameraFv
 0x0060C210 Stop__Q28CAiGroup6actionFv
+0x0060C220 TickStep__8CAiGroupFv
 0x0060C3D0 Tick__Q28CAiGroup6actionFP11CSealCtrlAif
 0x0060CAD0 FaceXZ__FPC6CPnt3DPC6CPnt3DP7CMatrix
+0x0060CBD0 Start__8CAiGroupFv
 0x0060CD40 SetMemberLoc__8CAiGroupFUiRC9CAiMapLoc
 0x0060CDC0 EndStep__8CAiGroupFv
 0x0060CDD0 AddStep__8CAiGroupFUi

@@ -67,7 +67,10 @@
  * reordering of its members reproduces the image: measured, deque's copy constructor, begin() / end()
  * const and init in class make deque() 0x2E0D90 byte-exact but stop the queue's constructor inlining
  * into CZOnlineLobby(), CSimpleStateMachine() and the chat's queue (-4 over the deque units);
- * cdeque<T *>() out of class loses game_main's 0x2CEE40 (-1). Not applied.
+ * cdeque<T *>() out of class lost game_main's 0x2CEE40 (-1) -- closed in round 39, see __cdeque_buf. Not applied.
+ * THE MSL HEADERS ROUND 39 (README "Tells from completing the MSL headers, round 39") READ THE REST: the out-of-class chain's order is the walk
+ * after all, given what the walk waits for -- std::queue's and std::stack's constructors have deque's __chain parse the three in-class callees that
+ * deferred it; the image's depth-first look is each member generated before its callees in one walk. No unit needs a device for it now.
  *
  * The MSL headers' round 13 (probes build/p13/, untracked): A CLASS ELEMENT IS DESTROYED, a scalar one
  * is not -- the chat lines' clear (0x2F5A30) calls make_iterator twice (end first) and a range destroy
@@ -220,6 +223,9 @@
 
 namespace Metrowerks {
 
+template <class T, class Allocator>
+class __cdeque_buf;
+
 template <class T, class Allocator = std::allocator<T> >
 class cdeque;
 
@@ -229,9 +235,17 @@ class __compressed_pair_imp : public T1 {
 public:
     __compressed_pair_imp() {}
     __compressed_pair_imp(const T1 &x, const T2 &y);
+    T2 &second();
 
     T2 second_;
 };
+
+/* out of line (0x2F6A60, the only unit that calls it); SOCOM 1's accessor */
+template <class T1, class T2>
+T2 &__compressed_pair_imp<T1, T2>::second()
+{
+    return second_;
+}
 
 template <class T1, class T2>
 __compressed_pair_imp<T1, T2>::__compressed_pair_imp(const T1 &x, const T2 &y) : T1(x), second_(y)
@@ -420,10 +434,26 @@ inline OutputIterator __deque_copy_to(const InputIterator &first, const InputIte
     return result;
 }
 
+/* THE DEFAULT CONSTRUCTORS' LAST TWO LEVELS (the MSL headers round 39, build/p39/, untracked): the image has one
+ * out-of-line 0x18-byte zeroing per ELEMENT type -- __deque_buf() calls it, and nothing else does (0x2CEE70, the lobby's
+ * 0x2E0DF0, the chat's 0x2F6290, the state machine's 0x3A6470): cdeque<T *>() is OUT OF CLASS (below) and __cdeque_buf()
+ * IN CLASS, so it is inlined into each of them whatever the tail's order. Out of class (the header until round 39) the
+ * lobby's cdeque<P11>() comes out 0x28 calling it where the chat's, generated later, is 0x18 -- the two groups the online
+ * lobby's round 29 measured differ only by whether __cdeque_buf() was instantiated first -- and game_main's 0x2CEE40
+ * calls a cdeque<PPCv>() no row named: 0x2CEE70 was named __cdeque_buf<PCv>(), which the image never holds out of line
+ * (it is 0x2CEE40's only callee). Over every hand-written unit: 0x2E0DC0, 0x2E0DF0, 0x2F6260, 0x2F6290 byte-exact from
+ * source (held by their drafts until now), 0x3A6440 / 0x3A6470 named and byte-exact, nothing lost. __cdeque_buf(const
+ * Allocator &) stays out of class: the buffers' copy constructors call it (0x2E0AC0 -> 0x2E0D20) */
 template <class T, class Allocator>
 class __cdeque_buf {
 public:
-    __cdeque_buf();
+    __cdeque_buf()
+    {
+        capacity_ = 0;
+        size_ = 0;
+        start_ = 0;
+        data_ = 0;
+    }
     explicit __cdeque_buf(const Allocator &a);
     ~__cdeque_buf()
     {
@@ -436,15 +466,6 @@ public:
     unsigned int start_;
     T *data_;
 };
-
-template <class T, class Allocator>
-__cdeque_buf<T, Allocator>::__cdeque_buf()
-{
-    capacity_ = 0;
-    size_ = 0;
-    start_ = 0;
-    data_ = 0;
-}
 
 template <class T, class Allocator>
 __cdeque_buf<T, Allocator>::__cdeque_buf(const Allocator &)
@@ -568,8 +589,6 @@ public:
 
     cdeque() {}
     explicit cdeque(const Allocator &a) : __cdeque_buf<const void *, Allocator>(a) {}
-    const Allocator &alloc() const;
-
     unsigned int size() const { return this->size_; }
     unsigned int capacity() const { return this->capacity_; }
     value_type &front() { return this->data_[this->start_]; }
@@ -634,6 +653,9 @@ public:
      * init, operator=, the forward do_assign, swap) and __deque_imp::push_back's class path */
     void push_back(const value_type &x);
     void reserve(unsigned int n);
+    /* a no-op no other member names (the MSL headers round 39): reserve then always waits past the walk for it, so max_size -- which reserve
+     * references, and a walked member's data is packed at once -- is not there for the do_assigns of that walk to inline: the rdr editor's 0x3341C0 */
+    void __reserve_wait() const {}
     void resize(unsigned int n);
     /* emptied: the two stores (resize's shrink to nothing) */
     void clear()
@@ -665,8 +687,8 @@ public:
      * reserve ahead of push_back gives the image's first three, resize, push_back, reserve (last deferred
      * first); moving alloc() and max_size() after __recommend changes nothing (both still wait). Not met:
      * no declaration order lets __recommend run before alloc() and max_size after it while both wait on
-     * __max_size() */
-    unsigned int max_size() const;
+     * __max_size() -- CLOSED in round 39: neither waits once resize has parsed __max_size() by its address; declared below,
+     * after __recommend */
     /* THE GROWTH RECOMMENDATION (0x285BB0, out of line in an earlier unit, zanim_menu.cpp's tail; the
      * MSL headers round 32, named for the online lane's round 24): the capacity a buffer that must hold
      * n is given, one less than its storage -- n past max_size() is "cdeque max_size error", then the
@@ -677,6 +699,8 @@ public:
      * string's -- Hinnant's, who wrote MSL C++ -- the string's also returning the capacity less one).
      * Defined below; the chat unit emits it (the forward do_assign's request) word for word the target */
     unsigned int __recommend(unsigned int n) const;
+    const Allocator &alloc() const;
+    unsigned int max_size() const;
     /* THE MAX STATIC (guard 0x415D20, value 0x3EF7E0): one object __recommend inlines (its guard test
      * at the top, the allocator's alloc() called out of line, min() through two stack temporaries --
      * the difference type's largest built before the call, an inline's result) and the out-of-line
@@ -839,6 +863,14 @@ template <class Allocator>
 void cdeque<const void *, Allocator>::resize(unsigned int n)
 {
     static value_type x;
+    /* a modelling device (the MSL headers round 39, no code): __max_size() parsed before __recommend and max_size are walked -- by its
+     * address, which expands nothing here: called in a dead branch its min's two stack temporaries stay in this frame (16 bytes). An
+     * own function in zanim_menu.cpp would do as well */
+    typedef unsigned int (cdeque::*F)() const;
+    F f = &cdeque::__max_size;
+
+    if (0)
+        (this->*f)();
 
     if (this->size_ < n)
         insert(end(), n - this->size_, x);
@@ -885,6 +917,7 @@ void cdeque<const void *, Allocator>::push_back(const value_type &x)
 template <class Allocator>
 void cdeque<const void *, Allocator>::reserve(unsigned int n)
 {
+    __reserve_wait();
     if (n > (this->capacity_ == 0 ? 0 : this->capacity_ - 1)) {
         if (n > max_size())
             __msl_error("cdeque::reserve length error");
@@ -902,6 +935,17 @@ void cdeque<const void *, Allocator>::reserve(unsigned int n)
         this->capacity_ = n + 1;
         this->start_ = 0;
     }
+}
+
+/* 0x285CE0 (the MSL headers round 39: byte-exact, unwritten until now; the image's zanim_menu.cpp tail order __recommend, alloc(), max_size).
+ * Generated with alloc() instantiated it inlines it and folds the min to one temporary; the three in that order is the walk's when none
+ * of the three waits: __max_size() parsed ahead by resize (below), each is generated on the spot in declaration order -- __recommend, then
+ * alloc() its call has just referenced, then max_size. Rounds 37 and 38 had all three waiting on the unparsed __max_size(), last first.
+ * WHERE IT IS GENERATED AHEAD OF A do_assign IT IS INLINED INTO IT, as the image's chat has it (0x2F6340, 0x2BC against the others' 0x27C) */
+template <class Allocator>
+unsigned int cdeque<const void *, Allocator>::max_size() const
+{
+    return __max_size();
 }
 
 template <class Allocator>
@@ -964,11 +1008,11 @@ public:
          * as the target colours it (the online lane's round-24 window, 34.5-35.5). By const reference,
          * or the start read straight from the member, the shift stays a code-generation temporary (14
          * off); by value through end()'s constructor end() 0x2E0C10 is lost (round 22) */
-        iterator(T **data, unsigned int start, const unsigned int &cap)
-            : p_(data + start), data_(data), first_(data_ + start), last_(data_ + cap)
+        iterator(T **const &data, unsigned int start, const unsigned int &cap)
+            : p_(data + start), data_(data), first_(*&data_ + start), last_(*&data_ + cap)
         {
         }
-        iterator(const iterator &x) { p_ = x.p(); data_ = x.data(); first_ = x.first(); last_ = x.last(); }
+        iterator(const iterator &x) { const iterator &y = x; p_ = y.p_; data_ = y.data_; first_ = y.first_; last_ = y.last_; }
         T **const &p() const { return p_; }
         T **const &data() const { return data_; }
         T **const &first() const { return first_; }
@@ -983,21 +1027,21 @@ public:
         iterator &operator+=(int n)
         {
             int cap = last_ - data_;
-            int i = (p_ - data_) + n;
 
-            if (i < 0)
-                i += cap;
-            else if (i >= cap)
-                i -= cap;
-            p_ = data_ + i;
+            n += p_ - data_;
+            if (n < 0)
+                n += cap;
+            else if (n >= cap)
+                n -= cap;
+            p_ = data_ + n;
             return *this;
         }
         iterator operator+(int n) const
         {
             iterator t(*this);
+            iterator &r = t;
 
-            t += n;
-            return t;
+            return r += n;
         }
         friend bool operator==(const iterator &x, const iterator &y) { return x.p_ == y.p_; }
         friend bool operator!=(const iterator &x, const iterator &y) { return !(x == y); }
@@ -1035,21 +1079,21 @@ public:
         const_iterator &operator+=(int n)
         {
             int cap = last_ - data_;
-            int i = (p_ - data_) + n;
 
-            if (i < 0)
-                i += cap;
-            else if (i >= cap)
-                i -= cap;
-            p_ = data_ + i;
+            n += p_ - data_;
+            if (n < 0)
+                n += cap;
+            else if (n >= cap)
+                n -= cap;
+            p_ = data_ + n;
             return *this;
         }
         const_iterator operator+(int n) const
         {
             const_iterator t(*this);
+            const_iterator &r = t;
 
-            t += n;
-            return t;
+            return r += n;
         }
         friend bool operator==(const const_iterator &x, const const_iterator &y) { return x.p_ == y.p_; }
         friend bool operator!=(const const_iterator &x, const const_iterator &y) { return !(x == y); }
@@ -1072,9 +1116,10 @@ public:
         T **last_;
     };
 
-    cdeque() {}
+    cdeque();
     explicit cdeque(const Allocator &a);
     cdeque(const cdeque &x);
+    ~cdeque();
     /* begin() (0x2E0CB0 the lobby's, 0x3A6350 the state machine's), OPEN from the online lane's round 13
      * to the MSL headers' round 32 at 14 off in the colouring alone: the target numbers start*4, which
      * p and first_ share, BEFORE the three field addresses of the in-memory t (coloured after them: t1,
@@ -1101,20 +1146,30 @@ public:
      * byte-exact under every one) */
     const_iterator make_iterator(unsigned int n) const
     {
-        iterator t((T **)this->data_ + n, (T **)this->data_, this->start_, this->capacity_);
+        iterator t((T **const &)this->data_ + n, (T **const &)this->data_, this->start_, this->capacity_);
 
         return t;
     }
     /* the first slot's iterator (begin()'s; the name ours): built in the frame as make_iterator's t is */
+    /* the first slot's iterator in the frame (the non-const begin(), in class: only make_iterator names it,
+     * and inlines it) */
+    iterator begin()
+    {
+        unsigned int s = this->start_;
+        iterator t((T **const &)this->data_, s, this->capacity_);
+
+        return t;
+    }
     const_iterator make_begin() const
     {
         unsigned int s = this->start_;
-        iterator t((T **)this->data_, s, this->capacity_);
+        iterator t((T **const &)this->data_, s, this->capacity_);
 
         return t;
     }
     const_iterator begin() const;
     const_iterator end() const;
+    void __resize(unsigned int n);
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, std::forward_iterator_tag);
 
@@ -1125,7 +1180,21 @@ public:
 };
 
 template <class T, class Allocator>
-cdeque<T *, Allocator>::cdeque(const Allocator &) : base(std::allocator<const void *>())
+cdeque<T *, Allocator>::cdeque()
+{
+}
+
+template <class T, class Allocator>
+cdeque<T *, Allocator>::~cdeque()
+{
+}
+
+/* from an allocator (the temporary __deque_buf(const Allocator &) builds): an empty allocator, so the base's default
+ * constructor -- four words cleared, no call whatever the tail's order (0x2E0D50, the rdr editor's 0x3340B0, the chat's
+ * and the state machine's copies; through the base's constructor from an allocator it called __cdeque_buf(const
+ * Allocator &), generated after it, 0x2C against 0x18) */
+template <class T, class Allocator>
+cdeque<T *, Allocator>::cdeque(const Allocator &)
 {
 }
 
@@ -1133,6 +1202,14 @@ template <class T, class Allocator>
 cdeque<T *, Allocator>::cdeque(const cdeque &x) : base(x.alloc())
 {
     init(x.begin(), x.end(), std::forward_iterator_tag());
+}
+
+/* a jump to the base's (0x2F6A50, __init_class's call; the name ours: resize itself would hide the base's from the scalars' do_assign,
+ * which call 0x285660 straight) */
+template <class T, class Allocator>
+void cdeque<T *, Allocator>::__resize(unsigned int n)
+{
+    base::resize(n);
 }
 
 template <class T, class Allocator>
@@ -1212,6 +1289,16 @@ __deque_buf<T, Allocator>::~__deque_buf()
 
 template <class T, class Allocator>
 class __deque_imp;
+
+template <class T>
+struct __deque_is_pcv {
+    enum { value = 0 };
+};
+
+template <>
+struct __deque_is_pcv<const void *> {
+    enum { value = 1 };
+};
 
 /* a class element's teardown level, between __deque_imp and the block buffer: the elements destroyed
  * over the whole range, then the buffer's destructor (the chat lines' 0x2F62B0: begin's and end's
@@ -1296,6 +1383,22 @@ public:
     __deque_imp() {}
     explicit __deque_imp(const Allocator &a)
         : __deque_base<T, Allocator, Metrowerks::has_trivial_dtor<T>::value>::type(a) {}
+    /* THE BUFFER'S DESTRUCTOR REFERENCED AHEAD OF THE WALK (a modelling device, the MSL headers round 39; no code: p is
+     * propagated and the branch dropped, after the reference has been counted): ~cdeque<T *> is out of class -- __deque_buf(const
+     * Allocator &) calls it, 0x2E09A0 -- and ~__deque_buf, deferred past the walk by its implicit ~pair, inlines it (five this
+     * tests, 0x2CEFB0), so ~cdeque<T *> has to come out in the first walk in every unit, game_main.cpp's included, where nothing
+     * else names it. `if (0)` is folded before the reference counts. A class element's (the chat's) is left out: its tree
+     * would take ~CChatQueue past the level, 0x2F5E50 */
+    ~__deque_imp()
+    {
+        if (Metrowerks::has_trivial_dtor<T>::value) {
+            typedef typename __deque_buf<T, Allocator>::buf_type B;
+            B *p = 0;
+
+            if (p)
+                p->~B();
+        }
+    }
     unsigned int size() const { return this->size_; }
     bool empty() const { return this->size_ == 0; }
     T &front() { return this->buf_.second_[this->start_ / buf_size][this->start_ % buf_size]; }
@@ -1309,6 +1412,10 @@ public:
     }
     void pop_front();
     void pop_back();
+    /* a no-op only the pointer deques' clear names (the MSL headers round 39): there clear waits past the walk that reaches cdeque<PCv>::pop_front, and
+     * inlines it (game_main.cpp's 0x2CF120, 0xA8); the lobby's and the state machine's call it (0x2E1B20, 0x3A6FA0, 0x88: their pop_front, deferred, references it
+     * only after that walk) */
+    void __clear_wait() const {}
     void clear();
     void push_back(const T &x);
     /* the largest size, a guarded function-local static: one object per element type that push_back
@@ -1333,6 +1440,8 @@ public:
      * straight, begin's make_iterator came first) */
     iterator begin() { return make_iterator(0); }
     iterator end() { return make_iterator(this->size_); }
+    const_iterator begin() const { return make_iterator(0); }
+    const_iterator end() const { return make_iterator(this->size_); }
     template <class InputIterator>
     void do_assign(InputIterator first, InputIterator last);
     /* the elements [first, last) destroyed block by block (out of class; a class element's only:
@@ -1423,12 +1532,28 @@ void __deque_imp<T, Allocator>::destroy(iterator first, iterator last)
     }
 }
 
+/* MAKE_ITERATOR (the MSL headers round 39, open since the online lane's round 10; build/p39/, untracked): BYTE-EXACT in
+ * every unit -- the lobby's 0x2E18A0 / 0x2E1BB0, the chat's 0x2F5D10 / 0x2F6A70, the state machine's 0x3A6CF0 / 0x3A7030,
+ * the pointer deques' 0x334AA0 / 0x334BE0 -- with no device in any unit, from five shapes: (1) the buffer iterator's
+ * operator+ steps a copy THROUGH A REFERENCE LOCAL (`T t(*this); T &r = t; return r += n;`): r's copy of &t is forwarded
+ * only inside the first block, so the target's a3 holds &t for +='s store and the copy-out after the wrap tests (70 off
+ * with `return t += n`, rounds 14 and 29); (2) += steps n itself (`n += p_ - data_`, the cap taken first), as cdeque<PCv>::
+ * iterator's; (3) the zero arm of `*i` first (`size() == 0 ? 0 : *i`, the target's bnez); (4) THE FIRST SLOT'S DATA BY
+ * CONST REFERENCE (`T **const &data`, begin passing `(T **const &)this->data_`): the storage's load is then the shift's
+ * neighbour in the first pass's order, so s's last use comes before the block index's `srl` and the two share v1 -- by
+ * value s and that index interfere (`igreplay --drop` of that one edge gives the target's colours), 9 off; and the storage
+ * read back through the field's own address (`*&data_`, cdeque<PCv>::iterator's) for a const-qualified element (0x334BE0:
+ * `data_` plain folds the store to sp+4, 2 off); (5) the const one INLINES make_begin() (in class) and the non-const one a
+ * non-const begin() of its own -- begin() const stays out of class for the copy constructor, which calls it (0x2E0AC0 ->
+ * 0x2E0CB0), so no device has to generate it early. The non-const one's copy reads the source's fields through a reference
+ * local, `const iterator &y = x` (read straight, x is forwarded a pass early and CSE shares the addresses, 24 off), the two
+ * objects at sp+0 and sp+16 as the target's */
 template <class T, class Allocator>
 typename __deque_imp<T, Allocator>::const_iterator __deque_imp<T, Allocator>::make_iterator(unsigned int n) const
 {
     n += this->start_;
-    typename iterator::buf_iterator i = this->buf_.second_.begin() + n / buf_size;
-    T *b = this->buf_.second_.size() ? *i : 0;
+    typename iterator::buf_iterator i = this->buf_.second_.make_begin() + n / buf_size;
+    T *b = this->buf_.second_.size() == 0 ? 0 : *i;
 
     return const_iterator(i, b + n % buf_size, b + buf_size);
 }
@@ -1438,7 +1563,7 @@ typename __deque_imp<T, Allocator>::iterator __deque_imp<T, Allocator>::make_ite
 {
     n += this->start_;
     typename iterator::buf_iterator i = this->buf_.second_.begin() + n / buf_size;
-    T *b = this->buf_.second_.size() ? *i : 0;
+    T *b = this->buf_.second_.size() == 0 ? 0 : *i;
 
     return iterator(i, b + n % buf_size, b + buf_size);
 }
@@ -1481,6 +1606,8 @@ void __deque_imp<T, Allocator>::do_assign(InputIterator first, InputIterator las
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::clear()
 {
+    if (__deque_is_pcv<T>::value)
+        __clear_wait();
     if (!Metrowerks::has_trivial_dtor<T>::value)
         destroy(begin(), end());
     this->size_ = 0;
@@ -1523,7 +1650,10 @@ void __deque_imp<T, Allocator>::pop_front()
  * a1; `== 0`, `!`, empty(), an unsigned zero, a for/break test and the multiply written first
  * change nothing. A LEAD from the MSL headers round 14: push_back's same two block counts lay their
  * zero arm out first only written `size() == 0 ? 0 : (size() - 1) * buf_size` (no hand-written unit
- * emits pop_back to test it on: 0x3349C0 is a draft's) */
+ * emits pop_back to test it on: 0x3349C0 is a draft's) MEASURED (round 39,
+ * build/p39/vx.py, zrdr_edit.cpp's copy): that spelling is beqz with the zero in its delay slot where the target's bnez jumps over
+ * `b join` (start_'s load copied into that b's delay slot): 18 off, as with a helper returning the count or the test's operands
+ * swapped; written with a break, 41 */
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::pop_back()
 {
@@ -1659,6 +1789,28 @@ public:
     const_iterator end() const;
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
+    template <class InputIterator>
+    void __init_class(InputIterator first, InputIterator last, forward_iterator_tag);
+    /* THE COPY CHAIN'S IN-CLASS CALLEES PARSED AHEAD OF THE WALK (a modelling device, the MSL headers round 39, no code: never
+     * called, dead-stripped; std::queue's and std::stack's constructors take its address, which parses it and all it names before the
+     * end-of-unit walk without expanding anything into them). A walked member with an unparsed in-class callee is deferred past the
+     * walk; with these three parsed the deque's copy constructor, __deque_buf(const Allocator &), the pair and the buffer's copy all
+     * come out IN the first walk, each before its callees -- so each calls them, as the image does (0x2E07B0, 0x2E09A0, 0x2E0A80,
+     * 0x2E0AC0; 0x333D90, 0x333E40; 0x3A6040, 0x3A6160) -- and that walk reaches allocator<PCv>() last, so the copies call it and deque(),
+     * generated after the walk, inlines it (0x2E0D90, 0x3A6410). The pair and the buffer's base are locals because their implicit
+     * destructors are callees too (a ctor names its members' for its cleanup): by `new` both stay deferred. The zNetMedius.cpp
+     * device it replaces did the same from the unit. game_main.cpp builds no queue, so its order keeps (0x2CEE00 calls allocator<PCv>()).
+     * A class element's chain is its own (__init_class): the test leaves this empty for it */
+    static void __chain(void *m)
+    {
+        if (Metrowerks::has_trivial_dtor<T>::value) {
+            typedef typename __deque_buf<T, Allocator>::buf_type B;
+
+            new (m) base(*(const Allocator *)m);
+            Metrowerks::compressed_pair<Allocator, B> p(*(const Allocator *)m, *(const B *)m);
+            Metrowerks::cdeque<const void *, allocator<const void *> > e(*(const allocator<const void *> *)m);
+        }
+    }
 };
 
 /* OPEN (the MSL headers round 11): a class element's default constructor -- the lobby's 0x2E0D90
@@ -1684,7 +1836,8 @@ deque<T, Allocator>::deque()
 }
 
 /* the copy (0x2E07B0 the lobby's, 0x3A5E50 the state machine's: begin() / end() const called; the
- * chat's 0x2F5F80 inlines both and calls make_iterator 0x2F6A70 for x's end, then its begin -- OPEN).
+ * chat's 0x2F5F80 inlines both and calls make_iterator 0x2F6A70 for x's end, then its begin -- closed in
+ * round 39, below).
  * The MSL headers round 33: begin() / end() DECLARED AHEAD of the copy constructor (so generated
  * before it in the same pass, round 7's ord7) leave both calls (0x60) as the online lane's round 25
  * found generating them a round earlier does -- neither generation order nor declaration order is
@@ -1692,10 +1845,16 @@ deque<T, Allocator>::deque()
  * end, sp+80 the begin: no copy out of a named local). (scdiff masks the candidate's relocated
  * fields on both sides by offset, so where the candidate is shorter a target word shows masked --
  * 0x2F5FA0's `addiu a0,sp,48` printed as `li zero,0`: read the image's words before believing one) */
+/* A CLASS ELEMENT'S COPY IS ANOTHER PATH (the MSL headers round 39: the chat's 0x2F5F80, byte-exact): the base's begin() / end() const,
+ * one-expression inlines in class -- a call one level deeper is expanded later, so end's make_iterator comes first, straight into its
+ * argument slot -- and __init_class, not init (MSL's deque has a POD and a non-POD implementation; which members are in class differs) */
 template <class T, class Allocator>
 deque<T, Allocator>::deque(const deque &x) : base(x.alloc())
 {
-    init(x.begin(), x.end(), forward_iterator_tag());
+    if (Metrowerks::has_trivial_dtor<T>::value)
+        init(x.begin(), x.end(), forward_iterator_tag());
+    else
+        __init_class(x.base::begin(), x.base::end(), forward_iterator_tag());
 }
 
 template <class T, class Allocator>
@@ -1719,6 +1878,64 @@ template <class InputIterator>
 void deque<T, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
 {
     Metrowerks::__deque_init(this, first, last, Metrowerks::number<bool, false>(), Metrowerks::number<bool, false>());
+}
+
+/* THE CLASS ELEMENT'S RANGE INIT (the chat's 0x2F6600, 0x444, byte-exact; the MSL headers round 39, open since the online lane's round
+ * 21 -- it had been read as init inlining do_assign): the distance one by-value level down (first copied twice, last once: the frame's
+ * sp+128 and sp+96), the buffer reached through the pair's out-of-line second() for the first reserve / resize (0x2F6A60, 0x2F6A50), the
+ * count NOT set at once: each element constructed -- its source read ahead of placement new's null test -- and the destination, the count
+ * and the source stepped in that order, every iterator field in memory. __deque_step: the iterators' ++ in place (theirs are out of class,
+ * called out of line by the scalars' do_assign) */
+template <class It, class S>
+inline void __deque_step(It &i, S n)
+{
+    if (++i.cur_ == i.last_) {
+        ++i.i_;
+        i.cur_ = *i.i_;
+        i.last_ = i.cur_ + n;
+    }
+}
+
+template <class RandomAccessIterator>
+inline int __deque_distance1(RandomAccessIterator first, RandomAccessIterator last)
+{
+    return last - first;
+}
+
+template <class T, class Allocator>
+template <class InputIterator>
+void deque<T, Allocator>::__init_class(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    unsigned int n = __deque_distance1(first, last);
+
+    if (n == 0)
+        return;
+    if (n > base::max_size())
+        __msl_error("deque::construction length error");
+    this->buf_.second().reserve(2);
+    this->buf_.second().__resize(1);
+    do {
+        if (this->buf_.second_.size() == (this->buf_.second_.capacity() == 0 ? 0 : this->buf_.second_.capacity() - 1))
+            this->buf_.second_.reserve(this->buf_.second_.size() * 2);
+        T *&last_block = this->buf_.second_.back();
+        T *b = __deque_alloc<T>(base::buf_size);
+
+        if (!b)
+            __msl_error("Memory allocation failure");
+        last_block = b;
+        this->buf_.second_.push_back(0);
+    } while ((this->buf_.second_.size() == 0 ? 0 : (this->buf_.second_.size() - 1) * base::buf_size) < n);
+    this->start_ = ((this->buf_.second_.size() == 0 ? 0 : (this->buf_.second_.size() - 1) * base::buf_size) - n) / 2;
+    typename base::iterator i = this->make_iterator(0);
+
+    while (this->size_ < n) {
+        const T &src = *first.cur_;
+
+        new (i.cur_) T(src);
+        __deque_step(i, base::buf_size);
+        ++this->size_;
+        __deque_step(first, base::buf_size);
+    }
 }
 
 template <class Allocator>
@@ -1860,6 +2077,16 @@ public:
     void push_back(T *const &x) { base::push_back((const void *const &)x); }
     void pop_front() { base::pop_front(); }
     void pop_back() { base::pop_back(); }
+    /* deque<T,  A>::__chain's for the pointer deques: the rdr editor's and the vid stack's chain */
+    static void __chain(void *m)
+    {
+        typedef allocator<const void *> A;
+        typedef Metrowerks::cdeque<const void **, allocator<const void **> > B;
+
+        new (m) base(*(const A *)m);
+        Metrowerks::compressed_pair<A, B> p(*(const A *)m, *(const B *)m);
+        Metrowerks::cdeque<const void *, A> e(*(const A *)m);
+    }
 };
 
 template <class T, class Allocator>

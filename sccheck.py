@@ -144,11 +144,12 @@ def rename_symbol(obj: Path, old: str, new: str) -> None:
                    capture_output=True)
 
 
-def build_one(src: Path, build: Path = BUILD, root: Path = SRC,
-              include: Path = INCLUDE) -> tuple[Path, Path | None, str]:
+def build_one(src: Path, build: Path = BUILD, root: Path = SRC, include: Path = INCLUDE,
+              compiler: str | None = None) -> tuple[Path, Path | None, str]:
     """Build one unit as its directive says (toolchain, flags, `as=`, its statics qualified). `root`
     is the tree it lies in: src/, or tools/try.py's scratch copy of it; `include` the headers' tree
-    (include/, or tools/objcmp.py's copy of it at another revision)."""
+    (include/, or tools/objcmp.py's copy of it at another revision); `compiler` a toolchain in place
+    of the directive's (tools/igreplay.py --compiler, GCC round 44a)."""
     obj = object_path(src, build, root)
     opts = tu_options(src)
     bad = directive_problem(src)
@@ -157,7 +158,7 @@ def build_one(src: Path, build: Path = BUILD, root: Path = SRC,
     if opts.get("overlay", "MAIN") not in OVERLAY_HOME:
         return src, None, f"unknown overlay={opts['overlay']} (one of {', '.join(OVERLAY_HOME)})"
     try:
-        D.compile_obj(src, obj, opts.get("compiler", D.COMPILER),
+        D.compile_obj(src, obj, compiler or opts.get("compiler", D.COMPILER),
                       opts["flags"].split() if "flags" in opts else None, [include, root])
         D.qualify_statics(obj, src, E.symbols(), root)    # its statics: `Copy@tlbfunc`, `stack@grid_clutter`
         if "as" in opts:

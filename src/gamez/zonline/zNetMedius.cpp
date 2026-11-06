@@ -50,7 +50,10 @@
  * 0xC8; the target calls 0x2E0CB0), and naming the copy in the device does not help: deferred in its
  * walk by its unparsed allocator base (allocator<PCv>(), called in the target), it is generated after
  * begin() whatever the device's order -- the target generates the copy first, begin() later, the
- * make_iterators last, which only the exported-inline layout gives. Not applied (no row gained). */
+ * make_iterators last, which only the exported-inline layout gives. Not applied (no row gained). CLOSED BY THE MSL
+ * HEADERS' ROUND 39, in include/deque alone: the make_iterators inline make_begin() and a non-const begin() (both in
+ * class), so begin() const stays a call in the copy; the copy chain comes out in the first walk through deque's __chain;
+ * every deque row of this unit is byte-exact and the LobbyQueueImp device that stood here is gone. */
 
 #include <stdio.h>
 #include "zonline.h"
@@ -509,17 +512,4 @@ void CZOnlineLobby::SyncGameClock(int t)
     if (!theLobby.uiv_GameClock)
         theLobby.uiv_GameClock = theUIVarManager.Add("GameClock", 0, UIVL_PERMANENT);
     *theLobby.uiv_GameClock = 10.0f + (float)t;
-}
-
-/* A MODELLING DEVICE (the online lane's round 29, the MSL headers' round-35 probe made the unit's;
- * the name ours): an own function building the state queue's implementation from an allocator, never
- * called and dead-stripped at link (src/ABSENT.txt). Defined last, so code-generated first, it has
- * __deque_imp(const Allocator &) parsed before the end-of-unit walk: the deque's copy constructor
- * 0x2E07B0 is then generated IN the walk instead of after it, its call instantiates allocator<PCv>()
- * there, and deque() 0x2E0D90 -- generated after the walk -- inlines it as the target's does (byte-
- * exact from source; its draft had held it). The unit's copy of cdeque<PCv>::__recommend then inlines
- * alloc() (the linked copy is zanim_menu.cpp's, 0x285BD0: `elsewhere`) */
-void LobbyQueueImp(const std::allocator<LOBBY_STATE> &a)
-{
-    std::__deque_imp<LOBBY_STATE, std::allocator<LOBBY_STATE> > d(a);
 }

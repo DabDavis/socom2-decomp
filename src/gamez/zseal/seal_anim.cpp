@@ -103,10 +103,10 @@ public:
         m_seal = seal;
     }
     /* an anim's pose at its frame and fraction pushed at a weight (SOCOM 1's took the SEAL and the
-     * active anim; OVL2 0x5777D0, not written yet), and the top frame's records put back on the
+     * active anim; OVL2 0x5777D0), and the top frame's records put back on the
      * SEAL's parts, the depth left returned (SOCOM 1's took the body; OVL2 0x577700). The frame an
      * `int` (round 34: 0x577DF0's call evaluates the short field's conversion first) */
-    void AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, int frame);
+    int AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, int frame);
     int AnimPop();
     /* frame a's rotations moved toward frame b's by b's share of their weights, a given both (SOCOM
      * 1's; OVL2 0x576E30) */
@@ -251,6 +251,88 @@ extern "C" void func_00577BA0(CZSealBody *seal, CZSIScriptCommon *script, unsign
  * adds the base last: 9 off), the index `top` kept (inline, the -1 folds into the -12) and `> -1`
  * (slti) the target's; the counter declared before the count (the other order swaps a3/t0). */
 #pragma auto_inline off
+/* a record marked as keeping its position (an inline: the record's address goes first, the base its first
+ * operand; in place, `recs[id].m_nopos`, MW adds the base last) */
+static inline void Keep(CSealAnimRec *r) { r->m_nopos = 0; }
+
+/* a frame pushed: every record unused and wanting a position, the anim and the weight taken; the main parts --
+ * and the records past the script's own -- marked as keeping theirs; each part with a node and a track read at
+ * the frame, the raw readers when the SEAL interpolates, a part keeping its position taken from its node. The
+ * new depth returned (OVL2 0x5777D0; SOCOM 1's took the SEAL and the active anim, had the records fixed at 32
+ * and a position per part). The first loop a `for`, which MW unrolls eightfold; the second a guarded do-while,
+ * which it does not (as a `for` its unrolled copies are 0x48 too long). r, i, parts, objects, recs declared in
+ * that order for the volatile registers; the frames through pointers (in place, MW adds the base last) */
+int CSealAnim::AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, int frame)
+{
+    CSealAnimRec *r;
+    unsigned int i;
+    int next = frame + 1;
+    unsigned int n = siNumBodyObjects;
+    std::vector<CZBodyPart *> &parts = m_seal->m_body_parts;
+    std::vector<CZSIObject *> &objects = anim->m_objects_for_body;
+    CSealAnimFrame *f = &m_frames->m_frames[m_count];
+    CSealAnimRec *recs = f->m_recs;
+
+    f->m_anim = anim;
+
+    r = recs;
+    m_frames->m_frames[m_count].m_wt = wt;
+    for (i = 0; i < n; i++, r++) {
+        r->m_id = -1;
+        r->m_nopos = 1;
+    }
+    Keep(&recs[m_seal->m_root->m_id]);
+    if (m_seal->m_hips)
+        Keep(&recs[m_seal->m_hips->m_id]);
+    if (m_seal->m_lbicep)
+        Keep(&recs[m_seal->m_lbicep->m_id]);
+    if (m_seal->m_rbicep)
+        Keep(&recs[m_seal->m_rbicep->m_id]);
+    if (m_seal->m_lshoulder_wgt)
+        Keep(&recs[m_seal->m_lshoulder_wgt->m_id]);
+    if (m_seal->m_rshoulder_wgt)
+        Keep(&recs[m_seal->m_rshoulder_wgt->m_id]);
+    i = anim->m_nBodyObjects;
+    if (i < n) {
+        do {
+            recs[i].m_nopos = 0;
+            i++;
+        } while (i < n);
+    }
+
+    std::vector<CZBodyPart *>::iterator p = parts.begin();
+    std::vector<CZSIObject *>::iterator o = objects.begin();
+    bool raw = (unsigned char)m_seal->m_interpolate_animations != 0;
+    CSealAnimFrame *f2 = &m_frames->m_frames[m_count];
+    CSealAnimRec *rec = f2->m_recs;
+    unsigned int j;
+
+    for (j = 0; j < n; j++, ++p, ++o, rec++) {
+        CZBodyPart *part = *p;
+
+        if (part && part->m_node) {
+            CZSIObject *obj = *o;
+
+            if (obj) {
+                if (rec->m_nopos == 0) {
+                    if (raw)
+                        obj->GetPosRaw(frame, next, ffrac, &rec->m_pos);
+                    else
+                        obj->GetPosFast(frame, next, ffrac, &rec->m_pos);
+                } else
+                    rec->m_pos = *(const CPnt3D *)part->m_node->m_matrix.m_matrix[3];
+                if (raw)
+                    obj->GetRotRaw(frame, next, ffrac, &rec->m_rot);
+                else
+                    obj->GetRotFast(frame, next, ffrac, &rec->m_rot);
+                rec->m_id = j;
+            }
+        }
+    }
+    m_count++;
+    return m_count;
+}
+
 int CSealAnim::AnimPop()
 {
     std::vector<CZBodyPart *> &parts = m_seal->m_body_parts;

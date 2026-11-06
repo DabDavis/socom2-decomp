@@ -163,7 +163,7 @@ void CRadioIcon_Static::Init(C2D *parent)
     if (!m_pRadioChannel10Texture)
         m_pRadioChannel10Texture = m_pRadioChannelTeamTexture;
     if (parent)
-        parent->push_back(this);
+        parent->__push_back_deep(this);
 }
 
 /* in a network game, the radio's channel shown (or the radio off); hidden otherwise */
@@ -248,13 +248,15 @@ inline void CRadioIcon_Dynamic::Init(C2D *parent)
     m_pRadioChannelInUseTexture = zdb::CAssetMgr::m_assets.GetTexHandle("action_channel_busy.tif");
     m_pRadioChannelCanTalkTexture = zdb::CAssetMgr::m_assets.GetTexHandle("action_ok_talk2.tif");
     if (parent)
-        parent->push_back(this);
+        parent->__push_back_deep(this);
 }
 
 /* the radio part made: the speaker's name, both icons, a dark backing and the channel's number,
  * each listed (the name is ours).
- * OPEN, 13 instructions, all two stack slots: the target homes the inlined dynamic Init's `this`
- * at sp+80, above the first push_back's iterator temporaries (sp+72/76), where MW puts it below
+ * BYTE-EXACT SINCE THE MSL HEADERS' ROUND 39: all five pushes, the two inlined Inits' with them, through include/list's
+ * __push_back_deep (SOCOM 1's two-level push_back by another name), whose temporaries sit a pass deeper.
+ * Until then 13 instructions, all two stack slots: the target homes the inlined dynamic Init's `this`
+ * at sp+80, above the first push_back's iterator temporaries (sp+72/76), where MW put it below
  * them (sp+72) -- every other slot (the three pushed values at 92/88/84, the later pushes'
  * iterators, the inlined push's at 48/52) agrees. Tried: the Init as a free inline taking the
  * icon, not declared inline (auto-inlined), defined first in the unit, an early return, a C2D *
@@ -269,14 +271,14 @@ void CWhosTalking::Init(C2DFont *font)
     m_text1.m_color[2] = CHUD::m_hud_textcolor.z;
     m_text1.m_color[3] = CHUD::m_hud_textcolor.w;
     m_text1.SetPos((int)s_text1_x, (int)s_text1_y);
-    push_back(&m_text1);
+    __push_back_deep(&m_text1);
     m_static.Init(this);
     m_dynamic.Init(this);
     m_bitmap2.SetHasTexture(false);
     m_bitmap2.SetColor(0.0f, 0.0f, 0.0f);
     m_bitmap2.SetTrans(50.0f);
     m_bitmap2.SetPos((int)s_backing_x1, (int)s_backing_y1, (int)s_backing_x2, (int)s_backing_y2);
-    push_back(&m_bitmap2);
+    __push_back_deep(&m_bitmap2);
     m_text2.SetFont(font);
     m_text2.m_scale = 0.8f;
     m_text2.m_color[0] = CHUD::m_hud_textcolor.x;
@@ -286,7 +288,7 @@ void CWhosTalking::Init(C2DFont *font)
     m_text2.SetTrans(128.0f);
     m_text2.SetPos((int)s_text2_x, (int)s_text2_y);
     m_text2.m_isCentered = 1;
-    push_back(&m_text2);
+    __push_back_deep(&m_text2);
 }
 
 /* the radio part placed again: the speaker's name and the channel's in the HUD's text colour, both
