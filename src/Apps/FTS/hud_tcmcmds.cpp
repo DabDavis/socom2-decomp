@@ -933,7 +933,9 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
  * `igreplay --permute` over the three movers (v39 the sides' CSE, v47 the end copy's address, v53 the
  * 2) -- none of their 6 orders gives the target, a single --want over v53 again only 46.5; the end
  * iterator set up first (25), s_tcmTarget cleared before the iterators or both iterators in the for's
- * init (16), the walk a while loop (7) */
+ * init (16), the walk a while loop (7) 
+ * Round 65: the replay wants the constant 2 numbered between nodes 46 and 47, a code-generation temporary inside the
+ * iterators' set-up; const and enum holders do not reach it. */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;

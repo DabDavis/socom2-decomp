@@ -688,7 +688,9 @@ inline const CBBox *CZNewHudMap::GetScrollBounds() const
  * pointers to x and z, or a reference to the named facing, are further off. Round 61: the facing
  * returned by value from an inline keeps the inline's local in memory at the target's sp+112 with
  * the target's three stores, but copies it into the named local (0x3A4; a reference bound to it
- * 0x3A8, a CPnt3D built by its constructor 0x36C) */
+ * 0x3A8, a CPnt3D built by its constructor 0x36C) 
+ * Round 65's tries: `SealDir *keep = &ptDir` keeps the point in memory but holds &z in s5 (0x398); `(void)&ptDir` stays
+ * 0x36C; `#pragma opt_common_subs off` 0x3C4. */
 CScrollBools CZNewHudMap::GetScrollPermissions() const
 {
     CScrollBools bools;
@@ -1065,7 +1067,8 @@ inline void CZNewHudMap::TickCompassMap(CPad *pad, MENU_STATE menustate)
  * reference temporary pass 0 cannot forward ("Level 6, or 8?") -- or hoists &m_list + 4 in pass 0.
  * Tried: the list a local subclass; a reference or pointer local for the second walk (both reads,
  * either read); an iterator copy; five spellings of the const end(); &end_ direct or a named base
- * iterator (then &m_list + 4 is rematerialised at each use, 0x3EC) */
+ * iterator (then &m_list + 4 is rematerialised at each use, 0x3EC) 
+ * Round 65: the MSL's level-6 opt-ins (__push_back_deep) hold at 11 and retire ListPush; the D and C destructor variants are worse. */
 void CZNewHudMap::HudTick(CPad *pad, float dT)
 {
     MENU_STATE menustate = CHUD::GetHUDOwner()->m_ctrl->GetMenuState();
