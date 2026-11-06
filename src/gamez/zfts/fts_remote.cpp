@@ -268,6 +268,7 @@ public:
     static void ClearPersonaList();
     static void UpdateLocalPersona();
     static int CreateLocalPersona();
+    static const char *GetPersonaName(int client);   /* 0x2C3A70 */
 };
 
 /* the online lobby (only its Medius connection) */
@@ -1302,7 +1303,6 @@ struct ChatPacket {
 
 extern "C" {
 extern unsigned int data_00440E40;   /* PacketTypeChat */
-const char *func_002C3A70(int client);   /* (a client's name, fts_net_persona.cpp's) */
 }
 
 /* a ZRDR value as the chat's history reads it (zrdr.h's _zrdr: the type, an array's count, the
@@ -1365,7 +1365,7 @@ int ChatPacketHandler(int, int, int who, void *data)
             show = false;
         else if (p->text[0] == 0)
             show = false;
-        const char *name = func_002C3A70(who);
+        const char *name = CZPersonaState::GetPersonaName(who);
 
         if (name && theLobby.IsIgnored(name))
             show = false;
@@ -2224,8 +2224,8 @@ struct NetMsgGameSignal {
 
 
 extern "C" {
-void func_00620BD8(void);   /* (the DME's: a message type's description begun) */
-void func_00620C60(void *base, void *field, int size, int count);   /* (a field described) */
+int NetRegisterMessageStart(void);   /* Medius's Dme.c (0x620BD8): a message type's description begun */
+int NetMessageField(void *base, void *field, int size, int count);   /* (0x620C60): a field described */
 void func_002C2B20();   /* (fts_net_persona.cpp's registration's twin: the platform's? -- SOCOM II's) */
 extern unsigned int data_00440EA0;   /* (SOCOM II's: "All Switch") */
 int func_002B9B20(int, int, int, void *);
@@ -2282,134 +2282,134 @@ extern "C" void func_002B8660()
     CZGameState::zNetRegisterGame();
     CZBombState::zNetRegisterBomb();
     CZPlatformState::zNetRegisterPlatform();
-    func_00620BD8();
-    func_00620C60(&mHit, &mHit.m_0, 2, 1);
-    func_00620C60(&mHit, &mHit.m_2, 2, 1);
-    func_00620C60(&mHit, &mHit.m_4, 1, 1);
-    func_00620C60(&mHit, &mHit.m_5, 1, 1);
-    func_00620C60(&mHit, &mHit.m_6, 1, 1);
-    func_00620C60(&mHit, &mHit.m_7, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mHit, &mHit.m_0, 2, 1);
+    NetMessageField(&mHit, &mHit.m_2, 2, 1);
+    NetMessageField(&mHit, &mHit.m_4, 1, 1);
+    NetMessageField(&mHit, &mHit.m_5, 1, 1);
+    NetMessageField(&mHit, &mHit.m_6, 1, 1);
+    NetMessageField(&mHit, &mHit.m_7, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E00, HitPacketHandler, "Hit");
     ZAnim.m_network_activation_callback = SendZAnimNetworkPacket;
-    func_00620BD8();
-    func_00620C60(&mAnim, &mAnim.m_0, 4, 1);
-    func_00620C60(&mAnim, &mAnim.m_4, 2, 1);
-    func_00620C60(&mAnim, &mAnim.m_6, 2, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mAnim, &mAnim.m_0, 4, 1);
+    NetMessageField(&mAnim, &mAnim.m_4, 2, 1);
+    NetMessageField(&mAnim, &mAnim.m_6, 2, 1);
     theNetwork.zNetRegisterMessage(&data_00440E20, ZAnimNetworkPacketHandler, "Anim");
-    func_00620BD8();
-    func_00620C60(&mPushBlend, &mPushBlend.m_0, 2, 1);
-    func_00620C60(&mPushBlend, &mPushBlend.m_2, 2, 1);
-    func_00620C60(&mPushBlend, &mPushBlend.m_4, 2, 1);
-    func_00620C60(&mPushBlend, &mPushBlend.m_6, 1, 1);
-    func_00620C60(&mPushBlend, &mPushBlend.m_7, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mPushBlend, &mPushBlend.m_0, 2, 1);
+    NetMessageField(&mPushBlend, &mPushBlend.m_2, 2, 1);
+    NetMessageField(&mPushBlend, &mPushBlend.m_4, 2, 1);
+    NetMessageField(&mPushBlend, &mPushBlend.m_6, 1, 1);
+    NetMessageField(&mPushBlend, &mPushBlend.m_7, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E18, PushBlendAnimPacketHandler, "Push Blend");
-    func_00620BD8();
-    func_00620C60(&mActionAnim, &mActionAnim.m_0, 2, 1);
-    func_00620C60(&mActionAnim, &mActionAnim.m_2, 2, 1);
-    func_00620C60(&mActionAnim, &mActionAnim.m_4, 2, 1);
-    func_00620C60(&mActionAnim, &mActionAnim.m_8, 2, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mActionAnim, &mActionAnim.m_0, 2, 1);
+    NetMessageField(&mActionAnim, &mActionAnim.m_2, 2, 1);
+    NetMessageField(&mActionAnim, &mActionAnim.m_4, 2, 1);
+    NetMessageField(&mActionAnim, &mActionAnim.m_8, 2, 1);
     theNetwork.zNetRegisterMessage(&data_00440E08, func_002BB310, "Action Anim");
-    func_00620BD8();
-    func_00620C60(&mActionPoints, &mActionPoints.m_0, 2, 1);
-    func_00620C60(&mActionPoints, &mActionPoints.m_2, 2, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mActionPoints, &mActionPoints.m_0, 2, 1);
+    NetMessageField(&mActionPoints, &mActionPoints.m_2, 2, 1);
     theNetwork.zNetRegisterMessage(&data_00440E10, ActionAnimPacketHandler, "Action Points");
-    func_00620BD8();
-    func_00620C60(&mAIOrders, &mAIOrders.m_0, 2, 1);
-    func_00620C60(&mAIOrders, &mAIOrders.m_4, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mAIOrders, &mAIOrders.m_0, 2, 1);
+    NetMessageField(&mAIOrders, &mAIOrders.m_4, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E28, func_002BB8E0, "AI Orders");
-    func_00620BD8();
-    func_00620C60(&mE3Index, &mE3Index.m_0, 4, 1);
-    func_00620C60(&mE3Index, &mE3Index.m_4, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mE3Index, &mE3Index.m_0, 4, 1);
+    NetMessageField(&mE3Index, &mE3Index.m_4, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E30, E3IndexPacketHandler, "E3 Index");
-    func_00620BD8();
-    func_00620C60(&mReject, &mReject.m_0, 4, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mReject, &mReject.m_0, 4, 1);
     theNetwork.zNetRegisterMessage(&data_00440E90, func_002B9D80, "Reject");
-    func_00620BD8();
-    func_00620C60(&mMessage, &mMessage.m_0, 2, 1);
-    func_00620C60(&mMessage, &mMessage.m_4, 2, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mMessage, &mMessage.m_0, 2, 1);
+    NetMessageField(&mMessage, &mMessage.m_4, 2, 1);
     theNetwork.zNetRegisterMessage(&data_00440E38, func_002BAC40, "Message");
-    func_00620BD8();
-    func_00620C60(&mChat, &mChat.m_0, 2, 1);
-    func_00620C60(&mChat, &mChat.m_2, 2, 1);
-    func_00620C60(&mChat, &mChat.m_4, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mChat, &mChat.m_0, 2, 1);
+    NetMessageField(&mChat, &mChat.m_2, 2, 1);
+    NetMessageField(&mChat, &mChat.m_4, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E40, ChatPacketHandler, "Chat");
-    func_00620C60(&mWepPU, &mWepPU.m_14, 2, 1);
-    func_00620C60(&mWepPU, &mWepPU.m_0, 4, 1);
-    func_00620C60(&mWepPU, &mWepPU.m_8, 4, 1);
-    func_00620C60(&mWepPU, &mWepPU.m_c, 4, 1);
-    func_00620C60(&mWepPU, &mWepPU.m_10, 4, 1);
-    func_00620C60(&mWepPU, &mWepPU.m_4, 4, 1);
+    NetMessageField(&mWepPU, &mWepPU.m_14, 2, 1);
+    NetMessageField(&mWepPU, &mWepPU.m_0, 4, 1);
+    NetMessageField(&mWepPU, &mWepPU.m_8, 4, 1);
+    NetMessageField(&mWepPU, &mWepPU.m_c, 4, 1);
+    NetMessageField(&mWepPU, &mWepPU.m_10, 4, 1);
+    NetMessageField(&mWepPU, &mWepPU.m_4, 4, 1);
     theNetwork.zNetRegisterMessage(&data_00440E48, WeaponPUPacketHandler, "Wep PU");
-    func_00620BD8();
-    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_30, 1, 1);
-    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_4[0], 16, 8);
-    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_14[0], 16, 8);
-    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_0, 4, 1);
-    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_24, 4, 1);
-    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_28, 4, 1);
-    func_00620C60(&mWepAmmoPU, &mWepAmmoPU.m_2c, 4, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mWepAmmoPU, &mWepAmmoPU.m_30, 1, 1);
+    NetMessageField(&mWepAmmoPU, &mWepAmmoPU.m_4[0], 16, 8);
+    NetMessageField(&mWepAmmoPU, &mWepAmmoPU.m_14[0], 16, 8);
+    NetMessageField(&mWepAmmoPU, &mWepAmmoPU.m_0, 4, 1);
+    NetMessageField(&mWepAmmoPU, &mWepAmmoPU.m_24, 4, 1);
+    NetMessageField(&mWepAmmoPU, &mWepAmmoPU.m_28, 4, 1);
+    NetMessageField(&mWepAmmoPU, &mWepAmmoPU.m_2c, 4, 1);
     theNetwork.zNetRegisterMessage(&data_00440E50, AmmoPUPacketHandler, "Wep Ammo PU");
-    func_00620BD8();
-    func_00620C60(&mPUMayI, &mPUMayI.m_16, 1, 1);
-    func_00620C60(&mPUMayI, &mPUMayI.m_0, 4, 1);
-    func_00620C60(&mPUMayI, &mPUMayI.m_4[0], 16, 8);
-    func_00620C60(&mPUMayI, &mPUMayI.m_14, 2, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mPUMayI, &mPUMayI.m_16, 1, 1);
+    NetMessageField(&mPUMayI, &mPUMayI.m_0, 4, 1);
+    NetMessageField(&mPUMayI, &mPUMayI.m_4[0], 16, 8);
+    NetMessageField(&mPUMayI, &mPUMayI.m_14, 2, 1);
     theNetwork.zNetRegisterMessage(&data_00440E58, PickupMayIPacketHandler, "PU May I");
-    func_00620BD8();
-    func_00620C60(&mPUOK, &mPUOK.m_6, 1, 1);
-    func_00620C60(&mPUOK, &mPUOK.m_0, 4, 1);
-    func_00620C60(&mPUOK, &mPUOK.m_4, 2, 1);
-    func_00620C60(&mPUOK, &mPUOK.m_7, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mPUOK, &mPUOK.m_6, 1, 1);
+    NetMessageField(&mPUOK, &mPUOK.m_0, 4, 1);
+    NetMessageField(&mPUOK, &mPUOK.m_4, 2, 1);
+    NetMessageField(&mPUOK, &mPUOK.m_7, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E60, PickupAckPacketHandler, "PU OK");
-    func_00620BD8();
-    func_00620C60(&mClimbAsk, &mClimbAsk.m_0, 2, 1);
-    func_00620C60(&mClimbAsk, &mClimbAsk.m_2, 2, 1);
-    func_00620C60(&mClimbAsk, &mClimbAsk.m_4, 2, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mClimbAsk, &mClimbAsk.m_0, 2, 1);
+    NetMessageField(&mClimbAsk, &mClimbAsk.m_2, 2, 1);
+    NetMessageField(&mClimbAsk, &mClimbAsk.m_4, 2, 1);
     theNetwork.zNetRegisterMessage(&data_00440E68, func_002B9F10, "ClimbAsk");
-    func_00620BD8();
-    func_00620C60(&mClimbOK, &mClimbOK.m_0, 2, 1);
-    func_00620C60(&mClimbOK, &mClimbOK.m_2, 2, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mClimbOK, &mClimbOK.m_0, 2, 1);
+    NetMessageField(&mClimbOK, &mClimbOK.m_2, 2, 1);
     theNetwork.zNetRegisterMessage(&data_00440E70, func_002B9E20, "ClimbOK");
-    func_00620BD8();
-    func_00620C60(&mNames, &mNames.m_0, 2, 1);
-    func_00620C60(&mNames, &mNames.m_2, 1, 1);
-    func_00620C60(&mNames, &mNames.m_3, 1, 1);
-    func_00620C60(&mNames, &mNames.m_4, 1, 1);
-    func_00620C60(&mNames, &mNames.m_5, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mNames, &mNames.m_0, 2, 1);
+    NetMessageField(&mNames, &mNames.m_2, 1, 1);
+    NetMessageField(&mNames, &mNames.m_3, 1, 1);
+    NetMessageField(&mNames, &mNames.m_4, 1, 1);
+    NetMessageField(&mNames, &mNames.m_5, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E78, func_002B9B20, "Names");
-    func_00620BD8();
-    func_00620C60(&mVoter, &mVoter.m_0, 2, 1);
-    func_00620C60(&mVoter, &mVoter.m_2, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mVoter, &mVoter.m_0, 2, 1);
+    NetMessageField(&mVoter, &mVoter.m_2, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E80, func_002BA040, "Voter");
-    func_00620BD8();
-    func_00620C60(&mSpecVote, &mSpecVote.m_0, 2, 1);
-    func_00620C60(&mSpecVote, &mSpecVote.m_2, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mSpecVote, &mSpecVote.m_0, 2, 1);
+    NetMessageField(&mSpecVote, &mSpecVote.m_2, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E88, (int (*)(int, int, int, void *))func_002B9BD0, "Spec Vote");
-    func_00620BD8();
-    func_00620C60(&mTeamSwitch, &mTeamSwitch.m_0, 4, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mTeamSwitch, &mTeamSwitch.m_0, 4, 1);
     theNetwork.zNetRegisterMessage(&data_00440E98, TeamSwitchPacketHandler, "Team Switch");
-    func_00620BD8();
-    func_00620C60(&mAllSwitch, &mAllSwitch.m_0, 4, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mAllSwitch, &mAllSwitch.m_0, 4, 1);
     theNetwork.zNetRegisterMessage(&data_00440EA0, func_002BADC0, "All Switch");
-    func_00620BD8();
-    func_00620C60(&mBomb, &mBomb.m_0, 4, 1);
-    func_00620C60(&mBomb, &mBomb.m_4, 4, 1);
-    func_00620C60(&mBomb, &mBomb.m_8, 4, 1);
-    func_00620C60(&mBomb, &mBomb.m_c, 2, 1);
-    func_00620C60(&mBomb, &mBomb.m_e, 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mBomb, &mBomb.m_0, 4, 1);
+    NetMessageField(&mBomb, &mBomb.m_4, 4, 1);
+    NetMessageField(&mBomb, &mBomb.m_8, 4, 1);
+    NetMessageField(&mBomb, &mBomb.m_c, 2, 1);
+    NetMessageField(&mBomb, &mBomb.m_e, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440EA8, BombStatePacketHandler, "Bomb");
-    func_00620BD8();
-    func_00620C60(&mAlert, &mAlert.m_0, 4, 1);
-    func_00620C60(&mAlert, &mAlert.m_4, 4, 1);
-    func_00620C60(&mAlert, &mAlert.m_8, 4, 1);
+    NetRegisterMessageStart();
+    NetMessageField(&mAlert, &mAlert.m_0, 4, 1);
+    NetMessageField(&mAlert, &mAlert.m_4, 4, 1);
+    NetMessageField(&mAlert, &mAlert.m_8, 4, 1);
     theNetwork.zNetRegisterMessage(&data_00440EB8, func_002B98B0, "Alert");
-    func_00620BD8();
-    func_00620C60(&mGameSignal, &mGameSignal.m_c, 1, 1);
-    func_00620C60(&mGameSignal, &mGameSignal.m_d, 1, 1);
-    func_00620C60(&mGameSignal, &mGameSignal.m_e, 1, 1);
-    func_00620C60(&mGameSignal, &mGameSignal.m_f, 1, 1);
-    func_00620C60(&mGameSignal, &mGameSignal.m_8, 4, 1);
-    func_00620C60(&mGameSignal, &mGameSignal.m_0[0], 1, 5);
+    NetRegisterMessageStart();
+    NetMessageField(&mGameSignal, &mGameSignal.m_c, 1, 1);
+    NetMessageField(&mGameSignal, &mGameSignal.m_d, 1, 1);
+    NetMessageField(&mGameSignal, &mGameSignal.m_e, 1, 1);
+    NetMessageField(&mGameSignal, &mGameSignal.m_f, 1, 1);
+    NetMessageField(&mGameSignal, &mGameSignal.m_8, 4, 1);
+    NetMessageField(&mGameSignal, &mGameSignal.m_0[0], 1, 5);
     theNetwork.zNetRegisterMessage(&data_00440EB0, GameSignalPacketHandler, "Game Signal");
     data_0045B718->zNetRegisterVoice();
 }

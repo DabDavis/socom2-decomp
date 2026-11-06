@@ -203,7 +203,9 @@ static inline void SetTextColor(C2DString *s)
  * the sub.s (and, two words on, a label pad after the second push_back). Tried: x or y (int or
  * float) in a local first, the offset in a local, a float cast on it, `!bludshot ? 1 : 2`, the width
  * through an inline accessor, the bool assigned apart, the locals swapped. Everything else (the
- * `= {0}` buffer, the reference in memory, the colour through an inline) matches */
+ * `= {0}` buffer, the reference in memory, the colour through an inline) matches. Round 61: x through
+ * an inline (int or float, the string by reference or pointer, with a body of its own or not) is
+ * further off (d 50) */
 void CTeamNames::SetupTeamNameEntry(int index, CZSealBody *seal, bool add)
 {
     if (!seal)
