@@ -568,7 +568,6 @@ extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
 
 extern "C" {
 void func_00545200(CSealStats *stats);   /* (CSealStats' constructor, OVL2: every counter zeroed) */
-char *strcpy(char *dst, const char *src);
 }
 
 /* the round's stats into the UI's variables (OVL1 0x1F21B0; SOCOM 1's SetRoundStatUiVars, the
@@ -585,8 +584,10 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
     CZSealBody *seals[4] = {0};
     CSealStats *stats[4] = {0};
 
-    for (int k = 0; k < 4; k++)
-        stats[k] = &none;
+    stats[0] = &none;
+    stats[1] = &none;
+    stats[2] = &none;
+    stats[3] = &none;
     int n = 0;
     int count = 0;
     CEntityItr it;
@@ -612,6 +613,7 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
     float teamwork = func_001F27C0(seals, stats, n);
 
     if (theMission.m_18 == 2) {
+        CCareerStats *career = (CCareerStats *)((char *)&theMission + 0x1950);
         CZSealBody *player = ftsGetPlayer();
         int hit = player->m_590;
         int fired = player->m_594;
@@ -621,8 +623,7 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
             acc = 100.0f * ((float)hit / (float)fired);
         else
             acc = 0.0f;
-        ((CCareerStats *)((char *)&theMission + 0x1950))
-            ->AddMission(0.01f * Round(acc), accuracy, stealth, teamwork, objectives);
+        career->AddMission(0.01f * Round(acc), accuracy, stealth, teamwork, objectives);
     }
     int total = Round(100.0f * (0.45f * objectives + 0.2f * stealth + 0.1f * accuracy + 0.25f * teamwork));
 
@@ -636,21 +637,34 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
     if (iSec < 3600000) {
         int h = iSec / 360000;
 
-        szTime[0] = h > 0 ? '0' + h : ' ';
-        iSec %= 360000;
-        szTime[1] = '0' + iSec / 36000;
-        iSec %= 36000;
-        szTime[2] = '0' + iSec / 3600;
-        iSec %= 3600;
-        szTime[4] = '0' + iSec / 600;
-        iSec %= 600;
-        szTime[5] = '0' + iSec / 60;
-        iSec %= 60;
-        szTime[7] = '0' + iSec / 10;
-        iSec %= 10;
+        if (h > 0)
+            szTime[0] = '0' + h;
+        else
+            szTime[0] = ' ';
+        iSec -= h * 360000;
+        int th = iSec / 36000;
+
+        szTime[1] = '0' + th;
+        iSec -= th * 36000;
+        int hr = iSec / 3600;
+
+        szTime[2] = '0' + hr;
+        iSec -= hr * 3600;
+        int tm = iSec / 600;
+
+        szTime[4] = '0' + tm;
+        iSec -= tm * 600;
+        int mn = iSec / 60;
+
+        szTime[5] = '0' + mn;
+        iSec -= mn * 60;
+        int ts = iSec / 10;
+
+        szTime[7] = '0' + ts;
+        iSec -= ts * 10;
         szTime[8] = '0' + iSec;
     } else {
-        strcpy(szTime, "999:59:59");
+        __memcpy((void *)szTime, (void *)"999:59:59", sizeof(szTime));
     }
     UIVar("TimeInGame") = szTime;
 }
