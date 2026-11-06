@@ -206,8 +206,9 @@ CGNode *CGraph::CreateNode()
  * IRO_PullOutInvariantAssignments moves the two binders' field stores, which brings
  * IRO_CopyLoopTestToLoopPreheaderAndBranchToSuccNode; with nothing to pull, IRO_RotateLoop keeps the guard
  * inline and IRO's invariants hoist only the field addresses (the target's addiu s1,sp,100 / s0,sp,84).
- * `#pragma opt_dead_assignments off` shows it: the stores stay, because the binders' dead `this` copies
- * (@N = &binder) keep them address-taken through the loop phase, and frame 144 and s2-s0 are the target's.
+ * `#pragma opt_dead_assignments off` shows it: the stores stay, and frame 144 and s2-s0 are the target's.
+ * All the pragma changes at the loop phase is that dead stores remain, among them the binders' `this`
+ * copies (@N = &binder), so probably those keep the binders address-taken (inferred, not isolated).
  * With the second half as an inline taking the edge by value (DelEdge(this, *i): the frame's slots then
  * fall first, third, second binder, as the target's, and `e` below the begin() temporary), the elements
  * read `*(list_base::iterator &)i` (no iterator copy) and GetOther's argument `*(CGNode **)&node` (its own
