@@ -658,7 +658,7 @@ inline void PlaceCopies(CMission *m, CVehicleRdrEntry *entry, CEntity *v)
  * put on the spawners' list, the others loaded or spawned by their kind and numbered, the first
  * one copied for every player after the first and placed again on the mission's player grid.
  * The shape is the target's: the entity walk's iterator initialised (one begin() copy, the iterator
- * in s0 -- func_002B7A90 assigns its own, two copies and the iterator in memory), the counts tested
+ * in s0 -- ftsNetworkSealInit (0x2B7A90) assigns its own, two copies and the iterator in memory), the counts tested
  * `> 1` (slti at), the filter's bool compared `== false` (materialised, then bnez), the grid's base
  * stored z, x, y field by field (SOCOM 1's order: the three-float constructor evaluates x first and
  * is 8 bytes longer), the spawn put through an inline helper two levels deep (AddSpawn above), the

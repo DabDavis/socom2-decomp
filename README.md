@@ -2065,6 +2065,43 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 48** (CLoadState::Tick 0x1F5E70 and CMenuState::RunEventAnim 0x1F3BF0 -- both
+  unwritten before -- byte-exact, UpdateLocalSeal 0x2BD640 byte-exact, C2D::Tick's and C2D::SetTrans's inline copies
+  emitted and byte-exact; C2DMessage_Q::Tick 0x2B5DB0 written, OPEN at the size, 38; 0x2B7A90 named ftsNetworkSealInit__Fv):
+  - in `x = x == 0 ? Inline() : x` the inline's return keeps the then-arm's branch to the join (UpdateLocalSeal, 2 -> 0);
+    `if (!x) x = f();` falls through onto the join's alignment nop, and the `!x ?` / `x ?` ternaries copy the store into
+    both arms;
+  - a bitfield tested through an inline accessor (`GetValue() == 0`) is not merged with a following inline setter's read
+    -- it is read twice, as in the target; a direct `m_value` test is merged;
+  - a member inline called on a re-read global pointer (`theMission.m_netGame->SetCharType(GetCustomCharTypeName(0))`)
+    loads `this` after the argument's call and keeps it for both its stores; a free inline taking an object pointer and
+    a computed value loads the pointer before its body (the clamp);
+  - a float clamp `if (t > 1) t = 1; else if (t < 0) t = 0;` leaves no branch at the inner join, the ternary chain adds a
+    `b` to the join; `x == 0` on a byte reused from an earlier test of the same field gives the target's `andi 0xff`, `!x`
+    branches on the register directly;
+  - `float trans = Get(); ... float t = trans + dT*k;` lets `t` share dT's saved float register, a single `t += ...`
+    keeps `t` in a saved register of its own;
+  - `return a && b` inside an inline bool function is materialised (li 1 / move zero), as the target has it; written in
+    the caller's `if` it branches directly;
+  - a name chain `if (!strcmp(n, "X")) e = N; else if ...` into an `int` puts each value in the call's argument register,
+    in the branch's delay slot (RunEventAnim's 63 event names, ParseButtonAnim's values); a handler whose class the
+    unit's header cannot see (CGameMenu's, from fts_state.h: zui_spec.h's ActionItem) is called by its mangled name;
+  - OPEN, the frame slots: C2DMessage_Q::Tick's second walk keeps its `cur` iterator below every temporary (no named
+    local lands there; its end pointer belongs in s0), and the teamwork rating 0x1F27C0 reaches 0x680 through an
+    in-class inline `Next()` with `!IsSeal()` with only the frame slots off (11, the out-of-line Advance still right) --
+    st_exit.cpp records the slot orders of four loop shapes, SetRoundStatUiVars' and C2DMessage_Q::Tick's: one slot rule
+    probably explains all three.
+- **Tells from the online lobby, round 27** (54 functions from their drafts to source -- zNetMediusClan.cpp all
+  hand-written, zNetMediusLobby.cpp and zNetMediusFriends.cpp whole --; 22 rows named):
+  - an explicit specialization of a class template member is an own function: MW never inlines an out-of-class template
+    member into it, and the specialized function itself is inlined into every caller, tail or own, wherever it is
+    defined (insert<AcctRecord> measured: 64 of 66, not adopted);
+  - in the game's deferred units definition order does not stop MW auto-inlining one own function into another
+    (GetFriendsList, GetInvitedPlayers, CheckClanInvitations into callbacks before and after them) -- a target's
+    out-of-line call needs `#pragma auto_inline off`; the level-5 cut cannot emulate "inline here, call there": a
+    four-high chain cuts right one caller level up but a level too high two levels up;
+  - an int function with three arms returning calls matches through one `int r` local, `return f();` in each arm is 6
+    off (0x3006D0); `(int)(a.size() + b.size()) < 16` gives slti, without the cast sltiu.
 - **Tells from the weapons, round 34** (the video thread's body 0x3B1DD0 and the vehicle's run-over pass 0x3ACC10, both
   never written before):
   - an unsigned-to-float conversion assigned to a dead local keeps its sign test and loses both arms -- 0x3B1DD0's
@@ -8632,7 +8669,7 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
+matches misses there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
 constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- and, since the world's round
 16 named it, 0x3340B0, cdeque<PPCv>'s constructor from an allocator (vis_vu.cpp's inline copy `elsewhere`; its draft
 carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
@@ -8640,9 +8677,14 @@ carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230
 (each draft carries an `sc: as=` line; ~CLobbySaveModule's copy 0x2FD070, once listed with them, matches from source
-since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- TWELVE rows in all -- 0x29FF60 and
-0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
-included before believing one.
+since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all -- 0x29FF60 and
+0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
+sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
+built and scored against its other emitters outside `--files` (its draft, and the hand-written units
+naming the copy's identifiers) and printed `not lost -- an inline copy missed here, another emitter
+outside --files still matches: <row> by <emitter>`, rc 0 -- the thirteen each by its draft. Only a
+`REGRESSIONS` line is a loss; a strong definition's miss is never held ("The GCC front: the prebuilt
+libraries", "The tools, round 38a").
 
 ## The generated tier: `src/auto/`
 

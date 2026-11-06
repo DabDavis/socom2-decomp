@@ -88,6 +88,7 @@ enum VALVE_STATE {
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    static CValve *GetByName(const char *name);
     /* off (the name ours: the test is materialised, sltu and xori, before the branch -- an
      * inline bool returning the negation) */
     bool IsOff() { return !m_value; }
@@ -335,6 +336,20 @@ extern "C" void func_002FAB80(char *stats)
     data_0044FB50 = 0;
 }
 
+extern "C" {
+/* our stats taken (SOCOM II's; OVL1 0x2FAB70: 0x2FAA80's account stats request's callback) */
+void func_002FAB70(int, int, int, MediusUpdateAccountStatsResponse *resp)
+{
+    CheckMediusCallbackStatus("MediusUpdateAccountStats", resp->StatusCode);
+}
+
+/* our ladder figure taken (SOCOM II's; OVL1 0x2FAB60: 0x2FAA80's ladder request's callback) */
+void func_002FAB60(int, int, int, MediusUpdateLadderStatsResponse *resp)
+{
+    CheckMediusCallbackStatus("MediusUpdateLadderRanking", resp->StatusCode);
+}
+}
+
 /* our stats sent to the server: built into a text, kept, unpacked, and our ladder figure sent too
  * (SOCOM II's; OVL1 0x2FAA80: the active lobby's handler sends them every five minutes; our info's
  * callback 0x2FA8F0 calls it out of line, pinned) */
@@ -398,6 +413,28 @@ extern "C" void func_002FA870(CZOnlineLobby *lobby)
         req.AccountID = AccountInfo.AccountID;
         CheckMediusError(MediusGetPlayerInfo(&req, func_002FA8F0));
     }
+}
+
+/* the description, once filtered, kept in our stats and shown, the stats sent (SOCOM 1's; OVL1
+ * 0x2FA800: SetPlayerDescription's censor callback) */
+void cbFilterPlayerDescription(const char *text, void *)
+{
+    sprintf(data_0066A750.m_desc, "%s", text);
+    *theUIVarManager.Add("PlayerDescription", 0, UIVL_TEMPORARY) = data_0066A750.m_desc;
+    func_002FAA80(&theLobby);
+}
+
+/* our description set, through the censor (SOCOM 1's; OVL1 0x2FA7F0: the UI's SetPlayerDescription) */
+void CZOnlineLobby::SetPlayerDescription(const char *desc)
+{
+    Censor(desc, cbFilterPlayerDescription, 0);
+}
+
+/* our account's name (SOCOM II's, the name ours; OVL1 0x2FA7E0: the DME's player record copies
+ * it on theLobby) */
+const char *CZOnlineLobby::GetAccountName()
+{
+    return AccountInfo.AccountName;
 }
 
 extern "C" GamePlayerStats data_0044FB60;   /* a new account's stats (the unit's bss) */
@@ -737,6 +774,32 @@ void func_002F96F0(GamePlayerStats *stats, int send)
 }
 }
 
+/* our account's number (SOCOM II's, the name ours; OVL1 0x2F96E0: the persona's 0x4 asks it on
+ * theLobby) */
+int CZOnlineLobby::GetAccountID()
+{
+    return AccountInfo.AccountID;
+}
+
+extern "C" {
+/* two of our stats' figures set for the next record -- a player's number and how (1 by the SEALs'
+ * network code, 2 by the remote player's) -- outside the LAN lobby (SOCOM II's; OVL1 0x2F9690:
+ * called on theLobby; func_002FAB80 clears them) */
+void func_002F9690(CZOnlineLobby *, int who, unsigned char how)
+{
+    if (!data_0044FE10.IsActive()) {
+        data_0044FB48 = who;
+        data_0044FB50 = how;
+    }
+}
+}
+
+/* the ban taken (SOCOM 1's; OVL1 0x2F9680) */
+void cbBanSelfFromGame(int, int, int, MediusBanPlayerResponse *resp)
+{
+    CheckMediusCallbackStatus("BanSelfFromGame", resp->StatusCode);
+}
+
 /* we leave the game for good: banned from it for two hours (SOCOM 1's; OVL1 0x2F95F0) */
 void CZOnlineLobby::BanSelfFromGame()
 {
@@ -933,13 +996,81 @@ void cbClearGameListFilter(int, int, int, MediusClearGameListFilterResponse *res
     CheckMediusError(MediusSetGameListFilter(&req, cbSetGameListFilter));
 }
 
+/* a game of the current room by name: password protected (SOCOM 1's; OVL1 0x2F8DD0: the UI's
+ * GameHasPassword asks it outside the LAN lobby) */
+bool CZOnlineLobby::GameIsPasswordProtected(const char *name)
+{
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(uiv_LobbyWorldNameVar));
+
+    if (room) {
+        RoomGame *game = room->FindGame(name);
+
+        if (game && (game->m_info.m_flags & 1))
+            return true;
+    }
+    return false;
+}
+
+/* and its spectators' password set (SOCOM II's, named after the UI command 'GameHasSpectatorPassword'
+ * that calls it on theLobby; OVL1 0x2F8D50) */
+bool CZOnlineLobby::GameHasSpectatorPassword(const char *name)
+{
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(uiv_LobbyWorldNameVar));
+
+    if (room) {
+        RoomGame *game = room->FindGame(name);
+
+        if (game && (game->m_info.m_flags & 4))
+            return true;
+    }
+    return false;
+}
+
+unsigned char GetClanTeamSide();   /* our clan game's side (the clan unit's; read unsigned here) */
+
+/* a change of side allowed: not on a clan game's sides 1, 2 or 4 (SOCOM II's, named after the UI
+ * command 'IsSwitchTeamsOK' that calls it on theLobby; OVL1 0x2F8CE0) */
+bool CZOnlineLobby::IsSwitchTeamsOK()
+{
+    if (GetClanTeamSide() == 1 || GetClanTeamSide() == 2 || GetClanTeamSide() == 4)
+        return false;
+    return true;
+}
+
+/* a clan game closed to us: its team one we may not join (SOCOM II's, named after the UI command
+ * 'ClanGameClosed' that calls it on theLobby; OVL1 0x2F8C60) */
+bool CZOnlineLobby::ClanGameClosed(const char *name)
+{
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(uiv_LobbyWorldNameVar));
+
+    if (room) {
+        RoomGame *game = room->FindGame(name);
+
+        if (game && !IsClanTeamAllowed(game->m_info.m_3c))
+            return true;
+    }
+    return false;
+}
+
+/* a game refusing our rank's tier (SOCOM II's, named after the UI command 'GameRejectsRank' that
+ * calls it on theLobby; OVL1 0x2F8BC0) */
+bool CZOnlineLobby::GameRejectsRank(const char *name)
+{
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(uiv_LobbyWorldNameVar));
+
+    if (room) {
+        RoomGame *game = room->FindGame(name);
+
+        if (game && !game->AllowsType(GetRankTier(-1)))
+            return true;
+    }
+    return false;
+}
+
 void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27F810, SOCOM 1's) */
 
 extern "C" {
 int sprintf(char *s, const char *format, ...);
-int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (above, unwritten) */
-bool func_002E34D0(RoomGame *game);   /* the game's friendly fire (its 0x30 flags' bit 0; the room unit's) */
-bool func_002E33D0(RoomGame *game);   /* and its respawns (bit 1) */
 }
 
 /* the random game asked for: the candidates let go, the game list's filter dropped -- its callback
@@ -985,13 +1116,13 @@ bool CZOnlineLobby::JoinGame(const char *name)
     if (game) {
         if (!game->HasMissions())
             return false;
-        if (func_002F6D00(&theLobby) && !game->m_maxSpectators)
+        if (theLobby.JoinAsSpectator() && !game->m_maxSpectators)
             return true;
         CValve::Create("mp_game_sort_order", VALVE_TYPE_1)->SetValue(game->m_19f[1]);
         CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(game->m_info.m_maxPlayers);
         CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(game->m_maxSpectators);
-        CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(func_002E34D0(game));
-        CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(func_002E33D0(game));
+        CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(game->IsFriendlyFire());
+        CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(game->IsRespawnAllowed());
         CValve::Create("EQlimit", VALVE_TYPE_1)->SetValue(game->m_19f[0]);
         CValve::Create("mp_max_rounds", VALVE_TYPE_1)->SetValue(game->m_19a[1]);
         CValve::Create("mp_max_round_time", VALVE_TYPE_1)->SetValue(game->m_19a[2] * 60);
@@ -1055,6 +1186,20 @@ bool CZOnlineLobby::JoinGame(const char *name)
         ChangeState(CREATE_NEW_GAME);
     }
     return true;
+}
+
+extern "C" {
+extern unsigned char data_0066A5F8;   /* the details to go at once (the chat unit's) */
+void func_002A9EE0(CMissionLobby *mission, CNetGameLobby *game);   /* the local game's state sent (the states lane's) */
+}
+
+/* our details to go at once, and the game's state sent when we host one (SOCOM 1's, which only set
+ * the flag; OVL1 0x2F8350) */
+void CZOnlineLobby::ForceStatusReport()
+{
+    data_0066A5F8 = 1;
+    if (theNetwork.m_bNetwork && theNetwork.m_bSessionMaster)
+        func_002A9EE0(&theMission, theMission.m_pNetGame);
 }
 
 /* the mission sequence handed out: its index and the 32 missions (SOCOM 1's 12; OVL1 0x2F82E0) */
@@ -1373,6 +1518,23 @@ extern CRdrEditor *data_0044FA70;
 extern CRdrEditor *data_0044FA78;
 extern CRdrEditor *data_0044FA80;
 void func_002F7020(int, int, int, MediusGetGamePlayersResponse *);   /* the players shown */
+
+/* the three lists' editors deleted (SOCOM II's; OVL1 0x2F7690: a lobby state handler calls it) */
+void func_002F7690()
+{
+    if (data_0044FA70) {
+        delete data_0044FA70;
+        data_0044FA70 = 0;
+    }
+    if (data_0044FA78) {
+        delete data_0044FA78;
+        data_0044FA78 = 0;
+    }
+    if (data_0044FA80) {
+        delete data_0044FA80;
+        data_0044FA80 = 0;
+    }
+}
 }
 
 extern "C" {
@@ -1575,3 +1737,23 @@ void CountGamePlayers()
             data_0044FA88 = 1;
     }
 }
+
+extern "C" {
+extern CValve *data_0044FA90;   /* the 'JoinAsSpectator' valve, looked up once (the unit's bss) */
+extern unsigned char data_004413D8;   /* (a flag joining as a spectator too) */
+}
+
+/* we join games as a spectator: the 'JoinAsSpectator' valve on, or 0x4413D8 set (SOCOM II's, the
+ * name ours after the valve; OVL1 0x2F6D00: JoinGame calls it out of line, pinned) */
+#pragma auto_inline off
+bool CZOnlineLobby::JoinAsSpectator()
+{
+    bool spectate = false;
+
+    if (!data_0044FA90)
+        data_0044FA90 = CValve::GetByName("JoinAsSpectator");
+    if (data_0044FA90)
+        spectate = data_0044FA90->m_value != 0;
+    return spectate | data_004413D8;
+}
+#pragma auto_inline reset

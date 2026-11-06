@@ -543,6 +543,52 @@ void UpdateLadderBestDisplay()
     theLobby.uiv_MediusLadderTop10->Set(&ed);
 }
 
+/* the lists' bounds for the menus' paging (SOCOM II's, the names ours; OVL1 0x2EB760-0x2EB79F:
+ * UIGetLadderInfo calls them on theLobby): the player ladder's first position (the 'TheRest' page's
+ * start) and its count of rankings, the clan ladder's alike */
+int CZOnlineLobby::GetLadderStart()
+{
+    return LadderLeaders.m_c;
+}
+
+int CZOnlineLobby::GetClanLadderStart()
+{
+    return ClanLadderRanking.m_10;
+}
+
+int CZOnlineLobby::GetLadderTotal()
+{
+    return LadderLeaders.m_10;
+}
+
+int CZOnlineLobby::GetClanLadderTotal()
+{
+    return ClanLadderRanking.m_lowest;
+}
+
+extern "C" {
+/* a player ladder page's entry kept -- 'TheRest' (the list around us: the request over at its end,
+ * the list shown) or 'TheBest' (the leaders, shown at its end); a failure ends the request (SOCOM
+ * II's; OVL1 0x2EB6A0: GetLadderList's and GetLadderBest's callback) */
+void func_002EB6A0(int, int, int, MediusLadderListResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetLadderInfo", resp->StatusCode)) {
+        if (!strcasecmp(resp->MessageID, "TheRest")) {
+            LadderLeaders.Add(resp);
+            if (resp->EndOfList) {
+                data_0044F878 = 0;
+                UpdateLadderListDisplay();
+            }
+        } else if (!strcasecmp(resp->MessageID, "TheBest")) {
+            LadderRanking.Add(resp);
+            if (resp->EndOfList)
+                UpdateLadderBestDisplay();
+        }
+    } else
+        data_0044F878 = 0;
+}
+}
+
 /* the player ladder's best n asked for (SOCOM II's; OVL1 0x2EB610; the name ours) */
 void CZOnlineLobby::GetLadderBest(int n)
 {

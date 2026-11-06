@@ -52,20 +52,7 @@ public:
     unsigned short m_flags;   // 0x6
 };
 
-/* a network address as the DME builds it (16 bytes) */
-struct LANAddress {
-    unsigned char m_bytes[16];
-};
-
-/* a game another console announced (SOCOM II's LANGame : TransientGame : RoomGame, 0x1D8 bytes:
- * its address and port after the room game; its constructor 0x2E1CE0, the room unit's) */
-class LANGame : public RoomGame {
-public:
-    LANGame(LANAddress *addr, int port);
-
-    LANAddress m_addr;   // 0x1c4
-    int m_port;   // 0x1d4
-};   // 0x1d8
+/* LANAddress and LANGame are zonline.h's (the room unit builds the game: its constructor 0x2E1CE0) */
 
 /* the LAN lobby is zonline.h's CZLANLobby (data_0044FE10) */
 /* its room: the unit's one dynamically initialised static, built empty and its destructor
@@ -292,9 +279,6 @@ void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27
 
 extern "C" {
 int sprintf(char *s, const char *format, ...);
-int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (the lobby unit's) */
-bool func_002E34D0(RoomGame *game);   /* the game's friendly fire (the room unit's) */
-bool func_002E33D0(RoomGame *game);   /* and its respawns */
 extern CUIVariable *data_0044F434;   /* the game's name as the menus show it */
 }
 
@@ -314,12 +298,12 @@ bool CZLANLobby::JoinGame(const char *name)
         if (game) {
             CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(game->m_info.m_maxPlayers);
             CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(game->m_maxSpectators);
-            CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(func_002E34D0(game));
-            CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(func_002E33D0(game));
+            CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(game->IsFriendlyFire());
+            CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(game->IsRespawnAllowed());
             CValve::Create("EQlimit", VALVE_TYPE_1)->SetValue(game->m_19f[0]);
             CValve::Create("mp_max_rounds", VALVE_TYPE_1)->SetValue(game->m_19a[1]);
             CValve::Create("mp_max_round_time", VALVE_TYPE_1)->SetValue(game->m_19a[2]);
-            if (func_002F6D00(&theLobby) && !game->m_maxSpectators)
+            if (theLobby.JoinAsSpectator() && !game->m_maxSpectators)
                 return true;
             data_0066A924 = 1;
             data_0066A8F0 = 2;

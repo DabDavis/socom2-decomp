@@ -3,7 +3,15 @@
  * layer but its first. They sit after vehicle_rdr.cpp and the map walkers, after the look and
  * cover searches (0x539EB0-0x53A72F, SOCOM 1's FindLookLoc stretch) with no template tail between,
  * so they may be that unit's; the pod vector's resize and erase (0x53AA50, 0x53AAC0) follow them.
- * Defined here in reverse of the image's order (-inline deferred). */
+ * Defined here in reverse of the image's order (-inline deferred).
+ * THE POD RESIZE 0x53AA50 (the AI core round 35, build/scratch/ai/podres*.cpp, v_podres*.py,
+ * v_vecorder*.py): no function of this unit calls it (the SEAL body's constructor 0x553EA0 and
+ * 0x5E3FF0 do), so its caller here was dead-stripped, as ABSENT.txt's Shutdown and Clear were.
+ * include/vector's resize(n, c) compiles to it byte-exact in a unit that does not also instantiate
+ * the range erase; beside DeleteLayers' erase, a caller written here (first or last in the file)
+ * gets a resize with that erase inlined (0x94) -- MW instantiates erase first, where the image has
+ * resize first, calling erase. Moving resize's declaration, its definition or both ahead of erase's
+ * in include/vector (a probe) leaves erase first and 0x94: not applied */
 
 #include <string.h>
 

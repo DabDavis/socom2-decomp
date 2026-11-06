@@ -405,7 +405,21 @@ struct AcctRecord {
      * @4476, the end pointer (data_ + size_ * 0x1318, copy_backward's cursor merged with e.m_p): the
      * README's second population ("placement new CALLED": the end numbered before m), which the
      * object form cost -- a header shape that numbers the end before m here and after it in the
-     * first population is still the open (include/vector's comment) */
+     * first population is still the open (include/vector's comment).
+     * The online lane's round 27 (build/scratch/onl/v_acct.py, untracked): the pre-1b7b5c83 body (the
+     * end a declared pointer, `T *e = data_ + size_` in both branches) as an EXPLICIT SPECIALIZATION of
+     * this insert is byte-exact but for its temporary's destructor -- the specialization is an own
+     * function (generated at its definition's place in the reverse order, ahead of the tail), so MW
+     * calls the deleter's out-of-class destructor with -1 where the target inlines it and calls clear
+     * 0x2FFFA0 inside; adding an explicit specialization of ~__vector_deleter<AcctRecord> (`clear();`
+     * then the delete) makes the insert AND reserve 0x2FECB0 byte-exact, but an ordinary function is
+     * inlined into every caller whatever its place in the unit, so ~vector<AcctRecord> 0x2FD070 and
+     * ~CAcctDB 0x2FAFC0 (both call it in the target) are lost; a four-high inline chain inside it
+     * (`AcctFree4` ... `AcctFree1`) cuts it in ~vector at level 5 (byte-exact) but cuts ~CAcctDB a
+     * level higher (it calls ~__vector_imp: 0xB8 against 0xC0) -- 64 of 66 against today's 64, not
+     * adopted; a layout-identical temporary with an inline destructor moves the swap's addresses out
+     * of their saved registers (worse). So the pointer end IS the target's numbering in an own
+     * function's context too: what is left is a header shape, not this unit's */
     AcctRecord() {}
 
     /* the missions with a name, the entries a blob of them holds */
