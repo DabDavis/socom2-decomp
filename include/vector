@@ -117,7 +117,13 @@ namespace std {
 template <class Allocator>
 class __vector_capacity {
 public:
+#ifdef __MSL_POD_DTOR_ARGS
+    /* the pair's levels (the opt-in's comment at the head of the 1-byte pod below): a class vector's copy eight high at level 7 */
+    void __zero() { n_ = 0; }
+    __vector_capacity() { __zero(); }
+#else
     __vector_capacity() { n_ = 0; }
+#endif
     operator unsigned int() const { return n_; }
     /* the pair's swap (SOCOM 1's compressed_pair_imp::swap, msl_utility lines 859-860) */
     void swap(__vector_capacity &x) { std::swap(n_, x.n_); }
@@ -143,6 +149,11 @@ public:
     /* the allocator, folded into the capacity pair at offset 0 (SOCOM 1's alloc__...__vector_deleter
      * <...>CFv, 0x238180; SOCOM II's 0x35D4E0, `jr ra; move v0,a0`) */
     const Allocator &alloc() const { return *(const Allocator *)&capacity_; }
+#ifdef __MSL_POD_DTOR_ARGS
+    /* the destructor's two accessors, as the pods' (the opt-in's comment at the head of the 1-byte pod below) */
+    Allocator &alloc() { return *(Allocator *)&capacity_; }
+    unsigned int &cap() { return capacity_.n_; }
+#endif
     /* clear declared ahead of the destructor: both are defined after the class (see there), and
      * MW emits a unit's out-of-class template members in their declaration order -- clear first
      * wherever both are generated in the same round */
@@ -242,8 +253,13 @@ template <class T, class Allocator>
 __vector_deleter<T, Allocator>::~__vector_deleter()
 {
     clear();
+#ifdef __MSL_POD_DTOR_ARGS
+    if (data_)
+        alloc().deallocate(data_, cap());
+#else
     if (data_)
         operator delete(data_);
+#endif
 }
 
 /* The pods. The PRIMARY template is the byte pod (defined after this one, below): every one-byte

@@ -6,6 +6,7 @@
  * table readers and every table's resize, insert and erase. Still unwritten: the layer reader
  * (0x51B150). */
 
+#define __MSL_POD_DTOR_ARGS
 #include "ai.h"
 #include "../gamez/zrdr/zrdr.h"
 #include "../gamez/zutil/zutil.h"
@@ -37,14 +38,10 @@
  * (build/scratch/ai/v_rsz36.py): the raw end (0x98), the element built first into a named local
  * (0x94), the count in a local (6), the size field in the count (0xA0) -- only the named iterator
  * matches
- * OPEN, the routes' and the lines' (0x51C230, 0x51C070; called as members since round 18, which
- * emits them, their insert and erase here -- every one of those copies misses, so the count is
- * unchanged): the target inlines the element's two- and one-CAiMapLocVec constructor whole, six
- * levels with include/vector's chain -- one more level-6 candidate (this build calls CAiMapLocVec()
- * and CAiMapLoc() out of line, 0xAC and 0x13C against 0x144 and 0x11C); the line's temporary's bits
- * are line_data()'s, ai.h. The lines' erase 0x51CB40 (0x128 vs 0x188) and insert 0x51CCF0 (0x440 vs
- * 0x4B8) call the element's copy and __copy out of line where the target inlines them: the class
- * inserts' question (the MSL lane's) */
+ * The routes' and the lines' (0x51C230, 0x51C070; called as members since round 18, which emits
+ * them, their insert and erase here), byte-exact since the MSL headers' round 40 (the level at this
+ * file's end): the target inlines the element's two- and one-CAiMapLocVec constructor whole; the
+ * line's temporary's bits are line_data()'s, the route's flags cleared by route(), ai.h. */
 
 /* the device (above): include/vector's resize for the readers, the end iterator named */
 namespace std {
@@ -567,8 +564,25 @@ bool CAiMap::read_readers(CFileIO &f)
 
 #pragma auto_inline reset
 
+/* the routes' and the lines' inserts' end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the
+ * AI core's round 37) */
+namespace std {
+template <>
+struct __insert_end_pointer<CAiMap::route> {
+    enum { value = 1 };
+};
+template <>
+struct __insert_end_pointer<CAiMap::line> {
+    enum { value = 1 };
+};
+}
+
 /* A "Level 6, or 8?" witness, marked as such, as util_loc.cpp's (README): at the unit's end this generates the
- * template tail one inline level deeper, and resize<line> 0x51C070 (0x144), whose element's constructor sits six
- * levels down, is byte-exact with nothing else in ai/ or zchar/ moved (the AI core's round 37 measured it; the
- * integrator applied it). It stands for whatever the original's level really was. */
-#pragma inline_depth(6)
+ * template tail at a deeper inline level, and resize<line> 0x51C070 (0x144), whose element's constructor sits six
+ * levels down, is byte-exact with nothing else in ai/ or zchar/ moved (the AI core's round 37 measured it at 6; the
+ * integrator applied it). THE MSL HEADERS ROUND 40: at 7, with `__MSL_POD_DTOR_ARGS` (include/vector, this file's head),
+ * the lines' erase 0x51CB40 cuts the class deleter's two accessors (0x51CCD0, 0x51CCE0) at its leaves, the routes' erase
+ * 0x51DBA0 inlines its destructors, and an element's copy is too tall for construct(), so both inserts call it out of
+ * line as the target does (0x51CCF0 through 0x51D1B0, 0x51DD50 through 0x51E2C0). It stands for whatever the original's
+ * level really was. */
+#pragma inline_depth(7)
