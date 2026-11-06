@@ -1837,7 +1837,7 @@ extern "C" CZBodyAnimBlend *func_0057F880(CZSealBody *seal)
 /* the blends popped down to a count, twelve at most; when that worked and when asked, the top
  * blend's control cleared and the SEAL asked to go prone (OVL2 0x58A5E0, new in SOCOM II: 0x57F310
  * with the count and the flag its arguments) */
-void CZSealBody::ClearStack(unsigned int count, bool prone)
+CZBodyAnimBlend *CZSealBody::ClearStack(unsigned int count, bool prone)
 {
     CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
     int n = 12;
@@ -1846,12 +1846,13 @@ void CZSealBody::ClearStack(unsigned int count, bool prone)
     while (BlendCount(stack) > count && n > 0)
         b = PopBlend(), n--;
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
-    else if (prone) {
+        return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    if (prone) {
         if (b)
             b->m_ctrl = 0;
         m_desiredStance = STANCE_PRONE;
     }
+    return b;
 }
 
 /* whether a SEAL this console plays, out of the anim of 0x3DEAE0 and neither its state nor its top
@@ -1877,7 +1878,8 @@ extern "C" bool func_0057F7D0(CZSealBody *seal)
  * tests, a result local. Round 53 (build/scratch/seal-r53/v_f530*.py): the test through an inline
  * `return IsCurrentBlend(45) ? true : false;` gives the target's LAYOUT (bnez to the call, the false
  * block after it) but adds the bool's `andi` and drops the label's pad (5); an if-form IsRemote, an
- * if-set inline, nested ifs, a goto and `bool r` returns are worse (7-0x94). */
+ * if-set inline, nested ifs, a goto and `bool r` returns are worse (7-0x94). Round 55: `!= true` and a
+ * switch on the test (either case) are worse (0x80, 0x90; build/scratch/seal-r55/v_f530.py). */
 extern "C" bool func_0057F530(CZSealBody *seal)
 {
     if (seal->IsRemote())
@@ -2325,6 +2327,126 @@ CZBodyAnimBlend *CZSealBody::InStateClimbLadder()
     return b;
 }
 
+/* carried: the throttles' quadrant updated; stopped without turning, the blends popped down to one
+ * (twelve at most) and the top made whole at the move's rate; stopped and turning, the carried step
+ * pushed (state 10) unless on top, the moving flag cleared and the turning set, and the turn
+ * controlled; moving, the carried walk pushed unless on top or the throttle is still, the flags the
+ * other way round and the top made whole at the move's rate (OVL2 0x583AF0: SOCOM 1's InStateCarried,
+ * the same body, its three throttles read at 0x240, 0x244 and 0x23C; the pops twelve at most). Each
+ * push's pops are ClearStack(2, true) inlined -- the carry keeps two blends, as SOCOM 1's (`sltiu at,v1,3`)
+ * -- the first arm's top ClearStack's result: its early return for the twelve spent keeps the inline's
+ * blend in v0 (one result variable for both arms makes MW keep it in top's saved register, a fourth).
+ * Byte-exact (round 55, unwritten before): the two playbacks' product is `x * (float)rep->m_anim->m_1c`
+ * -- the target loads the move throttle (a stack copy: UpdateQuadrant takes its address) into $f0, the
+ * script's rate into $f1, and multiplies x first. MW numbers a product's heavier operand first and
+ * emits the lighter first: the stack copy weighs as much as the two loads (a tie, left first), and the
+ * cast -- a node of its own, no code -- makes the rate the heavier. `x * rep->m_anim->m_1c` takes the
+ * registers the other way round (6 off), `rep->m_anim->m_1c * x` multiplies the rate first (2); a
+ * by-value or const-reference inline, a local anim or rate, `+x`, `*&x`, a pointer cast alone, a product
+ * temporary and `r *= m` all give the 6 */
+extern "C" float data_003F3420;
+
+/* carrying: InStateCarried's, the carry's step pushed in state 9 with the foot kept (32 for a foot in
+ * 17-47, else 2) and its walk, the first arm the top taken again after the pops and only made whole,
+ * both flags cleared (OVL2 0x583E70: SOCOM 1's InStateCarrying, the same body, its throttles read at
+ * 0x240, 0x244 and 0x23C). Byte-exact (round 55, unwritten before): InStateCarried's product (below);
+ * the foot asked of the first top through a second variable (the target passes the call's v0,
+ * `top->ThisFoot()` passes top's s1) */
+CZBodyAnimBlend *CZSealBody::InStateCarrying()
+{
+    float x = m_240;
+    float z = m_244;
+    float t = m_23c;
+
+    UpdateQuadrant(z, x, true);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    CZBodyAnimBlend *top = b;
+    int foot = b->ThisFoot();
+
+    if (IsStopped(x, z, t)) {
+        static float zero_t = 0.0f;
+
+        if (_close_enough(t, zero_t, data_003F3420)) {
+            ClearStack(2, true);
+            top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+            top->SetRepresentativeWt(1.0f);
+            SetIsMoving(false);
+            SetIsTurning(false);
+        } else {
+            if (!IsCurrentBlend((AnimType)AnimTypes::BuddyCarryStep)) {
+                ClearStack(2, true);
+                func_00588BC0(this, (AnimType)AnimTypes::BuddyCarryStep, stateCarrying, 0, 0);
+                short last;
+
+                if (foot >= 17 && foot < 48)
+                    last = 32;
+                else
+                    last = 2;
+                m_last_foot = last;
+            }
+            SetIsMoving(false);
+            SetIsTurning(true);
+            top = TurnControl(t);
+        }
+    } else {
+        if (x != 0.0f && !IsCurrentBlend((AnimType)AnimTypes::BuddyCarryWalk)) {
+            ClearStack(2, true);
+            top = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::BuddyCarryWalk, stateCarrying,
+                                                   0, 0);
+        }
+        SetIsMoving(true);
+        SetIsTurning(false);
+        top->SetRepresentativeWt(1.0f);
+        ACTIVE_ANIM *rep = top->Representative();
+
+        rep->SetPlayback(x * (float)rep->m_anim->m_1c);
+    }
+    return top;
+}
+
+CZBodyAnimBlend *CZSealBody::InStateCarried()
+{
+    float x = m_240;
+    float z = m_244;
+    float t = m_23c;
+
+    UpdateQuadrant(z, x, true);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (IsStopped(x, z, t)) {
+        static float zero_t = 0.0f;
+
+        if (_close_enough(t, zero_t, data_003F3420)) {
+            top = ClearStack(2, true);
+            top->SetRepresentativeWt(1.0f);
+            ACTIVE_ANIM *rep = top->Representative();
+
+            rep->SetPlayback(x * (float)rep->m_anim->m_1c);
+        } else {
+            if (!IsCurrentBlend((AnimType)AnimTypes::BuddyCarriedStep)) {
+                ClearStack(2, true);
+                func_00588BC0(this, (AnimType)AnimTypes::BuddyCarriedStep, stateCarried, 0, 0);
+            }
+            SetIsMoving(false);
+            SetIsTurning(true);
+            top = TurnControl(t);
+        }
+    } else {
+        if (x != 0.0f && !IsCurrentBlend((AnimType)AnimTypes::BuddyCarriedWalk)) {
+            ClearStack(2, true);
+            top = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::BuddyCarriedWalk, stateCarried,
+                                                   0, 0);
+        }
+        SetIsMoving(true);
+        SetIsTurning(false);
+        top->SetRepresentativeWt(1.0f);
+        ACTIVE_ANIM *rep = top->Representative();
+
+        rep->SetPlayback(x * (float)rep->m_anim->m_1c);
+    }
+    return top;
+}
+
 extern "C" float fabsf(float x);
 
 /* the top blend turned: its weight made 1 and its playback set from the turn, doubled and negated,
@@ -2560,6 +2682,205 @@ extern "C" void func_00585FF0(CZSealBody *seal)
             func_002707C0(seal->m_538, false);
         seal->m_538 = 0;
         CZWeapon::ClearTimer(0);
+    }
+}
+
+/* the SEAL on its turret, while anim 1 plays: the turret's -z through its matrix, the pitch read off it
+ * (the angle out of the ground plane, negative looking down) and the top blend set to two thirds of
+ * its fraction (0.5 less the angle over a quarter turn, kept within 0 and 1), the turn rate zeroed, the
+ * SEAL turned to the facing laid flat (half a turn round y when it points straight back: the Align
+ * would divide by zero) and the gunner's place, (-3.257, 0, 4.282) turned with it, put beside the
+ * turret; the top blend returned either way, at once with no turret (OVL2 0x585CD0, new in SOCOM II,
+ * between UpdateQuadrant and StandTurning: 0x57A330 calls it; the name ours) */
+extern "C" CZBodyAnimBlend *func_00585CD0(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+    if (seal->IsCurrentBlend((AnimType)1)) {
+        CEntity *e = seal->m_eb8;
+
+        if (!e)
+            return top;
+        const CMatrix *m = e->GetPosW();
+        CPnt3D dir = CPnt3D::unit_nz;
+
+        TransformVectors(m, &dir, &dir, 1);
+        float c = sqrtf(dir.x * dir.x + dir.z * dir.z);
+        float a;
+
+        if (c >= 1.0f)
+            a = 0.0f;
+        else if (c <= -1.0f)
+            a = 3.1415927f;
+        else
+            a = acosf(c);
+        if (dir.y < 0.0f)
+            a = -a;
+        float f = 0.5f + -0.63661975f * a;
+
+        if (f < 0.0f)
+            f = 0.0f;
+        else if (!(f <= 1.0f))
+            f = 1.0f;
+        top->m_tfrac = 2.0f * f / 3.0f;
+        CPnt3D seat(-3.257f, 0.0f, 4.282f);
+
+        seal->m_velR = CPnt3D::zero;
+        dir.y = 0.0f;
+        dir.Normalize();
+        CPnt3D sum = dir;
+
+        sum.Add(&CPnt3D::unit_nz, &sum);
+        if (Dot(sum, sum) < 1e-6f) {
+            seal->m_quat.vec = CPnt3D::unit_y;
+            seal->m_quat.w = 0.0f;
+        } else
+            seal->m_quat.Align(CPnt3D::unit_nz, dir);
+        CPnt3D pos;
+
+        seal->m_quat.Apply(&seat, &pos, 1);
+        pos.Add(&seal->m_eb8->m_posW, &seal->m_gunner_pos);
+    }
+    return top;
+}
+
+/* the move's quadrant from two throttles (a ahead, b to the side): none when both are still; else the
+ * last kept, and a throttle that outweighs the other (the other's share at most 0.839) names its axis --
+ * 1 or 3 by b's sign, 0 or 2 by a's -- the throttles snapped onto it when asked; a diagonal picks between
+ * its two axes by the last quadrant, and the snap puts the throttles on the one picked (OVL2 0x5858A0:
+ * SOCOM 1's UpdateQuadrant, the same body). Byte-exact (round 55, unwritten before): the still test as
+ * `!a && !b` (`c.eq.s a, 0`; `a == 0.0f` puts the zero first, as `b != 0.0f` below does) */
+void CZSealBody::UpdateQuadrant(float &a, float &b, bool snap)
+{
+    if (!a && !b) {
+        m_quadrant = -1;
+        return;
+    }
+    m_lastquadrant = m_quadrant;
+    if (b != 0.0f && fabsf(a / b) <= 0.839f) {
+        if (b > 0.0f) {
+            m_quadrant = 1;
+            if (snap) {
+                a = 0.0f;
+                b = 1.0f;
+            }
+        } else {
+            m_quadrant = 3;
+            if (snap) {
+                a = 0.0f;
+                b = -1.0f;
+            }
+        }
+        return;
+    }
+    if (a != 0.0f && fabsf(b / a) <= 0.839f) {
+        if (a > 0.0f) {
+            m_quadrant = 0;
+            if (snap) {
+                a = 1.0f;
+                b = 0.0f;
+            }
+        } else {
+            m_quadrant = 2;
+            if (snap) {
+                a = -1.0f;
+                b = 0.0f;
+            }
+        }
+        return;
+    }
+    if (a > 0.0f && b > 0.0f) {
+        switch (m_lastquadrant) {
+        case 0:
+            m_quadrant = 0;
+            break;
+        case 1:
+            m_quadrant = 1;
+            break;
+        case 2:
+            m_quadrant = 1;
+            break;
+        case 3:
+            m_quadrant = 0;
+            break;
+        default:
+            m_quadrant = 1;
+            break;
+        }
+    } else if (a < 0.0f && b > 0.0f) {
+        switch (m_lastquadrant) {
+        case 0:
+            m_quadrant = 1;
+            break;
+        case 1:
+            m_quadrant = 1;
+            break;
+        case 2:
+            m_quadrant = 2;
+            break;
+        case 3:
+            m_quadrant = 2;
+            break;
+        default:
+            m_quadrant = 1;
+            break;
+        }
+    } else if (a < 0.0f && b < 0.0f) {
+        switch (m_lastquadrant) {
+        case 0:
+            m_quadrant = 3;
+            break;
+        case 1:
+            m_quadrant = 2;
+            break;
+        case 2:
+            m_quadrant = 2;
+            break;
+        case 3:
+            m_quadrant = 3;
+            break;
+        default:
+            m_quadrant = 3;
+            break;
+        }
+    } else {
+        switch (m_lastquadrant) {
+        case 0:
+            m_quadrant = 0;
+            break;
+        case 1:
+            m_quadrant = 0;
+            break;
+        case 2:
+            m_quadrant = 3;
+            break;
+        case 3:
+            m_quadrant = 3;
+            break;
+        default:
+            m_quadrant = 3;
+            break;
+        }
+    }
+    if (snap) {
+        switch (m_quadrant) {
+        case 0:
+            a = 1.0f;
+            b = 0.0f;
+            break;
+        case 1:
+            a = 0.0f;
+            b = 1.0f;
+            break;
+        case 2:
+            a = -1.0f;
+            b = 0.0f;
+            break;
+        case 3:
+            a = 0.0f;
+            b = -1.0f;
+            break;
+        }
     }
 }
 

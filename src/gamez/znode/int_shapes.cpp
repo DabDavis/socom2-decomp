@@ -11,17 +11,28 @@
  * unit's name is ours. Written so far: the shapes' constructors and destructors,
  * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
  * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
- * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open). Unwritten, in
- * image order: SetCDIBBox and CDIBBox::GetIntersect -- VU0 code throughout; CDIPoly::GetAltitude
- * (0x2DD8E0) written in round 14.
+ * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open);
+ * CDIPoly::GetAltitude (0x2DD8E0) and CDIBBox::GetIntersect in round 14, SetCDIBBox in round 24
+ * (open, registers only) with its two statics, SOCOM 1's bbox_poly and initCDIBBoxOnce.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
+#include <string.h>
 
 /* the last polygon's normal, w zero (new in SOCOM II: SOCOM 1's SetEdgeVecsAndNorm stored it in
  * the DI itself; the name is ours). Built as (0, 1, 0, 0) by the unit's initialiser,
  * __sinit_int_shapes.cpp (0x401D80, byte-exact) */
 static CPnt4D diNorm(0.0f, 1.0f, 0.0f, 0.0f);
+
+namespace zdb {
+class CDI;
+}
+
+/* the unit box's six faces and the guard that builds them once (SOCOM 1's statics, its symbol
+ * table's names: bbox_poly, 0x18 bytes at 0x4D7900, and initCDIBBoxOnce in its small data; SOCOM
+ * II's at 0x44F2F0 and 0x44F308, after diNorm. SetCDIBBox stores and reads them, nothing else) */
+static zdb::CDI *bbox_poly[6];
+static bool initCDIBBoxOnce;
 
 /* a polygon point as a CPnt3D (its w ignored; ours) */
 inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }
@@ -422,6 +433,88 @@ void GetBBoxCorners(CPnt3D *out, const CBBox *b)
     PntSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
     PntSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
     out[7] = b->m_max;
+}
+
+/* a face of the unit box: a quad of four of its corners, its normal worked out (ours, inline: its
+ * tree is a level taller than the level -- SetEdgeVecsAndNorm's is five high -- so only its body is
+ * inlined and SetEdgeVecsAndNorm is called, as in the target, where written in place MW inlines it;
+ * the DI type stored straight, as the target's inline bit-field store, since SetDiType here would be
+ * called too) */
+inline void SetFace(CDI *poly, const CPnt3D *a, const CPnt3D *b, const CPnt3D *c, const CPnt3D *d)
+{
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], a, 12);
+    memcpy(&poly->m_pnts[1], b, 12);
+    memcpy(&poly->m_pnts[2], c, 12);
+    memcpy(&poly->m_pnts[3], d, 12);
+    poly->SetEdgeVecsAndNorm();
+}
+
+/* a box's eight corners as a member array (ours -- the device of zparticle_source.cpp's FaceCorners
+ * and node_model.cpp's BoxCorners: the target builds the corners through CPnt3D()'s out-of-line copy
+ * 0x1FB3C0 in a loop, which a member array built by a constructor MW cannot expand whole gives; a
+ * local array leaves no construction at all) */
+struct UnitBoxCorners {
+    UnitBoxCorners(const CBBox *box) { GetBBoxCorners(m_pts, box); }
+
+    CPnt3D m_pts[8];
+};
+
+/* the unit box's six faces, built once behind a guard (SOCOM 1's static, its symbol table's
+ * zdb::CDIBBox::SetCDIBBox() at 0x21C7F0, 0xD1C bytes there: SOCOM 1's built the corners from
+ * CPnt3D(f, f, f)s and each normal from two Subs and a Cross in place, SOCOM II's through
+ * GetBBoxCorners and SetEdgeVecsAndNorm): the box -0.5..0.5, its corners, and a quad newed into
+ * bbox_poly for each face -- 7654, 0374, 2673, 5621, 4510 and 0123 -- each read back from the
+ * array into one local (the target's s0 for all six, stored then reloaded).
+ * OPEN, 32 instructions (unwritten before round 24; the target's size, 0x52C, its frame, every call
+ * and every instruction but registers; build/scratch/core/v_sb*.py): the eight corner addresses'
+ * saved registers -- the target gives c7, c6, c5, c4, c0, c3, c2, c1 s1, s2, s6, s7, s3, s5, s4,
+ * s1, ours s5, s3, s1, s4, s7, s2, s6, s3 (igreplay --target: those eight nodes alone differ; no
+ * single renumbering of one gives the target's, the eight together are past any search budget).
+ * The first corner's address is a common subexpression in the target (s3 from face 2 on), but
+ * `&c.m_pts[0]` is the object's own address, which MW never holds -- 0x518 in every spelling (a
+ * local array, a member array, `c.m_pts + 0`, `&*c.m_pts`, by index through a member, by reference,
+ * as PNT3D *, void * or float *) -- and only the no-op integer conversion below makes it a temporary
+ * (a 4-byte member ahead of the array does too, but moves the frame 16 bytes: v_sb5.py). Settled on
+ * the way: the poly one named local (s0 throughout; SetFace handed bbox_poly[k] straight gives each
+ * face its own register), the guard a bool (li 1), the box built field by field before the corners
+ * (the target's stores ahead of the loop) */
+void CDIBBox::SetCDIBBox()
+{
+    if (initCDIBBoxOnce)
+        return;
+    initCDIBBoxOnce = true;
+
+    CBBox box;
+    CDI *poly;
+
+    box.m_min.x = -0.5f;
+    box.m_min.y = -0.5f;
+    box.m_min.z = -0.5f;
+    box.m_max.x = 0.5f;
+    box.m_max.y = 0.5f;
+    box.m_max.z = 0.5f;
+    UnitBoxCorners c(&box);
+
+    bbox_poly[0] = new CDIPoly;
+    poly = bbox_poly[0];
+    SetFace(poly, &c.m_pts[7], &c.m_pts[6], &c.m_pts[5], &c.m_pts[4]);
+    bbox_poly[1] = new CDIPoly;
+    poly = bbox_poly[1];
+    SetFace(poly, (CPnt3D *)(unsigned int)&c.m_pts[0], &c.m_pts[3], &c.m_pts[7], &c.m_pts[4]);
+    bbox_poly[2] = new CDIPoly;
+    poly = bbox_poly[2];
+    SetFace(poly, &c.m_pts[2], &c.m_pts[6], &c.m_pts[7], &c.m_pts[3]);
+    bbox_poly[3] = new CDIPoly;
+    poly = bbox_poly[3];
+    SetFace(poly, &c.m_pts[5], &c.m_pts[6], &c.m_pts[2], &c.m_pts[1]);
+    bbox_poly[4] = new CDIPoly;
+    poly = bbox_poly[4];
+    SetFace(poly, &c.m_pts[4], &c.m_pts[5], &c.m_pts[1], (CPnt3D *)(unsigned int)&c.m_pts[0]);
+    bbox_poly[5] = new CDIPoly;
+    poly = bbox_poly[5];
+    SetFace(poly, (CPnt3D *)(unsigned int)&c.m_pts[0], &c.m_pts[1], &c.m_pts[2], &c.m_pts[3]);
 }
 
 }

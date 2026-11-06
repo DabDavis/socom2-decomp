@@ -9967,7 +9967,7 @@
 0x005451A0 0x14 func_005451A0  # OVL2
 0x005451C0 0x14 func_005451C0  # OVL2
 0x005451E0 0x14 func_005451E0  # OVL2
-0x00545200 0x90 func_00545200  # OVL2
+0x00545200 0x90 Reset__10CSealStatsFv  # OVL2; by hand (the SEALs, round 55, the game states' round-50 lead, which took it for the constructor -- it returns nothing, no move v0,a0): SOCOM 1's Reset__10CSealStatsFv (0x24E8A0, every counter zeroed, between IncrTimesSeen and Kill as here: the eight Incr* counters 0x545100-0x5451E0 below, Kill 0x545290 above); SOCOM 1's CZSealBody constructor calls it twice and CMPExitState::Init once, as SOCOM II's constructor 0x553EA0 (its stats at 0x544 and 0x58C), SetRoundStatUiVars 0x1F21B0 and CMPExitState::UnInit 0x223390 do; seal.cpp
 0x00545290 0xF8 func_00545290  # OVL2
 0x00545390 0xE8 func_00545390  # OVL2
 0x00545480 0xA4 func_00545480  # OVL2
@@ -10667,7 +10667,7 @@
 0x00598000 0x218 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598220 0x60 __dt__9CSealCtrlFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00598280 0x5B8 __ct__9CSealCtrlFv  # OVL2; s1:calls (ftsCreateSeal's new of 0x5B8... constructs it where SOCOM 1's calls __ct__9CSealCtrlFv; ftsCreateSeal byte-exact with it) -- the states lane
-0x00598840 0x20 func_00598840  # OVL2
+0x00598840 0x20 SetEnabled__9CSealCtrlFb  # OVL2; by hand (the SEALs, round 55): seal_control.cpp's first definition (the integrator's lead: SOCOM 1 has nothing between CSealCtrl's constructor 0x288330 and DrawFunc<CDynGrenade> 0x2889A0, so new in SOCOM II) -- the controllers' switch, OVL1 data 0x3DF1B0, which CSealCtrl's PreTick, Tick and PostTick test first, written when it changes; CTStopAll::Tick 0x5CF800 calls it with the enable it passes CSealCtrlAi::SetAiEnabled, PlayCamera(CMissionCam *, bool) 0x228EE0 with false and CleanupCamera 0x229520 with true beside SetAiEnabled(false/true) -- a static, the name ours
 0x00598860 0x32C DrawFunc<11CDynGrenade>__2aiFQ22ai9LINE_TYPEffUi11CDynGrenade_v  # OVL2; s1:order by hand (the SEALs, round 54): SOCOM 1's DrawFunc<11CDynGrenade>__2aiFQ22ai9LINE_TYPEffUi11CDynGrenade 0x2889A0, seal_control.cpp's template tail right after the constructor in both builds (SOCOM II's 0x598840 between); the same body: the grenade's flight drawn from t0 to t1 in steps, the opacity blended; MW 3.0's return-type suffix
 0x00598B90 0x910 RemoteRespawn__10CZSealBodyFb  # OVL2; s1:order (seal_create.cpp's first function after the controller's unit, as SOCOM 1's); calls CZSealState::GetPackedWeaponData first, as SOCOM 1's; SOCOM 1's signature, unproven
 0x005994A0 0x1EC DoRespawn__10CZSealBodyFv  # OVL2; s1:order (after RemoteRespawn, before CreateRemoteSeal); SOCOM 1's signature, unproven
@@ -10861,7 +10861,7 @@
 0x005AE040 0x36C CalcGoalDir__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3Dffff  # OVL2; s1:callee by hand (SetEyeLookDir 0x5AE4B0 calls it with (this, &eyelook dir, &dir, &goal, four limits) where SOCOM 1's SetEyeLookDir calls CalcGoalDir__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3Dffff; after SetLookDir(CLook) in both builds) -- the SEAL lane, round 12
 0x005AE3B0 0x9C __ct__6CBlinkFv  # OVL2; s1:calls (SOCOM 1's __ct__6CBlinkFv: the look's constructor inlined, then the origin zeroed and the next blink 2 + 6 * a random fraction; CZSealBody's constructor calls it; seal_env.cpp)
 0x005AE450 0x5C __ct__5CLookFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order by hand (SOCOM 1's __ct__5CLookFv, the same 0x5C bytes: CSequence::Clear, the direction (0, 0, -1), the rate zeroed, done, the goal copied from the direction -- at SOCOM II's offsets; CZSealBody's constructor calls it twice; seal_env.cpp)
-0x005AE4B0 0x18C SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df  # OVL2; s1:order by hand (SOCOM 1's SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df, after CLook() in both builds; the same body: the eyeballs' Rendered tests, MakeXRot by the pitch's limit, MakeYRot, Mul, Apply, CalcGoalDir, SetDir with 1.5 * rate) -- the SEAL lane, round 12
+0x005AE4B0 0x18C SetEyeLookDir__10CZSealBodyFfff  # OVL2; s1:order by hand (SOCOM 1's SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df, after CLook() in both builds; the same body: the eyeballs' Rendered tests, MakeXRot by the pitch's limit, MakeYRot, Mul, Apply, CalcGoalDir, SetDir with 1.5 * rate) -- the SEAL lane, round 12; the signature corrected (the SEALs, round 55): SOCOM II's takes no direction -- its one caller, CLook::SetLookDir 0x5ADC70, sets no a1 (SOCOM 1's passes its direction, move a1,s1), and the body never read it
 0x005AE640 0x60 SetLookDir__10CZSealBodyFPC6CPnt3Df  # OVL2; s1:order by hand (SOCOM 1's SetLookDir__10CZSealBodyFPC6CPnt3Df, after SetEyeLookDir in both builds; the same body: CanHeadLook, then the look's SetLookDir(this, dir, rate)) -- the SEAL lane, round 12
 0x005AE6A0 0x84 InitLookAnims__10CZSealBodyFv  # OVL2; s1:callee
 0x005AE730 0x24C GetLookQuat__FP6CPnt3DffP5CQuat  # OVL2; s1:calls

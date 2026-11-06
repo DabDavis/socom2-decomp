@@ -185,8 +185,8 @@ void func_00310590(void *h, void *settings);
 
 /* an application message type: its fields described, then registered by name with a handler
  * (the DME's; CZNetwork::zNetRegisterMessage, zNetDme.cpp's, registers it) */
-void func_00620BD8();
-void func_00620C60(void *msg, void *field, int size, int count);
+void NetRegisterMessageStart();
+void NetMessageField(void *msg, void *field, int size, int count);
 int func_0030E8E0(int, int, int, void *);   /* the "Radio" message's handler */
 int func_0030EB70(int, int, int, short *);
 }
@@ -436,15 +436,15 @@ void CZNetVoice::zNetRegisterVoice()
 {
     unsigned char radio[3];
 
-    func_00620BD8();
-    func_00620C60(radio, &radio[0], 1, 1);
-    func_00620C60(radio, &radio[1], 1, 1);
-    func_00620C60(radio, &radio[2], 1, 1);
+    NetRegisterMessageStart();
+    NetMessageField(radio, &radio[0], 1, 1);
+    NetMessageField(radio, &radio[1], 1, 1);
+    NetMessageField(radio, &radio[2], 1, 1);
     theNetwork.zNetRegisterMessage(&m_radio_msg, func_0030E8E0, "Radio");
     short status[12];
 
-    func_00620BD8();
-    func_00620C60(status, status, 2, 12);
+    NetRegisterMessageStart();
+    NetMessageField(status, status, 2, 12);
     theNetwork.zNetRegisterMessage(&m_msg, (NetMessageCallback)func_0030EB70, "Channel Status");
     m_state = 1;
 }

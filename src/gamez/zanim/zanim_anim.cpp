@@ -1948,3 +1948,124 @@ bool CZAnim::ExecuteSpecialSequence(int offset)
     return done;
 }
 #pragma auto_inline reset
+
+/* a copy of the anim, its own to run (SOCOM 1's, 0x710 there; FindClones and MakeClones chain it
+ * as a sibling): the parameters and the set, its names, its node references with the nodes it made
+ * forgotten, a root of its own made when it creates one, its sounds (no instance), textures and
+ * called anims, its commands and sequences; no particles, no siblings; then started, its instance
+ * node made and its health and weapon hits copied.
+ * BYTE-EXACT since the engine core's round 24 (unwritten before; build/scratch/core/v_copy*.py), by
+ * three shapes: ONE counter for every loop, declared at the top (a fresh counter per loop swaps the
+ * sound loop's counter and offset registers, and the command count's index is then either merged
+ * with the count or not strength-reduced at all); the commands counted through a pointer stepped
+ * BEFORE its test (`p++; ... while (p[-1])` -- `*p++` loads first and steps after, the target steps
+ * first and loads at -4; the counter stepped alongside, dead, as the target keeps it and SOCOM 1's
+ * did); the health read through a local (its source kept in s0 across the new, not re-read) */
+CZAnim *CZAnim::Copy()
+{
+    CZAnim *anim = (CZAnim *)_calloc(sizeof(CZAnim), 1, 0, 0);
+    int i;
+
+    memcpy(anim, this, sizeof(_zanim_anim_params));
+    anim->m_animset_index = m_animset_index;
+    anim->m_instance_node = 0;
+    anim->m_added_to_world_internally = 0;
+    anim->State(1);
+    for (i = 0; i < m_nameindex_table.m_count; i++)
+        anim->AddName(GetName(i));
+    if (m_node_ref_count > 0) {
+        anim->m_node_ref_list = (_zanim_node_ref *)_calloc(sizeof(_zanim_node_ref), m_node_ref_count, 0, 0);
+        memcpy(anim->m_node_ref_list, m_node_ref_list, m_node_ref_count * sizeof(_zanim_node_ref));
+        anim->m_node_ref_count = m_node_ref_count;
+        for (i = 0; i < anim->m_node_ref_count; i++) {
+            _zanim_node_ref *ref = &anim->m_node_ref_list[i];
+
+            if (ref->created_here) {
+                ref->created_here = 0;
+                ref->node_ptr = 0;
+            }
+            if (ref->is_light)
+                ref->on_world_lightlist = 0;
+        }
+    }
+    if (anim->m_create_root) {
+        if (!anim->m_root_node_index)
+            anim->m_root_node_index = anim->AddNewNodeRef(0, 0, 0);
+        _zanim_node_ref *ref = anim->GetNodeRef(anim->m_root_node_index);
+
+        if (!ref->node_ptr) {
+            char name[128];
+
+            ref->node_ptr = new CNode;
+            sprintf(name, "%s::created_root", anim->GetName());
+            ref->node_ptr->SetName(name);
+            ref->name_index = anim->AddName(name);
+            ref->created_here = true;
+        }
+    }
+    if (m_sound_ref_count > 0) {
+        anim->m_sound_ref_list = (_zanim_sound *)_calloc(sizeof(_zanim_sound), m_sound_ref_count, 0, 0);
+        memcpy(anim->m_sound_ref_list, m_sound_ref_list, m_sound_ref_count * sizeof(_zanim_sound));
+        anim->m_sound_ref_count = m_sound_ref_count;
+        for (i = 0; i < anim->m_sound_ref_count; i++) {
+            anim->m_sound_ref_list[i].sound_instance = 0;
+            anim->m_sound_ref_list[i].stop_on_exit = 0;
+        }
+    }
+    if (m_tex_ref_count > 0) {
+        anim->m_tex_ref_list = (_zanim_tex_ref *)_calloc(sizeof(_zanim_tex_ref), m_tex_ref_count, 0, 0);
+        memcpy(anim->m_tex_ref_list, m_tex_ref_list, m_tex_ref_count * sizeof(_zanim_tex_ref));
+        anim->m_tex_ref_count = m_tex_ref_count;
+    }
+    if (m_call_anim_ref_count > 0) {
+        anim->m_call_anim_ref_list =
+            (_zanim_call_anim_ref *)_calloc(sizeof(_zanim_call_anim_ref), m_call_anim_ref_count, 0, 0);
+        memcpy(anim->m_call_anim_ref_list, m_call_anim_ref_list, m_call_anim_ref_count * sizeof(_zanim_call_anim_ref));
+        anim->m_call_anim_ref_count = m_call_anim_ref_count;
+    }
+    anim->m_particle_list = 0;
+    anim->m_particle_count = 0;
+    anim->m_user_cmd = 0;
+    if (m_user_cmd) {
+        int count = 0;
+
+        _zanim_cmd_hdr **p = m_user_cmd;
+
+        i = 0;
+        do {
+            count++;
+            i++;
+            p++;
+        } while (p[-1]);
+        int size = count * sizeof(_zanim_cmd_hdr *);
+
+        anim->m_user_cmd = (_zanim_cmd_hdr **)_realloc(anim->m_user_cmd, size, 0, 0);
+        if (anim->m_user_cmd)
+            memcpy(anim->m_user_cmd, m_user_cmd, size);
+    }
+    if (m_seq_data_size > 0) {
+        anim->m_seq_data = (char *)_malloc(m_seq_data_size, 0, 0);
+        memcpy(anim->m_seq_data, m_seq_data, m_seq_data_size);
+        anim->m_seq_data_size = m_seq_data_size;
+    } else {
+        anim->m_seq_data = 0;
+        anim->m_seq_data_size = 0;
+    }
+    anim->m_sibling_anim = 0;
+    anim->State(1);
+    anim->CreateInstanceNode();
+    CZAnimHealth *src = m_health;
+
+    if (src) {
+        CZAnimHealth *health = new CZAnimHealth;
+
+        health->m_health_node_index = src->m_health_node_index;
+        health->health = health->max_health = src->max_health;
+        health->armor = health->max_armor = src->max_armor;
+        health->shield = src->shield;
+        anim->m_health = health;
+    }
+    if (m_animEx)
+        anim->OnWeaponHitInit();
+    return anim;
+}

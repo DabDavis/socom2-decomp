@@ -110,7 +110,8 @@ typedef struct CASR {
     short p484[2];                      /* +484: ids 8, 7 (read as 50 - x) */
     int p488;                           /* +488: id 6 */
     int p492;                           /* +492: id 13 */
-    char pad496[8];
+    int p496;                           /* +496: id 1's copy (casrSetParam) */
+    int p500;                           /* +500: id 4 doubled (casrSetParam) */
     int p504;                           /* +504: id 3 */
     CASRCBTABLE cb;                     /* +508 */
     int pad540;
@@ -147,8 +148,8 @@ typedef struct CASR {
     int train_state;                    /* +676 */
     int sp_arg1;                        /* +680 */
     int sp_arg2;                        /* +684 */
-    char pad688[218];
-    unsigned short f906;
+    unsigned char pending[218];         /* +688: a partial frame's bytes (casrAcquisition) */
+    unsigned short f906;                /* +906: and their count */
     unsigned short *signal;             /* +908: the input level */
     int *frame_base;                    /* +912: the frame count the talk spurts are told from */
     unsigned char training;             /* +916: a user-word training is under way */
@@ -184,13 +185,14 @@ typedef struct CASR {
     unsigned short maxcw;               /* +1064: the largest codebook (TrainInit) */
     short pad1066;
     short **segtab;                     /* +1068 */
-    int pad1072;
+    short wtp;                          /* +1072: the language's word transition penalty (casrActivateContext) */
+    short pad1074;
     int last_state;                     /* +1076 */
     void *tree_words;                   /* +1080: the context tree's word lists (freed with the tree) */
     int tree_nwords;                    /* +1084 */
     int f1088;                          /* +1088: parameter 16 */
-    int pad1092;
-    int f1096;                          /* +1096 */
+    int f1092;                          /* +1092: casrActivateContext's third argument (casrSetParam) */
+    int f1096;                          /* +1096: the engine's record 85 (8 words, casrActivateContext) */
     char pad1100[16];
     void *uw_states;                    /* +1116: the user words' states (freed with the tree) */
     int *uw_offsets;                    /* +1120: each user-word phoneme's first state */
@@ -217,7 +219,9 @@ struct LANGVT {
     int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
     void *s21[4];
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
-    void *s26[5];
+    short (*GetRecogWTP)(LANGVT *l);                  /* +104, slot 26 */
+    short (*GetSpellingWTP)(LANGVT *l);               /* +108, slot 27 */
+    void *s28[3];
     unsigned int (*GetSecondCdbSize)(void *cb);       /* +124, slot 31 */
     void *s32;
     unsigned int (*GetNbrGastone)(void *cb);          /* +132, slot 33 */
