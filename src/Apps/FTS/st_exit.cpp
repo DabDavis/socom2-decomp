@@ -575,7 +575,27 @@ void func_00545200(CSealStats *stats);   /* (CSealStats' constructor, OVL2: ever
  * with its stats -- a missing one's a zeroed default --, the four ratings computed (objectives,
  * stealth, accuracy, teamwork), the career taken up in a single-player game (theMission's byte at
  * 0x18 2), the overall rating -- 45 % objectives, 20 % stealth, 10 % accuracy, 25 % teamwork,
- * at least 60 in that game -- shown and kept in a valve, and the time in the game as "hhh:mm:ss" */
+ * at least 60 in that game -- shown and kept in a valve, and the time in the game as "hhh:mm:ss".
+ * OPEN, 6 instructions (written in the game states' round 50, unwritten before; at the target's size):
+ * the walk's frame slots only. The walk is a do-while with the end test first (`count < 4` at the
+ * bottom, jumping back to the one More() test at the top: a `for` / `while` with the count in its
+ * condition is laid out test-at-the-bottom, `for (;;)` and `while (count < 4)` with the break give
+ * this layout too); its step the in-class Next() with `!IsSeal()` (the target materialises the SEAL
+ * test, sltu / xori / bnez, where the out-of-line Advance 0x1F1F30 does not); the time's digits by
+ * `iSec -= q * c` (`%=` is a div: the target multiplies back), the first digit an if/else (a
+ * ternary leaves one store), the overflow's "999:59:59" through MW's __memcpy intrinsic (the
+ * array initialiser's own block copy, both loads first, from the literal: strcpy and memcpy stay
+ * calls, a struct assignment pairs each load with its store), the career's `this` a local declared
+ * ahead of ftsGetPlayer (computed in its delay slot, held in s0), the four default stats four
+ * statements (an unrolled loop schedules the stores apart). Left: the slots, high to low -- the
+ * target begin-bt 284, More-bt 280, begin-cp 276, More-cp 272, Next-bt 268, Next-cp 264, here
+ * begin-bt, More-bt, Next-bt, begin-cp, More-cp, Next-cp (@1405 @1411 @1417, @1422 @1425 @1428 in
+ * igdump's syms: every walk's base temporary is made one inline level before its copy, so the
+ * target's Next() chain sits one level deeper than the constructor's and More()'s). Tried: Next()
+ * out of line (auto-inlined, dead-stripped), through More() or an End() / AtEnd() inline, behind a
+ * Step() wrapper (the cut: 0x5C0, or the end node held in s7: 0x60C-0x614), the walk written in
+ * place with a static step (0x600), the four loop forms above -- the order holds or the code moves.
+ * The teamwork rating's open slots (below) are the same question */
 extern "C" void func_001F21B0(CObjectiveCounts *counts)
 {
     CSealStats none;
