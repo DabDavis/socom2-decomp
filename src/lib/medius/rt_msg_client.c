@@ -765,7 +765,6 @@ unsigned char func_00633960(rt_msg_client_udp_options *pOptions)
     return 0;
 }
 
-/*<func_00633A08>*/
 extern unsigned char func_00635228(unsigned short *pnConnection, unsigned int nKind, unsigned int nSendSize, unsigned int nRecvSize);
 extern unsigned char rt_msg_client_change_state(rt_msg_client_connection *pConnection, unsigned int nState);
 extern int rt_time_start(rt_msg_client_time *pStart);
@@ -897,7 +896,6 @@ unsigned char func_00633A08(int nConnection, int nOptions)
         return 1;
     return func_00634C48(pConnection);
 }
-/*</func_00633A08>*/
 
 
 unsigned char rt_msg_client_is_valid_connection_id(unsigned short nConnection);
@@ -1597,7 +1595,6 @@ unsigned char rt_msg_client_iudp_disable_heartbeat(void)
 extern int rt_circ_buf_destroy(rt_circ_buf *cb);
 extern void KM_Destroy(int nKMID);
 
-/*<func_00635228>*/
 extern unsigned char rt_msg_client_set_scratch_buf_min_size(unsigned int nSize);
 extern int rt_circ_buf_create(rt_circ_buf *pBuf, unsigned int nSize, void *pMemory);
 
@@ -1705,7 +1702,6 @@ found:
     *pnConnection = i;
     return result;
 }
-/*</func_00635228>*/
 
 /* SOCOM 1's free_connection_index, grown (round 16b): each of the connection's two channels has its
  * rings destroyed and is freed (SOCOM 1's one channel was in the record), then the connect data,

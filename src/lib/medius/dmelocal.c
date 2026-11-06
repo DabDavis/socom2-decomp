@@ -1616,6 +1616,12 @@ extern int dme_pad_617788_0;
 extern int dme_pad_617788_1;
 extern int dme_pad_617788_2;
 extern int dme_pad_617788_3;
+extern int dme_pad_617788_4;
+extern int dme_pad_617788_5;
+extern int dme_pad_617788_6;
+extern int dme_pad_617788_7;
+extern int dme_pad_617788_8;
+extern int dme_pad_617788_9;
 int func_00617788(DmeConnectFull *pParams, DmeConnectKind *pKind, DmeConnectStatus *pStatus)
 {
     DmeConnectOptions options;
@@ -4527,15 +4533,6 @@ extern int dme_pad_619DD8_5;
 extern int dme_pad_619DD8_6;
 extern int dme_pad_619DD8_7;
 extern int dme_pad_619DD8_8;
-extern int dme_pad_619DD8_0;
-extern int dme_pad_619DD8_1;
-extern int dme_pad_619DD8_2;
-extern int dme_pad_619DD8_3;
-extern int dme_pad_619DD8_4;
-extern int dme_pad_619DD8_5;
-extern int dme_pad_619DD8_6;
-extern int dme_pad_619DD8_7;
-extern int dme_pad_619DD8_8;
 extern int dme_pad_619DD8_9;
 extern int dme_pad_619DD8_10;
 extern int dme_pad_619DD8_11;
@@ -4550,6 +4547,15 @@ extern int dme_pad_619DD8_19;
 extern int dme_pad_619DD8_20;
 extern int dme_pad_619DD8_21;
 extern int dme_pad_619DD8_22;
+extern int dme_pad_619DD8_23;
+extern int dme_pad_619DD8_24;
+extern int dme_pad_619DD8_25;
+extern int dme_pad_619DD8_26;
+extern int dme_pad_619DD8_27;
+extern int dme_pad_619DD8_28;
+extern int dme_pad_619DD8_29;
+extern int dme_pad_619DD8_30;
+extern int dme_pad_619DD8_31;
 int func_00619DD8(int *pnStream, int nSize, int nRate, int nType, int a4, int nTarget, int a6, unsigned short a7,
                   unsigned short a8)
 {
@@ -5091,12 +5097,12 @@ extern DmeLocalAddress data_006766A0;
 extern int dme_pad_617250_0;
 extern int dme_pad_617250_1;
 extern int dme_pad_617250_2;
-extern int dme_pad_617250_0;
-extern int dme_pad_617250_1;
-extern int dme_pad_617250_2;
 extern int dme_pad_617250_3;
 extern int dme_pad_617250_4;
 extern int dme_pad_617250_5;
+extern int dme_pad_617250_6;
+extern int dme_pad_617250_7;
+extern int dme_pad_617250_8;
 void func_00617250(unsigned short nConnection, unsigned char nStatus, unsigned short nClient, unsigned short nMaxClients,
                    int nReason)
 {

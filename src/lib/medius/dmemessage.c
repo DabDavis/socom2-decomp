@@ -1047,7 +1047,6 @@ int func_0061ED48(int nConnection, int nUnused, unsigned int nClient, unsigned c
     return nLength;
 }
 
-/*<func_0061E8B8>*/
 /* SOCOM 1's NetObjectFullUpdatePacketHandler grown (0x61E8B8, by its body): the object made when it is new (a named object of this client's
  * only counted over when it already exists), every field copied in, the host told. */
 typedef struct DmeFullUpdateMsg {
@@ -1211,9 +1210,7 @@ update:
         RemoteObjectUpdate(pObject->nCreator, nIndex, -1);
     return nLength;
 }
-/*</func_0061E8B8>*/
 
-/*<func_0061EFB0>*/
 /* SOCOM 1's DataStreamUpdatePacketHandler grown (0x61EFB0): the stream opened on its first message, the data kept in its circular buffer
  * when it is a buffered stream, the type's callback told. */
 typedef struct DmeStreamMsg {
@@ -1338,9 +1335,7 @@ int func_0061EFB0(int nConnection, int nUnused, int nClient, DmeStreamMsg *pMsg)
     pStream->field_28 = CurrentNetTime;
     return pMsg->nLength + 12;
 }
-/*</func_0061EFB0>*/
 
-/*<func_006200D0>*/
 /* a fragmented message's record (0x6200D0; func_0061E510 fills it): the one already gathering this message, or a free one made for it; a
  * record in any other state is cleared on the way. */
 typedef struct DmeFragHeader {
@@ -1427,4 +1422,3 @@ int func_006200D0(int nConnection, int nClient, DmeFragHeader *pMsg, DmeFragment
     }
     return 0;
 }
-/*</func_006200D0>*/
