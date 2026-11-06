@@ -2065,6 +2065,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 27** (54 functions from their drafts to source -- zNetMediusClan.cpp all
+  hand-written, zNetMediusLobby.cpp and zNetMediusFriends.cpp whole --; 22 rows named):
+  - an explicit specialization of a class template member is an own function: MW never inlines an out-of-class template
+    member into it, and the specialized function itself is inlined into every caller, tail or own, wherever it is
+    defined (insert<AcctRecord> measured: 64 of 66, not adopted);
+  - in the game's deferred units definition order does not stop MW auto-inlining one own function into another
+    (GetFriendsList, GetInvitedPlayers, CheckClanInvitations into callbacks before and after them) -- a target's
+    out-of-line call needs `#pragma auto_inline off`; the level-5 cut cannot emulate "inline here, call there": a
+    four-high chain cuts right one caller level up but a level too high two levels up;
+  - an int function with three arms returning calls matches through one `int r` local, `return f();` in each arm is 6
+    off (0x3006D0); `(int)(a.size() + b.size()) < 16` gives slti, without the cast sltiu.
 - **Tells from the weapons, round 34** (the video thread's body 0x3B1DD0 and the vehicle's run-over pass 0x3ACC10, both
   never written before):
   - an unsigned-to-float conversion assigned to a dead local keeps its sign test and loses both arms -- 0x3B1DD0's
