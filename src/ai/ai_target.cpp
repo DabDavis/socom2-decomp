@@ -2,11 +2,13 @@
  * seal_airesponse.cpp, OVL2 0x609DF0-0x60BF3F (CAiTarget's constructor at 0x60A940; SEAL_AI_PARAMS's
  * at 0x60BF40 follows, seal_aiparams.cpp). SOCOM 1 had the same functions in the same place, right
  * after the response states' destructors; the unit's name is ours. So far the validity test, a
- * target's worth (0x60B7F0), one getter and, round 29, the visibility update 0x60AFA0. Defined in
- * reverse of their image order (-inline deferred). */
+ * target's worth (0x60B7F0), one getter and, round 29, the visibility update 0x60AFA0 and, round 53,
+ * ModifyAimDir (zkit.h included for Rfloat, code-neutral for the rest). Defined in reverse of their
+ * image order (-inline deferred). */
 
 #include "../gamez/zentity/zentity.h"
 #include "../gamez/zseal/seal_dipool.h"
+#include "../gamez/zkit/zkit.h"
 
 /* the mission's clock, which the target's times are taken on (theMission's float at 0xE0, OVL1
  * 0x4365C0: SOCOM 1's at 0x60 of its theMission, as its GetTimeSinceLastSighting reads it) --
@@ -87,14 +89,21 @@ public:
     /* the target taken (OVL2 0x60A5F0; SOCOM 1's SetTarget without its threat argument: the
      * change test 0x60A6A0, the times and the last place) */
     void SetTarget(CTarget *t);
+    /* an aim direction thrown off by the target's noise, and normalised (OVL2 0x60A000) */
+    void ModifyAimDir(CPnt3D *v, float accuracy, float angle);
+    /* the target's range (an inline: ModifyAimDir's range is its result temporary, numbered after the
+     * noise's -- read as m_target.GetRange() into a local, the local takes $f21 and the noise $f20) */
+    float GetRange() { return m_target.GetRange(); }
 
     union {
         CTargetEntity *m_ent;   // 0x0: the CTarget's entity
         CTarget m_target;   // 0x0 (zentity.h's, 0x30 bytes)
     };
     unsigned int m_aimBits;   // 0x30: bit 0 the target's hostile bit (0x800) kept (SOCOM 1's bits sat at 0x5C)
-    unsigned char _34[0x40 - 0x34];
-    int m_40;   // 0x40 (new in SOCOM II: set to 0x44's when the entity comes into sight)
+    CPnt3D m_aim_noise;   // 0x34 (SOCOM 1's at 0x2C: ModifyAimDir adds it to the aim)
+    /* 0x40 (new in SOCOM II: set to 0x44's when the entity comes into sight; while it lasts each
+     * ModifyAimDir counts it down and aims wide of the target, whatever the accuracy) */
+    int m_40;
     int m_44;   // 0x44
     unsigned char _48[0x4c - 0x48];
     float m_time_acquired;   // 0x4c (SOCOM 1's at 0x38)
@@ -370,6 +379,46 @@ void CAiTarget::Tick(CEntity *self, float dT)
 
 namespace ai {
 bool CheckLineOfFire(const CEntity *e, const CTarget *t, float radius);
+}
+
+/* the aim thrown off and normalised: while the sighting count lasts it is counted down and the noise
+ * drawn wide (a sideways throw of up to 25 and a drop of 12.5 to 25, over the target's range);
+ * otherwise the accuracy saturated to [0, 1] -- a perfect aim has no noise, any other a throw of up
+ * to 10 each way scaled by the inaccuracy, over the range; then the noise added to the aim (OVL2
+ * 0x60A000; SOCOM 1's took the noise from ai::MakeNoise with the angle, which SOCOM II no longer
+ * reads -- its random draws are Rfloat's) */
+void CAiTarget::ModifyAimDir(CPnt3D *v, float accuracy, float angle)
+{
+    float range = GetRange();
+
+    if (m_40 <= 0) {
+        static float lo = 0.0f;
+        static float hi = 1.0f;
+
+        _saturate(&accuracy, lo, hi);
+        if (accuracy == 1.0f)
+            m_aim_noise = CPnt3D::zero;
+        else if (range > 0.0f) {
+            static float x = 10.0f;
+            static float y = 10.0f;
+
+            m_aim_noise.x = (1.0f - accuracy) * Rfloat(-x, x) / range;
+            m_aim_noise.y = (1.0f - accuracy) * Rfloat(-y, y) / range;
+            m_aim_noise.z = 0.0f;
+        }
+    } else {
+        m_40--;
+        if (range > 0.0f) {
+            static float wide_x = 25.0f;
+            static float wide_y = 25.0f;
+
+            m_aim_noise.x = Rfloat(-wide_x, wide_x) / range;
+            m_aim_noise.y = Rfloat(-wide_y * 0.5f, -wide_y) / range;
+            m_aim_noise.z = 0.0f;
+        }
+    }
+    v->Add(&m_aim_noise, v);
+    v->Normalize();
 }
 
 /* whether the target is the first of the entity's targets met -- false once a live friend (a side

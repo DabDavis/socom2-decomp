@@ -2065,6 +2065,66 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 47** (GameSignalPacketHandler 0x2B9150 byte-exact and named -- SOCOM 1's, unwritten
+  before; the teamwork rating 0x1F27C0 and UpdateLocalSeal 0x2BD640 written, OPEN at 0x678 of 0x680 and 2; two respells,
+  SAME-BY-ADDRESS -- ZAnim.m_network_activation_callback for data_00414BFC, `new CZNetVoice` for func_003102E0):
+  - a byte read into an `unsigned char` local is a promoted temporary numbered after every named local (s1 where the
+    target's s4 wanted the local's place) -- an `int` local keeps the named place (`igreplay --want` found the place,
+    the type gave it); `p->a > 1` is the fused `slti at; bnez at`, `p->a >= 2` materialises into v0;
+  - a counter of the inline index parameter's own type (`unsigned int i` into `Item(unsigned int)`) is strength-reduced
+    to an offset stepped by 8; an `int` counter keeps `sll` each pass (the chat handler's walk alike); a PNT3D's
+    aggregate initialiser block-copies from .rodata (ld/lwc1), three member stores give lui/sw;
+  - int locals set from a bool accessor sum without narrowing again, bool locals take an `andi 0xff` each at the sum; an
+    if-clamp's join takes an alignment nop where a ternary clamp's does not (the teamwork's lag and balance clamps
+    ternaries, its penalty's and health's ifs); `&it.GetSeal()` tested in place is the target's direct test, through
+    IsSeal() the bool materialises;
+  - THE TEAMWORK'S WALL: both callers' inlined CEntityItr::Advance (0x1F27C0, SetRoundStatUiVars 0x1F21B0) test the SEAL
+    materialised (`sltu; xori 1; bnez`) while the out-of-line Advance 0x1F1F30 tests it direct -- no spelling gives
+    both (`== 0`, `!`, `!(p != 0)`, a cast, `!IsSeal()`, `IsSeal() == false`, IsSeal() as `!= 0` / `!!` / ternary /
+    if-else, More() in the condition, an inline Next() with each, `++it` over Advance): a different shape of the
+    callers' walk is the lead; the iterator temporaries' slots follow it (Advance's end() temporaries above the loop
+    test's here, below them in the target, for, while and inline increments alike);
+  - `if (!a || b && !c) return;` at a function's head gives the target's shared `b end` block (separate early
+    returns or nested ifs branch to the epilogue directly); a float assigned to an `unsigned short` field converts
+    unsigned (the 2^31 test) -- `(short)` gives the target's cvt.w.s; `p.f = v = x` stores an address-taken int and the
+    field from one register (two statements reload it); a float temporary assigned after a member's clear moves its
+    conversion after the clear (UpdateLocalSeal, 12 -> 2: left, an `if (!id) id = ...;` then-arm the target ends with a
+    branch to its join -- every ternary spelling sinks the store into both arms).
+- **Tells from the kit and AI states, round 53** (CAiSSuspended::OnSignal, CAiTarget::ModifyAimDir, the reticule node
+  tracker 0x5BE6F0 and CSealCtrl::OnSetTargetVisible, all four unwritten before -- 2,852 bytes):
+  - a local assigned from an inline wrapper's result (`float range = GetRange()`, the wrapper returning
+    `m_target.GetRange()`) is numbered after the front-end temporaries -- `igreplay --movers` called it before the source
+    was written; read straight into a local it took $f21 instead of $f20 (CAiTarget::ModifyAimDir 0x60A000);
+  - kind tests written as ternary inlines (`e && e->m_type == k ? e : 0`) keep the target's dead-else-copy layout; the
+    if / return forms collapse the caller's other ternaries (91 off) -- the UI's round-31 rule again; taking both kind
+    results into locals before the `||` closed the last 18 (CSealCtrl::OnSetTargetVisible 0x5CA170);
+  - `!(a->m_team & b->m_team)` written out branches on the AND, through the IsEnemy inline the bool is materialised
+    (sltu / xori); MW 3.0b52 puts a zero-valued function-local static in .bss where the target has .data (0x650B20,
+    0x6510F8): no effect on scoring.
+- **Tells from the weapons, round 33** (CVisual::VuUpdate at last -- 0xCC4, unwritten for 32 rounds -- with GetVid's copy
+  and three helper copies; CVisual::ApplyDecal and CMesh::ApplyDecal written; hookupVisuals / hookupMesh and node_index,
+  SOCOM 1's, named):
+  - AN INLINE TALLER THAN THE LEVEL IS INLINED ONE LEVEL AND EVERY CALL IN IT GOES OUT OF LINE, its copies emitted after the
+    caller in the REVERSE of the order its body meets them: VuUpdate's tail "inline budget" (rounds 13-32) was its decal
+    walk, an inline six high through GetVid -- GetVid, the pointer vector's [], the decal's two accessors, the room and
+    _word128's implicit assignment (MW generates `__as__8_word128FRC8_word128` for the union) sit at 0x3B5250-0x3B52C0 in
+    exactly that reverse order; a plain function auto-inlined five times is called the sixth time inside such a body;
+  - `std::min(f(p), left)` with f returning the vector's own (unsigned) type compares the temporary in its register and
+    stores it only for min's reference (in the branch's delay slot); a named or converted room is stored and reloaded
+    first; one function can need two shapes of the same send inline: a by-value count copied into a decremented local
+    keeps a caller's count variable as its register (`sw s3,180(sp); beqz s3`), while a decremented parameter copied at
+    the top reloads the copy from its slot when the argument is a global (`sw v1,188(sp); lw s0,188(sp)`, SOCOM 1's too);
+  - values read in an inline call's argument list load AFTER a call that is also an argument -- read into locals first
+    they load ahead of it; `d = c ? x : 0` where `d = 0; if (c) d = x;` padded its join and shifted every later
+    8-byte loop pad; of two stores the later-numbered constant takes v0 (the size stored ahead of the flag's 1);
+  - GCC-style asm operands take their registers from the variables' numbering, not the operand list's order: an inline
+    taking (t, out, src) with t and out named locals of the calling inline gave the target's src v0 / out v1 / t a0, and
+    MW schedules the asm's last instruction into a branch's delay slot; `CVisData *v = &vd; v = v->Select...()` keeps
+    &vd in v's register across the call (the target's `addiu s4,sp,N; move a0,s4`); igreplay --movers placed two
+    counters after a loop-scoped pointer -- declared after it at the top (numbered by declaration) and zeroed ahead of
+    the call, they took the target's registers;
+  - a reference bound between the two tests of an && (the if split in two) puts the member's address in the second
+    test's delay slot and reloads through it after the calls (the game states' round-46 rule across a split test).
 - **Tells from completing the MSL headers, round 33** (the three requests measured, none applied -- comments only,
   objcmp 656 units 0 differ; probes build/p33/, untracked: board.py / vgen.py / vrun.py score a shadow
   include/vector's class insert over all 68 inserts in 4 s, igd.py / igt.py / pc.py dump and replay a shadow
