@@ -91,13 +91,15 @@ void InitNodeParams(tag_NODE_PARAMS *to, const tag_NODE_PARAMS *from)
 /* a node: no parent, children, DIs (the first intersection stops a search) or visuals, no name,
  * model or atoms, opaque, its parameters the defaults; then its flags, an empty box at the origin,
  * and it counted into the universe with the shared default name (SOCOM 1's, but for SOCOM II's
- * flags).
- * OPEN (0x20C of 0x224): the base's facade word access is the online lane's round 28 fix --
- * tag_NODE_PARAMS' constructor sets it in the mem-initializer list (a bitfield cleared there is
- * read, masked and written back as a word; set in the body MW narrows it to a byte) -- and the
- * first 68 instructions are now the target's. The tail is 6 short: the target copies
- * CPnt3D::zero into a stack local of its own (sp+64) and makes min and max from that copy, where
- * MW here copy-propagates the static into both, the local dropped (an 80-byte frame there, 64 here) */
+ * flags). The base's facade word access is the online lane's round 28 fix -- tag_NODE_PARAMS'
+ * constructor sets it in the mem-initializer list (a bitfield cleared there is read, masked and
+ * written back as a word; set in the body MW narrows it to a byte). The box (the world's round
+ * 29): the target copies CPnt3D::zero into a local of its own (sp+64), then builds a 24-byte pair
+ * from it at sp+32 -- the first point copy-constructed (ld/sd), the second copied field by field,
+ * an array initialiser's two elements -- and assigns the box from it through address registers:
+ * a two-point array assigned to m_bbox as a CBBox (a stand-in for whatever the original's box
+ * type was: separate min and max points, a CBBox local or field-wise copies through references
+ * copy-propagate or read the frame directly, 6-31 off). The byte at 0xa0 is stored as -1 */
 CNode::CNode()
     : m_parent(0)
 {
@@ -120,15 +122,12 @@ CNode::CNode()
     m_socom2_a1_bits.bit0 = 1;
     m_socom2_mode = 0;
     m_frameRendered = 0;
-    m_socom2_a0 = 0xff;
+    m_socom2_a0 = -1;
     m_region_mask = 0;
     CPnt3D zero(CPnt3D::zero);
-    CPnt3D min(zero);
-    CPnt3D max;
+    CPnt3D corners[2] = { zero, zero };
 
-    max = zero;
-    m_bbox.m_min = min;
-    m_bbox.m_max = max;
+    m_bbox = *(CBBox *)corners;
     if (NodeUniverse)
         NodeUniverse->AddNode(this);
     numNodes++;

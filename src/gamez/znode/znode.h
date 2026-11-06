@@ -932,8 +932,10 @@ public:
     float m_Opacity;   // 0x9c
     /* SOCOM II's at 0xa0, where SOCOM 1's DWARF has m_Atom: CZAnim::State and CreateInstanceNode
      * test the byte at 0xa1 with a mask (4) and CreateInstanceNode sets that bit as a bitfield on
-     * an instance -- both views, names unknown */
-    unsigned char m_socom2_a0;   // 0xa0
+     * an instance -- both views, names unknown. The byte at 0xa0 is signed: CNode() stores -1 (`li
+     * v1,-1`, the world's round 29), CVisual::NodeSetup and the pipe read it as a signed light scale
+     * (negative: the default), the weapons store 127 * (1 - light) */
+    signed char m_socom2_a0;   // 0xa0
     union {
         unsigned char m_socom2_a1;   // 0xa1
         struct {
