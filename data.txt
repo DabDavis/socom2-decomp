@@ -708,6 +708,15 @@
 0x003E4028 0x8 __RTTI__9CZMapItem  # RTTI of CZMapItem: found by its RTTI's name
 0x003E4040 0x8 __RTTI__17CZClaymoreMapItem  # RTTI of CZClaymoreMapItem: found by its RTTI's name
 0x003E4068 0x8 __RTTI__11CNodeAction  # RTTI of CNodeAction: found by its RTTI's name
+0x003E4070 0x20 s_legendTypes__27@unnamed@hud_newhudmap_cpp@  # OVL1 data (7, 8, 14, 37, 4, 12, 13, 6); hud_newhudmap.cpp's static (name ours, the HUD lane round 66): the legend's anchor types; SetupLegend
+0x003E40A8 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row0  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40B0 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row1  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40B8 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row2  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40C0 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row3  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40C8 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row4  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40D0 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row5  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40D8 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row6  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
+0x003E40E0 0x4 @LOCAL@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@bottom  # OVL1 data; SetupLegend's guarded local static (name ours, round 66)
 0x003E40E8 0x4 @LOCAL@SetupNorthIndicator__27@unnamed@hud_newhudmap_cpp@FP10CZSealBody@cy  # OVL1 data; ours (the HUD lane, round 52: hud_newhudmap.cpp -- SetupNorthIndicator's guarded static, 40 + g_fHudLayout60, the north indicator's centre y where SOCOM 1's literal was 100; the name ours) -- 3 references in 1 function (SetupNorthIndicator 0x20BE00: its store and two reads)
 0x003E40F0 0x4 @LOCAL@InitMap__11CZNewHudMapFPQ23zdb6CWorld@fArrowTopY  # OVL1 data; ours: InitMap's static copy of g_fHudLayout60, the scroll arrows' top -- 3 references in 1 function (InitMap's store and two reads); the HUD lane, round 64
 0x003E40F8 0x4 @LOCAL@InitMap__11CZNewHudMapFPQ23zdb6CWorld@fArrowBotY  # OVL1 data; ours: InitMap's static copy of g_fHudLayout365, the scroll arrows' bottom -- 3 references in 1 function (InitMap's store and two reads); the HUD lane, round 64
@@ -1227,6 +1236,14 @@
 0x0040BD20 0xA0 g_lineNorthIndFrontShaft__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (the north indicator's front shaft; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 twice
 0x0040BDD0 0xA0 g_lineNorthIndRearShaft__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (the north indicator's rear shaft; the HUD lane, round 29) -- 4 references in 3 functions: the constructor, Draw, 0x20BE00 twice
 0x0040BE70 0x4 g_pFov__27@unnamed@hud_newhudmap_cpp@  # OVL1 bss; SOCOM 1's static (its symbol table: g_pFov at gp-25048, the texture the north lines are loaded with -- SOCOM 1's SetupNorthIndicator passes it to all three C2DLine::Loads as SOCOM II's 0x20BE00 does) -- 7 references in 2 functions (InitMap 0x20B2C0 x4, SetupNorthIndicator x3); the HUD lane, round 52
+0x0040BE78 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row0  # OVL1 bss; MW's guard for SetupLegend's row0
+0x0040BE80 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row1  # OVL1 bss; MW's guard for SetupLegend's row1
+0x0040BE88 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row2  # OVL1 bss; MW's guard for SetupLegend's row2
+0x0040BE90 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row3  # OVL1 bss; MW's guard for SetupLegend's row3
+0x0040BE98 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row4  # OVL1 bss; MW's guard for SetupLegend's row4
+0x0040BEA0 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row5  # OVL1 bss; MW's guard for SetupLegend's row5
+0x0040BEA8 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@row6  # OVL1 bss; MW's guard for SetupLegend's row6
+0x0040BEB0 0x1 @GUARD@SetupLegend__27@unnamed@hud_newhudmap_cpp@Fv@bottom  # OVL1 bss; MW's guard for SetupLegend's bottom
 0x0040BEB8 0x1 @GUARD@SetupNorthIndicator__27@unnamed@hud_newhudmap_cpp@FP10CZSealBody@cy  # OVL1 bss; ours (the HUD lane, round 52: hud_newhudmap.cpp -- the guard of SetupNorthIndicator's static cy) -- 2 references in 1 function (SetupNorthIndicator 0x20BE00)
 0x0040BEC0 0x1 @GUARD@InitMap__11CZNewHudMapFPQ23zdb6CWorld@fArrowTopY  # OVL1 bss; its guard -- 2 references in 1 function (the test and the set); the HUD lane, round 64
 0x0040BEC8 0x1 @GUARD@InitMap__11CZNewHudMapFPQ23zdb6CWorld@fArrowBotY  # OVL1 bss; its guard -- 2 references in 1 function (the test and the set); the HUD lane, round 64

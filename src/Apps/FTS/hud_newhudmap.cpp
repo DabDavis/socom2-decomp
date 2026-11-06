@@ -212,6 +212,8 @@ class MapCompass {
 public:
     void Off();
     void On();
+    zdb::CTexHandle *GetAnchorImg(unsigned int type);
+    CPnt3D GetAnchorColor(unsigned int type);
 };
 
 /* the HUD (hud_main.cpp's CHUD): its owner, its font (0x498) and compass (0x4FE0), its own switch
@@ -226,11 +228,18 @@ public:
     C2DFont *m_myfont;   // 0x498
     unsigned char _49c[0x4fe0 - 0x49c];
     MapCompass m_compass;   // 0x4fe0
+    MapCompass *GetCompass() { return &m_compass; }
 };
 
 extern CHUD *theHUD;
 
+/* a string by its id (c2dstring.cpp's) */
+const char *GetString(int id);
+
 namespace {
+/* the legend's pictures' anchor types (.data 0x3E4070) */
+int s_legendTypes[8] = { 7, 8, 14, 37, 4, 12, 13, 6 };
+
 /* the north indicator turned to the viewer's facing: the facing on the x/z plane normalised, the
  * front shaft from 10 to 30 ahead of (600, cy), the rear shaft from 10 to 30 behind, the barb from
  * 20 ahead and 10 aside to the front's end, and the "N" (the legend's first label) above. SOCOM 1's
@@ -241,6 +250,209 @@ namespace {
  * cy as named locals ahead of the first Load -- the target computes every cy expression before
  * the first call and reloads the static only for the label; written in place, each Load reloads
  * it, and the y's of the front shaft's start may be named or not */
+/* the full-screen map's legend (0x20C080: InitMap's call; the name ours): the rows made once, the backing
+ * untextured and black, each picture an anchor type's image and colour, each label its string */
+void SetupLegend()
+{
+    static int row0 = (int)(4.0f + g_fHudLayout60);
+    static int row1 = row0 + 18;
+    static int row2 = row1 + 18;
+    static int row3 = row2 + 18;
+    static int row4 = row3 + 18;
+    static int row5 = row4 + 18;
+    static int row6 = row5 + 18;
+    static int bottom = row6 + 20;
+
+    g_bmpLegend[0].SetHasTexture(false);
+    g_bmpLegend[0].SetColor(0.0f, 0.0f, 0.0f);
+    g_bmpLegend[0].Load(230.0f, g_fHudLayout60, 445.0f, (float)bottom, 0);
+    {
+        CPlainBmp *bmp = &g_bmpLegend[1];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[0];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row0;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[2];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[1];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row1;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[3];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[2];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row2;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(234.0f, y, 250.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[4];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[3];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row2;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[5];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[4];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row3;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[6];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[5];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row4;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[7];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[6];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row5;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        CPlainBmp *bmp = &g_bmpLegend[8];
+        MapCompass *compass = theHUD->GetCompass();
+        unsigned int type = s_legendTypes[7];
+        zdb::CTexHandle *img = compass->GetAnchorImg(type);
+        float y = (float)row6;
+        const float y2 = 16.0f + y;
+
+        bmp->Load(257.0f, y, 273.0f, y2, img);
+
+        CPnt3D color = compass->GetAnchorColor(type);
+
+        bmp->SetColor(color.x, color.y, color.z);
+    }
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec50);
+
+        C2DString *str = &g_strLegend[1];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row0 + 14), true);
+    }
+    g_strLegend[1].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[1].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec51);
+
+        C2DString *str = &g_strLegend[2];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row1 + 14), true);
+    }
+    g_strLegend[2].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[2].SetTrans(80.0f);
+    g_strLegend[4].Load(0.71999997f, "-", theHUD->m_myfont, 252.0f, (float)(row2 + 14), true);
+    g_strLegend[4].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[4].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec52);
+
+        C2DString *str = &g_strLegend[3];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row2 + 14), true);
+    }
+    g_strLegend[3].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[3].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec53);
+
+        C2DString *str = &g_strLegend[5];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row3 + 14), true);
+    }
+    g_strLegend[5].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[5].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec54);
+
+        C2DString *str = &g_strLegend[6];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row4 + 14), true);
+    }
+    g_strLegend[6].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[6].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec55);
+
+        C2DString *str = &g_strLegend[7];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row5 + 14), true);
+    }
+    g_strLegend[7].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[7].SetTrans(80.0f);
+    {
+        C2DFont *font = theHUD->m_myfont;
+        const char *text = GetString(0xec56);
+
+        C2DString *str = &g_strLegend[8];
+
+        str->Load(0.71999997f, text, font, 276.0f, (float)(int)(float)(row6 + 14), true);
+    }
+    g_strLegend[8].SetColor(128.0f, 128.0f, 128.0f);
+    g_strLegend[8].SetTrans(80.0f);
+}
+
 void SetupNorthIndicator(CZSealBody *pViewer)
 {
     static float cy = 40.0f + g_fHudLayout60;
@@ -412,8 +624,6 @@ public:
 };
 
 zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name);
-/* the legend's builder (0x20C080: its nine labels and pictures; unwritten) */
-extern "C" void func_0020C080();
 
 /* the map made ready (SOCOM 1's InitMap, 0x3C5D90 there: its compass bitmap and map background gone,
  * SOCOM II's three sounds): the sounds, the objectives, the line map as the first item, the items'
@@ -499,7 +709,7 @@ void CZNewHudMap::InitMap(zdb::CWorld *world)
         g_arrVertGridLines[iVert].SetUV(0.5f, 0.9375f, 0.5f, 0.9375f);
         g_arrVertGridLines[iVert].SetTrans(s_gridTrans);
     }
-    func_0020C080();
+    SetupLegend();
 }
 
 /* an item taken off the map if it is on it, given back for the caller to delete (HudTick's dead
