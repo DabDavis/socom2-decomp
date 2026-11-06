@@ -74,6 +74,9 @@ public:
 class CMatrix {
 public:
     CMatrix() { sceVu0UnitMatrix(m_matrix); }
+    void SetIdentity() { sceVu0UnitMatrix(m_matrix); }
+    /* zmath_matrix.cpp's (out of line) */
+    void Transform(const class CPnt3D *in, class CPnt3D *out, int n) const;
 
     float m_matrix[4][4];
 } __attribute__((aligned(16)));
@@ -256,6 +259,7 @@ public:
     void SetNodeEx(CNodeEx *ex, bool b);
     static CNode *Create(const char *name);
     static void Delete(CNode *node);
+    CMatrix *BuildMTW(CMatrix &m);
     void SetPosition(float x, float y, float z);
     /* znode.h's: a point's (inline) */
     void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
@@ -512,8 +516,7 @@ public:
     float m_lifespan;   // 0x48
     float m_invLifespan;   // 0x4c: 1 / the life (ours)
     Instance *m_listNext;   // 0x50: the next live instance (List's link), cleared when recycled
-    float m_opacity;   // 0x54 (Destruction_Instance::SetVisual hands it to the node; the name ours)
-};   // 0x58 bytes
+};   // 0x54 bytes (Source::Tick news 84)
 
 /* a piece of a destroyed object flying off (SOCOM 1's Destruction_Instance): its life at 0x48, the
  * node it moves at 0x58 */
@@ -539,6 +542,7 @@ public:
 
     static InstancePool<Destruction_Instance> m_instance_pool;   // 0x488468
 
+    float m_opacity;   // 0x54 (Destruction_Instance::SetVisual hands it to the node; the name ours)
     zdb::CNode *m_node;   // 0x58
     float m_spin[3];   // 0x5c (the names ours)
     float m_axis[3];   // 0x68
@@ -593,6 +597,17 @@ enum PARTICLE_TYPE {
 /* an emitter (SOCOM 1's DWARF: 0x134 bytes there). SOCOM II's members sit one word later from
  * the texture list on (0xDC; 0xD8 in SOCOM 1) -- the word inserted before it is not located yet,
  * so the members ahead of the list are opaque here */
+/* a range of floats and a value picked in it (SOCOM 1's Range; the name of the pick ours) */
+extern "C" int rand(void);
+
+class Range {
+public:
+    float Get() const { return m_min + (m_max - m_min) * (4.656613e-10f * (float)rand()); }
+
+    float m_min;   // 0x0
+    float m_max;   // 0x4
+};
+
 class Source {
 public:
     /* a free source taken from the pool (0x32B120; ZAnim's particle commands call it) */
@@ -633,9 +648,14 @@ public:
     /* SOCOM II's word: the light tint its particles are coloured by (an index of CVisual's
      * m_lightTint, 0x3B7590's argument: BufferElement::Draw; the name ours) */
     int m_tint;   // 0x10
-    unsigned char _14[0x19 - 0x14];   // 0x14: SOCOM 1's m_applyGlobalLighting .. m_landmark
+    unsigned char _14[0x17 - 0x14];   // 0x14: SOCOM 1's m_applyGlobalLighting .. m_applyFog
+    unsigned char m_freezable;   // 0x17 (SOCOM 1: 0x13)
+    unsigned char m_landmark;   // 0x18 (SOCOM 1: 0x14)
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
-    unsigned char _1a[0x24 - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD ..
+    unsigned char m_doSpawnLOD;   // 0x1a (SOCOM 1: 0x16)
+    unsigned char m_distInterval;   // 0x1b (SOCOM 1: 0x17)
+    float m_period;   // 0x1c (SOCOM 1: 0x18)
+    float m_invPeriod;   // 0x20 (SOCOM 1: 0x1c)
     float m_streakLen;   // 0x24 (SOCOM 1: 0x20)
     float m_streakFade;   // 0x28 (SOCOM 1: 0x24)
     float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)
@@ -643,7 +663,32 @@ public:
     float m_minRotAcc;   // 0x34
     float m_maxRotAcc;   // 0x38
     PARTICLE_TYPE m_drawType;   // 0x3c (SOCOM 1: 0x38)
-    unsigned char _3d[0xdc - 0x3d];   // 0x3d: SOCOM 1's m_numPeriods .. m_initialAgeRange
+    unsigned char _3d[0x40 - 0x3d];   // 0x3d
+    int m_numPeriods;   // 0x40 (SOCOM 1's names from here, 4 bytes later)
+    float m_phase;   // 0x44
+    int m_number;   // 0x48
+    float m_distance;   // 0x4c
+    zdb::CNode *m_node;   // 0x50
+    CPnt3D m_offset;   // 0x54
+    Range m_perturbPositionX;   // 0x60
+    Range m_perturbPositionY;   // 0x68
+    Range m_perturbPositionZ;   // 0x70
+    Range m_rotationX;   // 0x78
+    Range m_rotationY;   // 0x80
+    Range m_rotationZ;   // 0x88
+    CPnt3D m_localVelocity;   // 0x90
+    CPnt3D m_worldVelocity;   // 0x9c
+    unsigned char m_inheritVelocity;   // 0xa8
+    /* SOCOM II's: the velocity's perturbation taken through the node's matrix per particle, not
+     * the local velocity once per tick (Tick; the name ours) */
+    unsigned char m_perParticleVelocity;   // 0xa9
+    unsigned char _aa[0xac - 0xaa];   // 0xaa
+    Range m_perturbVelocityX;   // 0xac
+    Range m_perturbVelocityY;   // 0xb4
+    Range m_perturbVelocityZ;   // 0xbc
+    Range m_radiusRange;   // 0xc4
+    Range m_lifespanRange;   // 0xcc
+    Range m_initialAgeRange;   // 0xd4
     std::vector<zdb::CTexHandle *> m_textures;   // 0xdc
     Props *m_props;   // 0xe8
     CPnt3D m_bboxMin;   // 0xec: SOCOM 1's m_bbox (a CBBox of two points there)
@@ -655,6 +700,8 @@ public:
     CParticleEx *m_particleEx;   // 0x128
     unsigned char m_shuttingoff;   // 0x12c (SOCOM 1: 0x128)
     unsigned char m_fovFlag;   // 0x12d (SOCOM 1's tag_ZVIS_FOV: 2 never drawn, 1 drawn untested)
+
+    int m_refcount;   // 0x130 (SOCOM 1: 0x12c): the live instances of this source (Tick counts them)
 
     static float distanceFactor;   // 0x4884C0
     static float frequencyFactor;   // 0x4884C8
