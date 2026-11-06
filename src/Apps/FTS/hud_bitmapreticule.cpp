@@ -651,20 +651,18 @@ extern "C" void FlushCache(int op);
         while (angle >= 90.0f)                                                       \
             angle -= 90.0f;                                                          \
         m_threatdirpoly[side].SetTrans(50.0f * ((90.0f - angle) * ONE_OVER_90));     \
-        m_threatdirpoly[diag].SetTrans(50.0f * (angle * ONE_OVER_90));               \
+        const float k50 = 50.0f;                                                     \
+                                                                                     \
+        m_threatdirpoly[diag].SetTrans(k50 * (angle * ONE_OVER_90));                 \
     }
 
 /* the threat arrows (SOCOM 1's ThreatDirTick, 0x3CF360 there): the seal's four hit directions kept;
  * where two neighbours were hit, the diagonal between gets half their strength and the two arrows the
  * angle's share (SOCOM 1 set them full); every arrow faded by 120 a second; the flags cleared. The
  * names SOCOM 1's DWARF's (SOCOM 1's DIAGONAL_SCALAR was made under a guard, SOCOM II's is data).
- * OPEN, 32 instructions, 0x76C of 0x76C, all one colouring repeated in the eight arms: `50.0f * (angle
- * * ONE_OVER_90)` has the 1/90 and the product in f0 and the 50 in f1 in the target, f1 and f0 here --
- * MW makes the constant last (k, product, 50, the highest number taking f0) where the target numbers
- * it first; the first SetTrans's `50.0f * ((90.0f - angle) * ONE_OVER_90)` comes out right. Tried, each
- * the same code: named locals for the 1/90, the product and the 50 (folded back), casts on each, the
- * operands swapped; (50 * angle) * k changes the code; the 50 through an inline accessor swaps the
- * final mul's operands only. The first test reads the seal's two flags through locals (a0, v1 kept
+ * The diagonal's 50 a const local (round 66, open since round 64 at 32 off): a literal is numbered last and a plain
+ * local folds back; a const one keeps its number ahead of the product, the target's f1 and f0. The first test reads
+ * the seal's two flags through locals (a0, v1 kept
  * across the statics' stores), the later ones the statics */
 void BitmapReticule::ThreatDirTick(CZSealBody *pSeal)
 {
