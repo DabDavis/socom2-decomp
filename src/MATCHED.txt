@@ -3762,7 +3762,8 @@
 0x002B5830 Draw__12C2DMessage_QFPQ23zdb7CCamera
 0x002B5DB0 Tick__12C2DMessage_QFf
 0x002B63B0 __dt__16C2DMessageStringFv
-0x002B6430 func_002B6430
+0x002B6430 ScrollUp__12C2DMessage_QFf
+0x002B6530 Add_Message__12C2DMessage_QFPCc7MSGTYPEbif
 0x002B6D00 SetBkgColor__12C2DMessage_QFfff
 0x002B6D60 LastMessage__12C2DMessage_QFv
 0x002B6DE0 Clear_Messages__12C2DMessage_QFv
@@ -3860,6 +3861,7 @@
 0x002BDDA0 CreateLocalSeal__11CZSealStateFP10CZSealBodyb
 0x002BDEA0 UpdateRollandsUnitStuff__11CZSealStateFP10CZSealBodyPQ211CZSealState13TypeSealState
 0x002BE020 RemoteSealPostUpdateCallback__11CZSealStateFiii
+0x002BE150 IncrementalUpdateRemoteSeal__11CZSealStateFiii
 0x002BEE10 RemoteSealUpdateCallback__11CZSealStateFiii
 0x002BEF20 SealDeleteCleanup__11CZSealStateFi
 0x002BEF60 RemoteSealDeletionCallback__11CZSealStateFii
@@ -10508,6 +10510,7 @@
 0x005CF6F0 Parse__7CTRangeFP5_zrdr
 0x005CF800 Tick__9CTStopAllFP14_zanim_cmd_hdrPf
 0x005CF860 Parse__9CTStopAllFP5_zrdr
+0x005CF930 Tick__7CTStateFP14_zanim_cmd_hdrPf
 0x005D01F0 Parse__7CTStateFP5_zrdr
 0x005D0730 Tick__8CTStanceFP14_zanim_cmd_hdrPf
 0x005D08A0 End__8CTStanceFP14_zanim_cmd_hdr
@@ -10536,6 +10539,7 @@
 0x005D4300 Begin__8CTPursueFP14_zanim_cmd_hdr
 0x005D4480 Parse__8CTPursueFP5_zrdr
 0x005D4510 Tick__7CTParamFP14_zanim_cmd_hdrPf
+0x005D4770 func_005D4770
 0x005D5140 Parse__7CTParamFP5_zrdr
 0x005D5700 Tick__7CTPaintFP14_zanim_cmd_hdrPf
 0x005D57C0 Parse__7CTPaintFP5_zrdr
@@ -10568,9 +10572,11 @@
 0x005D96E0 clear__Q23std32vector<Pv,Q23std13allocator<Pv>>Fv
 0x005D96F0 __ct__Q23std32vector<Pv,Q23std13allocator<Pv>>Fv
 0x005D9710 Tick__7CTGroupFP14_zanim_cmd_hdrPf
+0x005DAF50 func_005DAF50
 0x005DB350 End__6CTGotoFP14_zanim_cmd_hdr
 0x005DB510 Tick__6CTGotoFP14_zanim_cmd_hdrPf
 0x005DB730 Begin__6CTGotoFP14_zanim_cmd_hdr
+0x005DBF70 Parse__6CTGotoFP5_zrdr
 0x005DC3C0 Tick__12CTFireWeaponFP14_zanim_cmd_hdrPf
 0x005DC6B0 Begin__12CTFireWeaponFP14_zanim_cmd_hdr
 0x005DC800 Parse__12CTFireWeaponFP5_zrdr
@@ -11679,6 +11685,7 @@
 0x006311E8 func_006311E8
 0x00631388 func_00631388
 0x00631390 func_00631390
+0x006313D8 func_006313D8
 0x00631460 func_00631460
 0x006314C0 func_006314C0
 0x00631508 func_00631508
@@ -11833,6 +11840,7 @@
 0x00638F20 randomMT
 0x00638FA8 randomMTSetCharArray
 0x00639038 setNewSeed
+0x00639058 setNewSeed_platform
 0x006390F0 rt_mutex_create
 0x00639138 rt_mutex_destroy
 0x00639180 rt_mutex_lock
@@ -11871,11 +11879,13 @@
 0x0063B2B0 func_0063B2B0
 0x0063B2D0 func_0063B2D0
 0x0063B2F0 func_0063B2F0
+0x0063B480 func_0063B480
 0x0063B520 func_0063B520
 0x0063C078 func_0063C078
 0x0063C138 func_0063C138
 0x0063C328 func_0063C328
 0x0063C3D0 func_0063C3D0
+0x0063C700 func_0063C700
 0x0063C810 func_0063C810
 0x0063C950 func_0063C950
 0x0063CB48 func_0063CB48
@@ -11982,8 +11992,11 @@
 0x00642968 func_00642968
 0x006429E8 func_006429E8
 0x00642A10 func_00642A10
+0x00642A58 func_00642A58
 0x00642BF8 func_00642BF8
+0x00642C48 func_00642C48
 0x00642DA8 func_00642DA8
+0x00642E70 func_00642E70
 0x00643018 func_00643018
 0x00643140 func_00643140
 0x00643168 func_00643168
@@ -12483,6 +12496,11 @@
 0x0064F5F0 func_0064F5F0
 0x0064F5F8 KM_GetSoftwareID
 0x0064F604 KM_GetSoftwareKeyPair
+0x006641D0 func_006641D0
+0x00664F80 func_00664F80
+0x00665B30 func_00665B30
+0x00667AA0 func_00667AA0
+0x00667AD0 func_00667AD0
 0x00668480 __sinit_ai_events.cpp
 0x00668540 __sinit_ai_astar.cpp
 0x00668630 __sinit_ai_map.cpp
