@@ -1483,27 +1483,11 @@ void func_00548090(CZSealBody *seal);
 void func_005C0FD0(CZKit *kit, float dT);
 }
 
-/* whether the top state is of a kind (see PrePostTick's OPEN note) */
-static inline bool StateIs(CAiStateStack &s, AI_STATE k)
-{
-    if (!(s.size() == 0) == 0)
-        return false;
-    return s.GetState()->m_state == k;
-}
-
 /* the tick after the move: the probes and collision steps; a SEAL carried, stabbed or being restrained takes
  * its root part's place and then its carrier's node, quaternion and position; the compass anchor kept on the
  * SEAL, a player's restrained SEAL's point by whether its AI is held or not; the last tick's points kept; the
  * aim, the controller's PostTick, the grenades, the kit, the stun, the step and the blood (OVL2 0x5506A0, slot
  * 0x20; SOCOM 1's slot was empty) */
-/* OPEN, 11 instructions (the size right): all in the state test of the restrained SEAL's point. The target's
- * test is the first term materialised with no andi (xor/sltiu/xori, beqz v0) and then a real if/else with both
- * joins padded (`b J; sltiu; nop; E: move v0,zero; nop; J: beqz v0`). CAiStateStack::Is (value &&) has the
- * materialised test but threads its false path to the next test, no else (0x10 short); an if, a ternary, a named
- * bool, an inline != or `&& true` on the first term all fold it to `bnez` (0x10 short); `!(n == 0) == 0` (here)
- * and `ok == false` keep it but add its andi and lay the arms the other way. Everything else is byte-exact: the
- * carrier's matrix first through a named pointer, the rotation's null test kept by a cast through void, the
- * remote's point a ternary. */
 void CZSealBody::PrePostTick(float dT)
 {
     if (!m_f40)
@@ -1542,7 +1526,7 @@ void CZSealBody::PrePostTick(float dT)
                 CSealCtrl *remote = ai ? (CSealCtrl *)ai->GetRemoteControl() : 0;
 
                 if (ai) {
-                    if (StateIs(ai->m_stateStack, (AI_STATE)9))
+                    if (ai->AiStateIs((AI_STATE)9))
                         point = 2;
                     else
                         point = 1;
