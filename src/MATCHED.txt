@@ -8312,6 +8312,7 @@
 0x004D1C18 GetSecondPassInfo
 0x004D1EA0 putWordInDict
 0x004D3318 AllocateNodeAndFreePrevious
+0x004D4050 intCreateCtxTree
 0x004D45A8 CalcNrNodes10
 0x004D5058 SetIsolatedWordDpActiveWords
 0x004D52F8 CreateCtxTree
@@ -8505,6 +8506,8 @@
 0x004F34C8 InitUndersampler
 0x004F35A0 Reset
 0x004F3690 NormalizeAndEnQ
+0x004F3828 ProcessAcne
+0x004F3EA8 ControlAcne
 0x004F4150 InitAcne
 0x004F43A0 ConstructAcne
 0x004F43E0 InitDCTLift
