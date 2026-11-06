@@ -17,6 +17,7 @@
  * client id (0xFFFF free), audio.c's peer record for it, a state and a time. */
 
 extern void *memset(void *p, int c, unsigned int n);
+extern void *memcpy(void *d, const void *s, unsigned int n);
 extern char *strncpy(char *d, const char *s, unsigned int n);
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
@@ -35,12 +36,29 @@ typedef struct RT_LIST {
 } RT_LIST;
 
 typedef struct GRID_PEER {              /* audio.c's peer record, as far as grid.c reads it */
-    char x00[0x34];                     /* 0x00 */
+    struct GRID_PEER *pNext;            /* 0x00 */
+    struct GRID_PEER *pPrev;            /* 0x04 */
+    void *pAudio;                       /* 0x08 */
+    char x0C[0x10];                     /* 0x0C */
+    int tHeard;                         /* 0x1C */
+    char x20[0x10];                     /* 0x20 */
+    int nGrid;                          /* 0x30 */
     int nId;                            /* 0x34 */
+    unsigned int nFlags;                /* 0x38 */
+    int x3C;                            /* 0x3C: the clock's offset, averaged */
+    char x40[0x804];                    /* 0x40 */
+    void *pStream;                      /* 0x844 */
+    void *pIn;                          /* 0x848 */
+    void *pOut;                         /* 0x84C */
+    int x850;                           /* 0x850 */
+    int x854;                           /* 0x854: the sequence number next wanted */
+    int nPending;                       /* 0x858: a frame received, its length */
+    void *pPending;                     /* 0x85C */
 } GRID_PEER;
 
 extern int func_0062A2E8(RT_LIST *pList);   /* the count */
 extern void func_0062A360(RT_LIST *pList);  /* frees every entry */
+extern RT_LIST_NODE *func_0062A298(RT_LIST *pList, unsigned int nId); /* the entry for an id */
 extern void func_0062A2F0(RT_LIST *pList, unsigned int nId); /* removes one */
 
 /* audio.c's */
@@ -53,14 +71,40 @@ extern int func_0062AAF8(void *pCodec);
 extern int func_0062AB08(void *pCodec);
 extern struct GRID *func_00611E78(void *pAudio);        /* the groups */
 extern int func_00610FA0(void *pAudio, int nTo, void *h, void *pData, int nLen); /* to one peer */
+extern int func_0060FFC8(void *pAudio);                 /* type 0x2F's sequence number */
+extern int func_0060FFE0(void *pAudio);                 /* type 0x30's */
+extern int func_00611180(void *pAudio, char *pBuf, int nLen, void *pPeer);
+extern void *func_006113E8(void *pAudio);               /* the peers' sentinel */
+extern void *func_006113F0(void *pAudio);               /* the peers */
+extern void func_00611410(void *pAudio, unsigned int nFlags);
+extern void func_00611420(void *pAudio, unsigned int nFlags);
+extern void func_00611938(void *pAudio, int nGrid);
+extern void func_00612138(void *pAudio, unsigned int nId);
+extern unsigned int func_0062A130(void *pPeer);         /* peer.c: the peer's flags */
+extern void *func_006451F0(void);                       /* rt_frag.c: a fragment buffer */
+extern void func_00645290(void *pStream, int x, char *pData, int nLen);
+extern int func_00645380(void *pStream);
+extern int rt_memory_allocate(void **ppMemory, unsigned long nSize);
+extern void *func_0062AF40(void *pCodec);               /* voicebuf.c: a stream */
+extern void func_00642A58(void *pIn, int nType, int x, char *pData, int nLen); /* streammedia.c */
+extern int func_0062A138(void *pPeer, unsigned int nFlags); /* int here: the block after the call keeps v0 for the return (0x6253B8) */
+extern void func_0062A148(void *pPeer, unsigned int nFlags);
 
 typedef struct GRID_MEMBER {
     unsigned int nId;                   /* 0x00: the client's id, 0xFFFF when free */
     void *pPeer;                        /* 0x04: audio.c's record for it */
     int nState;                         /* 0x08 */
-    unsigned int nTime;                 /* 0x0C */
+    int nTime;                          /* 0x0C */
     unsigned int nTries;                /* 0x10 */
 } GRID_MEMBER;                          /* 0x14 */
+
+typedef struct GRID_BODY {              /* a group message's body */
+    unsigned short x0;                  /* 0x00 */
+    unsigned short x2;                  /* 0x02 */
+    unsigned short x4;                  /* 0x04 */
+    unsigned short x6;                  /* 0x06 */
+    unsigned int nId;                   /* 0x08 */
+} GRID_BODY;                            /* 0x0C */
 
 typedef struct GRID {
     struct GRID *pNext;                 /* 0x00 */
@@ -75,9 +119,9 @@ typedef struct GRID {
     int x64;                            /* 0x64 */
     int x68;                            /* 0x68 */
     unsigned int nTime;                 /* 0x6C: created */
-    unsigned int x70;                   /* 0x70 */
+    int x70;                            /* 0x70 */
     unsigned int x74;                   /* 0x74 */
-    char x78[12];                       /* 0x78 */
+    GRID_BODY x78;                      /* 0x78 */
 } GRID;                                 /* 0x84 */
 
 typedef struct GRID_HEADER {            /* a group message's header */
@@ -105,6 +149,19 @@ typedef struct GRID_ENTRY {             /* a group as a list reports it */
 int func_00624830(GRID *p, int nSrc, GRID_HEADER *h, void *pData, int nLen);
 void func_00626140(GRID *p);
 void func_00626A38(GRID *p);
+int func_00626398(GRID *p);
+void func_00626788(GRID *p, unsigned int nId);
+int func_00626240(GRID *p, unsigned int nTo, int bForce);
+void func_00626510(GRID_MEMBER *m);
+void func_00626658(GRID *p, GRID_PEER *pPeer);
+void func_00626948(GRID *p, unsigned int nId);
+void func_006269A8(GRID *p, unsigned int nId, int nPeer);
+extern void func_0062A0A8(void *pPeer, int nGrid);
+extern GRID *func_00611388(void *pAudio, int nId);
+extern GRID *func_00611348(void *pAudio, int nId, int nMaxMembers);
+extern void func_00612630(void *pAudio, unsigned int nTo);
+extern void func_0062AE10(void *pCodec, void *pFrame);
+extern void func_0062B090(void *pCodec, void *pIn);
 
 static int nSeed = 0;
 
@@ -159,7 +216,7 @@ GRID *func_00624570(void *pAudio, GRID *pList, int nId, int nMaxMembers)
         rt_memory_allocate_init_zero((void **)&p->pMembers, p->nMembers * sizeof(GRID_MEMBER));
         for (i = 0; i < p->nMembers; i++)
             p->pMembers[i].nTime = now;
-        memset(p->x78, 0, sizeof(p->x78));
+        memset(&p->x78, 0, sizeof(p->x78));
         p->list.pHead = 0;
         p->list.nCount = 0;
         if (pList != 0) {
@@ -241,8 +298,86 @@ int func_00624828(GRID *p)
     return p->nId;
 }
 
-/* 0x624830: OPEN, not written -- the chunked send (504 bytes a message, to every member whose
- * peer takes the type, or to every peer when the group's id is not positive). */
+/* 0x624830: the chunked send (504 bytes a message, to every member whose peer takes the type, or to every peer when
+ * the group's id is not positive). */
+int func_00624830(GRID *p, int nSrc, GRID_HEADER *h, void *pData, int nLen)
+{
+    char buf[1280];
+    unsigned int x;
+    int nHeader;
+    int nMode = 0;
+    int n;
+    int i;
+    int bFirst = 1;
+    char *pSrc = pData;
+    int result = 0;
+    GRID_PEER *pPeer;
+    char *pOut = buf + 8;
+
+    memcpy(buf, h, 8);
+next:
+    nHeader = 8;
+    switch (h->nType) {
+    case 32:
+    case 33:
+    case 34:
+    case 35:
+    case 47:
+        nMode = 1;
+        x = func_0060FFC8(p->pAudio);
+        nHeader = 12;
+        memcpy(pOut, &x, 4);
+        break;
+    case 48:
+        x = func_0060FFE0(p->pAudio);
+        if (bFirst)
+            x |= 0x20000000;
+        if ((unsigned int)nLen < 505)
+            x |= 0x40000000;
+        memcpy(pOut, &x, 4);
+        nMode = 2;
+        nHeader = 12;
+        break;
+    }
+    n = nLen;
+    if (h->nType == 48) {
+        n = nLen < 505 ? nLen : 504;
+        ((GRID_HEADER *)buf)->nLen = n;
+    }
+    memcpy(buf + nHeader, pSrc, n);
+    nLen -= n;
+    nHeader += n;
+    pSrc += n;
+    if (p->nId > 0) {
+        for (i = 0; i < p->nMembers; i++) {
+            pPeer = p->pMembers[i].pPeer;
+            if (pPeer != 0) {
+                if (p->nMaxMembers == 0) {
+                    if (nMode == 1 && (pPeer->nFlags & 0x20000))
+                        continue;
+                    if (nMode == 2 && (pPeer->nFlags & 0x10000))
+                        continue;
+                }
+                if (p->pMembers[i].nState == 2 && p->pMembers[i].nId != nSrc) {
+                    if (nHeader != func_00611180(p->pAudio, buf, nHeader, pPeer))
+                        result = -1;
+                }
+            }
+        }
+    } else {
+        pPeer = func_006113F0(p->pAudio);
+        while (func_006113E8(p->pAudio) != (pPeer = pPeer->pPrev)) {
+            if (nHeader != func_00611180(p->pAudio, buf, nHeader, pPeer))
+                result = -1;
+        }
+    }
+    if (nLen != 0) {
+        ((GRID_HEADER *)buf)->nSeq = func_0060FFF8(p->pAudio);
+        bFirst = 0;
+        goto next;
+    }
+    return result;
+}
 
 void func_00624B38(GRID *p, GRID_INFO *pInfo)
 {
@@ -301,7 +436,575 @@ int func_00624C60(GRID *p)
     return 0;
 }
 
-/* 0x624DC0, 0x6250D0, 0x6253B8, 0x625690: not written */
+/* 0x624DC0: the group's clock */
+int func_00624DC0(GRID *p)
+{
+    GRID_HEADER h;
+    GRID_HEADER h2;
+    int nId;
+    struct { int a; int now; } msg;
+    short data;
+    int now;
+    int i;
+    int nAlive = 0;
+    GRID_MEMBER *m;
+
+    now = func_0062C070();
+    if (p->x74 != 0 && now - p->x74 > 2000) {
+        for (i = 0; i < p->nMembers; i++) {
+            if (p->pMembers[i].nState == 0)
+                break;
+        }
+        if (i < p->nMembers) {
+            func_00624530(p->pAudio, &p->pMembers[i], 1, p->x78.nId);
+            func_00624BE0(p, &h, 8, 0);
+            func_00610FA0(p->pAudio, p->x78.nId, &h, 0, 0);
+        }
+        p->x74 = 0;
+        memset(&p->x78, 0, sizeof(p->x78));
+    }
+    for (i = 0; i < p->nMembers; i++) {
+        m = &p->pMembers[i];
+        if (m->nState == 2) {
+            if (now - m->nTime >= 1500) {
+                if (m->nTries++ < 16) {
+                    m->nTime = now;
+                    data = func_00611E70(p->pAudio);
+                    func_00624BE0(p, &h2, 1, 2);
+                    func_00610FA0(p->pAudio, m->nId, &h2, &data, 2);
+                } else {
+                    if (p->nId > 0)
+                        func_00626788(p, m->nId);
+                    func_00612138(p->pAudio, m->nId);
+                    continue;
+                }
+            }
+            nAlive++;
+        }
+    }
+    if (p->nId > 0) {
+        if (nAlive > 0) {
+            func_00611410(p->pAudio, 4);
+            if (nAlive < p->nMembers && p->nMaxMembers != 0 && now - p->x70 > 6000) {
+                func_00626398(p);
+                p->x70 = now;
+            }
+            if (now - p->nTime > 1500) {
+                nId = 0xFFFF;
+                msg.a = 0;
+                msg.now = now;
+                func_00611E60(p->pAudio, &nId);
+                func_00624BE0(p, &h2, 3, 8);
+                func_00624830(p, nId, &h2, &msg, 8);
+                p->nTime = now;
+            }
+        } else {
+            func_00611420(p->pAudio, 4);
+            if (now - p->x70 > 3000) {
+                func_00611938(p->pAudio, p->nId);
+                p->x70 = now;
+            }
+        }
+    }
+    return 0;
+}
+
+/* 0x6250D0: a talk message */
+int func_006250D0(GRID *p, GRID_HEADER *h, GRID_PEER *pFrom, char *pData, int nLen)
+{
+    int x;
+    int nCodec;
+    int now = func_0062C070();
+    RT_LIST_NODE *pNode;
+    int nMax;
+    int bFull;
+    int i, j;
+    GRID_MEMBER *m;
+    GRID_PEER *pPeer;
+    unsigned int nFlags;
+
+    switch (h->nType) {
+    case 32:
+        nCodec = 33;
+        break;
+    case 33:
+        nCodec = 34;
+        break;
+    case 34:
+        nCodec = 35;
+        break;
+    case 35:
+        nCodec = 36;
+        break;
+    case 47:
+        nCodec = 63;
+        break;
+    default:
+        return -1;
+    }
+    bFull = 0;
+    nMax = p->nMaxMembers;
+    if (nMax != 0) {
+        nMax++;
+        bFull = nMax < func_0062A2E8(&p->list);
+    }
+    pNode = 0;
+    if (bFull)
+        pNode = func_0062A298(&p->list, h->nSrc);
+    for (i = 0; i < p->nMembers; i++) {
+        m = &p->pMembers[i];
+        if (m->nState == 2) {
+            if (m->nId == pFrom->nId) {
+                m->nTime = now;
+                m->nTries = 0;
+            } else if (m->nId != h->nSrc && bFull) {
+                if (pNode != 0) {
+                    for (j = 3; j >= 0; j--) {
+                        if (pNode->nIds[j] == m->nId)
+                            break;
+                    }
+                    if (j >= 0)
+                        continue;
+                }
+                func_00611180(p->pAudio, pData, nLen, m->pPeer);
+            }
+        }
+    }
+    pPeer = func_006113F8(p->pAudio, h->nSrc);
+    if (pPeer == 0 || (pPeer->nFlags & 2))
+        return 0;
+    pData += 8;
+    nLen -= 12;
+    memcpy(&x, pData, 4);
+    pData += 4;
+    if (pPeer->pIn == 0) {
+        pPeer->pIn = func_0062AF40(func_0060FFB0(p->pAudio));
+        if (pPeer->pIn == 0)
+            return 0;
+    }
+    nFlags = func_0062A130(pPeer) & 0x4000;
+    if (nLen != 0) {
+        pPeer->tHeard = now;
+        if (nFlags == 0) {
+            func_0062A148(pPeer, 0x1000);
+            func_0062A138(pPeer, 0x4000);
+        }
+    } else {
+        pPeer->tHeard = 0;
+        func_0062A148(pPeer, 0x4000);
+    }
+    func_0062A138(pPeer, 0x2000);
+    func_00642A58(pPeer->pIn, nCodec, x, pData, nLen);
+    return 0;
+}
+
+/* 0x6253B8: a video message */
+int func_006253B8(GRID *p, GRID_HEADER *h, GRID_PEER *pFrom, char *pData, int nLen)
+{
+    int x;
+    int now = func_0062C070();
+    GRID_PEER *pPeer = func_006113F8(p->pAudio, h->nSrc);
+    RT_LIST_NODE *pNode;
+    int nMax;
+    int bFull;
+    int i, j;
+    GRID_MEMBER *m;
+    int nDiff;
+
+    if (pPeer == 0)
+        return -1;
+    if (h->nType != 48)
+        return -1;
+    bFull = 0;
+    nMax = p->nMaxMembers;
+    if (nMax != 0) {
+        nMax++;
+        bFull = nMax < func_0062A2E8(&p->list);
+    }
+    pNode = 0;
+    if (bFull)
+        pNode = func_0062A298(&p->list, h->nSrc);
+    for (i = 0; i < p->nMembers; i++) {
+        m = &p->pMembers[i];
+        if (m->nState == 2) {
+            if (m->nId == pFrom->nId) {
+                m->nTime = now;
+                m->nTries = 0;
+            } else if (m->nId != h->nSrc && bFull) {
+                if (pNode != 0) {
+                    for (j = 3; j >= 0; j--) {
+                        if (pNode->nIds[j] == m->nId)
+                            break;
+                    }
+                    if (j >= 0)
+                        continue;
+                }
+                func_00611180(p->pAudio, pData, nLen, m->pPeer);
+            }
+        }
+    }
+    if (pPeer->nFlags & 1)
+        return 0;
+    pData += 8;
+    nLen -= 12;
+    memcpy(&x, pData, 4);
+    pData += 4;
+    if ((x & 0x60000000) != 0x60000000) {
+        if (pPeer->pStream == 0) {
+            pPeer->pStream = func_006451F0();
+            if (pPeer->pStream == 0)
+                return -1;
+        }
+    }
+    if (pPeer->pStream != 0) {
+        func_00645290(pPeer->pStream, x, pData, nLen);
+        if (func_00645380(pPeer->pStream) != 0)
+            func_0062A138(pPeer, 0x40000000);
+    } else {
+        nDiff = x - pPeer->x854;
+        if (nDiff < 0) {
+            if (nDiff >= -16)
+                goto done;
+        }
+        if ((unsigned int)nLen > 2048)
+            return -1;
+        if (pPeer->pPending == 0) {
+            rt_memory_allocate(&pPeer->pPending, 2048);
+            if (pPeer->pPending == 0)
+                goto done;
+        }
+        memcpy(pPeer->pPending, pData, nLen);
+        pPeer->nPending = nLen;
+        func_0062A138(pPeer, 0x40000000);
+        pPeer->x854 = x + 1;
+    }
+done:
+    return 0;
+}
+
+/* 0x625690: a group message: first what the relay passes on (when the queue holds more than the fixed table), then the
+ * members' clocks, then the type's own work. OPEN (7 words, all of them the first test): the target tests the id in v0 and
+ * this source in s0 (`lw s0,12(s2)`, which also moves s0's save in the prologue). What the rest needed, each measured:
+ * - bForward is in t0, saved round both calls: CALLER_SAVE_PROFITABLE wants more than 8 refs, and it must come after now and the
+ *   hoisted 2 in global-alloc's order, so a live length past 486: update_equiv_regs doubles it once for every set of the same
+ *   constant in insn order until the first other value. So every case sets it apart: 0, 1 and 2 before case 3 are k=5.
+ * - The arm: cross-jump keeps the copy with no label before it (find_cross_jump's --minimum at a CODE_LABEL), so the cases' zeros
+ *   all land on the arm in front of the dispatch. It has to be (set t0 0): CSE2 rewrites the zero to `result` (`lw t0,104(sp)`,
+ *   d=5, every other word right) unless a label stands between the initialisers and the arm, which this first test gives until
+ *   thread_jumps removes it. A conditional for the count gives that label and the target's v0, and leaves a dead `move s0,zero`.
+ * - The flag is a global pseudo (`slt s0,s0,v0`, tested after): i, not a local.
+ * - Case 6's two and case 7's group are locals, block-local pseudos in s0 and s1 that keep p out of s1; case 10's peer and
+ *   case 18's group each their own, the last so that its call cross-jumps with case 14's. */
+int func_00625690(GRID *p, GRID_HEADER *h, GRID_PEER *pFrom, char *pData, int nLen)
+{
+    GRID_HEADER hOut;
+    GRID_INFO info;
+    unsigned short data1;
+    unsigned short data2;
+    int now = func_0062C070();
+    GRID_BODY *pBody = (GRID_BODY *)(pData + 8);
+    int bForward = 0;
+    int result = 0;
+    int nMax;
+    int i;
+    GRID_PEER *pPeer;
+    GRID *pGrid;
+    unsigned int nFlags;
+
+    if ((nMax = p->nId) != 0)
+        nMax = p->nMaxMembers;
+    if (nMax != 0) {
+        nMax++;
+        i = nMax < func_0062A2E8(&p->list);
+        if (i == 0) {
+            bForward = 0;
+        } else {
+            switch (h->nType) {
+            case 0:
+                bForward = 0;
+                break;
+            case 1:
+                bForward = 0;
+                break;
+            case 2:
+                bForward = 0;
+                break;
+            case 3:
+                (*(int *)pBody)++;
+                bForward = 1;
+                break;
+            case 4:
+                bForward = 0;
+                break;
+            case 5:
+                bForward = 1;
+                break;
+            case 6:
+                bForward = 1;
+                break;
+            case 7:
+                bForward = 0;
+                break;
+            case 9:
+                bForward = 1;
+                break;
+            case 10:
+                bForward = 1;
+                break;
+            case 15:
+                bForward = 1;
+                break;
+            case 16:
+                bForward = 1;
+                break;
+            }
+        }
+    }
+    for (i = 0; i < p->nMembers; i++) {
+        GRID_MEMBER *m = &p->pMembers[i];
+
+        if (m->nState == 2) {
+            if (m->nId == pFrom->nId) {
+                m->nTime = now;
+                m->nTries = 0;
+            } else if (m->nId != h->nSrc && bForward) {
+                func_00611180(p->pAudio, pData, nLen, m->pPeer);
+            }
+        }
+    }
+    switch (h->nType) {
+    case 0:
+        break;
+    case 1:
+        data1 = func_00611E70(p->pAudio);
+        func_00624BE0(p, &hOut, 2, 2);
+        func_00610FA0(p->pAudio, pFrom->nId, &hOut, &data1, 2);
+        /* fall through */
+    case 2:
+        if (pFrom->nGrid != pBody->x0)
+            func_0062A0A8(pFrom, pBody->x0);
+        break;
+    case 3:
+        func_00624BE0(p, &hOut, 4, 8);
+        func_00610FA0(p->pAudio, h->nSrc, &hOut, pBody, 8);
+        break;
+    case 4:
+        pFrom->x3C -= (pFrom->x3C + ((int *)pBody)[1] - now) >> 3;
+        break;
+    case 15:
+        result = func_00626240(p, h->nSrc, 0);
+        break;
+    case 5: {
+        GRID_MEMBER *m;
+
+        pPeer = func_006113F8(p->pAudio, h->nSrc);
+        if (pPeer->nGrid != pBody->x2)
+            func_0062A0A8(pPeer, pBody->x2);
+        if (p->nId == 0) {
+            func_00626658(p, pPeer);
+            if (pBody->x2 != 0) {
+                pGrid = func_00611388(p->pAudio, pBody->x2);
+                if (pGrid == 0) {
+                    pGrid = func_00611348(p->pAudio, pBody->x2, 3);
+                    data2 = pBody->x2;
+                    func_00624BE0(pGrid, &hOut, 7, 2);
+                    func_00610FA0(pGrid->pAudio, h->nSrc, &hOut, &data2, 2);
+                }
+                func_00626658(pGrid, pPeer);
+            }
+        }
+        for (i = 0; i < p->nMembers; i++) {
+            m = &p->pMembers[i];
+            if (m->nState == 2 && m->nId == h->nSrc)
+                break;
+        }
+        if (i < p->nMembers)
+            break;
+        for (i = 0; i < p->nMembers; i++) {
+            m = &p->pMembers[i];
+            if (m->nState == 0 || m->nId == h->nSrc)
+                break;
+        }
+        if (i >= p->nMembers) {
+            if (p->nMaxMembers != 0)
+                break;
+            func_00624C60(p);
+            m = &p->pMembers[i];
+        }
+        if (pBody->x4 != 0) {
+            func_00624530(p->pAudio, m, 1, h->nSrc);
+            func_00624BE0(p, &hOut, 8, 0);
+            func_00610FA0(p->pAudio, h->nSrc, &hOut, 0, 0);
+            break;
+        }
+        p->x74 = now;
+        p->x78 = *pBody;
+        break;
+    }
+    case 8: {
+        GRID_MEMBER *m;
+        int n;
+
+        m = 0;
+        for (i = 0; i < p->nMembers; i++) {
+            m = &p->pMembers[i];
+            if (m->nState != 2 || m->nId == h->nSrc)
+                break;
+        }
+        if (i >= p->nMembers) {
+            if (p->nMaxMembers == 0) {
+                func_00624C60(p);
+                m = &p->pMembers[i];
+            }
+            if (i >= p->nMembers) {
+                m = &p->pMembers[func_006244B0() % p->nMembers];
+                n = m->nId;
+                func_00624BE0(p, &hOut, 14, 0);
+                func_00610FA0(p->pAudio, n, &hOut, 0, 0);
+                func_00624510(m);
+                if (p->nMaxMembers != 0) {
+                    func_00626A38(p);
+                    func_00626948(p, n);
+                }
+            }
+        }
+        func_00624530(p->pAudio, m, 2, h->nSrc);
+        func_00624BE0(p, &hOut, 12, 0);
+        func_00610FA0(p->pAudio, h->nSrc, &hOut, 0, 0);
+        break;
+    }
+    case 12: {
+        GRID_MEMBER *m;
+
+        for (i = 0; i < p->nMembers; i++) {
+            m = &p->pMembers[i];
+            if (m->nId == h->nSrc && (m->nState == 1 || m->nState == 2))
+                break;
+        }
+        if (i < p->nMembers) {
+            m->nTime = now;
+            m->nState = 2;
+            m->nTries = 0;
+            break;
+        }
+        func_00624BE0(p, &hOut, 14, 0);
+        func_00610FA0(p->pAudio, h->nSrc, &hOut, 0, 0);
+        break;
+    }
+    case 14:
+        for (i = 0; i < p->nMembers; i++) {
+            GRID_MEMBER *m = &p->pMembers[i];
+
+            if (m->nId == h->nSrc) {
+                func_00624510(m);
+                if (p->nMaxMembers != 0) { func_00626A38(p); func_00626398(p); func_00626948(p, h->nSrc); } break;
+            }
+        }
+        break;
+    case 6:
+        if (func_00611388(p->pAudio, pBody->x2) == 0) {
+            GRID_PEER *pNew = func_006113F8(p->pAudio, h->nSrc);
+            GRID *pThis = func_00611348(p->pAudio, pBody->x2, pBody->x4);
+
+            strncpy(pThis->szName, (char *)pBody + 8, sizeof(pThis->szName));
+            pThis->szName[sizeof(pThis->szName) - 1] = 0;
+            func_0062A0A8(pNew, pBody->x2);
+        }
+        break;
+    case 7: {
+        GRID *pThis = func_00611388(p->pAudio, pBody->x0);
+
+        if (pThis != 0) {
+            info.nSize = sizeof(GRID_INFO);
+            info.nId = pThis->nId;
+            info.nMaxMembers = pThis->nMaxMembers;
+            info.nMaxMembers2 = pThis->nMaxMembers;
+            strncpy(info.szName, pThis->szName, sizeof(info.szName));
+            info.szName[sizeof(info.szName) - 1] = 0;
+            func_00624BE0(pThis, &hOut, 11, sizeof(GRID_INFO));
+            func_00610FA0(pThis->pAudio, h->nSrc, &hOut, &info, sizeof(GRID_INFO));
+        }
+        break;
+    }
+    case 11:
+        pGrid = func_00611388(p->pAudio, pBody->x2);
+        if (pGrid != 0) {
+            strncpy(pGrid->szName, (char *)pBody + 8, sizeof(pGrid->szName));
+            if (pBody->x4 == 0 && pGrid->nMaxMembers != 0) {
+                pGrid->nMaxMembers = 0;
+                func_00624C60(pGrid);
+            }
+        }
+        break;
+    case 9:
+        if (pBody->x0 != 0) {
+            pPeer = func_006113F8(p->pAudio, h->nSrc);
+            if (pPeer != 0) {
+                if (pPeer->nGrid > 0 && pPeer->nGrid != pBody->x0) {
+                    pGrid = func_00611388(p->pAudio, pPeer->nGrid);
+                    if (pGrid != 0)
+                        func_00626788(pGrid, pPeer->nId);
+                }
+                pGrid = func_00611388(p->pAudio, pBody->x0);
+                if (pGrid != 0) {
+                    if (pPeer->nGrid != pGrid->nId)
+                        func_0062A0A8(pPeer, pGrid->nId);
+                    if (func_00611E70(pGrid->pAudio) == pGrid->nId) {
+                        if (pGrid->nMaxMembers != 0)
+                            result = func_00626240(pGrid, h->nSrc, 1);
+                        else
+                            func_00612630(pGrid->pAudio, h->nSrc);
+                    }
+                }
+            }
+        }
+        break;
+    case 10:
+        if (pBody->x0 != 0) {
+            GRID_PEER *pLeft = func_006113F8(p->pAudio, h->nSrc);
+
+            if (func_00611388(p->pAudio, pBody->x0) != 0 && pLeft != 0) {
+                if (pLeft->pOut != 0) {
+                    func_0062AE10(func_0060FFB0(pLeft->pAudio), pLeft->pOut);
+                    pLeft->pOut = 0;
+                }
+                if (pLeft->pIn != 0) {
+                    func_0062B090(func_0060FFB0(pLeft->pAudio), pLeft->pIn);
+                    pLeft->pIn = 0;
+                }
+                func_0062A0A8(pLeft, 0);
+            }
+        }
+        break;
+    case 16:
+        func_00612138(p->pAudio, h->nSrc);
+        break;
+    case 17:
+        nFlags = pFrom->nFlags;
+        if (*(unsigned int *)pBody & 1)
+            nFlags |= 0x10000;
+        else
+            nFlags &= ~0x10000;
+        if (*(unsigned int *)pBody & 2)
+            nFlags |= 0x20000;
+        else
+            nFlags &= ~0x20000;
+        pFrom->nFlags = nFlags;
+        break;
+    case 18:
+        if (pBody->x0 != 0) {
+            GRID *pThis = func_00611388(p->pAudio, pBody->x0);
+
+            if (pBody->x2 == 0xFFFF)
+                func_00626948(pThis, h->nSrc);
+            else
+                func_006269A8(pThis, h->nSrc, pBody->x2);
+        }
+        break;
+    }
+done:
+    return result;
+}
 
 int func_00626110(GRID *p)
 {
@@ -425,8 +1128,6 @@ typedef struct PEER_INFO {              /* what a peer tells of itself (audio.c'
     int x1C;                            /* 0x1C */
 } PEER_INFO;
 
-extern void *memcpy(void *d, const void *s, unsigned int n);
-extern unsigned int func_0062A130(void *pPeer);         /* peer.c: the peer's flags */
 
 /* Each joined member's self-description (0x8000 set when its peer's flags hold 0x4000) to the
  * caller's function, until it returns 0 -- audio.c's 0x611BA0 over a group's table. The element's
