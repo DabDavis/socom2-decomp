@@ -3,8 +3,8 @@
  * 0x33E418: CreateSecondPassInfo (LOCAL), CreateExEvCtxInfo, CreateCtxInfo, FreeCtxInfo,
  * CalcAccuracyCtxInfo, CreateMenuMasks -- the same six in the same order), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The
- * GCC front"). Names are SOCOM 1's (s1:calls, the object's order agreeing). CreateExEvCtxInfo and
- * CreateCtxInfo (0x48C, 0xC34) are not written, FreeCtxInfo stands as its matched draft. */
+ * GCC front"). Names are SOCOM 1's (s1:calls, the object's order agreeing). CreateCtxInfo (0xC34) is
+ * not written, FreeCtxInfo stands as its matched draft. */
 #include "casr.h"
 
 void *heap_Alloc(void *heap, unsigned int size);
@@ -65,6 +65,90 @@ int CreateSecondPassInfo(CASR *c, unsigned short *lex, int *bow, int *scores, un
         info++;
     }
     return 0;
+}
+
+/* the extra events' rejection word as the engine runs it (casr +608): the states of each of its pronunciations
+ * in a row, the silence at both ends. SOCOM 1's body. */
+typedef struct EXEVINFO {
+    int nstates;                        /* +0 */
+    unsigned short *states;             /* +4 */
+    unsigned short *starts;             /* +8: each pronunciation's first state, n + 1 */
+    int n;                              /* +12 */
+    int penalty;                        /* +16 */
+    int path_penalty;                   /* +20 */
+} EXEVINFO;
+
+extern void FreeCtxInfo(CASR *c);
+
+#define EXEV(c) ((EXEVINFO *)(c)->f608)
+
+int CreateExEvCtxInfo(CASR *c)
+{
+    void *ev;
+    int word, sil;
+    int *bow, *p, *pe, *pb;
+    unsigned short *items, *q, *qe;
+    int *su;
+    int total = 0;
+    int n = 0;
+    unsigned short *w, *st, *base;
+
+    ev = c->lng->GetpExtraEventContext(c->lng);
+    word = c->lng->exevGetRejection_NBS_WordIndex(ev);
+    sil = c->lng->exevGetExtraEventSilencePhenome(ev);
+    bow = c->lng->exevGetpBeginOfWords(ev);
+    items = c->lng->exevGetpBeginOfItems(ev);
+    pb = bow + bow[word];
+    pe = bow + bow[word + 1];
+    su = c->lng->GetpSpeechUnit(c->lng);
+    p = pb;
+    c->f608 = (int)heap_Alloc(c->heap, sizeof(EXEVINFO));
+    if (c->f608 == 0)
+        goto fail;
+    while (p < pe) {
+        q = items + *p;
+        p++;
+        qe = items + *p;
+        for (; q < qe; q++)
+            total += ((unsigned short *)su)[*q * 2 + 2] - su[*q] - 2;
+        n++;
+    }
+    total += 2;
+    EXEV(c)->starts = heap_Alloc(c->heap, n * 2 + 4);
+    if (EXEV(c)->starts == 0)
+        goto fail;
+    EXEV(c)->states = heap_Alloc(c->heap, total * 2);
+    if (EXEV(c)->states == 0)
+        goto fail;
+    base = EXEV(c)->states;
+    w = EXEV(c)->starts;
+    *w++ = 0;
+    st = base;
+    *st++ = sil;
+    for (p = pb; p < pe; ) {
+        *w++ = st - base;
+        q = items + *p;
+        p++;
+        qe = items + *p;
+        while (q < qe) {
+            unsigned int x = *q++;
+            unsigned short *a = (unsigned short *)su + su[x] + 2;
+            unsigned short *b = (unsigned short *)su + su[x + 1];
+
+            for (; a < b; a++)
+                *st++ = *a;
+        }
+    }
+    *st = sil;
+    *w = st - base;
+    EXEV(c)->n = n;
+    EXEV(c)->penalty = c->lng->exevGetRejection_NBS_penalty(ev);
+    EXEV(c)->path_penalty = c->lng->exevGetRejection_NBS_path_penalty(ev);
+    EXEV(c)->nstates = total;
+    return 0;
+fail:
+    FreeCtxInfo(c);
+    return 1;
 }
 
 /* the context the engine runs (casr +580), as far as the accuracy reads it: its word boundaries,
