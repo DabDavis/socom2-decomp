@@ -7,15 +7,14 @@
  * _bind in .data; cd, rdata, sdata, _lih_data in .bss). Names are SOCOM 1's (s1:exact). The query
  * calls return unsigned values (their failure is lui/ori 0xffffffff, an int's -1 would be li).
  *
- * OPEN: sceSifInitIopHeap (3 words): the target fills the bind test's delay slot with _bind's
- * %hi in v0 and clears v0 for the return after the store; here the return's clear is scheduled
- * first and the %hi takes v1 (return _bind = 0, return _bind: the same; round 17a: the store and
- * return inside the loop, 0x90, or the bind test positive with -1 after the loop, 0x8C, neither).
- * GCC round 18a: byte-exact as written under -fno-schedule-insns (sched1 off: the return's clear
- * stays after the store, so the %hi may take v0), which costs every other function of the object
- * 2-34 words -- this build's first scheduler hoists the clear (no dependence, ISSUE_RATE 2) where
- * the vendor's did not: with fileio's no-wait PRE and libscf's adddate GCSE, a third place the
- * vendor's cc1 differs from dtls13010's, not a source shape.
+ * sceSifInitIopHeap (GCC round 42a; open since round 11a, 3 words) stores _bind inside the serve
+ * test's arm and breaks: `if (cd.serve != 0) { _bind = 0; break; }`, `return 0` after the loop. With
+ * the store after the loop, the return's clear sat in the store's block and sched1 issued it with
+ * the %hi (no dependence, ISSUE_RATE 2), so the %hi took v1; in the arm the clear is the loop exit's
+ * own block and follows the store, the %hi in v0 as the target's. Round 18a read this (byte-exact
+ * as written only under -fno-schedule-insns) as the vendor's cc1 differing from dtls13010's, with
+ * fileio's no-wait PRE and libscf's adddate GCSE -- adddate was a source shape too (round 42a: the
+ * year read into a local), so of the three only fileio's is left to explain.
  * cd and rdata are data.txt's cd@iopheap and rdata@iopheap (round 17a: the IOP reset and loadfile
  * objects label statics of the same names). */
 
@@ -62,13 +61,14 @@ int sceSifInitIopHeap(void)
 	while (1) {
 		if (sceSifBindRpc(&cd, SIF_IOPHEAP, 0) < 0)
 			return -1;
-		if (cd.serve != 0)
+		if (cd.serve != 0) {
+			_bind = 0;
 			break;
+		}
 		i = 0x100000;
 		while (i--)
 			;
 	}
-	_bind = 0;
 	return 0;
 }
 
