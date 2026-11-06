@@ -748,7 +748,12 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
  * the target numbers `n + 1` after `n * m_avg[0]` -- n1 is made after the first average's product --
  * and its order (the percentages' chains between the first quotient's cvt, div and add) reads as
  * latency-filling by MW's scheduler, so the IR order is not the instruction order. `#pragma
- * opt_propagation off` with n1 after pa is the target's size too (62 off) */
+ * opt_propagation off` with n1 after pa is the target's size too (62 off). The flag is not needed to
+ * hold a value: an int-sized enum local (`enum E { MAX = 0x7FFFFFFF }`, cast back to int at the sum, an
+ * unsigned sum's conversion being 0x30C) gives the flag's numbers to the instruction with no control
+ * flow -- IRO's propagation leaves enum-typed variables alone. So held, with the product and the first
+ * sum as enum locals too, the best of all 360 orders is product, pa, sum, pb, pc, n1, pd, pe, d=19, 30
+ * off at the size: not adopted either, no such enum being in evidence. */
 void CCareerStats::AddMission(float a, float b, float c, float d, float e)
 {
     int n = m_missions;
