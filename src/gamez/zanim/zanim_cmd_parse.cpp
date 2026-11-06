@@ -52,23 +52,21 @@ struct zanim_cmd_fire_weapon {
  * model on its instance, and fired along the direction (through the second node, when given) from
  * the player, or the entity the anim's int argument names (SOCOM II's; unwritten before the engine
  * core's round 27).
- * OPEN, 0x53C of 0x57C (every instruction but the delay slots): the target never hoists an argument's
- * set-up out of the block after a branch into its delay slot here (`beqz s2; nop; jal; move a0,s2`, 8
- * of them, and the pad nops that follow) where MW fills it (`beqz s2; move a0,s2; jal; nop`). The
- * neighbours do hoist (build/scratch/core/hoist.py: 14 in zAnimCallAnimBegin, 0 kept) and
- * zAnimObjectMotionFromToBegin keeps three and hoists four, so it is a shape: no pragma changes it
- * (scheduling, peephole -- that reaches the size, lifetimes, dead assignments, propagation, CSE), nor an
- * asm directive, nor the body as an inline (0x4BC). */
+ * BYTE-EXACT SINCE THE ENGINE CORE'S ROUND 28. The target hoists nothing out of a fall-through into a branch's slot in the
+ * whole function (`beqz s2; nop; jal; move a0,s2`, and the pads that follow), and steals `move v0,zero` by a copy, leaving
+ * it behind a `b; nop`. One statement does that: `e = e && e->m_type == 2 ? e : 0`, its then-arm coalesced to a lone `b`.
+ * Block optimization (mwccps2 0x4C6D60) threads the conditional through that `b`, and having changed something clears every
+ * block's predecessor list; the delay-slot pass (0x4C7690) then sees no single predecessor anywhere, for any block */
 bool zAnimFireWeaponTick(_zanim_cmd_hdr *hdr, float *dT)
 {
-    CZProjectileList *projectiles = CZWeapon::m_pProjectilelist;
-    CZAmmoList *ammos = &CZAmmo::m_ammolist;
-    CZAmmo *ammo = 0;
     CZWeaponList *weapons = &CZWeapon::m_listWeapons;
+    CZAmmoList *ammos = &CZAmmo::m_ammolist;
     CZAnim *anim = ZAnim.m_CurAnim;
+    CZProjectileList *projectiles = CZWeapon::m_pProjectilelist;
     zanim_cmd_fire_weapon *cmd = (zanim_cmd_fire_weapon *)hdr;
     CZProjectile *proj = 0;
     CZWeapon *weapon = 0;
+    CZAmmo *ammo = 0;
     bool placed = false;
     CPnt3D pos;
     CPnt3D vel;
@@ -150,16 +148,15 @@ bool zAnimFireWeaponTick(_zanim_cmd_hdr *hdr, float *dT)
             int id = anim->m_arg_list->GetInt(CZAnimArg::TYPE_INT);
             CEntity *e = CEntity::m_list.GetEntityById(id);
 
-            if (e && e->m_type != 2)
-                e = 0;
+            e = e && e->m_type == 2 ? e : 0;
             if (e) {
                 ent = e;
                 shooter = id;
             }
         }
         if (ent) {
-            shooter = ent->m_id;
             shooter_node = ent->GetNode();
+            shooter = ent->m_id;
         }
         if (theNetwork.m_bNetwork)
             proj->m_isplayer = false;
