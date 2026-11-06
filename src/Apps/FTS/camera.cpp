@@ -1169,6 +1169,86 @@ void func_00296F10(CAppCamera *cam, CMatrix &cTw, float dT)
     UpdateRegions(cam);
 }
 
+/* the controller's aim pitched by a rate (OVL2 0x594600, the SEALs' controller: not named yet) and
+ * the pitch from the current layout's sticks (fts_controller.cpp's 0x2C6280) */
+extern "C" void func_00594600(CAppCameraCtrl *ctrl, float dT, float rate);
+extern "C" float func_002C6280(const CPad *pad);
+/* how long mode 1's camera has run with the short tether's rate at 1 (SOCOM II's static) */
+extern "C" float data_00416030;
+
+/* mode 1's camera (SOCOM II's, the tether's twin over mode 1's camera position): with the death
+ * camera's state 7 the followed controller's pitch turned by the pad's stick at twice its rate,
+ * then the tether's camera with the aim lowered by 8 for a player's SEAL down on dry ground */
+void func_00295F20(CAppCamera *cam, CMatrix &cTw, float dT)
+{
+    if (cam->m_cam_death_state == 7) {
+        CPad *pad = cam->m_padid < CInput::NUM_PADS ? CInput::m_pads[cam->m_padid] : 0;
+
+        if (!pad)
+            pad = CInput::m_pads[0];
+        if (pad) {
+            CAppCameraCtrl *ctrl = cam->m_ctrl;
+
+            if (ctrl) {
+                /* the rate doubled in place: computed into the call's argument it is one register,
+                 * the target's product is f0 copied to f13 */
+                float rate = func_002C6280(pad);
+
+                rate *= 2.0f;
+                func_00594600(ctrl, dT, rate);
+            }
+        }
+    }
+    CPnt3D CamOffset;
+    float tetherLen;
+    CPnt3D cam_new_pos = func_0029A660(cam, &CamOffset, &tetherLen);
+    CPnt3D cam_aim_point;
+    /* a byte the call returns, narrowed again (andi) before the test */
+    unsigned char watching = func_00297410(cam, &cam_new_pos, &CamOffset, &cam_aim_point, dT);
+
+    if (watching && cam->m_bc) {
+        CPnt3D from = cam->m_bc->m_posW;
+
+        from.y += 10.0f;
+        cam->ClipCameraChord(dT, &from, &cam_new_pos, &cam_new_pos);
+    } else {
+        CPnt3D dir = DiffOf(cam_aim_point, cam_new_pos);
+
+        dir.Normalize();
+        EaseBy(cam_aim_point, cam_new_pos, dir, tetherLen);
+        if (cam->m_bc && !theNetwork.m_9 && cam->m_bc->IsPlayer() && !cam->m_bc->m_isAlive &&
+            !cam->m_bc->m_inwater)
+            cam_aim_point.y -= 8.0f;
+        if (cam->m_45) {
+            if (cam->m_46) {
+                cam->m_easeT += dT;
+                if (!(cam->m_easeT < 1.0f))
+                    cam->m_45 = 0;
+            } else
+                cam->m_easeT = 6.0f * dT;
+            if (cam->m_easeT > 1.0f)
+                cam->m_easeT = 1.0f;
+            float t = cam->m_easeT;
+
+            EaseBy(cam_aim_point, cam->m_easeAim, cam_aim_point - cam->m_easeAim, t);
+            cam->m_easeAim = cam_aim_point;
+            EaseBy(cam_new_pos, cam->m_easePos, cam_new_pos - cam->m_easePos, t);
+            cam->m_easePos = cam_new_pos;
+        } else {
+            cam->m_easeAim = cam_aim_point;
+            cam->m_easePos = cam_new_pos;
+        }
+        cam->ClipCameraChord(dT, &cam_aim_point, &cam_new_pos, &cam_new_pos);
+    }
+    cam->LookAt(&cam_new_pos, &cam_aim_point, cTw);
+    UpdateRegions(cam);
+    if (short_tether_rate == 1.0f) {
+        if (data_00416030 > 0.1f)
+            short_tether_rate = 0.03f;
+        data_00416030 += dT;
+    }
+}
+
 /* first person's camera (APFirstPersonCam's place, SOCOM 1's locals): the first-person point and
  * the forward look -- the watched SEAL's own when it is the one followed -- carried into the SEAL's
  * space, eased from where they were while the ease runs (over a second, else six times the frame),
