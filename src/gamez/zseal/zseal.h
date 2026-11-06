@@ -829,6 +829,8 @@ public:
     void SetTrigger(bool down, float power);
     /* how far the SEAL sees: none for the camera's far plane (SOCOM 1's; OVL2 0x5924B0) */
     void SetViewRange(float range);
+    /* the view cone's angle (SOCOM 1's; OVL2 0x5C9720, seal_sensors.cpp's) */
+    void SetViewFOV(float fov);
     /* whether an action node's action can be taken now, and the bomb's planting (SOCOM 1's; OVL2
      * 0x594350, 0x594480) */
     bool CanPerformAction(class CNodeAction *action);
@@ -1145,7 +1147,7 @@ public:
     unsigned int m_bits20 : 12;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
-    unsigned char _26d[0x26e - 0x26d];
+    unsigned char m_26d;   // 0x26d (cleared with 0x26c by the constructor; the name ours)
     unsigned char m_26e;   // 0x26e: a mode byte (2 refuses SetSprayTimer; the name ours)
     unsigned char _26f[0x270 - 0x26f];
     /* the teams whose presence in a region wakes the SEAL, and the region (0x56D450 sets them -- 14
@@ -1178,7 +1180,8 @@ public:
     /* a Navy SEAL's anger at the player: Tick and OnDeath raise it by 60 a second, 0x561B90 cools it
      * and turns the squad on the player past 190 (new in SOCOM II; the name ours) */
     float m_400;   // 0x400
-    unsigned char _404[0x40c - 0x404];
+    float m_404;   // 0x404 (zeroed by the constructor; the names from here to 0x7a4 ours)
+    unsigned char _408[0x40c - 0x408];
     float m_40c;   // 0x40c: a time on the game's clock 0x572190 measures from (the name ours)
     unsigned char _410[0x41c - 0x410];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
@@ -1231,7 +1234,9 @@ public:
     float m_strafe_time;   // 0x610
     float m_strafe;   // 0x614
     CAiMapLoc m_leg_cell;   // 0x618
-    unsigned char _61c[0x628 - 0x61c];
+    CAiMapLoc m_61c;   // 0x61c: the constructor sets both invalid, 0x620 first
+    CAiMapLoc m_620;   // 0x620
+    unsigned char _624[0x628 - 0x624];
     unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
     unsigned char m_eventQueue[0xc];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8: SOCOM II's lists are 0xc bytes)
     /* the kinds of event the AI hears (SOCOM 1's m_eventMask, 0x4b8: UpdateEventMask, OVL2 0x572D70,
@@ -1246,7 +1251,8 @@ public:
     unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
     unsigned char _680[0x6a8 - 0x680];
     unsigned int m_6a8;   // 0x6a8: the target's flags (bit 9 lets a held target interrupt: the kit lane)
-    unsigned char _6ac[0x6f0 - 0x6ac];
+    unsigned char _6ac[0x6ec - 0x6ac];
+    float m_6ec;   // 0x6ec (1 from the constructor)
     float m_6f0;   // 0x6f0: the time since death (PostMortemPreTick 0x56EE80 runs it up; the name ours)
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
@@ -1254,11 +1260,16 @@ public:
     unsigned char _6fc[0x700 - 0x6fc];
     /* the scale EventTick's walks hear at, by a table's entry 6 (0x5750D0; the name ours) */
     float m_700;   // 0x700
-    unsigned char _704[0x718 - 0x704];
+    float m_704;   // 0x704: with 0x700, 0x70c and 0x710 set to 1 by the constructor
+    unsigned char _708[0x70c - 0x708];
+    float m_70c;   // 0x70c
+    float m_710;   // 0x710
+    unsigned char _714[0x718 - 0x714];
     /* what 0x572240 gathers from an alert: the amounts summed, a point the alert fills, and its word
      * at 4 (the names ours) */
     float m_718;   // 0x718
-    unsigned char _71c[0x724 - 0x71c];
+    unsigned int m_71c;   // 0x71c
+    unsigned char _720[0x724 - 0x720];
     CPnt3D m_724;   // 0x724
     int m_730;   // 0x730
     /* two random times, each an Rfloat {min, range} (the units' own class: read through a cast), and
@@ -1278,11 +1289,16 @@ public:
     AI_SOUND_PRIORITY m_sound_priority;   // 0x764
     unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
-    unsigned char _76d[0x774 - 0x76d];
+    unsigned char _76d[0x770 - 0x76d];
+    unsigned int m_770;   // 0x770
     /* a point a thrower's own grenade is measured from (the grenade state's Tick, 0x55AC20: within
      * 50 of it the throw back is not wanted; the name ours) */
     CPnt3D m_774;   // 0x774
-    unsigned char _780[0x7c0 - 0x780];
+    /* three points the constructor clears as one chain, 0x798 first */
+    CPnt3D m_780;   // 0x780
+    CPnt3D m_78c;   // 0x78c
+    CPnt3D m_798;   // 0x798
+    unsigned char _7a4[0x7c0 - 0x7a4];
 };
 
 class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {
@@ -1290,6 +1306,8 @@ public:
     /* the AI's ZAnim task commands registered (OVL2 0x5DE320, seal_tasks.cpp's; CMission::Init) */
     static bool RegisterCommands();
     CSealCtrlAi();
+    /* the AI put in a group, or none (OVL2 0x60E6F0, ai_group.cpp's; the name ours) */
+    void SetGroup(class CAiGroup *g);
     /* (0x573E60: the stack emptied, then the bases' destructors) */
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);

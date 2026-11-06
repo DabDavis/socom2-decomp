@@ -570,6 +570,76 @@ SEAL_VALVE CSealCtrlAi::get_valve(const char *name)
     return SEAL_VALVE_NONE;
 }
 
+extern "C" {
+/* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's: the stack, the AI, a flag) */
+void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
+}
+
+/* the AI's controller made: the bases (CSealCtrl's and SEAL_AI_PARAMS's constructors, out of line),
+ * then no debug, no group, full speed, the leg's cells invalid, the flags cleared but bit 12, the view
+ * cone a quarter turn wide and 1000 long, the alertness nil, mode 1, the valves and both anim tables
+ * cleared, the stack's bits brought up to date, the stances standing (OVL2 0x574080; SOCOM 1's
+ * constructor, which built SEAL_AI_PARAMS's members in place -- SOCOM II's 0x60BF40 does) */
+CSealCtrlAi::CSealCtrlAi()
+{
+    m_debug = false;
+    SetGroup(0);
+    m_speed = 1.0f;
+    m_61c = m_620 = CAiMapLoc::invalid;
+    m_774 = CPnt3D::zero;
+    m_770 = 0;
+    m_aibit2 = false;
+    m_aibit3 = false;
+    m_aibit5 = false;
+    m_aibit6 = false;
+    m_aibit7 = false;
+    m_aibit13 = false;
+    m_aibit8 = false;
+    m_aibit9 = false;
+    m_nosnooze = false;
+    m_aibit11 = false;
+    m_aibit12 = true;
+    m_aibit15 = false;
+    m_spraytimer = 0.0f;
+    m_5c8 = 0.0f;
+    m_awareTimer = 0.0f;
+    m_awarePending = (AI_AWARE)0;
+    m_5c4 = 0;
+    m_5c0 = -100.0f;
+    SetViewFOV(0.7853982f);
+    SetViewRange(1000.0f);
+    m_aware.m_value = 0.0f;
+    m_aware.m_goal = 0.0f;
+    m_3f4 = (AI_MODE)1;
+    m_700 = 1.0f;
+    m_704 = 1.0f;
+    m_70c = 1.0f;
+    m_710 = 1.0f;
+    m_follow_master = 0;
+    m_follow_master_id = CEntity::invalidId;
+    m_padid = 1;
+    m_6f0 = 0.0f;
+    m_scan_limits = 1.0471976f;
+    memset(m_valve, 0, sizeof m_valve);
+    memset(_44c, 0, 16);
+    memset(&m_anims[3], 0, 16);
+    func_005F7470(&m_stateStack, this, 1);
+    m_stance_asked = STANCE_STAND;
+    m_stance = STANCE_STAND;
+    m_stance_delay = 0.0f;
+    m_280 = 0.0f;
+    m_pathTolerance = 0.0f;
+    m_724 = CPnt3D::zero;
+    m_730 = CEntity::invalidId;
+    m_71c = 0;
+    m_6ec = 1.0f;
+    m_400 = 0.0f;
+    m_404 = 0.0f;
+    m_26c = 0;
+    m_26d = 0;
+    m_780 = m_78c = m_798 = CPnt3D::zero;
+}
+
 /* the controller unmade: its stack's states deleted (CAiStateStack::Clear, out of line), then the
  * bases -- SEAL_AI_PARAMS's destructor inlined behind the conversion's null test of `this + 0x250`,
  * its members destroyed in reverse order, then CSealCtrl's called with 0 (OVL2 0x573E60; SOCOM 1's
