@@ -153,19 +153,80 @@ CSealCtrl::CSealCtrl()
     m_244 = 0.0f;
 }
 
-/* a vector's length squared on the ground plane (OVL2 0x5975B0: an inline's copy, before the
- * grenade's statics; PostTick and the kit call it) */
-extern "C" float func_005975B0(const CPnt3D *v)
-{
-    return v->x * v->x + v->z * v->z;
+namespace ai {
+bool PushLineColor(const CPnt3D &color);
+void PopLineColor();
+void SetLineFuncOpacity(float start, float end);
 }
 
-/* points turned by a matrix's rotation, in place (OVL2 0x597530: an inline's copy, right after its
- * first caller CSealCtrl::PostTick -- zmath.h's TransformVectors with one array for both, so the
- * input cursor is a copy of the output's; the kit calls it too, 0x5B8920 and 0x5C1970) */
-extern "C" void func_00597530(const CMatrix *m, CPnt3D *p, int count)
+/* the time a grenade thrown with a velocity flies from a height (the two views const: `&g + 16` of the
+ * launch's own stores and the velocity's y here are told apart -- read straight, one saved register
+ * holds it from the launch's arms on) */
+inline float FlightTime(const CPnt3D &v, const CPnt3D &p)
 {
-    TransformVectors(m, p, p, count);
+    float t0, t1;
+
+    return ai::quadratic(-49.0f, v.y, p.y, t0, t1) ? ai::_max(t0, t1) : 0.0f;
+}
+
+/* the thrown grenade's arc drawn while the SEAL throws (OVL2 0x5970B0, slot 0x3C; SOCOM 1's, the switch
+ * added, not through binoculars or a scope, its colour by the night vision). Byte-exact from SOCOM 1's
+ * body once CDynGrenade::Initalize (zseal.h) is an inline over inline_max_size, as the three calling
+ * functions' out-of-line calls say. The matrix declared first takes its number ahead of the seal and the
+ * kit: `igreplay --permute`'s four placements all have it below them */
+bool CSealCtrl::PostTick(float dT)
+{
+    const CMatrix *m;
+
+    if (!data_003DF1B0)
+        return false;
+
+    SensorTick(dT);
+
+    static unsigned int steps = 100;
+
+    if (steps != 0) {
+        CZSealBody *seal = (CZSealBody *)m_entity;
+        CZKit *kit = &seal->m_kit;
+
+        if (m_throwing && !m_justthrew && !kit->IsUsingBinocs()) {
+            float power = m_trigger_power;
+            bool standing = seal->m_state == stateStand;
+            CharacterDynamics::throw_params *params = &seal->GetDynamics()->m_throw_params;
+            float dist = standing ? params->max_distance_stand : params->max_distance_crouch;
+            AnimType type;
+            float frac, base;
+            CPnt3D p;
+
+            seal->GetThrowAnim(power, type, frac, base, p);
+
+            CDynGrenade g;
+
+            m = &seal->m_node->m_matrix;
+            g.Initalize(m, seal->m_aim_goal, dist, power, p);
+
+            float tmax = FlightTime(g.m_vel, p);
+
+            g(FlightTime(g.m_vel, p));
+
+            static float k_opacity0 = 0.75f;
+            static float k_opacity1 = 0.1f;
+            static float k_scale = 2.0f;
+
+            tmax *= k_scale;
+            if (!kit->IsUsingScope()) {
+                if (!kit->NVG_Enabled()) {
+                    ai::PushLineColor(CPnt3D(0.78f, 0.78f, 0.0f));
+                } else {
+                    ai::PushLineColor(CPnt3D(1.0f, 1.0f, 0.8f));
+                }
+                ai::SetLineFuncOpacity(k_opacity0, k_opacity1);
+                ai::DrawFunc(ai::LINE_ANY, -1.0f, tmax, steps, g);
+                ai::PopLineColor();
+            }
+        }
+    }
+    return true;
 }
 
 extern "C" {

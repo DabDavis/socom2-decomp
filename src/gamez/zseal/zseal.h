@@ -310,6 +310,8 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* whether the night vision is on (OVL2 0x5C80F0, kit.h's) */
+    bool NVG_Enabled() const;
     /* whether the weapon in hand waits out a fire delay (kit.h's; OVL2 0x5C2400 -- IsReloading asks
      * it first) */
     bool IsFireDelayed();
@@ -708,6 +710,32 @@ public:
     unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
 };
 
+/* the throw's small inlines (OVL2 0x597630, 0x597650, 0x5975B0, 0x597530: out-of-line copies right after
+ * their first caller, CSealCtrl::PostTick: CDynGrenade::Initalize, over inline_max_size, calls them):
+ * a lerp; the sine and cosine of an angle; a vector's length squared on the ground plane; points turned by
+ * a matrix's rotation in place (zmath.h's TransformVectors with one array for both, so the input cursor
+ * is a copy of the output's). The names ours; SOCOM 1's PostTick has each expanded in place */
+inline float Lerp(float a, float b, float t)
+{
+    return a * (1.0f - t) + b * t;
+}
+
+inline void SinCos(float a, float &s, float &c)
+{
+    s = sinf(a);
+    c = cosf(a);
+}
+
+inline float LengthSqXZ(const CPnt3D &v)
+{
+    return v.x * v.x + v.z * v.z;
+}
+
+inline void RotateVectors(const CMatrix *m, CPnt3D *p, int count)
+{
+    TransformVectors(m, p, p, count);
+}
+
 /* a thrown grenade's flight, solved (SOCOM 1's: 0x1c bytes, passed by value to ai::DrawFunc, which
  * copies all seven words; the members' names ours) */
 class CDynGrenade {
@@ -722,6 +750,69 @@ public:
     CPnt3D operator()(float t) const
     {
         return m_pos + m_vel * t + CPnt3D(0.0f, -49.0f * (t * t), 0.0f);
+    }
+
+    /* the flight set from a point, a direction and a speed (OVL2 0x5974F0, an inline's copy; SOCOM 1's two
+     * PNT3D assignments and its Scale) */
+    void Set(const CPnt3D &pos, const CPnt3D &dir, float speed)
+    {
+        m_pos.x = pos.x;
+        m_pos.y = pos.y;
+        m_pos.z = pos.z;
+        m_vel.x = dir.x;
+        m_vel.y = dir.y;
+        m_vel.z = dir.z;
+        m_vel.Scale(speed);
+    }
+
+    /* the throw solved: the most speed the distance asks at the point's height, the aim's elevation plus
+     * the power's offset, the flight's reach, and the direction -- toward the point the reach leaves, or
+     * straight -- turned into the world by the matrix. An inline in three functions (CSealCtrl::PostTick and
+     * the kit's 0x5B8920, 0x5C1970: SOCOM 1's PostTick and TickExplosives have it expanded whole; the name
+     * from data.txt's old note, unproved). Its expanded body passes inline_max_size, so it is inlined one
+     * level: everything it calls is called, even CPnt3D() -- and its locals come last in the frame, q below
+     * every other inline's temporaries. Its statics are one each across the units that inline it: the
+     * bounds in OVL2 data 0x65E630 (`const`: FLASHBANG_DOT's section), from_range 0x6505C8; the zero of
+     * speed's bound is a literal, each unit's own (0x6505D0 here, 0x650930 for the kit) */
+    void Initalize(const CMatrix *m, const CPnt3D &aim, float dist, float power, CPnt3D &p)
+    {
+        static const float elev_min = 0.0f;
+        static const float elev_max = 0.9599311f;
+        static bool from_range = true;
+        float height = p.y;
+        float unused = 0.0f;
+        float maxvel = ComputeMaxVel(dist, height, &unused);
+        float elev = asinf(aim.y);
+
+        _saturate(&elev, elev_min, elev_max);
+        elev += ComputeElevOfs(power);
+
+        float s, c;
+
+        SinCos(elev, s, c);
+
+        float speed = Lerp(0.05f * maxvel, maxvel, power);
+        float t = m_18 = ComputeTimeToImpact(speed * c, speed * s, height);
+
+        if (from_range) {
+            speed = sqrtf(t * t + LengthSqXZ(p) + 2.0f * t * p.z);
+            _saturate(&speed, 0.0f, maxvel);
+            m_vel.x = -p.x;
+            m_vel.z = -(t + p.z);
+            m_vel.y = 0.0f;
+            m_vel.Normalize();
+            ai::elevate(m_vel, s, c);
+        } else {
+            m_vel.x = 0.0f;
+            m_vel.z = -c;
+            m_vel.y = s;
+        }
+
+        CPnt3D q;
+
+        RotateVectors(m, &m_vel, 1);
+        m->Transform(&p, &q, 1);
+        Set(q, (const CPnt3D &)m_vel, speed);
     }
 
     CPnt3D m_pos;   // 0x0
