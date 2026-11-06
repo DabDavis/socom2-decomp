@@ -523,8 +523,10 @@ bool Headset::IsQueued(CSnd *sound)
  * Byte-exact since the map named its four callees: FreeVector's pieces are vector<int>'s
  * out-of-line copies linked from CMissionObjectiveCam's unit at 0x2C7350 (the constructor),
  * 0x2C7340 (clear), 0x2C7300 (swap) and 0x2C7290 (the destructor). The queue is a vector<int>: the
- * constructor pushes an int by reference with no temporary */
-void Headset::Flush()
+ * constructor pushes an int by reference with no temporary. Its one caller, CCinematicState::Init,
+ * passes true (li a1,1 in the jal's delay slot) to a flag the body never reads (round 27: the row
+ * Flush__7HeadsetFb, was Fv) */
+void Headset::Flush(bool)
 {
     if (theHeadsetState == 1 && m_state != 3) {
         snd_DoExternCall(0x12C4E67A, 6, 0, 0, 0, 0, 0);
