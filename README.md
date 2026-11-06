@@ -12489,6 +12489,73 @@ accumulator op (`build/scratch/gcc/r43/accscan.py`). What the opens showed:
 - **0x24C000 (libquan.c's 2-D distance) is the unit's flags' schedule**: -fno-schedule-insns or -insns2 loses every
   other function of the unit (14 to 118 words), so the 11 words are a priority inside sched1/sched2, as diagnosed.
 
+**The tools, round 44a** (the lanes' requests). (0) **`scdiff`: a literal's run stops at the next relocated word**
+(the recogniser's round 39c, `LITERAL_STOPS_AT_RELOC`; `SC_LITERAL_RUN=nul` restores the old rule). An unnamed literal has no
+size of its own, so its extent was its first NUL, and casrDoSpelling 0x4DC178's doubles hold none: the run went on into the
+next object -- casrAcquisition's jump table at 0x6588B0 (not casrInitSampleFormat's, as first read) -- and stopped inside its
+first entry at the addend's own zero byte, a relocated word cut short and compared raw against the linked target: WRONG
+REFERENCE on 7 relocations where every instruction matches. **It narrows what is compared, so it was measured**
+(`build/scratch/gcc/r44/literalrun.py`, as round 42a's localcalls.py: every unit built once, every function scored under both
+rules, every verdict and every relocation's status compared; a spy on `local_object_ok` lists what the rule narrows): on master db427c01 with this round's tree, 1,854 units and 15,414 functions: **one verdict changes**, casrDoSpelling, WRONG REFERENCE (7) -> MATCH; no other function's verdict or any relocation's status changes; the rule narrows **7 references in the whole tree, all casrDoSpelling's**, each run by 3 bytes (59 -> 56, the first double's). Canary
+`test_literal_run_stops_at_the_next_relocated_word` (15): a fixture of the same shape -- two doubles, a jump table, one .rodata --
+reproduces the bug under the old rule; NEGATIVE CONTROLS: the first byte, a double's last byte and the last byte before the relocated
+word changed still fail under both rules, the second double's own too; a string ending first keeps its run and a wrong byte
+in it fails; a table entry the literal no longer reads fails from the table's own reference. On the real row: MATCH, WRONG
+REFERENCE under the old rule, a wrong double fails, a wrong table word leaves casrDoSpelling alone and fails casrAcquisition.
+(1a) **`tools/igdump.py --compiler BUILD` / `tools/igreplay.py --compiler BUILD`** (the kit's round 59): seal_aistate.cpp, 3.0b50 by
+its first line, dumps under `--compiler mwcps2-3.0b52-030722` with its directive's flags -- the kit's temporary copy without the
+copy, 149 of 149 records replay exactly. The dump says so: every record carries `built_by` and `unit_compiler`, and igdump
+(--read too) and igreplay print a `NOTE: this dump came from ...` line; igreplay --target builds its candidate with the dump's own
+build (the record's PCode is that build's), says so, and --compiler names another, said too (`sccheck.build_one(compiler=)`, an
+added parameter). The refusal without it names the override; another build than the breakpoints' is refused; a GCC unit stays
+refused; naming the unit's own build is the plain dump, no field, no note. Canary `test_igdump_compiler_override_says_so` (13).
+(1b) **`tools/ccperm.py --help`, `-h`** anywhere on the line print the usage (it read its argument as the probe), no arguments says the
+usage and fails; every form kept (`test_ccperm_takes_help_for_help`, 10). (1c) **try.py's hint fires for every form**, confirmed: `--and`,
+`--and-all`, `--sub-all` and an `--and` or `--and-all` after a `--sub`, each a BUILD-FAIL saying on stderr what -e and -n do; no code
+changed, the canary holds it now (`test_try_hint_for_a_typed_escape_fires_for_every_form`, 8; the Medius lane's BUILD-FAIL was its typed
+`\n`). (2) **`tools/pragmascan.py --report` ends with THE LIKELIEST NEXT HITS** (the UI's round 38: SkbParseComplete exact only
+under loop invariants and strength reduction both off -- they keep IRO_FindLoops from running -- and 0x2B0 under either alone): per open
+row its best variant whose candidate is exactly the target's size, nearest first, `at size` from another size, `closer at size`
+already there and nearer, a loss said (the row's `tsize` recorded, the map's for an older results file). Canary
+`test_pragmascan_report_lists_rows_at_the_targets_size` (6). **The scan, re-run over master 16a6e713** (`build/scratch/gcc/r44/ps/`, 1
+job, singles then pairs): 298 units, 234 open functions (178 located, 56 skipped), 4,984 variants, no build failure: **0 HIT**, 280
+closer; **20 rows a variant brings to the target's size** -- by distance: is_goal__14CAiHidePlanner 0x5F8570 (propagation, 10 -> 6),
+OnIsEquipmentSelected 0x280790 (dead assignments, 20 -> 7), Pop__13CAiStateStack 0x5F7990 (peephole, 14 -> 12),
+GetNextEvent__8CAiEvent 0x50EA50 (dead assignments, 22 -> 16), AddKeyProps__13CSoftKeyboard 0x38B770 (propagation + peephole, 19 -> 28), Tick__8CTTurret
+0x5CE660 (propagation, 31), Advance__15C2DStringCursor 0x3625E0 (propagation, 25 -> 32), LoadNodeNames__6CZAnim 0x26DEA0 (strength
+reduction, 213 -> 38), GetTeamSeals__9CSealUnit 0x5EA8C0 (propagation, 37 -> 40), CanUseDoorAction 0x5EC4E0 (CSE + propagation, 42 -> 47),
+__dt__10CUIListBox 0x375710 (peephole, 102 -> 62), CanInterrupt__10CZSealBody 0x587C20 (loop invariants + peephole, 67 -> 71), RecvPacket__8CConsole 0x29D3C0 (propagation
++ peephole, 87 -> 80), Tick__8CTCreate 0x5DD990 (dead assignments, 117 -> 90), Tick__8CTRegion 0x5CED60 (CSE, 172 -> 90), UpdateFollowParams 0x5FC970
+(propagation, 114 -> 112), RegisterPathPlan__7CAiMaps 0x52C5C0 (dead assignments, 133 -> 145), Destroy__6CGTree 0x2D22F0 (invariants + reduction, 139 -> 147),
+SelCharsHaveEquip 0x281160 (invariants + dead assignments, 111 -> 227), Next__9CSkbSplit 0x3903A0 (invariants + propagation, 27 -> 235) -- and 6 at size brought nearer:
+AddItem__10CUIListBox 0x373F20 (CSE, 6 -> 4), func_0057D710 (CSE + propagation, 13 -> 5), ReadArray__8CRdrFile 0x331940 (peephole, 9 -> 7), func_0057D5E0 (propagation, 9 -> 7),
+HandleOpenPad__4CTCM 0x235D40 (dead assignments, 12 -> 8), func_003B0A70 (propagation + peephole, 48 -> 37). None applied here. (3) **`tools/retsweep.py`, new**: the Medius lane's
+round 25b rule swept (a callee's declared return type moves the next block's registers): every open function of the GCC units, each callee its code calls by
+name found declared -- in the unit, else in a header it includes -- and its return type flipped, void to int, anything else to void; a HIT is byte-exact with
+nothing else in the unit lost. Over `lib/sdk` and `lib/ovl1` (105 units, 141 flips): **sceBInetRecv and sceBInetSend are FlushCache void**, plus sceGsResetGraph,
+the row it was written from; 1 closer (_sceSifCmdIntrHdlr, 23 -> 21). Over `lib/asr`, `medius`, `libc`, `libm`, `libgcc` (240 units, 136 flips): 0 HIT, 0 closer. Canary
+`test_retsweep_flips_a_callees_declared_return_type` (9; another callee's flip the negative). **The proof**: scdiff's rule above; for everything else, `./sccheck.py --files '.'` with master 16a6e713's tools and these, the tree unchanged, 15,257 lines identical (12,595 byte-exact of 12,938 scored); after merging master db427c01, every unit 12,650 byte-exact of 12,979 (77.45 %), no regression. **automatch**: over the lane's ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses), `1C6930 1E7000` and OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 11 tried, 0 hits (1 build failure, 2 refusals, 8 misses): 22 tried, none byte-exact (round 43a: 41, this round's hand-written rows gone from it).
+
+**Round 44a** (2026-11-06, the requests first, then the old opens by the allocators, then OVL1's codec by hand): 18 rows newly byte-exact (9,600 bytes): **four opens as old as round 2a**
+-- DIntr 0x1AC860 (round 2a), sceGsResetGraph 0x1A13D0 (round 6a), sceBInetSend 0x247738 (round 13a), sceBInetRecv 0x2474F8 (round 31a) -- and fourteen of the codec's, never written:
+libspeech.c whole (the band peaks 0x24CD28, the frame's peaks 0x24CF10, the STFT phases 0x24D560, the envelope 0x24CAE8), libmath.c whole (the resampler 0x24AB48), the detector 0x249FA8
+and the peaks' filter 0x24A210 (LDPDA.c), the pitch refinement 0x24F250 (sase_pitchmerge.c whole), the window 0x24C1F0 (libsigproc.c whole), RefineC0's 0x250CD8, the voicing estimate
+0x250F60, PostFilt's 0x24FBE8, the frame's candidate search 0x24FFF8, the window shift 0x249C88. Written and OPEN, each diagnosed in place: the frame analysis 0x2492A0 (4 bytes over), the frame coder 0x2488A0 (18 words, right
+size: two saved registers), the LPC envelope 0x24A5A8 (12 at 8 bytes short), the set quantiser 0x24B028 (3) and its decoder 0x24B2F8 (right size), VoicLD's 0x2513F0 (46 at the right size, all register names).
+The lane's `src/lib` 1,325 byte-exact of 1,382 scored (`lib/(sdk|libc|libgcc|libm|ovl1)`), no regression. No rows named (the asserts' own expressions gave the parameters' names: pfSW, deltapitch, iSeePeakCount, fPitchDFT, half_length, pfLogEnv, pfKS). What they showed:
+
+- **A PAIR OF REGISTERS SWAPPED IN ONE BLOCK IS LOCAL-ALLOC AGAINST GLOBAL-ALLOC** (DIntr, read off the dump): the first block's `mfc0 v1; lui v0,1; and v1,v1,v0` is a mask local to the block taking v0 first and a variable referenced in
+  ANOTHER block taken by global-alloc around it; written `res = eie != 0` before the test, eie is local too and outranks its mask (v0); as the arm's first statement -- reorg moves it into the branch's slot -- eie is referenced in a
+  second block. The loop's opposite pair is a second variable, local to its block, which outranks ITS mask. Round 43a's 13 declaration orders never moved the statement. Read a swapped pair as "who is global" before permuting.
+- **THE FLOAT'S PLACE IN THE PROTOTYPE ORDERS THE ARGUMENT MOVES** (0x24CD28, 0x2487E8, 0x24EF30, 0x250CD8, 0x24A5A8's neighbours): the EABI gives each class its registers whatever the order, so the source's position shows only in the
+  schedule -- the moves into argument registers keep the parameters' order, ties to the earlier. A `mov.s $f12` or `lwc1 $f12` ahead of a0, a1 or a2 (`lwc1 $f12; sw; addiu a1; addiu a2; jal` for 0x2487E8's first; `mov.s $f12; move a2; move a0; move a1` for 0x24EF30's third --
+  round 27a's voicing ratio had found the case) moves the float up the list. Four prototypes corrected; their definitions kept byte-exact.
+- **One variable for two roles shows as one register in two places** (0x24CD28's j, the walk and the band's centre: v1 for both -- the refs put it first in global-alloc's order, 12 words apart; 0x249FA8's iBins and the harmonic count; 0x24CF10's k and the last loop's counter; 0x24FBE8's pfKS register and the level pointer; 0x249C88's fA, the gain and the step's size, GLOBAL so f4, and the multiplies tie to the bins' locals: 31 words). Look for it before a priority sweep.
+- **What the optimiser leaves in the code tells the source**: a builtin `memcpy`'s memory conflicts with every store, so the int store above it stays above it, where a struct assignment's alias set lets the copy climb (0x2488A0: the 48-byte save); `iLength - 1` written twice,
+  GCSE's one pass reuses the integer -- spilled at 1312(sp), every saved register taken -- and not its conversion, reloaded by `lwc1` (0x24AB48: one variable keeps the float in $f23, the frame 16 smaller); an address-taken `i` in a loop is `loop.c`'s load_mems: a shadow register, the store on the loop's EXIT alone (0x250F60: the two tests that skip the loop skip the store); a value stepped by a loop is an EXPRESSION of the biv when its start follows the entry test (0x24A5A8's `(iStep * i + 0x4000) >> 15`, `li a2,16384`; 0x2513F0's `(iAcc + iBnd + 0x4000) >> 15`, `move t2,v0`), an accumulator's start precedes it; `j++` in the arm keeps `(j + 1) << 2` from folding (0x24A5A8); an 8-byte table of known size indexed `[i - 4]` is one `la` (no temporary, GCC's giv start: 0x24B028); a struct-free `a[0] = a[1] = a[2] = 0.0F` stores through a float register in that order (`swc1 $f0` three times, not `sw zero`: 0x24F250); an `if` that keeps `(a < b) ? x : a` stores on both paths, one branch-likely (0x24FFF8's cost, 0x24FBE8's clamps); `x = f(); x = K / x` ties the divide (0x24FFF8).
+- **`update_equiv_regs` moves a global pseudo's constant to just before its one use** (local-alloc.c: REG_BASIC_BLOCK < 0, loop depth 0): 0x1C46D0's 16 in v0 right before its `sw` is that shape, the constant assigned in another block -- every placement gives the `li`, but the `sh` then falls after the `sw` (5 words against 4): left OPEN with the note.
+- **Open, read further**: accept 0x1C32A8 is a TIE in global-alloc, addr and the client's address both 4 refs across 95 insns, the lower pseudo (the parameter) wins: 21 spellings of the head moved nothing (flow's lengths come after the extra copies die); frombcd's `mult; mflo` is no type: 1,458 spellings of the shift, the constant and the product, none gives it (mulsi3_mult3_r5900's `mult %1,%2` alternative needs the product in LO).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
