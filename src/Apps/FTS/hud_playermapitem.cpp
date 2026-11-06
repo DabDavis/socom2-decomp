@@ -1,20 +1,61 @@
 /* hud_playermapitem.cpp -- a seal on the HUD's map (OVL1 0x222190-0x22328F): SOCOM 1's unit (its
  * DWARF names it, Z:\dev\Apps\FTS\hud_playermapitem.cpp), the same functions in the same order,
- * from the implicit destructor to InitStaticItems. Not written yet: SetViewCone.
+ * from the implicit destructor to InitStaticItems.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "hud_playermapitem.h"
 #include "hud_newhudmap.h"
+#include "hud_mapcompass.h"
 
 class CEntityCtrl;
 
-/* the node an entity is drawn by: its matrix first (znode.h's) */
+/* the node an entity is drawn by: its matrix first (znode.h's), and a texture's handle (its
+ * texture at 0xC) */
 namespace zdb {
 class CNode {
 public:
     CMatrix m_matrix;   // 0x0
 };
+
+class CTexHandle {
+public:
+    unsigned char _0[0xc];
+    CTexture *m_texture;   // 0xc
+};
 }
+
+/* the HUD as the blip reads it: its compass (hud_main.cpp's CHUD) */
+class CHUD {
+public:
+    unsigned char _0[0x4fe0];
+    MapCompass m_compass;   // 0x4fe0
+};
+
+extern CHUD *theHUD;
+
+/* the tactical map's pulse (hud_linemap.cpp's) and the layout's 20 (hud_main.cpp's) */
+float hudGetTacMapPulseTrans();
+extern float g_fHudLayout20;
+
+/* a blip's colours, its cone's and its own (SOCOM 1's DWARF), by blip id (SOCOM 1's static
+ * _blips: nine of them, the table SetViewCone indexes) */
+class BLIP_COLOR {
+public:
+    PNT3D cone;   // 0x0
+    PNT3D blip;   // 0xc
+};
+
+static BLIP_COLOR _blips[9] = {
+    {{82.0f, 205.0f, 205.0f}, {82.0f, 205.0f, 205.0f}},
+    {{0.0f, 0.0f, 150.0f}, {0.0f, 0.0f, 150.0f}},
+    {{0.0f, 120.0f, 120.0f}, {0.0f, 120.0f, 120.0f}},
+    {{90.0f, 15.0f, 90.0f}, {90.0f, 15.0f, 90.0f}},
+    {{50.0f, 0.0f, 0.0f}, {50.0f, 0.0f, 0.0f}},
+    {{150.0f, 0.0f, 0.0f}, {150.0f, 0.0f, 0.0f}},
+    {{62.0f, 155.0f, 155.0f}, {62.0f, 155.0f, 155.0f}},
+    {{110.0f, 70.0f, 110.0f}, {110.0f, 110.0f, 110.0f}},
+    {{10.0f, 10.0f, 10.0f}, {10.0f, 10.0f, 10.0f}},
+};
 
 /* a cell of an AI map (zentity.h's CAiMapLoc, SOCOM 1's): the map's id in the low six bits */
 class CAiMapLoc {
@@ -110,6 +151,7 @@ public:
 
 class CZSealBody : public CEntity {
 public:
+    bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
     /* the way the SEAL looks (OVL2 0x5AF500, zseal's) */
     void GetLookDirW(CPnt3D *dir) const;
     bool IsAi() { return m_control ? ((CSealCtrl *)m_control)->IsAi() : false; }
@@ -364,6 +406,106 @@ void CZPlayerMapItem::TickSealCone(CZNewHudMap *map)
     }
 }
 
+
+/* whether an entity is a SEAL by its type (a bool, materialised with xori / sltiu: SetViewCone's
+ * test, in a ternary's condition after the null test -- the && then materialised too, unmasked;
+ * through a bool or int inline or local the && is masked with andi; the name ours) */
+static inline bool IsSealType(const CEntity *e)
+{
+    return e->m_type == 2;
+}
+
+/* the cone drawn from the SEAL's position along its look, 400 units at the map's zoom and as wide
+ * as the view's tangent makes it there, through the map's matrix (the transform a VU0 loop over its
+ * three points); for the player its fan fitted between the cone's far corners. The blip a square,
+ * 4 a side but for blip 7 (the compass's fourth anchor picture, half the layout's 20), shown for
+ * the player, off for the rest; the cone shown, both coloured by the blip and faded in by the
+ * item's fade -- everything off for an unseen blip faded out (SOCOM 1's SetViewCone, 0x3DB9C0
+ * there: its DWARF's locals; its length parameter unused, the length the zoom's 200 there).
+ * Round 58, unwritten before: the points built in place by the array's initialiser (the
+ * constructor's arguments right to left: w and z first); the transform's matrix, points and count
+ * named locals in that order, the two points assigned `in = out = point` (the target's copy runs
+ * out to in) -- through an inline TransformPoints(m, in, out, count) the matrix, read first, is
+ * numbered last and the four registers rotate (9-17 off in every parameter order); the texture
+ * declared before the blip's size (the 4.0's register); the player test held in a bool before
+ * the blip's On / Off (the target's second andi) */
+void CZPlayerMapItem::SetViewCone(CZNewHudMap *map, const CPnt3D *dir, const CPnt3D *pos, unsigned int blipId,
+                                  float length, float fovTAN)
+{
+    if (blipId == 9 && m_fadeval == 0.0f) {
+        AllOff(this);
+        return;
+    }
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    seal = (seal && IsSealType(seal)) ? seal : 0;
+    float fConeLen = 400.0f * map->GetZoomOut();
+    float CONEWID = fConeLen * fovTAN;
+    CPnt4D point[3] = {
+        CPnt4D(pos->x, pos->y, pos->z, 0.0f),
+        CPnt4D(pos->x + fConeLen * dir->x + CONEWID * dir->z, pos->y,
+               pos->z + fConeLen * dir->z - CONEWID * dir->x, 0.0f),
+        CPnt4D(pos->x + fConeLen * dir->x - CONEWID * dir->z, pos->y,
+               pos->z + fConeLen * dir->z + CONEWID * dir->x, 0.0f),
+    };
+
+    {
+        const CMatrix *m = &map->m_matrix;
+        const CPnt4D *in;
+        CPnt4D *out;
+        int n = 3;
+
+        in = out = point;
+        _LoadMatrix(m);
+        do {
+            _TransformPointXYZ(in, out);
+            in++;
+            out++;
+        } while (--n);
+    }
+    if (seal->IsPlayer()) {
+        float xdiff = (point[2].x - point[1].x) / 2.0f;
+        float ydiff = (point[2].y - point[1].y) / 2.0f;
+        float x4 = point[0].x + xdiff;
+        float x5 = point[0].x - xdiff;
+        float y4 = point[0].y + ydiff;
+        float y5 = point[0].y - ydiff;
+
+        m_cone.Load(point[1].x, map->CalcDrawPos(point[1].y), x5, map->CalcDrawPos(y5), x4,
+                    map->CalcDrawPos(y4), point[2].x, map->CalcDrawPos(point[2].y), m_myconetex);
+    }
+
+    zdb::CTexture *pTex = m_mybliptex;
+    float fBlipHalfSide = 4.0f;
+
+    if (blipId == 7) {
+        zdb::CTexHandle *pHandle = theHUD->m_compass.GetAnchorImg(4);
+
+        pTex = pHandle ? pHandle->m_texture : 0;
+        fBlipHalfSide = 0.5f * g_fHudLayout20;
+    }
+
+    float fLeftX = point[0].x - fBlipHalfSide;
+    float fRightX = point[0].x + fBlipHalfSide;
+    float fTopY = map->CalcDrawPos(point[0].y - fBlipHalfSide);
+    float fBotY = map->CalcDrawPos(point[0].y + fBlipHalfSide);
+
+    m_blip.Load(fLeftX, fTopY, fLeftX, fBotY, fRightX, fBotY, fRightX, fTopY, pTex);
+    bool player = seal->IsPlayer();
+
+    if (player)
+        m_blip.On();
+    else
+        m_blip.Off();
+    m_cone.On();
+
+    BLIP_COLOR &c = _blips[blipId];
+
+    m_cone.SetColor(c.cone.x, c.cone.y, c.cone.z);
+    m_blip.SetColor(c.blip.x, c.blip.y, c.blip.z);
+    m_cone.SetTrans(m_fadeval * hudGetTacMapPulseTrans());
+    m_blip.SetTrans(127.0f * m_fadeval);
+}
 
 void CZPlayerMapItem::MissionEndCleanup()
 {

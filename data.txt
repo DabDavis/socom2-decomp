@@ -607,6 +607,7 @@
 0x003E4F60 0x4 s_fDividerY__27@unnamed@hud_teamnames_cpp@  # OVL1 data; ours (the HUD lane): the dividers' line, 3 + 15 + 17 + the HUD's bottom block (0x3E2FF8), computed by hud_teamnames.cpp's initialiser 0x3FE700 -- 5 references in 2 functions take 0x3E4F60 (CTeamNames::Init x4)
 0x003E4FA0 0x8 __RTTI__10CTeamNames  # RTTI of CTeamNames: found by its RTTI's name
 0x003E5020 0x8 __RTTI__10PoseBitmap  # RTTI of PoseBitmap: found by its RTTI's name
+0x003E50B0 0xD8 _blips  # OVL1 data; SOCOM 1's file static (its symbol table: hud_playermapitem.cpp's _blips, 216 bytes -- nine BLIP_COLORs, SOCOM 1's DWARF type: the cone's and the blip's colour by blip id; SOCOM II's values in the image), the HUD lane, round 58 -- 1 reference in 1 function: CZPlayerMapItem::SetViewCone 0x2222E0 indexes it by blip id
 0x003E51B0 0x8 __RTTI__15CZPlayerMapItem  # RTTI of CZPlayerMapItem: found by its RTTI's name
 0x003E5218 0x8 __RTTI__12CMPExitState  # RTTI of CMPExitState: found by its RTTI's name
 0x003E5468 0x8 __RTTI__11CMPExitMenu  # RTTI of CMPExitMenu: found by its RTTI's name
