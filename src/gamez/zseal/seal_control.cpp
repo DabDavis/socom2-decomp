@@ -873,12 +873,12 @@ void CSealCtrl::OnDeath()
     case DEATH_KNIFE_KILL:
     case DEATH_CQB:
     case DEATH_HEADSHOT:
-        PlayAiSound((CHARACTER_SOUND)61, 1.0f, -1);
+        PlayAiSound((CHARACTER_SOUND)61, 1.0f, CAiEvent::AIE_NONE);
         break;
     case DEATH_GHOST:
         break;
     default:
-        PlayAiSound((CHARACTER_SOUND)60, 1.0f, -1);
+        PlayAiSound((CHARACTER_SOUND)60, 1.0f, CAiEvent::AIE_NONE);
         break;
     }
     CZSealBody *seal = (CZSealBody *)m_entity;
@@ -920,12 +920,12 @@ static inline bool Chance(float chance)
 
 extern "C" {
 /* the voice's AI event made where the SEAL stands (OVL2 0x55FEE0, seal_ai.cpp's) */
-void func_0055FEE0(CSealCtrl *ctrl, int event);
+CAiEvent *func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event);
 }
 
 /* a sound of the SEAL's character played where it stands, if the chance comes up, and its AI
  * event made; whether it played (OVL2 0x5978A0; SOCOM 1's played it always) */
-bool CSealCtrl::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
+bool CSealCtrl::PlayAiSound(CHARACTER_SOUND sound, float chance, CAiEvent::EVENT event)
 {
     bool played;
     CZSealBody *seal = (CZSealBody *)m_entity;
@@ -944,7 +944,7 @@ bool CSealCtrl::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
 /* hurt: the pain cry, and the pad shaken unless the SEAL is a remote one (OVL2 0x597B00) */
 void CSealCtrl::OnSetHealth(float health, float old)
 {
-    PlayAiSound((CHARACTER_SOUND)59, 1.0f, -1);
+    PlayAiSound((CHARACTER_SOUND)59, 1.0f, CAiEvent::AIE_NONE);
     if (IsRemote())
         return;
     SetLowRumbleTime(0.18f, 175.0f);

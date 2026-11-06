@@ -856,20 +856,19 @@ int CWorld::RegProximityDelayed(DiIntersect *di, const CPnt3D *p, float radius, 
  * 0.0441 blue (new in SOCOM II between Segregate_CCells and RegProximityDelayed, which SOCOM 1 has
  * side by side; nothing in the image calls it or takes its address -- the name and the parameters'
  * order ours, after RegProximityDelayed's).
- * OPEN, 0x354 against 0x34C (written in round 25 of the world lane; build/scratch/wld/v_gli*.py):
- * the colour starts as a copy of CPnt3D::zero, the difference is `operator-`'s temporary copied out,
- * and the light walk's iterator is ASSIGNED from begin() (so it lives in its stack slot, copied in
- * through $f0, the frame then the target's: the colour at sp+184) -- all as the target. Two misses:
- * (1) MW rotates the light walk -- its test repeated as a guard ahead of the hoisted squared radius
- * and field addresses, where the target's preheader holds them and branches to the bottom test.
- * Tried: the loop without its init, as a while, `i++`, `continue`s for the two skips, the iterator
- * declared at the top, before the cell or after the squaring, the radius squared into a named local
- * before the walk (all 0x354), squared before the cell test (0x34C, 38 off: still guarded, the
- * multiply in a delay slot), squared in the body (rotation stops, but the preheader is laid out
- * after the return: 0x364), a do-while (0x344), the cell's lights an inline with an early return
- * (0x364). (2) The global colours' nine products are `mul.s d,k,col` here, `d,col,k` in the target,
- * whichever side the constant is written on -- also through a named factor, a reference to the colour,
- * the nine written out, `c = c + ...`, or an inline helper taking the factor */
+ * The colour starts as a copy of CPnt3D::zero, the difference is `operator-`'s temporary copied
+ * out, and the light walk's iterator is ASSIGNED from begin() (so it lives in its stack slot,
+ * copied in through $f0: the colour at sp+184) -- all as the target. The global colours' factor is
+ * a named local (a literal is a constant MW puts first in each product, `mul.s d,k,col`; named, the
+ * colour comes first as the target's) and each colour a reference (`col.x` read off it numbers the
+ * c.x load ahead of the colour's, which gives the x products the target's f1/f2; through
+ * m_gLight.col[i] written out the y and z rows matched and the x rows took the other two).
+ * THE WALK IS A MARKED DEVICE (round 26): the target enters it by a jump to its bottom test, its
+ * preheader holding the squared radius and the field addresses; every `for` and `while` written
+ * here (initialised or assigned iterator, the loop at the function's top level, the radius squared
+ * anywhere, `i++`, continues: build/scratch/wld/v_gli_*.py, round 25's in world-r25/) is rotated
+ * behind a duplicated test (0x354), so the loop is spelled with its two labels -- the original's
+ * spelling is unknown */
 float CWorld::GetLightIntensity(const CPnt3D *p, float radius, unsigned int flags)
 {
     CPnt3D c = CPnt3D::zero;
@@ -880,10 +879,14 @@ float CWorld::GetLightIntensity(const CPnt3D *p, float radius, unsigned int flag
         c.z += m_gLight.ambient.z;
     }
     if (!(flags & 1)) {
+        float k = 0.999999f;
+
         for (int i = 0; i < 3; i++) {
-            c.x += m_gLight.col[i].x * 0.999999f;
-            c.y += m_gLight.col[i].y * 0.999999f;
-            c.z += m_gLight.col[i].z * 0.999999f;
+            const CPnt4D &col = m_gLight.col[i];
+
+            c.x += col.x * k;
+            c.y += col.y * k;
+            c.z += col.z * k;
         }
     }
     if (!(flags & 4)) {
@@ -894,7 +897,9 @@ float CWorld::GetLightIntensity(const CPnt3D *p, float radius, unsigned int flag
             CLightList::iterator i;
 
             radius *= radius;
-            for (i = lights->begin(); i != lights->end(); ++i) {
+            i = lights->begin();
+            goto test;
+        loop: {
                 CLight *l = *i;
 
                 if (l->m_active) {
@@ -914,7 +919,11 @@ float CWorld::GetLightIntensity(const CPnt3D *p, float radius, unsigned int flag
                         c.z += l->m_diffuse.z * k;
                     }
                 }
+                ++i;
             }
+        test:
+            if (i != lights->end())
+                goto loop;
         }
     }
     return 0.4901f * c.x + 0.4657f * c.y + 0.0441f * c.z;

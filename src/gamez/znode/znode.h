@@ -810,6 +810,8 @@ public:
     void AllocateAtomBasePtrs(int x, int z);
     void SetNodeEx(CNodeEx *ex, bool b);
     bool AddVisual(CVisual *visual);
+    /* one visual let go of (SOCOM 1's; the weapons' round 32 named it) */
+    int DeleteVisual(CVisual *visual, bool del);
     bool AddDI(CDI *di);
     void DeleteDI();
     void DeleteVisuals();
