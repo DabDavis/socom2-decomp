@@ -110,7 +110,9 @@ struct CKitBody {
     struct CKitMover *m_eb8;
     unsigned char _ebc[0xf79 - 0xebc];
     unsigned char m_f79;   // 0xf79: the item kind the body is asked for (ChangeItemModel's test; the name ours)
-    unsigned char _f7a[0x105e - 0xf7a];
+    unsigned char _f7a[0xfd3 - 0xf7a];
+    unsigned char m_fd3;   // 0xfd3: zseal.h's: the SEAL respawned (FirstFrame keeps the hand's fire mode across it)
+    unsigned char _fd4[0x105e - 0xfd4];
     unsigned char _105e : 5;   // 0x105e: zseal.h's flag word at 0x105c, its bits 16-23
     unsigned char m_airborne : 1;   // bit 21: off the ground
     unsigned char _105e_6 : 2;
@@ -319,6 +321,11 @@ public:
             h = HAND_FIRST;
         return h;
     }
+    /* the kit's first frame: the first usable of the first two items taken in hand, the scope, the primary's silencer
+     * shown by its kind, the fire modes -- the hand's kept across a respawn, else each weapon's mode 2, a player's
+     * saved ones online -- and the hand's noted (OVL2 0x5C0250, new in SOCOM II: PreTick calls it on m_first; the name
+     * ours) */
+    void FirstFrame(float dT);
     /* the kit's frame: the reticle, the laser, the waits; the fire delay run out -- a reload or the launcher's next
      * round at its end --, the explosives' tick; the trigger answered: a shot, an empty magazine's click and reload, an
      * online refill; the fire modes put right and the launcher's flash faded in (OVL2 0x5C0FD0; SOCOM 1's Tick,

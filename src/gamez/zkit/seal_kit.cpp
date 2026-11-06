@@ -2460,6 +2460,12 @@ float Weight__9CSequenceFv(void *seq);
 /* (whether the game is online: OVL1 data, the SEALs' name) */
 extern unsigned char data_0045A0C1;
 
+/* the kit's flag bits set (inline: each store keeps the bool's `andi 1` unfolded, as a setter's
+ * argument; the names ours) */
+inline void SetRequestedItem(CZKit *k, bool b) { k->m_requested_item = b; }
+inline void SetBit13(CZKit *k, bool b) { k->m_bit13 = b; }
+inline void SetReticuleTypeChanged(CZKit *k, bool b) { k->m_reticuletypeChanged = b; }
+
 /* the local player's first frame as a pistol (OVL2 .data 0x650950, 1: read by Tick alone) */
 extern unsigned char data_00650950;
 
@@ -2577,6 +2583,80 @@ void CZKit::Tick(float dT)
             m_8bc = -1.0f;
         }
     }
+}
+
+extern "C" {
+/* whether a kind of weapon carries a silencer (67, 33, 105, 62, 16: OVL1 0x3C5AC0, unclaimed; the weapons') */
+bool func_003C5AC0(EQUIP_ITEM id);
+bool HasFireMode__8CZWeaponCFi(const CZWeapon *w, int mode);
+}
+
+/* the hand's item kind the one noted, its id read ahead of the note (an enum local: FirstFrame's; the name ours) */
+static inline bool SameHandItem(CZKit *k)
+{
+    EQUIP_ITEM id = k->m_item[k->HandSlot()]->m_ID;
+
+    return k->m_hand_item == id;
+}
+
+/* (OVL2 0x5C0250: kit.h's) */
+void CZKit::FirstFrame(float dT)
+{
+    if (m_item[0] && m_item[0]->GetId() != 254) {
+        ChangeItemModel(FireClassOfId(m_item[0]->GetId()), FireClassOfId(m_item[0]->GetId()), 0, true);
+        SetCurItemByIndex(0);
+    } else if (m_item[1] && m_item[1]->GetId() != 254) {
+        ChangeItemModel(FireClassOfId(m_item[1]->GetId()), FireClassOfId(m_item[1]->GetId()), 0, true);
+        SetCurItemByIndex(1);
+    }
+    UpdateScopeModel();
+    int i = GetPrimaryIndex();
+
+    if (i != -1) {
+        bool silenced = func_003C5AC0(m_item[i]->GetId());
+        zdb::CNode *n = ((zdb::CNode *)((CKitBody *)m_body)->m_attach[1].m_rec->m_node)->FindChild("silencer", true);
+
+        if (n)
+            n->SetActive(silenced);
+    }
+    bool second = true;
+
+    if (((CKitBody *)m_body)->m_fd3 && m_hand_firemode && m_item[HandSlot()] && SameHandItem(this)) {
+        SetHandFireMode(m_hand_firemode);
+        if (m_second_hand)
+            second = false;
+    } else {
+        CycleFireMode();
+        if (m_item[0] && HasFireMode__8CZWeaponCFi(m_item[0], 2))
+            m_firemode[0] = 2;
+        m_hand_firemode = m_firemode[0];
+        m_hand_item = m_item[0] ? m_item[0]->GetId() : EQUIP_NONE;
+    }
+    if (second && m_item[1] && HasFireMode__8CZWeaponCFi(m_item[1], 2))
+        m_firemode[1] = 2;
+    if (m_second_hand)
+        m_hand_item = m_item[1] ? m_item[1]->GetId() : EQUIP_NONE;
+    if (KitIsPlayer((CKitBody *)m_body) && data_0045A0C1) {
+        for (int j = 0; j < g_iNumSavedFireModes; j++) {
+            CSavedFireModeInfo *info = &g_arrSavedFireModeInfo[j];
+
+            if (m_item[j]) {
+                EQUIP_ITEM id = m_item[j]->m_ID;
+
+                if (info->m_item == id)
+                    m_firemode[j] = info->m_firemode;
+            }
+        }
+    }
+    for (int j = 0; j < m_num_items; j++) {
+        if (m_item[j] && (CZWeapon::IsPrimary(m_item[j]->GetId()) || (m_second_hand && CZWeapon::IsSecondary(m_item[j]->GetId())))) {
+            m_hand_firemode = m_firemode[j];
+            m_hand_item = m_item[m_selected_item] ? m_item[m_selected_item]->GetId() : m_hand_item;
+            break;
+        }
+    }
+    m_first = false;
+    SetReticuleTypeChanged(this, true);
 }
 
 /* whether the current item fires this frame: the trigger up (or let go) ends the burst and a player's lock sound; a held trigger or
@@ -3920,9 +4000,8 @@ void CZKit::SetItemPtr(int index, void *p)
  * explosives (121, 151), else none (OVL2 0x5B8760, new in SOCOM II among the kit's additions at
  * the unit's start: CHUD::Tick and the SEAL's fire point lookups call it) */
 extern "C" {
-/* the kit's first frame (OVL2 0x5C0250, unwritten) and the body's change to an item (OVL2 0x5A64C0,
+/* the body's change to an item (OVL2 0x5A64C0,
  * the SEALs' range: the item in hand, the new item's fire class and the kit's bit 13) */
-void func_005C0250(CZKit *kit, float dT);
 void func_005A64C0(CZSealBody *body, int item, CZKit::FIRE_CLASS c, bool b);
 }
 
@@ -3932,19 +4011,13 @@ struct CKitBodyItem {
     signed char m_item;   // 0xf79
 };
 
-/* the kit's flag bits set (inline: each store keeps the bool's `andi 1` unfolded, as a setter's
- * argument; the names ours) */
-inline void SetRequestedItem(CZKit *k, bool b) { k->m_requested_item = b; }
-inline void SetBit13(CZKit *k, bool b) { k->m_bit13 = b; }
-inline void SetReticuleTypeChanged(CZKit *k, bool b) { k->m_reticuletypeChanged = b; }
-
 /* the frame's kit work: the first frame's set-up, or else an item asked for handed to the body with
  * its fire class, and the reticle brought up to date; the request bits cleared either way (OVL2
  * 0x5C1660: SOCOM 1's PreTick by WeaponsTick's call, SOCOM II's own body) */
 void CZKit::PreTick(float dT)
 {
     if (m_first)
-        func_005C0250(this, dT);
+        FirstFrame(dT);
     else if (m_requested_item) {
         int item = ((CKitBodyItem *)m_body)->m_item;
         FIRE_CLASS c = FireClassOf(GetFiringItem(m_selected_item));
