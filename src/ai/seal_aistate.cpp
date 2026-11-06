@@ -443,6 +443,95 @@ bool CAiSScript::CanAttack() const
     return true;
 }
 
+/* the waits before a higher alertness shows (a table of floats by AI_AWARE: OVL2 data) */
+extern float data_00650B80[];
+
+/* the response sequence's progress: while it runs, false; once it has run out, the AI's own sequence resumed (the name
+ * ours; inlined) */
+inline bool ResponseRunning(CAiSScript *s)
+{
+    return s->m_seqName[0] != 0 && ((CZAnim *)s->m_58)->SequenceRunning(s->m_seqName);
+}
+
+inline bool ResponseDone(CAiSScript *s)
+{
+    if (ResponseRunning(s))
+        return false;
+    if (s->m_seqName[0] && !((CZAnim *)s->m_58)->SequenceRunning(s->m_seqName)) {
+        const char *seq = sealai::get_aiseq(s->m_seq);
+
+        s->m_held_once = false;
+        ((CZAnim *)s->m_58)->StopSequence(s->m_seqName);
+        ((CZAnim *)s->m_58)->ResumeSequence(seq);
+        s->SetHold(false);
+        s->m_seqName[0] = 0;
+    }
+    return true;
+}
+
+/* the script's frame: done without an anim or once it stops; else the response sequence first, then the sequence of the
+ * AI's alertness -- changed when the alertness has held long enough, a rise from 0 to 1 pausing the sequence (the
+ * SEAL's anim set kept), a fall from 1 to 0 resuming it (OVL2 0x5F37C0; SOCOM 1's) */
+inline CZSealBody *ScriptSeal(CSealCtrlAi *ai) { return (CZSealBody *)ai->m_entity; }
+inline const char *ScriptSeq(int i) { return sealai::get_aiseq(i); }
+int CAiSScript::Tick(CSealCtrlAi *ai)
+{
+    CZAnim *anim = (CZAnim *)m_58;
+    CZSealBody *seal = ScriptSeal(ai);
+
+    if (!anim) {
+        SetActive(false);
+        return Result();
+    }
+    anim->GetName();
+    if (!anim->Running()) {
+        SetActive(false);
+        return Result();
+    }
+    if (!ResponseDone(this))
+        return Result();
+    if (!m_held_once) {
+        int mode = m_mode;
+        int aware = (unsigned char)ai->GetAiAware();
+        float wait = mode < aware ? data_00650B80[aware] : 0.0f;
+
+        if (ai->m_5c8 > wait && mode != aware) {
+            if (!m_hold) {
+                const char *cur = sealai::get_aiseq(m_mode);
+                const char *next = sealai::get_aiseq(aware);
+
+                bool exists = anim->SequenceExists(next);
+
+                if (exists || (mode < 2 && aware > 1)) {
+                    if (mode == 0 && aware == 1) {
+                        m_animset = seal->m_animset;
+                        anim->PauseSequence(cur);
+                    } else if (aware == 0 && mode == 1) {
+                        anim->ResumeSequence(next);
+                        if (m_animset) {
+                            seal->BindAnimSet(m_animset, false);
+                            m_animset = 0;
+                        }
+                    } else {
+                        anim->StopSequence(cur);
+                        anim->ActivateSequence(next);
+                        m_bit3 = false;
+                        func_00555820(ai, 0);
+                    }
+                    m_60 = 0.0f;
+                    m_seq = aware;
+                } else
+                    m_60 = 0.5f;
+                m_mode = aware;
+            } else if (m_5f != aware)
+                m_5f = aware;
+        } else
+            m_60 += m_dT;
+    } else
+        m_held_once = false;
+    return Result();
+}
+
 /* the plan's route handed to the controller (OVL2 0x573110, the SEAL lane's row) and given back
  * to the AI maps (0x52C310, the AI core's) */
 extern "C" void func_00573110(CSealCtrlAi *ai, void *path);

@@ -474,6 +474,7 @@ class CAiSScript : public CAiState {
 public:
     CAiSScript() : CAiState(AI_STATE_SCRIPT) {}
     virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
@@ -505,7 +506,8 @@ public:
 
     unsigned int m_58;   // 0x58
     unsigned char m_hold : 1;   // 0x5c bit 0: no pursuit (the name ours)
-    unsigned char m_5c_1 : 2;
+    unsigned char m_held_once : 1;   // bit 1: the next tick only clears it (the name ours)
+    unsigned char m_5c_2 : 1;
     unsigned char m_bit3 : 1;   // bit 3 (set through 0x5F3FC0)
     unsigned char m_5c_4 : 4;
     unsigned char m_mode;   // 0x5d: the AI's mode the script runs in (the name ours)
@@ -515,7 +517,9 @@ public:
     float m_60;   // 0x60
     unsigned char _64;
     char m_seqName[16];   // 0x65: the sequence's name (ActivateSequence's strncpy; SOCOM 1's +0x35)
-    unsigned char _75[0x84 - 0x75];   // 0x84 bytes, Create's new
+    unsigned char _75[0x7c - 0x75];
+    class AnimSet *m_animset;   // 0x7c: the SEAL's set kept while the script is held (the name ours)
+    unsigned char _80[0x84 - 0x80];   // 0x84 bytes, Create's new
 };
 
 class CAiSGoto : public CAiState {
