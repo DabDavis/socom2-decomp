@@ -2305,6 +2305,56 @@ char *MediusGetErrorCodeString(MediusErrorCode code)
     }
 }
 
+/* MediusConnect's parameters as this file's caller fills them: the defaults (0x64A750). The first address block is written
+ * here field by field, MediusConnect only copies it, and the second block is DME's own defaults copied across. */
+typedef struct MediusConnectDefaults {
+    int Field_00;                       /* 0x00 */
+    int Field_04;                       /* 0x04 */
+    char szAddress[16];                 /* 0x08 */
+    int nPort;                          /* 0x18 */
+    int Field_1C;                       /* 0x1C */
+    char bField20;                      /* 0x20 */
+    char ab21[15];
+    int Field_30;                       /* 0x30 */
+    int Field_34;                       /* 0x34 */
+    char abField38[64];                 /* 0x38 */
+    char szField78[17];                 /* 0x78 */
+    char bField89;                      /* 0x89 */
+    char ab8A[18];
+    char ServerAddress2[84];            /* 0x9C */
+    int Field_F0;                       /* 0xF0 */
+    void (*pfnConnectCallback)(int);    /* 0xF4 */
+    int Field_F8;                       /* 0xF8 */
+    int Field_FC;                       /* 0xFC */
+} MediusConnectDefaults;
+
+void func_0064A750(MediusConnectDefaults *pIn, const char *szName, const char *szAddress, int nPort, int nField34)
+{
+    NetConnectParams params;
+
+    memset(pIn, 0, sizeof(*pIn));
+    NetSetDefaultConnectParams(&params);
+    memcpy(pIn->ServerAddress2, params.ServerAddress2, sizeof(params.ServerAddress2));
+    pIn->Field_00 = 1;
+    pIn->Field_34 = nField34;
+    if (szName != 0)
+        strncpy(pIn->szField78, szName, strlen(szName) + 1);
+    else
+        pIn->szField78[0] = 0;
+    pIn->Field_F0 = 256;
+    memset(pIn->abField38, 0, sizeof(pIn->abField38));
+    pIn->bField89 = 0;
+    pIn->Field_04 = 1;
+    strncpy(pIn->szAddress, szAddress, strlen(szAddress) + 1);
+    pIn->nPort = nPort;
+    pIn->Field_1C = 0;
+    pIn->bField20 = 0;
+    pIn->Field_30 = 0;
+    pIn->pfnConnectCallback = 0;
+    pIn->Field_F8 = 0;
+    pIn->Field_FC = 0;
+}
+
 MediusErrorCode MediusGetTotalGames(MediusGetTotalGamesRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);

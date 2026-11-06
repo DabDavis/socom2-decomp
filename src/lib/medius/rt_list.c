@@ -19,7 +19,10 @@
  * Round 14b: the store after a message (0x631508: its room test a positive `if (nFree >= nLength)
  * {...} else return 3;`, as rt_circ_buf's), the store at the head, the removal, the compaction and
  * the resize (the header copied out as a struct -- ldl/ldr -- and rebuilt message by message), the
- * end's recomputation. Not written: 0x631848. */
+ * end's recomputation.
+ * Round 26b: the append 0x631848, the unit's last row, byte-exact: pBody reassigned twice for the ring-end test (`addu s0,s0,v0; subu s0,s0,a0`,
+ * a single expression gives v0 and the loads swapped), and a third short-lived pointer pTail in the last block, so pOld and pTail take s0 and
+ * pNew s1. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate(void **ppMemory, unsigned long nSize);
@@ -200,6 +203,78 @@ int func_00631748(RT_LIST *pList, RT_LIST_MSG *pMsg)
     if (result != 0)
         return result;
     return func_006321B8(pList);
+}
+
+/* a message appended to the ring's last one (0x631848): as a new message when the last holds nothing, in place when it
+ * stands at the ring's end and room follows, else moved to a new message of the joined length */
+int func_00631848(RT_LIST *pList, RT_LIST_MSG *pMsg, void *pData, unsigned int nLength)
+{
+    unsigned int nFree = 0;
+
+    if (func_00631EA0(pList) == 0)
+        return 2;
+    if (func_00631E70(pMsg) == 0) {
+        int result = func_00631F30(pList, &nFree);
+
+        if (result != 0)
+            return result;
+        if (nFree >= nLength) {
+            unsigned int nRound;
+
+            pMsg->nLength = nLength;
+            pMsg->pNext = 0;
+            memcpy(pMsg->data, pData, nLength);
+            nRound = (nLength + 3) & ~3;
+            pList->nEnd += nRound;
+            pList->nUsed += nRound;
+        } else
+            return 3;
+    } else {
+        char *pBody = func_00631E58(pMsg);
+        int result;
+
+        pBody += (func_00631E70(pMsg) + 3) & ~3;
+        pBody = (char *)(pBody - pList->pBuf);
+        if (pList->nEnd == (unsigned int)pBody) {
+            nFree = 0;
+            result = func_00631F30(pList, &nFree);
+            if (result != 0)
+                return result;
+            if (nFree >= nLength) {
+                unsigned int n = pMsg->nLength;
+
+                memcpy(pList->pBuf + pList->nEnd + n - ((n + 3) & ~3), pData, nLength);
+                pList->nEnd += ((pMsg->nLength + nLength + 3) & ~3) - ((pMsg->nLength + 3) & ~3);
+                pList->nUsed += ((pMsg->nLength + nLength + 3) & ~3) - ((pMsg->nLength + 3) & ~3);
+                pMsg->nLength += nLength;
+                goto done;
+            }
+        }
+        {
+            RT_LIST_MSG *pNew;
+            char *pOld;
+            char *pTail;
+
+            result = func_00631FD8(pList, &pMsg, nLength + func_00631E70(pMsg) + 8);
+            if (result != 0)
+                return result;
+            pOld = func_00631E58(pMsg);
+            result = func_00631508(pList, pMsg, pOld, func_00631E70(pMsg));
+            if (result != 0)
+                return result;
+            pNew = func_00631E88(pMsg);
+            pTail = func_00631E58(pNew);
+            memcpy(pTail + func_00631E70(pNew), pData, nLength);
+            pList->nEnd += ((pNew->nLength + nLength + 3) & ~3) - ((pNew->nLength + 3) & ~3);
+            pList->nUsed += ((pNew->nLength + nLength + 3) & ~3) - ((pNew->nLength + 3) & ~3);
+            pNew->nLength += nLength;
+            func_00631748(pList, pMsg);
+        }
+    }
+done:
+    if (pList->nEnd == pList->nSize)
+        pList->nEnd = 0;
+    return 0;
 }
 
 int func_00631B10(RT_LIST *pList, RT_LIST_MSG **ppMsg)
@@ -448,3 +523,4 @@ int func_006321B8(RT_LIST *pList)
         pList->nEnd = 0;
     return 0;
 }
+

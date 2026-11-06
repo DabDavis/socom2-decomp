@@ -8,9 +8,9 @@
  * Byte-exact: the create (every slot cleared again after the zeroed allocation, the buffer pointer
  * reloaded from its stack slot after each store) and the destroy. OPEN: func_00645290 (13 words: the
  * slot index taken first gives the target's order of the parameter copies; the sequence's 29 bits
- * land in a0 where the target reuses a3, nLength's register once copied to s2). Not written:
- * func_00645380 (the next complete message's length: a walk from the oldest slot over the 0x20000000
- * start and 0x40000000 end flags) and func_00645528 (the reassembly into the caller's buffer). */
+ * land in a0 where the target reuses a3, nLength's register once copied to s2). Round 26b:
+ * func_00645528 (the reassembly into the caller's buffer) byte-exact; func_00645380 (the next complete message's
+ * length: a walk from the oldest slot over the 0x20000000 start and 0x40000000 end flags) written, open. */
 
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
@@ -83,4 +83,122 @@ void func_00645290(RT_FRAG_BUF *pBuf, unsigned int nSeq, void *pData, unsigned i
     memcpy(pSlot->data, pData, nLength);
     pSlot->nLength = nLength;
     pBuf->nCount++;
+}
+/* the next complete message's length (0x645380): from the oldest sequence's slot -- or, when that does not start a message,
+ * the next slot flagged 0x20000000 past it -- over consecutive fragments to one flagged 0x40000000 */
+/* OPEN (round 26b): d=62, registers only: i takes a2 for the target's a1 and everything shifts from there. */
+unsigned int func_00645380(RT_FRAG_BUF *pBuf)
+{
+    unsigned int nFirst = 0;
+    int nTotal = 0;
+    unsigned int nHead;
+    unsigned int nExpect;
+    unsigned int nSlot;
+    unsigned int n;
+    unsigned int nSeq;
+    unsigned int i;
+
+    if (pBuf == 0)
+        return 0;
+    nHead = pBuf->x00;
+    nExpect = nHead & RT_FRAG_SEQ;
+    if (pBuf->nCount == 0)
+        return 0;
+    nSlot = nHead & (RT_FRAG_SLOTS - 1);
+    if (pBuf->aSlots[nSlot].nLength == 0 || (pBuf->aSlots[nSlot].nSeq & 0x20000000) == 0) {
+        i = nSlot;
+        for (;;) {
+            i = (i + 1) & (RT_FRAG_SLOTS - 1);
+            if (i == nSlot)
+                break;
+            if (pBuf->aSlots[i].nLength != 0 && (pBuf->aSlots[i].nSeq & 0x20000000) != 0)
+                break;
+        }
+        n = pBuf->aSlots[i].nSeq;
+        nSeq = n & RT_FRAG_SEQ;
+        nExpect = nSeq;
+        if (nHead < nSeq) {
+            pBuf->x00 = nSeq;
+            nSlot = n & (RT_FRAG_SLOTS - 1);
+        } else
+            return 0;
+    }
+    i = nSlot;
+    for (nSlot = 0; nSlot < RT_FRAG_SLOTS; nSlot++, i = (i + 1) & (RT_FRAG_SLOTS - 1)) {
+        RT_FRAG_SLOT *pSlot = &pBuf->aSlots[i];
+
+        nSeq = pSlot->nSeq;
+        if (nSeq & 0x20000000) {
+            nFirst = nSeq;
+            nTotal = pSlot->nLength;
+            nExpect = nFirst & RT_FRAG_SEQ;
+        } else {
+            if (nTotal == 0 || (n = pSlot->nLength) == 0 || nExpect != (nSeq & RT_FRAG_SEQ)) {
+                nTotal = 0;
+                continue;
+            }
+            nTotal += n;
+            if (nSeq & 0x40000000)
+                break;
+        }
+        nExpect++;
+    }
+    if (nSlot == RT_FRAG_SLOTS)
+        nTotal = 0;
+    if (nTotal != 0)
+        pBuf->x00 = nFirst;
+    return nTotal;
+}
+
+/* the next complete message copied out (0x645528), its slots freed: -1 when it does not fit */
+int func_00645528(RT_FRAG_BUF *pBuf, char *pOut, unsigned int nSize)
+{
+    unsigned int nTotal = func_00645380(pBuf);
+    unsigned int nExpect;
+    unsigned int nSlot;
+    unsigned int nStart;
+    unsigned int nHead;
+    unsigned int i;
+
+    if (nTotal == 0)
+        return nTotal;
+    if (nSize < nTotal)
+        return -1;
+    nHead = pBuf->x00;
+    nExpect = nHead & RT_FRAG_SEQ;
+    nStart = nHead & (RT_FRAG_SLOTS - 1);
+    nTotal = 0;
+    if (pBuf->nCount == 0)
+        return 0;
+    nSlot = nStart;
+    for (i = 0; i < RT_FRAG_SLOTS; i++, nSlot = (nSlot + 1) & (RT_FRAG_SLOTS - 1)) {
+        RT_FRAG_SLOT *pSlot = &pBuf->aSlots[nSlot];
+
+        if (pSlot->nSeq & 0x20000000) {
+            memcpy(pOut + nTotal, pSlot->data, pSlot->nLength);
+            nTotal += pSlot->nLength;
+            pSlot->nLength = 0;
+            nExpect = pSlot->nSeq & RT_FRAG_SEQ;
+            pBuf->nCount--;
+            nExpect++;
+            continue;
+        } else {
+            if (nTotal == 0 || pSlot->nLength == 0 || nExpect != (pSlot->nSeq & RT_FRAG_SEQ)) {
+                nTotal = 0;
+                continue;
+            }
+            memcpy(pOut + nTotal, pSlot->data, pSlot->nLength);
+            nTotal += pSlot->nLength;
+            pSlot->nLength = 0;
+            pBuf->nCount--;
+            if (pSlot->nSeq & 0x40000000)
+                break;
+        }
+        nExpect++;
+    }
+    if (i == RT_FRAG_SLOTS)
+        nTotal = 0;
+    if (nTotal != 0)
+        pBuf->x00 = nExpect + 1;
+    return nTotal;
 }
