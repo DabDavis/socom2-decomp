@@ -675,6 +675,9 @@ public:
     void RemoveMeshDecal(CMeshDecal *decal);
     /* a decal added over a strip, last in its list (0x3B8550, SOCOM II's: the name ours) */
     void AddDecal(void *strip, CTexHandle *tex, float life);
+    /* a decal applied to one of its strips, the triangles taken counted (0x3B8680, SOCOM II's: the
+     * name ours; vis_mesh.cpp) */
+    int ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *normal, CTexHandle *tex, CMatrix *uv);
     /* the wep lane's (vis_mesh.cpp, SOCOM 1's names): its table (__vt__Q23zdb5CMesh, 0x408350)
      * overrides these and adds InitMatrices (+0x20) */
     CMesh();   // 0x3B9760
