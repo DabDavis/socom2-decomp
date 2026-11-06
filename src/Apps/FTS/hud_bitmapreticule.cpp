@@ -5,7 +5,9 @@
  * TimerProgressTick (0x213680, round 41) and SOCOM II's second bar after it, ReloadTimerTick
  * (0x213840), and SetGBarVal (0x213A60, round 57); still to write: 0x213E20-0x215170 (by SOCOM 1's
  * order ChangeReticule
- * -- UpdateGBarColor is not 0x213840), Init (0x2178C0) and the five functions 0x215250-0x2178BF. BitmapReticule is 0x12F0 bytes longer in SOCOM II, laid out whole
+ * -- UpdateGBarColor is not 0x213840), Init (0x2178C0) and the functions 0x215250-0x2178BF but
+ * DrawLaseTarget (0x217550: written in round 59, byte-exact since round 61). BitmapReticule is 0x12F0
+ * bytes longer in SOCOM II, laid out whole
  * (SOCOM 1's names, SOCOM II's offsets; the reticle type is a byte now). Defined in reverse of their
  * image order (-inline deferred). */
 
