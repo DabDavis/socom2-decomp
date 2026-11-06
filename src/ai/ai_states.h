@@ -923,20 +923,23 @@ class CAiSHold : public CAiState {
 public:
     CAiSHold() : CAiState(AI_STATE_HOLD) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* the hold's steps (0x6060C0) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x40: a hold the flag's bit 8 has not ended (the name ours) */
     virtual bool Virtual40() { return !(m_flags & 0x100); }
     virtual ~CAiSHold();
 
     short m_58;   // 0x58 (-1 on a reset)
-    unsigned char _5a[0x5c - 0x5a];
+    short m_5a;   // 0x5a: the animation played, what the step waits on
     CPnt3D m_pos;   // 0x5c
     CAiMapLoc m_cell;   // 0x68 (the invalid cell on a reset)
     unsigned char m_6c;   // 0x6c
     unsigned char _6d[0x70 - 0x6d];
-    unsigned int m_70;   // 0x70
-    unsigned char _74[0x78 - 0x74];
-    unsigned int m_78;   // 0x78
-    unsigned char _7c[0x98 - 0x7c];
+    float m_70;   // 0x70: the time in the step (0x6067A0)
+    float m_74;   // 0x74: when the waiting step ends
+    unsigned int m_78;   // 0x78: the times the watch began
+    unsigned int m_ids[6];   // 0x7c: the SEALs seen, by id
+    unsigned int m_94;   // 0x94: how many
 };
 
 class CAiSSurrender : public CAiState {

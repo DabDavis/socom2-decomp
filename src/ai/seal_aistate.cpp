@@ -1441,6 +1441,7 @@ struct CAiStateDeleteKind {
 };
 
 /* every state of a kind deleted and taken off; whether there was one (OVL2 0x5F81E0) */
+#pragma auto_inline off
 bool CAiStateStack::Remove(AI_STATE state)
 {
     bool r = false;
@@ -1453,6 +1454,7 @@ bool CAiStateStack::Remove(AI_STATE state)
     }
     return r;
 }
+#pragma auto_inline reset
 
 /* the state of a kind, or 0 (OVL2 0x5F8270; SOCOM 1's CSealCtrlAi::FindAiState). This and the
  * pops below are pinned: the controller's wrappers call them out of line */
@@ -1929,6 +1931,7 @@ bool CSealCtrlAi::ClearAiState(bool all)
 /* the squared distance between two points across the ground, x and z (OVL2 0x5F5AD0: an inline's
  * out-of-line copy after StateTick, 0x5F55E0, its one caller -- unnamed). The height's zero kept
  * as a local (its square folded, the `+ 0` not), the differences declared z first */
+#pragma auto_inline off
 extern "C" float func_005F5AD0(const CPnt3D *a, const CPnt3D *b)
 {
     float dz = a->z - b->z;
@@ -1936,6 +1939,127 @@ extern "C" float func_005F5AD0(const CPnt3D *a, const CPnt3D *b)
     float dx = a->x - b->x;
 
     return dx * dx + dy * dy + dz * dz;
+}
+#pragma auto_inline reset
+
+/* an entity's place (OVL2 0x5F5B10: a draft, an accessor's out-of-line copy; the name ours) and the place a kept target
+ * names: its entity's for kind 1, its own point for kind 2 (OVL2 0x5F5B20: a draft, the same) */
+extern "C" bool ConfirmCommand__9CSealUnitF10FT_COMMANDUci(CSealUnit *unit, int cmd, unsigned char item, int flags);
+extern "C" const CPnt3D *func_005F5B10(CZSealBody *seal);
+extern "C" void *func_005F5B20(void *target, CPnt3D *out);
+
+/* the anim's byte at 2 as a bool (inline: StateTick's; the name ours) */
+inline bool AnimBusy(CZAnim *a)
+{
+    return ((unsigned char *)a)[2] != 0;
+}
+
+/* the follow state's master in a player-led mode (inline: the master read through a reference, kept on the stack; the
+ * name ours) */
+inline bool ModeMaster(CSealCtrlAi *ai, CZSealBody *&master)
+{
+    bool r = ai->m_660 == 1;
+
+    if (r)
+        master = ai->m_664;
+    return r;
+}
+
+/* the state stack's frame (OVL2 0x5F55E0; SOCOM 1's StateTick, its pieces moved into the stack): the stack ticked; a
+ * finished state's response sequence seen off in the script under it; past its range from the kept target, the stack
+ * popped to the first state that answers, and with none left in a player-led mode the SEAL told to follow, the squad
+ * told; a kind 3 state taken away when the flag asks.
+ * OPEN, 0x4C8 against 0x4E8 (the kit's round 61, its saved registers all the target's: the declarations' order decides the
+ * spill pick's tie): the target keeps the master in a frame slot (172: `sw zero`, then direct loads and stores -- every
+ * address-taking tried folds, or leaves the address in a register); the Is(3) at the end is the stack's known Is() shape,
+ * the materialised first operand and explicit false arm, which fold in this unit (round 58's AiStateIs) */
+void CSealCtrlAi::StateTick(float dT)
+{
+    /* (declared in this order: the tie on the spill pick falls to the highest number, the SEAL, which takes s6) */
+    CAiStateStack *stack = &m_stateStack;
+    CAiState *s;
+    bool running;
+    const char *seq;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (stack->size() == 0)
+        return;
+    CAiState *top = stack->GetState();
+
+    if (stack->Tick(dT, this) == 0) {
+        if ((top->m_bit3 ? true : false) && stack->size() >= 2) {
+            s = stack->Find(AI_STATE_SCRIPT);
+            CAiSScript *script = s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+
+            if (script) {
+                running = false;
+                if (script->m_58 && !AnimBusy((CZAnim *)script->m_58)) {
+                    running = ResponseRunning(script);
+                    if (!running) {
+                        if (script->m_seqName[0] && !((CZAnim *)script->m_58)->SequenceRunning(script->m_seqName)) {
+                            seq = sealai::get_aiseq(script->m_seq);
+                            script->m_held_once = false;
+                            ((CZAnim *)script->m_58)->StopSequence(script->m_seqName);
+                            ((CZAnim *)script->m_58)->ResumeSequence(seq);
+                            script->SetHold(false);
+                            script->m_seqName[0] = 0;
+                        }
+                        func_00270BE0((CZAnim *)script->m_58, 0);
+                    }
+                }
+                if (!running)
+                    top->m_bit3 = false;
+            }
+        }
+        CAiStateWord &word = stack->m_14;
+
+        if (word & 0x10) {
+            CPnt3D p;
+            bool near = true;
+
+            if (!(m_674 <= 0.0f) && func_005F5B20(&m_660, &p))
+                near = func_005F5AD0(&p, func_005F5B10(seal)) <= m_678;
+            if (!near) {
+                std::list<CAiState *>::const_iterator i = ((const CAiStateStack *)stack)->begin();
+
+                for (; i != ((const CAiStateStack *)stack)->end(); ++i)
+                    if (((CAiStateFlagSlots *)*i)->Virtual40Ai(this))
+                        break;
+                if (i != ((const CAiStateStack *)stack)->end()) {
+                    PopToAiState(*i, true);
+                    /* (its address taken in an unused pointer keeps its frame slot, at no code) */
+                    CZSealBody *master = 0;
+                    CZSealBody **pm = &master;
+
+                    if (stack->size() == 0 && ModeMaster(this, master)) {
+                        CZSealBody *m = master;
+
+                        if (!m || m->m_type != 2)
+                            m = 0;
+                        SetFollowMaster(m);
+                        bool pushed = CanPushAiState(AI_STATE_FOLLOW, 0);
+
+                        if (pushed)
+                            pushed = m_stateStack.Push(this, AI_STATE_FOLLOW, 0);
+                        if (pushed) {
+                            CAiState *t = GetAiState();
+                            CAiSFollow *f = t && t->m_state == AI_STATE_FOLLOW ? (CAiSFollow *)t : 0;
+
+                            f->SetActive(true);
+                            f->SetBit2(true);
+                            if (m_unit)
+                                ConfirmCommand__9CSealUnitF10FT_COMMANDUci(m_unit, 7, 0, 0);
+                        }
+                    }
+                } else
+                    word &= ~0x10;
+            }
+        }
+    }
+    if (m_stateStack.m_10 & 8) {
+        if (!AiStateIs((AI_STATE)3) && stack->Remove((AI_STATE)3))
+            func_005F7470(&m_stateStack, this, 1);
+    }
 }
 
 /* the animation a SEAL taking a stun response must not be blending in (OVL1 data 0x3DEE40, read
@@ -2021,10 +2145,12 @@ bool CSealCtrlAi::PopToAiState(AI_STATE state, bool inclusive)
     return m_stateStack.PopTo(this, state, inclusive);
 }
 
+#pragma auto_inline off
 bool CSealCtrlAi::PopToAiState(CAiState *state, bool inclusive)
 {
     return m_stateStack.PopTo(this, state, inclusive);
 }
+#pragma auto_inline reset
 
 /* pushed, or set in the current one's place, when CanPushAiState allows it (the flags its) */
 bool CSealCtrlAi::PushAiState(AI_STATE state, unsigned int flags)

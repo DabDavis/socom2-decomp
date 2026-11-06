@@ -2066,6 +2066,56 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 61** (11 rows new: CZKit::HasPickupSlot 0x5BAC30, PickupAmmo 0x5BB000 and
+  0x5BB990, SetCurAccuracy 0x5BD100, FirstFrame 0x5C0250, CZKit::Tick 0x5C0FD0, the goto's move 0x5DB8F0,
+  CZSealBody::UpdateAimDir 0x5DEEC0, WeaponsTick 0x5DFC80 -- open since round 52 --, the hold's callout 0x606EC0 and watch
+  0x6067A0, the last a marked device; CAiSHold::Tick and CSealCtrlAi::StateTick written open; nine rows named, FirstFrame
+  the one unsure):
+  - FIELD-ADDRESS STORES (x direct, y and z through one register recomputed before each store; also in 0x357F30, 0x5483D0,
+    ClipCameraChord): a field written once folds into the frame offset, separate temporaries get drawn to the block head
+    even when the IRO_CommonSubs temporary is forced with a late-folding guard over dead reads; one pointer with four
+    definitions, a no-code asm read and a guarded read reproduces it (as read in mweppc the asm keeps IRO_SplitLifetimes off
+    and the guarded read IRO_ExpressionPropagation; only the combined effect was measured). IRO_ExpressionPropagation counts
+    uses per flow node for every earlier definition, so a chain of N definitions loses one per pass from the end (a mweppc
+    reading, matching two lost of four on 0x6067A0);
+  - a `const float` holder closed WeaponsTick: the const keeps its number where a plain local propagates; a class iterator's
+    scalarised member numbers after every named local, so a plain cursor is needed when a named reference must colour lower;
+    a materialised iterator `!=` (xor; sltiu; xori) comes from an inline returning `!(a == b)`; `m_phase` read into a byte
+    enum, a lbu read with a lb reload from the spill slot, is CAiState::STEP as both the local and the return type;
+    `GetId()` as an argument gives lb where `(EQUIP_ITEM)w->m_ID` gives lbu, and in a compare it numbers the read below
+    hoisted constants;
+  - spill-pick ties go to the highest index, so C-style declaration order decides the top saved register (StateTick); `const
+    CPnt3D &p = v` gives pointer reads with frame-direct stores; an unsigned 4-byte enum parameter keeps n-1 and +1
+    unfolded; a derived constructor builds a bitfield temporary in place with narrow accesses where a by-value inline return
+    copies through the copy constructor; a call in an if arm keeps labels, pads and daddiu against RegenerateExpressions;
+    `GetId() != K` in `if (flag && ...)` stops the regenerated sltu chain; `> 3` gives slti at, `>= 4` materialises in a
+    register inside an `&&` chain; reference locals declared outside a loop keep addresses hoisted and the object
+    unscalarised; `#pragma opt_strength_reduction off` in a body keeps sll / addu indexing.
+- **Tells from the HUD, round 65** (21 byte-exact, five units whole: SetMags 0x237B40, GetRoundResult 0x224D10,
+  CMPExitState::Init 0x223970, C2DButton::HandlePad 0x377040, CWrappedText::SetString 0x379F70, both CListItemArrayTypeImpl
+  constructors, ~CUIListBox 0x375710, CUIListBox::Draw 0x373850, CTeleType::Tick 0x377B80, hudTurnOnScorePopup 0x22CC10,
+  MapCompass::Tick 0x211510, the nav_package insert 0x212E50, the claymore and bomb Ticks, HandleScrolling 0x20A120,
+  __sinit_hud_tcm.cpp, CZPauseTest::OpenPauseMenu, HandleSelectionInput and HudTick, CMPTeammateNames::Tick; AddItem and
+  CWhosTalking::Init closed by the MSL's round 39; every device marked; 35 data rows, the net game 0x437CE8 and the
+  night-vision flag 0x4B4A70 settled):
+  - ENUM HOLDERS CLOSE REAL ROWS (SetMags, GetRoundResult, HandlePad, the sinit): `this` through an unsigned 4-byte enum
+    keeps a global's address out of folding;
+  - of two pad bytes read ahead of a branch the later-declared is scheduled first and the earlier lands in the delay slot;
+    `A || B ? k : 0` copies the one-constant arm's constant into the branch's delay slot and moves the target past it, `if`
+    and `!x && ...` forms do not (CZPauseTest::HudTick); `!x` swaps ternary and if arms, `x == 0` keeps them; `bool on = !x;
+    x = on; on ? a : b` gives sb; andi; beqz with the object loaded in the delay slot, `(x = !x) ? a : b` sinks that load
+    after the ternary;
+  - assigning 3 to a char local narrows a CSE'd constant, an int local copies it; `(char)sel` on a signed char keeps the
+    read's narrowing while calls pass it plain; a store through a pointer or reference to a global array keeps a global
+    float's load in the loop, an indexed store lets it hoist; `line->F(G(id))` with `line` defined first keeps the address
+    across the call, a spelled-out `m_items[i].m_text.SetColor(...)` computes it late; `SetColor(100 + 28*p, 100 + 28*p, 100
+    + -36*p)` on a global p loads it once and CSEs the two sums;
+  - padding nops align labels to 8 bytes, except labels right after a `b` and its delay slot; a parameter read directly has
+    its copy at entry, one instruction more ahead of the first vptr la, flipping up-front against serialised vtable stores;
+    a const conversion at an inline's argument makes `p + k` subable and hoisted, a same-type helper keeps it refused; `T x
+    = {0}` on any aggregate is the inline memclr byte loop; `m_x += k; const float &r = m_x;` gives add, store, mov.s; a
+    const local after C-style locals, and a const copy of `this` numbered above a local; one-member structs number locals
+    after a scalarised iterator; SOCOM 1's DWARF lists block locals in reverse declaration order.
 - **Tells from the UI, round 39** (13 rows new, 16,248 bytes: CUIListBoxSpec::CUIListBoxSpec 0x37EAB0 and
   CButtonSpec::CButtonSpec 0x380620, unwritten since round 13; CreateSoftKeyboard 0x38E160, SkbScaleDisplay 0x397950,
   _SaveSavedGame 0x27F820, CSkbSplit::Next 0x3903A0, the hangul composer 0x391670 and matcher 0x3919D0, rbegin<Ui> 0x391D40,
