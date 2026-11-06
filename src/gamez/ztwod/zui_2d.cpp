@@ -431,6 +431,8 @@ struct ButtonState {
  * 0x3890C0; the type and the key state byte enums) */
 class ActionItem {
 public:
+    /* an event a menu runs its actions on (zui_spec.h's enum: only the slider's, 40) */
+    enum EVENT { SLIDER_MOVED = 40 };
     /* zui_spec.h's: a button action on the falling edge of no button (the list items build theirs) */
     ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
     ~ActionItem();
@@ -716,7 +718,10 @@ public:
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
+    virtual bool HandlePad(const CPad *pad, int port);
     void LoadSpec(const CSliderBarSpec &spec, zdb::CTexHandle *tex);
+    /* the value's real written to the UI variable (ours: HandlePad's four arms) */
+    inline void ApplyValue();
 
     float m_value;   // 0x440
     zdb::CTexHandle *m_knobTex;   // 0x444: the knob's texture
@@ -726,6 +731,7 @@ public:
     unsigned char _454[0x460 - 0x454];
     CPlainBmp m_knob;   // 0x460
     int m_intervals;   // 0x500
+    float m_repeat;   // 0x504: how long the pad's direction has been held
 } __attribute__((aligned(16)));   // 0x510 bytes
 
 /* a row of radio buttons (SOCOM 1's CRadioStrip; zui_2d.h's layout: 0x450 bytes, the choice at 0x440).
@@ -3414,6 +3420,79 @@ void PlaySelectionSound();
 /* zui.cpp's: the stick pushed up or down since it was last centred (UiGetDirStickMoved 3 or 4) */
 bool DidStickMovePrev();
 bool DidStickMoveNext();
+
+/* the slider's menu (zui.cpp's CGameMenu: the event it runs, SLIDER_MOVED; PlaySelectionSound is
+ * zui.cpp's too) */
+class CGameMenu {
+public:
+    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
+};
+
+/* the slider's value written to its variable: the left half of the bar scaled below the centre
+ * value, the right half above it (ours: the inverse of UpdateUIVar below) */
+inline void CSliderBar::ApplyValue()
+{
+    CUIVariable *var = UIVarMixin::m_uivar;
+    float v;
+
+    if (m_value < 0.5f)
+        v = 2.0f * m_value * m_center;
+    else
+        v = m_center + 2.0f * (m_value - 0.5f) * (1.0f - m_center);
+    if (var)
+        var->SetReal(v);
+}
+
+/* the pad on the slider (slot 15 of its vtable; the 2003 slider has no counterpart in SOCOM 1's): left
+ * and right step its value by the interval, a percent each, clamped; a fresh press restarts the
+ * repeat's clock and runs the menu's event; held, it steps once the clock has passed 0.4; each step
+ * writes the variable and plays the selection sound */
+bool CSliderBar::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    if (pad->m_state[3] == 1) {
+        m_value -= 0.01f * (float)m_intervals;
+        if (m_value < 0.0f)
+            m_value = 0.0f;
+        ApplyValue();
+        PlaySelectionSound();
+        m_repeat = 0.0f;
+        ((CGameMenu *)UiGetCurMenu())->RunEventAnim(ActionItem::SLIDER_MOVED, 0);
+        return true;
+    }
+    if (pad->m_state[3] == 2) {
+        if (m_repeat > 0.4f) {
+            m_value -= 0.01f * (float)m_intervals;
+            if (m_value < 0.0f)
+                m_value = 0.0f;
+            ApplyValue();
+            PlaySelectionSound();
+        }
+        return true;
+    }
+    if (pad->m_state[2] == 1) {
+        m_value += 0.01f * (float)m_intervals;
+        if (m_value > 1.0f)
+            m_value = 1.0f;
+        ApplyValue();
+        PlaySelectionSound();
+        m_repeat = 0.0f;
+        ((CGameMenu *)UiGetCurMenu())->RunEventAnim(ActionItem::SLIDER_MOVED, 0);
+        return true;
+    }
+    if (pad->m_state[2] == 2) {
+        if (m_repeat > 0.4f) {
+            m_value += 0.01f * (float)m_intervals;
+            if (m_value > 1.0f)
+                m_value = 1.0f;
+            ApplyValue();
+            PlaySelectionSound();
+        }
+        return true;
+    }
+    return false;
+}
 
 /* pressed (SOCOM 1's CUIListBox::SetPressed, 0x38D4E0 there): the highlight's colour the pressed
  * one, the highlight's bitmap loaded from the pressed texture (textured when there is one --
