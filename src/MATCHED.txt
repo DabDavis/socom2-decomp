@@ -1460,6 +1460,7 @@
 0x001F0030 LoadLensFx__10CameraZoomFv
 0x001F0490 Tick__10CameraZoomFf
 0x001F0610 OnGoal__10CameraZoomFv
+0x001F0750 HandleNewZoom__10CameraZoomFv
 0x001F1470 SeeFarther__Fbf
 0x001F1610 HandleZoomIn__10CameraZoomFff
 0x001F1820 SetGoal__10CameraZoomFf
@@ -1475,6 +1476,8 @@
 0x001F1E40 IsLiveSeal__10CEntityItrCFv
 0x001F1EE0 IsSeal__10CEntityItrCFv
 0x001F1F30 Advance__10CEntityItrFv
+0x001F21B0 func_001F21B0
+0x001F27C0 func_001F27C0
 0x001F2E40 func_001F2E40
 0x001F3290 func_001F3290
 0x001F3550 func_001F3550

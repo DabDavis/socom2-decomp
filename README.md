@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 52** (CameraZoom::HandleNewZoom 0x1F0750 -- 0xD1C, unwritten before: SOCOM 1's body
+  with SetLensFx inlined per zoom state, SOCOM II's thermal state and starlight scope --, SetRoundStatUiVars 0x1F21B0 -- 6
+  off since round 50 -- and the teamwork rating 0x1F27C0 -- 0x678 of 0x680 since round 47 -- byte-exact; st_exit.cpp's
+  CSealStats::Reset respelled, SAME-BY-ADDRESS):
+  - FRAME SLOTS FOLLOW THE BREADTH-FIRST INLINE EXPANSION (the MSL's round 37): to put one chain's temporaries after the
+    others, write the others in the function's own text rather than wrapping the late one in another inline -- the walk's
+    begin (a CEntityItr constructor taking the list's `begin()`) and its end test (`it._it != end()`) written in the
+    function sit a pass shallower than Next()'s end(), the target's slot order (round 50 found that wrapping lets MW share
+    the end node in s7);
+  - `bool b = (a < c) != 0;` compiles to slt then sltu, as SOCOM 1 has it; `b = a < c;` gives the slt alone; two bool locals
+    declared in the wrong order take each other's saved registers (7 off in HandleNewZoom);
+  - a struct view cast at an offset, `*(T *)((char *)p + K)`, makes MW hold `p + K` in a register; a view padded from `p`
+    itself folds every field into `p`'s offsets;
+  - MW substitutes an inline's argument unless it is a global, has a side effect, is an indirection off something other than
+    an object, or is an address-taken local (mweppc's CInline.c; every expanded inline's locals count, and `(void)&x` sets
+    the flag) -- and even when the temporary is made, the first copy-propagation pass may forward it away
+    (zRemoteClientConnectsCallback 0x2BC620, still 184 off).
 - **Tells from the kit and AI states, round 58** (FaceXZ 0x60CAD0 -- 36 off since round 16 -- and CAiDodge::Destroy 0x5FAD50
   -- open since round 13 -- byte-exact by `#pragma opt_common_subs off` in the body; CAiSSurrender::Tick 0x6078A0 (0x464)
   and CAiSHostage::Tick 0x601910 (0x538), both unwritten before, byte-exact; LookAt 0x60DCF0 from 0x154 to 0x140 of 0x138 by
