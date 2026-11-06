@@ -242,7 +242,9 @@ static inline int Percent(float f) { return Round(100.0f * f); }
 /* a SEAL's stats (zseal.h's CSealStats: SOCOM II's halfword counters at the SEAL's +0x58C) */
 class CSealStats {
 public:
-    unsigned short m_count[0x48 / 2];   // 0x0 (0x48 bytes: its constructor, 0x545200, zeroes them all)
+    void Reset();   /* OVL2 0x545200: every counter zeroed (SOCOM 1's Reset -- no `move v0,a0`, not a constructor) */
+
+    unsigned short m_count[0x48 / 2];   // 0x0 (0x48 bytes: Reset, 0x545200, zeroes them all)
 };
 
 /* a valve's kind (zanim.h's: only the one made here) */
@@ -576,10 +578,6 @@ extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
     return 0.01f * pct;
 }
 
-extern "C" {
-void func_00545200(CSealStats *stats);   /* (CSealStats' constructor, OVL2: every counter zeroed) */
-}
-
 /* the round's stats into the UI's variables (OVL1 0x1F21B0; SOCOM 1's SetRoundStatUiVars, the
  * single-player half): the player and the SEALs of his team (bit 2) gathered, up to four, each
  * with its stats -- a missing one's a zeroed default --, the four ratings computed (objectives,
@@ -610,7 +608,7 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
 {
     CSealStats none;
 
-    func_00545200(&none);
+    none.Reset();
     CZSealBody *seals[4] = {0};
     CSealStats *stats[4] = {0};
 
