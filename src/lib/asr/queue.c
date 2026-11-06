@@ -372,7 +372,11 @@ QUEUE *qQueueReDimension(QUEUE *q, unsigned short elemsize)
  * stops the unroller and leaves the code alone: two empty `asm volatile` statements in it do
  * (4 words off, the barrier holding memcpy's argument out of its delay slot); a signed or long
  * counter, a while or do-while loop, the step in the for header do not
- * (build/scratch/gcc/p/q5.c). */
+ * (build/scratch/gcc/p/q5.c). Round 39c measured the margin: loop.c's second pass counts 49 real insns here
+ * and "Unrolling loop 2 times"; at 50 (MAX_UNROLLED_INSNS / 2) it would leave the loop alone, so the vendor's body
+ * has exactly one RTL insn more at that point that a later pass removes. Not a copy: copies through block locals,
+ * a size local in qAllocElem, a destination local, the arms' order and `first` as a ?: all leave it at 49 (CSE1
+ * has already removed them; build/scratch/gcc/r39/v_q.py, v_q2.py). */
 int qEnQueue(QUEUE *q, char *data, unsigned int n)
 {
     QELEM *first = 0;
