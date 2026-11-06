@@ -114,20 +114,12 @@ bool CWaterRippleManager::Update(float dt)
     return m_ripples.size() == 0;
 }
 
-/* the live ripples that reach a surface listed, each placed in its frame.
- * OPEN, 3 instructions (6 counted): the live test's layout -- the target fills the first test's
- * branch delay slot with the second bit's shift and leaves the second's empty, MW here branches into
- * the second test's beqz to share its delay slot with the Affects call's argument. Everything else
- * is exact. Tried: the test inline (as here), written out, nested ifs, `!= false`/`== true`, a bool
- * local, `continue`, bool accessors per bit, a const inline -- none moves it. Round 35 (igdump's
- * PCode, build/scratch/wep/v_gather*.py): ours tests ONE vreg in both branches (`sltu r62; bnez r62
- * -> L; ... sltu r62; L: beqz r62`) and the backend does not thread the bnez past L, so the shape
- * is not a copy between them; the target is the || in jumping form (bnez straight to the call)
- * with each bit still made a bool by sltu -- in a condition MW drops the sltu (written out, bool
- * casts, bool accessors per bit, `!!(a || b)`: 0x11C), materialised into a local it is li 1 / li 0
- * (0x12C), as IsActive()'s value threading never happens: bool bitfields, an int / unsigned char
- * return, a ternary, if-returns, locals in the inline (6-16 off). Two bool locals (`t || v`) give
- * the jumping form with the bnez threaded but hoist the second bit and drop the first's sltu (9) */
+/* the live ripples that reach a surface listed, each placed in its frame. The live test is the ||
+ * in jumping form with each bit still made a bool (its sltu): each bit through `x ? true : false`
+ * in the caller's condition (the kit's round 55: a 1-bit field through the ternary keeps its sltu,
+ * a cast, `!= 0`, a bool local or a bool inline drop it) -- through IsActive() the || is
+ * materialised and tested once more at the join (6 off since round 12; the ternary on one bit
+ * only, 2 or 6 off; on the whole ||, 0x12C) */
 void CWaterRippleManager::Gather(CNode *node)
 {
     m_active.clear();
@@ -143,7 +135,7 @@ void CWaterRippleManager::Gather(CNode *node)
     for (i = m_ripples.begin(); i != e; ++i) {
         CWaterRipple *r = *i;
 
-        if (r->IsActive() && r->Affects(node, &m))
+        if (((r->m_timed ? true : false) || (r->m_visible ? true : false)) && r->Affects(node, &m))
             m_active.push_back(r);
     }
 }
