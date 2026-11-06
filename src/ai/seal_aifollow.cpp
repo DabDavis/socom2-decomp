@@ -491,9 +491,22 @@ void CAiSFollow::SetFormation(UNIT_FORMATION formation, int slot)
 }
 
 extern "C" {
-/* the AI's check of an entity at a distance (OVL2 0x5FD150, this unit's, not written: the AI, the
- * entity, a flag, the distance; a bool) */
+/* the AI's check of an entity at a distance (OVL2 0x5FD150, below) */
 bool func_005FD150(CSealCtrlAi *ai, CEntity *e, bool b, float dist);
+/* (MAIN 0x1B3808: the C library's) */
+float tanf(float);
+/* the AI's SEAL in state 4 (OVL2 0x569530, the SEALs' seal_ai.cpp: its short at 0x174; unnamed) */
+bool func_00569530(CSealCtrlAi *ai);
+/* a map's cell inside (seal_ai.cpp's 0x5561C0, the SEALs': the map's own test) */
+bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
+}
+
+/* whether a cell's map holds it, none for no map (seal_ai.cpp's CellInside) */
+static inline bool CellInside(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? func_005561C0(map, loc) : false;
 }
 
 /* the AI's current state if it is a follow, else 0 (inline; the name ours) */
@@ -618,6 +631,69 @@ extern "C" bool func_005FD3E0(CSealCtrlAi *ai, CEntity *e)
         CPnt3D d = me->m_posW - e->m_posW;
 
         r = func_005FD150(ai, e, true, d.Normalize());
+    }
+    return r;
+}
+
+/* the AI's entity, through an inline (a local assigned from an inline's result is numbered after the
+ * front-end temporaries -- the kit's round 53: read in place the SEAL and the mode trade s0 / s1; the
+ * name ours) */
+static inline CEntity *EntityOf(CSealCtrlAi *ai)
+{
+    return ((CEntityCtrl *)ai)->m_entity;
+}
+
+/* an entity's last valid map cell (the SEAL's GetValidMapLoc, inline: through it the cell's address is
+ * computed once into a saved register for both calls of CellInside; the name ours) */
+static inline const CAiMapLoc &ValidLoc(const CEntity *e)
+{
+    return e->m_mapLocValid;
+}
+
+/* whether an entity sees the SEAL -- false at once without one, or with the AI's SEAL in state 4: true
+ * when the entity stands farther than its view range by a quarter (and the caller allows that), else
+ * the point the AI's mode sends it to asked for, and the segment from the SEAL to it tested against the
+ * entity's view wedge -- 40 deep inside its cell's map, else 100, halved while its weapon state is 2,
+ * reaching 20 behind and tan(40 degrees) to either side (OVL2 0x5FD150, new in SOCOM II: 0x5FD3E0 asks
+ * it of the player at its distance, 0x5FAE70 twice; the name unknown). The ranges are function-local
+ * statics (.data 0x650C50-0x650C68 in declaration order), the spread a guarded one (.bss 0x66BA50,
+ * its guard 0x66BA58; 40 degrees `0.6981317f`, 0x3F32B8C2 -- `0.69813174f` rounds a bit up). Byte-exact
+ * (the kit's round 54) with the entity's cell through an inline returning it by reference (its address
+ * in a saved register for both calls; read in place it is recomputed, 8 bytes short) and the SEAL
+ * through EntityOf */
+extern "C" bool func_005FD150(CSealCtrlAi *ai, CEntity *e, bool b, float dist)
+{
+    static float range_far = 100.0f;
+    static float range_near = 40.0f;
+    static float back = 20.0f;
+    static float slack = 1.25f;
+    bool r = true;
+    CEntity *seal = EntityOf(ai);
+
+    if (e && !func_00569530(ai)) {
+        static float spread = tanf(0.6981317f);
+        float range = CellInside(ValidLoc(e)) ? range_near : range_far;
+
+        if (((CZSealBody *)e)->GetWeaponState() == 2)
+            range *= 0.5f;
+        const float *row = e->m_node->m_matrix.m_matrix[2];
+        CPnt3D dir;
+
+        dir.x = -row[0];
+        dir.y = -row[1];
+        dir.z = -row[2];
+        if (!(dist <= range * slack) && b)
+            return true;
+        CPnt3D pt;
+        CAiMapLoc loc;
+
+        r = func_005FD460(ai, &pt, &loc, FollowMode(ai));
+        if (r) {
+            CPnt3D spos = seal->m_posW;
+            CPnt3D epos = e->m_posW;
+
+            r = !func_005FE1F0(&epos, &dir, &spos, &pt, range, back, spread);
+        }
     }
     return r;
 }
