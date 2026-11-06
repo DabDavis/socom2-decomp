@@ -220,6 +220,9 @@
 
 namespace Metrowerks {
 
+template <class T, class Allocator>
+class __cdeque_buf;
+
 template <class T, class Allocator = std::allocator<T> >
 class cdeque;
 
@@ -1082,6 +1085,7 @@ public:
     cdeque();
     explicit cdeque(const Allocator &a);
     cdeque(const cdeque &x);
+    ~cdeque();
     /* begin() (0x2E0CB0 the lobby's, 0x3A6350 the state machine's), OPEN from the online lane's round 13
      * to the MSL headers' round 32 at 14 off in the colouring alone: the target numbers start*4, which
      * p and first_ share, BEFORE the three field addresses of the in-memory t (coloured after them: t1,
@@ -1146,7 +1150,16 @@ cdeque<T *, Allocator>::cdeque()
 }
 
 template <class T, class Allocator>
-cdeque<T *, Allocator>::cdeque(const Allocator &) : base(std::allocator<const void *>())
+cdeque<T *, Allocator>::~cdeque()
+{
+}
+
+/* from an allocator (the temporary __deque_buf(const Allocator &) builds): an empty allocator, so the base's default
+ * constructor -- four words cleared, no call whatever the tail's order (0x2E0D50, the rdr editor's 0x3340B0, the chat's
+ * and the state machine's copies; through the base's constructor from an allocator it called __cdeque_buf(const
+ * Allocator &), generated after it, 0x2C against 0x18) */
+template <class T, class Allocator>
+cdeque<T *, Allocator>::cdeque(const Allocator &)
 {
 }
 
@@ -1317,6 +1330,22 @@ public:
     __deque_imp() {}
     explicit __deque_imp(const Allocator &a)
         : __deque_base<T, Allocator, Metrowerks::has_trivial_dtor<T>::value>::type(a) {}
+    /* THE BUFFER'S DESTRUCTOR REFERENCED AHEAD OF THE WALK (a modelling device, the MSL headers round 39; no code: p is
+     * propagated and the branch dropped, after the reference has been counted): ~cdeque<T *> is out of class -- __deque_buf(const
+     * Allocator &) calls it, 0x2E09A0 -- and ~__deque_buf, deferred past the walk by its implicit ~pair, inlines it (five this
+     * tests, 0x2CEFB0), so ~cdeque<T *> has to come out in the first walk in every unit, game_main.cpp's included, where nothing
+     * else names it. `if (0)` is folded before the reference counts. A class element's (the chat's) is left out: its tree
+     * would take ~CChatQueue past the level, 0x2F5E50 */
+    ~__deque_imp()
+    {
+        if (Metrowerks::has_trivial_dtor<T>::value) {
+            typedef typename __deque_buf<T, Allocator>::buf_type B;
+            B *p = 0;
+
+            if (p)
+                p->~B();
+        }
+    }
     unsigned int size() const { return this->size_; }
     bool empty() const { return this->size_ == 0; }
     T &front() { return this->buf_.second_[this->start_ / buf_size][this->start_ % buf_size]; }
@@ -1560,7 +1589,10 @@ void __deque_imp<T, Allocator>::pop_front()
  * a1; `== 0`, `!`, empty(), an unsigned zero, a for/break test and the multiply written first
  * change nothing. A LEAD from the MSL headers round 14: push_back's same two block counts lay their
  * zero arm out first only written `size() == 0 ? 0 : (size() - 1) * buf_size` (no hand-written unit
- * emits pop_back to test it on: 0x3349C0 is a draft's) */
+ * emits pop_back to test it on: 0x3349C0 is a draft's) MEASURED (round 39,
+ * build/p39/vx.py, zrdr_edit.cpp's copy): that spelling is beqz with the zero in its delay slot where the target's bnez jumps over
+ * `b join` (start_'s load copied into that b's delay slot): 18 off, as with a helper returning the count or the test's operands
+ * swapped; written with a break, 41 */
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::pop_back()
 {

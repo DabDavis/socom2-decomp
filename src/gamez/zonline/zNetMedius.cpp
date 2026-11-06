@@ -511,15 +511,20 @@ void CZOnlineLobby::SyncGameClock(int t)
     *theLobby.uiv_GameClock = 10.0f + (float)t;
 }
 
-/* A MODELLING DEVICE (the online lane's round 29, the MSL headers' round-35 probe made the unit's;
- * the name ours): an own function building the state queue's implementation from an allocator, never
- * called and dead-stripped at link (src/ABSENT.txt). Defined last, so code-generated first, it has
- * __deque_imp(const Allocator &) parsed before the end-of-unit walk: the deque's copy constructor
- * 0x2E07B0 is then generated IN the walk instead of after it, its call instantiates allocator<PCv>()
- * there, and deque() 0x2E0D90 -- generated after the walk -- inlines it as the target's does (byte-
- * exact from source; its draft had held it). The unit's copy of cdeque<PCv>::__recommend then inlines
- * alloc() (the linked copy is zanim_menu.cpp's, 0x285BD0: `elsewhere`) */
-void LobbyQueueImp(const std::allocator<LOBBY_STATE> &a)
+/* A MODELLING DEVICE (the online lane's round 29, the MSL headers' round-35 probe made the unit's; grown in the MSL
+ * headers' round 39; the name ours): an own function building the state queue's implementation from an allocator, the
+ * block pair and the buffer's base, never called and dead-stripped at link (src/ABSENT.txt). Defined last, so
+ * code-generated first, it has __deque_imp(const Allocator &), compressed_pair(const T1 &, const T2 &) and cdeque<PCv>(const
+ * Allocator &) parsed before the end-of-unit walk: the deque's copy constructor 0x2E07B0, __deque_buf(const Allocator &)
+ * 0x2E09A0, the pair 0x2E0A80 and the buffer's copy 0x2E0AC0 are then all generated IN the first walk, in that order and
+ * each before its callees (so each calls them, as the target does) -- that walk reaches allocator<PCv>() last, so the
+ * buffer's copy calls it, and deque() 0x2E0D90 -- generated after the walk -- inlines it, as the target's do. (Byte-exact
+ * from source; their drafts had held 0x2E0D90.) The unit's copy of cdeque<PCv>::__recommend then inlines alloc() (the
+ * linked copy is zanim_menu.cpp's, 0x285BD0: `elsewhere`) */
+void LobbyQueueImp(const std::allocator<LOBBY_STATE> &a, const Metrowerks::cdeque<LOBBY_STATE *, std::allocator<LOBBY_STATE *> > &b,
+                   const std::allocator<const void *> &c)
 {
     std::__deque_imp<LOBBY_STATE, std::allocator<LOBBY_STATE> > d(a);
+    Metrowerks::compressed_pair<std::allocator<LOBBY_STATE>, Metrowerks::cdeque<LOBBY_STATE *, std::allocator<LOBBY_STATE *> > > p(a, b);
+    Metrowerks::cdeque<const void *, std::allocator<const void *> > e(c);
 }
