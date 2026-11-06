@@ -34,12 +34,6 @@ enum MENU_STATE {
  * names ours */
 struct CPauseItem {
     CPauseItem();
-    void SetFlag0(bool b) { m_flag0 = b; }
-    void SetFlag1(bool b) { m_flag1 = b; }
-    void SetFlag2(bool b) { m_flag2 = b; }
-    void SetFlag3(bool b) { m_flag3 = b; }
-    void SetFlag4(bool b) { m_flag4 = b; }
-    void SetA0(unsigned int v) { m_a0 = v; }
 
     C2DString m_text;   // 0x0
     unsigned int m_id;   // 0x98
@@ -333,29 +327,53 @@ bool CZPauseTest::IsSelectable(signed char line)
     return r;
 }
 
+/* the flag group as the line's constructor writes it (ours: A MODELLING DEVICE, the HUD's round 64).
+ * MW narrows a bit-field's read-modify-write to the byte by the field's DECLARATION, unless the
+ * declared type is template-dependent (MAIN's runtime, round 7: `typename Allocator::size_type`
+ * fields stay words) -- then the access is the type's whole word at the group's byte offset, here
+ * the unaligned word at 0x9D (lwr/lwl 157..160, swr/swl). The target's constructor is the only
+ * read-modify-write of that shape in the image (build/scratch/hud/swrscan.py), while its readers
+ * (IsSelectable) and 0x202520's line set-up narrow the same flags (lbu/sb 157) -- so one declaration
+ * cannot give both: CPauseItem keeps the plain fields, the constructor goes through this view. Whatever
+ * in the original gave the constructor its own type is not known */
+template <class T> struct CPauseItemBits {
+    void SetFlag0(bool b) { m_flag0 = b; }
+    void SetFlag1(bool b) { m_flag1 = b; }
+    void SetFlag2(bool b) { m_flag2 = b; }
+    void SetFlag3(bool b) { m_flag3 = b; }
+    void SetFlag4(bool b) { m_flag4 = b; }
+    void SetA0(unsigned int v) { m_a0 = v; }
+
+    unsigned char _0[0x9d];
+    T m_flag0 : 1;   // 0x9d
+    T m_flag1 : 1;
+    T m_flag2 : 1;
+    T m_flag3 : 1;
+    T m_flag4 : 1;
+    T _9d_5 : 19;
+    T m_a0 : 27;   // 0xa0
+    T _a0_27 : 5;
+};
+
 /* a line made empty (0x205970: its address handed to __construct_new_array by the menu's
- * constructor; generated before it, so not an inline's copy).
- * OPEN, 10 instructions (0xD0 vs 0xF8): the target sets the five flags of the bit-field group at
- * 0x9D through its UNALIGNED WORD (lwr/lwl 157..160, swr/swl) -- the only such read-modify-write in
- * the image (build/scratch/hud/swrscan.py) -- where MW narrows each one-bit store to the byte
- * (lbu/sb 157), as the target itself does in 0x202520's line set-up. Everything else is the target's:
- * the group's container is a word at 0x9D (a 19-bit field written there gives lwr/lwl), the 27-bit
- * field the aligned word at 0xA0, the five setters' one unfolded `andi t6,zero,1`. Tried, all
- * narrowed alike: int, unsigned long, unsigned short, a 4-byte enum and volatile fields; group sizes
- * 5-32 bits and byte members after it; __attribute__((packed)) and #pragma pack(1) (MW still places
- * a packed member struct at 0xA0); the flags in a nested struct with its own setters, or in a member
- * class whose inline constructor sets them under an implicit CPauseItem(); non-inline setters
- * auto-inlined (defined before or after); #pragma opt_scalarizebitfields on/off, opt_lifetimes off */
+ * constructor; generated before it, so not an inline's copy). Open from round 37 to 64 at 10
+ * instructions (0xD0 vs 0xF8): every plain spelling narrows -- int, unsigned long, unsigned short, a
+ * 4-byte enum and volatile fields; group sizes 5-32 bits; packed structs and #pragma pack(1); nested
+ * structs; template setters over a plain field (the narrowing is the declaration's); #pragma
+ * opt_scalarizebitfields, opt_lifetimes; a whole template base holding the fields matches this row but
+ * loses IsSelectable and ~CPauseItem */
 CPauseItem::CPauseItem()
 {
     m_id = 0xdeadbeef;
     m_kind = 12;
-    SetFlag0(false);
-    SetFlag1(false);
-    SetFlag2(false);
-    SetFlag3(false);
-    SetFlag4(false);
-    SetA0(0);
+    CPauseItemBits<unsigned int> *bits = (CPauseItemBits<unsigned int> *)this;
+
+    bits->SetFlag0(false);
+    bits->SetFlag1(false);
+    bits->SetFlag2(false);
+    bits->SetFlag3(false);
+    bits->SetFlag4(false);
+    bits->SetA0(0);
 }
 
 /* the menu made closed (CHUD's constructor builds CHUD+0x18900 with it): the members built, the menu

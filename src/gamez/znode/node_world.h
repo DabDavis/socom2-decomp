@@ -174,7 +174,9 @@ void GetBBoxCorners(CPnt3D *out, const CBBox *b);
 /* what a render map projects (SOCOM 1's enum, by its mangled name; a byte under -enum min): a
  * shadow (0) makes its light a shadow */
 enum _tag_render_map_type {
-    RENDER_MAP_SHADOW = 0
+    RENDER_MAP_SHADOW = 0,
+    RENDER_MAP_1 = 1,
+    RENDER_MAP_2 = 2
 };
 
 /* a texture rendered from a node and projected back as a light map: a shadow (SOCOM 1's
@@ -191,7 +193,24 @@ public:
     CNode *m_node;   // 0x180: the node casting it, when an instance (type 2)
     const CTexture *m_texture;   // 0x184
     CLightMap *m_lightmap;   // 0x188
-    unsigned char _18c[0x2d0 - 0x18c];
+    /* the constructor's (the names ours): the texture's usable size and the bias its inverse
+     * makes; three matrices, unit at first, the second and third given their translations; the VIF
+     * codes and the GIF tag of the render; the map's type; the DMA reference to the packet; the
+     * axis perpendicular to the shadow's direction */
+    float m_size;   // 0x18c
+    float m_bias;   // 0x190
+    unsigned char _194[0x1a0 - 0x194];
+    CMatrix m_mtx0;   // 0x1a0
+    CMatrix m_mtx1;   // 0x1e0
+    CMatrix m_mtx2;   // 0x220
+    unsigned int m_vif0[4];   // 0x260
+    unsigned char _270[0x280 - 0x270];
+    unsigned int m_vif1[4];   // 0x280
+    unsigned long m_giftag[2];   // 0x290
+    _tag_render_map_type m_type;   // 0x2a0
+    unsigned char _2a1[0x2b0 - 0x2a1];
+    unsigned int m_dmaRef[4];   // 0x2b0
+    float m_axis[4];   // 0x2c0
     void *m_packet;   // 0x2d0: 208 bytes, the GS packet it renders with (the names ours)
     unsigned char _2d4[0x2e0 - 0x2d4];
 };   // 0x2e0 bytes

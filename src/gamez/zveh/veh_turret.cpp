@@ -1422,3 +1422,7 @@ void DeadTurretDefinitionsKill()
     CTurret::m_turret_def.clear();
     std::vector<CTurretDef> tmp;
 }
+
+/* insert<CTurretDef> 0x3ABD90's end numbered before m: include/vector's __insert_end_pointer, a marked modelling device (the AI
+ * core's round 37 measured this opt-in, +1 and nothing lost in this unit; what the original wrote is not found) */
+namespace std { template <> struct __insert_end_pointer<CTurretDef> { enum { value = 1 }; }; }

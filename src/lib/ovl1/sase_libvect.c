@@ -51,7 +51,7 @@ extern float func_0024AF50(float fXval);
 
 /* the vector normalised by fNorm (unscaled when it is zero), each element's fourth root taken:
  * the scaled copy above is inlined here, its assert with it */
-void func_0024EF30(const float *pfIn, int iLength, float *pfOut, float fNorm)
+void func_0024EF30(const float *pfIn, int iLength, float fNorm, float *pfOut)
 {
 	float fScale;
 	int i;

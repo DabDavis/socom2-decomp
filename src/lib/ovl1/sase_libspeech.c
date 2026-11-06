@@ -11,7 +11,7 @@
  * temporaries), the peak-pair features 0x24D190, the peak picker 0x24D370 (its end decremented in
  * place, `iEnd--`: `i < iEnd - 1` trades two saved registers) and the envelope's LPC 0x24D770 (the
  * spectrum filled by two counters stepping 4 and 2: from one, i*4 and i*2, loop.c reverses a
- * counter of 63, the target's 252). Not written: 0x24CAE8, 0x24CD28, 0x24CF10, 0x24D560.
+ * counter of 63, the target's 252). GCC round 44a: the band peaks 0x24CD28, the frame peaks 0x24CF10, the STFT phases 0x24D560 and the envelope 0x24CAE8: the object whole. The band peaks' float parameter is the fifth, though it goes in $f12: an argument's move into its register keeps the parameter's place (mov.s before t0, as the target's), and the peak picker and the interpolation are inline (deferred past their caller, as in sase_libvect.c).
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0
@@ -115,7 +115,7 @@ void func_0024D190(const float *pfMag, const float *pfFreq, int iNPeaks, float *
 
 /* the local peaks of the magnitude strictly inside (iStart, iEnd - 1): a bin at least its left
  * neighbour and above its right one, the next bin skipped, up to iMaxPeaks of them */
-void func_0024D370(const float *pfMag, int iStart, int iEnd, int iMaxPeaks, int *piPeakFreq, int *piNPeaks)
+inline void func_0024D370(const float *pfMag, int iStart, int iEnd, int iMaxPeaks, int *piPeakFreq, int *piNPeaks)
 {
 	int i, n;
 
@@ -139,7 +139,7 @@ void func_0024D370(const float *pfMag, int iStart, int iEnd, int iMaxPeaks, int 
 
 /* the vertex of the parabola through three samples about a peak: its offset from the middle
  * sample returned, its height stored */
-float func_0024D498(float *pfYpeak, float fY_1, float fY0, float fY1)
+inline float func_0024D498(float *pfYpeak, float fY_1, float fY0, float fY1)
 {
 	float fA, fB, fX;
 
@@ -188,4 +188,171 @@ void func_0024D770(float *pfLogEnv, int iLpcOrder, float *pfGain, float *pfLPC, 
 	func_0024EEA0(&afSpec[1], iLpcOrder, &afSpec[1], 0x1.ffffdep-1F);
 	func_0024C8E8(afSpec, iLpcOrder, pfLPC, pfRC, &fErr);
 	*pfGain = func_002517D8(fErr) * 0.5F;
+}
+
+
+/* the spectrum's peaks a band apart: the largest magnitude in each band from fLo to fHi, the band's centre and the envelope
+ * there where it holds none; the next band starts half a band above the peak. One variable, j, is the walk and the centre
+ * (GCC round 44a: v1 in the target for both -- its refs put it first in global-alloc's order; apart, 12 words). 1e-6 is a
+ * .lit4 literal, hoisted out of the loop. */
+int func_0024CD28(const float *pfEnv, const float *pfMag, const float *pfFreq, int iLength, float fBand, float *pfPeak,
+		  float *pfPos)
+{
+	int iCount = 0, i = 0, j;
+	float fLo, fHi, fHalf, fMax;
+
+	fLo = fBand * 0.5F;
+	fHalf = fLo;
+	fHi = fLo + fBand;
+	while (pfFreq[i] < fLo && i < iLength)
+		i++;
+	while (fLo < 256.0F - fHalf && iCount < 100) {
+		fMax = 0.0F;
+		if (i < iLength) {
+			j = i;
+			if (pfFreq[j] < fHi) {
+			do {
+				if (fMax < pfMag[j]) {
+					fMax = pfMag[j];
+					i = j;
+				}
+				j++;
+			} while (pfFreq[j] < fHi && j < iLength);
+			}
+		}
+		if (fMax > 0.0F) {
+			pfPeak[iCount] = fMax;
+			pfPos[iCount] = pfFreq[i];
+		} else {
+			j = (int)((fLo + fHi) * 0.5F + 0.5F);
+			pfPeak[iCount] = pfEnv[j] + 0x1.0c6f7ap-20F;
+			pfPos[iCount] = (float)j;
+		}
+		fLo = pfPos[iCount] + fHalf;
+		fHi = fLo + fBand;
+		if (fHi > 256.0F)
+			fHi = 256.0F;
+		iCount++;
+		while (pfFreq[i] < fLo && i < iLength)
+			i++;
+	}
+	return iCount;
+}
+
+extern void func_0024EDD0(const float *pfRe, const float *pfIm, int iLength, float *pfOut);
+
+/* the frame's spectral peaks: the magnitudes, the peak picker and the parabolic interpolation both inlined (asserts and all:
+ * their out-of-line copies follow this function in the image, GCC's deferred output, as in sase_libvect.c), and when
+ * fewer than four peaks show, the 36 harmonics of a fixed spacing */
+void func_0024CF10(const float *pfRe, const float *pfIm, float *pfMag, float *pfAmp, float *pfFreq, int *piNPeaks)
+{
+	int aiPeak[100];
+	int i, k;
+	float fX, fF;
+
+	func_0024EDD0(pfRe, pfIm, 256, pfMag);
+	func_0024D370(pfMag, 0, 256, 100, aiPeak, piNPeaks);
+	for (i = 0; i < *piNPeaks; i++) {
+		k = aiPeak[i];
+		fX = func_0024D498(&pfAmp[i], pfMag[k - 1], pfMag[k], pfMag[k + 1]);
+		pfFreq[i] = (float)k + fX;
+	}
+	if (*piNPeaks < 4) {
+		fX = 7.0F;
+		fF = fX;
+		for (k = 0; k < 36; k++) {
+			pfFreq[k] = fF;
+			fF += fX;
+			pfAmp[k] = pfMag[(k + 1) * 7];
+		}
+		*piNPeaks = 36;
+	}
+}
+
+extern float atan2f(float y, float x);
+
+#define TWOPI 0x1.921fb4p+2F
+
+/* the harmonics' phases of the short-time spectrum: at most 100, up to the band's end, each rotated by the frame's delay
+ * and wrapped into 0..TWOPI */
+int func_0024D560(const float *pfRe, const float *pfIm, int iLength, float *pfPhase, short sDelay, float fPitch)
+{
+	int i, iHarm, iMax, k, iRound;
+	float fRot, fFreq, fCum, fX, fSTFTphase;
+
+	for (i = 0; i < iLength; i++)
+		pfPhase[i] = 0.0F;
+	fRot = (float)sDelay * fPitch * 0x1.921fb4p-7F;
+	iHarm = (int)(256.0F / fPitch);
+	fX = (float)iHarm * fPitch;
+	if ((int)(fX + 0.5F) >= 256)
+		iHarm--;
+	iMax = 100;
+	if (iHarm <= 100)
+		iMax = iHarm;
+	if (iLength < iMax)
+		iMax = iLength;
+	fCum = 0.0F;
+	fFreq = 0.0F;
+	for (i = 0; i < iMax; i++) {
+		fFreq += fPitch;
+		fCum += fRot;
+		k = (int)(fFreq + 0.5F);
+		fSTFTphase = atan2f(pfIm[k], pfRe[k]) + fCum;
+		fX = fSTFTphase * 0x1.45f306p-3F;
+		if (fX > 0.0F)
+			iRound = (int)(fX + 0.5F);
+		else
+			iRound = (int)(fX - 0.5F);
+		fSTFTphase -= (float)iRound * TWOPI;
+		if (fSTFTphase < 0.0F)
+			fSTFTphase += TWOPI;
+#line 584 "../../SaseEncVad/source/libspeech.c"
+		assert((fSTFTphase>=0) && (fSTFTphase<=TWOPI));
+		pfPhase[i] = fSTFTphase;
+	}
+	return 0;
+}
+
+extern void (*data_001D55B0)(void *p, int c, int n);	/* the host's memset */
+
+#define HZ2DFT 0.064F
+
+/* the spectral envelope from the band peaks: each peak's level held from the midpoint before it to the midpoint after, the
+ * first scaled down, then the last level decaying to the spectrum's end */
+void func_0024CAE8(const float *pfEnv, const float *pfMag, const float *pfFreq, int iLength, float *pfOut, float fPitchDFT)
+{
+	float afPeak[100];
+	float afPos[100];
+	float afUnused[156];
+	int iSeePeakCount, i, iStart, iEnd, iPrev;
+	float fLevel, fPrev, fPos;
+
+	data_001D55B0(afPeak, 0, sizeof(afPeak));
+	data_001D55B0(afPos, 0, sizeof(afPos));
+#line 332 "../../SaseEncVad/source/libspeech.c"
+	assert(fPitchDFT < (1500.0F*HZ2DFT));
+	iSeePeakCount = func_0024CD28(pfEnv, pfMag, pfFreq, iLength, fPitchDFT, afPeak, afPos);
+#line 344 "../../SaseEncVad/source/libspeech.c"
+	assert(iSeePeakCount > 0);
+	iStart = 0;
+	iEnd = 0;
+	fLevel = func_00251850(func_002517D8(afPeak[0]) + -0x1.999998p-5F);
+	fPrev = 0.0F;
+	for (i = 0; i < iSeePeakCount; i++) {
+		iPrev = iEnd;
+		fPos = afPos[i];
+		iEnd = (int)((fPrev + fPos) * 0.5F + 0.5F);
+		for (iStart = iPrev; iStart < iEnd; iStart++)
+			pfOut[iStart] = fLevel;
+		fLevel = afPeak[i];
+		fPrev = fPos;
+	}
+	iEnd += (int)fPitchDFT;
+	if (iEnd > 256)
+		iEnd = 256;
+	for (i = iStart; i < iEnd; i++)
+		pfOut[i] = fLevel;
+	for (i = iEnd; i < 256; i++)
+		pfOut[i] = pfOut[i - 1] * 0x1.ff7cecp-1F;
 }

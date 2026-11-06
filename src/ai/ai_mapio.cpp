@@ -566,3 +566,9 @@ bool CAiMap::read_readers(CFileIO &f)
 }
 
 #pragma auto_inline reset
+
+/* A "Level 6, or 8?" witness, marked as such, as util_loc.cpp's (README): at the unit's end this generates the
+ * template tail one inline level deeper, and resize<line> 0x51C070 (0x144), whose element's constructor sits six
+ * levels down, is byte-exact with nothing else in ai/ or zchar/ moved (the AI core's round 37 measured it; the
+ * integrator applied it). It stands for whatever the original's level really was. */
+#pragma inline_depth(6)

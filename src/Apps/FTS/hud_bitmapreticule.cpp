@@ -5,8 +5,9 @@
  * TimerProgressTick (0x213680, round 41) and SOCOM II's second bar after it, ReloadTimerTick
  * (0x213840), and SetGBarVal (0x213A60, round 57); still to write: 0x213E20-0x215170 (by SOCOM 1's
  * order ChangeReticule
- * -- UpdateGBarColor is not 0x213840), Init (0x2178C0) and the functions 0x215250-0x2178BF but
- * DrawLaseTarget (0x217550: written in round 59, byte-exact since round 61). BitmapReticule is 0x12F0
+ * -- UpdateGBarColor is not 0x213840), Init (0x2178C0), UpdateAccuracy (0x215250) and UpdateColor
+ * (0x215C10); HudTick (0x216770: round 64) and DrawLaseTarget (0x217550: written in round 59, byte-exact
+ * since round 61) are done, ThreatDirTick (0x216DE0: round 64) written and open. BitmapReticule is 0x12F0
  * bytes longer in SOCOM II, laid out whole
  * (SOCOM 1's names, SOCOM II's offsets; the reticle type is a byte now). Defined in reverse of their
  * image order (-inline deferred). */
@@ -14,6 +15,7 @@
 #include <string.h>
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/zvid/zvid.h"
 #include "hud_mpinfobox.h"
 
 class CHUD;
@@ -25,6 +27,8 @@ class CTexture {
 public:
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
+    unsigned char _4[0x18 - 0x4];
+    unsigned char *m_pixels;   // 0x18
 };
 
 class CTexHandle {
@@ -64,27 +68,89 @@ public:
     /* the lased point (inline: read through the kit's own address, by value) */
     CPnt3D GetLasePoint() const { return m_lasePoint; }
 
-    unsigned int m_bits0 : 16;
+    /* the night vision's flag, the reticle's kind changed and the reticle to show, whether the weapon
+     * is in its launcher mode (kit.h's, SOCOM 1's) */
+    bool NVG_Enabled() const;
+    bool CurReticuleTypeChanged();
+    int GetCurItemReticule();
+    bool CurWeaponIsLauncherMode();
+    /* the reticle's blocked flag set (SOCOM 1's bit 3 of its first word, m_retblocked) */
+    void SetRetBlocked(bool b) { m_retblocked = b; }
+
+    unsigned int m_bits0_0 : 3;
+    unsigned int m_retblocked : 1;   // bit 3
+    unsigned int m_bits0 : 12;
     unsigned int m_lasing : 1;   // 0x2 bit 0
     unsigned char _4[0xc - 0x4];
     CPnt3D m_lasePoint;   // 0xc
+    float m_retposx;   // 0x18 (SOCOM 1's four, at 0x4 there)
+    float m_retposy;   // 0x1c
+    float m_retoffsetx;   // 0x20
+    float m_retoffsety;   // 0x24
 };
+
+/* what the seal hit along the reticle: the point, and what it hit at 0x1c (zdb's CDI, as far as the
+ * range reads it) */
+class CReticuleDi : public CPnt3D {
+public:
+    unsigned char _c[0x1c - 0xc];
+    void *m_hit;   // 0x1c
+};
+
+/* the seal's controller: its menu state (zseal.h's) */
+class CSealCtrl {
+public:
+    unsigned char _0[0x221];
+    unsigned char m_menustate;   // 0x221 (a byte enum, compared with lbu)
+};
+
+/* the view the player looks through (zseal.h's: a signed byte) */
+enum ZOOMSTATE { ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1 };
 
 /* the seal the reticle is ticked for (zseal.h's CZSealBody, as far as this unit reads it) */
 class CZSealBody {
 public:
     bool IsReloading();
+    /* the view's setter and what the reticle is on (zseal.h's, SOCOM 1's) */
+    void SetCurZoomState(ZOOMSTATE state);
+    CReticuleDi *GetReticuleDi();
+    CZKit *GetKit() { return &m_kit; }
 
-    unsigned char _0[0x5e0];
+    unsigned char _0[0x1c];
+    CPnt3D m_posW;   // 0x1c
+    unsigned char _28[0xc0 - 0x28];
+    CSealCtrl *m_ctrl;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1_0 : 4;
+    unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
+    unsigned char _e1_5 : 3;
+    unsigned char _e2[0x200 - 0xe2];
+    ZOOMSTATE m_zoomstate;   // 0x200
+    unsigned char _201[0x5e0 - 0x201];
     CZKit m_kit;   // 0x5e0
-    unsigned char _5f8[0xeb8 - 0x5f8];
+    unsigned char _608[0xe2c - 0x608];
+    float m_retsize;   // 0xe2c: the reticle's spread
+    unsigned char _e30[0xeb8 - 0xe30];
     CEntity *m_eb8;   // 0xeb8: the turret it works
+    unsigned char _ebc[0xefc - 0xebc];
+    /* where it was hit from, and each of the eight arrows' strength and angle (SOCOM 1's DWARF: E, N,
+     * W, S at the even places, the diagonals between) */
+    unsigned char m_threatdir[4];   // 0xefc
+    float m_threatscale[8];   // 0xf00
+    float m_threatangle[8];   // 0xf20
 };
 
 /* the HUD (hud_main.cpp's, theHUD 0x408E58): whether it shows */
 class CHUD {
 public:
     bool IsOn();
+    static CZSealBody *GetHUDOwner();
+    void SetRangeText(const char *text);
+
+    unsigned char _0[0xb0];
+    signed char m_hudrettype;   // 0xb0
+    bool m_usehudret;   // 0xb1
+    bool m_hudretchanged;   // 0xb2
 };
 
 extern CHUD *theHUD;
@@ -116,6 +182,11 @@ public:
     /* the lased point marked on the screen (SOCOM II's, 0x217550: HudTick's call before
      * ThreatDirTick; the name ours) */
     void DrawLaseTarget(CZSealBody *seal);
+    void HudTick(float dT);
+    void ThreatDirTick(CZSealBody *seal);
+    void UpdateAccuracy();
+    void UpdateColor();
+    void ChangeReticule(int type);
 
     /* SOCOM 1's DWARF names at SOCOM II's offsets (read off the constructor 0x218DE0 and the
      * destructor 0x219090); SOCOM II's own members named by offset */
@@ -136,7 +207,8 @@ public:
     C2DBitmapPoly m_socom2_11f0[4];   // 0x11f0
     C2DBitmapPoly m_threatdirpoly[8];   // 0x19b0
     C2DBitmapPoly m_floatingreticule[4];   // 0x2930
-    unsigned char _30f0[0x3100 - 0x30f0];
+    zdb::CTexture *m_noisetex;   // 0x30f0: the night vision's noise, drawn anew each tick
+    unsigned char _30f4[0x3100 - 0x30f4];
     C2DBitmap m_nvgrange;   // 0x3100
     C2DBitmapPoly m_nvglens[4];   // 0x3180
     C2DBitmapPoly m_socom2_3940[4];   // 0x3940
@@ -209,6 +281,12 @@ public:
 class CZWeapon {
 public:
     static void RegisterTimer(float *pCurval, float maxval, bool bIncr);
+    static bool TimerCleared();
+    static bool TimerRegistered();
+    static void RetrieveTimerRegistration(float **pCurval, float *maxval, bool *bIncr);
+    static bool Timer2Registered();
+    static void RetrieveTimer2Registration(float **pCurval, float *maxval, bool *bIncr);
+    static void ClearTimer(float *pCurval);
 
     static float *m_timer_pCurval;
 };
@@ -336,6 +414,237 @@ float s_laseTickSize = 4.0f;
  * the inline returning the kit called after it, folds every offset (0x5EC(s0)); and the screen offset
  * is added in a statement of its own (`x += 320`: the target's add.s keeps the product's register, x
  * f4 and y f2), one expression puts the constant first (two FPRs and two alignment nops off) */
+
+/* the lifted night-vision mode's global flag (OVL1 bss 0x4B4A70: the world's renderer reads it; no
+ * row yet) */
+extern unsigned char data_004B4A70;
+/* whether the bomb game's defuse clock runs here (fts_mission.cpp's, 0x2AA890) */
+extern "C" bool func_002AA890();
+extern "C" int rand();
+extern "C" int sprintf(char *buf, const char *fmt, ...);
+extern "C" void FlushCache(int op);
+
+/* a diagonal threat arrow's strength shared with the side it leans to: the angle wrapped below 90,
+ * the side's arrow gets its remainder, the diagonal its part (ours: ThreatDirTick's eight arms) */
+#define THREAT_SPLIT(side, diag, a)                                                  \
+    {                                                                                \
+        float angle = fabsf(a);                                                      \
+                                                                                     \
+        while (angle >= 90.0f)                                                       \
+            angle -= 90.0f;                                                          \
+        m_threatdirpoly[side].SetTrans(50.0f * ((90.0f - angle) * ONE_OVER_90));     \
+        m_threatdirpoly[diag].SetTrans(50.0f * (angle * ONE_OVER_90));               \
+    }
+
+/* the threat arrows (SOCOM 1's ThreatDirTick, 0x3CF360 there): the seal's four hit directions kept;
+ * where two neighbours were hit, the diagonal between gets half their strength and the two arrows the
+ * angle's share (SOCOM 1 set them full); every arrow faded by 120 a second; the flags cleared. The
+ * names SOCOM 1's DWARF's (SOCOM 1's DIAGONAL_SCALAR was made under a guard, SOCOM II's is data).
+ * OPEN, 32 instructions, 0x76C of 0x76C, all one colouring repeated in the eight arms: `50.0f * (angle
+ * * ONE_OVER_90)` has the 1/90 and the product in f0 and the 50 in f1 in the target, f1 and f0 here --
+ * MW makes the constant last (k, product, 50, the highest number taking f0) where the target numbers
+ * it first; the first SetTrans's `50.0f * ((90.0f - angle) * ONE_OVER_90)` comes out right. Tried, each
+ * the same code: named locals for the 1/90, the product and the 50 (folded back), casts on each, the
+ * operands swapped; (50 * angle) * k changes the code; the 50 through an inline accessor swaps the
+ * final mul's operands only. The first test reads the seal's two flags through locals (a0, v1 kept
+ * across the statics' stores), the later ones the statics */
+void BitmapReticule::ThreatDirTick(CZSealBody *pSeal)
+{
+    static float DIAGONAL_SCALAR = 0.5f;
+    static float ONE_OVER_90 = 1.0f / 90.0f;
+    static unsigned char dirE;
+    static unsigned char dirN;
+    static unsigned char dirW;
+    static unsigned char dirS;
+
+    if (!pSeal)
+        return;
+    unsigned char e = pSeal->m_threatdir[0];
+
+    dirE = e;
+
+    unsigned char n = pSeal->m_threatdir[1];
+
+    dirN = n;
+    dirW = pSeal->m_threatdir[2];
+    dirS = pSeal->m_threatdir[3];
+    if (e && n) {
+        pSeal->m_threatscale[1] = DIAGONAL_SCALAR * (pSeal->m_threatscale[0] + pSeal->m_threatscale[2]);
+        if (pSeal->m_threatangle[0] > pSeal->m_threatangle[2]) {
+            THREAT_SPLIT(0, 1, pSeal->m_threatangle[0]);
+        } else {
+            THREAT_SPLIT(2, 1, pSeal->m_threatangle[2]);
+        }
+    }
+    if (dirW && dirN) {
+        pSeal->m_threatscale[3] = DIAGONAL_SCALAR * (pSeal->m_threatscale[4] + pSeal->m_threatscale[2]);
+        if (pSeal->m_threatangle[4] > pSeal->m_threatangle[2]) {
+            THREAT_SPLIT(4, 3, pSeal->m_threatangle[4]);
+        } else {
+            THREAT_SPLIT(2, 3, pSeal->m_threatangle[2]);
+        }
+    }
+    if (dirE && dirS) {
+        pSeal->m_threatscale[7] = DIAGONAL_SCALAR * (pSeal->m_threatscale[0] + pSeal->m_threatscale[6]);
+        if (pSeal->m_threatangle[0] > pSeal->m_threatangle[6]) {
+            THREAT_SPLIT(0, 7, pSeal->m_threatangle[0]);
+        } else {
+            THREAT_SPLIT(6, 7, pSeal->m_threatangle[6]);
+        }
+    }
+    if (dirW && dirS) {
+        pSeal->m_threatscale[5] = DIAGONAL_SCALAR * (pSeal->m_threatscale[4] + pSeal->m_threatscale[6]);
+        if (pSeal->m_threatangle[4] > pSeal->m_threatangle[6]) {
+            THREAT_SPLIT(4, 5, pSeal->m_threatangle[4]);
+        } else {
+            THREAT_SPLIT(6, 5, pSeal->m_threatangle[6]);
+        }
+    }
+    for (unsigned int ii = 0; ii < 8; ii++) {
+        float trans_val = m_threatdirpoly[ii].GetTrans();
+
+        if (trans_val != 0.0f) {
+            trans_val -= 120.0f * zVid.frameTime;
+            if (trans_val < 0.0f)
+                trans_val = 0.0f;
+            m_threatdirpoly[ii].SetTrans(trans_val);
+        }
+    }
+    pSeal->m_threatdir[0] = 0;
+    pSeal->m_threatdir[1] = 0;
+    pSeal->m_threatdir[2] = 0;
+    pSeal->m_threatdir[3] = 0;
+}
+#undef THREAT_SPLIT
+
+/* the reticle's tick (SOCOM 1's HudTick, 0x3CF070 there): the health bar, the lased point and the
+ * threat arrows; the weapons' timers taken up and shown; the defuse clock counted down under the three
+ * menu states (SOCOM 1's DefuseTick, its clock's text gone); the night vision's flag kept, and with it
+ * the lenses' alpha and new noise in the noise texture; a launcher's first person forced; the reticle
+ * changed when its kind does (SOCOM II: the HUD's own override first); it placed by the kit's position
+ * and spread (SOCOM 1's), but for the fixed kinds; the miss mark faded under three kinds; the range
+ * text; the colour */
+void BitmapReticule::HudTick(float dT)
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (!seal)
+        return;
+    m_healthbar.Tick(dT);
+    DrawLaseTarget(seal);
+    ThreatDirTick(seal);
+    if (CZWeapon::TimerCleared())
+        m_pCurval = 0;
+    if (CZWeapon::TimerRegistered()) {
+        CZWeapon::RetrieveTimerRegistration(&m_pCurval, &m_maxval, (bool *)&m_bIncrTimer);
+        if (m_pCurval && m_maxval != 0.0f) {
+            m_maxval_frac = 1.0f / m_maxval;
+        } else {
+            m_maxval = -1.0f;
+            m_maxval_frac = -1.0f;
+        }
+    }
+    if (CZWeapon::Timer2Registered())
+        CZWeapon::RetrieveTimer2Registration(&m_pCurval2, &m_maxval2, (bool *)&m_bIncrTimer2);
+    TimerProgressTick(dT);
+    ReloadTimerTick(dT, seal);
+    if (func_002AA890() && !(g_fDefuseTime < 0.0f)) {
+        if (CHUD::GetHUDOwner()->m_ctrl->m_menustate == 0 || CHUD::GetHUDOwner()->m_ctrl->m_menustate == 1
+            || CHUD::GetHUDOwner()->m_ctrl->m_menustate == 5) {
+            g_fDefuseTime -= dT;
+            if (g_fDefuseTime <= 0.0f) {
+                CZWeapon::ClearTimer(0);
+                g_fDefuseTime = -1.0f;
+                CValve::Create(c_szDefusingValve, 0, VALVE_TEMP);
+            }
+        }
+    }
+    m_nvgenabled = seal->m_kit.NVG_Enabled();
+    data_004B4A70 = m_nvgenabled;
+    if (m_nvgenabled) {
+        unsigned int i;
+
+        for (i = 0; i < 4; i++)
+            m_socom2_3940[i].SetTrans(m_socom2_4104);
+        zdb::CTexture *noise = m_noisetex;
+
+        if (noise) {
+            unsigned int count = noise->m_width * noise->m_height;
+            unsigned char *pixels = noise->m_pixels;
+
+            for (i = 0; i < count; i++)
+                pixels[i] = (int)(255.0f * (4.6566128730773926e-10f * (float)rand()));
+            FlushCache(0);
+        }
+    }
+    if (seal->GetKit() && seal->GetKit()->CurWeaponIsLauncherMode() && (unsigned int)seal->m_zoomstate > 1)
+        seal->SetCurZoomState(ZOOMSTATE_1STPERSON);
+    CHUD *hud;
+
+    if (!seal->m_socom2_e1_4) {
+        ChangeReticule(-1);
+    } else if ((hud = m_parent)->m_usehudret) {
+        if (hud->m_hudretchanged) {
+            hud->m_hudretchanged = false;
+            ChangeReticule(hud->m_hudrettype);
+        } else if (seal->m_kit.CurReticuleTypeChanged()) {
+            ChangeReticule(seal->m_kit.GetCurItemReticule());
+        }
+    } else if (seal->m_kit.CurReticuleTypeChanged()) {
+        ChangeReticule(seal->m_kit.GetCurItemReticule());
+    }
+    if (m_rettype != 4) {
+        m_retsize = seal->m_retsize;
+
+        float x = seal->m_kit.m_retposx + seal->m_kit.m_retoffsetx;
+        float y = seal->m_kit.m_retposy + seal->m_kit.m_retoffsety;
+
+        if (m_reticuleTex[m_rettype]) {
+            float py;
+            float px = 320.0f + x;
+
+            py = 224.0f + y;
+            m_posx = px;
+            m_posy = py;
+            if (m_rettype != 4 && m_rettype != 5 && m_rettype != -1 && m_rettype != 7 && m_rettype != 8
+                && m_rettype != 9) {
+                zdb::CTexture *tex = m_reticuleTex[m_rettype]->m_texture;
+
+                m_bitmap.SetPos((int)(px - 0.5f * (float)(int)tex->m_width), (int)(py - 0.5f * (float)(int)tex->m_height));
+            }
+        }
+        UpdateAccuracy();
+    } else {
+        seal->m_kit.SetRetBlocked(false);
+    }
+    if (m_rettype == 4 || m_rettype == 10 || m_rettype == 3) {
+        m_miss_x.m_fade_dx = -32.0f;
+
+        float fade = m_miss_x.m_fade_dx;
+
+        float t = m_miss_x.GetTrans();
+
+        m_miss_x.SetTrans(t + fade);
+        if (m_miss_x.GetTrans() <= 0.0f) {
+            m_miss_x.Off();
+            m_miss_x.SetTrans(0.0f);
+        }
+    }
+
+    char text[32];
+    CReticuleDi *di = seal->GetReticuleDi();
+
+    if (di && di->m_hit) {
+        CPnt3D delta = *di - seal->m_posW;
+
+        sprintf(text, "RANGE(m): %.0f", delta.Length() / 10.0f);
+    } else {
+        sprintf(text, "RANGE(m): ----");
+    }
+    theHUD->SetRangeText(text);
+    UpdateColor();
+}
+
 /* (the seal's kit through an inline returning its address -- the name ours; zseal.h's accessor
  * is likely one) */
 static inline CZKit *KitOf(CZSealBody *s)
