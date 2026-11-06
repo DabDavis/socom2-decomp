@@ -39,7 +39,6 @@ float func_003D2C20(CZFTSWeapon *w);
  * incomplete here (kit.h's stand-ins keep zseal.h out of this unit) -- and the explosive placed
  * (OVL2 0x5BE9A0: this unit's, unwritten) */
 bool CanFire__10CZSealBodyFbb(CZSealBody *body, bool a, bool b);
-void func_005BE9A0(CZKit *kit, int index, float a, float b);
 /* a launcher's grenades of class 145's launcher (OVL1 0x3C5C20, unclaimed: GetFiringItem's test) */
 bool func_003C5C20(CZFTSWeapon *w);
 /* a fire mode found from an item index on, for the item a mode fires from and an ammunition kind
@@ -1894,7 +1893,7 @@ void CZKit::HandlePlacingExlosive(EQUIP_ITEM item, float a, float b)
         return;
     }
     if (CanFire__10CZSealBodyFbb(m_body, false, false) && m_81c <= 0.0f && CurMagHasAmmo()) {
-        func_005BE9A0(this, m_selected_item, a, b);
+        HandleFireWeapon(m_selected_item, a, b);
         return;
     }
     SetCurItemByIndex(m_last_selected);
@@ -1989,6 +1988,8 @@ void Timer_PlaceC4(void *, void *data)
 struct CKitTriggerView {
     unsigned char _0[0x118];
     unsigned char m_trigger;   // 0x118
+    unsigned char _119[0x11c - 0x119];
+    float m_11c;   // 0x11c: the float the trigger's pull hands HandleFireWeapon (zseal.h's; the name ours)
 };
 
 /* a map cell's grid distance from another, x and y steps summed (seal_aifollow.cpp's FollowCellDist;
@@ -2458,6 +2459,125 @@ float Weight__9CSequenceFv(void *seq);
 }
 /* (whether the game is online: OVL1 data, the SEALs' name) */
 extern unsigned char data_0045A0C1;
+
+/* the local player's first frame as a pistol (OVL2 .data 0x650950, 1: read by Tick alone) */
+extern unsigned char data_00650950;
+
+/* the trigger down or held (inline: Tick's; the name ours) */
+static inline bool TriggerHeld(unsigned char t)
+{
+    bool b = true;
+
+    if (!(t == 1 || t == 2))
+        b = false;
+    return b;
+}
+
+/* (OVL2 0x5C0FD0: kit.h's; SOCOM 1's Tick) */
+void CZKit::Tick(float dT)
+{
+    if (data_00650950 && KitIsPlayer((CKitBody *)m_body)) {
+        data_00650950 = 0;
+        ReParentToPistol();
+    }
+    TickReticule(dT);
+    TickLaserDesignator(dT);
+    if (!(m_pickupRequestWait <= 0.0f))
+        m_pickupRequestWait -= dT;
+    func_005BE6F0(this, dT);
+    bool go = TickFireDelay(dT);
+
+    if (go)
+        go = TickExplosives(dT);
+    if (!go)
+        return;
+    float b;
+    bool fire = WillFireWeapon();
+    float a = ((CKitTriggerView *)((CKitBody *)m_body)->m_control)->m_11c;
+
+    b = GetFireDelay();
+    int shots = GetShotCount();
+
+    if (fire) {
+        HandleFireWeapon(m_selected_item, a, b);
+        if (m_waiting_to_raise)
+            m_waiting_to_raise = false;
+    } else if (m_item[m_selected_item] && !CurMagHasAmmo()) {
+        if (UsesAmmo(m_selected_item) && m_item[m_selected_item]->IsDirectFire()) {
+            bool more = m_burst_count < shots;
+            signed char t = ((CKitTriggerView *)((CKitBody *)m_body)->m_control)->m_trigger;
+            bool click;
+
+            if (more)
+                click = TriggerHeld(t);
+            else
+                click = false;
+            bool refill = false;
+            bool notb = false;
+            bool nota = false;
+
+            if (data_0045A0C1 && m_item[m_selected_item]->GetId() != 142)
+                nota = true;
+            if (nota && m_item[m_selected_item]->m_ID != 143)
+                notb = true;
+            if (notb) {
+                bool k = m_item[m_selected_item]->GetIDType() == 4
+                    || (data_00437CE8->m_respawns && CZWeapon::IsPrimaryType(m_item[m_selected_item]->GetIDType()));
+
+                if (k)
+                    refill = true;
+            }
+            if (click || refill) {
+                if (m_clicksnd && m_burst_count < 2)
+                    m_clicksnd->PlaySound((CSndInstance *)0, 255);
+                if ((more && CurItemHasAmmo()) || refill) {
+                    Reload();
+                    if (refill && WillFireWeapon()) {
+                        HandleFireWeapon(m_selected_item, a, b);
+                        if (m_waiting_to_raise)
+                            m_waiting_to_raise = false;
+                    }
+                } else if (more)
+                    m_burst_count++;
+            }
+        }
+    }
+    m_81c -= dT;
+    if (m_81c <= 0.0f)
+        m_81c = 0.0f;
+    if (!ItemHasAmmo(m_selected_item, (FIREMODE)m_firemode[m_selected_item]) && !WeaponIsLauncherMode(m_selected_item)) {
+        if (m_item[m_selected_item] && m_item[m_selected_item]->IsLauncherWeapon() && m_firemode[m_selected_item] > 3)
+            CycleFireMode();
+    }
+    if (!(FIREMODE)m_firemode[m_selected_item] && m_item[m_selected_item]) {
+        int def = m_item[m_selected_item]->m_maxfiremode;
+
+        if (def < 4 && def > 0) {
+            while (m_firemode[m_selected_item] != def)
+                CycleFireMode();
+        } else
+            CycleFireMode();
+    }
+    if (!(m_8 <= 0.0f)) {
+        m_8 -= dT;
+        if (m_8 < 0.0f)
+            m_8 = 0.0f;
+    }
+    CKitBody::Attach::Record *rec = ((CKitBody *)m_body)->m_attach[4].m_rec;
+
+    if (rec && rec->m_node) {
+        zdb::CNode *node = (zdb::CNode *)rec->m_node;
+
+        if (m_8bc == 0.0f)
+            node->m_Opacity = 0.0f;
+        if (node->m_Opacity < 1.0f)
+            m_8bc += dT;
+        if (!(m_8bc <= 0.75f)) {
+            node->m_Opacity = 1.0f;
+            m_8bc = -1.0f;
+        }
+    }
+}
 
 /* whether the current item fires this frame: the trigger up (or let go) ends the burst and a player's lock sound; a held trigger or
  * a waiting raise fires once the weapon is up -- a direct-fire weapon raised first --, the burst not spent, the SEAL able

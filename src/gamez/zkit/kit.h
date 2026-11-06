@@ -319,6 +319,30 @@ public:
             h = HAND_FIRST;
         return h;
     }
+    /* the kit's frame: the reticle, the laser, the waits; the fire delay run out -- a reload or the launcher's next
+     * round at its end --, the explosives' tick; the trigger answered: a shot, an empty magazine's click and reload, an
+     * online refill; the fire modes put right and the launcher's flash faded in (OVL2 0x5C0FD0; SOCOM 1's Tick,
+     * CZSealBody::Tick calls it) */
+    void Tick(float dT);
+    /* the fire delay's turn of the frame (inline: Tick's; the name ours) */
+    bool TickFireDelay(float dT)
+    {
+        if (m_fire_delay == 0.0f)
+            return true;
+        m_fire_delay -= dT;
+        if (m_fire_delay < 0.0f) {
+            if (m_alt_firedelay)
+                ChamberLauncherRound();
+            else
+                Reload();
+            m_fire_delay = 0.0f;
+        }
+        return false;
+    }
+    /* the explosives' tick (OVL2 0x5C1970; SOCOM 1's TickExplosives: false while one is being placed) and a pull of the
+     * trigger (OVL2 0x5BE9A0; SOCOM 1's HandleFireWeapon) */
+    bool TickExplosives(float dT);
+    void HandleFireWeapon(int index, float a, float b);
     /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
      * II: the name ours) */
     void StartSniperKick();
@@ -665,7 +689,7 @@ public:
     unsigned int m_unused : 13;
     bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
     unsigned char _5[0x8 - 0x5];
-    int m_8;   // 0x8: zeroed by Init (new in SOCOM II; the name ours)
+    float m_8;   // 0x8: zeroed by Init, run down by Tick (new in SOCOM II; the name ours)
     unsigned char _c[0x18 - 0xc];
     float m_18;   // 0x18: zeroed by the constructor (new in SOCOM II; the names ours)
     float m_1c;   // 0x1c
