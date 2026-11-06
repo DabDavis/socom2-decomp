@@ -1713,3 +1713,131 @@ fail:
     }
     return result;
 }
+
+/* the receive's peek (0x63EF38): 0x63ECC8 without taking the message off its ring */
+int func_0063EF38(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nLength, unsigned int *pnReceived)
+{
+    RT_UDP_HEADER header;
+    void *pMsg = 0;
+    RT_UDP_CONN *pConn;
+
+    if (pUdp == 0)
+        return 1;
+    if (pData == 0)
+        return 1;
+    if (nLength == 0)
+        return 1;
+    if (pnReceived == 0)
+        return 1;
+    *pnReceived = 0;
+    if (nConn == (unsigned int)-2) {
+        if (func_00631B10(&pUdp->buf, &pMsg) != 0)
+            return 10;
+        if (pMsg != 0 && func_00631E70(pMsg) != 0) {
+            memcpy(&header, (char *)func_00631E58(pMsg) + sizeof(RT_UDP_ADDR), sizeof header);
+            *pnReceived = header.nLength < nLength ? header.nLength : nLength;
+            memcpy(pData, (char *)func_00631E58(pMsg) + sizeof(RT_UDP_ADDR) + sizeof header, *pnReceived);
+        } else
+            *pnReceived = 0;
+        return 0;
+    }
+    if (nConn >= pUdp->nConns)
+        return 1;
+    pConn = &pUdp->pConns[nConn];
+    if (pConn->nState != 12)
+        return 4;
+    if (func_00631B10(&pConn->recv, &pMsg) != 0)
+        return 10;
+    while (pMsg != 0) {
+        if (func_00631E70(pMsg) != 0) {
+            memcpy(&header, func_00631E58(pMsg), sizeof header);
+            if ((*(unsigned int *)&header & 6) == 6 || (header.nType & 4)) {
+                if (header.nSeq == pConn->nRecvSeq + 1 || pConn->nRecvSeq == 0) {
+                    *pnReceived = header.nLength < nLength ? header.nLength : nLength;
+                    memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
+                    return 0;
+                }
+            } else {
+                *pnReceived = header.nLength < nLength ? header.nLength : nLength;
+                memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
+                return 0;
+            }
+        }
+        pMsg = func_00631E88(pMsg);
+    }
+    *pnReceived = 0;
+    return 0;
+}
+
+/* a peer's first datagram (0x640EA0): a connection made for it with its session id and sequence, then by state the
+ * accept message (func_0063F948, 0x63FA28), or the common handler 0x641B08 */
+int func_00640EA0(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, char *szAddress, unsigned short nPort)
+{
+    RT_UDP_HEADER header;
+    RT_UDP_CONN *pConn = 0;
+    unsigned int nConn = -1;
+    int result;
+
+    if (pRecv->nId == 0)
+        return 0;
+    do {
+        result = func_0063F8A0(pUdp, &nConn);
+        if (result != 0 || nConn == -1) {
+            result = 7;
+            break;
+        }
+        pConn = &pUdp->pConns[nConn];
+        pConn->nId = pRecv->nId;
+        pConn->nSeqUnrel = func_0063DCE8();
+        pConn->nSeqRel = func_0063DCE8();
+        pConn->x80 = 0;
+        pConn->nPort = nPort;
+        pConn->nRecvSeq = pRecv->nSeq;
+        strncpy(pConn->szAddress, szAddress, 16);
+        rt_time_start(&pConn->tLastRecv);
+        pConn->nRto = 1000;
+        pConn->nSrtt = 0;
+        if (func_006313D8(&pConn->send, pUdp->x30) != 0 || func_006313D8(&pConn->recv, pUdp->nBufSize) != 0) {
+            pConn->nState = 6;
+            result = 7;
+            func_006419E8(pUdp, pConn);
+            break;
+        }
+    } while (0);
+    if (result != 0)
+        return result;
+    switch (pConn->nState) {
+    case 0:
+        if (pUdp->x44 == 0)
+            pConn->nState = 7;
+        else {
+            pConn->nState = 9;
+            result = func_0063F948(pUdp, pConn, 4, &header);
+            if (result != 0) {
+                pConn->nState = 1;
+                func_006419E8(pUdp, pConn);
+                return result;
+            }
+            header.nType |= 0x40;
+            result = func_0063FA28(pConn, &header, 0, 0);
+            if (result != 0) {
+                pConn->nState = 1;
+                func_006419E8(pUdp, pConn);
+                return result;
+            }
+            result = func_00641B08(pUdp, pConn, pRecv);
+        }
+        break;
+    case 8:
+    case 9:
+    case 11:
+    case 12:
+        result = func_00641B08(pUdp, pConn, pRecv);
+        break;
+    default:
+        pConn->nState = 1;
+        result = func_006419E8(pUdp, pConn);
+        break;
+    }
+    return result;
+}

@@ -1467,11 +1467,15 @@ void func_0063ACA0(RT_P2P *pP2p, int nConn, int nError)
             result = func_0063B5D0(pP2p, nIndex, &info);
             if (result != 0)
                 return;
-            for (i = 0; i < pP2p->nEntries; i++) {
-                if (pP2p->pEntries[i].nState == 3 && i != nIndex) {
-                    if (func_0063C078(pP2p, i, 7, &info, sizeof(info)) != 0)
-                        return;
-                }
+            if (result < pP2p->nEntries) {
+                i = 0;
+                do {
+                    if (pP2p->pEntries[i].nState == 3 && i != nIndex) {
+                        if (func_0063C078(pP2p, i, 7, &info, sizeof(info)) != 0)
+                            return;
+                    }
+                    i++;
+                } while (i < pP2p->nEntries);
             }
             func_0063C138(pP2p, nIndex);
             return;
