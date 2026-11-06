@@ -2065,6 +2065,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the zdb world, textures, rdr and sound, round 29** (the node rows it took over from the integrator:
+  InheritRegionMasks 0x3126A0, ~CModel 0x318930 with its RemoveModel / GetModel copies and CNode::SetModel, CNode()
+  0x316E30, zdb::FindMeshTextures 0x312D00 -- SOCOM 1's, a free function --, zdb::TransformBBox 0x3186B0 and
+  Particle::Source::SetHasBBox 0x329A40 byte-exact; UpdateBBoxFromDI written, OPEN at the size, 39, registers only):
+  - TO MAKE AN INLINE'S OUT-OF-LINE COPIES FOLLOW A CALLER, call it from a wrapper inline whose tree is taller than the
+    level (~CModel through `CAssetLib::RemoveModel(const char *)`); written directly in the caller MW inlines the inner
+    function's body instead; a function holding a constructor that cannot inline whole is itself refused
+    auto-inlining, and that constructor's callees -- CPnt3D's implicit assignment included -- are called out of line;
+  - a float min / max ternary loads the right operand first when both sides are plain loads; an indexed member
+    (`m_pts[i].x`) costs more than a pointer field and loads first even on the left; `x >= y ? x : y` compiles as c.lt.s
+    with bc1t to the false arm, `x <= y ? x : y` as c.le.s with bc1f;
+  - `CPnt3D a[2] = { p, q }` copy-constructs the first element (ld / sd from an aligned source) and copies the second
+    field by field; `1 << (int)bitfield` generates the shift amount before the constant 1, the bare field the 1 first; a
+    byte field stored as -1 emits `li -1` only when it is signed char (on unsigned char MW folds it to `li 255`);
+  - taking begin() into a named local before an `erase(b, end())` shares the vector's data load; a vector walked through
+    a reference local keeps the reference in a register for the loop's end test; `unsigned int i = byte_field; if (i)
+    f(i);` drops the `andi 0xff` that `if (p->byte) f(p->byte)` adds; `found = 0` written inside the `if` arm lands in
+    the loop entry's delay slot.
 - **Tells from the UI, round 34** (six byte-exact: the state queue's push 0x2852B0 -- include/deque's as it stands once
   zanim_menu.h's CSimpleStateMachine holds a real std::queue, util_ssm.cpp's CStateQueue --, zanim_menu.cpp's pick cyclers
   NextPick 0x283E60 and NextPickBesides 0x283B50, unwritten before, and util_sonyio.cpp's HddUnmountGame 0x39D020,
