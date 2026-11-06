@@ -114,7 +114,13 @@ void *func_00555170(void *v);
  * representative (0xE0/0xE4), another local for it, the accessor's `&seal->m_blends` alone (0xD8),
  * dead first definitions of rep, id or i ahead of the stack (14-21), the counter or the stack
  * declared first. Before round 33: the stack declared before the store, a while loop, `if (i >= 0)
- * do ... while (--i >= 0)`, the stack through a reference, a goto into the bottom test. */
+ * do ... while (--i >= 0)`, the stack through a reference, a goto into the bottom test. Round 57 (the
+ * GCC front's round-43a pragmascan lead; build/scratch/seal-r57/v_d710*.py): `opt_common_subs` and
+ * `opt_propagation` off round the body (or CSE and `opt_dead_assignments`) give 6 -- the SEAL / stack
+ * s1/s2 trade is gone, only the hoisted addiu's placement is left (the guard block's delay slot, the
+ * target's in the entry `b`'s); without the in-loop assignment, or with the top read first, the entry
+ * is lost again (0xE4, 18) -- so the pass that differs is CSE/propagation over the two assignments of
+ * the stack's address; not adopted (no pragma that is not byte-exact). */
 extern "C" bool func_0057D710(CZSealBody *seal, short weapon)
 {
     seal->m_weapon_id = weapon;
