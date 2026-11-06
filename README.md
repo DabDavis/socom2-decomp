@@ -2065,6 +2065,32 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 48** (CLoadState::Tick 0x1F5E70 and CMenuState::RunEventAnim 0x1F3BF0 -- both
+  unwritten before -- byte-exact, UpdateLocalSeal 0x2BD640 byte-exact, C2D::Tick's and C2D::SetTrans's inline copies
+  emitted and byte-exact; C2DMessage_Q::Tick 0x2B5DB0 written, OPEN at the size, 38; 0x2B7A90 named ftsNetworkSealInit__Fv):
+  - in `x = x == 0 ? Inline() : x` the inline's return keeps the then-arm's branch to the join (UpdateLocalSeal, 2 -> 0);
+    `if (!x) x = f();` falls through onto the join's alignment nop, and the `!x ?` / `x ?` ternaries copy the store into
+    both arms;
+  - a bitfield tested through an inline accessor (`GetValue() == 0`) is not merged with a following inline setter's read
+    -- it is read twice, as in the target; a direct `m_value` test is merged;
+  - a member inline called on a re-read global pointer (`theMission.m_netGame->SetCharType(GetCustomCharTypeName(0))`)
+    loads `this` after the argument's call and keeps it for both its stores; a free inline taking an object pointer and
+    a computed value loads the pointer before its body (the clamp);
+  - a float clamp `if (t > 1) t = 1; else if (t < 0) t = 0;` leaves no branch at the inner join, the ternary chain adds a
+    `b` to the join; `x == 0` on a byte reused from an earlier test of the same field gives the target's `andi 0xff`, `!x`
+    branches on the register directly;
+  - `float trans = Get(); ... float t = trans + dT*k;` lets `t` share dT's saved float register, a single `t += ...`
+    keeps `t` in a saved register of its own;
+  - `return a && b` inside an inline bool function is materialised (li 1 / move zero), as the target has it; written in
+    the caller's `if` it branches directly;
+  - a name chain `if (!strcmp(n, "X")) e = N; else if ...` into an `int` puts each value in the call's argument register,
+    in the branch's delay slot (RunEventAnim's 63 event names, ParseButtonAnim's values); a handler whose class the
+    unit's header cannot see (CGameMenu's, from fts_state.h: zui_spec.h's ActionItem) is called by its mangled name;
+  - OPEN, the frame slots: C2DMessage_Q::Tick's second walk keeps its `cur` iterator below every temporary (no named
+    local lands there; its end pointer belongs in s0), and the teamwork rating 0x1F27C0 reaches 0x680 through an
+    in-class inline `Next()` with `!IsSeal()` with only the frame slots off (11, the out-of-line Advance still right) --
+    st_exit.cpp records the slot orders of four loop shapes, SetRoundStatUiVars' and C2DMessage_Q::Tick's: one slot rule
+    probably explains all three.
 - **Tells from the online lobby, round 27** (54 functions from their drafts to source -- zNetMediusClan.cpp all
   hand-written, zNetMediusLobby.cpp and zNetMediusFriends.cpp whole --; 22 rows named):
   - an explicit specialization of a class template member is an own function: MW never inlines an out-of-class template
