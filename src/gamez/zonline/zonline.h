@@ -1026,6 +1026,16 @@ public:
     bool HasClanInvitations();
     bool CanInviteMorePlayersToClan();
     void GetClanMemberInfo(const char *name);
+    bool JoinAsSpectator();
+    void ForceStatusReport();
+    bool GameRejectsRank(const char *name);
+    bool ClanGameClosed(const char *name);
+    bool IsSwitchTeamsOK();
+    bool GameHasSpectatorPassword(const char *name);
+    bool GameIsPasswordProtected(const char *name);
+    int GetAccountID();
+    const char *GetAccountName();
+    void SetPlayerDescription(const char *desc);
     void CreateClan(const char *name);
     void TransferLeadership(const char *name);
     void ChangeState(LOBBY_STATE state);

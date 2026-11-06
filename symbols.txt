@@ -4971,7 +4971,7 @@
 0x002F6A60 0x8 func_002F6A60  # OVL1
 0x002F6A70 0x144 make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>CFUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, const (the copy constructor 0x2F5F80 calls it for x's end and begin); include/deque's make_iterator, open as every instance's
 0x002F6BC0 0x138 __dt__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; the MSL headers round 19: the chat deque's block buffer's out-of-class destructor (the blocks freed, the buffer's five this-tests), called with 0 by the teardown level 0x2F62B0 -- the name 0x2F62B0 carried until then; byte-exact from the chat unit's tail (include/deque's ~__deque_buf, as the lobby's 0x2E19E0)
-0x002F6D00 0x6C func_002F6D00  # OVL1
+0x002F6D00 0x6C JoinAsSpectator__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (the 'JoinAsSpectator' valve, looked up once into 0x44FA90, on -- or the byte 0x4413D8 -- as a bool; JoinGame calls it on theLobby out of line; named after the valve; byte-exact from zNetMediusLobby.cpp)
 0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
 0x002F6E30 0x90 cbCountGamePlayers__FiiiP28MediusGetGamePlayersResponse  # OVL1; ours (CountGamePlayers' MediusGetGamePlayers callback: 'MediusGetGamePlayers' checked, flagged players counted into 0x66A990, the total to 0x66A9A0 at the list's end)
 0x002F6EC0 0x15C RefreshGamePlayerList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGamePlayerList' 0x27D820, as SOCOM 1's UIRefreshGamePlayerList calls RefreshGamePlayerList)
@@ -4991,10 +4991,10 @@
 0x002F82E0 0x6C GetMissionSequence__13CZOnlineLobbyFPUcPUc  # OVL1; s1 by hand (CZGameState::UpdateLocalGame calls it on theLobby, as SOCOM 1's calls GetMissionSequence)
 0x002F8350 0x54 ForceStatusReport__13CZOnlineLobbyFv  # OVL1; s1:ui (UIForceMediusStatusReport, as SOCOM 1's calls ForceStatusReport)
 0x002F83B0 0x80C JoinGame__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('JoinMPGame' 0x27D730 calls it on theLobby where SOCOM 1's UIJoinMPGame calls JoinGame; a1 live)
-0x002F8BC0 0x9C func_002F8BC0  # OVL1
-0x002F8C60 0x80 func_002F8C60  # OVL1
-0x002F8CE0 0x6C func_002F8CE0  # OVL1
-0x002F8D50 0x80 func_002F8D50  # OVL1
+0x002F8BC0 0x9C GameRejectsRank__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 27 (the current room's game by name whose AllowsType refuses our GetRankTier(-1); the UI command 'GameRejectsRank' calls it on theLobby; byte-exact from zNetMediusLobby.cpp)
+0x002F8C60 0x80 ClanGameClosed__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 27 (the current room's game by name whose clan team IsClanTeamAllowed refuses; the UI command 'ClanGameClosed' calls it on theLobby; byte-exact from zNetMediusLobby.cpp)
+0x002F8CE0 0x6C IsSwitchTeamsOK__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (false on a clan game's sides 1, 2 or 4, GetClanTeamSide called for each test; the UI command 'IsSwitchTeamsOK' calls it on theLobby; byte-exact from zNetMediusLobby.cpp)
+0x002F8D50 0x80 GameHasSpectatorPassword__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 27 (the current room's game by name with its info's flag 4 set, as GameIsPasswordProtected tests 1; the UI command 'GameHasSpectatorPassword' calls it on theLobby; byte-exact from zNetMediusLobby.cpp)
 0x002F8DD0 0x80 GameIsPasswordProtected__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('GameHasPassword' 0x27D390, as SOCOM 1's UIGameHasPassword calls GameIsPasswordProtected)
 0x002F8E50 0x78 cbClearGameListFilter__FiiiP33MediusClearGameListFilterResponse  # OVL1; ours (JoinGame("RANDOM") passes it to MediusClearGameListFilter: 'GetRandomGame::ClearGameListFilter' checked, then a filter set through 0x649960 with 0x2F8ED0)
 0x002F8ED0 0xF4 cbSetGameListFilter__FiiiP31MediusSetGameListFilterResponse  # OVL1; ours (cbClearGameListFilter's filter callback: the five filter valves read, then a 999-game page asked through 0x64B008 with 0x2F8FD0)
@@ -5005,14 +5005,14 @@
 0x002F95F0 0x8C BanSelfFromGame__13CZOnlineLobbyFv  # OVL1; s1:ui ('BanSelfFromGame' 0x278D30, as SOCOM 1's UIBanSelfFromGame)
 0x002F9680 0x10 cbBanSelfFromGame__FiiiP23MediusBanPlayerResponse  # OVL1; s1 by hand (BanSelfFromGame's callback, as SOCOM 1's: only the status checked, SOCOM 1's an empty body)
 0x002F9690 0x4C func_002F9690  # OVL1
-0x002F96E0 0xC func_002F96E0  # OVL1
+0x002F96E0 0xC GetAccountID__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (AccountInfo's first word, 0x66A4F0; the persona's 0x4 asks it on theLobby; byte-exact from zNetMediusLobby.cpp)
 0x002F96F0 0x1FC func_002F96F0  # OVL1
 0x002F98F0 0x1C8 func_002F98F0  # OVL1
 0x002F9AC0 0x854 UnpackPlayerStats__FP15GamePlayerStatsPCc  # OVL1; ours, the online lane round 20 (the stats text unpacked into the 'E' record, older records 'N'/'Q', 'A'-'D' upgraded a version at a time: the ladder item, the game players', the player info's and our own stats' readers call it; SOCOM 1 has none, reading its stats text with atoi)
 0x002FA320 0x234 Register__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyRegister' 0x27DDE0 calls it on theLobby where SOCOM 1's UILobbyRegister calls Register)
 0x002FA560 0x3C Logout__13CZOnlineLobbyFv  # OVL1; s1:ui ('LobbyLogout' 0x27DCC0, as SOCOM 1's UILobbyLogout calls Logout)
 0x002FA5A0 0x234 Login__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyLogin' 0x27DD20, as SOCOM 1's UILobbyLogin calls Login)
-0x002FA7E0 0xC func_002FA7E0  # OVL1
+0x002FA7E0 0xC GetAccountName__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (AccountInfo's name, 0x66A4F4; the DME's player record copies it on theLobby; byte-exact from zNetMediusLobby.cpp)
 0x002FA7F0 0x10 SetPlayerDescription__13CZOnlineLobbyFPCc  # OVL1; s1:ui (UISetPlayerDescription calls it; Censor(desc, 0x2FA800, 0) as SOCOM 1's SetPlayerDescription censors through cbFilterPlayerDescription)
 0x002FA800 0x64 cbFilterPlayerDescription__FPCcPv  # OVL1; s1 by hand (the censor callback SetPlayerDescription hands to Censor, as SOCOM 1's)
 0x002FA870 0x74 func_002FA870  # OVL1
