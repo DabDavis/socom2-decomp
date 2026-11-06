@@ -72,7 +72,10 @@ extern "C" bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool ani
 extern "C" bool func_005A78D0(CZSealBody *body);
 extern "C" bool func_005A77E0(CZSealBody *seal, int state33, int anim36, int anim35);
 /* the death camera's pad handling (SOCOM II's: a member of the object at 0xF4) */
-extern "C" void func_00295260(void *deathcam, CAppCamera *cam, CPad *pad);
+struct CDeathCam;
+extern "C" void func_00295260(CDeathCam *dc, CAppCamera *cam, CPad *pad);
+/* the SEAL nearest the death camera's view line taken to watch (SOCOM II's, not written) */
+extern "C" void func_00294F40(CDeathCam *dc, CAppCamera *cam);
 
 /* what the tick reaches for (SOCOM 1's names in the comments) */
 extern "C" {
@@ -495,7 +498,7 @@ void CAppCamera::FTSTick()
                    m_ctrl_view == cam_view_peek_left || m_ctrl_view == cam_view_peek_right)
                 m_ctrl_view = (CAMVIEW)(((int)m_ctrl_view + 1) % data_0044C404);
         }
-        func_00295260(&m_f4, this, pad);
+        func_00295260((CDeathCam *)&m_f4, this, pad);
     }
     if (m_ctrl_view != m_save_view) {
         ResetView();
@@ -1085,4 +1088,502 @@ void CAppCamera::ResetDeathCam()
     m_108 = 0.0f;
     m_10c = 0;
     m_118 = 1.0f;
+}
+
+/* a point eased: from `from` by `delta` scaled (ours: the frame proves an inline -- the scale's and
+ * the sum's results one level below the differences, which are its arguments) */
+inline void EaseBy(CPnt3D &p, const CPnt3D &from, const CPnt3D &delta, float t)
+{
+    p = from + delta * t;
+}
+
+/* what the camera sees, two levels down (ours: UpdateCameraRegions called directly puts its point
+ * above the differences' locals; through this its frame slot is the target's, among the sums') */
+inline void UpdateRegions(CAppCamera *cam)
+{
+    cam->UpdateCameraRegions();
+}
+
+/* a value held within [lo, hi] (ours: an inline's own join -- the clamp's arms end on it, then
+ * branch to the caller's; written in place they branch to the caller's join directly, 8 off) */
+inline float ClampF(float a, float lo, float hi)
+{
+    if (a < lo)
+        a = lo;
+    else if (a > hi)
+        a = hi;
+    return a;
+}
+
+/* the death camera (SOCOM II's, CAppCamera's 0xF4-0x11B: ResetDeathCam puts its fields back; the
+ * class and the names ours) -- its state, the view's rotation built each tick, the yaw and pitch the
+ * player's stick has added up, and the SEAL it watches */
+struct CDeathCam {
+    /* what the camera does: 0 follows, 1 watches the SEAL it was killed by (SOCOM II's watch of
+     * m_seal), 2 runs along the mission's camera path -- CROSS steps it to the state saved in m_1
+     * (lbu: every value non-negative) */
+    unsigned char m_state;   // 0x0 (CAppCamera's m_f4)
+    signed char m_next;   // 0x1 (CAppCamera's m_f5: lb)
+    unsigned char _2[2];
+    CPnt3D m_rot;   // 0x4
+    float m_yaw;   // 0x10
+    float m_pitch;   // 0x14
+    CZSealBody *m_seal;   // 0x18
+    int m_point;   // 0x1c: the camera path's point (-1 none)
+    const char *m_pointName;   // 0x20: its name
+    float m_zoom;   // 0x24
+
+    /* the app camera's zoom set when it moved off it (the inlined CAppCamera::SetZoom) */
+    void SetZoom(float zoom)
+    {
+        if (fabsf(m_zoom - zoom) > 0.01f) {
+            m_zoom = zoom;
+            appCamera->SetZoom(zoom);
+        }
+    }
+
+    /* an angle brought into [-pi, pi], then held to the pitch the view allows: looking down at a
+     * SEAL that is not up, anywhere in [-1, 1] else */
+    float ClampPitch(float a)
+    {
+        while (a < -3.1415927f)
+            a += 6.2831855f;
+        while (a > 3.1415927f)
+            a -= 6.2831855f;
+        if (m_seal && m_seal->m_netlife != 1)
+            a = ClampF(a, -1.0f, -0.2f);
+        else
+            a = ClampF(a, -1.0f, 1.0f);
+        return a;
+    }
+};
+
+/* the body's blend stack and a blend's state (zbody.h's RTStack and CZBodyAnimBlend: only what the
+ * camera reads -- zbody.h's CBody clashes with camera.h's stand-in) */
+class CZBodyAnimBlend {
+public:
+    unsigned char _0[0x2b];
+    char m_state;   // 0x2b: 8 dying
+};
+
+template <class T>
+class RTStack {
+public:
+    T *Top();
+};
+
+/* the SEAL's top blend (its body's blend stack at +0x50: the two offsets added apart) */
+inline CZBodyAnimBlend *TopBlend(CZSealBody *seal)
+{
+    return ((RTStack<CZBodyAnimBlend> *)((unsigned int)&seal->m_body + 0x50))->Top();
+}
+
+/* the player and the HUD (fts_player.cpp's CftsPlayer: only its SEAL; hud_main.cpp's CHUD) */
+class CftsPlayer {
+public:
+    CZSealBody *m_seal;   // 0x0
+};
+
+extern CftsPlayer ftsPlayer;
+
+class CHUD {
+public:
+    bool PauseGame();
+};
+
+extern CHUD *theHUD;
+
+/* the death camera's state set, kept online while the followed SEAL is down in mode 6 (SetCameraMode's
+ * test; ours) */
+inline void SetDeathState(CAppCamera *cam, unsigned char state)
+{
+    bool keep = false;
+
+    if (theNetwork.m_9 && cam->m_bc && func_002C2FD0(cam->m_bc) && cam->m_camera_mode == cam_mode_6)
+        keep = true;
+    if (!keep) {
+        cam->m_cam_death_state = state;
+        cam->m_death_state_timer = 0.0f;
+    }
+}
+
+extern "C" void sceVu0RotMatrixY(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float ry);
+/* the death camera's stick turn (below) */
+extern "C" void func_00294B40(CDeathCam *dc, CMatrix *sealMat, CMatrix *view, float dT);
+
+/* the death camera's own look (SOCOM II's, not written: VU0 transform loops) */
+extern "C" unsigned char func_00297A30(CAppCamera *cam, CPnt3D *pos, CPnt3D *aim, CMatrix *rot, float dT);
+
+/* the tether's points for a SEAL down (SOCOM II's): its death begun -- a dying blend or state 8, a
+ * player's -- the death camera's look taken (unpaused) or the view turned about the SEAL as it
+ * falls, the death camera's stick turn added online; the point and the look carried into the SEAL's
+ * space, the ease begun or primed at state 7 online, and the aim eased toward the look while the
+ * death camera watches. Returns whether it does.
+ * OPEN, 0x60C of 0x614 (the first 70 instructions the target's): the first wrap loop's 2pi / -pi
+ * are not hoisted -- the if's then-arm branches straight into the loop's bottom test where the
+ * target falls into a preheader holding both constants (the second loop has its preheader in both).
+ * Tried (build/scratch/core/v_ta*.py): the turn as a ternary, nested ifs, for loops, a block, `!(a <=
+ * b)`, a label, the turn from an inline -- 0x60C to 0x624; the wrapped angle a copy of the turn gives
+ * the preheader but keeps a move (0x61C). Also left: sceVu0RotMatrixY's arguments (the target sets
+ * a1 first, then a0 from it; a pointer local or a CMatrix inline does not move them) */
+extern "C" unsigned char func_00297410(CAppCamera *cam, CPnt3D *pos, CPnt3D *offset, CPnt3D *aim, float dT)
+{
+    unsigned char watching = 0;
+    CMatrix rot;
+
+    if (!cam->m_cam_death_state && cam->m_bc &&
+        (TopBlend(cam->m_bc)->m_state == 8 || cam->m_bc->m_state == 8) && cam->m_bc->IsPlayer())
+        SetDeathState(cam, 1);
+    if (cam->m_cam_death_state) {
+        if (!theHUD->PauseGame())
+            watching = func_00297A30(cam, pos, aim, &rot, dT);
+    } else {
+        float turn = 0.0f;
+
+        if (cam->m_bc && cam->m_bc->m_state == 8)
+            turn = -2.5132742f * dT;
+        while (turn < -3.1415927f)
+            turn += 6.2831855f;
+        while (turn > 3.1415927f)
+            turn -= 6.2831855f;
+        sceVu0RotMatrixY(rot.m_matrix, rot.m_matrix, turn);
+        TransformVectors(&rot, pos, pos, 1);
+    }
+    if (theNetwork.m_9 && func_002C2FD0(ftsPlayer.m_seal) && ((CDeathCam *)&cam->m_f4)->m_state == 1) {
+        func_00294B40((CDeathCam *)&cam->m_f4, cam->m_entity->GetMatrix(), &rot, dT);
+        TransformVectors(&rot, pos, pos, 1);
+    }
+    cam->m_entity->GetMatrix()->Transform(pos, 1);
+    CPnt3D lz(0.0f, 0.0f, -1000.0f);
+    CPnt3D look;
+
+    if (cam->m_entity == cam->m_bc)
+        cam->m_bc->m_fwdlook.Apply(&lz, &look, 1);
+    else
+        look = lz;
+    TransformVectors(&rot, &look, &look, 1);
+    look.Add(offset, &look);
+    cam->m_entity->GetMatrix()->Transform(&look, 1);
+    if (theNetwork.m_9 && cam->m_cam_death_state == 7) {
+        if (cam->m_44) {
+            cam->m_44 = 0;
+            cam->m_easeAim = look;
+            cam->m_easePos = *pos;
+        } else {
+            cam->m_45 = 1;
+            cam->m_46 = 0;
+            cam->m_easeT = 0.0f;
+        }
+    }
+    if (watching) {
+        data_00416218 += dT;
+        if (data_00416218 > 1.0f)
+            data_00416218 = 1.0f;
+        EaseBy(*aim, look, *aim - look, data_00416218);
+    } else
+        *aim = look;
+    return watching;
+}
+
+/* a - b, one level down (ours: written in place the difference's local takes the frame slot above
+ * the ease's temporaries; one wrapper deeper it is the target's, among the other differences') */
+inline CPnt3D DiffOf(const CPnt3D &a, const CPnt3D &b)
+{
+    return a - b;
+}
+
+/* the tether's camera (APTeatherCam's place, SOCOM II's): the third-person point; looking at the
+ * watched SEAL, the chord from just above it clipped -- else the aim put the tether's length out
+ * along the view, lowered for a player's SEAL down on dry ground offline, both eased as first
+ * person's and the chord from the aim clipped -- then looked along and what the camera sees */
+void func_00296F10(CAppCamera *cam, CMatrix &cTw, float dT)
+{
+    CPnt3D CamOffset;
+    float tetherLen;
+    CPnt3D cam_new_pos = cam->GetThirdPersonCamPos(&CamOffset, &tetherLen);
+    CPnt3D cam_aim_point;
+
+    /* a byte the call returns, narrowed again (andi) before the test */
+    unsigned char watching = func_00297410(cam, &cam_new_pos, &CamOffset, &cam_aim_point, dT);
+
+    if (watching && cam->m_bc) {
+        CPnt3D from = cam->m_bc->m_posW;
+
+        from.y += 10.0f;
+        cam->ClipCameraChord(dT, &from, &cam_new_pos, &cam_new_pos);
+    } else {
+        CPnt3D dir = DiffOf(cam_aim_point, cam_new_pos);
+
+        dir.Normalize();
+        EaseBy(cam_aim_point, cam_new_pos, dir, tetherLen);
+        if (cam->m_bc && !theNetwork.m_9 && cam->m_bc->IsPlayer() && !cam->m_bc->m_isAlive &&
+            !cam->m_bc->m_inwater) {
+            cam_aim_point.y -= 5.0f;
+            cam_aim_point.z += 5.0f;
+        }
+        if (cam->m_45) {
+            if (cam->m_46) {
+                cam->m_easeT += dT;
+                if (!(cam->m_easeT < 1.0f))
+                    cam->m_45 = 0;
+            } else
+                cam->m_easeT = 6.0f * dT;
+            if (cam->m_easeT > 1.0f)
+                cam->m_easeT = 1.0f;
+            float t = cam->m_easeT;
+
+            EaseBy(cam_aim_point, cam->m_easeAim, cam_aim_point - cam->m_easeAim, t);
+            cam->m_easeAim = cam_aim_point;
+            EaseBy(cam_new_pos, cam->m_easePos, cam_new_pos - cam->m_easePos, t);
+            cam->m_easePos = cam_new_pos;
+        } else {
+            cam->m_easeAim = cam_aim_point;
+            cam->m_easePos = cam_new_pos;
+        }
+        cam->ClipCameraChord(dT, &cam_aim_point, &cam_new_pos, &cam_new_pos);
+    }
+    cam->LookAt(&cam_new_pos, &cam_aim_point, cTw);
+    UpdateRegions(cam);
+}
+
+/* the controller's aim pitched by a rate (OVL2 0x594600, the SEALs' controller: not named yet) and
+ * the pitch from the current layout's sticks (fts_controller.cpp's 0x2C6280) */
+extern "C" void func_00594600(CAppCameraCtrl *ctrl, float dT, float rate);
+extern "C" float func_002C6280(const CPad *pad);
+/* how long mode 1's camera has run with the short tether's rate at 1 (SOCOM II's static) */
+extern "C" float data_00416030;
+
+/* mode 1's camera (SOCOM II's, the tether's twin over mode 1's camera position): with the death
+ * camera's state 7 the followed controller's pitch turned by the pad's stick at twice its rate,
+ * then the tether's camera with the aim lowered by 8 for a player's SEAL down on dry ground */
+void func_00295F20(CAppCamera *cam, CMatrix &cTw, float dT)
+{
+    if (cam->m_cam_death_state == 7) {
+        CPad *pad = cam->m_padid < CInput::NUM_PADS ? CInput::m_pads[cam->m_padid] : 0;
+
+        if (!pad)
+            pad = CInput::m_pads[0];
+        if (pad) {
+            CAppCameraCtrl *ctrl = cam->m_ctrl;
+
+            if (ctrl) {
+                /* the rate doubled in place: computed into the call's argument it is one register,
+                 * the target's product is f0 copied to f13 */
+                float rate = func_002C6280(pad);
+
+                rate *= 2.0f;
+                func_00594600(ctrl, dT, rate);
+            }
+        }
+    }
+    CPnt3D CamOffset;
+    float tetherLen;
+    CPnt3D cam_new_pos = func_0029A660(cam, &CamOffset, &tetherLen);
+    CPnt3D cam_aim_point;
+    /* a byte the call returns, narrowed again (andi) before the test */
+    unsigned char watching = func_00297410(cam, &cam_new_pos, &CamOffset, &cam_aim_point, dT);
+
+    if (watching && cam->m_bc) {
+        CPnt3D from = cam->m_bc->m_posW;
+
+        from.y += 10.0f;
+        cam->ClipCameraChord(dT, &from, &cam_new_pos, &cam_new_pos);
+    } else {
+        CPnt3D dir = DiffOf(cam_aim_point, cam_new_pos);
+
+        dir.Normalize();
+        EaseBy(cam_aim_point, cam_new_pos, dir, tetherLen);
+        if (cam->m_bc && !theNetwork.m_9 && cam->m_bc->IsPlayer() && !cam->m_bc->m_isAlive &&
+            !cam->m_bc->m_inwater)
+            cam_aim_point.y -= 8.0f;
+        if (cam->m_45) {
+            if (cam->m_46) {
+                cam->m_easeT += dT;
+                if (!(cam->m_easeT < 1.0f))
+                    cam->m_45 = 0;
+            } else
+                cam->m_easeT = 6.0f * dT;
+            if (cam->m_easeT > 1.0f)
+                cam->m_easeT = 1.0f;
+            float t = cam->m_easeT;
+
+            EaseBy(cam_aim_point, cam->m_easeAim, cam_aim_point - cam->m_easeAim, t);
+            cam->m_easeAim = cam_aim_point;
+            EaseBy(cam_new_pos, cam->m_easePos, cam_new_pos - cam->m_easePos, t);
+            cam->m_easePos = cam_new_pos;
+        } else {
+            cam->m_easeAim = cam_aim_point;
+            cam->m_easePos = cam_new_pos;
+        }
+        cam->ClipCameraChord(dT, &cam_aim_point, &cam_new_pos, &cam_new_pos);
+    }
+    cam->LookAt(&cam_new_pos, &cam_aim_point, cTw);
+    UpdateRegions(cam);
+    if (short_tether_rate == 1.0f) {
+        if (data_00416030 > 0.1f)
+            short_tether_rate = 0.03f;
+        data_00416030 += dT;
+    }
+}
+
+/* first person's camera (APFirstPersonCam's place, SOCOM 1's locals): the first-person point and
+ * the forward look -- the watched SEAL's own when it is the one followed -- carried into the SEAL's
+ * space, eased from where they were while the ease runs (over a second, else six times the frame),
+ * looked along, then what the camera sees (UpdateCameraRegions, inlined). The frame's temporaries
+ * go by inline depth, then by callee (README: the engine core's round 22) */
+void func_00295B00(CAppCamera *cam, CMatrix &cTw, float dT)
+{
+    CPnt3D head_point = GetFirstPersonCamPos(cam);
+    CPnt3D pos = head_point;
+
+    cam->m_entity->GetMatrix()->Transform(&pos, 1);
+    CPnt3D cam_aim_point(0.0f, 0.0f, 0.0f);
+    CPnt3D lz(0.0f, 0.0f, -1.0f);
+
+    if (cam->m_bc && cam->m_bc == cam->m_entity)
+        cam->m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
+    else
+        cam_aim_point = lz;
+    cam_aim_point.Add(&head_point, &cam_aim_point);
+    cam->m_entity->GetMatrix()->Transform(&cam_aim_point, 1);
+    if (cam->m_45) {
+        if (cam->m_46) {
+            cam->m_easeT += dT;
+            if (!(cam->m_easeT < 1.0f))
+                cam->m_45 = 0;
+        } else
+            cam->m_easeT = 6.0f * dT;
+        if (cam->m_easeT > 1.0f)
+            cam->m_easeT = 1.0f;
+        float t = cam->m_easeT;
+
+        EaseBy(cam_aim_point, cam->m_easeAim, cam_aim_point - cam->m_easeAim, t);
+        cam->m_easeAim = cam_aim_point;
+        EaseBy(pos, cam->m_easePos, pos - cam->m_easePos, t);
+        cam->m_easePos = pos;
+    } else {
+        cam->m_easeAim = cam_aim_point;
+        cam->m_easePos = pos;
+    }
+    cam->LookAt(&pos, &cam_aim_point, cTw);
+    UpdateRegions(cam);
+}
+
+
+/* the death camera turned by the player's stick: the yaw and pitch added up at twice the stick's
+ * throttle a second, the rotation rebuilt from them -- the yaw within a turn, the pitch held --
+ * set into the view's matrix and read back, the yaw then carried along with the watched SEAL's
+ * (SOCOM II's; func_00297410 calls it with the SEAL's matrix) */
+extern "C" void func_00294B40(CDeathCam *dc, CMatrix *sealMat, CMatrix *view, float dT);
+
+/* the mission's camera path (fts_mission.cpp's CCamPath and CMission: only the path, at 0x1910) */
+class CCamPath {
+public:
+    /* a point `step` on from `index`, its place, direction and name given (-1: none) */
+    int GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name);
+};
+
+class CMission {
+public:
+    unsigned char _0[0x1910];
+    CCamPath m_campath;   // 0x1910
+};
+
+extern CMission theMission;
+
+/* the death camera's pad, online with the player down and the player's controller not
+ * zooming: TRIANGLE picks the SEAL nearest the view line, CROSS steps the camera to its next
+ * state -- following, back to the player's own view, the camera path -- and UP / DOWN run along
+ * the mission's camera path (SOCOM II's; FTSTick calls it with the followed SEAL's pad) */
+extern "C" void func_00295260(CDeathCam *dc, CAppCamera *cam, CPad *pad)
+{
+    if (theNetwork.m_9 && func_002C2FD0(ftsGetPlayer())) {
+        if (dc->m_state != 2)
+            dc->m_pointName = 0;
+        if (ftsGetPlayer()->m_control->m_221)
+            return;
+        if (pad->m_state[PAD_TRIANGLE] == KEY_RISING)
+            func_00294F40(dc, cam);
+        if (pad->m_state[PAD_CROSS] == KEY_RISING) {
+            switch (dc->m_state) {
+            case 0:
+                dc->m_state = dc->m_next;
+                if (dc->m_state == 2)
+                    dc->m_point = theMission.m_campath.GetPoint(dc->m_point, 0, &cam->m_wPos, &dc->m_rot,
+                                                                &dc->m_pointName);
+                else if (dc->m_state == 1) {
+                    cam->m_camera_mode = cam_mode_tether;
+                    func_002956E0(cam, dc->m_seal, 0);
+                }
+                break;
+            case 1:
+                cam->m_entity = ftsGetPlayer();
+                cam->m_bc = ftsGetPlayer();
+                cam->m_camera_mode = cam_mode_6;
+                cam->m_44 = 0;
+                dc->m_next = 1;
+                dc->m_state = 0;
+                dc->m_yaw = 0.0f;
+                dc->m_pitch = 0.0f;
+                break;
+            case 2:
+                dc->m_next = 2;
+                dc->m_state = 0;
+                dc->SetZoom(1.0f);
+                break;
+            }
+        } else if (pad->m_state[PAD_UP] == KEY_RISING) {
+            dc->m_point = theMission.m_campath.GetPoint(dc->m_point, 1, &cam->m_wPos, &dc->m_rot,
+                                                        &dc->m_pointName);
+            if (dc->m_point >= 0) {
+                dc->SetZoom(1.0f);
+                cam->m_camera_mode = cam_mode_6;
+                dc->m_state = 2;
+                cam->m_entity = ftsGetPlayer();
+                cam->m_bc = ftsGetPlayer();
+                cam->m_44 = 0;
+            }
+        } else if (pad->m_state[PAD_DOWN] == KEY_RISING) {
+            dc->m_point = theMission.m_campath.GetPoint(dc->m_point, -1, &cam->m_wPos, &dc->m_rot,
+                                                        &dc->m_pointName);
+            if (dc->m_point >= 0) {
+                dc->SetZoom(1.0f);
+                cam->m_camera_mode = cam_mode_6;
+                dc->m_state = 2;
+                cam->m_entity = ftsGetPlayer();
+                cam->m_bc = ftsGetPlayer();
+                cam->m_44 = 0;
+            }
+        }
+    }
+}
+
+extern "C" void func_00294B40(CDeathCam *dc, CMatrix *sealMat, CMatrix *view, float dT)
+{
+    float dx = 0.0f;
+    float dy = 0.0f;
+
+    dc->m_rot = CPnt3D::zero;
+    CEntityCtrl *ctrl = ftsGetPlayer()->m_control;
+
+    if (ctrl) {
+        dx = ctrl->m_throttle[2];
+        dy = ctrl->m_throttle[3];
+    }
+    dc->m_yaw += 2.0f * dx * dT;
+    dc->m_rot.y += dc->m_yaw;
+    dc->m_pitch += 2.0f * dy * dT;
+    dc->m_rot.x += dc->m_pitch;
+    while (dc->m_rot.y < 0.0f)
+        dc->m_rot.y += 6.2831855f;
+    while (dc->m_rot.y > 6.2831855f)
+        dc->m_rot.y -= 6.2831855f;
+    dc->m_pitch = dc->ClampPitch(dc->m_pitch);
+    dc->m_rot.x = dc->ClampPitch(dc->m_rot.x);
+    view->SetRotate(&dc->m_rot);
+    view->ToEuler(&dc->m_rot);
+    CPnt3D seal;
+
+    sealMat->ToEuler(&seal);
+    dc->m_rot.y += seal.y;
 }

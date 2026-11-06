@@ -1294,6 +1294,7 @@
 0x00416018 0x4 data_00416018  # OVL1 bss; SOCOM II's shake: the y ripple's angle in degrees: 9 references in 5 functions
 0x00416020 0x4 data_00416020  # OVL1 bss; SOCOM II's shake: the x amplitude running: 13 references in 6 functions
 0x00416028 0x4 data_00416028  # OVL1 bss; SOCOM II's shake: the y amplitude running: 14 references in 6 functions
+0x00416030 0x4 data_00416030  # OVL1 bss; SOCOM II's camera.cpp static (the core lane round 22): how long mode 1's camera has run with the short tether's rate at 1 -- past 0.1 s the rate goes back to 0.03; 3 references in 1 function (func_00295F20)
 0x00416038 0x1 camera_tether_intersects_something  # OVL1 bss; s1:data-seq (size SOCOM 1's; via GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D)
 0x00416050 0x4C dilr0  # OVL1 bss; SOCOM 1's camera.cpp static (dilr0-dilr3, by __sinit_camera.cpp): the first of four zdb::DiIntersect(16), registered with ~DiIntersect 0x2DC680; 2 references (__sinit_camera.cpp), the core lane round 2
 0x004160B0 0x4C dilr1  # OVL1 bss; SOCOM 1's camera.cpp static: the second DiIntersect(16); 2 references (__sinit_camera.cpp), the core lane round 2
