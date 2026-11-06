@@ -48,13 +48,14 @@ and data reference resolved to the address the shipped code uses.
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
 | `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
-| `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a); each miss's difflib distance from its row beside the verdict, `d=N (0xCAND vs 0xTARGET)` (the AI core's vd.py: GCC round 39a; `--no-dist` the verdict alone) |
+| `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a); each miss's difflib distance from its row beside the verdict, `d=N (0xCAND vs 0xTARGET)` (the AI core's vd.py: GCC round 39a; `--no-dist` the verdict alone); OLD and NEW are taken as typed (a `\n` is a backslash and an n), `-n` makes `\n`/`\t` a newline and a tab in both, `-e` decodes the usual escapes in each NEW alone (GCC round 43a) |
 | `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness); `--by-address` compares every name a map resolves as its map address, so a placeholder respelled by its row's name is the same (GCC round 29a); both sides are built at one scratch path, so a path the compiler writes (an unreferenced `__FILE__`) is no difference (GCC round 34a); Metrowerks' anonymous `@N` objects are compared by content and an unreferenced one (which the linker drops) left out, so a header's literal shifting every later rank is no difference (GCC round 36a; `--anon-by-rank` the old rule) |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
 | `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
-| `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order, each pseudo's final register and global-alloc's priority of each (floor_log2(refs) x refs / live, ties to the lower pseudo; checked against .greg's order: GCC round 29a) -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
+| `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order, each pseudo's final register and global-alloc's priority of each (floor_log2(refs) x refs / live, ties to the lower pseudo; checked against .greg's order: GCC round 29a) -- for register-only misses (GCC round 14c's harness, promoted in 15a); `--dump -dL` and `--dump=-dL` alike (GCC round 43a) |
+| `tools/pragmascan.py` | every OPEN function of the hand-written Metrowerks units wrapped alone in each optimiser pragma -- `#pragma P off` the body's first line, `#pragma P reset` after its closing brace, P of opt_common_subs, opt_loop_invariants, opt_propagation, opt_strength_reduction, opt_lifetimes, opt_dead_assignments, peephole (`--pairs`: every two) -- its unit built as sccheck builds it at one path length and EVERY function scored: a HIT makes it byte-exact and loses nothing, `closer` brings it nearer (d= before -> after); bodies found by name and scope and confirmed by one probe build per unit; resumable (`--report`), a per-unit budget, 2 jobs (the kit's round-58 csescan.py, generalised: GCC round 43a) |
 | `tools/treesearch.py` | which source trees of a sum give the target's: every tree over a spec's leaves compiled under its GCC directive, each function's dataflow read back from cc1's RTL dump (2.96's fold regroups sums; the recogniser lane's round 18c, promoted in GCC round 20a) |
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
@@ -12100,6 +12101,83 @@ showed:
   here: 720 orders of its six assignments, `tools/ccperm.py`, none matches, nearest 4; the vendor's field types are the
   next lever); func_001C1D40 (a loop-size local makes it worse, d=123 against 120). Not reached: round 41a's codec
   opens (their diagnoses stand), 0x2485D0 (the R5900's accumulator float ops, adda.s/madda.s/madd.s, m2c refuses it).
+
+**The tools, round 43a** (the integrator's requests). (1) **`tools/pragmascan.py`, a tree-wide pragma scan** (the
+kit's round 58: `#pragma opt_common_subs off` as the first line of a body, `reset` after its closing brace, made
+FaceXZ 0x60CAD0 and CAiDodge::Destroy 0x5FAD50 byte-exact; its csescan.py covered its own units). Every hand-written
+Metrowerks unit (no `compiler=ee-gcc*` directive) is built as sccheck builds it in a scratch copy of src/ and
+include/ laid out at ONE path length (objcmp's side_root, 160: round 38a's PATH-DEPENDENT code), every function scored
+as sccheck scores it (an inline copy missing outside the unit's span is `elsewhere`, not open); each OPEN function is
+found in the unit's own text -- the declarator's name and scope read off the mangled name (`__ct`/`__dt`/operators,
+`Q` scopes, `@unnamed@` as the text's `namespace {`) and matched against every body the text defines (namespaces,
+`extern "C"` blocks, classes' in-class bodies; a macro call before a signature is never taken for it: the declarator
+is the parenthesis group followed only by `const`/`throw()` and the body or a `:` initialiser list) -- and CONFIRMED
+by one probe build per unit: a `void (* volatile)(void)` local naming `__pragmascan_probe_<k>` opens each candidate
+body, and the function is the body whose probe its code references first (an overload set told apart, a lone name
+checked: a body read wrong is never wrapped in silence). Then, per pragma P of opt_common_subs, opt_loop_invariants,
+opt_propagation, opt_strength_reduction, opt_lifetimes, opt_dead_assignments and peephole, that body alone is wrapped
+and the unit rebuilt, every function scored: a HIT is byte-exact and loses nothing else in the unit, `closer` nearer
+its row (try.py's d=, before -> after) with nothing lost. Each pragma is checked first: Metrowerks warns `illegal
+#pragma` under `-w all` for a name it does not know -- a misspelt pragma would otherwise change nothing anywhere and
+read as "no hit" -- so a fixture is compiled under every MW toolchain the units name and a refused pragma stops the
+scan. Resumable (one JSON line per base build and variant, keyed by the unit's text, the headers' digest and the
+variant; `--report` reads it back), `--unit-budget` (900 s), `--jobs 2`, `--pairs` (every two pragmas, `P+Q`).
+**THE CANARY'S PREMISE, CORRECTED**: a3785ee6's FaceXZ (the body before the kit's round 58) is NOT byte-exact under
+CSE off -- 0x104 against 0xF4, d=14 (36 off without) -- the kit respelled the body as well (x through a no-op
+`(float)`, z assigned after it, -d.z a local, the translation by CPnt3D's three-float constructor); master's body with
+its two pragma lines taken out is 36 off and byte-exact with them, so the canary's
+`test_pragmascan_finds_the_kits_cse_off` (11 assertions) uses that: open without, found and confirmed by its probe,
+wrapped into master's text byte for byte, a HIT under opt_common_subs with nothing lost and none under
+opt_propagation, a re-run building nothing, `opt_bogus_thing` refused and the seven legal, the mangled scopes and a
+text's bodies read as the matcher needs. (2) **`tools/ccdump.py --dump -dL`** (the GCC c lane's round 38c): argparse
+reads a lone value starting with `-` as an option, so only `--dump=-dL` worked (and `--dump -fsched-verbose=4` was
+taken for `-f`); the argument after `--dump` or `--flags` (or an abbreviation naming one alone) is now joined to it
+first, `--dump=X` unchanged; canary `test_ccdump_takes_a_dump_flag_as_its_own_argument` (5: argparse alone refuses
+the separate form; tty.c's loop dump the same file from both). (3) **`tools/try.py -e/--escapes`** (the HUD's round
+63, by the integrator): `--sub OLD 'x;\n'` writes a backslash and an n -- the default, kept, since a C escape in the
+source (`'\n'`, `"%d\n"`) must match as typed (tty.c's canaries rely on it), and `-n` (both sides' `\n`/`\t`) was
+there all along; `-e` decodes the usual escapes (`\n \t \r \\ \" \'`) in each NEW alone, OLD as typed, and a variant
+that fails to build with a typed `\n`/`\t` in its NEW now says on stderr what -e and -n do; canary
+`test_try_decodes_escapes_in_new_when_asked` (5). sccheck.py, scdiff.py and scdecomp.py are master's, byte for byte.
+
+**The scan, run** (`build/scratch/gcc/r43/ps/`, master 86dc84c8's tree, every hand-written MW unit, 2 jobs): 298
+units, 238 open functions -- 184 found in their unit's text (all confirmed by their probes, no probe build failed), 54
+skipped (header templates, MSL instances, `__sinit_*`, CNode::GetBBox: no body in the unit) -- 1,288 single
+variants and 3,864 pairs (`--pairs`), no build failure. **One HIT: zui_hangul.cpp's SkbHangulBack 0x3910E0 under
+opt_common_subs** (28 off; 53 of 68 for 52 -- the UI's, not applied here; try.py in the real tree's path agrees).
+The pairs add no new hit -- SkbHangulBack again under CSE off with loop invariants,
+strength reduction or lifetimes off -- and 265 closer variants: 44 functions in all are matched or brought nearer
+by some single or pair, 194 by none of the 28. Nearest without a loss (singles or pairs, d before -> after): AddItem__10CUIListBox 0x373F20 6 -> 4 (CSE
+off), func_0057D710 13 -> 5 (CSE and propagation off: a pair's), is_goal__14CAiHidePlanner 0x5F8570 10 -> 6 (propagation), OnIsEquipmentSelected 0x280790 20 -> 7 (dead
+assignments: 6 words at the right size), ReadArray__8CRdrFile 0x331940 9 -> 7 (peephole), func_0057D5E0 9 -> 7
+(propagation), HandleOpenPad__4CTCM 0x235D40 12 -> 8 (dead assignments), plan_legcomplete__7CAiPath 0x5273C0 22 -> 11
+(dead assignments), and far-off rows a pragma brings most of the way: LoadNodeNames__6CZAnim 0x26DEA0 213 -> 38
+(strength reduction: the right size), zAnimIfTick 0x25E7A0 116 -> 49 (propagation), SkbParseKoreanRules 0x390C40 205
+-> 70 and SkbParseComplete 0x392130 140 -> 77 (loop invariants). The scan's own base saw GetBestDir 0x5350C0 byte-exact
+(238 open there, sccheck's 239 here): in this lane's worktree -- a 71-character tree, EVERY agent worktree's length
+-- MAP_DIRCOUNT::GetBestDir compiles 31 words off, round 38a's PATH-DEPENDENT row at a new length, so any lane's
+partial check of ai_mapwalk.cpp in a worktree reports it a REGRESSION on master 86dc84c8; at 97 and 98 characters
+(try.py's scratch trees) and 160 (the scan's) it matches, and the main tree's 29 is the integrator's to see.
+
+**Round 43a** (2026-11-06, the requests first, then the opens): 1 row newly byte-exact -- the codec's harmonic cost
+**0x2485D0** (324 bytes; open since round 18a, never written: m2c refuses its accumulator ops), an assembler unit
+`ovl1/sase_harmcost.s` by asmunit, as the dot product `sase_vdot.s` (round 16a): the spectral peaks walked in steps
+of the candidate's harmonic spacing, each harmonic's largest windowed peak (max.s) summed against the bin's magnitude
+in the FPU's ACC (adda.s seeds it with 1e-16, madda.s accumulates, madd.s reads it back through a zero) beside the
+bins' energy. **Not GCC's C**: neither the 2.9x nor the 2.96 cc1 has an adda.s or madda.s template (their strings:
+only the 3.2 builds' cc1 does, and it does not choose them for this loop in C, -ffast-math or not -- 88 off); max.s
+comes from C only under -ffast-math; and the division by (int)(fPitch * 128) carries no zero-division trap, which
+every GCC C division here gets (`break 7`; -mno-check-zero-division takes 2.96 to `div1`). Its 1e-16 literal and the
+window pointer are gp-relative through `.extern` symbols (`flags=-G8`, `.set macro` around the three loads: GNU as
+2.10 has no `%gp_rel` operator) -- 3 relocations resolved. No other open row of the lane's ranges holds an
+accumulator op (`build/scratch/gcc/r43/accscan.py`). What the opens showed:
+
+- **sceSifMUnBindRpc: the field types are not the lever either.** 576 variants (the unbind packet's pkt_addr void * or
+  u_int, client void *, u_int or the client's struct pointer, serve void * or a serve-data struct pointer -- the
+  client's too -- rpc_id u_int or int, crossed with the 24 orders of the four stores after pid and paddr): nearest
+  still 4; with serve void * the target's store order costs a branch (`bnezl` inverted, 0x120).
+- **0x24C000 (libquan.c's 2-D distance) is the unit's flags' schedule**: -fno-schedule-insns or -insns2 loses every
+  other function of the unit (14 to 118 words), so the 11 words are a priority inside sched1/sched2, as diagnosed.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
