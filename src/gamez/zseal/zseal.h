@@ -375,13 +375,18 @@ enum SPEED_STATE { SPEED_NONE = 0, SPEED_STILL = 1, SPEED_SLOW = 2, SPEED_FAST =
 
 /* a random period and its countdown, CAiTimer, is aitimer.h's (included ahead of ai_states.h) */
 
-/* a value easing toward a goal (SOCOM 1's DWARF: CAiDecay, 0xc bytes; only the two floats the view
- * range sets are named, the names ours) */
+/* a value easing toward a goal (SOCOM 1's DWARF: CAiDecay, 0xc bytes, its kind a one-byte enum --
+ * CSealCtrl's constructor stores it with `sb`, the two floats with `sw`, each decay in member order:
+ * an inline constructor, as SOCOM 1's four) */
 class CAiDecay {
 public:
+    enum TYPE { LINEAR = 0, EXPONENTIAL = 1 };
+
+    CAiDecay() : m_value(0.0f), m_goal(0.0f), m_type(LINEAR) {}
+
     float m_value;   // 0x0
     float m_goal;   // 0x4
-    float m_8;   // 0x8
+    TYPE m_type;   // 0x8
 };
 
 /* an action a node offers: the bomb, a breach, ... (SOCOM 1's CNodeAction: its valve at 0x18 in
@@ -871,21 +876,40 @@ public:
      * GetMaxZMotion/GetMaxXMotion) */
     float GetSpeedFromThrottle(float throttle, int axis);
 
-    unsigned char _18[0x24 - 0x18];
+    unsigned char _18[0x1c - 0x18];
+    /* the look's turn rate, SOCOM 1's Rfloat m_look_rate {min, range} (0x18 there; the kit's
+     * seal_look.cpp reads it through a view of its own): two floats here, so the units' own Rfloat
+     * classes do not meet zseal.h's -- the constructor zeroes both first */
+    float m_look_rate_min;   // 0x1c
+    float m_look_rate_range;   // 0x20
     /* SOCOM 1's AI_LOOK, a signed byte (AIL_ALL is -1: compared with `lb`); the enum is
      * seal_look.cpp's (the kit lane's), so a plain signed char here -- 9 is AIL_DEPLOY */
     signed char m_look_mode;   // 0x24 (SOCOM 1's 0x20)
-    unsigned char _25[0x60 - 0x25];
+    unsigned char _25[0x54 - 0x25];
+    /* the scan's timer (SOCOM 1's m_scan_timer, at 0x54 in both builds; the constructor makes it
+     * CAiTimer(0.0f)) */
+    CAiTimer m_scan_timer;   // 0x54
     /* the scan's reach, scaling the yaw throttle's look in Tick (SOCOM 1's m_scan_limits, at 0x60 in
      * both builds: the scan timer ends there in each) */
     float m_scan_limits;   // 0x60
-    unsigned char _64[0xa8 - 0x64];
+    unsigned char _64[0x80 - 0x64];
+    /* the view cone's sizes (SOCOM 1's CAiCone m_view_cone at 0x70 in both builds: its m_height,
+     * m_radius, m_point_radius and m_inv_height, which the constructor makes 1, 1, 0 and 1 in member
+     * order; the kit's seal_sensors.cpp reads the whole cone through a view of its own) */
+    float m_cone_height;   // 0x80
+    float m_cone_radius;   // 0x84
+    float m_cone_point_radius;   // 0x88
+    float m_cone_inv_height;   // 0x8c
+    unsigned char _90[0xa8 - 0x90];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
     /* the alertness: its value and the goal it holds to (SOCOM 1's m_aware, 0xc0 there -- SOCOM II
      * has no m_vissens before it; the SetAiAware pair 0x561110/0x5612F0 set it, the bands of its value
      * are 0x560A60's) */
     CAiDecay m_aware;   // 0xb4
-    unsigned char _c0[0xd0 - 0xc0];
+    /* the targets' sum and threat (SOCOM 1's m_targetSum and m_targetThreat, 0xcc/0xd0 there: the
+     * constructor builds the decay in member order and zeroes both in its body) */
+    unsigned int m_targetSum;   // 0xc0
+    CAiDecay m_targetThreat;   // 0xc4
     /* the character's AI parameters (new in SOCOM II, the vehicle entry's own type, zchar.h's: the
      * constructor builds AI_PARAMS() in place, DoRespawn copies the entry's in but the respawn count
      * and keeps the entry as m_veh, 0x570D90 falls back to the courage, the view range's setter
@@ -898,10 +922,18 @@ public:
     unsigned int m_padid;   // 0x114 (SOCOM 1's 0xe8: SOCOM II dropped the ten button readings)
     TRIGGER m_trigger;   // 0x118 (SOCOM 1's 0xec)
     float m_trigger_power;   // 0x11c
-    unsigned char _120[0x128 - 0x120];
+    /* (zeroed by the constructor after the trigger's power, where SOCOM 1's zeroed m_firstreading and
+     * m_lastreading -- SOCOM II dropped the readings themselves; the name ours) */
+    int m_120;   // 0x120
+    unsigned char _124[0x128 - 0x124];
     float m_zoomlevel;   // 0x128 (as SOCOM 1's)
     float m_zoomincrement;   // 0x12c
-    unsigned char _130[0x13c - 0x130];
+    /* the aim's pitch and yaw (SOCOM 1's m_aimPitch and m_aimYaw, the same offsets: the constructor
+     * starts the pitch at theCharacterDynamics.m_initAimPitch, as SOCOM 1's; camera.h's view calls the
+     * pitch m_130), then a float new in SOCOM II the constructor zeroes (the name ours) */
+    float m_aimPitch;   // 0x130
+    float m_aimYaw;   // 0x134
+    float m_138;   // 0x138
     float m_highrumbletime;   // 0x13c (SOCOM 1's 0x138)
     float m_rumbletime;   // 0x140
     float m_rumblestr;   // 0x144
@@ -950,11 +982,16 @@ public:
     float m_goal_tolerance;   // 0x1b4
     CAiTimer m_goal_timer;   // 0x1b8
     float m_speed;   // 0x1c4 (SOCOM 1's 0x1bc)
-    /* when each kind of AI event was last made (SOCOM 1's m_event_time[15], 0x1c0: CreateAiEvent) */
-    float m_event_time[15];   // 0x1c8
-    unsigned char _204[0x221 - 0x204];
+    /* when each kind of AI event was last made (SOCOM 1's m_event_time[15], 0x1c0: CreateAiEvent) --
+     * one per SOCOM II kind, AIE_MAX 13: the constructor clears 52 bytes */
+    float m_event_time[CAiEvent::AIE_MAX];   // 0x1c8
+    unsigned char _1fc[0x221 - 0x1fc];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
-    unsigned char _222[0x22c - 0x222];
+    unsigned char _222[0x224 - 0x222];
+    /* the hot-swap times (SOCOM 1's m_hotswapL1 and m_hotswapL2, the same offsets: the constructor
+     * makes them 0 and 1, as SOCOM 1's) */
+    float m_hotswapL1;   // 0x224
+    float m_hotswapL2;   // 0x228
     /* the weapon state's timer (SOCOM 1's m_wep_state, a CAiTimer at 0x22c in both builds: 0x543F70
      * restarts it and runs it out) */
     CAiTimer m_wep_state;   // 0x22c
@@ -1290,7 +1327,9 @@ public:
     unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x770 - 0x76d];
-    unsigned int m_770;   // 0x770
+    /* when the AI last threw a grenade, on the game clock (the grenade choice 0x565110 waits a while
+     * from it; the constructor zeroes it; the name ours) */
+    float m_770;   // 0x770
     /* a point a thrower's own grenade is measured from (the grenade state's Tick, 0x55AC20: within
      * 50 of it the throw back is not wanted; the name ours) */
     CPnt3D m_774;   // 0x774

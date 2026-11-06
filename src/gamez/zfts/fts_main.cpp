@@ -33,7 +33,7 @@ struct IntersectStruct {
  * base's with GetIntersect, GetAltitude and a third slot of its own) */
 class CDIDummy : public zdb::CDI {
 public:
-    virtual int GetIntersect(zdb::DiIntersect *di) { return 0; }
+    virtual bool GetIntersect(zdb::DiIntersect *di) { return 0; }
     virtual int GetAltitude(zdb::DiIntersect *di) { return 0; }
     virtual void LoadTipAndTail(zdb::DiIntersect *di) {}
 };

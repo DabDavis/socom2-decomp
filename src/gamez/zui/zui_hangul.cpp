@@ -43,10 +43,10 @@
  * slots past nine saved registers.
  * OPEN, written: SkbParseKoreanRules (0x4DC against 0x464), SkbParseComplete (0x318 against 0x2A4):
  * the rdr walks' loop counters (the target keeps the productions' in a stack slot) and the inlined
- * Item()s' shapes; SkbHangulBack (0x19C/0x190: from the start to the resize byte-exact, but the
- * local pieces' size_ and data_ addresses, stored by the constructor and read by end(), are kept in
- * s0/s1 across the composer's call where the target addresses the stack slots directly -- LastCode(),
- * the const end(), all the same); Append (1 instruction, below), PrevCode (0x30/0x2C).
+ * Item()s' shapes; SkbHangulBack (0x19C/0x190 -- byte-exact since the GCC front's round-43a pragma
+ * scan under `#pragma opt_common_subs off`: with CSE on, the local pieces' size_ and data_ addresses,
+ * stored by the constructor and read by end(), were kept in s0/s1 across the composer's call where
+ * the target addresses the stack slots directly); Append (1 instruction, below), PrevCode (0x30/0x2C).
  * Round 13: the fixed array's Resize tests `n < Count()` (slt/beqz; `Count() > n` branches on blez
  * for a constant n) -- SkbHangulClear and SkbHangulRestart byte-exact, the latter with LastJamo
  * pinned (its one caller calls it); SkbHangulType copies each jamo through `(char)` (a push_back
@@ -343,9 +343,13 @@ void SkbHangulClear()
 }
 
 /* the last jamo typed taken back: none left ends the composition (0), else the character the rest
- * composes to (0x3910E0; the name ours: SkbTypeOrBack's) */
+ * composes to (0x3910E0; the name ours: SkbTypeOrBack's). Byte-exact under `#pragma opt_common_subs
+ * off` in the body (the GCC front's round-43a pragma scan, applied by the integrator): with CSE on MW
+ * keeps the local pieces' size_ and data_ addresses in s0/s1 across the composer's call, where the
+ * target addresses the stack slots directly (28 off) */
 unsigned short SkbHangulBack()
 {
+#pragma opt_common_subs off
     if (s_compose.Empty())
         return 0;
     CJamoStr &jamo = s_compose[0];
@@ -362,6 +366,7 @@ unsigned short SkbHangulBack()
 
     return code;
 }
+#pragma opt_common_subs reset
 
 /* an rdr array's count, 0 for anything else or none (zui_skb.cpp's ZuiInit and CreateSoftKeyboard
  * call it) */

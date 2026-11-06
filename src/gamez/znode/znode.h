@@ -177,10 +177,13 @@ public:
     CDI();
     virtual ~CDI();
     /* SOCOM II's table (__vt__Q23zdb3CDI, 0x406650): the destructor, Allocate, Free, two pure
-     * slots (SOCOM 1's GetIntersect and GetAltitude, each shape's own) and Read */
+     * slots (SOCOM 1's GetIntersect and GetAltitude, each shape's own) and Read. GetIntersect
+     * answers a bool in both SOCOMs (the grid's node walk narrows its result with andi 0xff): the
+     * world lane's round 32 measured the bool here, on node_world.h's overrides and fts_main.cpp's
+     * CDIDummy -- objcmp master --by-address, 664 hand-written units, 0 differ */
     virtual void Allocate(int n);
     virtual void Free();
-    virtual int GetIntersect(DiIntersect *di) = 0;
+    virtual bool GetIntersect(DiIntersect *di) = 0;
     virtual int GetAltitude(DiIntersect *di) = 0;
     virtual bool Read(CSaveLoad &io);
     /* one holder fewer, the count left given back (SOCOM 1's, 0x14 bytes in both) */
@@ -488,6 +491,9 @@ public:
      * from the world's camera, as SOCOM 1's Load does) */
     static float m_basefog_near;
     static CMatrix m_WorldToModel;
+    /* the model-to-world matrix NodeSetup keeps (SOCOM 1's static, a pointer, gp-relative there: its
+     * NodeSetup stores the matrix argument in it, its BuildNodeLocalLightList reads it; data.txt's) */
+    static CMatrix *m_ModelToWorld;
     /* new in SOCOM II (__sinit_vis_vu.cpp builds them; the names ours): the light maps' tint colours
      * now, the ones they blend to and the blend's rate per second (0x3B7170 steps them), the lens
      * colours (the zoom's CLensColors: CameraZoom sets them) and their product -- xyz multiplied, w
@@ -1443,6 +1449,9 @@ public:
     bool GetAltitude(DiIntersect *di);
     /* a batch of intersect sets run (grid_di.cpp's, 0x2D3CF0, SOCOM 1's: CWorld's calls it) */
     int GetIntersectBatch(DiIntersect **di, int n);
+    /* a node's tree searched for a batch of sets (grid_di.cpp's, 0x2D3030, SOCOM 1's: the batch
+     * walk calls it for each node it searches) */
+    void NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n);
     /* a node's tree searched for the hit set (grid_di.cpp's, 0x2D2890: SOCOM II's one walk under
      * GetIntersect and GetAltitude, where SOCOM 1 had NodeGetIntersect and NodeGetAltitude) */
     void NodeGetIntersect(CNode *node, DiIntersect *di);
