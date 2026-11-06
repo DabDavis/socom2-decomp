@@ -96,7 +96,10 @@ static inline bool InRange(CSndPosition *p)
  * scheduled first, where the target's takes v1 after the constant (`igreplay --want 77=v1 --movers
  * 77`: any place after 82.5); not moved by the range as a named product, a named factor, `*=`, an
  * int or float local for the range, the product's operands swapped, the distance first or as a
- * local, inline helpers for the range, the far range or the product (15 each); (2) the last walk's
+ * local, inline helpers for the range, the far range or the product (15 each); the world lane's
+ * round 31: the SEALs' round-55 lever, a no-op (float) cast on the constant, the converted range,
+ * the whole product, the squared sums or the squared range (build/scratch/wld/v_pos1.py), 15 each --
+ * the reload is a GPR node, which the float operand weight does not move; (2) the last walk's
  * far-range lhu is scheduled ahead of the y product (2) */
 extern "C" void func_0034BEC0(float dT)
 {

@@ -100,31 +100,40 @@ CBBox *TransformBBox(const CMatrix *m, const CBBox *in, CBBox *out, bool exact)
     return out;
 }
 
-/* a box of one point: a two-point array of it assigned as a CBBox (ours -- the device of CNode()
- * in node_main.cpp; inline, so the pair is a callee's local, below the caller's named box) */
-static inline void PointBox(CBBox *box, const CPnt3D &p)
+/* a box of two points: the pair assigned as a CBBox (ours -- the device of CNode() in
+ * node_main.cpp; inline, so the pair is a callee's local, below the caller's named box). Two
+ * parameters, not one point passed twice: the caller's two reads of the point are one common
+ * subexpression, numbered after the loop's invariants (a single by-reference point is an inline
+ * argument numbered among the caller's locals -- the world lane's round 31) */
+static inline void PointBox(CBBox *box, const CPnt3D &p, const CPnt3D &q)
 {
-    CPnt3D corners[2] = { p, p };
+    CPnt3D corners[2] = { p, q };
 
     *box = *(CBBox *)corners;
 }
+
+/* the smaller and the larger of two floats, both by reference (ours: the target re-reads the
+ * child box's first field, at the box's own address -- never a common subexpression -- for the
+ * result; a ternary written in place reuses the compare's load) */
+static inline float MinOf(const float &a, const float &b) { return a <= b ? a : b; }
+static inline float MaxOf(const float &a, const float &b) { return a >= b ? a : b; }
 
 /* the node's box made from its DIs' points and, going up, its children's boxes taken through
  * their matrices -- the first point or box the box itself, each later one widening it; then the
  * box GetBBox gives (SOCOM 1's, the same 0x478). The first point's box through PointBox above; the
  * DIs walked through a reference to the vector (the target's a2 = this + 0x74 for the loop's end),
- * the children's box a named local (the box's field addresses in s0-s2/s6/s7 across the loop).
+ * the children's box a named local (the box's field addresses in s0-s2/s6/s7 across the loop,
+ * IRO_LoopInvariants' temporaries in both builds).
  * The children's boxes come from UpdateBBoxFromDI itself (the world lane's round 30: the target's
  * virtual call reads slot 0x40 of __vt__Q23zdb5CNode 0x4067B0 -- UpdateBBoxFromDI; 0x3C is
  * UpdateBBox -- one of round 29's 39).
- * OPEN, 38 instructions (the target's size), registers only: the DI walk's temporaries -- the
- * vector reference, the iterator, the pair's addresses and the point offset (target a2, v1, t0 /
- * v0, a3; here v1, v0, a3 / t0, a2); round 29's replay found the target's colouring only with the
- * vector reference and the iterator numbered ahead of `this`; round 30's (the slot fixed) finds no
- * two-node placement of the reference and the iterator, of the pair's two addresses, or of an
- * address and the offset: the target colours the hoisted pair address (sp+156) v0 ahead of the
- * deferred iterator, so the walk's temporaries are not deferred there. From the draft: 93 off; the vector through
- * a reference 47, the pair an inline's local (below the named box, as the target's frame) 39 */
+ * Byte-exact since the world lane's round 31 (38 off before, registers only): igreplay --target
+ * gives the target's DI-walk colouring with PointBox's argument (@2461, an inline argument numbered
+ * among the caller's locals) moved after the pair's hoisted address (`--move 39=50.5`); passing the
+ * point twice makes its address a common subexpression numbered there. And the widening through
+ * MinOf / MaxOf: the up loop's first compare re-reads box.m_min.x (sp+176) for its result, as only
+ * a by-reference helper does. Round 29-30's tries: from the draft 93 off; the vector through a
+ * reference 47, the pair an inline's local (below the named box, as the target's frame) 39 */
 CBBox *CNode::UpdateBBoxFromDI(bool up)
 {
     bool found = false;
@@ -138,16 +147,16 @@ CBBox *CNode::UpdateBBoxFromDI(bool up)
         for (int i = 0; i < di->m_flags.m_ptcount; i++) {
             if (!found) {
                 found = true;
-                PointBox(&m_bbox, *(const CPnt3D *)&di->m_pnts[i]);
+                PointBox(&m_bbox, *(const CPnt3D *)&di->m_pnts[i], *(const CPnt3D *)&di->m_pnts[i]);
             } else {
                 const CPnt3D &v = *(const CPnt3D *)&di->m_pnts[i];
 
-                m_bbox.m_min.x = v.x <= m_bbox.m_min.x ? v.x : m_bbox.m_min.x;
-                m_bbox.m_min.y = v.y <= m_bbox.m_min.y ? v.y : m_bbox.m_min.y;
-                m_bbox.m_min.z = v.z <= m_bbox.m_min.z ? v.z : m_bbox.m_min.z;
-                m_bbox.m_max.x = v.x >= m_bbox.m_max.x ? v.x : m_bbox.m_max.x;
-                m_bbox.m_max.y = v.y >= m_bbox.m_max.y ? v.y : m_bbox.m_max.y;
-                m_bbox.m_max.z = v.z >= m_bbox.m_max.z ? v.z : m_bbox.m_max.z;
+                m_bbox.m_min.x = MinOf(v.x, m_bbox.m_min.x);
+                m_bbox.m_min.y = MinOf(v.y, m_bbox.m_min.y);
+                m_bbox.m_min.z = MinOf(v.z, m_bbox.m_min.z);
+                m_bbox.m_max.x = MaxOf(v.x, m_bbox.m_max.x);
+                m_bbox.m_max.y = MaxOf(v.y, m_bbox.m_max.y);
+                m_bbox.m_max.z = MaxOf(v.z, m_bbox.m_max.z);
             }
         }
     }
@@ -160,28 +169,33 @@ CBBox *CNode::UpdateBBoxFromDI(bool up)
                 found = true;
                 m_bbox = box;
             } else {
-                m_bbox.m_min.x = box.m_min.x <= m_bbox.m_min.x ? box.m_min.x : m_bbox.m_min.x;
-                m_bbox.m_min.y = box.m_min.y <= m_bbox.m_min.y ? box.m_min.y : m_bbox.m_min.y;
-                m_bbox.m_min.z = box.m_min.z <= m_bbox.m_min.z ? box.m_min.z : m_bbox.m_min.z;
-                m_bbox.m_max.x = box.m_max.x >= m_bbox.m_max.x ? box.m_max.x : m_bbox.m_max.x;
-                m_bbox.m_max.y = box.m_max.y >= m_bbox.m_max.y ? box.m_max.y : m_bbox.m_max.y;
-                m_bbox.m_max.z = box.m_max.z >= m_bbox.m_max.z ? box.m_max.z : m_bbox.m_max.z;
+                m_bbox.m_min.x = MinOf(box.m_min.x, m_bbox.m_min.x);
+                m_bbox.m_min.y = MinOf(box.m_min.y, m_bbox.m_min.y);
+                m_bbox.m_min.z = MinOf(box.m_min.z, m_bbox.m_min.z);
+                m_bbox.m_max.x = MaxOf(box.m_max.x, m_bbox.m_max.x);
+                m_bbox.m_max.y = MaxOf(box.m_max.y, m_bbox.m_max.y);
+                m_bbox.m_max.z = MaxOf(box.m_max.z, m_bbox.m_max.z);
             }
         }
     }
     return (CBBox *)GetBBox();
 }
 
+/* a matrix row as a struct holding its array (ours): MW copies an array member as a block -- all
+ * four loads, then all four stores, through the member's address (the AI core's round-24 tell) */
+struct tag_MatrixRow {
+    float m_v[4];
+};
+
 /* a facade's rotation (a billboard): its first three rows turned to face from the viewer's
  * position to its own -- about y only (facade 1), or about y and then x (facade 2: the direction
  * turned into the yz plane to find the x angle).
- * OPEN (0x238 of 0x240): the target keeps &m(2,0) in s2 on both paths and copies the third row
- * out through it -- the address shared with facade 2's stores -- while copying each row as a
- * block (four loads, four stores). A source through the accessor shares the address but
- * copies element by element; through the array it copies by blocks and shares nothing. Round 29:
- * the rows copied out through the accessor (`*(CPnt4D *)&m(r, 0)`) give the size, 0x240, the
- * shared address held in s4 (not s2) and the rows copied element by element (32 off); a row-2
- * pointer local for the stores and the copy is 0x23C */
+ * Byte-exact since the world lane's round 31 (0x238 of 0x240 before): the target copies each row
+ * out as a block through the row's address in a register, the third row's &m(2,0) the address
+ * facade 2's stores share (s2 on both paths) -- the rows copied as tag_MatrixRow through the
+ * accessor's address. Before: through the accessor as CPnt4D, 0x240 with the shared address in s4
+ * and the rows element by element (32 off); through the array no shared address; a row-2 pointer
+ * local 0x23C */
 void CNode::ComputeFacadeMatrix(const CMatrix *view, CMatrix *out)
 {
     CMatrix m;
@@ -226,9 +240,9 @@ void CNode::ComputeFacadeMatrix(const CMatrix *view, CMatrix *out)
     default:
         return;
     }
-    *(CPnt4D *)out->m_matrix[0] = *(CPnt4D *)m.m_matrix[0];
-    *(CPnt4D *)out->m_matrix[1] = *(CPnt4D *)m.m_matrix[1];
-    *(CPnt4D *)out->m_matrix[2] = *(CPnt4D *)m.m_matrix[2];
+    *(tag_MatrixRow *)&(*out)(0, 0) = *(tag_MatrixRow *)&m(0, 0);
+    *(tag_MatrixRow *)&(*out)(1, 0) = *(tag_MatrixRow *)&m(1, 0);
+    *(tag_MatrixRow *)&(*out)(2, 0) = *(tag_MatrixRow *)&m(2, 0);
 }
 
 /* the node's bounds made current; the node's own are, a borrowed parent's are fetched (the base
