@@ -910,18 +910,13 @@ void CTeleType::SetString(const char *s, bool translate)
 /* slot 2: the 2D object it points at drawn instead, if any; else the bitmap (CPlainBmp's Draw
  * inlined), its two parts at their offsets from the corner the matrix places when they are shown,
  * and its text at its offset (SOCOM 1's CPopUpDialog::Draw).
- * OPEN, 22 instructions, all in the two parts' block: the target keeps &p.y, &p.z and the three
- * translation cells' addresses in s6, s5, s4, s3, s1 (p.z's address numbered before the matrix's)
- * and loads p.z with the other loads before any store, for both parts; here p.z's address comes
- * after two of the matrix's and its load sinks to its store. The text's block and everything else
- * is the target's. Tried: the cells assigned straight (interleaved stores), a CPnt3D built by its
- * constructor (y and z swapped: arguments right to left), the parts as an array of 0x450-byte
- * {object, offset} walked by a loop (not unrolled, two registers more), an inline setter taking the
- * three floats (23). Round 61's replay (igdump, igreplay --target): the GPRs differ only in the five
- * address temporaries' order -- &p.z's (@10258) moved to 42.5, right after &p.y's, gives every
- * register; here pos.z's plain copy of p.z is propagated into the third cell's store, so p.z's
- * address is first seen after the cells' (the target loads p.z with the other loads, before any
- * store); pos copied whole from p (`pos = p;` then the two offsets added) keeps that order (25) */
+ * Byte-exact since round 62 (open since round 58, 22 instructions in the two parts' block): ONE
+ * `pos` serves the parts and the text. IRO_ExpressionPropagation (mweppc IroPropagate.c) moves an
+ * expression into its use only when the scalarised variable has one use and is used in no other
+ * flow node, so with a `pos` of its own in each block pos.z's copy of p.z sank into the third
+ * cell's store and p.z's address was first reused after the cells' -- IRO_CommonSubs numbers its
+ * temporaries at each expression's first reuse, in linear order; shared across the blocks the copy
+ * stays where it is written, p.z is loaded with the other loads and &p.z's temporary follows &p.y's */
 void CPopUpDialog::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
 {
     CPnt3D p = CPnt3D::zero;
@@ -932,9 +927,9 @@ void CPopUpDialog::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
         return;
     }
     CPlainBmp::Draw(m, mgr);
+    CPnt3D pos;
     if (m_330) {
         CMatrix mat;
-        CPnt3D pos;
 
         pos.x = p.x + m_340Offset.x;
         pos.y = p.y + m_340Offset.y;
@@ -951,8 +946,6 @@ void CPopUpDialog::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
         mat(3, 2) = pos.z;
         m_790.Draw(mat, mgr);
     }
-    CPnt3D pos;
-
     pos.x = p.x + m_textOffset.x;
     pos.y = p.y + m_textOffset.y;
     pos.z = p.z;

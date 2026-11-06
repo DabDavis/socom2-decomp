@@ -71,7 +71,16 @@ extern "C" int atoi(const char *s);
 extern unsigned char data_003DFFD8;
 extern unsigned char data_0045A0C1;
 extern char data_00436B80[];
-extern "C" void func_002B6530(void *queue, const char *text, int type, int b, int time, float delay);
+/* the HUD's message queue (fts_message.cpp's C2DMessage_Q, SOCOM 1's class): only its add declared,
+ * the kind a byte enum (fts_state.h's MSGTYPE; 0 the player's) -- respelled from its placeholder
+ * func_002B6530 (the world lane's round 31) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0
+};
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool b, int time, float delay);
+};
 extern CSnd *data_0048DE28;
 extern CSndInstance *data_0048DE30;
 extern const CPnt3D *data_0048DE38;
@@ -776,7 +785,7 @@ CSndInstance *CSnd::PlaySoundVolPanPitch(float vol, int pan, int pitch, CSndInst
     if (m_14)
         m_14->PlaySoundVolPanPitch(vol, pan, pitch, 0, 255);
     if (m_28 && data_003DFFD8 && (!m_2c || m_2c->GetValue()))
-        func_002B6530(data_00436B80, TranslateString(m_28), 0, 0, (int)m_30, 0.0f);
+        ((C2DMessage_Q *)data_00436B80)->Add_Message(TranslateString(m_28), MSGTYPE_PLAYER, false, (int)m_30, 0.0f);
     if (m_bank < (int)data_0048DBE8.size()) {
         if (data_0048DBE8[m_bank].m_loaded == 1 || m_isStreamed) {
             if (m_mode == SND_MODE_DIALOG)
@@ -840,7 +849,7 @@ CSndInstance *CSnd::PlaySound3D(const CPnt3D *pos, float vol, int pitch, CSndIns
 
             CalcVolPan(pos, vol * m_vol, &ivol, &ipan);
             if (ivol && m_28 && data_003DFFD8 && (!m_2c || m_2c->GetValue()))
-                func_002B6530(data_00436B80, TranslateString(m_28), 0, 0, (int)m_30, 0.0f);
+                ((C2DMessage_Q *)data_00436B80)->Add_Message(TranslateString(m_28), MSGTYPE_PLAYER, false, (int)m_30, 0.0f);
             if (m_isOneShot && !ivol)
                 return 0;
             snd_StartCaching();

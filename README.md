@@ -2065,6 +2065,125 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 37** (the three concrete requests measured, none applied -- comments
+  only; probes build/p37/, untracked: four.sh, vprobe.py, calls.py, mkoies.py, sdiff.py; runs in build/scratch/msl-r37/):
+  - MW'S INLINER EXPANDS BREADTH FIRST (mweppc's CInline_Expand: one pass per inline level, every statement in order
+    each pass) and an inline's locals are made WHEN IT IS EXPANDED -- first its own (its named locals and the
+    temporaries its body made), then each by-value parameter whose argument is not a plain object or constant
+    (CInline_SetupArgsExpression; a plain object is substituted, no copy made); the parameters' initialisations are
+    chained into one comma built last-first, so the last argument's copy is evaluated first (remove_if's rule). The
+    frame takes the caller's own objects first, then pass 0's, pass 1's ... -- round 36's "frame slots by inline
+    depth" is this order. Bottom-up's admission test (CInline_InlineFunctionCheck) sizes the callee's whole tree
+    against the passes left, a call's arguments counted at the call's level, not below it;
+  - REQUEST (1), CUIListBox::AddItem 0x373F20 against 0x510B90, BuildRoute 0x2D14A0 and AddTask 0x34E6B0: 0x510B90
+    makes the pointer list's insert wrap the base's result through a temporary of its OWN, made at pass 0 wherever
+    the insert is inlined -- so AddItem's target (that result above push_back's two temporaries, the position copy
+    below them) needs push_back's temporaries a pass deeper (SOCOM 1's two-level push_back through the base's,
+    include/list's "vc") and the position copy a pass deeper still. The shape that gives it: `return
+    iterator(insert_node(position.i_.node_, x));` over a forwarder `insert_node(node_base *n, const void *const &x)
+    { return base::insert(typename base::iterator(n), x); }` (0x510B90 and BuildRoute kept; through the conversion
+    operator instead, BuildRoute's assigned insert -- an assignment's right side nests a level -- cuts the base
+    iterator's copy constructor), with vc's push_back: AddItem BYTE-EXACT (with zui_2d.cpp's `int i = 0` after the
+    iterator), +1 (CWhosTalking::Init) / -15 over every hand-written unit -- AddTask (its end insert's position a
+    pass deeper, below the loop's stand-in) and push_back's thirteen known witnesses (SetIncludeInTargetList,
+    CreateInstance, Add2D, the Inits of CZHudMissionCams, CAmmoDisplay, CInGameWeaponSel, CMPTeammateNames,
+    CTeamNames and CZMarkList, RefreshStatics, GetLoadedLibRefs, LoadFromDesign, the two LoadSpecs). The forwarder
+    alone is +0 / -1 (AddTask). Not applied: one more witness for the deeper push_back ("Level 6, or 8?");
+  - REQUEST (2), CKey::CountKeys 0x25B300: its second self-copy calls the raw end where ours inlines it -- in the
+    target's end() the raw end sits a level below __iter, as the raw begin does in begin(): `iterator end() { return
+    __iter(__raw_end()); }` makes CountKeys byte-exact and costs 217 over every hand-written unit (every walk whose end
+    is a loop test's argument, a level deeper; its 65 "gains" are each unit's out-of-line copy of the pod's end(),
+    0x34D920's code, cut and emitted) -- round 25's measurement grown with the walks written since: one more level-6
+    witness. Wipeout/RemoveEmptyTextureAssetCharacters' delete chains (node_world.cpp's notes) are the destructor
+    split of "Level 6, or 8?" again: nothing new;
+  - REQUEST (3), OnIsEquipmentSelected 0x280790: the class vector's end() through a const view whose accessors are
+    cast back (`const __vector_imp *v = this; ... const_cast<__vector_imp *>(v)->data() + const_cast<__vector_imp
+    *>(v)->size_`) re-reads BOTH size and data at the latch -- the target's loop -- but through the two field
+    addresses hoisted into registers (0x140; the target loads 4(a2) and 8(a2) off the list's register); the view's
+    fields read directly keep begin's and end's data loads apart at the entry and hoist the latch's (0x128); a
+    user-declared iterator copy constructor changes nothing. Not met (include/vector's note);
+  - the fourth group (the cut class inserts, the deque tail, cdeque<PCv>'s erase/insert, the pair, remove_if,
+    resize<reader>): no new lever found, not attempted.
+- **Tells from the zdb world, textures, rdr and sound, round 31** (five byte-exact: zdb::CNode::UpdateBBoxFromDI 0x318230 --
+  38 off since round 29 --, ComputeFacadeMatrix 0x317FC0, CShadowCaster(CNode *) 0x31F780, CPipe::RenderNode 0x3389C0 and
+  RenderMesh 0x338480, the last two unwritten before; RenderVisual's function-scoped strength-reduction pragma and hand-rotated
+  loop retired -- a plain `for` over an unsigned counter indexing `[(int)k]` gives the same 20-instruction diff):
+  - the same point passed TWICE to an inline (`PointBox(box, p, q)`) makes one common-subexpression temporary, numbered
+    after the loop invariants (what `igreplay --move 39=50.5` asked for); a single by-reference argument is numbered among
+    the caller's locals; an inline min / max taking both operands by reference re-reads an operand at a stack object's own
+    address, a ternary in place reuses the compare's load;
+  - a struct holding a `float[4]` copies a matrix row as a block (four loads, then four stores) through the row's address;
+    the member-array construction loop needs a constructor that cannot expand whole -- GetBBoxCorners with a visible inline
+    body is what makes CBBox8's constructor too big; an inline call's argument at the top (`CBBox8 c(m_node->GetBBox())`)
+    is checked a level deeper;
+  - an `a || b || c` returned from an inline bool is materialised (xor / sltu) before the branch; a colour built in place
+    folds to three zero stores, the target's shape is a `zero` local declared at the top plus a copy of it; `if (stamp !=
+    field) { field = stamp; return false; } return true;` reproduces the target's block layout;
+  - SCDIFF GAVE A FALSE MATCH on a call to a local static (the relocation marked "unchecked" and passed -- CShadowCaster
+    "matched" once calling the wrong static): the tools lane is making it check TU-local calls by their resolved code.
+- **Tells from the UI, round 36** (SkbTickDisplay 0x3949C0 -- open since round 32 -- and CStringTables::Unload 0x3A3740 --
+  open since round 8 -- byte-exact, util_loc.cpp whole; the states' respells; five data rows, four of them SOCOM 1's names):
+  - THE LOGICAL REBUILD NEEDS TWO TESTS: MW linearises `a && b` into `t = 0; if (!a) goto L; if (!b) goto L; t = 1; L:`,
+    and RebuildLogicalExpressions (IroExprRegeneration.c) folds that back into an `&&` only when nothing but the tests'
+    own expressions sits between `t = 0` and the tests -- a flag defined before an intervening statement stays a
+    materialised value (`move v1,zero ... daddiu v1,1; beqz v1`), and a single test is never rebuilt (`ok = ok && f()`
+    with ok known true leaves `move s0,zero; beqz; daddiu s0,1; andi`);
+  - the `(float)` cast lever works on a product too (casting it numbers its nodes ahead of the other operand's); a
+    colouring no numbering gives is an INTERFERENCE: change the statement order (computing a variable earlier), not the
+    declarations (SkbTickDisplay's repeat inline);
+  - a vector SUBCLASS adds one this-test to the inlined destructor and a level to the constructor; `#pragma
+    inline_depth(6)` at a unit's end restores the constructor's inlining without changing anything else in the unit
+    (util_loc.cpp -- a "Level 6, or 8?" witness, marked as such);
+  - a re-read latch end is a CSE miss: IRO's loop passes leave the end's loads in the loop, IRO_CommonSubs merges the
+    guard's end with the latch's; `igdump --iro` with a temporary's occurrences counted per phase shows which pass removes
+    it; SOCOM 1's file statics can be spelled without the data -- `namespace { extern T name; }` scores through data.txt's
+    mangled `name__N@unnamed@unit_cpp@` row.
+- **Tells from the HUD, round 62** (four long-open rows byte-exact: CTCMNode::RemoveChild 0x232030 -- since round 27 --,
+  tcmSelectPlayer 0x22F5B0 -- since round 23 --, CPopUpDialog::Draw 0x370690 -- since round 58 -- and SetFinalTeamTotalsUiVar
+  0x225BC0 -- since round 17, through a marked CEntityItr(int) modelling device; MW's IroSubable.c and InterferenceGraph.c
+  read, now in build/scratch/mweppc/):
+  - IRO_IsSubableExpression REFUSES `register local +- constant`, so `n - 1` is hoisted only by the back end, numbered after
+    every IRO temporary; a widening-or-equal int cast is subable -- `(int)(n - 1)`, or an unsigned counter compared with
+    an int -- and IRO_MoveInvariantExpressions hoists it into a front-end temporary right after the loop's
+    strength-reduction temporaries (RemoveChild, tcmSelectPlayer);
+  - IRO_MoveInvarianceInAddressExpr puts a loop's invariant addends first (`data[i]` in an inner loop becomes `i*4 + data`);
+    taking the address through a pointer or reference local keeps the written order;
+  - IRO_ExpressionPropagation moves a scalar's defining expression only into a single use in the same flow node, and only
+    if the variable is used in no other flow node; IRO_CommonSubs creates its temporaries at each expression's first
+    reuse, in linear order;
+  - A COPY INTO A NAMED LOCAL IS NEVER COALESCED (InterferenceGraph.c: only copies where one side is a hard register or
+    both are temporaries) -- a surviving `mov` into a named variable's register is expected (the map-item Ticks' one
+    instruction); include/list's const begin() shares &m_list with end() through a pointer local whose address is hoisted
+    out of an outer loop -- reading `l.tail_ptr()->next_` with no local loads it absolutely.
+- **Tells from the game states, round 51** (C2DMessage_Q::Add_Message 0x2B6530 -- SOCOM 1's word-wrapper grown -- and
+  CZSealState::IncrementalUpdateRemoteSeal 0x2BE150, both unwritten before, and ScrollUp 0x2B6430 by hand byte-exact;
+  fts_message.cpp and fts_net_seal.cpp whole; zRemoteClientConnectsCallback 0x2BC620 written, OPEN at the size):
+  - a conversion written twice (`(EQUIP_ITEM)item` in a test, again as a call's argument with `int item`) becomes one
+    shared temporary made after the call on the comparison's other side -- the target's extra saved register and its
+    `move s0,s1`;
+  - reusing a loop index for a second loop splits it into a temporary numbered after the first loop's invariant hoist,
+    swapping their saved registers; an index of its own declared at the top of its block gives the target's registers;
+    a member field read directly in a test shares its address with a later loop's hoist of the same field, through its
+    inline accessor the first read stays frame-relative;
+  - `if (c < n) i = c; else i = end; break;` with the bound read in the test gives the target's empty then-arm `b`; locals
+    declared at a function's top take frame slots ahead of block-scoped ones; an int `first = (x & 2) != 0` negated in
+    place is not narrowed, a bool adds andi 0xff;
+  - four field stores through a pointer kept in memory re-read the pointer each time -- an inline `SetColor(const CPnt4D
+    &)` member keeps `this` in one register; the two operands of a compare are loaded in reverse of how they are written.
+- **Tells from the kit and AI states, round 57** (four byte-exact, all unwritten before: CTState::Tick 0x5CF930, the
+  parameter test 0x5D4770, CTGoto::Parse 0x5DBF70 and the group step's point reader 0x5DAF50):
+  - a `&&` type test right after a plain call folds into branches in every spelling; the target's materialised form
+    (sltu; beqz; xori; sltiu; movz) is `bool ok = (bool)e; if (ok) ok = e->m_type == k;`; an `&&` chain stays a value
+    only when the inline's result goes through a bool local;
+  - `r = true;` at the end of an if-arm before one common return gives daddiu v0,zero,1, `return true` or an early `return
+    r` give li v0,1; a by-value aggregate parameter whose address the inline takes is copied at the call, before the other
+    arguments; a bool converted to int for a by-reference test takes its temporary after the value's copy (the two stack
+    slots reversed);
+  - `Item((unsigned int)i)` and `p[(unsigned int)(i - 1)]` stop strength reduction where the original has none -- `#pragma
+    opt_strength_reduction off` overshoots, stopping the destination pointer's stepping the target keeps; reusing one
+    variable for a second branch splits its def-use webs to the target's registers;
+  - testing `r->type` in place keeps the load for Count(), through the const Type() accessor MW reloads it; an explicit
+    template instantiation placed before its caller makes MW inline the calls, removed they stay out of line.
 - **Tells from the weapons, round 37** (func_003B1BF0 -- 17 off since round 29 -- and func_003B24C0 -- 15 off since round 30
   -- byte-exact; Flatten, Ripple, zVid_Init and 0x3B0A70 measured with the optimiser's own log, `igdump --iro`):
   - REUSING ONE VARIABLE ACROSS TWO LOOPS gives the later loop's use a temporary numbered after the loop passes'
@@ -14576,7 +14695,12 @@ What is open across lanes, and what comes next:
   destructor need level 6 when the vector is a derived class; and CKey::DeleteChildren 0x25B580 (the
   engine core's round 19), whose deepest FreeVector calls SOCOM 1's compressed-pair pieces (0x25B920-
   0x25B9C0) -- code-exact with the 4-byte pod's capacity as that pair (include/vector's "MEASURED AGAIN"
-  note), which costs 253 functions at level 5 (+19).
+  note), which costs 253 functions at level 5 (+19). Two more (the MSL headers' round 37): CUIListBox::AddItem
+  0x373F20 is byte-exact under SOCOM 1's two-level push_back with the pointer list's insert through a by-value
+  forwarder (its frame: the insert's own result temporary at pass 0, push_back's two at pass 1, the position copy
+  after them) -- +1 / -15 at level 5, push_back's thirteen known witnesses among the losses; and CKey::CountKeys
+  0x25B300 under the symmetric end() `return __iter(__raw_end());` (the raw end a level below __iter, as begin()'s
+  raw begin) -- -217 at level 5, every walk whose end is a loop test's argument.
   THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
   eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
