@@ -1898,15 +1898,19 @@ bool UISetControllerConfig(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-/* a two-digit BCD byte of the clock as a number (ours) */
-#define FROM_BCD(x) ((((x) >> 4) & 0xf) * 10 + ((x) & 0xf))
+/* a two-digit BCD byte of the clock as a number (ours; the accumulator's `+=` puts the product first
+ * in the add, as UTF8GetChar's: round 39, open since round 33 at 47) */
+static inline int FROM_BCD(unsigned char x)
+{
+    int r = ((x >> 4) & 0xf) * 10;
+
+    r += x & 0xf;
+    return r;
+}
 
 /* a saved game written to the slot the argument numbers: its title the mission, the difficulty and
  * the local date and time; the saving valve cleared.
- * OPEN, 47 instructions, all in the six BCD conversions feeding sprintf (the frame, the calls, the
- * loads' order -- the arguments right to left -- and the rest match): the target's temporaries
- * take other registers and the products are added first. The conversion as a macro either way
- * round or as an inline taking an int or a byte measured the same */
+ * Byte-exact since round 39 (FROM_BCD's note). */
 bool _SaveSavedGame(C2DAnimCmdHdr *hdr, float *dT)
 {
     sceCdCLOCK clock;
