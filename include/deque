@@ -1286,6 +1286,16 @@ __deque_buf<T, Allocator>::~__deque_buf()
 template <class T, class Allocator>
 class __deque_imp;
 
+template <class T>
+struct __deque_is_pcv {
+    enum { value = 0 };
+};
+
+template <>
+struct __deque_is_pcv<const void *> {
+    enum { value = 1 };
+};
+
 /* a class element's teardown level, between __deque_imp and the block buffer: the elements destroyed
  * over the whole range, then the buffer's destructor (the chat lines' 0x2F62B0: begin's and end's
  * make_iterator, the range destroy 0x2F5B10, ~__deque_buf 0x2F6BC0 called with 0). A scalar element's
@@ -1398,6 +1408,10 @@ public:
     }
     void pop_front();
     void pop_back();
+    /* a no-op only the pointer deques' clear names (the MSL headers round 39): there clear waits past the walk that reaches cdeque<PCv>::pop_front, and
+     * inlines it (game_main.cpp's 0x2CF120, 0xA8); the lobby's and the state machine's call it (0x2E1B20, 0x3A6FA0, 0x88: their pop_front, deferred, references it
+     * only after that walk) */
+    void __clear_wait() const {}
     void clear();
     void push_back(const T &x);
     /* the largest size, a guarded function-local static: one object per element type that push_back
@@ -1588,6 +1602,8 @@ void __deque_imp<T, Allocator>::do_assign(InputIterator first, InputIterator las
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::clear()
 {
+    if (__deque_is_pcv<T>::value)
+        __clear_wait();
     if (!Metrowerks::has_trivial_dtor<T>::value)
         destroy(begin(), end());
     this->size_ = 0;
