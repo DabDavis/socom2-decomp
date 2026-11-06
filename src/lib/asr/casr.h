@@ -197,9 +197,9 @@ typedef struct CASR {
     char pad1100[16];
     void *uw_states;                    /* +1116: the user words' states (freed with the tree) */
     int *uw_offsets;                    /* +1120: each user-word phoneme's first state */
-    short uw_n;                         /* +1124 */
+    unsigned short uw_n;                /* +1124 */
     short pad1126;
-    int f1128;                          /* +1128 */
+    unsigned int uw_cap;                /* +1128: the states the table has room for */
 } CASR;                                 /* 1132 bytes (casrOpen's allocation) */
 
 typedef struct LANGVT LANGVT;

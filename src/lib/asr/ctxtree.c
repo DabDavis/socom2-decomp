@@ -1,7 +1,7 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
 /* ctxtree: the recogniser's context tree -- the active words of an isolated-word context as a
  * tree of phoneme nodes (OVL2 0x4D3318-0x4D5B18, SOCOM 1's object at 0x343B58:
- * AllocateNodeAndFreePrevious, AddFollowers, intCreateCtxTree, _FreeTree, CalcAccuracyCtxTree,
+ * AllocateNodeAndFreePrevious, func_004D3450 (new in SOCOM II), AddFollowers, intCreateCtxTree, _FreeTree, CalcAccuracyCtxTree,
  * GetIsolatedWordDpActiveWords, CreateCtxTree, FreeTree, SetIsolatedWordDpActiveWords, CalcNrNodes,
  * CalcNrNodes10, _CountWordsInTree, _GetWordsInTree, CompareIDs, CreateActiveWordsCtxTree), ScanSoft's
  * speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops
@@ -62,21 +62,22 @@ typedef struct UWTABLES {
 /* AddFollowers' walk: the context's tables, the active words' bit array and the stop word's first
  * phoneme */
 typedef struct AFREC {
-    int f0;                             /* +0 */
+    int nwords;                         /* +0: the words' list so far */
     unsigned short ph;                  /* +4: the stop word's first phoneme */
     short pad6;
     CASR *c;                            /* +8 */
-    unsigned short *syntax;             /* +12 */
+    int *syntax;                        /* +12 */
     int *bow;                           /* +16 */
     unsigned short *lex;                /* +20 */
-    int f24;                            /* +24 */
+    unsigned int depth;                 /* +24 */
     unsigned char *bits;                /* +28 */
-    int f32[28];                        /* +32: AddFollowers' own */
+    unsigned short parts[56];           /* +32: a user word's phonemes (AddFollowers') */
 } AFREC;                                /* 0x90 */
 
-extern int AddFollowers(AFREC *r, TNODE *node, int word, int prev);
+int AddFollowers(AFREC *r, TNODE *p, int word, int prev);
 
 extern void heap_Free(void *heap, void *p);
+extern void *heap_Realloc(void *heap, void *p, unsigned int size);
 extern unsigned char _tosErrorLog(CASRLOG *log, unsigned char code);
 extern int _tosControl(CASRLOG *log, int cmd, int arg, void *data);
 extern void FillContextV2VirtualTable(CTXVT *vt);
@@ -125,6 +126,269 @@ TNODE *AllocateNodeAndFreePrevious(CASR *c, int n, TNODE **children)
     }
     *children = t;
     return t;
+}
+
+/* a user word's states appended to the context's user-word table and split into phonemes of the
+ * sizes the tree can hold: the first of up to 8 states, the second of up to 8 more, then of up to
+ * 255 each; *parts is their count, each a new entry of the offsets. New in SOCOM II (its AddFollowers
+ * is the only caller; SOCOM 1 has neither): written from the code (round 40c). The growth is written
+ * out with its literal (`x = x + (c ? 256 : k)`: `+=` pushes the sum into both arms, a variable for
+ * the 256 is `slt`); the copy is a do-while under its own test (a `while` is left an entry jump into
+ * the loop's middle, "multiple entry points", and is not unrolled); the counter is stepped in a
+ * statement of its own. */
+int func_004D3450(AFREC *r, unsigned short *p, unsigned short *end, unsigned short *parts)
+{
+    CASR *c = r->c;
+    int err = 0;
+    unsigned short n = end - p;
+    unsigned short *o, *t;
+    int *q;
+    int off, last;
+
+    if (c->uw_cap == 0 || c->uw_cap < c->uw_offsets[c->uw_n] + n + 1) {
+        c->uw_cap = c->uw_cap + ((n + 1 < 256) ? 256 : n + 1);
+        t = heap_Realloc(c->heap, c->uw_states, c->uw_cap * 2);
+        if (t == 0) {
+            err = 1;
+            c->uw_cap = c->uw_cap - ((n + 1 < 256) ? 256 : n + 1);
+            goto out;
+        }
+        c->uw_states = t;
+    }
+    if (n < 9)
+        *parts = 1;
+    else if (n < 17)
+        *parts = 2;
+    else
+        *parts = (n - 17) / 255 + 3;
+    q = heap_Realloc(c->heap, c->uw_offsets, (c->uw_n + *parts) * 4 + 4);
+    if (q == 0) {
+        err = 1;
+        goto out;
+    }
+    c->uw_offsets = q;
+    *q = 0;
+    off = c->uw_offsets[c->uw_n];
+    o = (unsigned short *)c->uw_states + off;
+    if (p < end) {
+        do {
+            *o++ = *p++;
+        } while (p < end);
+    }
+    last = off + n;
+    c->uw_n++;
+    c->uw_offsets[c->uw_n] = n < 9 ? last : off + 8;
+    if (n < 9)
+        goto out;
+    off += 16;
+    c->uw_n++;
+    c->uw_offsets[c->uw_n] = n < 17 ? last : off;
+    if (n < 17)
+        goto out;
+    n -= 16;
+    do {
+        off += n < 256 ? n : 255;
+        c->uw_n++;
+        c->uw_offsets[c->uw_n] = off;
+        if (n >= 256)
+            n -= 255;
+        else
+            n = 0;
+    } while (n != 0);
+out:
+    return err;
+}
+
+/* a word's entry in the words' list (grown by 1024), its id, -1 when out of memory */
+static __inline__ int AddWordToList(AFREC *r, int word, int prev)
+{
+    int id = -1;
+    void *b;
+
+    if (r->nwords == r->c->tree_nwords) {
+        r->c->tree_nwords += 1024;
+        b = heap_Realloc(r->c->heap, r->c->tree_words, r->c->tree_nwords * 8);
+        if (b == 0) {
+            r->c->tree_nwords -= 1024;
+            goto done;
+        }
+        r->c->tree_words = b;
+    }
+    id = r->nwords;
+    ((WORDREC *)r->c->tree_words)[id].id = word;
+    ((WORDREC *)r->c->tree_words)[r->nwords].next = prev;
+    r->nwords++;
+done:
+    return id;
+}
+
+/* a word's followers in the syntax added under a node: a follower with none of its own ends a word
+ * (a leaf: at depth 2 the word itself under the stop phoneme, else its entry in the words' list),
+ * one with some is added through each of its pronunciations, phoneme by phoneme (user words split by
+ * func_004D3450), and recursed into. 1 when too deep or out of memory. SOCOM 1's body with the user
+ * words' split (round 40c). The phoneme loop is unrolled by two only at 50 real insns or fewer
+ * (loop.c's second pass: MAX_UNROLLED_INSNS / count): `ph` an int reads it with one zero-extending
+ * load, an unsigned short with a load and an extension (51, "Loop too big"). Each search's locals are
+ * its own (one variable is one pseudo: the target's ph is s2, s2, s1, s3 and its index a3, then a1),
+ * `t[n].ph` is the index-first sum `move s1,v1` then copies, and AddWordToList has one exit (its -1
+ * kept in s3 and s0, `id` the spilled copy after the test's reload). */
+int AddFollowers(AFREC *r, TNODE *p, int word, int prev)
+{
+    unsigned short nparts;
+    int *fp, *fend;
+    TNODE *cur;
+    int id;
+    CASR *c;
+    int err;
+    int w;
+    int *qend;
+    int *q;
+    unsigned short *s, *send;
+    TNODE *node = p;
+
+    c = r->c;
+    fp = r->syntax + r->syntax[word];
+    fend = r->syntax + r->syntax[word + 1];
+    r->depth++;
+    cur = node;
+    id = -1;
+    err = 0;
+    if (c->iso_word + 1 < r->depth)
+        err = 1;
+    else {
+        for (; fp < fend; fp++) {
+            w = *fp;
+            if (r->syntax[w + 1] == r->syntax[w]) {
+                p = node;
+                if (r->depth == 2) {
+                    TNODE *ch, *t;
+                    int n, i;
+                    int ph;
+
+                    ph = r->ph;
+                    ch = p->children;
+                    n = p->nchildren;
+                    for (i = 0; i < n; i++) {
+                        if (ch[i].ph == ph && ch[i].nchildren == 0)
+                            break;
+                    }
+                    if (i < n && (int)ch[i].children == word)
+                        continue;
+                    t = AllocateNodeAndFreePrevious(c, n, (TNODE **)node);
+                    t[n].ph = ph;
+                    node->nchildren = n + 1;
+                    p = t + n;
+                    p->nchildren = 0;
+                    p->children = (TNODE *)word;
+                } else {
+                    TNODE *ch, *t;
+                    int n, i;
+                    int ph;
+
+                    id = AddWordToList(r, word, prev);
+                    if (id == -1) {
+                        err = 1;
+                        goto out;
+                    }
+                    n = node->nchildren;
+                    ph = r->ph;
+                    ch = node->children;
+                    for (i = 0; i < n; i++) {
+                        if (ch[i].ph == ph && ch[i].nchildren == 0)
+                            break;
+                    }
+                    if (i < n && (int)ch[i].children == -(id + 1))
+                        continue;
+                    t = AllocateNodeAndFreePrevious(c, n, (TNODE **)node);
+                    t[n].ph = ph;
+                    node->nchildren = n + 1;
+                    p = t + n;
+                    p->children = (TNODE *)-(id + 1);
+                    p->nchildren = 0;
+                }
+            } else if (((r->bits[w >> 3] >> (~w & 7)) & 1) != 0) {
+                q = r->bow + r->bow[w];
+                qend = r->bow + r->bow[w + 1];
+                if (r->depth >= 2 && node == cur) {
+                    TNODE *ch, *t;
+                    int n, i;
+                    int ph;
+
+                    id = AddWordToList(r, word, prev);
+                    if (id == -1) {
+                        err = 1;
+                        goto out;
+                    }
+                    cur = node;
+                    n = cur->nchildren;
+                    ph = r->ph;
+                    ch = cur->children;
+                    for (i = 0; i < n; i++) {
+                        if (ch[i].ph == ph && ch[i].nchildren != 0)
+                            break;
+                    }
+                    if (i < n)
+                        cur = ch + i;
+                    else {
+                        t = AllocateNodeAndFreePrevious(c, n, (TNODE **)node);
+                        t[n].ph = ph;
+                        node->nchildren = n + 1;
+                        cur = t + n;
+                        cur->nchildren = 0;
+                    }
+                }
+                for (; q < qend; q++) {
+                    s = r->lex + *q;
+                    p = cur;
+                    send = r->lex + q[1];
+                    if (*s++ != 1) {
+                        unsigned short k;
+
+                        r->parts[0] = r->c->uw_n + r->c->lng->GetNbrSpeechUnit(r->c->lng) + 1;
+                        if (func_004D3450(r, s, send, &nparts) != 0) {
+                            err = 1;
+                            goto out;
+                        }
+                        s = r->parts;
+                        send = s + nparts;
+                        for (k = 1; k < nparts; k++)
+                            s[k] = k + s[0];
+                    }
+                    if (s < send) {
+                        do {
+                            TNODE *ch, *t;
+                            int n, i;
+                            int ph;
+
+                            ph = *s++;
+                            n = p->nchildren;
+                            ch = p->children;
+                            for (i = 0; i < n; i++) {
+                                if (ch[i].ph == ph && ch[i].nchildren != 0)
+                                    break;
+                            }
+                            if (i < n)
+                                p = ch + i;
+                            else {
+                                t = AllocateNodeAndFreePrevious(c, n, (TNODE **)p);
+                                t[n].ph = ph;
+                                p->nchildren = n + 1;
+                                p = t + n;
+                                p->nchildren = 0;
+                            }
+                        } while (s < send);
+                    }
+                    if (AddFollowers(r, p, w, id) != 0) {
+                        err = 1;
+                        goto out;
+                    }
+                }
+            }
+        }
+    }
+out:
+    r->depth--;
+    return err;
 }
 
 /* the user words' tables kept for the tree (the context's lexicon and its pronunciations' offsets),
@@ -222,9 +486,9 @@ int intCreateCtxTree(CASR *c, CTXVT *vt, unsigned int *ids, unsigned int n)
     }
     rec.ph = *p;
     rec.c = c;
-    rec.syntax = syntax;
-    rec.f0 = 0;
-    rec.f24 = 0;
+    rec.syntax = (int *)syntax;
+    rec.nwords = 0;
+    rec.depth = 0;
     rec.bow = bow;
     rec.lex = lex;
     rec.bits = bits;
@@ -233,7 +497,7 @@ int intCreateCtxTree(CASR *c, CTXVT *vt, unsigned int *ids, unsigned int n)
         return 1;
     }
     c->run_ctx = 0;
-    c->pad600 = 0;
+    c->map = 0;
     if (c->lng->CheckBitField(c->lng, 8) && SetUserWordTables(c, lex, bow + bow[0]) != 0) {
         heap_Free(c->heap, bits);
         return 1;
@@ -297,7 +561,7 @@ __inline__ void FreeTree(CASR *c)
         heap_Free(c->heap, c->uw_states);
         c->uw_states = 0;
     }
-    c->f1128 = 0;
+    c->uw_cap = 0;
     if (c->uw_offsets != 0) {
         heap_Free(c->heap, c->uw_offsets);
         c->uw_offsets = 0;
