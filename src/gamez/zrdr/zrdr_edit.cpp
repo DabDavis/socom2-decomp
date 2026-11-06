@@ -5,6 +5,9 @@
  * Defined in reverse of their image order (-inline deferred). The deque's copy constructor and its
  * pieces follow in the template tail (0x333B30-0x334BE0, include/deque). */
 
+/* include/deque's opt-in, a marked modelling device: the deque's default constructor in class, so by level alone the call goes to its pieces
+ * (the MSL's round 40 measured 0x3340F0 byte-exact by it); what the original wrote is not known. */
+#define __MSL_DEQUE_DEFAULT_INLINE
 #include "zrdr.h"
 
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);

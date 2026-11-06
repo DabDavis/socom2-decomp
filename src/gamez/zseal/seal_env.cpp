@@ -40,6 +40,145 @@ public:
     zdb::CTexHandle *m_texture;   // 0x8
 };
 
+/* the map's mission-compromised valve (OVL1 data 0x436688), the message queue (0x4366A0) and the
+ * switch for the online game (0x45A0C1) */
+extern "C" {
+extern CValve *data_00436688;
+extern unsigned char data_004366A0[];
+extern unsigned char data_0045A0C1;
+}
+
+enum MSGTYPE { MSGTYPE_PLAYER = 0, MSGTYPE_SYSTEM = 1, MSGTYPE_ALERT = 5 };
+
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
+
+/* a graph edge: the teams that have crossed it (graph_tree.cpp's; ai_maps.cpp's view of it) */
+class CGEdge {
+public:
+    /* (an inline, the name ours: `&= ~0` through the parameter stays as a zero extension) */
+    void SetMask(unsigned int set, unsigned int clear)
+    {
+        m_mask &= ~clear;
+        m_mask |= set;
+    }
+
+    unsigned char _0[0x18];
+    unsigned int m_mask;   // 0x18
+};
+
+/* the squad's reaction to a player crossing a boundary (OVL2 0x5EB8A0, seal_unit.cpp's) */
+extern "C" void func_005EB8A0(CSealUnit *unit);
+
+/* the off-the-map bit of the controller (an inline, the name ours: the value through a bool, the zero
+ * then `andi a0,zero,1`) */
+static inline void SetOffMap(CSealCtrl *ctrl, bool off) { ctrl->m_bit16 = off; }
+
+/* where the SEAL is on the AI maps: the cell it stands in, kept when it can be walked (SOCOM II's slot
+ * 0x48 of its table; OVL2 0x5B7BA0, past this unit's template tail: the unit's first definition) */
+void CZSealBody::UpdateAiMapLoc()
+{
+    bool found;
+    bool moved;
+    CAiMapLoc valid(m_mapLocValid);
+    CAiMapLoc prev(m_mapLoc);
+    CAiMapLoc loc;
+    CSealCtrl *ctrl = (CSealCtrl *)m_control;
+
+    moved = false;
+    found = AiMaps.GetLocation(&m_posW, loc);
+
+    if (found) {
+        m_mapLoc = loc;
+        moved = valid.x != loc.x || valid.y != loc.y;
+        CAiMap *map = AiMaps.GetMap(loc);
+
+        if (map ? map->IsTraversable(loc) : false) {
+            if (moved || m_bit14) {
+                if (m_control ? ((CSealCtrl *)m_control)->IsAi() : false)
+                    ((CSealCtrl *)m_control)->GetSealCtrlAi()->m_624 = valid;
+                m_mapLocValid = loc;
+                if (m_snake_path) {
+                    static unsigned int k_search = 5;
+
+                    m_snakePath.AddSnakePoint(loc, k_search, m_bit14 ? 8 : 0);
+                }
+                if (m_isAlive)
+                    AiMaps.SetOccupied(valid, loc, m_id);
+            }
+            m_504 = m_posW;
+            SetOffMap(ctrl, false);
+        } else {
+            static int k_x = 0;
+            static int k_y = 0;
+            int one = 1;
+            int dx = m_mapLocValid.x - loc.x;
+            int dy = m_mapLocValid.y - loc.y;
+
+            ctrl->m_bit16 = (_close_enough(dx, k_x, one) && _close_enough(dy, k_y, one)) ? 0 : 1;
+        }
+    } else
+        SetOffMap(ctrl, true);
+    if (found && IsPlayer() && !data_0045A0C1) {
+        unsigned int before = AiMaps.GetBoundary(prev);
+        unsigned char now = AiMaps.GetBoundary(loc);
+        bool changed = (unsigned char)before != now;
+        CSealUnit *unit = ((CSealCtrl *)m_control)->m_unit;
+
+        if (unit)
+            func_005EB8A0(unit);
+        if (moved && prev.m_mapid != loc.m_mapid) {
+            CGEdge *edge = AiMaps.FindLinkEdge(prev, loc);
+
+            if (edge)
+                edge->SetMask(m_team, 0);
+        }
+        switch (now) {
+        case 2:
+            if (changed) {
+                const char *line0 = "Mission was compromised.  You have";
+                const char *line1 = "left the designated mission area.";
+
+                CSealCtrlAi::StopAiSound((AI_SOUND)1);
+                CSealCtrlAi::PlayAiSound((AI_SOUND)0);
+                data_00436688->SetValue(1);
+                C2DMessage_Q *q = (C2DMessage_Q *)data_004366A0;
+
+                if (q) {
+                    q->Add_Message(line0, MSGTYPE_PLAYER, true, 0, 0.0f);
+                    q->Add_Message(line1, MSGTYPE_PLAYER, true, 0, 0.0f);
+                }
+            }
+            break;
+        case 1:
+            if (changed) {
+                const char *line0 = "WARNING!";
+                const char *line1 = "Leaving designated mission area!";
+                const char *line2 = "In danger of compromising the mission.";
+
+                CSealCtrlAi::StopAiSound((AI_SOUND)0);
+                CSealCtrlAi::PlayAiSound((AI_SOUND)1);
+                C2DMessage_Q *q = (C2DMessage_Q *)data_004366A0;
+
+                if (q) {
+                    q->Add_Message(line0, MSGTYPE_SYSTEM, true, 0, 0.0f);
+                    q->Add_Message(line1, MSGTYPE_SYSTEM, true, 0, 0.0f);
+                    q->Add_Message(line2, MSGTYPE_SYSTEM, true, 0, 0.0f);
+                }
+            }
+            break;
+        case 0:
+            if (changed) {
+                CSealCtrlAi::StopAiSound((AI_SOUND)0);
+                CSealCtrlAi::StopAiSound((AI_SOUND)1);
+            }
+            break;
+        }
+    }
+}
+
 extern "C" int rand(void);
 zdb::CNode *GetDecalNode(zdb::CNode *node);
 /* (SOCOM 1's GetVisualNode__FPQ23zdb5CNode, called where SOCOM 1's HandleBloodDrip calls it; OVL1
@@ -666,11 +805,192 @@ static inline void HangDeathCallback(CZBodyAnimBlend *b)
     }
 }
 
+extern "C" {
+/* (OVL2 0x5A2390, 0x5A2490, 0x5A21B0, below; 0x539E90 and 0x545EE0, this unit's declarations further on) */
+CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type);
+CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type);
+CZBodyAnimBlend *func_005A21B0(CZSealBody *seal);
+CPnt3D *func_00539E90(CPnt3D *to, const CPnt3D *from);
+bool func_00588030(CZSealBody *seal);
+AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state);
+/* the sets of the two zombies' anims a hit does not show (OVL1 bss) */
+extern class AnimSet *data_0044D400;
+extern class AnimSet *data_0044D410;
+extern short data_003DEE08;
+extern short data_003DEE20;
+extern short data_003DEE48;
+extern short data_003DEE40;
+extern short data_003DEE18;
+extern short data_003DEE30;
+extern short data_003DEE38;
+extern short data_003DEDB0;
+extern short data_003DEDB8;
+extern short data_003DEF70;
+extern short data_003DEDF0;
+extern short data_003DEDF8;
+extern short data_003DEE00;
+}
+
+/* a blend's homing reset through CPnt3D's out-of-line assignment (an inline, the name ours: CHoming::Reset's
+ * order) */
+static inline void ResetHoming(CHoming *h)
+{
+    h->m_blend = 0;
+    func_00539E90(&h->m_refpt_m, &CPnt3D::zero);
+    func_00539E90(&h->m_norm_w, &CPnt3D::zero);
+    func_00539E90(&h->m_int_w, &CPnt3D::zero);
+    h->m_1c = 0;
+    h->m_2c = 0;
+    func_00539E90(&h->m_refvec_m, &CPnt3D::zero);
+    func_00539E90(&h->m_target_refpt_m, &CPnt3D::zero);
+}
+
+/* the anim a hit shows (SOCOM 1's WeaponHitAnim; OVL2 0x5A2690, grown): none named and dead: a death anim; a
+ * carried body's homing let go; in the fall's anims only the state, a corpse's twitch while it can; a new death
+ * by its anim; a living flinch unless a hold, a reload or its anim sets forbid */
+void CZSealBody::WeaponHitAnim(AnimType anim, SEAL_STATE state)
+{
+    if ((short)anim == -1) {
+        if ((unsigned char)state == 8 || !m_isAlive) {
+            bool b = false;
+
+            anim = FindRandomDeathAnim((DAMAGE_LOCATION)3, &b);
+            state = (SEAL_STATE)8;
+            if ((short)anim == -1)
+                return;
+        } else
+            return;
+    }
+    if (m_carry) {
+        if (TopBlend()->m_homing.m_blend) {
+            ResetHoming(&TopBlend()->m_homing);
+            if (m_carry) {
+                m_carry->m_carry = 0;
+                m_carry = 0;
+            }
+        } else if (m_carry->TopBlend()->m_homing.m_blend) {
+            ResetHoming(&m_carry->TopBlend()->m_homing);
+            if (m_carry) {
+                m_carry->m_carry = 0;
+                m_carry = 0;
+            }
+        }
+    }
+    CZBodyAnimBlend *hit;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    unsigned char topstate = top->m_state;
+
+    hit = 0;
+
+    if (func_00588030(this)) {
+        if ((unsigned char)state == 8 || !m_isAlive)
+            top->m_state = 8;
+        return;
+    }
+    unsigned char alive = m_isAlive;
+
+    if (!alive && m_state == 8)
+        return;
+    if (!alive && (unsigned char)state != 8) {
+        bool b = false;
+
+        state = (SEAL_STATE)8;
+        anim = FindRandomDeathAnim((DAMAGE_LOCATION)3, &b);
+    }
+    if (m_state == 9) {
+        if ((unsigned char)state != 8 || topstate == 8)
+            return;
+        if (m_carry)
+            DropBody();
+    } else if (IsCurrentBlend((AnimType)data_003DEE08) || IsCurrentBlend((AnimType)data_003DEE20)) {
+        if ((unsigned char)state != 8)
+            return;
+        if (m_carry)
+            DropBody();
+    } else if (IsCurrentBlend((AnimType)data_003DEE48)) {
+        if ((unsigned char)state != 8)
+            return;
+        CZSealBody *carry = m_carry;
+
+        if (carry) {
+            carry->DetachBody();
+            carry->PopBlend();
+        }
+    } else if (IsCurrentBlend((AnimType)data_003DEE40)) {
+        if ((unsigned char)state != 8)
+            return;
+        CZSealBody *carry = m_carry;
+
+        if (carry) {
+            carry->DropBody();
+            carry->ClearToBase(false);
+        }
+        return;
+    } else if (m_state == 10 || IsCurrentBlend((AnimType)data_003DEE18) || IsCurrentBlend((AnimType)data_003DEE30) ||
+               IsCurrentBlend((AnimType)data_003DEE38))
+        return;
+    if (topstate == 8) {
+        if (data_0045A0C1)
+            return;
+        if (IsCurrentBlend((AnimType)data_003DEDB0) || IsCurrentBlend((AnimType)data_003DEDB8))
+            return;
+        float t = top->m_tfrac;
+
+        if (!(t <= 0.35f) || t < 0.05f || !(m_14d0 < 3))
+            return;
+        if (GetRootPart()->m_pos.y < 5.0f)
+            anim = func_005A0950(this, (DAMAGE_LOCATION)3, (SEAL_STATE)2);
+        if ((short)anim == -1) {
+            bool b = false;
+
+            anim = FindRandomDeathAnim((DAMAGE_LOCATION)3, &b);
+        }
+        func_005A2490(this, anim);
+        m_14d0++;
+        return;
+    }
+    if ((unsigned char)state == 8) {
+        if (m_state == 5)
+            func_005A21B0(this);
+        else {
+            if (GetRootPart()->m_pos.y < 5.0f)
+                anim = func_005A0950(this, (DAMAGE_LOCATION)3, (SEAL_STATE)2);
+            if (IsCurrentBlend((AnimType)data_003DEF70)) {
+                if (top->m_callback.m_func)
+                    top->m_callback.m_func(this, top->m_callback.m_userdata);
+                top->m_callback.Clear();
+            }
+            if ((short)anim == -1) {
+                bool b = false;
+
+                anim = FindRandomDeathAnim((DAMAGE_LOCATION)3, &b);
+            }
+            func_005A2490(this, anim);
+        }
+        m_14d0++;
+        return;
+    }
+    if (IsChangingWeapons(true))
+        return;
+    if (IsCurrentBlend((AnimType)data_003DEDF0) || IsCurrentBlend((AnimType)data_003DEDF8) || IsCurrentBlend((AnimType)data_003DEE00))
+        return;
+    if (m_state == 5 || m_state == 9 || m_animset == data_0044D400 || m_animset == data_0044D410)
+        return;
+    if (func_005551A0(top->m_flags, 64)) {
+        if (IsCurrentBlend((AnimType)1) || IsCurrentBlend((AnimType)18) || IsCurrentBlend((AnimType)26))
+            hit = func_005A2390(this, anim);
+    } else
+        hit = func_005A2390(this, anim);
+    if (hit)
+        hit->m_flags = func_0058A920(hit->m_flags, 2, true);
+}
+
 /* a death by an anim type: the overlay's anims and 0x5A5DA0 first, the SEAL off its ladder and its
  * hold let go, unstunned, the blends cleared to the base and the anim pushed dead (state 8, kind 13)
  * with the death's callback, the push told to the network as event 14 (OVL2 0x5A2490, new in SOCOM
  * II; the name unknown). 0x5B14E0 inlined, its ladder lookup's load order the hold's unsigned index
  * (round 34, below). */
+#pragma auto_inline off
 extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
 {
     func_005781C0(seal);
@@ -685,6 +1005,7 @@ extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
     func_00588AB0(seal, 14, type);
     return b;
 }
+#pragma auto_inline reset
 
 /* an anim pushed on a living SEAL, kind 13 with the blend's bits 2 and 1 set -- refused when its top
  * blend or itself is dead, or while it holds the entity at 0xEB8 -- and the push told to the network
@@ -710,6 +1031,7 @@ extern "C" CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type)
  * cleared to the base and AnimTypes' 0x3DEED8 pushed dead with the death's callback; bit 9 set and
  * 10 cleared, the kept velocity zeroed, the altitude where it stands, the push of anim 34 told to the
  * network (OVL2 0x5A21B0, new in SOCOM II; the name unknown) */
+#pragma auto_inline off
 extern "C" CZBodyAnimBlend *func_005A21B0(CZSealBody *seal)
 {
     func_0059D750(seal);
@@ -727,6 +1049,7 @@ extern "C" CZBodyAnimBlend *func_005A21B0(CZSealBody *seal)
     func_00588B40(seal, 21);
     return b;
 }
+#pragma auto_inline reset
 
 /* an entity that is a SEAL (kind 2), or none (the inline cast HandleWeaponEvent's walk and ReportWeaponHitDamage show) */
 static inline CZSealBody *AsSeal(CEntity *e)
@@ -6345,6 +6668,7 @@ extern short data_003DEF08;
 extern AnimSet *data_0044D3F8;
 extern AnimSet *data_0044D410;
 bool func_00588030(CZSealBody *seal);
+AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state);
 bool func_00587FE0(CZSealBody *seal);
 bool func_00587F90(CZSealBody *seal);
 bool func_00587F50(CZSealBody *seal);

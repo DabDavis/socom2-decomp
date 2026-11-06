@@ -64,7 +64,7 @@ void PullVisuals(zdb::CNode *node, zdb::CDIVector *out)
         PullVisuals(instance->m_model, out);
 }
 
-/* SOCOM 1's: a three-sided piece made for each collision piece of a node (0x322800, not written:
+/* SOCOM 1's: a three-sided piece made for each collision piece of a node (0x322800, in zparticle_pieces.cpp:
  * SOCOM II's call passes SOCOM 1's arguments, the second float last) */
 void Create3Sided(zdb::CDIVector *dis, zdb::CNode *node, CPnt4D *color, zdb::CTexHandle *tex, float f,
                   zdb::CModel *model, CPnt3D *a, CPnt3D *b, CPnt3D *c, CPnt3D *d, Props *props, float g);

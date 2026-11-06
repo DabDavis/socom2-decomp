@@ -1684,6 +1684,172 @@ void CSealCtrl::SampleActionAvailable()
         seal->ActionAvailableMask(16, true);
 }
 
+extern "C" {
+/* whether a door's action needs its charge (OVL2 0x58...: the kit's), the mission's action flag (OVL1 data
+ * 0x4365DC), the fire-team order's test (0x57F530, 0x57F3E0, seal_body.cpp's), the buddy's lift (0x546C00),
+ * the entity's use (0x546210), the carried body's drop (0x545EE0) and the corpse's take (0x57DCC0) */
+int func_002B46F0(CNodeAction *action);
+bool func_0057F530(CZSealBody *seal);
+void func_0057F3E0(CZSealBody *seal);
+void func_00546C00(CZSealBody *seal, CZSealBody *other);
+void func_00546210(CZSealBody *seal, CEntity *e);
+void func_00545EE0(CZSealBody *seal, int x);
+void func_0057DCC0(CZSealBody *seal, int x);
+extern struct { unsigned char m_bit0 : 1, m_bit1 : 1, m_bit2 : 1; } data_004365DC;
+}
+/* an entity's team bits (an inline, the name ours: read ahead of the `&`, seal_command.cpp's TeamOf) */
+static inline unsigned int TeamBits(const CEntity *e) { return e->m_team; }
+/* the door's anim index for a SEAL at an action (SOCOM 1's, the kit lane's seal_tasks.cpp) */
+unsigned int CanUseDoorAction(CZSealBody *seal, CNodeAction *action, float f);
+
+/* the action a press of the button takes, by the selection's bit (SOCOM 1's OnActionButton; OVL2 0x592D50,
+ * slot 0x74): no display: the delayed jump; else in the mask's order; the selection cleared after */
+void CSealCtrl::OnActionButton()
+{
+    CNodeAction *breach;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (!seal->m_action_display_on) {
+        seal->ExecuteDelayedAction_Jump();
+        m_action = true;
+    } else {
+        unsigned int sel = seal->m_action_selection;
+
+        if (sel & 2) {
+            m_action = false;
+            seal->m_action_display_on = 0;
+        } else if (sel & 0x2000) {
+            CNodeAction *action = seal->GetReticuleAction(true);
+
+            if (action && CanPerformAction(action)) {
+                bool ok = (action->m_teams & TeamBits(seal)) != 0 && func_002B46F0(action) != 0;
+
+                if (ok) {
+                    if (action->m_3f_2 ? true : false)
+                        data_004365DC.m_bit2 = true;
+                    else if (action->m_type != 4) {
+                        action->ExecuteAction(seal, CanUseDoorAction(seal, action, *(float *)&m_120));
+                        seal->m_538 = action->m_10;
+                    }
+                }
+            }
+        } else {
+            if (sel & 0x40000) {
+                bool near;
+                zdb::CNode *node;
+                CZKit *kit;
+                zdb::CNodeEx *ex;
+
+                kit = &seal->m_kit;
+                if (kit)
+                    kit->GetCurItem();
+                if (kit && seal->CanFire(true, false) && kit->HasItemWithAmmo((EQUIP_ITEM)151)) {
+                    near = seal->m_208 < 396.0f && seal->m_kit.GetReticuleSettle() == 0.0f;
+
+                    if (near && seal->GetReticuleDi()) {
+                        node = seal->m_last_reticule.m_node;
+                        ex = 0;
+                        ex = node ? node->m_nodeEx : ex;
+                        if (ex && ex->Slot10(kit ? func_005B82D0(kit) : 0.0f))
+                            seal->m_kit.HandlePlacingExlosive((EQUIP_ITEM)151, 1.0f, 0.2f);
+                    }
+                }
+            } else if (sel & 0x20000) {
+                breach = seal->GetReticuleAction(true);
+
+                if (breach && breach->m_type == NODEACTION_BREACH) {
+                    bool ok = (breach->m_teams & TeamBits(seal)) != 0 && func_002B46F0(breach) != 0;
+
+                    if (ok) {
+                        CZSealBody *body = (CZSealBody *)m_entity;
+                        CValve *valve = breach->m_valve;
+                        bool has;
+
+                        if (body && body->m_kit.HasItem((EQUIP_ITEM)152) && body->m_kit.ItemHasAmmo((EQUIP_ITEM)152) &&
+                            valve && valve->m_value == 0)
+                            has = true;
+                        else
+                            has = false;
+                        if (has) {
+                            breach->ExecuteAction(body, 0);
+                            body->m_kit.HandlePlacingExlosive((EQUIP_ITEM)152, 1.0f, 0.2f);
+                            valve->SetValue(1);
+                        }
+                    }
+                }
+            } else if (sel & 4) {
+                seal->ExecuteDelayedAction_Climb();
+                m_action = true;
+            } else if (!(sel & 8)) {
+                if (sel & 0x10) {
+                    CPickup *pickup = seal->CurrentPickup();
+
+                    if (pickup) {
+                        m_weapon_pickup_timer = 3.0f;
+                        if (pickup->m_type == 11)
+                            seal->PickupObject(pickup);
+                        else {
+                            seal->PickupObject(pickup);
+                            seal->m_echo_pickup = true;
+                        }
+                    }
+                } else if (sel & 0x20) {
+                    CPickup *pickup = seal->CurrentPickupSecondary();
+
+                    if (pickup) {
+                        m_weapon_pickup_timer = 3.0f;
+                        seal->PickupObject(pickup);
+                        seal->m_echo_pickup = true;
+                    }
+                } else if (sel & 0x40) {
+                    seal->DropMPBomb();
+                    m_bombpickuptimer = 4.0f;
+                } else if (sel & 0x100)
+                    func_00546C00(seal, m_corpsebody);
+                else if (sel & 0x200)
+                    seal->PutdownBuddy();
+                else if (sel & 0x400)
+                    seal->ExecuteAction_KnifeAttack(m_victimbody);
+                else if (sel & 0x800)
+                    seal->ExecuteAction_ApplyRestraint(m_victimbody);
+                else if (sel & 0x1000)
+                    seal->ExecuteAction_CQBAttack(m_victimbody);
+                else if (sel & 0x4000) {
+                    CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
+
+                    if (unit->AllowCommand(seal, (FT_COMMAND)4, 0))
+                        unit->IssueCommand(ftsGetPlayer(), (FT_COMMAND)4, 0, false);
+                } else if (sel & 0x8000) {
+                    CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
+
+                    if (unit->AllowCommand(seal, (FT_COMMAND)5, 0))
+                        unit->IssueCommand(ftsGetPlayer(), (FT_COMMAND)5, 0, false);
+                } else if (sel & 0x10000) {
+                    if (func_0057F530(seal))
+                        func_0057F3E0(seal);
+                } else if (sel & 0x80000) {
+                    CEntity *e = m_16c;
+
+                    if (e) {
+                        CTurret *typed = e && e->m_type == 3 ? (CTurret *)e : 0;
+
+                        if (e->Virtual5C(seal, typed))
+                            func_00546210(seal, e);
+                    }
+                } else if (sel & 0x100000) {
+                    if (seal->m_eb8)
+                        func_00545EE0(seal, 0);
+                } else if (sel & 0x200000 && func_0057DDF0(seal, m_corpsebody))
+                    func_0057DCC0(seal, -1);
+            }
+        }
+    }
+    if (!(seal->m_action_selection & 4))
+        m_action = false;
+    seal->m_action_available = 0;
+    seal->m_action_selection = 0;
+}
+
 /* the scope's zoom (OVL2 0x592C70, 0x592C30, 0x592C10, 0x592BF0) */
 void CSealCtrl::SetCameraZoom(float level, float increment)
 {

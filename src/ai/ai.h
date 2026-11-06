@@ -672,6 +672,9 @@ public:
     /* a way between two regions (SOCOM 1's DWARF, 0x24 bytes) */
     class route {
     public:
+        /* the flags cleared (resize<route>'s temporary, 0x51C230: `sw zero,16(sp)` ahead of the rest) */
+        route() : m_flags(0) {}
+
         unsigned int m_flags;   // 0x0
         CAiMapLoc m_region[2];   // 0x4
         CAiMapLocVec m_waypts;   // 0xc

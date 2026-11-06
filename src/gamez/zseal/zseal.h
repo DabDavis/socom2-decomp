@@ -223,6 +223,9 @@ class CZItemStash;
 /* the SEAL's kit: its weapons and gear (SOCOM 1's CZKit, 0x87c bytes there; only its start here) */
 class CZKit {
 public:
+    /* the kit's frame, and the mode the hand was last given (kit.h's; OVL2 0x5C0FD0, 0x5C4960) */
+    void Tick(float dT);
+    int GetHandFireMode();
     /* whether the kit holds an item, and whether that item has ammunition (SOCOM 1's; OVL2
      * 0x5C86F0, 0x5BDB20, the kit lane's) */
     bool HasItem(EQUIP_ITEM item) const;
@@ -320,6 +323,9 @@ public:
     bool NVG_Enabled() const;
     /* the night vision and the binoculars put on or off, the lens's fog and colour (kit.h's: OVL2
      * 0x5C8080, 0x5B9110, 0x5C1800) */
+    /* (OVL2 0x5C8110, 0x5C7CE0: kit.h's; ~CZSealBody's member and its first call on it) */
+    ~CZKit();
+    void UnInit();
     void NVG_Enabled(bool on);
     void Binocs_Enabled(bool on);
     void Apply_LensEffects(bool on, CPnt3D *color);
@@ -442,7 +448,9 @@ public:
     bool Acquire(unsigned int who);
     void Release(unsigned int who);
 
-    unsigned char _4[0x14 - 0x4];
+    unsigned char _4[0x10 - 0x4];
+    /* the anim an action runs (OnActionButton hands it to the SEAL's m_538; the name ours) */
+    class CZAnim *m_10;   // 0x10
     /* (SOCOM 1's m_node: CanPlaceBomb matches it against the sides' bomb sites, TickMPBomb against the
      * bomb's node) */
     zdb::CNode *m_node;   // 0x14
@@ -457,6 +465,11 @@ public:
     unsigned int m_owner;   // 0x34: the entity using it, CEntity::invalidId for none (SOCOM II's)
     unsigned char _38[0x3c - 0x38];
     unsigned short m_id;   // 0x3c (SOCOM 1's at 0x2c)
+    unsigned char _3e;
+    /* bit 2: pressing it raises the mission's action flag instead (OnActionButton; the name ours) */
+    unsigned char m_3f_0 : 1;   // 0x3f
+    unsigned char m_3f_1 : 1;
+    unsigned char m_3f_2 : 1;
 };
 
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
@@ -473,18 +486,23 @@ public:
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
+    /* the cell's boundary bits, and the link between two cells (ai_maps.cpp's) */
+    unsigned int GetBoundary(const CAiMapLoc &loc);
+    class CGEdge *FindLinkEdge(const CAiMapLoc &from, const CAiMapLoc &to);
     /* a cell's map (ai_maps.h's, OVL2 0x52E6B0), and a location's (OVL2 0x52A180) */
     class CAiMap *GetMapByIndex(unsigned int i) const;
     class CAiMap *GetMap(const CAiMapLoc &loc) const;
     /* whether a straight line runs from one cell to another, where it stops handed back (ai_maps.h's,
      * OVL2 0x52CC80) */
     bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
-    /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) */
+    /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) and its ground's height (ai_maps.h's, OVL2 0x52CD30) */
     CAiCell *GetCell(const CAiMapLoc &loc);
+    bool GetAltitude(const CAiMapLoc &loc, float &alt);
     /* an action by its id, its cell and its record (ai_maps.h's, OVL2 0x52DAA0) */
     bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
     /* a path planned from a cell through a list of cells, and a cell's region (ai_maps.h's, OVL2
      * 0x52C5C0, 0x52D950) */
+    bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc &to, CAiPath *path);
     bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *locs, int count, CAiPath *path);
     CAiMap::region *GetRegion(const CAiMapLoc &loc);
     /* a region by its name, and its cell (ai_maps.h's, OVL2 0x52D9F0) */
@@ -541,6 +559,8 @@ public:
     /* a SEAL in the squad of a number, or with `recurse` in a squad under it (SOCOM 1's; OVL2
      * 0x5EDDD0, the kit lane's seal_unit.cpp, which declares it alike) */
     static bool IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse);
+    /* (SOCOM 1's; OVL2 0x5EDE40, seal_unit.cpp's: a member brought back) */
+    void Revive(CZSealBody *seal);
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
@@ -1157,7 +1177,9 @@ struct CAiLadderLeg {
  * declare SOCOM II's ~CAiPath) and the fields the controller reads: the plan's state, the search's
  * status, the smoothed points' end (an empty vector's is 0) */
 struct CAiPathBytes {
-    unsigned char _0[0xc];
+    unsigned char _0[9];
+    unsigned char m_type;   // 0x9: CAiPath::PATH_TYPE (SetRoute's 2)
+    unsigned char _a[0xc - 0xa];
     float m_type_bias;   // 0xc (SOCOM 1's: the planner's bias, set with the type)
     unsigned char _10[0x80 - 0x10];
     unsigned char m_state;   // 0x80: CAiPath::PATH_STATE (1-3 planning, 4 complete)
@@ -1220,7 +1242,8 @@ public:
     /* under flag 0x40, the time left before the shot -- run down by FireWhenReady (new in SOCOM II;
      * the name ours) */
     float m_delay;   // 0x64
-    unsigned char _68[0x6c - 0x68];
+    unsigned char m_68;   // 0x68: cleared as a lob is aimed (0x55ECC0; the name ours)
+    unsigned char _69[0x6c - 0x69];
     unsigned int m_flags;   // 0x6c
 };
 
@@ -1382,10 +1405,10 @@ public:
     CAiMapLoc m_leg_cell;   // 0x618
     CAiMapLoc m_61c;   // 0x61c: the constructor sets both invalid, 0x620 first
     CAiMapLoc m_620;   // 0x620
-    unsigned char _624[0x628 - 0x624];
+    CAiMapLoc m_624;   // 0x624: the cell the SEAL last left (UpdateAiMapLoc; the name ours)
     union {
         unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
-        CAiEvent m_ev;
+        CAiEvent m_ev;   // (the kit, round 62: the same, reached without a cast: HandleEvent's addresses)
     };
     unsigned char m_eventQueue[0xc];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8: SOCOM II's lists are 0xc bytes)
     /* the kinds of event the AI hears (SOCOM 1's m_eventMask, 0x4b8: UpdateEventMask, OVL2 0x572D70,
@@ -1482,6 +1505,7 @@ public:
     /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */
     virtual void OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
     /* (OVL2 0x5714B0, slot 0x18: seal_ai.cpp's) */
+    virtual void OnStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
     virtual void OnDeath();
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
@@ -1492,6 +1516,7 @@ public:
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
+    virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
     virtual void UpdateViewCone();
     /* the kit's weapon picked for a fire mode's hint, whether one was (SOCOM 1's; OVL2 0x563470, the
      * SEALs' row -- the kit lane's CTFireMode::Begin calls it) */
@@ -1676,6 +1701,7 @@ public:
     inline float GetDefaultRouteBias();
     /* a route planned from the SEAL's cell through a list of cells (SOCOM 1's; OVL2 0x562200) */
     bool SetRoute(const CAiMapLoc *locs, int count);
+    bool SetRoute(const CAiMapLoc &loc);
     /* whether the current state is of a kind (SOCOM 1's AiStateIs, const: the stack's const GetState,
      * 0x5F8330). Built whole in a register with an explicit false arm, as the target does: the first
      * operand a materialised inline bool, the second a `? true : false` of its own -- `&&`, a plain
@@ -1823,7 +1849,19 @@ public:
 /* a head's turn toward a direction, eased over a time (SOCOM 1's DWARF: CLook : CSequence, 0x80
  * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier). SOCOM II's
  * SEAL holds its three looks (SOCOM 1's held pointers): seal_env.cpp's */
-class CLook : public CSequence {
+/* (a sequence member clears itself: CSequence, zbody.h's, as this unit's SEAL destroys it -- ~CZSealBody's
+ * this-tests, two for a plain sequence member, one more per derived class; the name ours) */
+class CSeqBase : public CSequence {
+public:
+    ~CSeqBase() { Clear(); }
+};
+
+class CSeqMember : public CSeqBase {
+public:
+    ~CSeqMember() {}
+};
+
+class CLook : public CSeqBase {
 public:
     CLook();
     void SetDir(const CPnt3D *dir, float rate);
@@ -1846,7 +1884,7 @@ public:
 
 /* a turn in place's timing (SOCOM 1's DWARF: CTurnInPlace : CSequence, 0x10 bytes, nothing of its
  * own) */
-class CTurnInPlace : public CSequence {
+class CTurnInPlace : public CSeqBase {
 };
 
 /* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
@@ -1984,6 +2022,7 @@ public:
     virtual ~CZSealBody();
     virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
+    virtual void UpdateAiMapLoc();                                          /* +0x48 */
     virtual void OnMissionStart();                                          /* +0x4C */
     virtual void OnMissionEnd();
     virtual void OnRecycleEntity(CEntity *e);                               /* +0x54 */
@@ -2007,6 +2046,8 @@ public:
      * primary pointer (Destroy's state set reads +0x90) */
     virtual CZBodyPart *GetRootPart() const;                                /* +0x88 */
     virtual void Virtual8C();                                               /* +0x8C (0x547350) */
+    /* the lens node deleted (OVL2 0x599820, seal_create.cpp's) */
+    void DeleteCameraEffectsNode();
     virtual void BodySetState(int state);                                   /* +0x90 */
 
     /* whether a player drives it (an inline the code shows: m_control tested, IsPlayer called) */
@@ -2091,6 +2132,7 @@ public:
     /* a crouch to pick a buddy up, its blend's timed call left to do it (OVL2 0x579A30, seal_body.cpp) */
     CZBodyAnimBlend *CrouchToPickupBuddy(CZSealBody *buddy);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
+    bool ExecuteAction_KnifeAttack(CZSealBody *victim);
     bool ExecuteAction_CQBAttack(CZSealBody *victim);
     /* a pickup taken up: a grenade thrown back, the others each their own way (SOCOM 1's; OVL2
      * 0x547570) */
@@ -2535,7 +2577,9 @@ public:
     /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
      * (seal.cpp; the name ours) */
     unsigned char m_258_0 : 1;   // 0x258
-    unsigned char _259[0x2bc - 0x259];
+    unsigned char _259[0x270 - 0x259];
+    /* (a member array of one: ~CZSealBody's __destroy_arr; the name ours) */
+    zdb::DiIntersect m_270[1];   // 0x270
     /* a point the wall's approach is measured from (0x5B4B40; the name ours) */
     CPnt3D m_2bc;   // 0x2bc
     unsigned char _2c8[0x2cc - 0x2c8];
@@ -2612,8 +2656,10 @@ public:
     unsigned char _424[0x428 - 0x424];
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
     unsigned char _42c[0x434 - 0x42c];
-    unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
-    unsigned char _438[0x514 - 0x438];
+    CAiPath m_snakePath;   // 0x434: (SOCOM 1's 0x384)
+    unsigned char _438[0x504 - 0x434 - sizeof(CAiPath)];
+    CPnt3D m_504;   // 0x504: where the SEAL last stood on a cell it can walk (UpdateAiMapLoc; the name ours)
+    unsigned char _510[0x514 - 0x510];
     /* (SOCOM 1's m_follow_params_are_current and m_saved_formation_dir_is_valid, 0x458/0x459:
      * InvalidateFollowParams clears them -- the kit lane, round 19) */
     unsigned char m_follow_params_are_current;   // 0x514
@@ -2632,7 +2678,9 @@ public:
      * SetCurZoomState starts and releases it; the name ours) */
     class CZAnim *m_zoom_anim;   // 0x53c
     class CCharacterType *m_charType;   // 0x540 (SOCOM 1's 0x468: TickStun reads its recovery factor)
-    unsigned char _544[0x58c - 0x544];
+    /* the other of the SEAL's two stats (the constructor resets both; RemoteRespawn keeps both across
+     * ReCreate; the name ours) */
+    CSealStats m_stats2;   // 0x544
     /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its
      * counters -- the CQB attack two of them -- and 0x545890 returns its address) */
     CSealStats m_stats;   // 0x58c
@@ -2831,8 +2879,9 @@ public:
     unsigned char _1120[0x1160 - 0x1120];
     /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
      * seal_weapon.cpp's view names it so too) */
-    CSequence m_wep_seq;   // 0x1160
-    unsigned char _1170[0x1190 - 0x1170];
+    CSeqMember m_wep_seq;   // 0x1160
+    CSeqMember m_1170;   // 0x1170 (a sequence ~CZSealBody clears; the name ours)
+    unsigned char _1180[0x1190 - 0x1180];
     /* the head's look, the eyes' and the lids' blink (SOCOM 1's m_look, m_eyelook, m_blink were
      * pointers at 0xf90-0xf98; SOCOM II's are held: GetLookDir returns this + 0x11A0, SetLookDir
      * hands this + 0x1190 on, the eyes and lids align to 0x1210 and 0x1280) */
@@ -2843,15 +2892,31 @@ public:
     /* the turn in place's timing (SOCOM 1's m_turnip, a CTurnInPlace * at 0xf9c right after m_blink:
      * SOCOM II holds it, as the looks; StandTurning starts it) */
     CTurnInPlace m_turnip;   // 0x12f0
-    unsigned char _1300[0x1314 - 0x1300];
+    CSeqMember m_1300;   // 0x1300 (a sequence ~CZSealBody clears; the name ours)
+    unsigned char _1310[0x1314 - 0x1310];
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
      * (the names ours) */
-    CPnt3D m_1314;   // 0x1314
-    float m_1320;   // 0x1320
-    float m_1324;   // 0x1324
+    struct CSealShock {
+        ~CSealShock()
+        {
+            m_1314 = CPnt3D::zero;
+            m_1320 = 0.0f;
+            m_1324 = 0.0f;
+        }
+
+        CPnt3D m_1314;   // 0x1314
+        float m_1320;   // 0x1320
+        float m_1324;   // 0x1324
+    } m_shock;   // 0x1314
     /* the SEAL's hold on a ladder: a flag, the ladder's index, a state (1 and 3 hold it) -- new in
      * SOCOM II (0x5B14E0 lets go of it; the names ours) */
     struct CSealClimb {
+        ~CSealClimb()
+        {
+            m_state = 0;
+            m_active = 0;
+        }
+
         unsigned char m_active;   // 0x0
         unsigned int m_ladder;   // 0x4: unsigned (the SEALs, round 34) -- passed to GetLadderByIndex's
                                  // int, the conversion puts its load after the list's (0x5B14E0, 0x5A2490)
@@ -2901,7 +2966,9 @@ public:
     zdb::CNode *m_curr_firept;   // 0x14bc
     unsigned char _14c0[0x14cc - 0x14c0];
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
-    unsigned char _14ce[0x14e0 - 0x14ce];   // (0x14E0 bytes: Create news 5344)
+    unsigned char _14ce[0x14d0 - 0x14ce];
+    int m_14d0;   // 0x14d0: the hits a dying SEAL has shown (WeaponHitAnim; the name ours)
+    unsigned char _14d4[0x14e0 - 0x14d4];   // (0x14E0 bytes: Create news 5344)
 };
 
 inline void *CSealCtrlAi::GetSelect()

@@ -3,11 +3,10 @@
  * (0x218D50-0x21932F), hudStartDefuseTimer (0x219330, the unit's last), On, Off and the pause test's
  * OnPauseTest (0x215180-0x215243), in SOCOM 1's order, HideTimer (0x213610, the unit's first) and
  * TimerProgressTick (0x213680, round 41) and SOCOM II's second bar after it, ReloadTimerTick
- * (0x213840), and SetGBarVal (0x213A60, round 57); still to write: 0x213E20-0x215170 (by SOCOM 1's
- * order ChangeReticule
- * -- UpdateGBarColor is not 0x213840), Init (0x2178C0), UpdateAccuracy (0x215250) and UpdateColor
- * (0x215C10); HudTick (0x216770: round 64) and DrawLaseTarget (0x217550: written in round 59, byte-exact
- * since round 61) are done, ThreatDirTick (0x216DE0: round 64) written and open. BitmapReticule is 0x12F0
+ * (0x213840), SetGBarVal (0x213A60, round 57); ChangeReticule (0x213E20, the block to 0x215170), Init
+ * (0x2178C0), UpdateAccuracy (0x215250) and ThreatDirTick (0x216DE0) byte-exact in round 66, HudTick
+ * (0x216770: round 64) and DrawLaseTarget (0x217550: round 59, byte-exact since round 61) done;
+ * UpdateColor (0x215C10) written and open. BitmapReticule is 0x12F0
  * bytes longer in SOCOM II, laid out whole
  * (SOCOM 1's names, SOCOM II's offsets; the reticle type is a byte now). Defined in reverse of their
  * image order (-inline deferred). */
@@ -19,9 +18,21 @@
 #include "hud_mpinfobox.h"
 
 class CHUD;
-class CEntity;
+class CEntity {
+public:
+    zdb::CNode *GetNode();
+};
 
 namespace zdb {
+/* a node's name (znode.h's) */
+class CNode {
+public:
+    char *GetName() { return m_name; }
+
+    unsigned char _0[0x90];
+    char *m_name;   // 0x90
+};
+
 /* a texture's size and a handle's texture (c2dbitmap.cpp's views) */
 class CTexture {
 public:
@@ -87,6 +98,18 @@ public:
     float m_retposy;   // 0x1c
     float m_retoffsetx;   // 0x20
     float m_retoffsety;   // 0x24
+    unsigned char _28[0x84c - 0x28];
+    float m_retsize;   // 0x84c: the reticle's spread (the seal's 0xE2C)
+    unsigned char _850[0x864 - 0x850];
+    float m_retblockedX;   // 0x864 (SOCOM 1's 0x848, kit.h)
+    float m_retblockedY;   // 0x868 (SOCOM 1's 0x84c)
+    /* whether the seal looks through binoculars or a scope (kit.h's, SOCOM 1's) */
+    bool IsUsingBinocs();
+    bool IsUsingScope();
+    int GetCurItemEnum() const;
+    class CZWeapon *GetCurItem() const;
+    bool CurItemHasAmmo();
+    float GetReticuleSettle();
 };
 
 /* what the seal hit along the reticle: the point, and what it hit at 0x1c (zdb's CDI, as far as the
@@ -107,6 +130,39 @@ public:
 /* the view the player looks through (zseal.h's: a signed byte) */
 enum ZOOMSTATE { ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1 };
 
+/* the seal's target list, body and anim stack, as far as the colour goes (their classes': SOCOM 1's names) */
+class CTarget {
+public:
+    unsigned char _0[0x2c];
+    unsigned int m_flags;   // 0x2c
+};
+class CZSealBody;
+class CTargetList {
+public:
+    CTarget *FindTarget(CEntity *e);
+    unsigned char _0;
+};
+class CZBodyPart;
+class CBody {
+public:
+    void PartInSpace(CZBodyPart *part, const CPnt3D *from, CPnt3D *out, CQuat *q) const;
+    unsigned char _0[4];
+};
+class CZBodyAnimBlend {
+public:
+    unsigned char _0[0x2b];
+    signed char m_2b;   // 0x2b
+};
+template <class T>
+class RTStack {
+public:
+    T *Top();
+
+    T **m_stack;   // 0x0
+    int m_size;   // 0x4
+    int m_top;   // 0x8
+};
+
 /* the seal the reticle is ticked for (zseal.h's CZSealBody, as far as this unit reads it) */
 class CZSealBody {
 public:
@@ -115,22 +171,53 @@ public:
     void SetCurZoomState(ZOOMSTATE state);
     CReticuleDi *GetReticuleDi();
     CZKit *GetKit() { return &m_kit; }
+    float GetThreatScale(unsigned int i) const { return m_threatscale[i]; }
+    CZSealBody *GetReticuleSeal();
+    void GetFP(CPnt3D &fp);
+    /* its name, else its node's (SOCOM 1's CEntity::GetName) */
+    const char *GetName()
+    {
+        const char *n = m_name;
 
-    unsigned char _0[0x1c];
+        if (n)
+            return n;
+        return ((CEntity *)this)->GetNode()->GetName();
+    }
+    /* the barrel's part (the entity's vtable slot +0x88: this view has no table) */
+    CZBodyPart *GetBarrelPart() { return (*(CZBodyPart *(**)(CZSealBody *))(*(char **)this + 0x88))(this); }
+
+    unsigned char _0[0x14];
+    const char *m_name;   // 0x14
+    unsigned char _18[0x1c - 0x18];
     CPnt3D m_posW;   // 0x1c
-    unsigned char _28[0xc0 - 0x28];
+    unsigned char _28[0x50 - 0x28];
+    CQuat m_rot;   // 0x50
+    unsigned char _60[0xc0 - 0x60];
     CSealCtrl *m_ctrl;   // 0xc0
-    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _c4[0xc8 - 0xc4];
+    unsigned int m_flagsC8;   // 0xc8
+    unsigned char _cc[0xd0 - 0xcc];
+    CTargetList m_targets;   // 0xd0
+    unsigned char _d1[0xe1 - 0xd1];
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x200 - 0xe2];
+    unsigned char _e2[0x170 - 0xe2];
+    CBody m_body;   // 0x170
+    short m_174;   // 0x174: 9 hides the error marker (SOCOM 1's byte at 0x11D)
+    unsigned char _176[0x1c0 - 0x176];
+    RTStack<CZBodyAnimBlend> m_animStack;   // 0x1c0
+    unsigned char _1cc[0x200 - 0x1cc];
     ZOOMSTATE m_zoomstate;   // 0x200
-    unsigned char _201[0x5e0 - 0x201];
-    CZKit m_kit;   // 0x5e0
-    unsigned char _608[0xe2c - 0x608];
-    float m_retsize;   // 0xe2c: the reticle's spread
-    unsigned char _e30[0xeb8 - 0xe30];
+    unsigned char _201[0x208 - 0x201];
+    float m_208;   // 0x208: how far the reticle's point is, squared
+    unsigned char _20c[0x258 - 0x20c];
+    unsigned char m_258_0 : 1;   // 0x258 bit 0 (zseal.h's)
+    unsigned char _259[0x3c0 - 0x259];
+    CPnt3D m_target3c0;   // 0x3c0
+    unsigned char _3cc[0x5e0 - 0x3cc];
+    CZKit m_kit;   // 0x5e0, to 0xe4c
+    unsigned char _e4c[0xeb8 - 0xe4c];
     CEntity *m_eb8;   // 0xeb8: the turret it works
     unsigned char _ebc[0xefc - 0xebc];
     /* where it was hit from, and each of the eight arrows' strength and angle (SOCOM 1's DWARF: E, N,
@@ -138,19 +225,46 @@ public:
     unsigned char m_threatdir[4];   // 0xefc
     float m_threatscale[8];   // 0xf00
     float m_threatangle[8];   // 0xf20
+    unsigned char _f40[0xfc8 - 0xf40];
+    int m_persona;   // 0xfc8
 };
+
+/* the asset manager's library list (node_world.h's) */
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
+
+/* the HUD's lower block's top (hud_main.cpp's layout float, 364) and a texture's palette (0x354A90, ztex's) */
+extern float g_fHudBottomBlockY;
+extern "C" void func_00354A90(zdb::CTexture *tex, int r, int g, int b);
+extern "C" int rand();
+extern "C" void FlushCache(int op);
+extern "C" int sprintf(char *buf, const char *fmt, ...);
 
 /* the HUD (hud_main.cpp's, theHUD 0x408E58): whether it shows */
 class CHUD {
 public:
+    static CPnt4D m_hud_textcolor;
     bool IsOn();
     static CZSealBody *GetHUDOwner();
     void SetRangeText(const char *text);
+    void ShowRangeText();
+    void HideRangeText();
+    void SetRangeTextPos(float x, float y);
 
     unsigned char _0[0xb0];
     signed char m_hudrettype;   // 0xb0
     bool m_usehudret;   // 0xb1
     bool m_hudretchanged;   // 0xb2
+    unsigned char _b3[0x17b64 - 0xb3];
+    unsigned char m_17b64;   // 0x17b64
 };
 
 extern CHUD *theHUD;
@@ -187,6 +301,7 @@ public:
     void UpdateAccuracy();
     void UpdateColor();
     void ChangeReticule(int type);
+    void Init(zdb::CWorld *world, C2DFont *font);
 
     /* SOCOM 1's DWARF names at SOCOM II's offsets (read off the constructor 0x218DE0 and the
      * destructor 0x219090); SOCOM II's own members named by offset */
@@ -280,6 +395,9 @@ public:
  * CZWeapon::RegisterTimer(float *, float, bool), 0x3D0060, the same five stores) */
 class CZWeapon {
 public:
+    float GetArmingDistance();
+    unsigned char _0[0x7c];
+    unsigned char m_item;   // 0x7c
     static void RegisterTimer(float *pCurval, float maxval, bool bIncr);
     static bool TimerCleared();
     static bool TimerRegistered();
@@ -354,6 +472,565 @@ BitmapReticule::~BitmapReticule()
     binocs_tex = 0;
 }
 
+/* two points zeroed from one copy of the zero (a local two inlines down: the frame holds it below the operators') */
+static inline void ZeroTwoDeep(CPnt3D &a, CPnt3D &b)
+{
+    CPnt3D z(CPnt3D::zero);
+    const CPnt3D *p = &z;
+    CPnt3D *pa = &a;
+    CPnt3D *pb = &b;
+
+    *pa = *p;
+    *pb = *p;
+}
+
+static inline void ZeroTwoMid(CPnt3D &a, CPnt3D &b)
+{
+    ZeroTwoDeep(a, b);
+}
+
+static inline void ZeroTwo(CPnt3D &a, CPnt3D &b)
+{
+    ZeroTwoMid(a, b);
+}
+
+/* a sum one inline down (its frame slot after the differences') */
+static inline CPnt3D AddPos(const CPnt3D &a, const CPnt3D &b)
+{
+    return a + b;
+}
+
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_bNetwork;   // 0x1
+};
+extern CZNetwork theNetwork;
+
+/* an ally's name: blank where the HUD hides names */
+static inline const char *MateName(CZSealBody *seal)
+{
+    const char *n;
+
+    if (theHUD->m_17b64)
+        n = " ";
+    else
+        n = seal->m_name;
+    return n;
+}
+
+static inline const char *AllyName(CZSealBody *seal)
+{
+    const char *n;
+
+    if (theNetwork.m_bNetwork)
+        n = MateName(seal);
+    else
+        n = " ";
+    return n;
+}
+
+static inline float ArmDist(CZWeapon *w, float d)
+{
+    float r;
+
+    if (w)
+        r = w->GetArmingDistance();
+    else
+        r = d;
+    return r;
+}
+
+/* the reticle's blocked and foe colours (.data, in threes: 130, 130, 130 and 200, 200, 24; the names ours) */
+float s_colorBlockedR = 130.0f;
+float s_colorBlockedG = 130.0f;
+float s_colorBlockedB = 130.0f;
+float s_colorFoeR = 200.0f;
+float s_colorFoeG = 200.0f;
+float s_colorFoeB = 24.0f;
+
+/* the seal's and the world's views UpdateColor needs: what the reticle hit, its owner (zseal.h's) */
+class CDiTarget {
+public:
+    virtual ~CDiTarget();
+    virtual void Slot0C();
+    virtual bool CanLock(float range);   // +0x10
+};
+class CDiHit {
+public:
+    /* what a hit belongs to, called on a possibly-null hit (SOCOM 1's a member's inline) */
+    CDiTarget *GetOwner()
+    {
+        CDiTarget *o = 0;
+
+        if (this)
+            o = m_owner;
+        return o;
+    }
+
+    unsigned char _0[0x94];
+    CDiTarget *m_owner;   // 0x94
+};
+class CNet111 {
+public:
+    unsigned char GetMode() const { return this ? m_111 : 0; }
+
+    unsigned char _0[0x111];
+    signed char m_111;   // 0x111
+};
+extern CNet111 *data_00437CE8;
+extern "C" float func_005B82D0(CZKit *kit);
+extern "C" bool func_002C30B0(CZSealBody *seal);
+extern "C" bool func_003C5CA0(CZWeapon *w);
+extern "C" bool func_003C5C70(CZWeapon *w);
+extern "C" bool func_005A78D0(CZSealBody *seal);
+class CZPersonaState {
+public:
+    static const char *GetPersonaClanTag(int client);
+};
+
+/* the reticle's colours and the name under it (SOCOM 1's UpdateColor, on SOCOM II's friend tests, ammo and health
+ * bar): grey when blocked or the weapon can't reach, the no-ammo and ready colours; the seal it is on named in red,
+ * green or blue by side, with the clan tag and an ally's health */
+/* OPEN, 28 structural differences and 9 instructions differing in registers alone (0xB40 against
+ * 0xB50; the GPRs and FPRs are right now: `scale` assigned, named and declared ahead of r, g, b, for
+ * a `?:` value is a temporary numbered above them, coloured first and taking f20). What differs:
+ * (1) three nops short, all between an FPR def ending a block and the label it falls to: `madd.s;
+ * nop` after the muzzle's distance, `mov.s f0,f23; nop` in the arming distance's else, `lwc1 f20; nop`
+ * ahead of Top -- and `b; nop` where mine steals the `mul.s` at the arm's join. Unused labels, gotos
+ * to labels there and an inline's early return leave the size at 0xB40. (2) The frame: the zero copy
+ * is the last object created (288, op+'s r 304), mine has them swapped whatever the depth of either's
+ * wrappers (depth 1-4 tried); and the target copies it by block through a2 (`ld/lwc1 ...(a2)` twice),
+ * mine reads it as scalars (a reference and a pointer copy alike; a by-value parameter as well).
+ * (3) The last arm's two constants live together in the target (`lui v1; lui v0; mtc1 v1; mtc1 v0`). */
+void BitmapReticule::UpdateColor()
+{
+    CZSealBody *seal = CHUD::GetHUDOwner();
+
+    if (seal && seal->m_socom2_e1_4) {
+    float scale;
+    float r, g, b;
+    float RetSize = m_retsize;
+    bool grenade = false;
+    float x = seal->m_kit.m_retblockedX;
+    float y = seal->m_kit.m_retblockedY;
+    bool noammo = false;
+
+    seal->m_208 = 100000.0f;
+    if (seal->m_kit.m_retblocked && (!(x <= RetSize) || !(y <= RetSize))) {
+        r = s_colorBlockedR;
+        g = s_colorBlockedG;
+        b = s_colorBlockedB;
+        m_enemy_name.SetString("", false);
+        m_enemy_name.Off();
+        m_healthbar.Off();
+    } else {
+        bool isAlly;
+        CZSealBody *pRetSeal;
+        bool isMate;
+        CReticuleDi *di;
+        CZKit *kit;
+
+        pRetSeal = seal->GetReticuleSeal();
+        kit = &seal->m_kit;
+
+        CZWeapon *item = kit ? kit->GetCurItem() : 0;
+        bool show = false;
+
+        isAlly = false;
+        isMate = false;
+        di = seal->GetReticuleDi();
+        if (di)
+            *di - seal->m_posW;
+        CDiTarget *owner = di ? ((CDiHit *)di->m_hit)->GetOwner() : 0;
+
+        if (!owner || !owner->CanLock(kit ? func_005B82D0(kit) : 0.0f))
+            di = 0;
+        float dist = 100000.0f;
+
+        if (di) {
+            CPnt3D muzzle;
+            CPnt3D tip, q;
+
+            ZeroTwo(tip, q);
+            seal->m_body.PartInSpace(seal->GetBarrelPart(), &q, &tip, 0);
+            seal->m_rot.Apply(&tip, &tip, 1);
+            muzzle = AddPos(tip, seal->m_posW);
+
+            CPnt3D d = *di - muzzle;
+
+            dist = d.x * d.x + d.y * d.y + d.z * d.z;
+        }
+        seal->m_208 = dist;
+        if (!kit->CurItemHasAmmo()) {
+            noammo = true;
+            r = s_colorNoAmmo.x;
+            g = s_colorNoAmmo.y;
+            b = s_colorNoAmmo.z;
+        }
+        if (item && item->m_item == 0x97 && !noammo) {
+            bool ready = seal->m_208 < 396.0f && seal->m_kit.GetReticuleSettle() == 0.0f;
+
+            if (ready) {
+                r = s_colorReady.x;
+                g = s_colorReady.y;
+                b = s_colorReady.z;
+            } else {
+                r = s_colorFoeR;
+                g = s_colorFoeG;
+                b = s_colorFoeB;
+            }
+            grenade = true;
+        }
+        const char *display_name = 0;
+
+        if (!grenade && !noammo) {
+            if (pRetSeal && pRetSeal->m_socom2_e1_4) {
+                CPnt3D dxz;
+
+                pRetSeal->m_posW.SubXZ(&seal->m_posW, &dxz);
+                float d2 = dxz.x * dxz.x + dxz.z * dxz.z;
+                float limit = m_rettype != 5 ? 102400.0f : 250000.0f;
+
+                if (!(d2 <= limit))
+                    show = false;
+                else {
+                    unsigned int flags = pRetSeal->m_flagsC8;
+
+                    isAlly = (flags & seal->m_flagsC8) != 0;
+                    if (theNetwork.m_bNetwork) {
+                        if (flags & 0x20000) {
+                            isMate = true;
+                            isAlly = isMate;
+                        }
+                    } else if ((flags & 0x80000000) && !(flags & 2) && !(flags & 0x40000)) {
+                        isMate = true;
+                        isAlly = isMate;
+                    }
+                    if (isAlly)
+                        show = true;
+                    else {
+                        CTarget *target = seal->m_targets.FindTarget((CEntity *)pRetSeal);
+
+                        show = target ? (target->m_flags & 0x200) != 0 : false;
+                    }
+                }
+            }
+            if (!show) {
+                r = s_colorFoeR;
+                g = s_colorFoeG;
+                b = s_colorFoeB;
+                m_enemy_name.Off();
+                m_healthbar.Off();
+            } else if (isMate) {
+                if (data_00437CE8->GetMode() == 3 && func_002C30B0(seal)) {
+                    r = s_colorFoeR;
+                    g = 24.0f;
+                    b = 44.0f;
+                } else {
+                    r = 24.0f;
+                    g = s_colorFoeG;
+                    b = 44.0f;
+                }
+                display_name = pRetSeal->GetName();
+            } else if (isAlly) {
+                g = s_colorFoeG;
+                r = 24.0f;
+                b = 44.0f;
+                display_name = AllyName(pRetSeal);
+            } else {
+                r = s_colorFoeR;
+                g = 24.0f;
+                b = 44.0f;
+                display_name = pRetSeal->m_name;
+            }
+        }
+        if (display_name) {
+            const char *tag = pRetSeal ? CZPersonaState::GetPersonaClanTag(pRetSeal->m_persona) : 0;
+            char text[64];
+
+            if (tag && strlen(tag) > 1 && strcmp(display_name, " "))
+                sprintf(text, "[%s] %s", tag, display_name);
+            else
+                strcpy(text, display_name);
+            m_enemy_name.SetString(text, true);
+
+            if (m_rettype == 5)
+                scale = 0.5f;
+            else
+                scale = 1.0f;
+
+            m_enemy_name.SetPos((int)(m_posx + (scale * m_rettexsizex) / 2.0f), (int)(m_posy - (scale * m_rettexsizey) / 2.0f));
+            m_enemy_name.On();
+            if (isMate || isAlly) {
+                m_healthbar.SetPos(m_posx + (scale * m_rettexsizex) / 2.0f, (m_posy - (scale * m_rettexsizey) / 2.0f) - 15.0f);
+                m_healthbar.Update(pRetSeal, true);
+                m_healthbar.On();
+            }
+        } else {
+            m_enemy_name.SetString("", false);
+            m_enemy_name.Off();
+            m_healthbar.Off();
+        }
+    }
+    CZKit *curkit = &seal->m_kit;
+    CZWeapon *cur = curkit ? curkit->GetCurItem() : 0;
+
+    if (cur && (func_003C5CA0(cur) || func_003C5C70(cur))) {
+        CPnt3D target(seal->m_target3c0);
+        CPnt3D fp = target;
+
+        seal->GetFP(fp);
+
+        CPnt3D v = target - fp;
+        float d2 = v.x * v.x + v.y * v.y + v.z * v.z;
+        float arm = ArmDist(cur, d2);
+
+        if (d2 < arm * arm) {
+            r = s_colorBlockedR;
+            g = s_colorBlockedG;
+            b = s_colorBlockedB;
+        }
+    }
+    CZBodyAnimBlend *blend = seal->m_animStack.Top();
+
+    if (func_005A78D0(seal) || blend->m_2b == 5) {
+        r = s_colorBlockedR;
+        g = s_colorBlockedG;
+        b = s_colorBlockedB;
+    }
+    if (grenade) {
+        m_grenadeactive[0].SetColor(r, g, b);
+        m_grenadeactive[1].SetColor(r, g, b);
+        m_grenadeback[0].SetColor(r, g, b);
+        m_grenadeback[1].SetColor(r, g, b);
+    } else {
+        m_floatingreticule[0].SetColor(r, g, b);
+        m_floatingreticule[1].SetColor(r, g, b);
+        m_floatingreticule[2].SetColor(r, g, b);
+        m_floatingreticule[3].SetColor(r, g, b);
+        if (m_rettype == 3) {
+            m_scopepoly[0].SetColor(r, g, b);
+            m_scopepoly[1].SetColor(r, g, b);
+            m_scopepoly[2].SetColor(r, g, b);
+            m_scopepoly[3].SetColor(r, g, b);
+        } else {
+            m_scopepoly[0].SetColor(128.0f, 128.0f, 128.0f);
+            m_scopepoly[1].SetColor(128.0f, 128.0f, 128.0f);
+            m_scopepoly[2].SetColor(128.0f, 128.0f, 128.0f);
+            m_scopepoly[3].SetColor(128.0f, 128.0f, 128.0f);
+        }
+    }
+}
+}
+
+/* the error marker and the floating reticle's four pieces placed round the point, and the threat
+ * arrows round them (SOCOM 1's; a body of its order with SOCOM II's fade on the marker, its third kind of
+ * reticle and its zoom's half size) */
+void BitmapReticule::UpdateAccuracy()
+{
+    static float PT_NORTH;
+    static float PT_EAST;
+    static float PT_SOUTH;
+    static float PT_WEST;
+    static float ne_x = 0.9f;
+    static float ne_y = 0.6f;
+    static float se_x = 0.65f;
+    static float se_y = 0.5f;
+    static float nw_x = 0.9f;
+    static float nw_y = 0.6f;
+    static float sw_x = 0.65f;
+    static float sw_y = 0.52f;
+
+    /* a reference: the base is the add's first operand (an indexed read adds it last) */
+    C2DBitmapPoly &ret = m_floatingreticule[m_rettype];
+
+    if (!ret.m_texture)
+        return;
+    CZSealBody *seal = CHUD::GetHUDOwner();
+    CZKit *kit = seal->GetKit();
+
+    if (!seal)
+        return;
+    float RetSize;
+
+    if (seal->m_zoomstate == ZOOMSTATE_3RDPERSON)
+        RetSize = 0.5f * m_retsize;
+    else
+        RetSize = m_retsize;
+    float rpos_offsetx, dpos_offsety, lpos_offsetx, upos_offsety, posx_ex, posy_ex;
+    float x = kit->m_retblockedX;
+    float y = kit->m_retblockedY;
+
+    if ((kit->m_retblocked || !seal->m_258_0) && seal->m_174 != 9 && seal->m_socom2_e1_4 && !kit->IsUsingBinocs()
+        && (!(x <= RetSize) || !(y <= RetSize))) {
+        if (kit->IsUsingScope()) {
+            float d = x * x + y * y;
+
+            if (!(d <= 40012.8f)) {
+                float k = 200.032f / sqrtf(d);
+
+                x = x * k;
+                y = y * k;
+            }
+        }
+        m_miss_x.Load(x + m_posx - (int)m_accuracyxtex->m_texture->m_width / 2.0f,
+                      y + m_posy - (int)m_accuracyxtex->m_texture->m_height / 2.0f, m_accuracyxtex);
+        m_miss_x.On();
+        m_miss_x.m_fade_dx = 32.0f;
+        if (m_miss_x.GetTrans() < 128.0f) {
+            float fade = m_miss_x.m_fade_dx;
+            float t = m_miss_x.GetTrans();
+
+            m_miss_x.SetTrans(t + fade);
+        }
+    } else {
+        m_miss_x.m_fade_dx = -32.0f;
+
+        float fade = m_miss_x.m_fade_dx;
+        float t = m_miss_x.GetTrans();
+
+        m_miss_x.SetTrans(t + fade);
+        if (m_miss_x.GetTrans() <= 0.0f) {
+            m_miss_x.Off();
+            m_miss_x.SetTrans(0.0f);
+        }
+    }
+    rpos_offsetx = m_posx + RetSize;
+    dpos_offsety = m_posy + RetSize;
+    lpos_offsetx = m_posx - RetSize;
+    upos_offsety = m_posy - RetSize;
+    /* held in a local: a literal comes first in the add (add.s f21,f0,f2 for the target's f2,f0) */
+    float one = 1.0f;
+
+    posx_ex = m_posx + one;
+    posy_ex = m_posy - one;
+    if (m_rettype == 9) {
+        m_floatingreticule[0].SetPos(rpos_offsetx, posy_ex - m_rettexsizey, rpos_offsetx, posy_ex,
+                                     rpos_offsetx + m_rettexsizex, posy_ex, rpos_offsetx + m_rettexsizex,
+                                     posy_ex - m_rettexsizey);
+        m_floatingreticule[0].FlipImage_Yaxis();
+        m_floatingreticule[1].SetPos(posx_ex - m_rettexsizex, upos_offsety - m_rettexsizey, posx_ex - m_rettexsizex,
+                                     upos_offsety, posx_ex, upos_offsety, posx_ex, upos_offsety - m_rettexsizey);
+        m_floatingreticule[2].SetPos(lpos_offsetx - m_rettexsizex, posy_ex, lpos_offsetx - m_rettexsizex,
+                                     posy_ex + m_rettexsizey, lpos_offsetx, posy_ex + m_rettexsizey, lpos_offsetx,
+                                     posy_ex);
+        m_floatingreticule[2].FlipImage_Xaxis();
+        m_floatingreticule[3].SetPos(posx_ex, dpos_offsety, posx_ex, dpos_offsety + m_rettexsizey,
+                                     posx_ex + m_rettexsizex, dpos_offsety + m_rettexsizey,
+                                     posx_ex + m_rettexsizex, dpos_offsety);
+        m_floatingreticule[3].FlipImage_XYaxis();
+    } else if (m_rettype == 2 || m_rettype == 3) {
+        if (m_rettype == 3) {
+            m_rettexsizex *= 0.7f;
+            m_rettexsizey *= 0.7f;
+        }
+        m_floatingreticule[0].SetPos(rpos_offsetx, upos_offsety - m_rettexsizey, rpos_offsetx, upos_offsety,
+                                     rpos_offsetx + m_rettexsizex, upos_offsety, rpos_offsetx + m_rettexsizex,
+                                     upos_offsety - m_rettexsizey);
+        m_floatingreticule[0].FlipImage_Yaxis();
+        m_floatingreticule[1].SetPos(lpos_offsetx - m_rettexsizex, upos_offsety - m_rettexsizey,
+                                     lpos_offsetx - m_rettexsizex, upos_offsety, lpos_offsetx, upos_offsety,
+                                     lpos_offsetx, upos_offsety - m_rettexsizey);
+        m_floatingreticule[2].SetPos(lpos_offsetx - m_rettexsizex, dpos_offsety, lpos_offsetx - m_rettexsizex,
+                                     dpos_offsety + m_rettexsizey, lpos_offsetx, dpos_offsety + m_rettexsizey,
+                                     lpos_offsetx, dpos_offsety);
+        m_floatingreticule[2].FlipImage_Xaxis();
+        m_floatingreticule[3].SetPos(rpos_offsetx, dpos_offsety, rpos_offsetx, dpos_offsety + m_rettexsizey,
+                                     rpos_offsetx + m_rettexsizex, dpos_offsety + m_rettexsizey,
+                                     rpos_offsetx + m_rettexsizex, dpos_offsety);
+        m_floatingreticule[3].FlipImage_XYaxis();
+        if (m_rettype == 3) {
+            m_rettexsizex /= 0.7f;
+            m_rettexsizey /= 0.7f;
+        }
+    } else {
+        m_floatingreticule[0].SetPos(rpos_offsetx, posy_ex, rpos_offsetx, posy_ex + m_rettexsizey,
+                                     rpos_offsetx + m_rettexsizex, posy_ex + m_rettexsizey,
+                                     rpos_offsetx + m_rettexsizex, posy_ex);
+        m_floatingreticule[0].FlipImage_XYaxis();
+        m_floatingreticule[1].SetPos(posx_ex - m_rettexsizex, upos_offsety - m_rettexsizey, posx_ex - m_rettexsizex,
+                                     upos_offsety, posx_ex, upos_offsety, posx_ex, upos_offsety - m_rettexsizey);
+        m_floatingreticule[2].SetPos(lpos_offsetx - m_rettexsizex, posy_ex, lpos_offsetx - m_rettexsizex,
+                                     posy_ex + m_rettexsizey, lpos_offsetx, posy_ex + m_rettexsizey, lpos_offsetx,
+                                     posy_ex);
+        m_floatingreticule[2].FlipImage_XYaxis();
+        m_floatingreticule[2].FlipImage_Xaxis();
+        m_floatingreticule[3].SetPos(posx_ex - m_rettexsizex, dpos_offsety, posx_ex - m_rettexsizex,
+                                     dpos_offsety + m_rettexsizey, posx_ex, dpos_offsety + m_rettexsizey, posx_ex,
+                                     dpos_offsety);
+        m_floatingreticule[3].FlipImage_Xaxis();
+    }
+    PNT2D center_pt;
+
+    center_pt.x = m_rettexsizex2;
+    center_pt.x += 15.0f;
+    PT_EAST = center_pt.x;
+    center_pt.x += rpos_offsetx;
+    center_pt.y = posy_ex;
+    m_threatdirpoly[0].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(0));
+    m_threatdirpoly[0].FlipImage_XYaxis();
+    center_pt.x = posx_ex;
+    center_pt.y = -m_rettexsizey2;
+    center_pt.y -= 15.0f;
+    PT_NORTH = center_pt.y;
+    center_pt.y += upos_offsety;
+    m_threatdirpoly[2].SetCenterPos(center_pt, m_threattexsizex * seal->GetThreatScale(2), m_threattexsizey);
+    center_pt.x = -m_rettexsizex2;
+    center_pt.x -= 15.0f;
+    PT_WEST = center_pt.x;
+    center_pt.x += lpos_offsetx;
+    center_pt.y = posy_ex;
+    m_threatdirpoly[4].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(4));
+    m_threatdirpoly[4].FlipImage_XYaxis();
+    m_threatdirpoly[4].FlipImage_Xaxis();
+    center_pt.x = posx_ex;
+    center_pt.y = m_rettexsizey2;
+    center_pt.y += 15.0f;
+    PT_SOUTH = center_pt.y;
+    center_pt.y += dpos_offsety;
+    m_threatdirpoly[6].SetCenterPos(center_pt, m_threattexsizex * seal->GetThreatScale(6), m_threattexsizey);
+    m_threatdirpoly[6].FlipImage_Xaxis();
+    if (m_threatdirpoly[1].GetTrans() > 0.0f) {
+        center_pt.x = PT_EAST * ne_x;
+        center_pt.x += rpos_offsetx;
+        center_pt.y = PT_NORTH * ne_y;
+        center_pt.y += upos_offsety;
+        m_threatdirpoly[1].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(1));
+        m_threatdirpoly[1].FlipImage_XYaxis();
+        m_threatdirpoly[1].Rotate_Zaxis(-45.0f);
+    }
+    if (m_threatdirpoly[7].GetTrans() > 0.0f) {
+        center_pt.x = PT_EAST * se_x;
+        center_pt.x += rpos_offsetx;
+        center_pt.y = PT_SOUTH * se_y;
+        center_pt.y += dpos_offsety;
+        m_threatdirpoly[7].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(7));
+        m_threatdirpoly[7].FlipImage_XYaxis();
+        m_threatdirpoly[7].Rotate_Zaxis(45.0f);
+    }
+    if (m_threatdirpoly[3].GetTrans() > 0.0f) {
+        center_pt.x = PT_WEST * nw_x;
+        center_pt.x += lpos_offsetx;
+        center_pt.y = PT_NORTH * nw_y;
+        center_pt.y += upos_offsety;
+        m_threatdirpoly[3].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(3));
+        m_threatdirpoly[3].FlipImage_XYaxis();
+        m_threatdirpoly[3].FlipImage_Xaxis();
+        m_threatdirpoly[3].Rotate_Zaxis(45.0f);
+    }
+    if (m_threatdirpoly[5].GetTrans() > 0.0f) {
+        center_pt.x = PT_WEST * sw_x;
+        center_pt.x += lpos_offsetx;
+        center_pt.y = PT_SOUTH * sw_y;
+        center_pt.y += dpos_offsety;
+        m_threatdirpoly[5].SetCenterPos(center_pt, m_threattexsizex, m_threattexsizey * seal->GetThreatScale(5));
+        m_threatdirpoly[5].FlipImage_XYaxis();
+        m_threatdirpoly[5].FlipImage_Xaxis();
+        m_threatdirpoly[5].Rotate_Zaxis(-45.0f);
+    }
+}
+
 /* the reticle on: itself and its three groups (SOCOM 1's On, which only turned itself on) */
 void BitmapReticule::On()
 {
@@ -389,6 +1066,180 @@ void BitmapReticule::UnInit()
     m_lase_update.ClearAndWipe();
     m_detonation_update.ClearAndWipe();
     m_enemy_name.ClearAndWipe();
+}
+
+/* the reticle's pieces made (SOCOM 1's Init, on SOCOM II's groups, scope lenses, noise and second bar): the three
+ * groups under the reticle, the texts; the textures; each poly placed and listed under its group; the first kind */
+void BitmapReticule::Init(zdb::CWorld *world, C2DFont *font)
+{
+    push_back(&m_group0);
+    push_back(&m_group1);
+    push_back(&m_group2);
+    if (font) {
+        sprintf(m_lase_str, "NA");
+        m_lase_update.Load(1.0f, m_lase_str, font, 10.0f, 52.0f + g_fHudBottomBlockY, true);
+        m_lase_update.Off();
+        m_group0.push_back(&m_lase_update);
+        sprintf(m_detonation_str, "NA");
+        m_detonation_update.Load(1.0f, m_detonation_str, font, 466.0f, g_fHudBottomBlockY - 8.0f, true);
+        m_detonation_update.Off();
+        m_group0.push_back(&m_detonation_update);
+        m_enemy_name.Load(0.7f, " ", font, 0.0f, 0.0f, true);
+        m_enemy_name.Off();
+        m_group0.push_back(&m_enemy_name);
+        m_healthbar.SetSize(60.0f, 5.0f);
+        m_healthbar.SetPos(-100.0f, -100.0f);
+        m_group0.push_back(&m_healthbar);
+    }
+    m_reticuleTex[0] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_sidearm_01.tif");
+    m_reticuleTex[1] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_rifle_01.tif");
+    m_reticuleTex[2] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_shotgun_01.tif");
+    m_reticuleTex[3] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_rocket_01.tif");
+    m_reticuleTex[4] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_grenade_02.tif");
+    m_reticuleTex[5] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_scope_02.tif");
+    m_reticuleTex[6] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_scope_01.tif");
+    m_reticuleTex[7] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_binocs.tif");
+    m_reticuleTex[8] = zdb::CAssetMgr::m_assets.GetTexHandle("nvg_part.tif");
+    m_reticuleTex[9] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_sidearm_01.tif");
+    m_floatingreticuleTex[0] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_sidearm_02.tif");
+    m_floatingreticuleTex[1] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_rifle_02.tif");
+    m_floatingreticuleTex[2] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_shotgun_02.tif");
+    m_floatingreticuleTex[3] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_rocket_02.tif");
+    m_floatingreticuleTex[4] = 0;
+    m_floatingreticuleTex[5] = 0;
+    m_floatingreticuleTex[6] = 0;
+    m_floatingreticuleTex[7] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_binocs2.tif");
+    m_floatingreticuleTex[8] = 0;
+    m_floatingreticuleTex[9] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_laser_designator.tif");
+    binocs_tex = zdb::CAssetMgr::m_assets.GetTexHandle("ret_binocs2.tif");
+    m_threatdirTex = zdb::CAssetMgr::m_assets.GetTexHandle("ret_threat.tif");
+    m_grenadebartex_full = zdb::CAssetMgr::m_assets.GetTexHandle("ret_grenade_01.tif");
+    m_accuracyxtex = zdb::CAssetMgr::m_assets.GetTexHandle("ret_accuracy.tif");
+    m_miss_x.Load(50.0f, 50.0f, m_accuracyxtex);
+    m_miss_x.Off();
+    m_miss_x.SetTrans(0.0f);
+    m_scopepoly[0].Load(0.0f, -96.0f, 0.0f, 224.0f, 320.0f, 224.0f, 320.0f, -96.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+    m_scopepoly[0].SetTrans(128.0f);
+    m_scopepoly[1].Load(320.0f, -96.0f, 320.0f, 224.0f, 640.0f, 224.0f, 640.0f, -96.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+    m_scopepoly[1].SetTrans(128.0f);
+    m_scopepoly[2].Load(0.0f, 224.0f, 0.0f, 544.0f, 320.0f, 544.0f, 320.0f, 224.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+    m_scopepoly[2].SetTrans(128.0f);
+    m_scopepoly[3].SetTrans(128.0f);
+    m_scopepoly[3].Load(320.0f, 224.0f, 320.0f, 544.0f, 640.0f, 544.0f, 640.0f, 224.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+    m_scopepoly[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+    m_scopepoly[1].SetUV(0.99f, 0.01f, 0.99f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+    m_scopepoly[2].SetUV(0.01f, 0.99f, 0.01f, 0.01f, 0.99f, 0.01f, 0.99f, 0.99f);
+    m_scopepoly[3].SetUV(0.99f, 0.99f, 0.99f, 0.01f, 0.01f, 0.01f, 0.01f, 0.99f);
+    m_socom2_11f0[0].Load(0.0f, -96.0f, 0.0f, 224.0f, 320.0f, 224.0f, 320.0f, -96.0f, m_reticuleTex[6] ? m_reticuleTex[6]->m_texture : 0);
+    m_socom2_11f0[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+    m_socom2_11f0[0].SetTrans(128.0f);
+    m_socom2_11f0[1].Load(320.0f, -96.0f, 320.0f, 224.0f, 640.0f, 224.0f, 640.0f, -96.0f, m_reticuleTex[6] ? m_reticuleTex[6]->m_texture : 0);
+    m_socom2_11f0[1].SetTrans(128.0f);
+    m_socom2_11f0[2].Load(0.0f, 224.0f, 0.0f, 544.0f, 320.0f, 544.0f, 320.0f, 224.0f, m_reticuleTex[6] ? m_reticuleTex[6]->m_texture : 0);
+    m_socom2_11f0[2].SetTrans(128.0f);
+    m_socom2_11f0[3].SetTrans(128.0f);
+    m_socom2_11f0[3].Load(320.0f, 224.0f, 320.0f, 544.0f, 640.0f, 544.0f, 640.0f, 224.0f, m_reticuleTex[6] ? m_reticuleTex[6]->m_texture : 0);
+    m_socom2_11f0[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+    m_socom2_11f0[1].SetUV(0.99f, 0.01f, 0.99f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+    m_socom2_11f0[2].SetUV(0.01f, 0.99f, 0.01f, 0.01f, 0.99f, 0.01f, 0.99f, 0.99f);
+    m_socom2_11f0[3].SetUV(0.99f, 0.99f, 0.99f, 0.01f, 0.01f, 0.01f, 0.01f, 0.99f);
+    m_group0.push_back(&m_bitmap);
+    m_group0.push_back(&m_grenadebitmap);
+    m_group0.push_back(&m_grenadebitmap2);
+    m_group0.push_back(&m_grenadeactive[0]);
+    m_group0.push_back(&m_grenadeactive[1]);
+    m_group0.push_back(&m_grenadeback[0]);
+    m_group0.push_back(&m_grenadeback[1]);
+    m_group0.push_back(&m_miss_x);
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        m_group1.push_back(&m_scopepoly[i]);
+        m_group1.push_back(&m_socom2_11f0[i]);
+        m_floatingreticule[i].SetTrans(100.0f);
+        m_floatingreticule[i].SetUV(0.03f, 0.03f, 1.0f, 1.0f);
+        m_group2.push_back(&m_floatingreticule[i]);
+        m_floatingreticule[i].Off();
+    }
+    for (int j = 0; j < 8; j++) {
+        m_threatdirpoly[j].SetTrans(0.0f);
+        m_threatdirpoly[j].SetUV(0.03f, 0.03f, 1.0f, 1.0f);
+        m_group2.push_back(&m_threatdirpoly[j]);
+        m_threatdirpoly[j].On();
+        if (m_threatdirTex) {
+            zdb::CTexture *pic = m_threatdirTex->m_texture;
+
+            if (pic)
+                m_threatdirpoly[j].Load(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, pic);
+        }
+    }
+    if (m_threatdirTex->m_texture) {
+        m_threattexsizex = (int)m_threatdirTex->m_texture->m_width;
+        m_threattexsizey = (int)m_threatdirTex->m_texture->m_height;
+    }
+    for (unsigned int k = 0; k < 4; k++)
+        m_group1.push_back(&m_nvglens[k]);
+    for (i = 0; i < 4; i++)
+        m_nvglens[i].On();
+    m_nvglens[0].Load(0.0f, 0.0f, 0.0f, 224.0f, 320.0f, 224.0f, 320.0f, 0.0f, m_reticuleTex[8] ? m_reticuleTex[8]->m_texture : 0);
+    m_nvglens[1].Load(320.0f, 0.0f, 320.0f, 224.0f, 640.0f, 224.0f, 640.0f, 0.0f, m_reticuleTex[8] ? m_reticuleTex[8]->m_texture : 0);
+    m_nvglens[2].Load(0.0f, 224.0f, 0.0f, 448.0f, 320.0f, 448.0f, 320.0f, 224.0f, m_reticuleTex[8] ? m_reticuleTex[8]->m_texture : 0);
+    m_nvglens[3].Load(320.0f, 224.0f, 320.0f, 448.0f, 640.0f, 448.0f, 640.0f, 224.0f, m_reticuleTex[8] ? m_reticuleTex[8]->m_texture : 0);
+    m_nvglens[0].SetUV(0.01f, 0.01f, 0.01f, 0.995f, 0.995f, 0.995f, 0.995f, 0.01f);
+    m_nvglens[1].SetUV(0.995f, 0.01f, 0.995f, 0.995f, 0.01f, 0.995f, 0.01f, 0.01f);
+    m_nvglens[2].SetUV(0.01f, 0.995f, 0.01f, 0.01f, 0.995f, 0.01f, 0.995f, 0.995f);
+    m_nvglens[3].SetUV(0.995f, 0.995f, 0.995f, 0.01f, 0.01f, 0.01f, 0.01f, 0.995f);
+    zdb::CTexHandle *noise = zdb::CAssetMgr::m_assets.GetTexHandle("noise50.tif");
+
+    m_noisetex = noise ? noise->m_texture : 0;
+    if (m_noisetex) {
+        for (unsigned int k = 0; k < 4; k++)
+            m_group1.push_back(&m_socom2_3940[k]);
+        for (unsigned int l = 0; l < 4; l++) {
+            m_socom2_3940[l].On();
+            m_socom2_3940[l].SetTrans(64.0f);
+        }
+        m_socom2_3940[0].Load(5.0f, 75.0f, 5.0f, 224.0f, 320.0f, 224.0f, 320.0f, 75.0f, m_noisetex);
+        m_socom2_3940[1].Load(320.0f, 75.0f, 320.0f, 224.0f, 635.0f, 224.0f, 635.0f, 75.0f, m_noisetex);
+        m_socom2_3940[2].Load(5.0f, 224.0f, 5.0f, 373.0f, 320.0f, 373.0f, 320.0f, 224.0f, m_noisetex);
+        m_socom2_3940[3].Load(320.0f, 224.0f, 320.0f, 373.0f, 635.0f, 373.0f, 635.0f, 224.0f, m_noisetex);
+        m_socom2_3940[0].SetUV(0.01f, 0.01f, 0.01f, 0.995f, 0.995f, 0.995f, 0.995f, 0.01f);
+        m_socom2_3940[1].SetUV(0.995f, 0.01f, 0.995f, 0.995f, 0.01f, 0.995f, 0.01f, 0.01f);
+        m_socom2_3940[2].SetUV(0.01f, 0.995f, 0.01f, 0.01f, 0.995f, 0.01f, 0.995f, 0.995f);
+        m_socom2_3940[3].SetUV(0.995f, 0.995f, 0.995f, 0.01f, 0.01f, 0.01f, 0.01f, 0.995f);
+        func_00354A90(m_noisetex, 0x42, 0x49, 0x7F);
+        if (m_noisetex) {
+            unsigned int count = m_noisetex->m_width * m_noisetex->m_height;
+            unsigned char *pixels = m_noisetex->m_pixels;
+
+            for (unsigned int n = 0; n < count; n++)
+                pixels[n] = (int)(255.0f * (4.656613e-10f * (float)rand()));
+            FlushCache(0);
+        }
+    }
+    ChangeReticule(0);
+    m_posx = 320.0f;
+    m_posy = 224.0f;
+    m_timer_BKGRD.SetHasTexture(false);
+    m_timer_BKGRD.SetColor(0.0f, 0.0f, 0.0f);
+    m_timer_BKGRD.SetPos(0x214, 0xB9, 0x24A, 0xC9);
+    m_timer_BKGRD.SetTrans(0.0f);
+    m_group2.push_back(&m_timer_BKGRD);
+    m_timer_IMAGE.SetHasTexture(false);
+    m_timer_IMAGE.SetColor(CHUD::m_hud_textcolor.x, CHUD::m_hud_textcolor.y, CHUD::m_hud_textcolor.z);
+    m_timer_IMAGE.SetPos(0x216, 0xBB, 0x216, 0xC7);
+    m_timer_IMAGE.SetTrans(0.0f);
+    m_group2.push_back(&m_timer_IMAGE);
+    m_socom2_4420.SetHasTexture(false);
+    m_socom2_4420.SetColor(0.0f, 0.0f, 0.0f);
+    m_socom2_4420.SetPos(0x214, 0xCE, 0x24A, 0xDE);
+    m_socom2_4420.SetTrans(0.0f);
+    m_group2.push_back(&m_socom2_4420);
+    m_socom2_43a0.SetHasTexture(false);
+    m_socom2_43a0.SetColor(CHUD::m_hud_textcolor.x, CHUD::m_hud_textcolor.y, CHUD::m_hud_textcolor.z);
+    m_socom2_43a0.SetPos(0x216, 0xD0, 0x216, 0xDC);
+    m_socom2_43a0.SetTrans(0.0f);
+    m_group2.push_back(&m_socom2_43a0);
 }
 
 /* a bar's quad from its right and left, its far end and its base (the name ours): the inline's
@@ -433,20 +1284,18 @@ extern "C" void FlushCache(int op);
         while (angle >= 90.0f)                                                       \
             angle -= 90.0f;                                                          \
         m_threatdirpoly[side].SetTrans(50.0f * ((90.0f - angle) * ONE_OVER_90));     \
-        m_threatdirpoly[diag].SetTrans(50.0f * (angle * ONE_OVER_90));               \
+        const float k50 = 50.0f;                                                     \
+                                                                                     \
+        m_threatdirpoly[diag].SetTrans(k50 * (angle * ONE_OVER_90));                 \
     }
 
 /* the threat arrows (SOCOM 1's ThreatDirTick, 0x3CF360 there): the seal's four hit directions kept;
  * where two neighbours were hit, the diagonal between gets half their strength and the two arrows the
  * angle's share (SOCOM 1 set them full); every arrow faded by 120 a second; the flags cleared. The
  * names SOCOM 1's DWARF's (SOCOM 1's DIAGONAL_SCALAR was made under a guard, SOCOM II's is data).
- * OPEN, 32 instructions, 0x76C of 0x76C, all one colouring repeated in the eight arms: `50.0f * (angle
- * * ONE_OVER_90)` has the 1/90 and the product in f0 and the 50 in f1 in the target, f1 and f0 here --
- * MW makes the constant last (k, product, 50, the highest number taking f0) where the target numbers
- * it first; the first SetTrans's `50.0f * ((90.0f - angle) * ONE_OVER_90)` comes out right. Tried, each
- * the same code: named locals for the 1/90, the product and the 50 (folded back), casts on each, the
- * operands swapped; (50 * angle) * k changes the code; the 50 through an inline accessor swaps the
- * final mul's operands only. The first test reads the seal's two flags through locals (a0, v1 kept
+ * The diagonal's 50 a const local (round 66, open since round 64 at 32 off): a literal is numbered last and a plain
+ * local folds back; a const one keeps its number ahead of the product, the target's f1 and f0. The first test reads
+ * the seal's two flags through locals (a0, v1 kept
  * across the statics' stores), the later ones the statics */
 void BitmapReticule::ThreatDirTick(CZSealBody *pSeal)
 {
@@ -594,7 +1443,7 @@ void BitmapReticule::HudTick(float dT)
         ChangeReticule(seal->m_kit.GetCurItemReticule());
     }
     if (m_rettype != 4) {
-        m_retsize = seal->m_retsize;
+        m_retsize = seal->m_kit.m_retsize;
 
         float x = seal->m_kit.m_retposx + seal->m_kit.m_retoffsetx;
         float y = seal->m_kit.m_retposy + seal->m_kit.m_retoffsety;
@@ -711,6 +1560,268 @@ static inline void LoadBar(C2DBitmapPoly &poly, float right, float left, float e
                            zdb::CTexture *tex)
 {
     poly.Load(right, end, right, base, left, base, left, end, tex);
+}
+
+/* the range text's place for the scope, the binoculars and the night vision, the scope's range box and the bars'
+ * and binoculars' alphas (OVL1 .data; the names ours) */
+float s_scopeRangeX = 415.0f;
+float s_scopeRangeY = 215.0f;
+float s_binocRangeX = 515.0f;
+float s_binocRangeY = 40.0f;
+float s_nvgRangeX = 515.0f;
+float s_nvgRangeY = 70.0f;
+float s_scopeRangeSize = 32.0f;
+float s_barBackTrans = 36.0f;
+float s_barTrans = 64.0f;
+float s_binocTrans = 128.0f;
+
+/* the reticle's kind changed: nothing for a kind with no texture; the range text on for the scopes and the night
+ * vision; the floating pieces textured and placed; each kind's own pieces shown and the others hidden (SOCOM 1's;
+ * kinds -1 none, 0-3 and 9 a bitmap or the floating reticle's, 4 the grenade's bar, 5 the scope, 7 the binoculars) */
+void BitmapReticule::ChangeReticule(int type)
+{
+    signed char t = type;
+
+    if (t != -1 && !m_reticuleTex[t])
+        return;
+    m_rettype = type;
+    if (t == 5 || t == 7 || t == 8 || m_nvgenabled)
+        theHUD->ShowRangeText();
+    else
+        theHUD->HideRangeText();
+    if (t != -1) {
+        if (m_floatingreticuleTex[m_rettype]) {
+            for (int i = 0; i < 4; i++)
+                m_floatingreticule[i].Load(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                                           m_floatingreticuleTex[m_rettype]->m_texture);
+        }
+    }
+    if (m_rettype != -1) {
+        zdb::CTexHandle *tex = 0;
+
+        if (m_floatingreticuleTex[m_rettype])
+            tex = m_floatingreticuleTex[m_rettype];
+        else if (m_reticuleTex[m_rettype])
+            tex = m_reticuleTex[m_rettype];
+        if (tex) {
+            m_rettexsizex = (int)tex->m_texture->m_width;
+            m_rettexsizey = (int)tex->m_texture->m_height;
+            m_rettexsizex2 = m_rettexsizex;
+            m_rettexsizey2 = m_rettexsizey;
+            if (m_rettype == 4)
+                m_rettexsizex2 = m_rettexsizex2 * 0.5f;
+            else if (m_rettype == 5) {
+                m_rettexsizex2 = m_rettexsizey2 = s_scopeRangeSize;
+            }
+        }
+        UpdateAccuracy();
+        if (m_rettype == 4) {
+            for (int i = 0; i < 4; i++)
+                m_floatingreticule[i].Off();
+        } else {
+            for (int i = 0; i < 4; i++)
+                m_floatingreticule[i].On();
+        }
+    }
+    if (m_rettype == -1) {
+        for (int i = 0; i < 4; i++) {
+            m_floatingreticule[i].Off();
+            m_threatdirpoly[i].Off();
+            m_scopepoly[i].Off();
+            m_socom2_11f0[i].Off();
+        }
+    }
+    if (m_nvgenabled) {
+        for (unsigned int k = 0; k < 4; k++) {
+            m_nvglens[k].On();
+            m_socom2_3940[k].On();
+        }
+    } else {
+        for (unsigned int k = 0; k < 4; k++) {
+            m_nvglens[k].Off();
+            m_socom2_3940[k].Off();
+        }
+    }
+    int i;
+
+    if (t == -1) {
+        m_bitmap.Off();
+        for (i = 0; i < 4; i++) {
+            m_scopepoly[i].Off();
+            m_threatdirpoly[i].Off();
+            m_socom2_11f0[i].Off();
+        }
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].Off();
+        m_grenadeactive[1].Off();
+        m_grenadeback[0].Off();
+        m_grenadeback[1].Off();
+        m_enemy_name.Off();
+        m_healthbar.Off();
+    } else if ((t >= 0 && t < 4) || t == 9) {
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].Off();
+        m_grenadeactive[1].Off();
+        m_grenadeback[0].Off();
+        m_grenadeback[1].Off();
+        m_enemy_name.On();
+        m_healthbar.On();
+        m_bitmap.On();
+        for (i = 0; i < 4; i++) {
+            m_scopepoly[i].Off();
+            m_socom2_11f0[i].Off();
+            m_threatdirpoly[i].On();
+            m_floatingreticule[i].On();
+        }
+        if (t != 3) {
+            zdb::CTexHandle *tex = m_reticuleTex[t];
+            zdb::CTexture *pic = tex->m_texture;
+            float h = (int)pic->m_height / 2.0f;
+            float w = (int)pic->m_width / 2.0f;
+
+            m_bitmap.Load(m_posx - w, m_posy - h, m_posx + w, m_posy + h, tex);
+            m_bitmap.SetUV(0.0f, 0.0f, 1.0f, 1.0f);
+            m_bitmap.SetTrans(128.0f);
+
+            CZSealBody *seal = CHUD::GetHUDOwner();
+
+            if (t == 0 && seal->m_zoomstate == 2) {
+                for (int n = 0; n < 4; n++)
+                    m_socom2_11f0[n].On();
+            }
+        } else {
+            zdb::CTexture *pic = m_reticuleTex[t]->m_texture;
+            float w = 0.7f * (int)pic->m_width;
+            float h = 0.7f * (int)pic->m_height;
+            float left = 320.0f - w;
+            float right = 320.0f + w;
+            float top = 224.0f - h;
+            float bottom = 224.0f + h;
+
+            m_bitmap.Off();
+            m_scopepoly[0].On();
+            m_scopepoly[0].SetTrans(128.0f);
+            m_scopepoly[0].Load(left, top, 320.0f, top, 320.0f, 224.0f, left, 224.0f, m_reticuleTex[t] ? m_reticuleTex[t]->m_texture : 0);
+            m_scopepoly[1].On();
+            m_scopepoly[1].SetTrans(128.0f);
+            m_scopepoly[1].Load(right, top, 320.0f, top, 320.0f, 224.0f, right, 224.0f, m_reticuleTex[t] ? m_reticuleTex[t]->m_texture : 0);
+            m_scopepoly[2].On();
+            m_scopepoly[2].SetTrans(128.0f);
+            m_scopepoly[2].Load(left, bottom, 320.0f, bottom, 320.0f, 224.0f, left, 224.0f, m_reticuleTex[t] ? m_reticuleTex[t]->m_texture : 0);
+            m_scopepoly[3].On();
+            m_scopepoly[3].SetTrans(128.0f);
+            m_scopepoly[3].Load(right, bottom, 320.0f, bottom, 320.0f, 224.0f, right, 224.0f, m_reticuleTex[t] ? m_reticuleTex[t]->m_texture : 0);
+            m_scopepoly[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+            m_scopepoly[1].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+            m_scopepoly[2].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+            m_scopepoly[3].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+        }
+    } else if (t == 4) {
+        static CPnt3D s_barColor(128.0f, 70.0f, 32.0f);
+
+        SetGBarVal(0.0f);
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].On();
+        m_grenadeactive[1].On();
+        m_grenadeback[0].On();
+        m_grenadeback[1].On();
+        m_grenadeactive[0].SetColor(s_barColor.x, s_barColor.y, s_barColor.z);
+        m_grenadeactive[1].SetColor(s_barColor.x, s_barColor.y, s_barColor.z);
+        m_grenadeback[0].SetColor(200.0f, 200.0f, 0.0f);
+        m_grenadeback[1].SetColor(200.0f, 200.0f, 0.0f);
+        m_grenadeactive[0].SetTrans(s_barTrans);
+        m_grenadeactive[1].SetTrans(s_barTrans);
+        m_grenadeback[0].SetTrans(s_barBackTrans);
+        m_grenadeback[1].SetTrans(s_barBackTrans);
+        m_enemy_name.Off();
+        m_healthbar.Off();
+        m_bitmap.Off();
+        for (i = 0; i < 4; i++) {
+            m_scopepoly[i].Off();
+            m_socom2_11f0[i].Off();
+            m_threatdirpoly[i].On();
+        }
+        zdb::CTexHandle *tex = m_reticuleTex[t];
+        zdb::CTexture *pic = tex->m_texture;
+        float h = (int)pic->m_height / 2.0f;
+        float w = (int)pic->m_width / 2.0f;
+
+        m_bitmap.Load(m_posx - w, m_posy - h, m_posx + w, m_posy + h, tex);
+        m_bitmap.SetUV(0.0f, 0.0f, 1.0f, 1.0f);
+        m_bitmap.SetTrans(128.0f);
+    } else if (t == 5) {
+        bool laser = false;
+        CZSealBody *seal = CHUD::GetHUDOwner();
+        CZKit *kit = seal->GetKit();
+
+        if (seal)
+            laser = kit != 0 && (kit->GetCurItemEnum() & 0xff) == 0x3f;
+        m_enemy_name.Off();
+        m_healthbar.Off();
+        m_bitmap.Off();
+        for (i = 0; i < 4; i++) {
+            m_threatdirpoly[i].On();
+            m_floatingreticule[i].Off();
+            m_socom2_11f0[i].On();
+            if (laser)
+                m_scopepoly[i].Off();
+            else {
+                m_scopepoly[i].On();
+                m_scopepoly[i].SetTrans(128.0f);
+            }
+        }
+        SetGBarVal(0.0f);
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].Off();
+        m_grenadeactive[1].Off();
+        m_grenadeback[0].Off();
+        m_grenadeback[1].Off();
+        if (!laser) {
+            m_scopepoly[0].Load(0.0f, -96.0f, 0.0f, 224.0f, 320.0f, 224.0f, 320.0f, -96.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+            m_scopepoly[1].Load(320.0f, -96.0f, 320.0f, 224.0f, 640.0f, 224.0f, 640.0f, -96.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+            m_scopepoly[2].Load(0.0f, 224.0f, 0.0f, 544.0f, 320.0f, 544.0f, 320.0f, 224.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+            m_scopepoly[3].Load(320.0f, 224.0f, 320.0f, 544.0f, 640.0f, 544.0f, 640.0f, 224.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+        }
+        m_scopepoly[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+        m_scopepoly[1].SetUV(0.99f, 0.01f, 0.99f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+        m_scopepoly[2].SetUV(0.01f, 0.99f, 0.01f, 0.01f, 0.99f, 0.01f, 0.99f, 0.99f);
+        m_scopepoly[3].SetUV(0.99f, 0.99f, 0.99f, 0.01f, 0.01f, 0.01f, 0.01f, 0.99f);
+        theHUD->SetRangeTextPos(s_scopeRangeX, s_scopeRangeY);
+    } else if (t == 7) {
+        m_enemy_name.Off();
+        m_healthbar.Off();
+        m_bitmap.Off();
+        for (i = 0; i < 4; i++) {
+            m_floatingreticule[i].Off();
+            m_scopepoly[i].On();
+            m_scopepoly[i].SetTrans(128.0f);
+            m_threatdirpoly[i].On();
+        }
+        SetGBarVal(0.0f);
+        m_grenadebitmap.Off();
+        m_grenadebitmap2.Off();
+        m_grenadeactive[0].Off();
+        m_grenadeactive[1].Off();
+        m_grenadeback[0].Off();
+        m_grenadeback[1].Off();
+        m_scopepoly[0].Load(0.0f, 0.0f, 0.0f, 448.0f, 320.0f, 448.0f, 320.0f, 0.0f, m_reticuleTex[7] ? m_reticuleTex[7]->m_texture : 0);
+        m_scopepoly[1].Load(319.0f, 0.0f, 320.0f, 448.0f, 640.0f, 448.0f, 640.0f, 0.0f, m_reticuleTex[7] ? m_reticuleTex[7]->m_texture : 0);
+        m_scopepoly[2].Load(0.0f, 0.0f, 0.0f, 448.0f, 320.0f, 448.0f, 320.0f, 0.0f, binocs_tex ? binocs_tex->m_texture : 0);
+        m_scopepoly[3].Load(319.0f, 0.0f, 320.0f, 448.0f, 640.0f, 448.0f, 640.0f, 0.0f, binocs_tex ? binocs_tex->m_texture : 0);
+        m_scopepoly[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.97f, 0.99f, 0.97f, 0.01f);
+        m_scopepoly[1].SetUV(0.97f, 0.01f, 0.97f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+        m_scopepoly[2].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.97f, 0.99f, 0.97f, 0.01f);
+        m_scopepoly[3].SetUV(0.97f, 0.01f, 0.97f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+        m_scopepoly[2].SetTrans(s_binocTrans);
+        m_scopepoly[3].SetTrans(s_binocTrans);
+        theHUD->SetRangeTextPos(s_binocRangeX, s_binocRangeY);
+    }
+    if (m_nvgenabled)
+        theHUD->SetRangeTextPos(s_nvgRangeX, s_nvgRangeY);
 }
 
 /* the grenade bar (SOCOM 1's SetGBarVal, 0x3CD490 there; 0x213A60): for the grenade reticle only --
@@ -860,21 +1971,9 @@ void BitmapReticule::HideTimer()
 
 /* the body's blend stack (zbody.h's RTStack, SOCOM 1's; only its Top here): this unit's tail holds
  * the one copy of Top for CZBodyAnimBlend (0x219390, after hudStartDefuseTimer), which body.cpp
- * calls -- the reticule's unwritten 0x215C10 instantiates it, explicitly instantiated here until
- * that is written */
-class CZBodyAnimBlend;
-
-template <class T>
-class RTStack {
-public:
-    T *Top();
-
-    T **m_stack;   // 0x0
-    int m_size;   // 0x4
-    int m_top;   // 0x8
-};
-
-/* the top item, none when empty (SOCOM 1's) */
+ * calls and UpdateColor instantiates
+ *
+ * the top item, none when empty (SOCOM 1's) */
 template <class T>
 T *RTStack<T>::Top()
 {
@@ -883,4 +1982,3 @@ T *RTStack<T>::Top()
     return m_stack[m_top];
 }
 
-template class RTStack<CZBodyAnimBlend>;

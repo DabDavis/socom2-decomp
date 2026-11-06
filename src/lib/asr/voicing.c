@@ -2,7 +2,7 @@
 /* voicing: the trigger's voicing measure (OVL2 0x506D98-0x508258, SOCOM 1's voicing object at
  * 0x371BD8), ScanSoft's recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
  * -funroll-loops (README "The GCC front"). SOCOM 1's six functions in another order here:
- * Voicing_GetMaxVoicing (not yet written), InitVoicing, Voicing_MaintainNoiseEner,
+ * Voicing_GetMaxVoicing (round 41c), InitVoicing, Voicing_MaintainNoiseEner,
  * Voicing_AddSignal (named by their one caller each, as SOCOM 1's), Voicing_Reset, Voicing_Free.
  * The voicing fields share the trigger block's record with the subsampler's (subsmp.c: the
  * subsampler's output frame is this record's `frame`, its fields from +344); SOCOM II's sit 4
@@ -73,6 +73,98 @@ __inline__ void Voicing_Free(VOICING *v)
 extern int Subsampler_Init(VOICING *v);
 extern float floorf(float);
 extern float ceilf(float);
+
+extern float expf(float x);
+extern float logf(float x);
+
+/* how voiced the buffered signal is: log of the best correlation over the lags, in steps of four samples and with the four phases
+ * summed until one goes negative, less half of each of the two frames' log energies (each above the noise's mean); 0 when a frame's
+ * energy is under the threshold or the floor. SOCOM 1's body (round 41c). */
+float Voicing_GetMaxVoicing(VOICING *v)
+{
+    float ret = 0.0f;
+    float avg = ret;
+    float noise, e1, e2, sum, best;
+    float *h;
+    unsigned int *p;
+    unsigned int i, lag, bestlag;
+
+    for (h = v->hbuf; h < v->hbuf + v->nframes; h++)
+        avg += expf(*h);
+    if (v->nframes != 0)
+        avg /= (float)v->nframes;
+    noise = logf(avg);
+    p = v->epos - 1;
+    sum = 0.0f;
+    if (p < v->ebuf)
+        p += v->len;
+    for (i = 0; i < v->frame; i++) {
+        sum += (float)*p--;
+        if (p < v->ebuf)
+            p += v->len;
+    }
+    e1 = logf(sum);
+    if (e1 < noise + v->thresh)
+        goto out;
+    if (e1 < v->floor)
+        goto out;
+    best = 0.0f;
+    bestlag = 0;
+    for (lag = v->minlag; lag <= v->maxlag; lag++) {
+        float corr = 0.0f;
+        unsigned int k;
+
+        for (k = 0; k < 4; k++) {
+            short *a = v->npos - k - 1;
+            short *b;
+            unsigned int j;
+
+            if (a < v->nbuf)
+                a += v->len;
+            b = v->npos - k - lag - 1;
+            if (b < v->nbuf)
+                b += v->len;
+            for (j = k; j < v->frame; j += 4) {
+                corr += (float)(*a * *b);
+                a -= 4;
+                if (a < v->nbuf)
+                    a += v->len;
+                b -= 4;
+                if (b < v->nbuf)
+                    b += v->len;
+            }
+            if (corr < 0.0f)
+                break;
+        }
+        if (best < corr) {
+            best = corr;
+            bestlag = lag;
+        }
+    }
+    p = v->epos - bestlag - 1;
+    sum = 0.0f;
+    if (p < v->ebuf)
+        p += v->len;
+    for (i = 0; i < v->frame; i++) {
+        sum += (float)*p--;
+        if (p < v->ebuf)
+            p += v->len;
+    }
+    e2 = logf(sum);
+    if (e2 < noise + v->thresh)
+        goto out;
+    if (e2 < v->floor)
+        goto out;
+    {
+        float a = logf(best);
+        float b = logf(expf(e1) - avg);
+        float c = logf(expf(e2) - avg);
+
+        ret = a - b * 0.5f - c * 0.5f;
+    }
+out:
+    return ret;
+}
 
 int InitVoicing(VOICING *v)
 {

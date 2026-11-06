@@ -2066,6 +2066,140 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 60** (twelve new rows by the full check, 20,744 bytes, all unwritten before: CSealCtrlAi's
+  AllowCommand 0x590BC0, OnStunDamage 0x571B10, ChooseWeapon 0x563470, SetRoute 0x5623B0; CZSealBody's UpdateAiMapLoc
+  0x5B7BA0, RemoteRespawn 0x598B90, PopBlend 0x589AA0, ~CZSealBody 0x5533E0, WeaponHitAnim 0x5A2690;
+  CSealCtrl::OnActionButton 0x592D50; a lobbed weapon's aim 0x55ECC0, a grenade's landing point 0x55CDC0; scratch
+  build/scratch/seals-r60/):
+  - A LOCAL DECLARED BEFORE THE REFERENCES CAN DECIDE A SWEEP: `bool ok;` moved above `vel` and `from` moved them into an
+    earlier sweep and fixed 39 register differences; a counter `int i;` above two references settled 0x55ECC0's 10. A case
+    body `ok = false;` with `ok` already false leaves a `b end; nop` case block, where an empty case jumps straight to the
+    end.
+  - `((const CEntity *)other)->m_team` written twice makes `other+200` a CSE temporary hoisted across a switch. `CZKit
+    *const kit = &seal->m_kit` keeps the address across a call where a plain local is forwarded. An inline parameter
+    `unsigned int i` keeps `i*12` out of strength reduction with an int counter. A by-value iterator inline
+    `DeleteAll(begin(), end())` keeps both iterators in the frame, end first.
+  - VALUE FORMS: `(x != 0) ^ 1` over an inline bool gives sltu; sltu; xori with no andi, `!inlineBool()` adds the andi; `(A
+    && B) ? 0 : 1` assigned to a bit gives xori; andi 1, `!(A && B)` adds andi; sltu. `coin ? (int)a : (int)b` into an `int`
+    gives lh per arm and an unthreaded `b` to a `b`, a short ternary narrows at the join. `ex = 0; ex = c ? v : ex;` and a
+    value `&&` leave no pad. `start.x > loc.x` and `loc.x < start.x` swap the v0/v1 colours.
+  - A plain struct view assigned from `*(View *)&m` scalarises; an array member copies as a block. A float test `(top <
+    1.0f) && i < n` in a `for` condition materialises the bool and leaves the loop unrotated. `#pragma auto_inline off`
+    around out-of-line-called siblings keeps their callers' calls. The engine core's round 28 held on AllowCommand: `st = st
+    && st->m_state == K ? st : 0` fixed its empty delay slots.
+  - THE SCORER'S GAP: `fn_static_row` leaves a static unchecked when two functions in one object give their statics the same
+    name; renaming one `k_gravity` to `k_fall` resolved its 4 relocations.
+  - Open: AnimBlend 0x577000 (0x6F8 of 0x700, saved registers right: the last loop's second read of the count), 0x559580 (3:
+    `sw s1,180(sp)` and `addiu s7,sp,216` swap across a delay slot, registers right), 0x550A80 (0x3C8 of 0x3D0, about 16:
+    the awake test's value `||`). 0x553D60 was already held by its draft, and is now written and named CObjAnim's
+    destructor, the class name less certain (`~CZSealBody` hands it to `__destroy_arr` for m_item_gear, and zseal.h's
+    CObjAnim). Static names are descriptive: `k_height` (13.0) has no known meaning, `k_gravity` (98.0) is inferred from
+    `reach = v*v/k`. Six new no-target lines (@368@BodySetState and two more thunks, SetAiNetState, ~CLook, ~CSeqBase)
+    affect no match and were not looked for in the image.
+- **Tells from the HUD, round 66** (eleven rows, 34,392 bytes: BitmapReticule's ChangeReticule 0x213E20, Init 0x2178C0,
+  UpdateAccuracy 0x215250 and ThreatDirTick 0x216DE0, open since round 64; CLensFlareEntry's Tick 0x1FF8A0 and LoadFlare
+  0x1FFF40; C2DStringPacket::Write 0x361BD0; CTCM::LayoutColumn 0x230870 and Build 0x232BC0; tcmBuildCaches 0x2344E0;
+  SetupLegend 0x20C080; eight rows named, 75 data rows; scratch build/scratch/hud-r66/hud-r66/):
+  - A `?:` VALUE IS A TEMPORARY NUMBERED ABOVE NAMED LOCALS, SO IT COLOURS FIRST: assign a named local declared earlier to
+    keep it after them (UpdateColor's scale: f20 lost, every register but nine right). Three sibling records in one register
+    are one reused local: later webs number above an inlined constructor's temporary (LoadFlare). In a shared loop counter
+    the first loop keeps the name and the strength-reduced pointer colours first, later webs colour the counter first
+    (ChangeReticule, BitmapReticule::Init).
+  - FOLDING: a plain float local stops `1.0f * x` folding, where a literal, `const` or `static const` all fold; a `const
+    float` local keeps its number ahead of a product where a literal goes last (ThreatDirTick); a local holding a literal
+    keeps the add's operand order, a literal commutes first.
+  - A `const` accessor reads its operand first, and also stops a byte read's common-subexpression pass (UpdateAccuracy, the
+    lens's Tick). `const signed char t` keeps a byte above a strength-reduced pointer (CTCM::Build); an `unsigned` local
+    avoids a CSE temporary at an unsigned parameter (SetupLegend); a float parameter declared last sets up last and fills
+    the jal slot (Place); a call nested in an argument leaves earlier global reads CSE'd across it, so name its result first
+    (hudOpenPopup).
+  - `T &r = a[i]; r.m` adds the base first, `a[i].m` last. Stack objects order by size then creation, and copy-init locals
+    are allocated before assign-only ones. Nested `n = inner(); return n;` inlines keep unthreaded `b` chains (UpdateColor's
+    name arms). An unused statement label changes nothing in the output.
+  - m2c's condensed draft plus tools/structdiff.py closes table and init functions fast (ChangeReticule 0x1354,
+    BitmapReticule::Init 0x1488, CTCM::Build 0x1918).
+  - Open: UpdateColor 0x215C10 (0xB40 against 0xB50, 28 structural, 9 in registers: three nops missing between an FPR def
+    and the label it falls to, `b; nop` where this steals the mul.s, the zero copy and the op+ r in swapped frame slots, the
+    target block-copying the zero through a2), SetSegments 0x357F30 (0x638 of 0x670, near a first draft: the target's frame
+    holds more inline temporaries, so its 2D operators probably sit one level deeper and return by value), hudOpenPopup
+    0x22B4A0 (33, size equal: x needs a number above the new's inline temporary); HudTick is structurally exact, 11 in
+    registers, so the block-optimization lead does not apply to it; LineTo (0x230 against 0x228) keeps a `b` to the next
+    block and still hoists from a fall-through, at odds with the engine core's round 28 on the diff alone, not traced.
+    Unwritten: CHUD::Tick 0x1F7FF0, CHUD::Init 0x1FA360, CZPauseTest::Init 0x202520, CZActionBitmap::Init 0x21DED0,
+    0x22BE20, 0x23ECA0, TickZAnimCmd 0x36DA20, the c_str copy 0x36E860, ParseZAnimCmd 0x36E880.
+- **Tells from the zdb world, round 34** (fifteen rows by the full check, 19,652 bytes, and the two it also closed through
+  the MSL's round 40, 0x3323F0 and 0x3349C0; open rows in the range 20 to 3: CPipe::RenderWorld 0x339DE0, unwritten before,
+  RenderVisual 0x3374C0, CAlpha::Insert 0x336F60, BuildNodeLocalLightList 0x338FA0, CNode::BuildMTW 0x3109F0,
+  CWorld::~CWorld 0x31FE00, the list sort 0x33E510; scratch build/scratch/world-r34/wld/):
+  - A FRAME IS READ TOP DOWN, AND TWO SLOTS OF ONE CLASS THAT NEVER COEXIST ARE ONE VARIABLE: named locals, parse-level
+    temporaries, inline temporaries by depth, IRO's objects, then the homed parameter. Two slots of one class that never
+    coexist, the lower below every inline temporary, are one source variable split by `IRO_SplitLifetimes`
+    (`create_temp_object`): `pos` beside `it` could never reach that frame. Return slots all above position copies mean the
+    copy sits a level deeper than the slot (two wrappers); one wrapper interleaves them; frame slots follow creation order.
+  - A HOISTED PREHEADER IS APPENDED AT THE FUNCTION'S END: an explicit `return;` in each arm sends the arms past it; without
+    it they branch to a lone `b`. Cases inside the switch with `break` avoid a branch to a lone `b` as well (the engine
+    core's round 28 confirmed), so hoists return.
+  - 3.0b52's CSE COMPARES THE ADDRESS'S POINTER TYPE: `box.m_max` never shares with `b->m_max.x`, but a reference to the
+    corner does. `t = a[j = i];` keeps the read on the inner `&a[j]`, where `j = i; t = a[j];` is copy-propagated to `a[i]`.
+    A product written twice in a compare generates the left side first; a named local generates the product first. A
+    reference bound ahead of a compare stays in a register; bound in the block it is forwarded.
+  - A `const` short local read once is not expression-propagated, so `PullOutInvariantAssignments` pulls it; an enum holder
+    of an address assigned at first use in a loop is hoisted and keeps a saved register. A `const T *` inline parameter's
+    `ETYPCON` makes `p + k` subable across copies, where a non-const one folds displacements.
+  - `if (x == 0) { y = this; } else { y = call(); }`, y uninitialised, gives `bnez; slot; b over; slot`, because coalescing
+    empties the arm after layout; `!x` swaps the arms and loses it. `set = *it` before the end test fills the branch's slot
+    from before it. A do-while's `if (i > j) break;` raised a CSE's spill cost from 19 to 131, so a spill pick can be
+    structure rather than numbering.
+  - INLINES: a class's empty inline destructor gives `delete`'s null test, and a class over a vector adds the fourth this-
+    test; a second statement (`(void)0;`) in an in-class destructor leaves its callees called, one statement inlines whole;
+    a trait `if` in a template member is not neutral, the dead arm counts toward callers' inlining; an inline's by-reference
+    argument that is a call is not substituted, so saved registers follow each call and non-call arguments stay frame-
+    relative; conversions held in two inline locals make IR-numbered temporaries, three locals cut a level; moving
+    statements into an inline can bring a function under the 15-statement auto-inline limit with its out-of-line copy
+    unchanged.
+  - COPIES: `CPnt3D p = *(CPnt3D *)q` copy-constructs through FPRs, assignment is member-wise, and `return CPnt3D(x, y, z)`
+    is frame-relative.
+  - Open: Create3Sided 0x322800 (0x5EC of 0x5E4, one block: `igreplay` reproduces the target if the high half is numbered
+    before the constant, about 20 forms in its OPEN comment), CreateVisuals 0x322DF0 (0x17EC of 0x17BC, frame 1616 of 1584:
+    its comment holds the target's frame and colour maps, the split-lifetime rule not yet tried on it), remove_if 0x352500
+    (9, slots only; 0x50F670 is the same miss). Marked stand-ins: the enum holders in RenderVisual and RenderWorld,
+    FaceCorners' int holders, FifoPacket, line_erase and string_erase2, include/list's __sort_list and insert_at. Not
+    measured: `insert_at` renamed `insert` in list<T *>, the first evidence that the pointer list has an insert of its own,
+    which may close slot misses like LoadVehicles.
+- **Tells from the engine core, round 28** (ten byte-exact, 26,568 bytes; body.cpp and zanim_cmd_parse.cpp whole: CPad::Tick
+  0x2DA930, zAnimObjectMotionTick 0x261370 with GetBBox's copy 0x262550, zAnimObjectMotionBegin 0x262690,
+  zAnimParticleSourceTick 0x266830, camera mode 6 0x2964F0, CAppCamera::UpdateDeathCamState 0x2980D0, CBody::Destroy
+  0x28B6D0, zar::CKey::DeleteChildren 0x25B580, zAnimFireWeaponTick 0x25CCB0; the first three rules read from the 3.0b52
+  executable, the first confirmed by a gdb trace of the matched function -- 87 of 87 blocks with empty predecessor lists, 0
+  of 27 fall-through tries hoisting):
+  - BLOCK OPTIMIZATION (0x4C6D60) CLEARS EVERY BLOCK'S PREDECESSOR LIST ON ANY CHANGE, so the delay-slot pass (0x4C7690)
+    hoists nothing from any fall-through in the whole function, and target steals become copies that leave the stolen
+    instruction behind a `b; nop` -- it closed all of zAnimFireWeaponTick's 0x40 bytes. It fires on a conditional branch to
+    a lone `b` (`e = e && e->t == K ? e : 0`, the then-arm coalesced), a `b` to the next block, or a block merged into its
+    only predecessor (build/scratch/core-r28/core/hoistlist.py scans for the signature, no argument set-up in any branch
+    slot; dsdump.py traces the pass under gdb);
+  - A LOOP IS ROTATED unless the function has an asm barrier (byte 0x5B7F7D: why camera mode 6's whiles keep their `b`), its
+    test isn't its header, or the header's one outside predecessor doesn't end in a goto with the body's first block next;
+    optimize_for_size also requires a known trip count; `#pragma opt_rotateloops off` exists, acts only through its state at
+    the unit's end, and a `?:` in a loop test also stops rotation (CKey::Write: d=0 under the pragma, which regresses three
+    others);
+  - label pads (`.p2alignl`) come only from statement labels (0x436230) and switches, and a block opening with one can't be
+    hoisted or stolen from; `m = e && e->t == K ? (T *)e : 0` branches straight to the join with no pad, `if (!e || ...) e =
+    0` pads;
+  - an object expression through an inline with a body (`CZAnim *r = a; return r;`) is evaluated ahead of plain args, so a0
+    is set first; an accessor as a product's right operand is read first while the mul keeps its operand order; `CPnt3D
+    d(cmd->dir)` right before a call stores through a0's address (x, y, z), `d(a->x, a->y, a->z)` loads z, y, x, `d =
+    cmd->dir` interleaves; reads through a reference lower an address temporary's spill cost, so it is rematerialised per
+    use;
+  - `for (int i = 0; i < 4; i++) a[i]->m = !flag;` fully unrolled reads frame-direct with `!flag` hoisted, an aggregate
+    initialiser of addresses copies from a pool with lq / sq; a constant store written after bit-field stores is numbered
+    later, coloured first, and chains every field through v0 (196 instructions off the other way round); `x = a == b ? 0.0f
+    : expr` stores at the join, an if/else gives sw zero; `float d = f(); d -= K;` keeps d in f0 and mov.s f12,f0, `float d
+    = f() - K` coalesces with f12; written-out inlines with CPnt3D copies field by field drop about 50 units under
+    inline_max_size, closing a size cut with no pragma (CBody::Destroy);
+  - zar_key.cpp carries a marked per-unit opt-in, include/vector's __MSL_VECTOR_POD_PAIR, with `#pragma inline_depth(8)` at
+    its end for DeleteChildren, a "Level 6, or 8?" witness; the class name in __vector_pod_pair is ours, modelled on SOCOM
+    1's compressed pair.
 - **Tells from the SEALs, round 59** (20 byte-exact, 18 unwritten before: seal_control.cpp's PostTick 0x5970B0,
   ThrottlesPreTick 0x5966A0, PerformProximityActions 0x5937C0; seal_ai.cpp's CSealCtrl::CreepTick 0x566DC0,
   CSealCtrlAi::OnDeath 0x5714B0; seal.cpp's CZSealBody::OnDeath 0x547AF0, 0x54D620, 0x552EC0; seal_body.cpp's ProneControl
@@ -2415,6 +2549,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - devices, each marked in the source: CSkbRdrHolder, SkbSetSpec / SkbFindProps, SSMQueueImp (src/ABSENT.txt), and `inline
     CSkbRect::CSkbRect` defined only for zui_skb.cpp while zui_skbview.cpp keeps its out-of-line definition -- a deliberate
     ODR stretch across the two units, not evidence of the original's shape.
+- **Tells from completing the MSL headers, round 40** (A CHAIN CUT AT ITS LEAVES, read in MW's inliner and reproduced; probes build/p40/, untracked: lv.py scores a unit under a
+  level and the opt-in, lvscan.py every unit with an open row, accscan.py the image's leaf cuts, open_rows.py every open std template row, ordd.py the generation order; runs in
+  build/scratch/msl-r40/):
+  - THE LEAF CUT (mweppc's CInline_ExpandStatement, CInline_EstimateSizeOfExpr; measured): a whole-statement call of an inline is expanded without walking its arguments, they
+    become the first statement of the copy and wait a pass (round 39's rule), while the height check counts a call's arguments at THE CALL'S OWN LEVEL. So `alloc().deallocate(data_,
+    cap())` passes the check as two high and needs three passes: with the destructor at pass L-2 of level L the whole chain is admitted and the passes run out with the two accessors
+    unexpanded -- out-of-line calls at the very bottom of a chain whose every this-test is inlined, what round 12 called "a destructor chain cut at its LEAVES, which the one-level
+    model does not produce". MW's right-to-left SetupArgs gives the image's order: n = cap(), p = data_ (the held saved register), this = alloc(). accscan.py: eight functions in
+    the image hold it. THE ORIGINAL IS AT LEVEL 8 ON THIS EVIDENCE: alloc() and cap() over the pair's first() and second() (SOCOM 1's symbols for the demo's copies, 0x173590 / 0x1735A0)
+    put the cut at the destructor's pass 5 of 8 -- Close 0x2B55E0: transform 0, the op 1, ~CNodeAction 2, the vector 3 4 5, and clear<SKBCOMPLETE> 0x393E40: a destroy level 0, then five
+    this-tests 1-5, while ~SKBPIECE 0x390760, the same five this-tests from pass 0, is whole;
+  - include/vector's `__MSL_POD_DTOR_ARGS` (by unit, with a level pragma: at level 5 every member destructor inlined into its class's would call them, where the image does not): the
+    pods' and the class deleter's destructors as SOCOM 1's, first()/second() called straight (the fit at 7, one pass shallower than 8); a class element destroyed through the
+    allocator in clear and the class erase, `first().destroy(--last)` (`__MSL_VECTOR_DESTROY_LEVEL`, also alone: below) -- the image shows the same wait there, find_or_insert<C2DGlyph> 0x35C3A0's temporary's clear calling first() 0x35C620 once per trivial element, the destroy's own
+    `this` argument left at the bottom; the pods' default constructors two levels taller and the class capacity's one (the pair's: the fit's SKBPIECE() is
+    eight high and cut to its own body, SKBCOMPLETE() seven and whole). Byte-exact with it: fts_action.cpp's CNodeAction::Close 0x2B55E0, in the natural std::transform (level 7);
+    zui_hangul.cpp's clears, erases, insert and resize<SKBPIECE> (level 7; SkbCodeCtorRow retired); ai_mapio.cpp whole, 90 of 90 (level 7); zui_skb.cpp's insert<vector<CSkbKey>> 0x38F7D0 (level 7, FindKeyProps
+    kept too tall by a no-code chain); zui_skbview.cpp's insert 0x3982F0 (level 7); c2dfont.cpp's C2DFont::Load, erase and insert<CLayout> (level 6); char_type.cpp whole (level 6). The engine core's
+    round 28 reached DeleteChildren by round 32's pair meanwhile (`__MSL_VECTOR_POD_PAIR`, side by side): that destructor one pass deeper, its own body at the last pass, calls data(), alloc(),
+    data(), cap(), deallocate(p, n) -- the pod's accessors, other rows than the pair's;
+  - AN OUT-OF-CLASS MEMBER TOO TALL IS CALLED AT ANY PASS, SO ITS TALL ELEMENT'S `-1` CALL IS A HEIGHT: insert<CDesignDlgObj> 0x384620 calls ~__vector_deleter with -1 where insert<ActionItem> beside it inlines it. The destroy level alone
+    at level 5 gives both (zui_spec.cpp whole with the end traits, 107 of 107); char_type.cpp's insert<LOD> 0x540410 needs the element's destructor three levels taller: a no-code chain;
+  - A NO-CODE CHAIN SETS A HEIGHT EXACTLY: empty inline functions calling each other, called from the function to pad, leave no code and count in the estimator (`SkbLevel6()` in FindKeyProps, `__level3()` in ~LOD). A cut kept at a deeper level for one function, no other shape disturbed;
+  - THE FIRST WALK'S MEMBERS ARE THOSE OWN CODE NAMES, AND A DEAD OWN FUNCTION NAMES THEM: vis_data.cpp's three class inserts (0x3BB7E0, 0x3BBFE0, 0x3BC680), the last misses of the weapons' round 40, inline their temporary's deleter destructor and call its clear, so they are generated ahead of clear: both builds' tails read insert, resize per band vector, then the destructors, the erases, the clears. BandInsertsDevice (src/ABSENT.txt) pushes onto the three vectors: all three byte-exact, 53 of 53, no header change;
+  - THE SECOND T-FREE CHAIN IS THE SAME CHAIN IN CLASS (request 3, include/deque's `__MSL_DEQUE_DEFAULT_INLINE`): game_main's deque<T *>() calls __deque_buf<PCv>() 0x2CEE40 -> cdeque<PPCv>() 0x2CEE70, out of class; with __deque_buf() and cdeque<T *>() in class deque<PCv>() is eight high, admitted at the last pass, so deque<T *>() calls __deque_imp<PCv>() 0x334120, whose own copy calls compressed_pair() 0x334150, the rdr editor's and the vid stack's pair -- both named, 0x3B7FA0 from source, vis_vu.cpp whole. zrdr_edit.cpp (a running lane's) takes one `#define` at merge for 0x3340F0;
+  - THE CLASS ERASE'S END BY ELEMENT: `__erase_end_object<T>`, the insert's trait over round 18's `iterator e = end()`: erase<CSaferStr> 0x383BC0, erase<CDesignDlgObj> 0x384410, erase<CDlgDesignModel> 0x384BD0, every other object byte-identical but one auto-inline decision (the erase's longer text left the explicit specialisation resize<reader> inlinable into ReadCellTable: pinned). erase<zrdr_sym> 0x3323F0 (the world's) the same, measured. VALUE 2, the end the LAST parameter of the tail's copy (an inline's argument objects are numbered in parameter order, so it comes after the walkers', which `igreplay --want` asked of erase<CSkbBgPiece> 0x3980D0): that erase byte-exact, 22 and 45 off before. A dead branch's call of a function template instantiates it and every element's implicit operator= (three new no-target rows): named through a class specialised on the live flag, nothing else moves;
+  - THE LIST DELETER'S `erase(begin(), end())`, BY UNIT (include/list's `__MSL_LIST_DTOR_ERASE`, round 36's +4 / -15 made an opt-in): ~__list_imp 0x3C6880 holds that body, begin() and end() and the erase all calls: the deleter's destructor too tall, admitted at the last pass -- at level 5 by a no-code chain in the range erase, four high, so its own copy and the deleter's copy still inline it whole. zwep_global.cpp takes it (the row with 0x3C6900, 0x3C6910 from source). OVL2's 0x510080 not: ai_events.cpp's remove_if 0x50F890 inlines the erase a pass deeper than the chain allows; sort 0x33E510 (zsav_manager.cpp, the world's) goes 0x1A4 -> 0x180 of 0x178 under it, 80 off;
+  - pop_back 0x3349C0 (open since the rdr lane; `b join` over the zero arm): the ternary's test written `size() != 0` (or `> 0`, `>= 1`) keeps the arms in the target's order; bare `size() ?`, `== 0`, `!`, `<= 0` move the zero into beqz's delay slot, 8 bytes short;
+  - a user-declared empty constructor makes the implicit copy member-wise in a second unit too: util_main.cpp's CRegistrant wanted zsys_init.cpp's `CRegistrant() {}` (insert 0x39C7F0, 126 off to 0: lw/sw and lbu/sb against the FPU block);
+  - frame slots follow creation: named locals, then temporaries as the inliner makes them, so `int v = 0; zrdr_findint(..., &v, 1)` in an inline takes its slot below every named local of the caller (C2DFont::Load's three ints; `op`, a named local after them in the source, sits above them in the frame). A local assigned from an inline two levels down numbers after a one-level inline's local (FontShadow: the shadow block s0, ReadPoint's tag s1);
+  - NOT MET: remove_if 0x50F670 / 0x352500 (9 off, the slots: read in CInline_SetupArgsExpression -- a by-value parameter's object is made in parameter order and evaluated right to left, so no argument form gives "first's slot higher and first's copy first", which only an inline's locals could, and they would be calls there); the buffer's copy 0x2F6090 (no new idea); AddKeyProps, OnIsEquipmentSelected, DistributeNotify / CreateMultiPlayerUnits untouched.
 - **Tells from completing the MSL headers, round 39** (the deque's instances; request 2's make_iterators and the whole copy chain from
   the header, no unit device left for them; probes build/p39/, untracked: rows.py / mi.py / vq.py score header variants over one unit or the
   deque units, ord.py lists a unit's functions in generation order with each row's verdict, sa.py diffs a row against any shadow, vchat.py
@@ -9939,7 +10104,7 @@ online lane's round 10 renamed their rows, the lobby queue's 0x2E0DC0 (its draft
 ~CLobbySaveModule's copy 0x2FD070, once listed with it, matches from source since the online lane's round 18, and the
 lobby's and the chat's deque() 0x2E0D90 and 0x2F6230 since its round 29 -- whose names added the lobby buffer's
 allocator constructor 0x2E0D50, 0x2C against 0x18, and the chat's __deque_buf() 0x2F6260, 0x20 against 0x30, each
-draft with an `sc: as=` line: twelve still -- and 0x2E0D50, 0x2E0DC0, 0x2F6260 and the rdr editor's 0x3340B0 match from source since the MSL headers' round 39: EIGHT left, 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3929C0, 0x3B7FA0, 0x3C6880, 0x510080), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
+draft with an `sc: as=` line: twelve still -- and 0x2E0D50, 0x2E0DC0, 0x2F6260 and the rdr editor's 0x3340B0 match from source since the MSL headers' round 39: EIGHT left then, SEVEN since the UI's round 39 wrote 0x3929C0 from source: 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3B7FA0, 0x3C6880, 0x510080), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
 sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
 built and scored against its other emitters outside `--files` (its draft, and the hand-written units
@@ -9947,8 +10112,9 @@ naming the copy's identifiers) and printed `not lost -- an inline copy missed he
 outside --files still matches: <row> by <emitter>`, rc 0 -- the thirteen each by its draft. Only a
 `REGRESSIONS` line is a loss; a strong definition's miss is never held ("The GCC front: the prebuilt
 libraries", "The tools, round 38a").
-Since the MSL headers' round 39 eight remain: 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3929C0, 0x3B7FA0, 0x3C6880, 0x510080 (0x2E0D50, 0x2E0DC0, 0x2F6260 and 0x3340B0 now
-match from source).
+Since the UI's round 39 seven remain: 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3B7FA0, 0x3C6880, 0x510080 (0x2E0D50, 0x2E0DC0, 0x2F6260 and 0x3340B0 match from source since the
+MSL headers' round 39, 0x3929C0 since the UI's round 39, in zui_hangul.cpp under its level). Since the MSL headers' round 40 four: 0x1EF8C0, 0x32C5F0, 0x333330, 0x510080 (0x3B7FA0 and 0x3C6880 match from source, and 0x3340F0 with
+zrdr_edit.cpp's `#define __MSL_DEQUE_DEFAULT_INLINE`; their drafts are gone).
 
 ## The generated tier: `src/auto/`
 
@@ -12313,7 +12479,7 @@ heap's layout, which the path strings shift, reaching a choice in the whole unit
 (`build/scratch/gcc/r38/census.py`, all 658 hand-written units, MW and GCC, at tree lengths 98, 103, 108, 121,
 135; again at 98, 160, 167): that one function at one length; nothing else, and nothing at 160 or 167. So a
 worktree whose path length hit a flip would see a byte-exact row miss in its own sccheck; the main tree (27
-characters) and the agents' worktrees (71) do not, today. And past ~200 characters mwccps2 breaks: at a
+characters) and the agents' worktrees (71) do not, today (a GCC unit did later: round 27b, whence GCC's relative paths). And past ~200 characters mwccps2 breaks: at a
 220-character tree ai_mapwalk.cpp fails on `zentity.h:340`, then "declaration syntax error" at its own line
 1046. The fix: **both sides are built at a path of one FIXED length** wherever the work directory lies
 (`side_root`: `<work>/tree___...`, 160 characters; refused past 200 or when the work path is longer), and a
@@ -12830,7 +12996,7 @@ The lane's `src/lib` 1,326 byte-exact of 1,383 scored (`lib/(sdk|libc|libgcc|lib
 
 **Round 45a** (2026-11-06, the requests first, then the never-written rows, which is where the yield was): 16 rows newly byte-exact (12,548 bytes), 15 of them among the 16 functions first written this round: the socket layer's poll 0x1C3E60, getsockopt 0x1C4140, setsockopt 0x1C43D0 (`sdk/inet_sock.c`); `libnetb_recv_from` 0x247D30, `libnetb_send_to` 0x247FE8 (`ovl1/libnetb.c`); and Nellymoser's decoder whole but for the FFT: the voiced synthesis 0x254510, its three- and four-set forms 0x254730, 0x254A88 (`sase_decsc.c`), the three- and four-handle frames 0x255028, 0x255490 (`sase_decapi.c`), SetAmps.c's 0x255E68 (new `sase_setamps.c`), SWSynth.c's frames 0x256420, 0x2566D8; libmpeg's demultiplexer whole, `sceMpegDemuxPssRing` 0x1BAB08 and `_PES_packet` 0x1BB0D8 (`sdk/mpeg_demux.c`, with `sceMpegDemuxPss` written over its draft); and one old open: 0x2533B0 (round 19a, thirteen spellings then). Written and OPEN: `sceIoctl` 0x1A8820 (right size, the first time written; see below). 0x2492A0 went from 0x2E8 against 0x2E4 and 103 words of registers (the first draft) to the right size and 14 words, every saved register right; 0x24B2F8 to 8 bytes over, every saved register right, its last word diagnosed. No rows named. What they showed:
 
-- **WRITE THE NEVER-WRITTEN ROWS BEFORE REVISITING THE OPEN ONES.** 15 of 16 first drafts matched, most after one or two of the rules below; about the same effort on the two leads above matched neither. A sibling that matches is a template: 0x254A88, 0x255490 and 0x2566D8 came out of a generator or a copy of the row before. (`/home/sdg/claude-eqoa/decomp-rig/rigsrc/` holds flow.c, haifa.c, jump.c and toplev.c of a 1999 GCC, EQOA's: not this 2.96 and not a complete tree, but the rank_for_schedule tie-break below reads there as measured here.)
+- **WRITE THE NEVER-WRITTEN ROWS BEFORE REVISITING THE OPEN ONES.** 15 of 16 first drafts matched, most after one or two of the rules below; about the same effort on the two leads above matched neither. A sibling that matches is a template: 0x254A88, 0x255490 and 0x2566D8 came out of a generator or a copy of the row before. (The sibling EQOA project's decomp rig, outside this repository, holds flow.c, haifa.c, jump.c and toplev.c of a 1999 GCC: not this 2.96 and not a complete tree, but the rank_for_schedule tie-break below reads there as measured here.)
 - **A PARAMETER'S PSEUDO THAT DIES IN THE FIRST BLOCK IS LOCAL-ALLOC'S, AND IS ALLOCATED BEFORE EVERY GLOBAL ONE** (0x2492A0; calls do not end a block). So it holds its saved register against global-alloc's priorities, a pointer set after its last use takes that register back (`addiu s1,s5,40` in the first call's slot), and a later pseudo local to another block starts from s0 again. "pfRe and the pitch pointer share s1" was this, not one variable: written as one variable the allocation came out right but for one swap, and that swap was the tell (a pseudo set twice is global, and the priorities then order it wrongly).
 - **THE FIRST PASS ISSUES TWO A CYCLE, SO ONE MORE INSN ABOVE SHIFTS WHICH SIDE OF A CALL A LOW-PRIORITY INSN LANDS ON** (0x2492A0: `pfAmp = afAmp`, an equivalence reload deletes, moves the pointer's set past `$4 = pfRe`). An insn that vanishes at reload still takes a slot at sched1. `-fsched-verbose=4`'s visualisation shows the slot.
 - **`rank_for_schedule`'s TIES**: priority, then (before reload) register weight, the class against the last insn, THE INSN WITH MORE LATER INSNS DEPENDING ON IT, and only then the lower LUID (`--dump "-dS -dR -fsched-verbose=5"` prints each insn's priority and dependents). Two rows closed by it: 0x255028 / 0x255490 (the handle's blk and frame in one alias set make each earlier frame store a dependence of the blk load, one more dependent, and the stores go first; `void *blk`, `void *frame`, the frame's in and out typed apart), and 0x256420 / 0x2566D8 (a call's first argument move has the earlier call's every argument as a dependence, so WHICH ARGUMENT IS FIRST IN THE NEXT CALL'S PROTOTYPE reorders this call's moves: `(fStep, n, fX, ...)`). Read a one-move miss off the dependents column before permuting.
@@ -15283,6 +15449,49 @@ DistCalc4Bit: SOCOM 1's order and bodies). No tool changed in this round (scratc
 score, cdiff.py the normalised alignment, rtllist.py a pass dump's real insns between two uids, probe_fo.py loop.c's decisions under
 filler stores, v_*.py the variants).
 
+**Round 41c: the second-pass builders, the Chinese trees, the N-best control, the voicing measure: 625 of 652 in `lib/asr`.**
+
+- **A statement that leaves no word can still move others** (CreateSecondPassTreeContext_ForChinese, 2 words, every statement order
+  tried first): `pm2 = &maxn` at the head of a block. Its insn lives until reload deletes it (the frame address is its equivalence), and
+  holds sched1's second ALU slot in the cycle after the load; the zero behind it then issues after the sum.
+- **An inline function's arguments expand as sums, the index first** (`expand_inline_function` passes EXPAND_SUM: `addu a1,a1,t1`, where a
+  macro's `&t->items[n]` gives `addu a0,t0,a0`). SplitUp_Finals' item copy as an inline took 126 words to 3, as its twin.
+- **A variable can be born a constant for one test** (Swap_Finals, OPEN since 39c): `unsigned int tone = 0xFFFF;` above `while (c != 0xFFFF)`.
+  CSE reuses it for the entry test (`li t3,0xffff`, early in sched2), it is not live round the loop, and its short range takes t3 ahead of the
+  node's shift. Written `while (c != tone)` it lives 260 insns and takes t6.
+- **A short variable can outrank a long one's register by conflict** (Voicing_GetMaxVoicing): the tail's three logs each a variable of its own
+  (`a`, `b`, `c`): `b` gets f20 first by its short life, the second energy conflicts with it and with `a` and lands in f22, the first energy
+  then shares f20. The energies alone would have them the other way (a 4-ref, 17-insn life beats a 6-ref, 359-insn one).
+- **The increments live in the indexes** (Translate_Prons and its twin, OPEN since 37c): `t->items[(*nitems)++].child = ...`,
+  `t->links[*nlinks].node = ++(*nitems)`: the left side's address is expanded first and the count read once; the parameter `node` reused for
+  the child, and `kind == 1` inside the loop (hoisted after the guard, `xori` in the branch's slot).
+- **`for (;;) { if (lnk == EOL) { arm; break; } ...; if (match) {...; break;} lnk = next; }` shows in three ways**: the roll moves test and arm to
+  the bottom, a label in the region refuses the test's copy (entry `b`), and blocks that end in jumps leave the loop for the last barrier
+  (Build_Tree_ForChinese_TreeCtx: its `prev != 0` arm and both found exits stand together before the else).
+- **A barrier makes a place** (Swap_Finals): with `if (leaf) {...} else { loop }` the arms' `b END` give `return 1` the barrier it moves to;
+  an arm's own table store is what cross-jumps. Two `return f(..) == 0;` arms are one call, cross-jumped with the a0 copy in the branch's slot
+  (the two arms' first insn); one call with its arguments in variables has that copy at the merge (ControlNBestDynProgProcess, case 4).
+- **PRE's `b TOP`**: `e0 = w->end` above a do-while whose body starts `e = w->end` inserts on the critical back edge; the `b` and its barrier are
+  where the find's failure arm goes (Build_Tree_ForChinese). A node index spelled as an expression (`j * np + nnodes + i`) gives nnodes its
+  refs where a walker would not.
+- **`const` inline parameters are read where they stand** (TREE_READONLY in expand_inline_function): a spilled argument is reloaded from its own
+  slot, no copy. **Deferred inlines**: inline functions above their caller inline there and their copies land at the object's end, closing
+  Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree (open since 14c). **Definition order is a nothrow note**: a callee defined earlier lets
+  reorg read through the call (`beqz s8,T; move a0,s8` where an extern leaves a nop).
+- **Register twins of a frame word**: `pm = &maxp; m = *pm; ...; *pm = m;` a pointer per maximum (one pointer set twice defeats cprop, a pure
+  inline's MEM(ADDRESSOF) purges to a register). `n3 = n2`, `n4 = n2` copies stop PRE commoning a shift across the calls. Duplicate failure
+  tails (cross-jumped after reload) raise the context's refs over the tree's (s2/s3): one tail in the Mandarin builder, four in its twin.
+- **Open, with the diagnosis in place**: SplitUp_Finals and its twin (3 words: the target's tone test recomputes node * 4 where GCSE's dump
+  has that occurrence redundant, so it must not be the same expression at that pass); ProcessVad (2: the target loads sum's zero and copies
+  to cnt, with cnt the higher priority; sum as the copy's source has one ref more and takes $f0. Two independent zeros would be right, reload_cse
+  making the copy, but CSE merges them first); InitCalculateDistances (4, unchanged).
+
+Hand-written in round 41c: `asr/spcontext.c` (new: CreateSecondPassContext, FreeSecondPassContext, span 0x4D0BD8-0x4D1C18, SOCOM 1's object at
+0x33F590), `asr/secpass.c` (CreateSecondPassTreeContext), `asr/chinese.c` (Build_Tree_ForChinese, Translate_Prons_Into_Items_And_Tones, Swap_Finals,
+FreeSecondPassContext_ForChinese, CreateSecondPassContext_ForChinese, Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree), `asr/chinese_tree.c`
+(the same six under `_TreeCtx`, CreateSecondPassTreeContext_ForChinese), `asr/nbestdp.c` (ControlNBestDynProgProcess, ConstructNBestDynProg),
+`asr/voicing.c` (Voicing_GetMaxVoicing). The largest unwritten rows left in the recogniser: DynProgAccNBestNoOptSil (1105 words), DynProgAccNBestOptSil (1635).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -15887,6 +16096,35 @@ rows named: DME's API names are Dme.c's wrappers' (round 7b), and these bodies' 
 
 Hand-written in round 26b: `medius/dmelocal.c` (+8: 0x6158F8, 0x6193F8, 0x617060, 0x61BEE8, 0x6187A0, 0x6197A0, 0x61CCA8, 0x61BA10 byte-exact, 0x614B18, 0x6164E0, 0x6181B8, 0x619DD8, 0x61B6E8, 0x61BC68 written, open; 113 of 122), `medius/dmemessage.c` (+0: 0x61ED48, 0x61F518, 0x61F920 written, open; 18 of 22), `medius/mediusapi.c` (+1, 0x64A750; whole, 111 of 111), `medius/mediusresp.c` (new, span 0x64D490; 1 of 1), `medius/rt_frag.c` (+1, 0x645528; 0x645380 written, open; 3 of 5), `medius/rt_list.c` (+1, 0x631848; whole, 23 of 23), `medius/rt_msg_client.c` (+2: 0x636B30, 0x635A70; 93 of 97), `medius/rt_p2p.c` (+8: 0x6395B8, 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63B708, 0x63B9A0, 0x63C4F0; 0x63ACA0 written, open; 40 of 46), `medius/rt_udp.c` (+5: 0x63F4C8, 0x6400A8, 0x640940, 0x640EA0, 0x641490; 0x63EF38, 0x6404D8 written, open; 53 of 61) -- 27 rows new to the map's byte-exact rows (16,500 bytes; `src/lib/medius` 1,013 -> 1,040 of 1,049 -> 1,089), unwritten rows 65 -> 25. No rows named: these bodies' own names have no evidence past their position, and no symtab row changed. No tool changed.
 
+**Round 27b: the unwritten rows by SOCOM 1's bodies, an alias word settled in file order, a flag PRE keeps -- 17 rows written, 10 of them byte-exact, one old open closed.**
+
+- **A flag the target computes once and copies is PRE's**: 0x617250 (SOCOM 1's MsgClientConnectCallback grown) has `slti s4,s0,4` and `move s1,s4` in a slot, and three variables and every initialiser
+  left it unexplained. There is no flag in the source: each test is `nWorld < 4 && ...` written out; MIPS sets the compare into a pseudo of its own, and GCSE's PRE gives the last block's copy a
+  reaching register, `set reach; set copy reach` at each computation. Writing the tests inline took the row from 71 words to registers only.
+- **One variable through a whole function, read off global-alloc's table**: 0x617788 keeps `li s4,1` above the first test, then the password's pointer, the connect's result and a `li s4,2`, all s4. A
+  pseudo not crossing calls would take a free argument register; s4 means it does cross, so it is one variable with four sets, SOCOM 1's `li s1,1` and `addiu s1,s2,137` the same. It also sinks below pKind
+  in priority, which puts every other s-register right. `ccdump -f`'s table made this a two-step read. (0x633A08 looks the same and is not, or not yet.)
+- **An initialiser stops the loop-test copy's renaming**: duplicate_loop_exit_test renames a pseudo set and used only in the exit test; `DmeField *pField = 0` (0x61A800) gives it a second set, and the
+  field's two uses share one register. d=12 to 0.
+- **A load hoisted over a run of stores is a type**: 0x617788's `lw t1,0(s3)` passes int stores, so the connection's kind is an enum (DmeConnectType, in the world's 0x44C too); its `lw a3,188(s1)` waits for
+  the store at 0x428 by cost 2 where `lw t0,52(s3)` goes first, so the two callbacks are one type (DmeClientCallback, a typedef: a second spelling of the same prototype was a different alias set). 0x643900's
+  `lw a3,52(s0)` above the option stores is the same: a pointer-typed read of the parameter. The world's 0x42C-0x434 are void * and a callback.
+- **The stale alias word, settled in file order**: since text below a function cannot change it, a pass in file order can give each function the K unread declarations it needs (`dme_pad_<VA>_<i>`, scratch
+  solve.py; 0x619DD8, open since round 26b, 0x617788, 0x617250, 0x618F70). It costs little and K need not be small (32 above 0x619DD8 in the worktree; none at the build's own paths, below). Some functions do not answer K right above them: 0x61B2A0, 0x61A488, 0x6197A0
+  and 0x61B538 turned on a pad far above, and not on 40 right above, with `lui at; addu; lw %lo` against `lui; addiu` on an indexed table at combine, cse2 identical but the alias numbers. search.py, coordinate descent
+  over the K of every site scored on the whole unit, brought all of them back in 11 seconds. Nothing here says why combine cares. A struct of 8 or more members changing it (the first version of
+  DmeConnectParams) is the same effect; the full record now sits below in its own type. K flipped nothing in rt_p2p.c, rt_udp.c, rt_frag.c or audio.c.
+- **A GCC UNIT'S CODE DEPENDED ON THE TREE'S PATH, AND THESE COUNTS WERE FIRST FITTED TO ONE** (the integrator, at the merge: the lane's check had 119 of dmelocal.c's 130 and nothing lost, the main tree's 117 with 0x617060 lost). The same source compiled differently in the worktree's 71-character tree and the main tree's 29: 0x617060 (0x1F0 against 0x1E4) and 0x619DD8 (14 words). Through symlinks to one tree, so that only the path string changed, the unit gave one code at tree lengths 64-101 and another at 102-103; the object's own path changes nothing. So `scdiff.compile_obj` gives GCC no absolute path now (`gcc_relative`: cwd the tree, `src/...`, `-Iinclude -Isrc`, `TMPDIR=build/tmp`) and a unit is one object from any tree (the canary's `test_gcc_code_does_not_depend_on_the_trees_path`; `SC_GCC_ABSOLUTE=1` restores the old rule, the tests' negatives use it). All 767 GCC units by relative paths against the main tree's absolute ones: 3,545 rows, no verdict changed, so no other row paid for this. Settled again at these paths (`build/scratch/integ/pathdep/padfit.py`, solve.py's pass with the build's own path strings): 0x619DD8 wants no pad at all and 0x617060 wants one, 22 lines where the worktree's fit had 54. `tools/ccdump.py` compiles through links in its output directory, so a unit's dump is the build's code. A probe at another path is not the unit: a function on the stale word can differ there, so sccheck decides, not a scratch build. The mechanism was not read: presumably the path strings shift the obstacks the stale word comes from. MW keeps its absolute paths and what round 38a measured (GetBestDir at a few lengths); objcmp's fixed-length sides are for it now.
+- **What a call compiled above does, measured**: 0x617788 flips `beqz; nop` to `beqzl` only with both RtMsgToDmeConnectionIndex and func_0061C638 compiled above it, each alone is harmless: the image's order
+  (0x61C638 below) settles it. Hence 0x617788 at its image place, 0x617250 (which needs none of them compiled) at the unit's end.
+- **Shapes, measured**: a guard is `if (f() != 0 || p == 0) return X` where the target has `bnezl v1,next; b end` (0x61E8B8, 0x61EFB0: round 26b's label again); `switch` for a state tested 0 first (0x6200D0); one `||` per range test
+  keeps a load in the slot (0x6200D0); `x = -1` / `x = p->n` as two stores cross-jumped, with p read into a local first (0x6199D0, not the if-converted `li`); a `while (1)` whose arms end in if/else leaves its constants inside and only the address hoisted, `for (;;)` with continues hoists all, gotos none (0x610010);
+  `return K` in a guard is hoisted over `lw; andi` only as `if (flags & 1) return 1;`, not nested (0x610010); `pData += n; nLength += n` for the target's order of the two adds (0x61E8B8); strcpy of "" is the literal's one byte (0x633A08); `result` reused keeps a zero-known register for a later compare (`sltu v0,v1,v0`): the plain `beqz` is a do-while under an explicit guard with `i = 0` above it (0x643900).
+- **Open, diagnosed in place** (OPEN notes): 0x616820 (19 words, the port's stores: the `andi` is the post-reload CSE of a load straight after its store), 0x618B38 (the first loop's entry, then a shift), 0x6199D0 (40, a copy of pStruct for the loop), 0x6200D0 (1, bnezl), 0x633A08 (80, registers only), 0x635228, 0x6115C0 (6).
+- **Records**: audio.c's AUDIO has x0C-x24, x7C, x80 and nWidth/nHeight (0x9C, 0xA0: the converters are planes, halved twice); streammedia.c's session its parameter words and options[16]; DmeFragment its fields; rt_msg_client_connect_options all of them. SOCOM 1's names for the new bodies are in their comments, not the map: renaming moves the alias word.
+
+Hand-written in round 27b: `medius/mediusresp.c` (+1, RegisterPackets, 264 rows of the message table; 2 of 2), `medius/dmelocal.c` (+6: 0x617250, 0x617788, 0x617CD8, 0x61A800, 0x61ACF0 written; 0x619DD8 closed; 0x616820, 0x618B38, 0x6199D0 written, open; 119 of 130), `medius/dmemessage.c` (+2: 0x61E8B8, 0x61EFB0; 0x6200D0 written, open; 20 of 25), `medius/streammedia.c` (+1, 0x643900; 35 of 40), `medius/audio.c` (+1, 0x610010; 0x6115C0 written, open; 58 of 62), `medius/rt_msg_client.c` (+0: 0x633A08, 0x635228 written, open; 93 of 99) -- 11 rows new to the map's byte-exact rows (16,808 bytes; `src/lib/medius` 1,040 -> 1,051 of 1,089 -> 1,106), unwritten rows 25 -> 8. No rows renamed. No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
@@ -15960,9 +16198,11 @@ What is open across lanes, and what comes next:
   6800 over every hand-written unit) and leaves 39 open; the FreeVector/TrimVector cuts (27 rows) need
   swap levels nothing shows, the list's (about 10) SOCOM 1's whole list shape, and the strings,
   element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
-  at their level-5 shapes, seal_ai.cpp's pragma with them.
+  at their level-5 shapes, seal_ai.cpp's pragma with them. EIGHT, ON THE LEAF CUT'S EVIDENCE (the MSL headers round 40): the image's eight functions that call the capacity pair's first()
+  and second() out of line and inline all the rest all put the pod's or the deleter's destructor at pass 5, which is level 8 with alloc() over first(); units that need it say so
+  by `__MSL_POD_DTOR_ARGS` and a level pragma, seven units so far, the tree staying at 5.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
-  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short --
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() since round 40 --
   round 34: the image's chain is the exported out-of-line copies of inline functions cut at their
   callers, depth first, so it wants the chain refitted as inline functions, not reordered) and
   its iterator classes (every do_assign calls separate source and destination operators out of line,

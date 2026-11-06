@@ -304,25 +304,11 @@ bool CLight::Read(CSaveLoad &io)
 /* the node-to-world matrix: this node's, then each parent's up to the world (type 6, whose own
  * is the unit), multiplied in; none if the chain never reaches it. The recursion inlines itself
  * three times; the innermost copies call CMatrix's pieces out of line.
- * OPEN (right size, 44 differing): the third copy converts Multiply's arguments right to left
- * (this, b, then out: 0x310C60, 0x310C60, 0x310C50), where MW converts call arguments left to
- * right (probe build/scratch/inl/t10.cpp) -- so out first here, in every form tried (explicit
- * casts, implicit conversions to row pointers under a const prototype, a local). Round 29: 38 of the
- * 44 are `this` and m swapped (target s1 / s0): igreplay gives the target's colouring only with m
- * numbered ahead of `this`, or the second inlined copy's `this` temporary (@1988, deferred) numbered
- * after every code-generation temporary; zmath.h's Multiply with its conversions held in locals
- * (this, b, out) cuts an inline level (0x1C4); casts, `+ 0`, const_cast on the operands change
- * nothing (build/scratch/wld/v_mul.py). Round 30 (build/scratch/wld/p_args*.cpp, v_mul2.py,
- * v_mtw*.py): MW evaluates the ARGUMENTS OF AN INLINED CALL RIGHT TO LEFT (bound to the inline's
- * parameters) and an out-of-line call's left to right -- conversions inside an inlined body keep
- * left to right -- so the target's this, b, out order is Multiply passing its three conversions to
- * an inline of their own; but every such wrapper (static member taking row pointers, row references
- * or matrices) puts the conversions a level deeper (copy 1 already calls them out of line, in the
- * right order, 0x254 / 72 off): the original's tree is one level shallower somewhere else. The
- * numbering: igreplay gives the target's s1 / s0 only with the first inlined copy's m_parent CSE
- * temporary (@1993, deferred) numbered before `m` or after the code-generation temporaries, or `m`
- * after it; a parent local, a node or matrix pointer local, a result local, if / else returns and
- * `#pragma opt_propagation off` / `opt_common_subs off` change nothing (the locals copy-propagate) */
+ * Byte-exact since round 34 (44 off since the online lobby's round 28): zmath.h's Multiply holds this's and b's
+ * conversions in locals, the out's in place. Where its conversions stay calls (the third copy) that gives the target's order
+ * this, b, out -- an out-of-line call's nested calls evaluate left to right, so no spelling of the arguments did -- and the
+ * two temporaries an IR-level number: @2016 (the second copy's m_parent, degree 26 of K 25, one lower neighbour short) is then
+ * pushed in the first sweep, and m alone is deferred and takes s0 ahead of `this` (s1). All three locals (0x1C4) cut a level */
 CMatrix *CNode::BuildMTW(CMatrix &m)
 {
     if (m_type == 6) {

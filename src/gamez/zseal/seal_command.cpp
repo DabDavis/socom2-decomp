@@ -404,8 +404,186 @@ bool CanDeploy(CZKit *kit, EQUIP_ITEM item, CNodeAction *action)
     bool ok = false;
 
     if (kit->HasItem(item) && kit->ItemHasAmmo(kit->GetItemIndex(item))) {
-        if (item != 152 || data_0066B030 || type == NODEACTION_BREACH)
+        if ((unsigned char)item != 152 || data_0066B030 || type == NODEACTION_BREACH)
             ok = true;
+    }
+    return ok;
+}
+
+extern "C" {
+/* the order helpers (OVL2 0x58F190, 0x58F230, 0x58F6E0, seal_orders.cpp's -- the order's data handed on
+ * as it stands; 0x5664F0, seal_ai.cpp's; 0x5EC230, seal_unit.cpp's; 0x5F4360, the states' -- whether a
+ * state's animation has a sequence) */
+EQUIP_ITEM func_0058F190(void *target);
+bool func_0058F230(CSealUnit *unit, CZSealBody *seal, void *target, CAiMapLoc *out);
+bool func_0058F6E0(const CPnt3D *from, const CPnt3D *to, CAiMapLoc *out, bool along);
+bool func_005664F0(EQUIP_ITEM item);
+bool func_005EC230(CZSealBody *from, CZSealBody *seal, CNodeAction *na, void *data);
+int func_005F4360(CAiState *state, const char *name);
+}
+
+/* whether a living SEAL, an escort (its team's bit 18), on the asker's side, is the one the asker looks at
+ * (an inline, the name ours: its AI asked and not used, Escorts' shape without the switch) */
+static inline bool EscortLooks(CZSealBody *seal, CZSealBody *other)
+{
+    if (!seal || !seal->m_isAlive)
+        return false;
+    unsigned int team = seal->m_team;
+    bool escort = (team & 0x40000) != 0;
+    bool same = other ? (((const CEntity *)other)->m_team & team) != 0 : true;
+    bool r = false;
+
+    if (same && escort && other) {
+        seal->GetSealCtrlAi();
+        r = seal == other->GetReticuleSeal();
+    }
+    return r;
+}
+
+/* whether an order may be given (SOCOM 1's CSealCtrlAi::AllowCommand; slot 0x28 of its table, OVL2
+ * 0x590BC0): the SEAL alive and on the asker's side, then per order */
+bool CSealCtrlAi::AllowCommand(CZSealBody *other, FT_COMMAND cmd, void *data)
+{
+    signed char mode;
+    bool ok;
+    EQUIP_ITEM it;
+    CZSealBody *seal;
+    CAiMapLoc loc_deploy;
+    CAiMapLoc loc_order;
+    CAiMapLoc loc_cell;
+
+    seal = (CZSealBody *)m_entity;
+    mode = (signed char)m_26c;
+    ok = false;
+
+    if (seal && seal->m_isAlive && (((const CEntity *)other)->m_team & seal->m_team)) {
+        CSealUnit *unit = m_unit;
+
+        switch (cmd) {
+        case 1:
+            ok = func_005911F0(this, other, data);
+            break;
+        case 14:
+        case 23: {
+            CPnt3D center;
+
+            bool r = func_0058F230(unit, other, data, &loc_cell);
+
+            if (r)
+                r = AiMaps.GetCellCenter(loc_cell, &center) != 0;
+            ok = r;
+            break;
+        }
+        case 2: {
+            EQUIP_ITEM item = (EQUIP_ITEM)255;
+
+            switch ((unsigned char)data) {
+            case 1:
+                unit->GetData(&item, 4);
+                break;
+            default:
+                item = func_0058F190(data);
+                break;
+            }
+            it = item;
+            if ((unsigned char)it == 255)
+                break;
+            CZKit *const kit = &seal->m_kit;
+            CNodeAction *action = other->GetReticuleAction(false);
+
+            if (CanDeploy(kit, it, action)) {
+                ok = CanPushAiState((AI_STATE)4, 0);
+                if (ok && func_005664F0(it))
+                    ok = func_0058F6E0(&other->m_1464, &other->m_posW, &loc_deploy, true);
+            }
+            break;
+        }
+        case 3:
+            ok = m_aibit16;
+            break;
+        case 15:
+            ok = false;
+            break;
+        case 17:
+            ok = func_00591520(this, other);
+            break;
+        case 4:
+            ok = AllowCommandFOLLOW(other);
+            break;
+        case 7:
+            ok = true;
+            break;
+        case 5:
+            ok = AllowCommandHOLDPOS(other);
+            break;
+        case 6:
+            ok = !m_aibit16;
+            break;
+        case 20:
+            ok = m_aibit16 && !m_aibit17;
+            break;
+        case 19:
+            ok = (unsigned char)mode == 1;
+            break;
+        case 18: {
+            CSealCtrlAi *ai = GetSealCtrlAi();
+            bool r = false;
+
+            if (ai) {
+                CZSealBody *s = (CZSealBody *)m_entity;
+
+                if (EscortLooks(s, other) || func_00591DC0(s, other)) {
+                    CAiState *st = ai->FindAiState((AI_STATE)1);
+
+                    st = st && st->m_state == (AI_STATE)1 ? st : 0;
+                    r = st != 0 && func_005F4360(st, "on_pullout") != 0;
+                }
+            }
+            ok = r;
+            break;
+        }
+        case 26:
+            ok = false;
+            break;
+        case 25: {
+            bool r = false;
+            bool has = other != 0;
+
+            if (has)
+                has = other->GetReticuleSeal() != 0;
+            if (has && other->GetReticuleSeal()->m_restrainable)
+                r = true;
+            ok = r;
+            break;
+        }
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+            ok = func_0058F230(unit, other, data, &loc_order);
+            break;
+        case 16: {
+            CNodeAction *action = 0;
+
+            if (other)
+                action = other->GetReticuleAction(false);
+            ok = func_005EC230(other, seal, action, data);
+            break;
+        }
+        case 8: {
+            CZSealBody *t = other->GetReticuleSeal();
+
+            if (t && func_00591DC0(t, 0) && !CSealUnit::IsMemberOfUnit(3, t, true)) {
+                static float k_range2 = 22500.0f;
+                CPnt3D d = t->m_posW - seal->m_posW;
+
+                if (d.x * d.x + d.y * d.y + d.z * d.z < k_range2)
+                    ok = true;
+            }
+            break;
+        }
+        }
     }
     return ok;
 }

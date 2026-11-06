@@ -14,6 +14,8 @@ public:
     CZSIScriptCommon *GetScript(AnimType type);
     CZSIScriptCommon *GetScript(AnimType type, int kind);
     int GetVariantIndex(AnimType type, int kind, int anim);
+    /* the variant an anim would take now (anim.cpp's, OVL2 0x5E3E10) */
+    int PickVariant(AnimType type, int kind);
     AnimType BaseAnim(AnimType type);
     /* the set's name (out of line here, OVL2 0x578940: this unit emits Find's pieces first, right
      * after 0x5784A0) -- five inline levels high: FITTED, not read off the image (the kit's round 38
@@ -863,9 +865,9 @@ static inline void NegateF(float &v)
 /* the blast's words zeroed (an inline: the target loads CPnt3D::zero's words each time) */
 static inline void ClearBlast(CZSealBody *seal)
 {
-    seal->m_1314 = CPnt3D::zero;
-    seal->m_1320 = 0.0f;
-    seal->m_1324 = 0.0f;
+    seal->m_shock.m_1314 = CPnt3D::zero;
+    seal->m_shock.m_1320 = 0.0f;
+    seal->m_shock.m_1324 = 0.0f;
 }
 
 /* a blast held at 0x1314 taken: within its radius of the SEAL's middle the body and the overlay let go, the
@@ -875,7 +877,7 @@ static inline void ClearBlast(CZSealBody *seal)
  * 0x57E770, new in SOCOM II beside the set-up that stores it; the name unknown) */
 extern "C" CZBodyAnimBlend *func_0057E770(CZSealBody *seal)
 {
-    if (seal->m_1320 == 0.0f) {
+    if (seal->m_shock.m_1320 == 0.0f) {
         ClearBlast(seal);
         return 0;
     }
@@ -883,15 +885,15 @@ extern "C" CZBodyAnimBlend *func_0057E770(CZSealBody *seal)
         ClearBlast(seal);
         return 0;
     }
-    float power = seal->m_1320;
-    float radius = seal->m_1324;
+    float power = seal->m_shock.m_1320;
+    float radius = seal->m_shock.m_1324;
     CPnt3D p = seal->m_posW;
 
     p.y += seal->GetRootPart()->m_pos.y;
 
     CPnt3D d;
 
-    p.Sub(&seal->m_1314, &d);
+    p.Sub(&seal->m_shock.m_1314, &d);
 
     float dist = d.Normalize();
 
@@ -1651,16 +1653,16 @@ extern "C" bool func_0057F9C0(CZSealBody *seal)
 extern "C" bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b)
 {
     if (seal->IsRemote()) {
-        seal->m_1314 = CPnt3D::zero;
-        seal->m_1320 = 0.0f;
-        seal->m_1324 = 0.0f;
+        seal->m_shock.m_1314 = CPnt3D::zero;
+        seal->m_shock.m_1320 = 0.0f;
+        seal->m_shock.m_1324 = 0.0f;
         return false;
     }
     CPnt3D t = *p;
 
-    seal->m_1314 = t;
-    seal->m_1320 = a;
-    seal->m_1324 = b;
+    seal->m_shock.m_1314 = t;
+    seal->m_shock.m_1320 = a;
+    seal->m_shock.m_1324 = b;
     return true;
 }
 
@@ -2124,6 +2126,173 @@ extern "C" bool func_00580360(CZSealBody *seal, float t)
         return false;
     }
     return true;
+}
+
+extern "C" {
+/* the weapon's anim set taken (0x58ACC0), its stance's look put back (0x5B3890), a landing's end (0x5B1890), a
+ * blend's flag set (0x58A920) */
+void func_0058ACC0(CZSealBody *seal, CZSIScriptCommon *anim);
+void func_005B3890(CEntity *seal, int x);
+void func_005B1890(CZSealBody *seal);
+extern short data_003DEF00;
+extern short data_003DEEF8;
+extern short data_003DEF40;
+extern short data_003DEF50;
+extern short data_003DEF60;
+}
+
+/* the SEAL's node put at its position with the height a climb left (an inline, the name ours), and the root's
+ * saved position's height set (an inline, the name ours) */
+static inline void PutAtClimbHeight(CZSealBody *seal)
+{
+    CPnt3D pos(seal->m_posW);
+
+    pos.y = seal->m_alt;
+    seal->GetNode()->SetPosition((const PNT3D *)&pos);
+    seal->UpdatePosW();
+}
+
+static inline void PutAtLedgeHeight(CZSealBody *seal)
+{
+    CPnt3D pos(seal->m_posW);
+
+    pos.y = 15.299999f + seal->m_alt - 11.4869995f;
+    seal->GetNode()->SetPosition((const PNT3D *)&pos);
+    seal->UpdatePosW();
+}
+
+static inline void SetSavedHeight(CZSealBody *seal, float y)
+{
+    CPnt3D p(seal->GetRootPart()->m_saved_pos);
+
+    p.y = y;
+    seal->GetRootPart()->m_saved_pos = p;
+}
+
+/* the top blend taken off: the overlay it held undone, a dying blend ended; none left: no anim; else the next
+ * one's anim set, base type and state taken, its script's variant fixed; then what the anim popped leaves: the
+ * height of a climb, a landing, the chain of a climb over's ends (OVL2 0x589AA0; SOCOM 1's PopBlend's grown).
+ * The next blend returned */
+CZBodyAnimBlend *CZSealBody::PopBlend()
+{
+    CZBodyAnimBlend *b;
+    short anim;
+    CZBodyAnimBlend *top;
+    ACTIVE_ANIM *rep;
+    bool flag;
+
+    top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    anim = m_curblend;
+    flag = func_005551A0(top->m_flags, 32);
+    if (top->m_20)
+        func_005781C0(this);
+    bool climbing = IsCurrentBlend((AnimType)data_003DEEE8) || IsCurrentBlend((AnimType)data_003DEEF0);
+
+    if (climbing && !m_isAlive)
+        top->m_state = 8;
+    b = (CZBodyAnimBlend *)CBody::PopBlend();
+    if (!b) {
+        m_curblend = (AnimType)-1;
+        return 0;
+    }
+    func_0058ACC0(this, b->Representative()->m_anim);
+    m_curblend = m_animset->BaseAnim((AnimType)b->m_animType);
+    if (b->m_state == 3)
+        BodySetState(3);
+    rep = b->Representative();
+    unsigned int current = rep->m_anim->m_id;
+    int variant = m_animset->PickVariant((AnimType)rep->m_id, m_weapon_id);
+
+    if (current != variant && variant >= 0)
+        rep->m_anim = m_animset->GetScript((AnimType)rep->m_id, m_weapon_id);
+    if (anim == AnimTypes::ClimbOver) {
+        CZBodyPart *root = GetRootPart();
+
+        m_fac = m_posW.y + root->m_pos.y;
+        m_fix_skel_y = true;
+        m_alt = m_last_altitude.m_pos.y;
+    } else if (anim == 46) {
+        if (flag)
+            b->m_tfrac = 1.0f;
+        else {
+            ClearToBase(false);
+            PutAtClimbHeight(this);
+            func_0059D750(this);
+            func_005B3890(this, 1);
+        }
+    } else if (anim == 44) {
+        if (flag)
+            func_0059D750(this);
+        else
+            PutAtLedgeHeight(this);
+    } else if (anim == data_003DEF40) {
+        m_bit9 = true;
+        m_bit10 = false;
+        m_alt = m_posW.y;
+    } else if (anim == 42) {
+        PutAtClimbHeight(this);
+        SetSavedHeight(this, 11.4f);
+    } else if (anim == AnimTypes::ClimbMedium) {
+        PutAtClimbHeight(this);
+        SetSavedHeight(this, 11.5f);
+    } else if (anim == 35) {
+        PutAtClimbHeight(this);
+        SetSavedHeight(this, 10.73f);
+    } else if (anim == AnimTypes::StepUp) {
+        PutAtClimbHeight(this);
+        SetSavedHeight(this, 10.45f);
+    } else if (anim == data_003DEAE0)
+        func_005B1890(this);
+    else if (anim == data_003DEEE8) {
+        CZBodyAnimBlend *t = (CZBodyAnimBlend *)func_00555170(&m_blends);
+        int n = 12;
+        CBodyAnimBlendStack *stack = &m_blends;
+
+        while (BlendCount(stack) > 1 && n > 0) {
+            t = PopBlend();
+            n--;
+        }
+        if (n <= 0)
+            t = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        else {
+            if (t)
+                t->m_ctrl = 0;
+            m_desiredStance = STANCE_PRONE;
+        }
+        if (m_isAlive && !IsRemote()) {
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)data_003DEEF8, 0, 0, 0);
+            if (m_limp)
+                b->m_flags = func_0058A920(b->m_flags, 2, true);
+        } else if (!m_isAlive)
+            BodySetState(8);
+    } else if (anim == data_003DEEF0) {
+        CZBodyAnimBlend *t = (CZBodyAnimBlend *)func_00555170(&m_blends);
+        int n = 12;
+        CBodyAnimBlendStack *stack = &m_blends;
+
+        while (BlendCount(stack) > 1 && n > 0) {
+            t = PopBlend();
+            n--;
+        }
+        if (n <= 0)
+            t = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        else {
+            if (t)
+                t->m_ctrl = 0;
+            m_desiredStance = STANCE_PRONE;
+        }
+        if (m_isAlive && !IsRemote()) {
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)data_003DEF00, 0, 0, 0);
+            if (m_limp)
+                b->m_flags = func_0058A920(b->m_flags, 2, true);
+        } else if (!m_isAlive)
+            BodySetState(8);
+    } else if (anim == data_003DEF60) {
+        func_0059D750(this);
+        func_005B3890(this, 0);
+    } else if (anim == data_003DEF50)
+        func_005B3890(this, 0);
+    return b;
 }
 
 /* the climb over: out of AnimTypes::ClimbOver the blends popped down to one, twelve at most, as
