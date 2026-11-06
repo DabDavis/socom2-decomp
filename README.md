@@ -2102,7 +2102,16 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     the way: the lobby's const make_iterator 0x2E18A0 is deferred (unparsed in-class callees) and generated
     before the buffer's begin() const is instantiated; generated after it (a probe reference from own code)
     it inlines it, 0xE4 -> 0xF4, still 77 off -- the target keeps begin()'s iterator and the const_iterator
-    converted from it in memory (sp+0..12, sp+16..28) where ours folds the conversion's copy;
+    converted from it in memory (sp+0..12, sp+16..28) where ours folds the conversion's copy. And the five
+    deque() rows (0x2E0D90, 0x2F6230, 0x3A6410, 0x3B7FA0, 0x3340F0: allocator<PCv>() called where the target
+    inlines it) are the same rule: deque() waits past the walk on its unparsed __deque_imp(), the copy
+    constructor waits on __deque_imp(const A &), so allocator<PCv>() is first referenced after the walk and
+    instantiated after both. With __deque_imp(const A &) parsed by own code (a probe), the copy constructor
+    is generated in the walk, its reference instantiates allocator<PCv>() in the same walk, and the deferred
+    deque() inlines it: 0x2E0D90 byte-exact, the copy constructor 0x2E07B0 still exact. No natural shape
+    parses it there: the copy constructor in class does (the deque() rows match or reach their callee's
+    row) but the queue's constructor then inlines it, losing CZOnlineLobby() 0x2E0710, the chat queue's
+    0x2F5F50 and CSimpleStateMachine() 0x3A5DD0 (build/p35/dq/inc_cc: the deque units' board 274 -> 270);
   - cdeque<PCv>::erase 0x285D30 (request 4), its shape read, not written: MSL's deque erase -- pos = first -
     begin(), back = end() - last, n = last - first through the friend operator- of cdeque<T *>'s
     const_iterator form (x's fields re-read), then, when pos < back, copy_backward(begin(), first, last)
