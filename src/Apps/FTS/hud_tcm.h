@@ -184,6 +184,7 @@ public:
     CTCMNode *GetSelected();
     /* hud_tcmcmds.cpp's layout (the names ours) */
     void AlignRoot(CTCMNode *cur);
+    void LayoutColumn(CTCMNode *cur, float x, float y, float dir, unsigned int depth, bool b);
     bool FadeCursor(CTCMNode *cur, bool in, float dt);
     bool SlideRoot(CTCMNode *cur, bool out, float dt);
     void PlaceCursor(CTCMNode *cur);
