@@ -642,7 +642,13 @@ public:
         this->start_ = 0;
     }
     /* out of line in an earlier unit (zanim_menu.cpp's tail: erase 0x285D30, insert 0x286160 -- SOCOM 1's
-     * signatures, the four-word iterators by value; resize calls both) */
+     * signatures, the four-word iterators by value; resize calls both). UNWRITTEN; erase's shape read off
+     * the image (the MSL headers round 35): MSL's deque erase -- the empty range returned at once; pos =
+     * first - begin(), back = end() - last, n = last - first through the friend operator- of cdeque<T *>'s
+     * const_iterator form (x's first_ / last_ / data_ re-read); when pos < back, copy_backward(begin(),
+     * first, last) over four-word walkers held in the frame (sp+32..60) and stepped by -- , then start_ =
+     * (start_ + n) % capacity_; else copy(last, end(), first) over register walkers wrapping to the
+     * storage; size_ -= n; `return begin() + pos` (an iterator built at sp+0, its += inlined) */
     iterator erase(iterator first, iterator last);
     void insert(iterator position, unsigned int n, const value_type &x);
     unsigned int max_size() const;
