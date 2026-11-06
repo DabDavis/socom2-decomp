@@ -443,6 +443,108 @@ bool CAiSScript::CanAttack() const
     return true;
 }
 
+/* an AI's bit 6 as a bool (inline: the `? true : false` keeps the target's sltu; the name ours) */
+inline bool AiBit6(CSealCtrlAi *ai)
+{
+    return ai->m_aibit6 ? true : false;
+}
+
+/* a script's events: a reset, an entry, the anim stopped on leaving (unless it runs on past a dead SEAL), the state back on
+ * top -- the mode restored, a response sequence that held dropped, the anim resumed, the set back -- or a state pushed
+ * above it -- the mode and the set kept, the anim paused -- and its sequence paused or resumed for the anim's own signals
+ * (OVL2 0x5F3BA0; SOCOM 1's) */
+void CAiSScript::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CZSealBody *seal = ai ? (CZSealBody *)ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_seqName[0] = 0;
+        SetHold(false);
+        m_held_once = true;
+        m_mode = 255;
+        m_seq = 255;
+        m_5f = 255;
+        m_mode_saved = 1;
+        m_58 = 0;
+        m_60 = 0.0f;
+        m_keep_anim = false;
+        m_78 = 0;
+        m_animset = 0;
+        m_80 = 0;
+        m_bit3 = false;
+        break;
+    case SIGNAL_0:
+        SetHold(false);
+        m_mode = 255;
+        m_seq = 255;
+        m_5f = 255;
+        m_held_once = true;
+        m_60 = 0.0f;
+        m_78 = 0;
+        m_bit3 = false;
+        break;
+    case SIGNAL_1:
+        if (m_58 && (!m_keep_anim || !seal->m_isAlive))
+            func_002707C0((CZAnim *)m_58, false);
+        if (!AiBit6(ai))
+            seal->BindAnimSet(seal->m_530, false);
+        break;
+    case SIGNAL_3:
+        ai->SetAiMode(*(AI_MODE *)&m_mode_saved);
+        if (m_58) {
+            if (m_flags & 4) {
+                if (m_seqName[0]) {
+                    ((CZAnim *)m_58)->SequenceRunning(m_seqName);
+                    const char *seq = sealai::get_aiseq(m_seq);
+
+                    m_held_once = false;
+                    ((CZAnim *)m_58)->StopSequence(m_seqName);
+                    ((CZAnim *)m_58)->ResumeSequence(seq);
+                    SetHold(false);
+                    m_seqName[0] = 0;
+                }
+                m_flags |= 0x80000000;
+                m_flags &= ~4;
+            }
+            m_held_once = true;
+            m_60 = 0.0f;
+            func_002709B0((CZAnim *)m_58, 0);
+        }
+        if (seal->m_isAlive && m_bit3)
+            func_005558A0(ai);
+        else
+            func_00555820(ai, 0);
+        if (m_78) {
+            if (seal->m_isAlive)
+                seal->BindAnimSet(m_78, false);
+            m_78 = 0;
+        }
+        break;
+    case SIGNAL_2:
+        *(AI_MODE *)&m_mode_saved = ai->m_3f4;
+        if (m_58)
+            func_00270BE0((CZAnim *)m_58, 0);
+        if (m_bit3)
+            func_005558D0(ai);
+        else
+            func_00555820(ai, 0);
+        if (!AiBit6(ai)) {
+            m_78 = seal->m_animset;
+            seal->BindAnimSet(seal->m_530, false);
+        }
+        break;
+    case 5:
+        if (m_58)
+            ((CZAnim *)m_58)->PauseSequence(sealai::get_aiseq(m_mode));
+        break;
+    case 6:
+        if (m_58)
+            ((CZAnim *)m_58)->ResumeSequence(sealai::get_aiseq(m_mode));
+        break;
+    }
+}
+
 /* the waits before a higher alertness shows (a table of floats by AI_AWARE: OVL2 data) */
 extern float data_00650B80[];
 
