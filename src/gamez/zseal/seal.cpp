@@ -1771,6 +1771,102 @@ void func_00548090(CZSealBody *seal);
 void func_005C0FD0(CZKit *kit, float dT);
 }
 
+extern "C" {
+/* the noise a body makes at rest and at its loudest, the speed that scales it and the crouch's share (OVL2 data
+ * 0x64FCA0, 0x64FCA8, 0x64FCB0, 0x64FCB8), the noise's global scale (OVL1 data 0x436650) */
+extern float data_0064FCA0;
+extern float data_0064FCA8;
+extern float data_0064FCB0;
+extern float data_0064FCB8;
+extern float data_00436650;
+}
+
+/* a material's extension as the noise reads it (int_material.cpp's; 0x34: how loud it is underfoot -- the name
+ * ours), the first one for an index past the table */
+struct CMaterialNoise {
+    unsigned char _0[0x34];
+    float m_noise;   // 0x34
+};
+
+static inline CMaterialNoise *MaterialNoise(unsigned int i)
+{
+    if (i >= CMaterialExArray::m_materialex_list.size())
+        i = 0;
+    return (CMaterialNoise *)CMaterialExArray::m_materialex_list[i];
+}
+
+/* whether an AI is awake (an inline, the name ours: neither of the sleep bits, materialised) */
+static inline int AwakeBits(CSealCtrlAi *ai)
+{
+    return (ai->m_aibit9 ? 1 : (ai->m_aibit8 != 0)) ^ 1;
+}
+
+/* a kind and the visible bit through values (inlines, the names ours: `andi a0,zero,1` for a zero) */
+static inline void SetEventType(CAiEvent *e, unsigned int type) { e->m_type = (CAiEvent::EVENT)type; }
+static inline void SetEventVisible(CAiEvent *e, bool on) { e->m_visible = on; }
+
+/* whether a controller is the AI's (an inline, the name ours: the answer through a local, narrowed at the join) */
+static inline bool CtrlIsAi(CSealCtrl *ctrl)
+{
+    return ctrl ? ctrl->IsAi() : false;
+}
+
+/* OPEN, 2 instructions short (0x3C8 of 0x3D0), about 16 off: the awake test's value `||` -- the target's `sltu;
+ * bnez; nop; andi; sltu; X: xori` with no pad at X (an `if` pads X, the conditional here has no sltu, `!(a || b)`
+ * adds an andi) -- and the dead arm's schedule, the event's old word read first. Every saved register right.
+ * a SEAL's own AI event kept up to the frame: alive, heard over a range by how it moves and what it stands on, at
+ * its place (kind 3; a sleeping AI's hardly at all); dead, once, heard far and seen 10 up as kind 5 (OVL2 0x550A80,
+ * new in SOCOM II: PrePostTick calls it; the name unknown) */
+extern "C" void func_00550A80(CZSealBody *seal)
+{
+    CAiEvent *event = seal->m_aiEvent;
+
+    if (!event)
+        return;
+    CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+
+    if (seal->m_isAlive) {
+        if (!CtrlIsAi(ctrl) || AwakeBits(((CSealCtrl *)seal->m_control)->GetSealCtrlAi())) {
+            float range = data_0064FCA0;
+            float t = ctrl->m_throttle[1];
+
+            if (!(fabsf(ctrl->m_throttle[0]) + fabsf(t) <= 0.0f)) {
+                float f = fabsf(sqrtf(seal->m_velW.x * seal->m_velW.x + seal->m_velW.y * seal->m_velW.y +
+                                      seal->m_velW.z * seal->m_velW.z) * data_0064FCB0);
+
+                range = data_0064FCA0 * (1.0f - f) + data_0064FCA8 * f;
+                if (seal->m_last_altitude.m_poly) {
+                    CMaterialNoise *ex = MaterialNoise(seal->m_last_altitude.m_poly->m_flags.m_material);
+                    float s = ex ? ex->m_noise : 0.5f;
+
+                    range *= (2.0f - data_0064FCB8) + (-2.0f * (1.0f - data_0064FCB8) * s);
+                }
+                if (seal->m_invisible ? true : false)
+                    range = 0.01f;
+                range *= (float)data_00436650;
+                _saturate(&range, data_0064FCA0, data_0064FCA8);
+            }
+            seal->m_aiEvent->m_pos = seal->m_posW;
+            seal->m_aiEvent->m_rangeSq = range * range;
+            SetEventType(seal->m_aiEvent, 3);
+            SetEventVisible(seal->m_aiEvent, false);
+        } else {
+            seal->m_aiEvent->m_pos = seal->m_posW;
+            seal->m_aiEvent->m_rangeSq = 0.0000010000001f;
+            SetEventType(seal->m_aiEvent, 3);
+            SetEventVisible(seal->m_aiEvent, false);
+        }
+    } else if ((signed char)event->m_type != 0) {
+        SetEventType(event, 5);
+        seal->m_aiEvent->m_rangeSq = 160000.0f;
+        SetEventVisible(seal->m_aiEvent, true);
+        CPnt3D p(seal->m_posW);
+
+        p.y += 10.0f;
+        seal->m_aiEvent->m_pos = p;
+    }
+}
+
 /* the tick after the move: the probes and collision steps; a SEAL carried, stabbed or being restrained takes
  * its root part's place and then its carrier's node, quaternion and position; the compass anchor kept on the
  * SEAL, a player's restrained SEAL's point by whether its AI is held or not; the last tick's points kept; the

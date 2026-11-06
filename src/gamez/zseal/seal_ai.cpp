@@ -1289,6 +1289,77 @@ inline float CSealCtrlAi::GetDefaultRouteBias()
     return 1.0f;
 }
 
+extern "C" {
+/* the AI's planner told its route's start (OVL2 0x56C080) */
+void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *loc);
+}
+
+/* whether two cells are the same place, the map aside (an inline bool: the target materialises the compare; the
+ * name ours -- SetRoute, 0x569AA0's family and 0x555420 ask it) */
+static inline bool SameCell(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x == b.x && a.y == b.y;
+}
+
+/* the AI's path dropped: its plan aborted, emptied, the default kind (an inline, the name ours: ClearRoute's
+ * shape) */
+static inline void DropRoute(CSealCtrlAi *ai)
+{
+    ai::AbortPathPlan((CAiPath *)&ai->m_path);
+    if (((CAiPath *)&ai->m_path)->Clear()) {
+        if (((CAiPath *)&ai->m_path)->SetPathType((CAiPath::PATH_TYPE)0))
+            ai->m_path.m_type_bias = 1.0f;
+        ai->m_path.m_search_limit = 0;
+    }
+}
+
+/* a route to a cell: none for the cell no map has; the cell it is on: only dropped, and still a route; a walkable
+ * cell planned to -- once it holds the AI moves (mode 3), the planner set by the default kind, a mode 2 planner's
+ * bias cleared beyond 200 cells (SOCOM 1's SetRoute(const CAiMapLoc &), by its order after the list's in both
+ * builds; OVL2 0x5623B0) */
+bool CSealCtrlAi::SetRoute(const CAiMapLoc &loc)
+{
+    bool ok = false;
+
+    if (SameCell(loc, CAiMapLoc::invalid))
+        DropRoute(this);
+    else {
+        CAiMapLoc start(m_entity->m_mapLocValid);
+
+        if (SameCell(start, loc)) {
+            ok = true;
+            DropRoute(this);
+        } else {
+            CAiMap *map = AiMaps.GetMap(loc);
+
+            if (map ? map->IsTraversable(loc) : false) {
+                DropRoute(this);
+                if (AiMaps.RegisterPathPlan(start, loc, (CAiPath *)&m_path))
+                    ok = true;
+            }
+        }
+        if (ok) {
+            SetAiMode((AI_MODE)3);
+
+            float bias = GetDefaultRouteBias();
+
+            if (((CAiPath *)&m_path)->SetPathType(GetDefaultRouteType()))
+                m_path.m_type_bias = bias;
+            if (m_path.m_type == 2) {
+                int dx = start.x > loc.x ? start.x - loc.x : loc.x - start.x;
+                int dy = start.y > loc.y ? start.y - loc.y : loc.y - start.y;
+
+                if (dx + dy > 200)
+                    m_path.m_type_bias = 0.0f;
+            }
+            m_path.m_search_limit = 0;
+            m_pathTolerance = 0.0f;
+            func_0056C080(this, (CAiPath *)&m_path, &start);
+        }
+    }
+    return ok;
+}
+
 /* a route planned from the SEAL's last good cell through a list of cells: once registered the AI moves
  * (mode 3), the planner set with its bias, the search limit and the tolerance cleared (OVL2 0x562200:
  * SOCOM 1's SetRoute(const CAiMapLoc *, int), its failure's debug prints gone) */
@@ -2066,13 +2137,6 @@ static inline bool RouteHeld(const CAiPath *p)
     if (HasAny(p) && p->m_state == CAiPath::COMPLETE)
         return true;
     return false;
-}
-
-/* whether two cells are the same place, the map aside (an inline bool: the target materialises each
- * compare; the name ours -- 0x569AA0's family and 0x555420 ask it) */
-static inline bool SameCell(const CAiMapLoc &a, const CAiMapLoc &b)
-{
-    return a.x == b.x && a.y == b.y;
 }
 
 extern "C" bool func_00555420(CSealCtrlAi *ai, CAiPathBytes *path, CAiRouteBytes *route)
@@ -4886,6 +4950,87 @@ extern "C" bool func_0055F3B0(AI_FIREPARAMS *p, CZKit *kit, const CPnt3D *pos, c
     return true;
 }
 
+/* a lobbed weapon's aim: from the SEAL's fire point at the target (led, with flag 2), straight unless flag 0x20000;
+ * else the arc through the target -- steepened step by step, ten at most, until the shot falls within 10 of it --
+ * refused when out of reach; the flags marked, a launcher's (item 11) so too (OVL2 0x55ECC0, new in SOCOM II: the
+ * firing's 0x55F0A0 asks it; the name unknown) */
+extern "C" bool func_0055ECC0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
+{
+    CPnt3D from;
+    CPnt3D target;
+    CEntity *seal = ai->m_entity;
+
+    seal->GetTargetPosW(&from);
+    float v = p->m_weapon->GetMuzzleVelocity();
+
+    if (p->m_flags & 2)
+        CAi::LeadTargetG(&from, &seal->m_velW, v, &p->m_targetPos, &p->m_targetVel, &target);
+    else
+        target = p->m_targetPos;
+    CPnt3D d = target - from;
+
+    if (!(p->m_flags & 0x20000)) {
+        float len = d.Normalize();
+
+        p->m_aimPointW = target;
+        p->m_lookDirW = d;
+        p->m_aimDirM = CPnt3D::unit_nz;
+        ModifyFireFlags(p, 0xC00000, 0);
+        p->m_dist = len;
+    } else {
+        static float k_gravity = 98.0f;
+        static float k_height = 13.0f;
+        int i;
+        float &dy = d.y;
+        float &dz = d.z;
+        float reach = v * v / k_gravity;
+        float rise = dy - k_height;
+        float flat = sqrtf(d.x * d.x + dz * dz);
+        float len = d.Normalize();
+
+        if (len <= 0.0f || !(len <= reach))
+            return false;
+        static int k_steps = 10;
+        float y = dy;
+        float c = -sqrtf(d.x * d.x + dz * dz);
+
+        for (i = 0; i < k_steps; i++) {
+            static float k_step = 0.025f;
+            static float k_zero = 0.0f;
+            static float k_near = 10.0f;
+
+            y += k_step;
+            if (!(y < 0.707f))
+                break;
+            c = -sqrtf(1.0f - y * y);
+            float speed = v * -c;
+
+            if (speed <= 0.0f)
+                return false;
+            float t = flat / speed;
+            float miss = t * (v * y) - 0.5f * k_gravity * (t * t) - rise;
+
+            if (!(miss <= 0.0f))
+                break;
+            if (_close_enough(miss, k_zero, k_near))
+                break;
+        }
+        p->m_aimDirM.x = 0.0f;
+        p->m_aimDirM.y = y;
+        p->m_aimDirM.z = c;
+        p->m_lookDirW.x = d.x;
+        p->m_lookDirW.y = ((const CPnt3D &)d).y;
+        p->m_lookDirW.z = dz;
+        p->m_68 = 0;
+        ModifyFireFlags(p, 0x8000000, 0);
+        ModifyFireFlags(p, 0x2900000, 0);
+    }
+    ModifyFireFlags(p, 0x1000000, 0);
+    if (p->m_weapon->m_ID == 11)
+        ModifyFireFlags(p, 0x2000000, 0x800000);
+    return true;
+}
+
 /* the fire parameters worked out, unless flag 0x4000000 holds them: thrown by 0x55E670 (flag 0x40000)
  * or aimed straight by 0x55EBE0 (flag 0x80000) -- the trigger let go twice -- else shot by 0x55ECC0;
  * once worked out, under flag 0x2000000 the look flattened onto the ground, flag 0x200000 set and the
@@ -6193,10 +6338,6 @@ static inline bool PathIdle(CSealCtrlAi *ai)
     return true;
 }
 
-extern "C" {
-/* the AI sent to a cell (OVL2 0x5623B0, not written yet; the name unknown) */
-void func_005623B0(CSealCtrlAi *ai, const CAiMapLoc *loc);
-}
 
 /* the rescued SEAL's tick (OVL2 0x559070, slot 0x10; SOCOM 1's slot alike): step 0 joins team 17's
  * squad (a SEAL of team bit 17 not in it yet); 1 waits for flag 1 (an extraction valve given), 3 for
@@ -6247,7 +6388,7 @@ int CAiSRescued::Tick(CSealCtrlAi *ai)
             CAiMapLoc loc;
 
             if (AiMaps.GetLocation(m_58->m_name, loc))
-                func_005623B0(ai, &loc);
+                ai->SetRoute(loc);
         }
         break;
     case 5:

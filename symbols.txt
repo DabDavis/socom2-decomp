@@ -10189,7 +10189,7 @@
 0x005621C0 0x2C GetValve__11CSealCtrlAiCF10SEAL_VALVE  # OVL2; s1:order (SOCOM 1's GetValve__11CSealCtrlAiCF10SEAL_VALVE word for word but the bound, 3, and the array, 0x750: the valve of a kind or 0) -- the SEAL lane, round 4
 0x005621F0 0x8 func_005621F0  # OVL2
 0x00562200 0x1A8 SetRoute__11CSealCtrlAiFPC9CAiMapLoci  # OVL2; s1:order by hand (the SEAL lane, round 18: SOCOM 1's SetRoute__11CSealCtrlAiFPC9CAiMapLoci, after GetValve and SetRouteType's slots and before SetRoute(const CAiMapLoc &) in both builds: the entity's cell copied, CAiMaps::RegisterPathPlan's five arguments as SOCOM 1's, SetAiMode(3), GetDefaultRouteBias's tests inline, GetDefaultRouteType into SetPathType, the search limit and m_pathTolerance zeroed)
-0x005623B0 0x3DC func_005623B0  # OVL2
+0x005623B0 0x3DC SetRoute__11CSealCtrlAiFRC9CAiMapLoc  # OVL2; s1:order by hand (the SEALs, round 60): SOCOM 1's SetRoute(const CAiMapLoc &) 0x261090, right after SetRoute(locs, count) in both builds, the same plan through RegisterPathPlan(start, to, path)
 0x00562790 0x48 func_00562790  # OVL2
 0x005627E0 0x108 GetDefaultRouteType__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEAL lane, round 18: SOCOM 1's GetDefaultRouteType__11CSealCtrlAiFv sits between GetDefaultRouteBias and ClearRoute in both builds; the same tests -- bit 1 at 0x264 (SOCOM 1's 0x280), the AI state's kind 8 giving 2 -- with SOCOM II's restrained case added; the two SetRoute variants call it)
 0x005628F0 0x68 func_005628F0  # OVL2

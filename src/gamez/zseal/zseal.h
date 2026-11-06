@@ -498,6 +498,7 @@ public:
     bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
     /* a path planned from a cell through a list of cells, and a cell's region (ai_maps.h's, OVL2
      * 0x52C5C0, 0x52D950) */
+    bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc &to, CAiPath *path);
     bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *locs, int count, CAiPath *path);
     CAiMap::region *GetRegion(const CAiMapLoc &loc);
     /* a region by its name, and its cell (ai_maps.h's, OVL2 0x52D9F0) */
@@ -1163,7 +1164,9 @@ struct CAiLadderLeg {
  * declare SOCOM II's ~CAiPath) and the fields the controller reads: the plan's state, the search's
  * status, the smoothed points' end (an empty vector's is 0) */
 struct CAiPathBytes {
-    unsigned char _0[0xc];
+    unsigned char _0[9];
+    unsigned char m_type;   // 0x9: CAiPath::PATH_TYPE (SetRoute's 2)
+    unsigned char _a[0xc - 0xa];
     float m_type_bias;   // 0xc (SOCOM 1's: the planner's bias, set with the type)
     unsigned char _10[0x80 - 0x10];
     unsigned char m_state;   // 0x80: CAiPath::PATH_STATE (1-3 planning, 4 complete)
@@ -1226,7 +1229,8 @@ public:
     /* under flag 0x40, the time left before the shot -- run down by FireWhenReady (new in SOCOM II;
      * the name ours) */
     float m_delay;   // 0x64
-    unsigned char _68[0x6c - 0x68];
+    unsigned char m_68;   // 0x68: cleared as a lob is aimed (0x55ECC0; the name ours)
+    unsigned char _69[0x6c - 0x69];
     unsigned int m_flags;   // 0x6c
 };
 
@@ -1681,6 +1685,7 @@ public:
     inline float GetDefaultRouteBias();
     /* a route planned from the SEAL's cell through a list of cells (SOCOM 1's; OVL2 0x562200) */
     bool SetRoute(const CAiMapLoc *locs, int count);
+    bool SetRoute(const CAiMapLoc &loc);
     /* whether the current state is of a kind (SOCOM 1's AiStateIs, const: the stack's const GetState,
      * 0x5F8330). Built whole in a register with an explicit false arm, as the target does: the first
      * operand a materialised inline bool, the second a `? true : false` of its own -- `&&`, a plain
