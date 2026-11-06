@@ -34,6 +34,66 @@ extern void func_0024ECF8(const float *pfX, int iLength, int *piMaxIndex, float 
 extern float func_002485D0(const int *piPeakFreq, int iNPeaks, float fPitch, const float *pfMag,
                            int iNumBins, float fScale);
 
+extern float func_00248F60(const float *pfA, const float *pfB, int iLength);
+int func_002508F0(const float *pfCostFunc, float *pfNewBackCost, float fPitch, float fBackCost);
+float func_00250A38(int iInd, const int *piPeakFreq, int iNPeaks, const float *pfMag, int iNumBins,
+		    float fScale, float *pfMaxCost);
+int func_00250320(const float *pfCostFunc, int *piIndCand, int *piHPIndex);
+void func_002504F0(const float *pfCostFunc, int *piIndCand, int *piNumCand, int *piHPIndex);
+void func_00250708(const float *pfCostFunc, int iNew, int *piIndCand, int *piNumCand, int *piHPIndex);
+
+/* the frame's candidates: a harmonic cost per second lag of the pitch table, held across the odd lags; the tracked peak's cost
+ * swapped in while the peaks are walked, the candidates kept (the first, the last and the HP's), each refined */
+int func_0024FFF8(const float *pfMag, int iNumBins, const int *piPeakFreq, int iNPeaks, float *pfPitchCand, float *pfCost,
+		  int *piHP_Index, float fPitch, float fBackCost)
+{
+	int aiCand[8];
+	float afCost[92];
+	float fNew, fCost, fScale, fT;
+	int iHP, nCand, iLast;
+	int i, n, k, iBack;
+	float *pfBack;
+
+#line 162 "../../SaseEncVad/source/PtchCand.c"
+	assert(pfMag != NellyNull);
+	assert(piPeakFreq != NellyNull);
+	assert(pfPitchCand != NellyNull);
+	assert(piHP_Index != NellyNull);
+	fScale = func_00248F60(pfMag, pfMag, iNumBins) + 0x1.0c6f7ap-20F;
+	fScale = 10.0F / fScale;
+	for (i = 0; i < NUM_PITCH; i += 2)
+		afCost[i] = func_002485D0(piPeakFreq, iNPeaks, fPitchTable[i], pfMag, iNumBins, fScale);
+	for (i = 1; i < NUM_PITCH - 1; i += 2)
+		afCost[i] = afCost[i - 1];
+	iBack = func_002508F0(afCost, &fNew, fPitch, fBackCost);
+	pfBack = &afCost[iBack];
+	fT = fNew;
+	fNew = *pfBack;
+	*pfBack = fT;
+	nCand = func_00250320(afCost, aiCand, &iHP);
+	func_002504F0(afCost, aiCand, &nCand, &iHP);
+	func_00250708(afCost, iBack, aiCand, &nCand, &iHP);
+	fT = fNew;
+	fNew = *pfBack;
+	*pfBack = fT;
+	iLast = nCand - 1;
+	n = 0;
+	for (i = 0; i < nCand; i++) {
+		if (i == 0 || i == iLast || i == iHP) {
+			if (i == iHP)
+				*piHP_Index = n;
+			k = aiCand[i];
+			fCost = afCost[k];
+			pfPitchCand[n] = func_00250A38(k, piPeakFreq, iNPeaks, pfMag, iNumBins, fScale, &fCost);
+			if (k == iBack)
+				fCost = (fCost < fBackCost) ? (fBackCost + fCost) * 0.5F : fCost;
+			pfCost[n] = fCost;
+			n++;
+		}
+	}
+	return n;
+}
+
 /* the cost function's largest value over the lags whose pitch lies in [0.75, 1.333] of fPitch
  * (the lag itself returned), averaged with fBackCost when it falls short of that */
 inline int func_002508F0(const float *pfCostFunc, float *pfNewBackCost, float fPitch, float fBackCost)
@@ -200,7 +260,7 @@ void func_00250708(const float *pfCostFunc, int iNew, int *piIndCand, int *piNum
 /* the lag's pitch against its two neighbours' midpoints: the one whose harmonic cost beats
  * *pfMaxCost (which it then holds) */
 inline float func_00250A38(int iInd, const int *piPeakFreq, int iNPeaks, const float *pfMag, int iNumBins,
-                           float *pfMaxCost, float fScale)
+                           float fScale, float *pfMaxCost)
 {
 	float afPitch[2];
 	float fPitch, fCand, fCost;
