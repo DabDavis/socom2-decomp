@@ -2066,6 +2066,31 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 65** (19 byte-exact, five units whole: SetMags 0x237B40, GetRoundResult 0x224D10,
+  CMPExitState::Init 0x223970, C2DButton::HandlePad 0x377040, CWrappedText::SetString 0x379F70, both CListItemArrayTypeImpl
+  constructors, ~CUIListBox 0x375710, CUIListBox::Draw 0x373850, CTeleType::Tick 0x377B80, hudTurnOnScorePopup 0x22CC10,
+  MapCompass::Tick 0x211510, the nav_package insert 0x212E50, the claymore and bomb Ticks, HandleScrolling 0x20A120,
+  __sinit_hud_tcm.cpp, CZPauseTest::OpenPauseMenu, HandleSelectionInput and HudTick, CMPTeammateNames::Tick; AddItem and
+  CWhosTalking::Init closed by the MSL's round 39; every device marked; 35 data rows, the net game 0x437CE8 and the
+  night-vision flag 0x4B4A70 settled):
+  - ENUM HOLDERS CLOSE REAL ROWS (SetMags, GetRoundResult, HandlePad, the sinit): `this` through an unsigned 4-byte enum
+    keeps a global's address out of folding;
+  - of two pad bytes read ahead of a branch the later-declared is scheduled first and the earlier lands in the delay slot;
+    `A || B ? k : 0` copies the one-constant arm's constant into the branch's delay slot and moves the target past it, `if`
+    and `!x && ...` forms do not (CZPauseTest::HudTick); `!x` swaps ternary and if arms, `x == 0` keeps them; `bool on = !x;
+    x = on; on ? a : b` gives sb; andi; beqz with the object loaded in the delay slot, `(x = !x) ? a : b` sinks that load
+    after the ternary;
+  - assigning 3 to a char local narrows a CSE'd constant, an int local copies it; `(char)sel` on a signed char keeps the
+    read's narrowing while calls pass it plain; a store through a pointer or reference to a global array keeps a global
+    float's load in the loop, an indexed store lets it hoist; `line->F(G(id))` with `line` defined first keeps the address
+    across the call, a spelled-out `m_items[i].m_text.SetColor(...)` computes it late; `SetColor(100 + 28*p, 100 + 28*p, 100
+    + -36*p)` on a global p loads it once and CSEs the two sums;
+  - padding nops align labels to 8 bytes, except labels right after a `b` and its delay slot; a parameter read directly has
+    its copy at entry, one instruction more ahead of the first vptr la, flipping up-front against serialised vtable stores;
+    a const conversion at an inline's argument makes `p + k` subable and hoisted, a same-type helper keeps it refused; `T x
+    = {0}` on any aggregate is the inline memclr byte loop; `m_x += k; const float &r = m_x;` gives add, store, mov.s; a
+    const local after C-style locals, and a const copy of `this` numbered above a local; one-member structs number locals
+    after a scalarised iterator; SOCOM 1's DWARF lists block locals in reverse declaration order.
 - **Tells from the UI, round 39** (13 rows new, 16,248 bytes: CUIListBoxSpec::CUIListBoxSpec 0x37EAB0 and
   CButtonSpec::CButtonSpec 0x380620, unwritten since round 13; CreateSoftKeyboard 0x38E160, SkbScaleDisplay 0x397950,
   _SaveSavedGame 0x27F820, CSkbSplit::Next 0x3903A0, the hangul composer 0x391670 and matcher 0x3919D0, rbegin<Ui> 0x391D40,
