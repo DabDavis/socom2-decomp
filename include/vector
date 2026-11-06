@@ -154,7 +154,7 @@ public:
     /* the allocator, folded into the capacity pair at offset 0 (SOCOM 1's alloc__...__vector_deleter
      * <...>CFv, 0x238180; SOCOM II's 0x35D4E0, `jr ra; move v0,a0`) */
     const Allocator &alloc() const { return *(const Allocator *)&capacity_; }
-#ifdef __MSL_POD_DTOR_ARGS
+#ifdef __MSL_VECTOR_DESTROY_LEVEL
     /* the destructor's two accessors, as the pods' (the opt-in's comment at the head of the 1-byte pod below) */
     typedef Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> __cap_pair;
 #endif
@@ -246,7 +246,7 @@ void __vector_deleter<T, Allocator>::clear()
 
     while (first < last)
 #ifdef __MSL_VECTOR_DESTROY_LEVEL
-        __destroy(--last);
+        ((__cap_pair *)&capacity_)->first().destroy(--last);
 #else
         (--last)->~T();
 #endif
@@ -1734,7 +1734,7 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
         std::copy(last, __VE_END, first);
     for (T *p = first + n; p < __VE_END; ++p)
 #ifdef __MSL_VECTOR_DESTROY_LEVEL
-        this->__destroy(p);
+        ((typename __vector_imp::__cap_pair *)&this->capacity_)->first().destroy(p);
 #else
         p->~T();
 #endif

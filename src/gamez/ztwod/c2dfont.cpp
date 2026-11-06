@@ -889,4 +889,4 @@ namespace std { template <> struct __insert_end_pointer<CLayout> { enum { value 
 /* A MODELLING DEVICE, a "Level 6, or 8?" witness, with `__MSL_POD_DTOR_ARGS` at this file's head (include/vector; the MSL headers round 40): the pods'
  * constructors two levels taller cut CHangulFont() in C2DFont::Load 0x359C40 to its own body (its rows 0x35A250-0x35A2B0 called), and the element copies of
  * CLayout's vector come out whole (erase 0x35DF40, insert 0x35E100). */
-#pragma inline_depth(6)
+#pragma inline_depth(7)
