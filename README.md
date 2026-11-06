@@ -14353,6 +14353,59 @@ Hand-written in round 22b: `medius/rt_table.c` (+1, 0x63C950: 5 of 7), `medius/r
 new to the map's byte-exact rows (`src/lib/medius` 958 -> 966 of 1,013), none superseding a draft; no rows
 named (all are placeholders without strings or a SOCOM 1 counterpart). No tool changed.
 
+**Round 23b: the platform objects' code in the data section, rt_window.c whole, shapes read off the target.**
+
+- **md5_platform.c's and SHA1_platform.c's code is in OVL2's DATA section** (0x64F778-0x669FF8, the MWo3
+  header's data): md5.c's callees 0x6641D0/0x664F80 and SHA1.c's 0x665B30/0x667AA0/0x667AD0, which had no
+  map rows, sit right after their own object's `$Header` strings (rt_crypt/src/ps2/md5_platform.c and
+  md5_platform.h at 0x664100/0x664168; SHA1_platform.c and .h at 0x665A60/0x665AC8) and before the next
+  object's (RSA.c's assert path 0x664FE0, StreamMedia.c's `$Header` 0x667B50) -- the data run is each object's
+  .data in link order, so the code is those objects' own, assembled into the section their strings were
+  written in (a top-level asm block or a `.s`; neither libc copies nor GCC runtime). R5900 assembly: sq/lq
+  saves, every delay slot a nop, the byte swap the MMI's pextlb/prevh/ppacb. Five rows (`OVL2 data area`,
+  each with this evidence; placeholders, SOCOM 1 has neither object), transcribed by tools/asmunit.py under
+  2.96's as: `medius/md5_platform.s` (2 of 2), `medius/sha1_platform.s` (3 of 3). `build/scratch/gcc/codescan.py
+  LO HI` lists every jal into a range with the prologues and returns there.
+- **The rt_window / SHA1 boundary is 0x642DA8**: 0x642C48, the first row sha1.c's header claimed, reads
+  rt_window.c's 64 slots of 256 bytes and its state word -- the window's read; SHA1.c starts at its init.
+  rt_window.c is a jitter window (fragments stored by sequence, read in order once two are held), whole.
+- **A slot indexed through its table, not a slot pointer**: rt_window's store forms `&aSlots[i].nLength` as
+  `(pWindow + 4) + (i * 256 + 16)` -- 2.96's expander sums the array's and the outer field's offsets as the
+  variable part and adds the 4-byte inner field offset to the base first; `pSlot = &aSlots[i]` gives `pSlot +
+  4`. A table walk whose sums put a small constant on the base register is direct indexing.
+- **A `while` whose body ends in `if (x) break;` is never rotated** (stmt.c's expand_end_loop: that test's
+  `goto end; barrier; label` tail makes its conditional jump the back edge and needs_end_jump 0); a `for`
+  ends at its continue label, so its leading exits rotate to the bottom with a copy at the entry --
+  rt_window's read (`for (; nSize != 0;)`, 10 words) and rt_p2p's state search 0x63B480 (open since 11b: each
+  state its own if, the arm written three times, the first one inside the 30-insn scan and moved; the 7 and
+  5 arms cross-jumped -- one `||` test is one arm, 16 bytes short).
+- **An unsigned 32-bit value into a `long` is two shifts that combine leaves apart**: setNewSeed_platform (round
+  22b's d=19) reads the EE timer counts as eeregs.h declares T0_COUNT, `volatile u_int *` -- the zero
+  extension is 2.96's dsll32/dsrl32 expansion, and the narrowing back stays two insns sched2 splits; read as
+  `int`, the extension is a move and the narrowing one truncdisi2 insn. The same zero extension (`dsll32;
+  dsrl32` into rt_memory_allocate's `unsigned long`) types rt_table's init's buffer size unsigned.
+- **Read each path's return value off the target**: rt_list's init (open since 14b) returns 3 for a null buffer
+  as for a failed allocation -- the `li v0,3` in the allocation test's slot is still live when the null test
+  branches to the epilogue; rt_table's init (open since 14b) is guard clauses (round 14b's rule: each `return
+  1`/`return 2` hoisted into v0, the two bounds tests two guards -- an `||` gives the second its own block),
+  the success path returning the last call's known-zero v0. SHA1.c's update keeps the buffered index and
+  then its room in one variable (round 22b's rule); its row counted the alignment nop after its last sibling
+  call (0x1A8 -> 0x1A4: the map's sizes leave padding out).
+- **Open, diagnosed in place**: 0x63B5D0 (sched2 ranks nLocal's reload over the magic's lui: purge_addressof
+  gives that reload a bare MEM -- alias set 0, no MEM_SCALAR_P -- so the two stores through pInfo carry
+  REG_DEP_ANTI on it, three dependants to one; fourteen spellings), 0x63C170 (five more: the target's beq slot
+  means nLocal's load sat before the branch at reorg time), rt_frag's store 0x645290 (twelve: the target's
+  0x0FFFFFFD constant takes a0 in local-alloc, crowding the 29-bit sequence into a3), ClientConnectsPacketHandler
+  (the port global reloaded in the bnezl's slot: volatile gives neither), and the earlier opens.
+
+Hand-written in round 23b: `medius/md5_platform.s` (2 of 2, new), `medius/sha1_platform.s` (3 of 3, new),
+`medius/rt_window.c` (+2: the store 0x642A58, the read 0x642C48; 6 of 6, whole), `medius/sha1.c` (+1, the
+update 0x642E70: 4 of 4, whole), `medius/rt_mt_platform.c` (setNewSeed_platform: 1 of 1), `medius/rt_list.c`
+(the init: 22 of 22, whole), `medius/rt_table.c` (the init: 6 of 7), `medius/rt_p2p.c` (0x63B480: 29 of 34) --
+12 rows new to the map's byte-exact rows (`src/lib/medius` 966 -> 978 of 1,013 -> 1,021: five new rows, three
+written for the first time), none superseding a draft; 5 rows given (the platform code), 1 resized
+(0x642E70), no names. No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;

@@ -31,7 +31,13 @@
  * verdict variable twice, the registers move) and 0x63C3D0 (the leave message: its first loop's state
  * tests are two ifs, two movz; `== 3 || == 4` folds to the range test its second loop has) byte-exact.
  * OPEN: 0x63B5D0 (2: the peer's description -- the magic's lui and the local index's load issue the
- * other way round in sched1's dual-issue cycle; the stores' and the test's orders tried) and 0x63C170 (2: the
+ * other way round in sched2's dual-issue cycle; the stores' and the test's orders tried. Round 23b
+ * read sched2's dump: the lui (371) precedes the reload of nLocal after memset (101) by LUID, but
+ * 101 ranks higher -- the stores 95 and 98 through pInfo carry REG_DEP_ANTI on it, three dependants
+ * to the lui's one, because purge_addressof gives that reload a bare MEM (alias set 0, no
+ * MEM_SCALAR_P) where the entry's store to nLocal keeps int's set and the scalar flag, so
+ * fixed_scalar_and_varying_struct_p cannot clear it; fourteen spellings of the declarations, the
+ * stores, the compare and the constant leave the deps) and 0x63C170 (2: the
  * connection-lost handler -- each arm keeps its own copy of the reset, cross-jumped, and the state 0 is
  * assigned after the -2 initialisers; left: the join callback's `beq` keeps its argument load
  * `lw a1,8(sp)` in a plain slot (sched1 issued it before the pointer's load), here `beql` from the
