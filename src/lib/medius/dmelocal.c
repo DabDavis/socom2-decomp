@@ -1814,20 +1814,23 @@ extern int func_0061D448(int nClient);
 
 /* an object's ownership asked for (0x61A118, SOCOM 1's NetRequestObjectPrivateOwnership's place): taken
  * at once when this client made it, else asked of its creator.
- * OPEN (8 bytes short): the two sends cross-jump into one call here where the target keeps both (each
- * with its own `move v0,zero`), and the creator's message takes its slot before pWorld's; four shapes
- * (the message at the top, an else, a result kept from either call) tried. Round 24b came to registers
- * only (0x124 against 0x128, the gap the else label's alignment nop): the ask a one-member struct (the
- * unsigned short a promoted mode, forced to slot 16 before the pointers' ADDRESSOFs), pObject declared
- * before pWorld, the arms an if/else before one `return DME_OK` (no cross-jump), the creator read once into
- * a local (passed on to RemoteObjectUpdate in a0 with no reload) -- left: the creator's pseudo takes a2
- * for the target's a0 and the shared -1 v1 for v0. Not kept: that body moves func_00618F70, compiled after
- * it, by 8 bytes (its stores through pClient stop reloading the slot); build/scratch/gcc-r24b has it. */
+ * OPEN (one word since round 25b: arm 1's owner test is `bne` here, the target's `bnel`, the same `li v0,11`
+ * in its slot -- reorg's annul choice, from the opposite thread's live registers; twelve spellings of the
+ * else-returns (a shared `busy:` label, returns inside, a result variable, the ask at the top, the creator
+ * and owner read apart) give that word or worse). Round 24b came to registers: the ask a one-member struct
+ * (an unsigned short is a promoted mode, forced to slot 16 before the pointers' ADDRESSOFs), pObject
+ * declared before pWorld, the arms an if/else before one `return DME_OK` (a return in each let jump2
+ * cross-jump the two sends), the creator read once into a local (passed on to RemoteObjectUpdate in a0).
+ * Round 25b: the owner tests POSITIVE with their `return 11` in an else (round 14b's rule) -- as guards
+ * the first if-conversion pass hoisted `li v0,11` above each branch, so v0 was live across the owner's
+ * load and the -1 took v1 and the creator a2; positive, the -1 takes v0 and the creator a0 as the target's,
+ * and func_00618F70 after it keeps its match (round 24b's guarded body moved it by 8 bytes). */
 int func_0061A118(unsigned int nIndex)
 {
     struct { unsigned char nOwner; unsigned char pad; unsigned short nIndex; } msg;
-    DmeWorld *pWorld = 0;
     DmeObject *pObject = 0;
+    DmeWorld *pWorld = 0;
+    int nCreator;
     int result;
 
     if (nIndex >= DME_MAX_OBJECTS)
@@ -1840,22 +1843,25 @@ int func_0061A118(unsigned int nIndex)
     func_00614EC8((void **)&pObject, nIndex);
     if (pObject == 0)
         return DME_ERR_RANGE;
-    if (pObject->nCreator != pWorld->nMyClient) {
-        unsigned short nMsg;
+    nCreator = pObject->nCreator;
+    if (nCreator != pWorld->nMyClient) {
+        struct { unsigned short nIndex; } ask;
 
-        if (pObject->nOwner != -1)
+        if (pObject->nOwner == -1) {
+            ask.nIndex = nIndex;
+            func_00615DE0(80, data_00651178, nCreator, data_00686A34, sizeof(ask), &ask);
+        } else
             return 11;
-        nMsg = nIndex;
-        func_00615DE0(80, data_00651178, pObject->nCreator, data_00686A34, 2, &nMsg);
-        return DME_OK;
+    } else {
+        if (pObject->nOwner == -1) {
+            pObject->nOwner = nCreator;
+            RemoteObjectUpdate(nCreator, nIndex, -2);
+            msg.nIndex = nIndex;
+            msg.nOwner = func_0061D448(pObject->nOwner);
+            func_00615DE0(80, data_00651178, -1, data_00686A10, 4, &msg);
+        } else
+            return 11;
     }
-    if (pObject->nOwner != -1)
-        return 11;
-    pObject->nOwner = pObject->nCreator;
-    RemoteObjectUpdate(pObject->nCreator, nIndex, -2);
-    msg.nIndex = nIndex;
-    msg.nOwner = func_0061D448(pObject->nOwner);
-    func_00615DE0(80, data_00651178, -1, data_00686A10, 4, &msg);
     return DME_OK;
 }
 
