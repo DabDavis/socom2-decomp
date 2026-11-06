@@ -391,6 +391,12 @@ public:
 
 /* the wide line: a bitmap polygon for each stretch of the point walk (SOCOM 1's SetSegments), its
  * corners the line's points offset to either side, mitred where two segments meet */
+/* OPEN, 202 structural differences and 89 instructions in registers alone (0x638 of 0x670): the body
+ * is SOCOM 1's in order; the target's frame (ptPrev 400, ptCur 392, ptL 384, ptR 376, ptNextL 368,
+ * ptNextR 360, ptNext 352, GetPt's temporaries 344-328, the operators' 320-280, SetCorners' parameters
+ * 272-248, the conversions' 240-232, seg 208, next 176) holds more inline temporaries than mine, so
+ * the 2D points' operators are one level deeper there, returning by value. Not yet tried beyond
+ * the first draft. */
 void C2DWidePolyline::SetSegments(CPtItr *itr, float width)
 {
     if (!itr->IsValid())
