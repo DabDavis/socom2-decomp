@@ -1385,9 +1385,11 @@ extern void (*data_00651198)(int *pInfo);
 extern int data_0065119C;
 
 /* a world's connection lost (0x617560): the host told, as func_0061D530 tells it.
- * OPEN (9 words, the right size), func_0061D530's diagnosis: the target loads pWorld, its field and the
- * host's data word ahead of all five report stores (8, 0, 4, 16, 12); none of the 120 orders does
- * (tools/ccperm.py, nearest 7). */
+ * OPEN (7 words, the right size): with the world's state an enum (gcc r21b, as 0x61D530) the loads
+ * come ahead of the stores, in sched1's order the target's (pWorld, the data word's %hi and load, the
+ * state; stores 8, 0, 4, 16, 12) -- but sched1 issues the report's 1 beside the memset call, so it
+ * lives across the loads in a1, where the target's `li v0,1` follows the state's load (v0 reused);
+ * the 120 orders of the five statements and the 1 through a variable give 7-9 words. */
 void func_00617560(unsigned short nConnection)
 {
     int info[5];
@@ -1411,9 +1413,9 @@ void func_00617560(unsigned short nConnection)
     }
 }
 
-/* OPEN (7 words): the scheduler interleaves the port load with the zeroing stores differently
- * (the target loads it right after the store at 8); m2c's store order kept -- nine stores are past
- * tools/ccperm.py's reach. */
+/* gcc r21b: the port's store is the third (after pParams[2]): in source order sched1 issues the
+ * port's load after the zeroing stores before it, and nine placements of that one statement give the
+ * target's at the third alone. */
 int func_00617610(int *pParams)
 {
     int result;
@@ -1423,9 +1425,9 @@ int func_00617610(int *pParams)
     memset(pParams, 0, 0x128);
     pParams[1] = 256;
     pParams[2] = 0;
+    pParams[73] = data_0067A6E0 + 1;
     pParams[41] = 0;
     pParams[43] = 0;
-    pParams[73] = data_0067A6E0 + 1;
     pParams[45] = 0;
     pParams[47] = 0;
     pParams[49] = 0;
@@ -2228,8 +2230,8 @@ int func_0061CB18(unsigned char *pbValue)
 
 extern int func_0061D440(int nClient);
 
-/* OPEN (20s): returns 30 when the record is there (the target's `li v0,30` beside the sltu); the
- * range guard's and the two calls' layout differ -- separate and `||` guards tried. */
+/* gcc r21b: guards to the end -- `if (pClient == 0) return DME_OK;` leaves the call's zero known in v0
+ * (the target's beqzl to the epilogue), and the 30 is the last statement's. */
 int func_0061D108(unsigned int nWorld, int nClient, int *pbConnected)
 {
     DmeClientInfo *pClient = 0;
@@ -2245,28 +2247,28 @@ int func_0061D108(unsigned int nWorld, int nClient, int *pbConnected)
     result = func_0061C720(nWorld, nClient, &pClient);
     if (result != DME_OK)
         return result;
-    if (pClient != 0) {
-        *pbConnected = pClient->bConnected != 0;
-        result = 30;
-    }
-    return result;
+    if (pClient == 0)
+        return DME_OK;
+    *pbConnected = pClient->bConnected != 0;
+    return 30;
 }
 
 extern int rt_circ_buf_destroy(void *pCircBuf);
 
-/* OPEN (35s): the target tests each slot's circular buffer by its address (`&slot->circ != 0`, an
- * addu and bnez the target keeps) and reloads the table pointer per slot; first shape only. */
+/* gcc r21b: the table's null test is a guard (`return DME_OK` hoisted into v0 by if-conversion, so the
+ * table's address takes a0 and the branch's slot the zero, as the target's) -- the loop inside a
+ * positive test was 8 bytes short. */
 int func_0061D320(void)
 {
     unsigned int i;
 
-    if (data_006511D0 != 0) {
-        for (i = 0; i < DME_MAX_STREAMS; i++) {
-            if (data_006511D0[i].pBuffer != 0)
-                func_00614888(&data_006511D0[i].pBuffer);
-            if (data_006511D0[i].circ != 0)
-                rt_circ_buf_destroy(data_006511D0[i].circ);
-        }
+    if (data_006511D0 == 0)
+        return DME_OK;
+    for (i = 0; i < DME_MAX_STREAMS; i++) {
+        if (data_006511D0[i].pBuffer != 0)
+            func_00614888(&data_006511D0[i].pBuffer);
+        if (data_006511D0[i].circ != 0)
+            rt_circ_buf_destroy(data_006511D0[i].circ);
     }
     return DME_OK;
 }
@@ -2299,10 +2301,10 @@ extern void (*data_00651198)(int *pInfo);
 extern int data_0065119C;
 
 /* the connection to the server lost (0x61D530): the world's link closed, the host told why.
- * OPEN (9 words, the right size): the report's three stores before the reason's test -- the target
- * loads pWorld into v1 ahead of them and keeps 1 in a1, 11 in a2; every order of the five
- * statements (tools/ccperm.py, an int array and a five-int struct alike) comes within 5 words at
- * best (the world's field stored first), a ternary for the reason is if-converted (the wrong size). */
+ * gcc r21b: byte-exact once the world's state (0x438) is an enum (dmelocal.h's DmeWorldState): an
+ * int field's load is ordered after the report's int stores before it (the report's address is
+ * taken and the world pointer has no known base), an enum's is not -- every order of the five
+ * statements had come within 5 words. */
 void func_0061D530(int nReason)
 {
     int info[5];
