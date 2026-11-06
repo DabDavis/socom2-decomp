@@ -236,7 +236,10 @@ static inline bool SkbNot(int x)
  * the igdump record: MW's pre-colouring schedule puts wordChar's zero (`dmove r43 r0`) between the
  * xori and its sltiu whatever its declaration's place (after `space`, assigned after the notEnd
  * test, a second assignment), so the xori temporary interferes with wordChar and cannot share v1;
- * inWord through an inline (`SkbIsWord`, SkbNot of the inequality) is 8-24 bytes longer */
+ * inWord through an inline (`SkbIsWord`, SkbNot of the inequality) is 8-24 bytes longer. Round 39: read from the
+ * target's registers, its pre-colour order wants `xori, sltiu, dmove wordChar` after `lb, andi, dmove notEnd`. notEnd's
+ * zero assigned after the state's test, or after every declaration (v_wrap9.py), keeps a dmove between them, 3 or
+ * 4 off: the block's zeroes fill that gap whichever comes first */
 bool SkbWrapText(std::vector<CSaferStr> &lines, const char *text, C2DFont *font, bool byWord, float scale,
                  float width)
 {
