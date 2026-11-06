@@ -125,7 +125,7 @@ public:
     static Headset *ftsGetHeadset();   /* 0x34BB80 */
 };
 
-extern "C" void Flush__7HeadsetFv(Headset *headset, bool b);   /* 0x34A6F0 */
+extern "C" void Flush__7HeadsetFb(Headset *headset, bool b);   /* 0x34A6F0 (Flush(bool): the world's round 27) */
 extern "C" int snd_StreamSafeCheckCDIdle(int block);   /* 0x33F550 */
 
 /* the system's public state (zsys_public.h's _zsys_public: only its timer, as camera.cpp's) */
@@ -554,7 +554,7 @@ bool CCinematicState::Init()
     Headset *headset = Headset::ftsGetHeadset();
 
     if (headset)
-        Flush__7HeadsetFv(headset, true);
+        Flush__7HeadsetFb(headset, true);
     *T0_COUNT = 0;
     unsigned int start = 0;
     unsigned int now = start;

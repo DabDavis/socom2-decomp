@@ -383,11 +383,12 @@ public:
 #endif
 bool KeyboardAttached();
 
+/* the display unit's: the display ticked by the frame's time, its count of key repeats (0x3949C0,
+ * SkbTickDisplay: the UI lane's round 32 wrote and named it) */
+int SkbTickDisplay(CSoftKeyboard *skb, float dT);
 extern "C" {
-/* the display unit's: the display ticked, its count of key events (0x3949C0); the next event's key
- * (0x3978C0); whether the display is busy (0x396EC0); the scaled-in hook (0x398BB0). This unit's
- * key handler (0x38DFE0) */
-int func_003949C0(CSoftKeyboard *skb);
+/* the display unit's: the next event's key (0x3978C0); whether the display is busy (0x396EC0); the
+ * scaled-in hook (0x398BB0). This unit's key handler (0x38DFE0) */
 int func_003978C0();
 void func_00398BB0();
 
@@ -447,7 +448,13 @@ static inline bool SkbIsUpper(unsigned short c)
  * where every C++ form here narrows its bools (`andi 0xff` after each stage, 2-4 words): an int
  * return, an int chain written out (`int r = a != 0; if (!r) { r = ...; if (r) r = ...; }`: two
  * narrowings left), an unsigned char SkbIsAsciiUpper, `!(c < 0xC0)`, `c > 0xBF`
- * (build/scratch/ui/v_kh*.py) */
+ * (build/scratch/ui/v_kh*.py). Round 32: the target's shape is MW's int-valued `||` / `&&`
+ * materialised into one register -- `#pragma bool off` around SkbIsUpper (an int return) gives the
+ * first operand exactly (`andi` then `sltu v0,zero,a0`, no narrowing anywhere) but normalises the
+ * `&&` chain's last operands with an extra `sltu` each (0x2E8, 8 long); the chain as a separate
+ * inline inside or outside the pragma, nested `&&`, int / unsigned char returns, int locals, a cast
+ * to int, ternaries with 0/1 arms (0x2D8-0x2E8) do no better. The letter caser 0x39A8D0 opens with
+ * the same test (on c - 32, its flag unnarrowed) */
 void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu)
 {
     switch (key.m_urow) {
@@ -560,7 +567,7 @@ void SkbHandleKey(int key, CPad *pad, CGameMenu *menu)
 void SkbTick(CGameMenu *menu, bool input, float dT)
 {
     if (g_pActiveSkb) {
-        int n = func_003949C0(g_pActiveSkb);
+        int n = SkbTickDisplay(g_pActiveSkb, dT);
 
         if (input) {
             for (int i = 0; i < n; i++)
