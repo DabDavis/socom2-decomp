@@ -14633,6 +14633,54 @@ update 0x642E70: 4 of 4, whole), `medius/rt_mt_platform.c` (setNewSeed_platform:
 written for the first time), none superseding a draft; 5 rows given (the platform code), 1 resized
 (0x642E70), no names. No tool changed.
 
+**Round 24b: DmeLocal.c's unwritten rows by SOCOM 1's bodies -- the object update path, NetLeave, the stream packet.**
+
+- **A one-byte message is a one-byte struct**: 0x618F70 (SOCOM 1's NetLeave grown) and 0x61B538 (open since round
+  13b on "the byte message takes slot 0") give the target's frame only so. An `unsigned char` or `unsigned short`
+  local is a PROMOTED mode on MIPS, so put_var_into_stack cannot use an ADDRESSOF for it and taking its address
+  gives it a stack slot at once, during expansion; a pointer's ADDRESSOF gets its slot only when purge_addressof
+  meets it, in insn order, after expansion -- so the byte took slot 0 ahead of pointers whose addresses were taken
+  first. A struct is never promoted: `struct { unsigned char nClient; } msg;` takes its slot in insn order, after
+  them. (0x61A118's unsigned short ask is the same: slot 16 against the target's 24.)
+- **Haifa's region limit decides interblock motion**: 0x61A6D8 (SOCOM 1's NetSendObjectFullUpdate's head; the body
+  is 0x61A488 now) had its first call's arguments moved above the range test by sched1's interblock scheduling --
+  the function was exactly 10 blocks at sched1, MAX_RGN_BLOCKS. Its sends written as an if/else before one `return
+  DME_OK` (a `return` in each arm before) make the join an eleventh block: no region, no motion, the same code
+  after reorg (the join's `move v0,zero` stolen into the first arm's `b`). -fno-sched-interblock reproduces it; not
+  the vendor's flag.
+- **A field's type orders its load against stores**: 0x61B2A0 (SOCOM 1's GlobalFieldErrorExceedsThreshold grown: a
+  kind-5 field compared by its own function) loads the comparison after filling the argument struct, so its null
+  test's `return 0` is an annulled slot; that holds only with the field an `int` cast at the call -- its load then
+  shares the int stores' alias set (strict aliasing on). As a function pointer or `void *` sched1 hoists the load
+  above the stores and the `return 0` is if-converted (8 bytes short). The update path's records are typed apart
+  from dme.c's (DmeField, DmeStructure, DmeObjectData: NetField's bytes from 0x10 are a structure field's interval,
+  kind, comparison and flag byte; DmeObject stays the 12-byte head round 13b proved).
+- **A 4-byte header copied with lw/sw is a memcpy into a word-aligned buffer**: 0x61A6D8's header (two bytes and a
+  halfword) is 2-aligned, so a struct assignment is lwl/lwr/swl/swr; memcpy gives lw/sw when both pointers are
+  known word-aligned -- a BLKmode local's DECL_ALIGN is BIGGEST_ALIGNMENT after expand_decl, the buffer's type is
+  word-aligned (`__attribute__((aligned(4)))` stands for whatever made SCEA's so). Its address is a local (one
+  register for the fill's +4 and both sends).
+- **The getter's result and its pointer tested together** (round 5b's shape) closed 0x61B3E0 (NetGetDataStreamPacket
+  over the ring): the `return 0` block then has two predecessors, is not if-converted, and jump2 cross-jumps the
+  last guard's into it -- the target's in-line `b; move v0,zero`.
+- **A function's position in the unit moves other functions**: written at its address, 0x618F70 sent func_0061C510's
+  element high part into s3 across DMEmalloc (unused declarations or small functions there do not; its seven
+  closing stores do, in that body only); and a changed 0x61A118 body moved 0x618F70, compiled after it, by 8
+  bytes (its stores through pClient stopped reloading the slot). New functions go at the unit's END (each new row
+  then moves only itself); a later change above them is re-checked against them.
+- **Shapes, measured**: SOCOM 1's closing stores rotated (0x618F70: the scheduler issued the first last); the length
+  set before the class byte (0x61A6D8, 8 of 24 orders); the clear loop its own counter (0x61A328, round 13b's rule:
+  a2 where the walk's s0 was shared) and the filter read before the mask's two stores (1 of 6); the data pointer
+  advanced before the length's store so one product serves both (0x61A488, 3 of 24).
+- **Open, diagnosed in place**: 0x61A118 (registers only with the shapes above, not kept -- it moves 0x618F70; the
+  creator's pseudo takes a2 for the target's a0), and the earlier opens (not reached: rounds 21b-23b's list).
+
+Hand-written in round 24b: `medius/dmelocal.c` (+7: 0x618F70, 0x61A6D8, 0x61A328, 0x61B2A0, 0x61A488, 0x61B3E0 written,
+0x61B538 closed; 96 of 100) -- 7 rows new to the map's byte-exact rows (`src/lib/medius` 978 -> 985 of 1,021 -> 1,027),
+none superseding a draft; no rows named (the bodies keep placeholders: DME's API names belong to Dme.c's locked
+wrappers, round 7b), data names used (CurrentNetTime, NetStructureList, MyClientIsJoined, ActiveNetObjectCount). No
+tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
