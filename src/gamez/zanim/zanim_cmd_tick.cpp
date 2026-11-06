@@ -1796,16 +1796,32 @@ struct zanim_cmd_scroll_motion {
     float time;                     /* 0x44 */
 };
 
-/* OPEN, right size (0x468), frame offsets and a few registers: the 2D steps through the
- * out-parameter helpers give the target's store-and-reload exactly, and the named objects sit as
- * the target's (declaration order from the frame's top), but the target's frame holds two 8-byte
- * objects more -- one between pos and delta, one below the else branch's operator- temporary --
- * which no unused local gives (MW drops those); its first GetNode also takes the anim through v0 */
+/* OPEN, 11 instructions (the target's size, 0x468; 221 before the engine core's round 27): the first
+ * read of cmd->node through a0 where the target has s3 (a0's a valid copy source there: the copy
+ * forward is below the IR -- a `const`, int or enum copy alike), and the length's registers: the
+ * target's z (f3) is numbered above the sum (`igreplay --cls 1 --want` over z: only v33 -> 112.5 or
+ * 113.5, a code-generation register though it is read again by the dot; no spelling found). Closed in
+ * round 27: the frame's two holes -- an unused local whose address is taken in a pointer keeps its slot
+ * at no code cost (FrameHole2D, the second through an inline so it sits below the operator-'s result);
+ * the anim loaded ahead of the command's copy (the anim then cannot coalesce with a0, still live:
+ * the target's `lw v0; ...; move a0,v0`), `cmd` declared first and assigned after; dc's x and z in
+ * locals (one load each, read by the length and the dot); pos built field by field (x's load first). */
+/* 8 bytes of the frame no code touches (ours, a modelling device: an unused local whose address is
+ * taken keeps its slot; an inline's, so below the caller's objects in the frame) */
+static inline void FrameHole2D()
+{
+    PNT2D hole;
+    PNT2D *p = &hole;
+}
+
 extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
 {
-    zanim_cmd_scroll_motion *cmd = (zanim_cmd_scroll_motion *)hdr;
+    zanim_cmd_scroll_motion *cmd;
     bool done = false;
-    CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node, false);
+    int anim = (int)ZAnim.m_CurAnim;
+
+    cmd = (zanim_cmd_scroll_motion *)(int)hdr;
+    CNode *node = ((CZAnim *)anim)->GetNode(cmd->node, false);
 
     if (!node)
         return true;
@@ -1834,10 +1850,13 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
 
         r += p;
         PNT2D pos;
+        PNT2D hole;
         PNT2D delta;
         PNT2D s;
+        PNT2D *ph = &hole;
 
-        Set2D(&pos, r.x, r.z);
+        pos.x = r.x;
+        pos.y = r.z;
         Sub2D(&delta, &pos, (PNT2D *)&cmd->last);
         Mul2D(&s, (PNT2D *)&cmd->su, &delta);
         if (fabsf(s.x) > 0.001f || fabsf(s.y) > 0.001f)
@@ -1851,10 +1870,13 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
         CPnt3D dq(q.x - c.x, q.y - c.y, q.z - c.z);
         CPnt3D dc = c - cmd->last;
 
+        FrameHole2D();
         cmd->last = c;
-        float len = dc.Length();
+        const float x = dc.x;
+        const float z = dc.z;
+        float len = sqrtf(x * x + dc.y * dc.y + z * z);
 
-        if (dq.x * dc.x + dq.z * dc.z < 0.0f)
+        if (dq.x * x + dq.z * z < 0.0f)
             len = -len;
         PNT2D s;
 
