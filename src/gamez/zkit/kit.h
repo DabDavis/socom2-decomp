@@ -438,6 +438,8 @@ public:
         return -1;
     }
     bool HasPickupSlot();
+    /* whether a pickup can be taken (OVL2 0x5BA770; the name ours) */
+    bool CanPickup(CZFTSWeapon *w, void *ammo, int count);
     /* the fire point's "projectile" child shown, for items 186 and 146 (OVL2 0x5B85A0; the name ours) */
     void ShowProjectile();
     /* the sniper rifle's scope or thermal scope node shown, by item 195 (OVL2 0x5B82E0, new in SOCOM

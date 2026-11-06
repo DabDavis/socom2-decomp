@@ -893,6 +893,12 @@ void CZKit::UnInit()
     }
 }
 
+extern "C" {
+/* a weapon's slots (OVL1 0x3C5970) and whether an ammunition suits it (SOCOM 1's; OVL1 0x3D2680) */
+int func_003C5970(CZFTSWeapon *w);
+bool IsLegalAmmo__8CZWeaponFP6CZAmmo(CZFTSWeapon *w, void *ammo);
+}
+
 /* the bomb gear, the one the kit's items ask for or the plain kit's (OVL2 0x5A0DA0, 0x5A0CD0, 0x5A0C00: the SEAL's) */
 extern "C" {
 void func_005A0DA0(CZSealBody *body);
@@ -2724,6 +2730,38 @@ bool CZKit::GetHotSwap()
 void CZKit::SetHotSwap(bool b)
 {
     m_hotswap = b;
+}
+
+/* whether a weapon or ammunition pickup can be taken: a weapon the kit holds tops it up, a new one needs a slot (two
+ * for a weapon of two slots); ammunition must suit a weapon held with room for it (OVL2 0x5BA770, new in SOCOM II:
+ * 0x5BB990's test -- the name ours).
+ * OPEN, 128 instructions, registers only (the size and every block but two delay slots, which follow the colouring):
+ * the -1 of the first test and of GetPickupSlot(-1) is one temporary -- s3 in the target, shared with `ammo`; coloured
+ * after every volatile, so numbered low, where ours (v97) is deferred into v0 and shifts the ten hoisted constants by
+ * one. An enum-typed local for it (kept, a0) stays deferred. */
+bool CZKit::CanPickup(CZFTSWeapon *w, void *ammo, int count)
+{
+    if (w && w->m_ID != 255) {
+        int i = FindItemWithAmmo((EQUIP_ITEM)w->m_ID);
+
+        if (i != -1)
+            return CanAddAmmo(i, count);
+        int slot = GetPickupSlot(-1);
+
+        if (func_003C5970(w) == 2) {
+            int slot2 = -1;
+
+            if (slot)
+                slot2 = GetPickupSlot(slot);
+            if (slot2 == -1)
+                slot = -1;
+        }
+        return slot != -1;
+    }
+    for (int i = 0; i < m_num_items; i++)
+        if (m_item[i] && IsLegalAmmo__8CZWeaponFP6CZAmmo(m_item[i], ammo))
+            return CanAddAmmo(i, count);
+    return false;
 }
 
 /* whether a picked-up item has a slot: no launcher held, and a slot of 2-4 free for it (OVL2
