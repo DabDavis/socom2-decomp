@@ -210,7 +210,7 @@ static inline unsigned char TargetGone(CSealCtrlAi *ai, float limit = 3.0f)
 
 /* HandleEvent's helpers (inline; the names ours): a random float between two (seal_airesponse.cpp's), a chance
  * taken, the event's bit for an entity set and cleared -- an entity's own event has none --, the AI's own event if it
- * has not run out, and the AI's own event made a copy of one (CAiEvent's implicit assignment, member by member) */
+ * has not run out, and the AI's own event made a copy of one (zseal.h's CAiEventFields) */
 static inline float RandBetween(float lo, float hi)
 {
     return lo + (hi - lo) * (4.656613e-10f * (float)rand());
@@ -251,14 +251,14 @@ static inline const CAiEvent *LiveEvent(CSealCtrlAi *ai)
     if (ai->m_ev.m_duration != CAiEvent::NoExpire && ai->m_ev.m_duration <= 0.0f)
         expired = true;
     if (!expired)
-        own = &ai->m_ev;
+        own = (const CAiEvent *)&ai->m_ev;
     return own;
 }
 
 static inline void SetOwnEvent(CSealCtrlAi *ai, const CAiEvent *ev, float duration)
 {
     duration = duration;
-    ai->m_ev = *ev;
+    ai->m_ev = *(const CAiEventFields *)ev;
     ai->m_ev.m_duration = duration;
 }
 
@@ -295,9 +295,9 @@ extern "C" bool func_005F8D40(CSealCtrlAi *ai, CSoundEventView *ev, CZSealBody *
  * it lies off the maps; a visible one only through the view cone and a chance by the line to it; the state asked; then
  * by its kind (OVL2 0x5F95D0; SOCOM 1's HandleEvent, 0x1D28 bytes there, the distance new).
  * OPEN, 0x14F8 against 0x1504 (1342 of 1345 instructions, 30 short runs, the kit's round 62). Right: the switch's layout
- * and every arm, the event's copy (CBits' operator=, CAiEvent's implicit one member by member) and its addresses through
- * m_ev, the union member: through a cast of m_event the address was a common subexpression, s0 and s1 held it, `known`
- * was spilled and four more pads came. What differs: the chance's float, which the target keeps in memory (`swc1 $f0,
+ * and every arm, the event's copy (an implicit assignment going member by member, through zseal.h's CAiEventFields) and its
+ * addresses through m_ev, the union member: through a cast of m_event each address was a common subexpression, s0 and s1
+ * held them, `known` was spilled and four more pads came. What differs: the chance's float, which the target keeps in memory (`swc1 $f0,
  * 180(sp)` before rand, `addiu v0,sp,180; lwc1 $f0,0(v0)` after -- an inline's const float & on an rvalue, a named
  * reference, a pointer local, a two-level inline, an array all fold into a saved FPR, so mine saves f21 too and the one
  * word shifts the 8-byte pads ahead of the blocks reached by a branch: `b; move v0,zero; nop` at +0x54 and +0x7C; only a

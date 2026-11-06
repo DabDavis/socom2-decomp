@@ -421,14 +421,6 @@ public:
 
     void Clear(unsigned int i) { m_vec[i >> 5] &= ~(1 << (i & 31)); }
     int Resize(unsigned int bits);
-    /* sized as the other, its words copied (a user assignment: CAiEvent's implicit one goes member by member,
-     * HandleEvent's copies of an event; the kit, round 62) */
-    CBits &operator=(const CBits &o)
-    {
-        Resize(o.m_bits);
-        memcpy(m_vec, o.m_vec, GetWordCount(m_bits) * 4);
-        return *this;
-    }
 };
 
 /* a value held within [lo, hi], and whether it had to be: out of line wherever it is

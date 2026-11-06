@@ -1191,6 +1191,35 @@ struct CAiPathBytes {
     unsigned char _a0[0xa8 - 0xa0];
 };
 
+/* CAiEvent's members with no constructor or destructor: the AI's own event reached as a member, its addresses plain
+ * (through a cast of m_event each is a common subexpression, HandleEvent holds them in saved registers). Not CAiEvent
+ * itself in the union: ~SEAL_AI_PARAMS would destroy it, on top of the call its hand-written body makes (objcmp: 0x573E60
+ * differs). The assignment is CAiEvent's implicit one, member by member (the kit, round 62; the names ours) */
+extern "C" int Resize__5CBitsFUi(void *bits, unsigned int count);
+class CBitsFields {
+public:
+    CBitsFields &operator=(const CBitsFields &o)
+    {
+        Resize__5CBitsFUi(this, o.m_bits);
+        memcpy(m_vec, o.m_vec, ((m_bits >> 5) + 1) * 4);
+        return *this;
+    }
+
+    int m_bits;   // 0x0
+    unsigned int *m_vec;   // 0x4
+};
+
+class CAiEventFields {
+public:
+    CPnt3D m_pos;   // 0x0
+    float m_rangeSq;   // 0xc
+    float m_duration;   // 0x10
+    int m_owner;   // 0x14
+    unsigned int m_18;   // 0x18: the id, the visible bit and the kind
+    unsigned int m_userdata;   // 0x1c
+    CBitsFields m_bits;   // 0x20: a user assignment, so the class's implicit one goes member by member
+};
+
 /* a route: a path and its state (a byte enum: copied with lb, compared with lbu; the class and its
  * names ours -- SEAL_AI_PARAMS's constructor builds the path and zeroes the byte, its implicit
  * destructor's copy is OVL2 0x573F20) */
@@ -1408,7 +1437,7 @@ public:
     CAiMapLoc m_624;   // 0x624: the cell the SEAL last left (UpdateAiMapLoc; the name ours)
     union {
         unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
-        CAiEvent m_ev;   // (the kit, round 62: the same, reached without a cast: HandleEvent's addresses)
+        CAiEventFields m_ev;   // (the kit, round 62: the same, reached without a cast: HandleEvent's addresses)
     };
     unsigned char m_eventQueue[0xc];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8: SOCOM II's lists are 0xc bytes)
     /* the kinds of event the AI hears (SOCOM 1's m_eventMask, 0x4b8: UpdateEventMask, OVL2 0x572D70,
