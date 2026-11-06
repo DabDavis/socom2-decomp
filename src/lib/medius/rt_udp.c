@@ -37,6 +37,7 @@
 extern void *memset(void *p, int c, unsigned int n);
 extern void *memcpy(void *d, const void *s, unsigned int n);
 extern char *strncpy(char *dst, const char *src, unsigned int n);
+extern int strncmp(const char *s1, const char *s2, unsigned int n);
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
 extern int rt_comm_get_local_ip(char *szAddress);
@@ -1117,6 +1118,87 @@ int func_00641230(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, unsigned int nConn)
     else
         result = 5;
     return result;
+}
+
+extern int func_00631B60(RT_UDP_BUF *pBuf, void **ppMsg);
+extern int func_00631508(RT_UDP_BUF *pBuf, void *pAfter, const void *pData, unsigned int nLength);
+extern int func_00631848(RT_UDP_BUF *pBuf, void *pMsg, const void *pData, unsigned int nLength);
+
+/* a datagram queued on the endpoint's ring: its sender (address and port) as a message after the
+ * last, then the header and the data appended to it; on a failure after the sender was stored, the
+ * last message is taken off again. 10 the ring refused. The steps are a do-while(0)'s breaks: 2.96
+ * rotates the loop at its last exit in the first 30 insns, so the appends come first in the image and
+ * the sender's store at the end, its success a branch back to them. */
+int func_00641748(RT_UDP *pUdp, RT_UDP_HEADER *pHeader, char *szAddress, unsigned short nPort,
+                  void *pData, unsigned short nLength)
+{
+    void *pMsg = 0;
+    RT_UDP_ADDR addr;
+    int result = 0;
+    int bStored = 0;
+
+    if (func_00631B60(&pUdp->buf, &pMsg) != 0)
+        return 10;
+    do {
+        strncpy(addr.szAddress, szAddress, 16);
+        addr.nPort = nPort;
+        if (func_00631508(&pUdp->buf, pMsg, &addr, sizeof(RT_UDP_ADDR)) != 0) {
+            result = 10;
+            break;
+        }
+        bStored = 1;
+        if (func_00631B60(&pUdp->buf, &pMsg) != 0) {
+            result = 10;
+            break;
+        }
+        if (func_00631848(&pUdp->buf, pMsg, pHeader, 12) != 0) {
+            result = 10;
+            break;
+        }
+        if (func_00631848(&pUdp->buf, pMsg, pData, nLength) != 0) {
+            result = 10;
+            break;
+        }
+    } while (0);
+    if (result != 0 && bStored) {
+        if (func_00631B60(&pUdp->buf, &pMsg) == 0)
+            func_00631748(&pUdp->buf, pMsg);
+    }
+    return result;
+}
+
+/* the connection a datagram from szAddress:nPort belongs to: the one with its session id, else the
+ * last one in state 8 or 9 where either id is still 0; -1 none */
+int func_006418A0(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, char *szAddress, unsigned short nPort,
+                  unsigned int *pnConn)
+{
+    unsigned int nCandidate = -1;
+    unsigned int i;
+    RT_UDP_CONN *pConn;
+
+    if (pUdp == 0)
+        return 2;
+    if (pRecv == 0)
+        return 1;
+    if (szAddress == 0)
+        return 1;
+    if (pnConn == 0)
+        return 1;
+    *pnConn = -1;
+    for (i = 0; i < pUdp->nConns; i++) {
+        pConn = &pUdp->pConns[i];
+        if (pConn->nState != 0 && strncmp(szAddress, pConn->szAddress, 16) == 0 && nPort == pConn->nPort) {
+            if (pRecv->nId == pConn->nId) {
+                *pnConn = i;
+                break;
+            }
+            if ((pConn->nState == 8 || pConn->nState == 9) && (pRecv->nId == 0 || pConn->nId == 0))
+                nCandidate = i;
+        }
+    }
+    if (*pnConn == -1 && nCandidate != -1)
+        *pnConn = nCandidate;
+    return 0;
 }
 
 /* OPEN (2 words: the target loads pConn->nId before pUdp->nChannel). Round 19b read sched1's dump
