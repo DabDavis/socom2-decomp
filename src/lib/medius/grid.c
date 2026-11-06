@@ -311,9 +311,11 @@ int func_00626110(GRID *p)
 
 /* Whether the codec can take the group's voices (0x68): a member connected, and fewer decoders
  * in use than it has, or no more queued than one over.
- * OPEN (9 words): the queue's count is read before nMax + 1 only with the call on the left (the
- * other order puts nMax + 1 in a saved register before the call); what is left is the second
- * test's branch sense and its stores' order (`beqz` to the 1 in the target, `bnezl` to the 0). */
+ * The queue's count is read before nMax + 1 only with the call on the left (the other order puts
+ * nMax + 1 in a saved register before the call). Byte-exact since round 25b: the target lays the 0
+ * store out as the second test's fall-through and the 1 store after it, both tests branching forward
+ * to it -- SCEA's `goto` past the 0 (2.96 does not reorder blocks: an if/else, a negated `||`, a
+ * nested else and returns in either order all put the 1 first, 9 words). */
 void func_00626140(GRID *p)
 {
     int nId = 0xFFFF;
@@ -329,12 +331,13 @@ void func_00626140(GRID *p)
     if (i < p->nMembers) {
         pCodec = func_0060FFB0(p->pAudio);
         nMax = func_0062AAF8(pCodec);
-        if (func_0062AB08(pCodec) < nMax || func_0062A2E8(&p->list) <= nMax + 1) {
-            p->x68 = 1;
-            return;
-        }
+        if (func_0062AB08(pCodec) < nMax || func_0062A2E8(&p->list) <= nMax + 1)
+            goto one;
     }
     p->x68 = 0;
+    return;
+one:
+    p->x68 = 1;
 }
 
 typedef struct GRID_SLOTS {             /* a type-5 message: the room left in the group */
