@@ -1237,3 +1237,20 @@ void CSealCtrl::MPBomb_TimerAvailable(bool on)
 {
     m_mpbomb_bTimerAvailable = on;
 }
+
+extern "C" {
+/* the edited layout's button for a function, and the setter (OVL1 0x2C6430 / 0x2C6460, fts_controller.cpp's) */
+PAD_BUTTON func_002C6430(unsigned char func);
+bool func_002C6460(unsigned char func, PAD_BUTTON btn);
+}
+
+/* the fire mode swap toggled: the edited layout's buttons for functions 3 and 12 exchanged (OVL2
+ * 0x592050, new in SOCOM II: UIStoreOptions calls it whenever the FIREMODESWAP_CONTROLLER valve
+ * disagrees with the swap it last made; the name ours) */
+void ToggleFireModeSwap()
+{
+    PAD_BUTTON b = func_002C6430(3);
+
+    func_002C6460(3, func_002C6430(12));
+    func_002C6460(12, b);
+}
