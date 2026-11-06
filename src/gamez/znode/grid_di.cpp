@@ -8,20 +8,21 @@
  * Written so far: the hit set's answers. Before the unit, 0x2D2070-0x2D2830 are not grid_di.cpp's
  * (checked, round 6): a recursive search over the graph's edge lists through the pointer list's
  * out-of-line begin() (0x2A00B0) and tiny iterator helpers -- graph_tree.cpp's neighbourhood.
- * Unwritten: the node walk 0x2D2890 (SOCOM 1's NodeGetIntersect and NodeGetAltitude in one, it
- * calls the polygon VU0 loaders 0x2DD130/0x2DD210), the batch walk 0x2D3030 (SOCOM 1's
+ * The node walk NodeGetIntersect 0x2D2890 (SOCOM 1's NodeGetIntersect and NodeGetAltitude in one)
+ * since the engine core's round 25. Unwritten: the batch walk 0x2D3030 (SOCOM 1's
  * NodeGetIntersectBatch) and CGrid::GetIntersectBatch. */
 
 #include "node_world.h"
+#include "int_material.h"
 
 /* MSL's qsort (MAIN 0x196D38: SOCOM 1's SortNearToFar calls qsort) */
 extern "C" void qsort(void *base, unsigned int n, unsigned int size,
                       int (*cmp)(const void *, const void *));
-/* a node's tree searched for the hit set (CGrid's: GetIntersect and GetAltitude both call it where
- * SOCOM 1's called NodeGetIntersect and NodeGetAltitude -- SOCOM II's one walk, not named yet) */
-extern "C" void func_002D2890(zdb::CGrid *grid, zdb::CNode *node, zdb::DiIntersect *di);
 /* whether a matrix is the unit one (zmath_matrix.cpp's, new in SOCOM II, not named yet) */
 extern "C" bool func_003084F0(const CMatrix *m);
+/* whether a segment surely misses a node's bounds (node_main.cpp's, new in SOCOM II, not named
+ * yet) */
+extern "C" bool func_003124F0(zdb::CNode *node, const CPnt3D *a, const CPnt3D *b);
 
 /* the node the walk is in (SOCOM 1's file static m_node) and the matrix stack the props' matrices
  * are pushed on (SOCOM 1's file static stack; SOCOM II's initialiser, 0x401CC0, clears its owner
@@ -196,15 +197,15 @@ bool CGrid::GetAltitude(DiIntersect *di)
                     m_node = (*it)->m_node;
                     if (func_003084F0((*it)->GetMatrix()) == false) {
                         stack.Multiply((*it)->GetMatrix(), true);
-                        func_002D2890(this, m_node, di);
+                        NodeGetIntersect(m_node, di);
                         stack.Pop();
                     } else
-                        func_002D2890(this, m_node, di);
+                        NodeGetIntersect(m_node, di);
                 }
             }
         }
         m_node = atom->Ent;
-        func_002D2890(this, atom->Ent, di);
+        NodeGetIntersect(atom->Ent, di);
     }
     stack.Pop();
     return true;
@@ -235,15 +236,15 @@ bool CGrid::GetIntersect(DiIntersect *di)
                     m_node = (*it)->m_node;
                     if (func_003084F0((*it)->GetMatrix()) == false) {
                         stack.Multiply((*it)->GetMatrix(), true);
-                        func_002D2890(this, m_node, di);
+                        NodeGetIntersect(m_node, di);
                         stack.Pop();
                     } else
-                        func_002D2890(this, m_node, di);
+                        NodeGetIntersect(m_node, di);
                 }
             }
         }
         m_node = atom->Ent;
-        func_002D2890(this, atom->Ent, di);
+        NodeGetIntersect(atom->Ent, di);
     }
     stack.Pop();
     return true;
@@ -267,6 +268,177 @@ IntersectStruct *DiIntersect::GetHighestAltitude(const CPnt3D *p, float alt)
         }
     }
     return best;
+}
+
+/* CDI's slots as the walks call them: GetIntersect (slot 0x14) answers a bool -- the walk narrows
+ * the result (andi 0xff) and keeps it unconverted, as SOCOM 1's NodeGetIntersect did -- where
+ * znode.h's CDI declares an int (a marked stand-in: a virtual's return type is in no symbol, and
+ * CDI's overrides are node_world.h's) */
+class CDIHit : public tag_DI_HEAD {
+public:
+    virtual ~CDIHit();
+    virtual void Allocate(int n);
+    virtual void Free();
+    virtual bool GetIntersect(DiIntersect *di) = 0;
+};
+
+/* the set's tail and its model-space pair (ours, inline: MW sets up a call's arguments holding an
+ * inline's call first, right to left -- Transform's and the segment test's a2, a1, a0 order) */
+static inline const CPnt3D *TailOf(DiIntersect *di) { return &di->m_Tail; }
+static inline CPnt3D *MTailOf(DiIntersect *di) { return &di->m_MTail; }
+static inline CPnt3D *MTipOf(DiIntersect *di) { return &di->m_MTip; }
+
+/* a polygon's camera type and DI type as bytes (ours, inline) */
+static inline unsigned char CameraTypeOf(const CDI *d)
+{
+    return d->m_flags.m_cameratype;
+}
+
+static inline unsigned char DiTypeOf(const CDI *d)
+{
+    return d->m_flags.m_ditype;
+}
+
+/* whether a material lets the camera through (CMaterialEx's VOLUMETRIC, ours inline) */
+static inline bool Volumetric(const CMaterialEx *m)
+{
+    if (m->m_volumetric)
+        return true;
+    return false;
+}
+
+/* whether a polygon stops the ray: with the camera's collision flag wanted, one the camera may
+ * not pass (camera type bit 1) or of a volumetric material lets it through; else one of camera
+ * type bit 0 is left out (SOCOM II's; the name ours) */
+static inline bool PolyCollides(const CDI *d)
+{
+    if (cameraCollideFlagRequired) {
+        if (CameraTypeOf(d) & 2)
+            return false;
+        CMaterialEx *m = CMaterialExArray::GetMaterialEx(d->m_flags.m_material);
+
+        if (m && Volumetric(m))
+            return false;
+    } else if (CameraTypeOf(d) & 1)
+        return false;
+    return true;
+}
+
+/* a node's tree searched for the hit set: a node with collision, not a character's unless
+ * characters are hit, not the set's own node -- its matrix pushed (unless the unit one), the ray
+ * taken into its space, skipped when the segment surely misses its bounds (a character's node, the
+ * one being searched, tested against its box: a miss returns at once); its polygons tested in
+ * turn, each hit taken back to the world through the stack's top and recorded, the first stopping
+ * the search when the vector says so; then its children (SOCOM II's one walk under GetIntersect
+ * and GetAltitude, where SOCOM 1 had NodeGetIntersect and NodeGetAltitude).
+ * OPEN, 1 instruction (unwritten before the engine core's round 25; the target's size, 0x560, its
+ * frame, every register and call): `done = stop` narrows the spilled flag (andi 0xff, MW's 8-bit
+ * zero-extension in the PCode) where the target moves it -- bool, unsigned char, char or int flags,
+ * `!!stop`, `(bool)`, `!= 0`, const, the flag assigned apart or declared at the top, read through an
+ * inline: the same or worse (build/scratch/core/v_ngi3-9.py). Measured on the way: a PLAIN `asm { }`
+ * block -- a volatile one disables the whole IR optimiser for the function (DisableDueToAsm: no CSE,
+ * no loop invariants, the hit's n * 32 recomputed after the block, 0x568); MW passes a call's
+ * arguments that hold a call -- an inline accessor's, one expression is enough -- first, right to
+ * left, then the plain ones in parameter order (mweppc's evaluate_nested_function_calls): the tail
+ * pair through accessors gives Transform's and the segment test's a2, a1, a0 order; the iterators
+ * declared at the top and assigned from begin() (their slots 348 / 344, begin's temporaries above
+ * the postfix copies); the DI vector a POINTER declared after the flag (its address in s1 for the
+ * flag reads, the size read through the node) and the children through a reference (end()'s
+ * vector address held in s0, begin read through the node), SOCOM 1's shape too; GetIntersect
+ * answering a bool (the CDIHit stand-in above: SOCOM 1's caller narrows it the same way) */
+void CGrid::NodeGetIntersect(CNode *node, DiIntersect *di)
+{
+    CDIVector::iterator it;
+    CNodeVector::iterator c;
+
+    if (!node->m_active || !node->m_hasDI)
+        return;
+    if (!di->m_IntersectCharacters && (m_node->m_socom2_a1 & 4))
+        return;
+    if (node == di->m_Node)
+        return;
+    bool skip = false;
+    bool identity = func_003084F0(&node->m_matrix);
+
+    if (!identity)
+        stack.Multiply(&node->m_matrix, true);
+    CMatrix inv;
+
+    Vu0MatrixInverseWithUniformScale(&inv, CStack::m_top);
+    inv.Transform(TailOf(di), MTailOf(di), 2);
+    if (func_003124F0(node, MTipOf(di), MTailOf(di)))
+        skip = true;
+    else if ((m_node->m_socom2_a1 & 4) && node == m_node) {
+        CBBox *box = (CBBox *)node->GetBBox();
+        CPnt4D hit, hit2;
+        CPnt4D tail(di->m_MTail.x, di->m_MTail.y, di->m_MTail.z, 1.0f);
+        CPnt4D tip(di->m_MTip.x, di->m_MTip.y, di->m_MTip.z, 1.0f);
+
+        if (!box->GetIntersect(&tip, &tail, &hit, &hit2, true)) {
+            if (!identity)
+                stack.Pop();
+            return;
+        }
+    }
+    if (!skip) {
+        bool done = false;
+        CDIVector *dis = &node->m_di;
+
+        if (dis->size()) {
+            bool stop = dis->m_bStopAtFirstIntersection;
+
+            if (dis->m_bReturnBackFaceIntersections)
+                CDI::m_backface_mask = 48;
+            else
+                CDI::m_backface_mask = 32;
+            di->LoadTipAndTail();
+            for (it = dis->begin(); !done && it != dis->end(); it++) {
+                CDI *d = *it;
+
+                if (DiTypeOf(d) & 2) {
+                    if (PolyCollides(d)) {
+                        if (d->m_flags.m_ptcount)
+                            d->LoadPlaneVU0();
+                        int n = di->m_Cnt;
+
+                        if (n < di->m_BufCnt) {
+                            done = ((CDIHit *)d)->GetIntersect(di);
+                            if (done) {
+                                done = stop;
+                                CMatrix *m = CStack::m_top;
+                                IntersectStruct *is = &di->m_Intersects[n];
+                                CPnt3D *norm = &is->m_norm;
+
+                                asm {
+                                    lqc2 vf4, 0(m)
+                                    lqc2 vf5, 16(m)
+                                    lqc2 vf6, 32(m)
+                                    lqc2 vf7, 48(m)
+                                    lqc2 vf27, 0(is)
+                                    lqc2 vf26, 0(norm)
+                                    vcallms 0x80
+                                    qmtc2.i a0, vf0
+                                    sqc2 vf27, 0(is)
+                                    sqc2 vf26, 0(norm)
+                                }
+                                di->m_Intersects[n].m_poly = d;
+                                di->m_Intersects[n].m_node = node;
+                                di->m_Cnt++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (!skip) {
+        CNodeVector &kids = node->m_child;
+
+        for (c = kids.begin(); c != kids.end(); c++)
+            NodeGetIntersect(*c, di);
+    }
+    if (!identity)
+        stack.Pop();
 }
 
 }

@@ -159,6 +159,36 @@ extern "C" unsigned int *data_004B5018;
  * buffer's owner's count alone): this unit's bss byte, 0x4B5010, right ahead of data_004B5018 */
 unsigned char CVisual::m_noBufferRefs;
 
+/* a cross product through VU0 (ours, inline) */
+static inline void Cross(CPnt3D *out, const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt4D c;
+    CPnt4D pa;
+    CPnt4D pb;
+
+    pa.x = a->x;
+    pa.y = a->y;
+    pa.z = a->z;
+    pa.w = 1.0f;
+    pb.x = b->x;
+    pb.y = b->y;
+    pb.z = b->z;
+    pb.w = 1.0f;
+
+    sceVu0OuterProduct((float *)&c, (float *)&pa, (float *)&pb);
+    out->x = c.x;
+    out->y = c.y;
+    out->z = c.z;
+}
+
+/* a matrix's rows, held in a local before they are returned (vis_vu.cpp's, inline) */
+static inline float (*MatrixRows(CMatrix *m))[4]
+{
+    float (*r)[4] = m->m_matrix;
+
+    return r;
+}
+
 /* the UV test (vis_decal.cpp's) */
 bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
 
@@ -171,18 +201,25 @@ bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
  * triangles taken (new in SOCOM II: CNode::ApplyDecal's sub-mesh arm, the name ours -- its call
  * there, node_main.cpp's 0x313B2C, loads the index before the mesh: the mesh is this, the node's
  * matrix the unused first argument).
- * OPEN (written in the weapons' round 33), 4 instructions long (364 against 360), the frame 16 bytes
- * short (832 against 848: every local 16 lower, the spilled normal / texture / UV at 204 / 200 / 196
- * where the target has 220 / 216 / 192 and the dead counter at 176 -- the target spills one node
- * more or keeps a 16-byte slot this does not); the target also keeps &vd in v's register from the
- * top (`addiu s4,sp,656` before the matrices' constructors: `v = &vd` then SelectIndexedStrip, as
- * CVisual::ApplyDecal's) and builds the outer product's operands as temporaries below the matrices
- * (c at 256, the two w-1 points at 240 / 224 -- a cross-product inline holding c gives that order but
- * 358 instructions); the flush's func_003BEBB0 is called before nidx is cleared there */
+ * OPEN, 2 INSTRUCTIONS OFF at the target's size since the weapons' round 38 (16 long and the frame 16
+ * bytes short before; build/scratch/wep/v_mad38*.py), by six shapes: (1) the UV matrix through a
+ * named local copy `u` defined just before the dead counter -- spilled, a local takes a 16-byte
+ * quadword where a parameter takes a word, so it lands at 192 below the normal and texture at 220 /
+ * 216 and pushes the dead counter to 176 (igdump's spill slots, the frame 848); (2) the normal copied
+ * out of the outer product field by field (`nn = CPnt3D(c.x, c.y, c.z)` made a 3-float temporary at
+ * 736, the 16 bytes the frame had in the wrong place); (3) the outer product in an inline (Cross,
+ * below: its locals made after the transform's temporaries, c / pa / pb at 256 / 240 / 224) with its
+ * w-1 operands named and filled field by field (the 4-float constructor reads z, y, x); (4) `more`
+ * assigned after vd's constructor and `v = &vd` right after it, the counters before the matrices
+ * (the target's prologue order); (5) nidx cleared before the flush's call (it fills its delay
+ * slot); (6) the product matrix through MatrixRows (vis_vu.cpp's rule: the target sets a1, a2 and
+ * a0 in the slot). Left: the last flush's AddDecal sets a1 in the call's delay slot where the
+ * loop's sets it first (here both set a1 before a0) -- braces with `nt = 0`, `!= 0`, an int cast
+ * and `this->` change nothing */
 int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *normal, CTexHandle *tex,
                       CMatrix *uv)
 {
-    bool more = false;
+    bool more;
     short *vp[3];
     CPnt3D e1;
     CPnt3D e2;
@@ -190,20 +227,24 @@ int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *norm
     int ids[3];
     CPnt3D n;
     CVisData vd;
+
+    more = false;
+    CVisData *v = &vd;
     CPnt3D pts[3];
     CPnt3D proj[3];
-    CMatrix m0;
-    CMatrix m2;
     unsigned int nt = 0;
     unsigned int nverts = 0;
+    CMatrix *u = uv;
     int dead = 0;
     int count = 0;
+    CMatrix m0;
+    CMatrix m2;
 
     func_003BEBD0();
     if (m_74 < data_004A4490)
         m_owner->BuildMatrixPalette(0);
 
-    CVisData *v = vd.SelectIndexedStrip(this, index);
+    v = v->SelectIndexedStrip(this, index);
     unsigned int nidx = 0;
     unsigned int cur = 99999999;
 
@@ -214,8 +255,8 @@ int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *norm
                 nt = 0;
             }
             nverts = 0;
-            func_003BEBB0();
             nidx = 0;
+            func_003BEBB0();
         }
         for (unsigned int j = 0; j < 3; j++) {
             dead++;
@@ -236,7 +277,7 @@ int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *norm
             CMatrix pm;
 
             sceVu0MulMatrix(pm.m_matrix, m_owner->m_matrix.m_matrix, m_palette[cur]->m_matrix);
-            sceVu0MulMatrix(m2.m_matrix, uv->m_matrix, pm.m_matrix);
+            sceVu0MulMatrix(m2.m_matrix, u->m_matrix, MatrixRows(&pm));
 
             CMatrix inv;
 
@@ -246,11 +287,7 @@ int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *norm
         pts[0].Sub(&pts[1], &e1);
         pts[2].Sub(&pts[1], &e2);
 
-        CPnt4D c;
-
-        sceVu0OuterProduct((float *)&c, (float *)&CPnt4D(e2.x, e2.y, e2.z, 1.0f),
-                           (float *)&CPnt4D(e1.x, e1.y, e1.z, 1.0f));
-        nn = CPnt3D(c.x, c.y, c.z);
+        Cross(&nn, &e2, &e1);
         nn.Normalize();
         if (Dot(nn, n) < -0.1f) {
             m2.Transform(&pts[0], &proj[0], 3);

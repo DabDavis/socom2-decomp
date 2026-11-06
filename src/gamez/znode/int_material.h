@@ -6,8 +6,9 @@
  * (m_materialex_map, m_materialex_list, the list a vector<CMaterialEx *>); no DWARF covers the unit,
  * so the members' names are ours, after the rdr's keys ReadMaterials reads them from.
  *
- * Three units include this header: int_material.cpp, and the weapons' zwep_list.cpp and
- * zwep_projectile.cpp (since the weapons' round 19), each before zweapon.h. zweapon.h (the
+ * Four units include this header: int_material.cpp, the weapons' zwep_list.cpp and
+ * zwep_projectile.cpp (since the weapons' round 19), each before zweapon.h, and grid_di.cpp (since
+ * the engine core's round 25: the node walk reads a polygon's material through GetMaterialEx). zweapon.h (the
  * weapons), seal_env.cpp (the SEALs) and fts_mission.cpp (the game states) keep stand-ins of
  * CMaterialExArray (the weapons' spells the element MATERIALEX, a name of theirs) -- zweapon.h's
  * under `#ifndef INT_MATERIAL_H`, so a unit that included this header first sees the real class --

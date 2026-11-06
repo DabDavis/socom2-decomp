@@ -13,7 +13,8 @@ the bytes then match is tools/try.py's question.
 
 FILE, --unit, --sub/--and, --variants and -n are tools/try.py's (the same parser: a variant is a --sub
 and the --ands after it, or one of --variants FILE.py's `SUBS = {name: [(old, new), ...]}` or `OLD` and
-`V = {name: new}`); the unit is built as sccheck builds it (its directive's flags; include/ and src/
+`V = {name: new}`; --sub/--and replace OLD's first occurrence, --sub-all/--and-all every one, GCC round
+42a); the unit is built as sccheck builds it (its directive's flags; include/ and src/
 of a scratch copy -- build/igvar/, or $SC_IG_WORK, one per concurrent user -- so the tree is never
 touched). PROC is a regex on the function's own name (igdump's `proc`, unmangled). Each variant
 prints, per colouring of PROC in class --cls (0 GPR, 1 FPR), the spilled nodes and each saved
@@ -112,12 +113,7 @@ def run(file: Path, unit: Path, proc: str, variants: list[tuple[str, list[tuple[
     results = []
     first = None
     for label, subs in [("(as it is)", [])] + [v for v in variants if v[1]]:
-        text, missing = base, None
-        for old, new in subs:
-            if old not in text:
-                missing = old
-                break
-            text = text.replace(old, new, 1)
+        text, missing, _ = trymod.apply_subs(base, subs)     # a pair its OLD's first occurrence, 'all' every one
         if missing is not None:
             results.append((label, [f"(not in {file.name}: {missing[:60]!r})"]))
             continue
@@ -144,8 +140,7 @@ def main(argv=None) -> int:
     ap.add_argument("file", type=Path)
     ap.add_argument("proc", help="a regex on the function's own (unmangled) name")
     ap.add_argument("--unit", type=Path)
-    ap.add_argument("--sub", nargs=2, action=trymod._Ordered, dest="steps", metavar=("OLD", "NEW"))
-    ap.add_argument("--and", nargs=2, action=trymod._Ordered, dest="steps", metavar=("OLD", "NEW"))
+    trymod.add_sub_options(ap)          # --sub/--and (OLD's first occurrence), --sub-all/--and-all (every one)
     ap.add_argument("--variants", type=Path)
     ap.add_argument("-n", "--newlines", action="store_true", help="`\\n` in OLD and NEW is a newline, `\\t` a tab")
     ap.add_argument("--cls", type=int, default=0, help="register class: 0 GPR (default), 1 FPR")

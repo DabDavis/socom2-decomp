@@ -199,13 +199,18 @@ int sceScfGetTimeNotation(void)
  * the bltzl -- adds 60 before each subhour, and sums into its own variable: `min += t->minute` (or
  * `min = t->minute + min`, which expand_binop swaps to the target's operand) gives `addu s0,s0,v0`.
  *
- * OPEN, three: frombcd (5 words: the target multiplies with MIPS's two-operand `mult; mflo` -- the
- * product allocated to LO, mulsi3's second alternative -- this the R5900's three-operand `mult`; (x >> 4)
- * * 6 in eleven spellings, 64-bit ones included); adddate and subdate (41, 37: the target reloads
- * t->year after the day/month stores, dtls13010 keeps it in a register -- both are byte-exact under
- * dtls13010 with -fno-gcse (and, as written, under 2.9-990721 and every 2.95.x), but GetRomName needs
- * GCSE: it keeps gRomName's %hi in s1 and builds the address twice from it, 28 words off without; so
- * this gcse removes a reload the target's kept -- its source differs from this somewhere). */
+ * adddate and subdate (GCC round 42a; open since round 4a, 41 and 37 words off) read the year into a
+ * local first, for the leap test: written `(t->year & 3) == 0`, dtls13010's GCSE carried that load to
+ * the century test and the increment (the target reloads t->year there after the day and month
+ * stores) -- why they were byte-exact only under -fno-gcse, 2.9-990721 or a 2.95.x, while the object's
+ * GetRomName needs this GCSE (gRomName's %hi held in s1, the address built twice from it). Read into
+ * `u_char year`, the later test reads t->year again, as the demo's identical code does.
+ *
+ * OPEN: frombcd (5 words: the target multiplies with MIPS's two-operand `mult; mflo` -- the product
+ * allocated to LO, mulsi3_mult3's second alternative -- this the R5900's three-operand `mult`; (x >> 4)
+ * * 6 in eleven spellings, 64-bit ones included. Round 42a: not another CPU's mulsi3 -- -mcpu=r4000's
+ * would be `mult; mflo` as one pattern, but this compiler and 2.96 then synthesise the 6 from shifts;
+ * -mips3 is unchanged). */
 typedef struct {
 	u_char stat;
 	u_char second;
@@ -250,9 +255,10 @@ static void converttobcd(sceCdCLOCK *t)
 static void adddate(sceCdCLOCK *t)
 {
 	char days[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+	u_char year = t->year;
 
 	t->day++;
-	if ((t->year & 3) == 0)
+	if ((year & 3) == 0)
 		days[1] = 29;
 	if (days[t->month - 1] < t->day) {
 		t->day = 1;
@@ -270,9 +276,10 @@ static void adddate(sceCdCLOCK *t)
 static void subdate(sceCdCLOCK *t)
 {
 	char days[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+	u_char year = t->year;
 
 	t->day--;
-	if ((t->year & 3) == 0)
+	if ((year & 3) == 0)
 		days[1] = 29;
 	if (t->day == 0) {
 		t->month--;

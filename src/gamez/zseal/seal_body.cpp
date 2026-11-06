@@ -1879,7 +1879,14 @@ extern "C" bool func_0057F7D0(CZSealBody *seal)
  * `return IsCurrentBlend(45) ? true : false;` gives the target's LAYOUT (bnez to the call, the false
  * block after it) but adds the bool's `andi` and drops the label's pad (5); an if-form IsRemote, an
  * if-set inline, nested ifs, a goto and `bool r` returns are worse (7-0x94). Round 55: `!= true` and a
- * switch on the test (either case) are worse (0x80, 0x90; build/scratch/seal-r55/v_f530.py). */
+ * switch on the test (either case) are worse (0x80, 0x90; build/scratch/seal-r55/v_f530.py). Round 56
+ * (build/scratch/seal-r56/v_f530*.py): the WHOLE body as an inline `return Go45(seal);` gives the
+ * target's code word for word -- the layout and the pad nop before the call -- plus one `andi` on the
+ * call's result (0x80, d=4); every if-return inline of the test alone (bool, int or unsigned char, true
+ * or false first) is 5 off with the `andi` on IsCurrentBlend's result, and the pad then comes free (the
+ * extra word lands the call block on its 8-byte boundary) -- so the layout is an inline's, and only
+ * the inline's masking of a bool call result is wrong; else / else-if / block forms, `while`, `== 0`,
+ * `return 0`, a bool local, the kit's round-57 `ok` chain (9) and an `&&` join (0x70) don't move it. */
 extern "C" bool func_0057F530(CZSealBody *seal)
 {
     if (seal->IsRemote())

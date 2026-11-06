@@ -246,16 +246,18 @@ MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
 void func_002FA8F0(int, int, int, MediusPlayerInfoResponse *);   /* our info shown */
 }
 
-/* the mission and its net game (only what is read here) */
-struct CNetGameLobby {
+/* the mission and its net game (only what is read here; the real classes are fts_state.h's -- their
+ * names kept so the member call below links by its own) */
+struct CZNetGame {
     unsigned char _0[0x114];
     unsigned char m_state;   // 0x114: 2, in progress
 };
-struct CMissionLobby {
+struct CMission {
     unsigned char _0[0x1808];
-    CNetGameLobby *m_pNetGame;   // 0x1808
+    CZNetGame *m_pNetGame;   // 0x1808
+    void UpdateLocalGame(CZNetGame *game);   /* the local game's state sent (OVL1 0x2A9EE0, the states lane's) */
 };
-extern "C" CMissionLobby theMission;
+extern "C" CMission theMission;
 
 /* the password shown blank unless it is to be kept secure (SOCOM 1's; OVL1 0x2FAF50) */
 void CZOnlineLobby::PasswordSecurity()
@@ -1190,7 +1192,6 @@ bool CZOnlineLobby::JoinGame(const char *name)
 
 extern "C" {
 extern unsigned char data_0066A5F8;   /* the details to go at once (the chat unit's) */
-void func_002A9EE0(CMissionLobby *mission, CNetGameLobby *game);   /* the local game's state sent (the states lane's) */
 }
 
 /* our details to go at once, and the game's state sent when we host one (SOCOM 1's, which only set
@@ -1199,7 +1200,7 @@ void CZOnlineLobby::ForceStatusReport()
 {
     data_0066A5F8 = 1;
     if (theNetwork.m_bNetwork && theNetwork.m_bSessionMaster)
-        func_002A9EE0(&theMission, theMission.m_pNetGame);
+        theMission.UpdateLocalGame(theMission.m_pNetGame);
 }
 
 /* the mission sequence handed out: its index and the 32 missions (SOCOM 1's 12; OVL1 0x2F82E0) */
