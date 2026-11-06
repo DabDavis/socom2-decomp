@@ -267,14 +267,9 @@ typedef struct TPCTX {
 /* the pronunciation tree's node translated into items, one per phoneme after the first word of
  * its pronunciation (each linked to the next; the last carries the node's word and pronunciation
  * and, at a leaf, no link), then its children in turn, linked in order; node 0 is the root item.
- * SOCOM 1's body (its _TreeCtx copy; chinese.c's row, 0x4F8, is a longer form, unwritten).
- * OPEN (round 37c, written: 116 words, two short (0x364) -- 161 with the kind read inside the loop;
- * read once through the walker's first post-increment, the target's lhu-then-addiu): registers --
- * the end, end - 1 and node * 12 sit one t-register below the target's (its node stays in t1 from
- * the entry, node * 2 in s1 for the child's reload after the loop), the leaf flag's sltiu is
- * scheduled before the loop test (the target's sits in that branch's slot), and the leaf arm's
- * `bnel` for the last phoneme is a `bne` here (the two missing words: the target reloads *nitems in
- * that arm). Not tried: `t->items[(*nitems)++]` forms. */
+ * SOCOM 1's body (its _TreeCtx copy; chinese.c's row, 0x4F8, is the longer form).
+ * The increments live in the indexes (`t->items[(*nitems)++]`, `= ++(*nitems)`), the node parameter is reused for the child and the
+ * kind compared inside the loop (round 41c, with chinese.c's). */
 static void Translate_Prons_Into_Items_And_Tones_TreeCtx(unsigned int node, unsigned int *nitems,
                                                          unsigned int *nlinks, TPCTX *t)
 {
@@ -707,9 +702,8 @@ static __inline__ unsigned char StartWordsHaveTones(const unsigned int nw, unsig
  * What the code said beyond chinese.c's: n2 holds the start word first (one pseudo: its refs take s7, the end stays in the frame);
  * the tone scan's parameters are const, so the word count is read where it stands (TREE_READONLY in expand_inline_function: s8, and
  * SOCOM 1's reload of the same spill slot); every failure has its own tail (cross-jumped after reload: c's refs against t's).
- * OPEN (2 words, the right size): `addiu t3,v0,-1` and `move s7,zero` swapped in the second count's head -- the target's first
- * scheduling pass issues the zero after the sum (the sum waits for the load's latency), so another ALU insn holds its second slot at the
- * load's next cycle; every order of the block's statements gives this or worse, and the count as an inline changes the size. */
+ * The second count's `pm2 = &maxn` stands at the head of its block: its insn lives until reload deletes it (the frame address is its
+ * equivalence), and holds sched1's second ALU slot in the cycle after the load, which puts `move s7,zero` after the sum. */
 int CreateSecondPassTreeContext_ForChinese(CASR *c)
 {
     CTXVT ctx;
@@ -861,6 +855,7 @@ return 1;
         unsigned int m2;
 
         k = items[0].link;
+        pm2 = &maxn;
         nw2 = nnodes - 1;
         n2 = 0;
         e = 0;
@@ -870,7 +865,6 @@ return 1;
             k = ((unsigned short *)&links[k])[1];
             e++;
         }
-        pm2 = &maxn;
         m2 = e;
         for (i = 1; i <= nw2; i++) {
             int pron = items[i].pron;
