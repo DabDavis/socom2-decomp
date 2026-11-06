@@ -526,6 +526,16 @@ def code_label(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple
 LOCAL_CODE_DEPTH = 2
 BAD_STATUS = ("MISMATCH", "CONTENT-MISMATCH", "UNKNOWN")
 
+# GCC round 42a (the integrator's request; the zdb world's round 31: CShadowCaster "matched" with a jal to
+# the wrong static -- node_world.cpp's `static inline` NodeBBox, its out-of-line copy a LOCAL function no
+# map row names): a call to (or the address of) a TU-local function no name resolves is checked by its
+# CODE, strictly -- content-ok when the candidate's function is the target's at the jal's address
+# (local_code_ok), CONTENT-MISMATCH when it is not: its bytes differ, or the map has no row of its size
+# starting there. Before, every "not shown equal" stayed `unchecked`, which passes; now only a chain
+# LOCAL_CODE_DEPTH deep stays unchecked. SC_LOCAL_CALLS=lenient restores the old rule (the measurement's
+# and the canary's negative control).
+STRICT_LOCAL_CODE = os.environ.get("SC_LOCAL_CALLS", "") != "lenient"
+
 
 def function_at(elf: E.Elf, sec_index: int, off: int) -> E.ElfSymbol | None:
     """The candidate's function starting at `sec_index`+`off`, or None."""
@@ -533,14 +543,17 @@ def function_at(elf: E.Elf, sec_index: int, off: int) -> E.ElfSymbol | None:
 
 
 def local_code_ok(elf: E.Elf, f: E.ElfSymbol, want: int, st: E.SymbolTable, img: E.Image,
-                  depth: int) -> bool | None:
+                  depth: int, strict: bool = False) -> bool | None:
     """Is the candidate's TU-local function `f` the target's function at `want`? Its bytes, with its
     own relocation fields masked, must equal the target's there and each of its relocations resolve
-    (none MISMATCH, CONTENT-MISMATCH or UNKNOWN). None when it cannot be said: no map row of `f`'s
-    size starting at `want`, the image not holding it, or LOCAL_CODE_DEPTH reached."""
+    (none MISMATCH, CONTENT-MISMATCH or UNKNOWN). None when it cannot be said: LOCAL_CODE_DEPTH reached,
+    the image not holding it, or -- unless `strict` (GCC round 42a: then it is not the target's function
+    there, False) -- no map row of `f`'s size starting at `want`."""
     row = st.at_addr(want)
-    if depth >= LOCAL_CODE_DEPTH or row is None or row.size != f.size or not img.covers(want, f.size):
+    if depth >= LOCAL_CODE_DEPTH or not img.covers(want, max(f.size, 1)):
         return None
+    if row is None or row.size != f.size:
+        return False if strict else None
     body = elf.sections[f.shndx].data[f.value:f.value + f.size]
     rel = [E.Reloc(r.offset - f.value, r.type, r.sym, r.addend)
            for r in elf.relocs_for(f.shndx) if f.value <= r.offset < f.value + f.size]
@@ -609,14 +622,18 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
         return None
 
     def by_code(r: E.Reloc, sec_index: int, value: int, want: int) -> RelocFinding | None:
-        # a TU-local function no name resolves (MW's `__arraydtor$N`): content-ok when its code is
-        # the target's at `want`, relocations resolved (local_code_ok); else None -- the reference
-        # then stays as the other rules leave it, so this can turn nothing into a miss
+        # a TU-local function no name resolves (MW's `__arraydtor$N`, a `static inline`'s out-of-line
+        # copy): content-ok when its code is the target's at `want`, relocations resolved
+        # (local_code_ok); CONTENT-MISMATCH when it is not (GCC round 42a, STRICT_LOCAL_CODE: before,
+        # None -- `unchecked`, which passed a jal to the wrong static); None when it cannot be said
         f = function_at(elf, sec_index, value) if 0 < sec_index < len(elf.sections) else None
         if f is None or not elf.sections[sec_index].flags & SHF_EXECINSTR:
             return None
-        if local_code_ok(elf, f, want, st, img, depth):
+        ok = local_code_ok(elf, f, want, st, img, depth, strict=STRICT_LOCAL_CODE)
+        if ok:
             return RelocFinding(r.offset, r.type, f.name, want, None, "content-ok")
+        if ok is False and STRICT_LOCAL_CODE:
+            return RelocFinding(r.offset, r.type, f.name, want, None, "CONTENT-MISMATCH")
         return None
 
     def local_code(r: E.Reloc, name: str, sec_index: int, value: int, want: int) -> RelocFinding | None:

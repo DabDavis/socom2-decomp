@@ -100,26 +100,31 @@ static bool DeleteIfIdless(CEntity *e)
     return gone;
 }
 
+/* a stretch of the entity list erased (ours, inline: one level over the list's erase) */
+static inline void EraseRange(CEntityList &l, CEntityList::iterator a, CEntityList::iterator b)
+{
+    l.erase(a, b);
+}
+
 /* the list rid of the entities without an id, the rest renumbered (new in SOCOM II, called from
- * CMPExitState::Tick; the name is ours).
- * OPEN, 24 instructions: the target keeps the end in s1 and the address of the first node's link
- * (m_list + 8) in s0 -- both begin() calls read through it -- builds the erase's last argument
- * after remove_if returns, and walks to a copy of the end (`move a2,s1`); this form (a list
- * reference, the end in a local, remove_if a statement of its own) has the shape with s0/s1 the
- * other way round and the last walk's temporaries one slot off. The end through end() each
- * time, the list itself, one statement, the walk to end(): all further off */
+ * CMPExitState::Tick; the name is ours). Byte-exact since the engine core's round 25 (24 off
+ * before): the erase one inline level down (EraseRange: its argument temporaries are made a pass
+ * later, below the walk's begin temporary -- MW expands inlines breadth first, the MSL headers'
+ * round 37), and the walk's end a fresh m_list.end() taken into a local declared before the index
+ * (the loop compares against its copy of the shared end, numbered ahead of begin's temporaries) */
 void CEntity::PurgeEntities()
 {
     CEntityList &list = m_list;
     CEntityList::iterator end = list.end();
     CEntityList::iterator first = std::remove_if(list.begin(), end, DeleteIfIdless);
 
-    list.erase(first, end);
+    EraseRange(list, first, end);
 
     CEntityList::iterator it;
+    CEntityList::iterator e = m_list.end();
     unsigned int index = 0;
 
-    for (it = list.begin(); it != end; ++it)
+    for (it = list.begin(); it != e; ++it)
         (*it)->m_index = index++;
 }
 

@@ -43,7 +43,9 @@ inline void SetVertexPos(CVisData *v, const float *p)
     ((short *)v->m_vertex)[2] = (short)(16.0f * (p[2] - ((float *)v->m_14)[2]));
 }
 
-inline void SetVertexPos(CVisData *v, const CPnt3D *p)
+/* (a non-const point: through a `const CPnt3D *` MW hoists &p->y and &p->z as addresses of their own,
+ * through this every access stays on the one pointer register with offsets -- Ripple's s3) */
+inline void SetVertexPos(CVisData *v, CPnt3D *p)
 {
     ((short *)v->m_vertex)[0] = (short)(16.0f * (p->x - ((float *)v->m_14)[0]));
     ((short *)v->m_vertex)[1] = (short)(16.0f * (p->y - ((float *)v->m_14)[1]));
@@ -185,9 +187,23 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
  * the function's top, not set per strip as the target's s3). Round 37 (v_rip37*.py): the point
  * through an inline returning its pointer (the HUD's round-61 temporary MW does not propagate) in the
  * strip loop 0x358, in the vertex loop 0x340, at each use 57; the outer loop written as an `if`
- * around a do-while, or a while, 57-59. The structural difference: the target's OUTER loop is
- * rotated (the iterator test copied ahead of the body, &off / &n / &p's fields hoisted into s1 / s0
- * / s7 in that preheader), MW rotates only our vertex loop (Flatten's shared open).
+ * around a do-while, or a while, 57-59.
+ * Round 38 (build/scratch/wep/v_rip38*.py): 4 INSTRUCTIONS OFF, the target's code but one placement.
+ * The target loads *it before d's constructor (`lw s3,0(s2)` ahead of Clear: `CVisual *vis = *it`
+ * declared first), keeps the point behind one pointer set per strip (s3, reused from vis) with
+ * offsets -- `CPnt3D *pp = &p` declared inside a hand-written guard around a do-while (round 30's
+ * rule), SetVertexPos taking a non-const point (a `const CPnt3D *` hoists &pp->y and &pp->z) -- and
+ * declares n before p in the strip body (n 288, p 272) and steps `v = v->NextVertex(); } while (v);`
+ * (the target tests s4 after the move). Left: the target sets s3 in SelectVertexStrips' delay slot,
+ * BEFORE the guard's beqz (whose slot is a nop); here it is the guard's first instruction, moved into
+ * the beqz's slot -- `pp = &p` anywhere in the strip body ahead of the guard (after the select, before
+ * it, in a for-init, as a cast, `&p + 0`, an inline's return) is pulled out of the visual loop by
+ * IRO_PullOutInvariantAssignments (the loop is then entered by a `b` to an out-of-line guard: 0x348-
+ * 0x360), and p's other uses written directly do not stop it; `if ((v = d.SelectVertexStrips(...)) !=
+ * 0)` tests v0 instead (4 off). Flatten's target has the same per-strip s3 in the select's slot: the
+ * shape that keeps an invariant assignment in the strip body ahead of the vertex loop is the open
+ * question of both. A per-strip inline taking the point (the vertex code written out: a leaf) is
+ * inlined but builds n and off by calls (0x340); with the vertex inlines it is cut to one level.
  * a surface's vertices moved: each one's normal tilted by the offset, its height set where a
  * ripple lifts it */
 void CWaterRippleManager::Ripple(CNode *node)
@@ -195,27 +211,34 @@ void CWaterRippleManager::Ripple(CNode *node)
     Gather(node);
     if (m_active.size()) {
         for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
+            CVisual *vis = *it;
             CVisData d;
+            CPnt3D n;
+            CPnt3D p;
+            CVisData *v = d.SelectVertexStrips(vis, 0, 0);
 
-            for (CVisData *v = d.SelectVertexStrips(*it, 0, 0); v; v = v->NextVertex()) {
-                CPnt3D n;
-                CPnt3D p;
-                CPnt3D off;
-                bool level;
+            if (v) {
+                CPnt3D *pp = &p;
 
-                GetVertexPos(v, &p);
-                if (GetOffset(&p, &off, &level) != false) {
-                    GetVertexNormal(v, &n);
-                    n.x = off.x;
-                    n.z = off.z;
-                    n.y = 1.0f;
-                    n.Normalize();
-                    SetVertexNormal(v, &n);
-                    if (level) {
-                        p.y = off.y;
-                        SetVertexPos(v, &p);
+                do {
+                    CPnt3D off;
+                    bool level;
+
+                    GetVertexPos(v, pp);
+                    if (GetOffset(pp, &off, &level) != false) {
+                        GetVertexNormal(v, &n);
+                        n.x = off.x;
+                        n.z = off.z;
+                        n.y = 1.0f;
+                        n.Normalize();
+                        SetVertexNormal(v, &n);
+                        if (level) {
+                            pp->y = off.y;
+                            SetVertexPos(v, pp);
+                        }
                     }
-                }
+                    v = v->NextVertex();
+                } while (v);
             }
         }
     }
