@@ -2471,3 +2471,73 @@ void func_0061D9F8(unsigned short nConnection, unsigned char nType, int a2, int 
         pfn(&msg);
     }
 }
+
+extern void NetFreeClients(unsigned int nWorld);
+extern int func_0061D320(void);
+extern int func_0061C998(unsigned int nWorld, int nValue);
+extern int data_00686A48;               /* the leave message's type */
+extern unsigned char data_0065117C;
+extern unsigned char MyClientIsJoined;
+extern int ActiveNetObjectCount;
+extern void *data_0067C5B8;
+extern void *data_0067C5BC;             /* clients.c's join/leave callback */
+extern void *data_006511A0;
+extern void *data_006511A4;             /* ... and its user data */
+extern void *data_006511B0;             /* clients.c's session-master callback */
+extern void *data_006511B4;             /* ... and its user data */
+
+/* the leave message: one byte, a struct -- not promoted to a word as an unsigned char is, so its slot
+ * comes after the world pointer's (ADDRESSOF purged in insn order), as the target's frame has it */
+typedef struct DmeLeaveMsg {
+    unsigned char nClient;
+} DmeLeaveMsg;
+
+/* SOCOM 1's NetLeave grown (0x618F70, after the join 0x618B38 as SOCOM 1's follows NetJoin): broadcasts
+ * off, the leave message, the objects and clients freed, this client's record back to connecting and
+ * reported, every world's value reset (SOCOM 1 stored 256 into the four directly), the callbacks cleared */
+int func_00618F70(unsigned int nWorld)
+{
+    DmeWorld *pWorld = 0;
+    DmeLeaveMsg msg;
+    DmeClientInfo *pClient = 0;
+    int result;
+    int i;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld == 0)
+        return result;
+    func_006189C8(nWorld, 0);
+    msg.nClient = func_0061D448(pWorld->nMyClient);
+    func_006158F8(80, nWorld, -1, 0, data_00686A48, sizeof(msg), &msg);
+    func_0061D320();
+    NetFreeAllObjects();
+    NetFreeClients(nWorld);
+    data_00651178 = 4;
+    data_0065117C = 0;
+    MyClientIsJoined = 0;
+    result = func_0061C720(nWorld, pWorld->nMyClient, &pClient);
+    if (result != DME_OK)
+        return result;
+    if (pClient == 0)
+        return result;
+    pClient->nState = DME_CLIENT_CONNECTING;
+    pClient->field_18 = 0;
+    pClient->field_1C = 0;
+    func_00613FD0(nWorld, -1);
+    for (i = 0; i < DME_MAX_WORLDS; i++) {
+        if (func_0061C600(i, &pWorld) == DME_OK && pWorld != 0)
+            func_0061C998(i, 256);
+    }
+    ActiveNetObjectCount = 0;
+    data_0067C5B8 = 0;
+    data_006511A0 = 0;
+    data_0067C5BC = 0;
+    data_006511A4 = 0;
+    data_006511B0 = 0;
+    data_006511B4 = 0;
+    return DME_OK;
+}
