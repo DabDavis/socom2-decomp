@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -fno-optimize-sibling-calls */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -fno-optimize-sibling-calls -ffast-math */
 /* casr: the recogniser's engine API and the engine's callbacks (OVL2 0x4D8398-0x4DF46C, SOCOM 1's
  * casr object at 0x348248 whole: rounds 1 and 2b wrote its tail as cb.c, merged here in round 9c),
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
@@ -36,8 +36,27 @@ extern int CreateExEvCtxInfo(CASR *c);
 extern void FreeCtxInfo(CASR *c);
 extern int GetIsolatedWordDpActiveWords(CASR *c, int **words, int *n);
 extern int qQueueControl(int queue, int what, int id, int arg);
-extern int casrDoSpelling(CASR *c);
+int casrDoSpelling(CASR *c);
+extern int SendPartOfLabelsToEngine(CASR *c, const unsigned char *blocks, int n, int start, int end);
+extern float logf(float x);
 extern float expf(float x);
+
+/* the N best as the N-best block sends them (nbestdp.c): its word and result records, as far as this reads them */
+typedef struct NBRWORD {
+    int state;                          /* +0: the word's end state, an index into the lexicon */
+    int score;                          /* +4 */
+    int word;                           /* +8: its id */
+    int f12;                            /* +12 */
+    struct NBRWORD *next;               /* +16 */
+} NBRWORD;
+
+typedef struct NBRESULT {
+    int f0;
+    int score;                          /* +4 */
+    int f8;
+    NBRWORD *words;                     /* +12 */
+    struct NBRESULT *next;              /* +16 */
+} NBRESULT;
 
 typedef struct IMPORT {
     void *data;
@@ -1418,6 +1437,142 @@ static int casrDoIsoWordSecondPass(CASR *c)
     FreeSecondPassContext(c);
     c->second_pass = 0;
     return 0;
+}
+
+/* the spelling pass: the best word sequence's result built, each of its letters (the first and the last aside)
+ * recognised again over its own labels with the timeouts off and the N best 10000, its alternatives scored
+ * from the best (e^(difference / 1000), normalised, -868.6 ln) and hung off the letter's word; then the
+ * callback, and every parameter put back. SOCOM 1's body with the floats in single precision. */
+int casrDoSpelling(CASR *c)
+{
+    RESULT *r;
+    unsigned int p1, p13;
+    int err;
+    unsigned int cap;
+    int w;
+    float *scores;
+    unsigned short *lex;
+    CASRLOG *ev;
+    int *cbs;
+    RESREC *recs;
+    RESWORD *words;
+    NBRESULT *q, *next;
+    unsigned int n, min, t, i;
+    float sum;
+    int ret;
+
+    err = 0;
+    cap = 30;
+    lex = *(unsigned short **)((char *)c->run_ctx + 16);
+    scores = heap_Alloc(c->heap, 120);
+    if (scores == 0)
+        return _tosErrorLog(c->event, 1);
+    ev = c->event;
+    next = (*(NBRESULT **)c->sp_arg1)->next;
+    (*(NBRESULT **)c->sp_arg1)->next = 0;
+    casrCreateResult(c, &r, c->sp_arg1, 0);
+    (*(NBRESULT **)c->sp_arg1)->next = next;
+    words = r->items->words;
+    if (_tosControl(ev, 36, (int)c->f584, 0) != 0)
+        goto fail;
+    cbs = &c->p488;
+    if (_tosControl(ev, 84, (int)cbs, 0) != 0)
+        goto fail;
+    if (_tosControl(ev, 17, 0, 0) != 0)
+        goto fail;
+    if (casrGetParamNoClearErrorLog(c, 1, &p1) != 0)
+        goto fail;
+    if (casrSetParamNoClearErrorLog(c, 1, 0) != 0)
+        goto fail;
+    if (casrGetParamNoClearErrorLog(c, 13, &p13) != 0)
+        goto fail;
+    if (casrSetParamNoClearErrorLog(c, 13, 10000) != 0)
+        goto fail;
+    for (w = 1; w < r->items->n - 1; w++) {
+        n = 0;
+        if (DoLabelStart(c) != 0)
+            goto fail;
+        if (SendPartOfLabelsToEngine(c, ActiveBlocks_UTTFORMAT_LABELS, 0, words[w].start, words[w].end) != 0)
+            goto fail;
+        if (DoLabelStop(c, ActiveBlocks_UTTFORMAT_LABELS) != 0)
+            goto fail;
+        heap_Free(c->heap, words[w].p);
+        q = *(NBRESULT **)c->sp_arg1;
+        if (q == 0) {
+            words[w].n = 0;
+            words[w].p = 0;
+            continue;
+        }
+        min = -1;
+        do {
+            t = q->score;
+            n++;
+            q = q->next;
+            if (t < min)
+                min = t;
+        } while (q != 0);
+        words[w].n = n;
+        recs = heap_Alloc(c->heap, n * sizeof(RESREC));
+        words[w].p = recs;
+        if (recs == 0)
+            goto fail;
+        if (cap < n) {
+            heap_Free(c->heap, scores);
+            cap = n;
+            scores = heap_Alloc(c->heap, n * sizeof(float));
+            if (scores == 0)
+                goto done1;
+        }
+        sum = 0.0f;
+        q = *(NBRESULT **)c->sp_arg1;
+        for (i = 0; i < n; i++) {
+            float e = expf((float)(int)(min - q->words->score) * 0.001);
+
+            scores[i] = e;
+            sum += e;
+            q = q->next;
+        }
+        q = *(NBRESULT **)c->sp_arg1;
+        for (i = 0; i < n; i++) {
+            float f = scores[i] / sum;
+
+            if (f > 0.001f)
+                recs[i].f0 = (int)(logf(f + 0.5) * -868.58896f);
+            else
+                recs[i].f0 = 6000;
+            recs[i].score = q->words->score;
+            recs[i].word = lex[q->words->state + 1] + (lex[q->words->state + 2] << 16);
+            q = q->next;
+        }
+    }
+    ret = c->cb.result_cb(r, c->info);
+    if (c->last_state == 0 && ret != 0) {
+        c->last_state = ret;
+        err = 27;
+    }
+    casrFreeResult(c, r);
+    heap_Free(c->heap, scores);
+    if (_tosControl(ev, 7, 0, 0) != 0)
+        return 1;
+    if (_tosControl(ev, 21, 0, 0) != 0)
+        return 1;
+    if (casrSetParamNoClearErrorLog(c, 1, p1) != 0)
+        goto done1;
+    if (casrSetParamNoClearErrorLog(c, 13, p13) != 0)
+        goto done1;
+    if (_tosControl(ev, 36, (int)c->run_ctx, 0) != 0)
+        return 1;
+    if (_tosControl(ev, 84, (int)cbs, 0) != 0) {
+        return 1;
+fail:
+        heap_Free(c->heap, scores);
+done1:
+        return 1;
+    }
+    c->second_pass = 0;
+    if (err != 0)
+        _tosErrorLog(ev, err);
+    return err;
 }
 
 static int casrInitSampleFormat(CASR *c, unsigned int fmt)
