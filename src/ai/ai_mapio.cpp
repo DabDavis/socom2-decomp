@@ -14,15 +14,29 @@
  * this unit's template tail, each building its default element: byte-exact with the element's
  * constructor in ai.h (names, links, regions, spores, the scanlines -- ai_map.cpp's copy, 0x519700 --
  * and CAiMapLoc's).
- * OPEN, resize<reader> (0x51C3F0), right size, 6 instructions: registers only -- the target keeps the
- * size in s1 and the end in s2 around the reader's out-of-line constructor (0x52FD70), this build the
- * other way round; the shape is include/vector's, which serves every other instance. The AI core
- * round 34 (`igreplay --target`, build/scratch/ai/v_rsz34*.py): the two are the test's size (@5239,
- * its load CSE'd into the count and the shrink test) and the end (@5243); --movers gives the target
- * only with the size numbered after every other node -- probed through an explicit specialisation in
- * a scratch build (as it stands: the same 6), the size read off the field in all three places, in
- * the test only or in the count only (0xA0 / 0xA4, 23-36 off), `size() < n` (6), a named end pointer
- * before the test (0x9C) or in the insert's arm (6): none
+ * resize<reader> (0x51C3F0) BYTE-EXACT THROUGH A MODELLING DEVICE (the AI core round 36): the explicit
+ * specialisation below, include/vector's body with the end iterator a named local in the insert's arm.
+ * Open since round 22 at 6 instructions, registers only: the target keeps the size in s1 and the end
+ * in s2 around the reader's out-of-line constructor (0x52FD70), include/vector's body the other way
+ * round. Read by igdump's pass labels (round 36): the size is IRO_CommonSubs' ETYPCON(*(this + 4)),
+ * made in pass 0, and the end the member IRO_ScalarizeClassDataMembers makes of end()'s iterator --
+ * in pass 1 for the temporary `end().m_p` reads (MW's per-pass order: scalarise, propagate, ..., the
+ * loop passes, CSE), in pass 0 for a named iterator; `igreplay --permute` over the two gives the
+ * target only with the end numbered first. The generic body with the named end (include/vector,
+ * measured over the twenty units emitting a class resize) gains this row and LOSES SIXTEEN -- every
+ * resize whose element constructor inlines (CTarget, CUIVariable, the SKB pieces, CTurretDef,
+ * CVehicleDef, the zdb bands, scanline, CAiPath::point ...), the named end then computed ahead of the
+ * element's stores the targets build first. So the image's resize is include/vector's and what tells
+ * this instance apart is the element: its constructor is a call into another unit (ai_maptable.cpp),
+ * opaque to this unit's IRO -- a call MW's scalariser treats as possibly touching any addressed object
+ * blocks the temporary's scalarisation in pass 0 (IroVars.c's FunctionCallMightUseOrKillAnyAddressedVar,
+ * the PowerPC source: a prediction), yet the target scalarised it there. Why it could is not found;
+ * the device stands for it. Earlier (round 34, build/scratch/ai/v_rsz34*.py): the size read off the
+ * field in all three places, in the test only or in the count only (0xA0 / 0xA4, 23-36 off), `size() <
+ * n` (6), a named end POINTER before the test (0x9C) or in the insert's arm (6); round 36
+ * (build/scratch/ai/v_rsz36.py): the raw end (0x98), the element built first into a named local
+ * (0x94), the count in a local (6), the size field in the count (0xA0) -- only the named iterator
+ * matches
  * OPEN, the routes' and the lines' (0x51C230, 0x51C070; called as members since round 18, which
  * emits them, their insert and erase here -- every one of those copies misses, so the count is
  * unchanged): the target inlines the element's two- and one-CAiMapLocVec constructor whole, six
@@ -31,6 +45,19 @@
  * are line_data()'s, ai.h. The lines' erase 0x51CB40 (0x128 vs 0x188) and insert 0x51CCF0 (0x440 vs
  * 0x4B8) call the element's copy and __copy out of line where the target inlines them: the class
  * inserts' question (the MSL lane's) */
+
+/* the device (above): include/vector's resize for the readers, the end iterator named */
+namespace std {
+template <>
+void __vector_imp<CAiMap::reader, allocator<CAiMap::reader>, false>::resize(unsigned int n)
+{
+    if (n > size()) {
+        iterator e = end();
+        insert(e.m_p, n - size(), CAiMap::reader());
+    } else if (n < size())
+        erase(begin().m_p + n, end().m_p);
+}
+}
 
 inline void table_resize(CAiMapLocVec &t, unsigned int n) { t.resize(n); }
 inline void table_resize(CAiMap::readers &t, unsigned int n) { t.resize(n); }

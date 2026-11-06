@@ -155,8 +155,22 @@ public:
 };
 
 extern CZNetGame *data_00437CE8;
-/* the mission's vocal queue (theMission + 0x1C0) */
-extern unsigned char data_004366A0[];
+/* the message kind a message's colour is indexed by (fts_state.h's MSGTYPE) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+
+/* a queue of messages on screen (SOCOM 1's C2DMessage_Q; fts_remote.cpp's stand-in) */
+class C2DMessage_Q {
+public:
+    /* a message queued (OVL1 0x2B6530, SOCOM 1's word-wrapper grown: the game states' round 51) */
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
+
+/* the mission's first message queue (theMission + 0x1C0, hud_main.cpp's m_messages) */
+extern C2DMessage_Q data_004366A0;
 
 /* the sound system's */
 class CSnd {
@@ -196,7 +210,6 @@ void func_005EAF20(CSealUnit *unit, int msg, int flags, float rate);
 void func_005EAEB0(CSealUnit *unit);
 bool func_0058DFA0(unsigned char member);
 /* the mission's */
-void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
 int func_002B46F0(CNodeAction *action);
 void *func_002B4760(void *data);
 void *func_002B4820(void *data);
@@ -913,7 +926,11 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
  * one placement of 37 giving the target's a3/a2 is 46.5 -- between the end() copy's list address
  * and its temporary's stack address, inside the iterators' set-up. Round 62: the unsigned count
  * that closed tcmSelectPlayer (the index hoisted as a converted invariant) leaves this one at the
- * same 7 -- the 2 (v54 then) still wants the iterators' set-up; an `(int)2` changes nothing */
+ * same 7 -- the 2 (v54 then) still wants the iterators' set-up; an `(int)2` changes nothing. Round 63:
+ * `igreplay --permute` over the three movers (v39 the sides' CSE, v47 the end copy's address, v53 the
+ * 2) -- none of their 6 orders gives the target, a single --want over v53 again only 46.5; the end
+ * iterator set up first (25), s_tcmTarget cleared before the iterators or both iterators in the for's
+ * init (16), the walk a while loop (7) */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;
@@ -1123,7 +1140,7 @@ int tcmUpdateNodeAction(CZSealBody *player, int arg)
 
 int tcmNiceOne(CZSealBody *player, int arg)
 {
-    func_002B6530(data_004366A0, "COMPLIMENT", 0, 0, 0, 0.0f);
+    data_004366A0.Add_Message("COMPLIMENT", MSGTYPE_PLAYER, false, 0, 0.0f);
     CSealUnit *unit = CSealUnit::GetUnitByTeam(1);
 
     if (unit)

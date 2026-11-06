@@ -1027,9 +1027,6 @@ extern CZUniversInformationServer::CAcctDB data_0044FC60;
  * SOCOM II's 0x5AAB14 does) */
 extern unsigned char _AutoAim;
 
-/* CSnd::m_vagEnabled (SOCOM 1's static; zsnd.h's CSnd does not declare it yet) */
-extern unsigned char data_0048DDA0;
-
 /* the game's session as the network reports it (func_0030CDD0 fills it; its third word the
  * players joined) */
 struct NetSessionInfo {
