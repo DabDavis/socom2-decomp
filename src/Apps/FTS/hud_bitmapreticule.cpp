@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/zvid/zvid.h"
 #include "hud_mpinfobox.h"
 
 class CHUD;
@@ -130,6 +131,12 @@ public:
     float m_retsize;   // 0xe2c: the reticle's spread
     unsigned char _e30[0xeb8 - 0xe30];
     CEntity *m_eb8;   // 0xeb8: the turret it works
+    unsigned char _ebc[0xefc - 0xebc];
+    /* where it was hit from, and each of the eight arrows' strength and angle (SOCOM 1's DWARF: E, N,
+     * W, S at the even places, the diagonals between) */
+    unsigned char m_threatdir[4];   // 0xefc
+    float m_threatscale[8];   // 0xf00
+    float m_threatangle[8];   // 0xf20
 };
 
 /* the HUD (hud_main.cpp's, theHUD 0x408E58): whether it shows */
@@ -415,6 +422,99 @@ extern "C" bool func_002AA890();
 extern "C" int rand();
 extern "C" int sprintf(char *buf, const char *fmt, ...);
 extern "C" void FlushCache(int op);
+
+/* a diagonal threat arrow's strength shared with the side it leans to: the angle wrapped below 90,
+ * the side's arrow gets its remainder, the diagonal its part (ours: ThreatDirTick's eight arms) */
+#define THREAT_SPLIT(side, diag, a)                                                  \
+    {                                                                                \
+        float angle = fabsf(a);                                                      \
+                                                                                     \
+        while (angle >= 90.0f)                                                       \
+            angle -= 90.0f;                                                          \
+        m_threatdirpoly[side].SetTrans(50.0f * ((90.0f - angle) * ONE_OVER_90));     \
+        m_threatdirpoly[diag].SetTrans(50.0f * (angle * ONE_OVER_90));               \
+    }
+
+/* the threat arrows (SOCOM 1's ThreatDirTick, 0x3CF360 there): the seal's four hit directions kept;
+ * where two neighbours were hit, the diagonal between gets half their strength and the two arrows the
+ * angle's share (SOCOM 1 set them full); every arrow faded by 120 a second; the flags cleared. The
+ * names SOCOM 1's DWARF's (SOCOM 1's DIAGONAL_SCALAR was made under a guard, SOCOM II's is data).
+ * OPEN, 32 instructions, 0x76C of 0x76C, all one colouring repeated in the eight arms: `50.0f * (angle
+ * * ONE_OVER_90)` has the 1/90 and the product in f0 and the 50 in f1 in the target, f1 and f0 here --
+ * MW makes the constant last (k, product, 50, the highest number taking f0) where the target numbers
+ * it first; the first SetTrans's `50.0f * ((90.0f - angle) * ONE_OVER_90)` comes out right. Tried, each
+ * the same code: named locals for the 1/90, the product and the 50 (folded back), casts on each, the
+ * operands swapped; (50 * angle) * k changes the code; the 50 through an inline accessor swaps the
+ * final mul's operands only. The first test reads the seal's two flags through locals (a0, v1 kept
+ * across the statics' stores), the later ones the statics */
+void BitmapReticule::ThreatDirTick(CZSealBody *pSeal)
+{
+    static float DIAGONAL_SCALAR = 0.5f;
+    static float ONE_OVER_90 = 1.0f / 90.0f;
+    static unsigned char dirE;
+    static unsigned char dirN;
+    static unsigned char dirW;
+    static unsigned char dirS;
+
+    if (!pSeal)
+        return;
+    unsigned char e = pSeal->m_threatdir[0];
+
+    dirE = e;
+
+    unsigned char n = pSeal->m_threatdir[1];
+
+    dirN = n;
+    dirW = pSeal->m_threatdir[2];
+    dirS = pSeal->m_threatdir[3];
+    if (e && n) {
+        pSeal->m_threatscale[1] = DIAGONAL_SCALAR * (pSeal->m_threatscale[0] + pSeal->m_threatscale[2]);
+        if (pSeal->m_threatangle[0] > pSeal->m_threatangle[2]) {
+            THREAT_SPLIT(0, 1, pSeal->m_threatangle[0]);
+        } else {
+            THREAT_SPLIT(2, 1, pSeal->m_threatangle[2]);
+        }
+    }
+    if (dirW && dirN) {
+        pSeal->m_threatscale[3] = DIAGONAL_SCALAR * (pSeal->m_threatscale[4] + pSeal->m_threatscale[2]);
+        if (pSeal->m_threatangle[4] > pSeal->m_threatangle[2]) {
+            THREAT_SPLIT(4, 3, pSeal->m_threatangle[4]);
+        } else {
+            THREAT_SPLIT(2, 3, pSeal->m_threatangle[2]);
+        }
+    }
+    if (dirE && dirS) {
+        pSeal->m_threatscale[7] = DIAGONAL_SCALAR * (pSeal->m_threatscale[0] + pSeal->m_threatscale[6]);
+        if (pSeal->m_threatangle[0] > pSeal->m_threatangle[6]) {
+            THREAT_SPLIT(0, 7, pSeal->m_threatangle[0]);
+        } else {
+            THREAT_SPLIT(6, 7, pSeal->m_threatangle[6]);
+        }
+    }
+    if (dirW && dirS) {
+        pSeal->m_threatscale[5] = DIAGONAL_SCALAR * (pSeal->m_threatscale[4] + pSeal->m_threatscale[6]);
+        if (pSeal->m_threatangle[4] > pSeal->m_threatangle[6]) {
+            THREAT_SPLIT(4, 5, pSeal->m_threatangle[4]);
+        } else {
+            THREAT_SPLIT(6, 5, pSeal->m_threatangle[6]);
+        }
+    }
+    for (unsigned int ii = 0; ii < 8; ii++) {
+        float trans_val = m_threatdirpoly[ii].GetTrans();
+
+        if (trans_val != 0.0f) {
+            trans_val -= 120.0f * zVid.frameTime;
+            if (trans_val < 0.0f)
+                trans_val = 0.0f;
+            m_threatdirpoly[ii].SetTrans(trans_val);
+        }
+    }
+    pSeal->m_threatdir[0] = 0;
+    pSeal->m_threatdir[1] = 0;
+    pSeal->m_threatdir[2] = 0;
+    pSeal->m_threatdir[3] = 0;
+}
+#undef THREAT_SPLIT
 
 /* the reticle's tick (SOCOM 1's HudTick, 0x3CF070 there): the health bar, the lased point and the
  * threat arrows; the weapons' timers taken up and shown; the defuse clock counted down under the three
