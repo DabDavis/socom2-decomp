@@ -52,7 +52,7 @@ bool CZClaymoreMapItem::Tick(CZNewHudMap *map, float dT)
         CPnt3D pos = m_projectile->m_frameendpos;
 
         map->m_matrix.Transform(&pos, 1);
-        const float &size = m_size;
+        float size = m_size;
 
         m_graphic.Load(pos.x - m_size, map->CalcDrawPos(pos.y - size), pos.x - size,
                        map->CalcDrawPos(pos.y + size), pos.x + size, map->CalcDrawPos(pos.y + size),
@@ -64,7 +64,7 @@ bool CZClaymoreMapItem::Tick(CZNewHudMap *map, float dT)
 
     map->m_matrix.Transform(&pos, 1);
     m_size += 10.0f * dT;
-    float size = m_size;
+    const float &size = m_size;
 
     m_graphic.Load(pos.x - m_size, map->CalcDrawPos(pos.y - size), pos.x - size,
                    map->CalcDrawPos(pos.y + size), pos.x + size, map->CalcDrawPos(pos.y + size),
