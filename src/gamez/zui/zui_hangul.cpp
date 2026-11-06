@@ -20,12 +20,12 @@
  * (it acts through its end state). The pods' destructors are SOCOM 1's `if (data_) alloc().deallocate(data_, cap())`: the two
  * accessors are the arguments of a whole-statement call, so they wait a pass past deallocate, a wait the height check does not
  * count (mweppc's CInline_ExpandStatement / CInline_EstimateSizeOfExpr); a chain with the pod's destructor at pass 5 of 7 keeps both
- * as calls, cap() then alloc(), the data word held across them: clear<SKBSEQ> 0x393C60, clear<SKBCOMPLETE> 0x393E40, erase<SKBSEQ>
- * 0x3935F0, erase<SKBCOMPLETE> 0x393030 and resize<SKBPIECE> 0x392670, byte-exact with the rows 0x392740 / 0x392750 and 0x2B5740 /
- * 0x2B5750 named. A class element is destroyed through a `__destroy` level there (the element's destructor a pass deeper than in
+ * as calls, the capacity pair's second() then first(), the data word held across them: clear<SKBSEQ> 0x393C60, clear<SKBCOMPLETE> 0x393E40,
+ * erase<SKBSEQ> 0x3935F0, erase<SKBCOMPLETE> 0x393030 and resize<SKBPIECE> 0x392670, byte-exact with the rows 0x392740 / 0x392750 and 0x2B5740 /
+ * 0x2B5750 named. A class element is destroyed through the allocator there (the element's destructor a pass deeper than in
  * resize's temporary, which keeps it whole), so an element one level taller -- SKBPIECE, its destructor now implicit -- is too tall for
- * clear and erase: __destroy is admitted at the last pass, its call left, `li a1,-1` (0x3929C0, 0x392AB0, PopPiece 0x390740 through the
- * same step, RemovePiece 0x390730 pinned to call it). The pods' constructors are two levels taller there (the capacity pair's), so
+ * clear and erase: destroy is admitted at the last pass, its call left, `li a1,-1` (0x3929C0, 0x392AB0, PopPiece 0x390740 through
+ * include/vector's __destroy, RemovePiece 0x390730 pinned to call it). The pods' constructors are two levels taller there (the capacity pair's), so
  * SKBPIECE() is eight high and cut to its own body in resize<SKBPIECE> -- CJamoStr() 0x391280 and CInit<Us,0>() 0x392760 called --
  * while SKBCOMPLETE() (seven) stays whole in resize<SKBCOMPLETE> 0x392770. insert<SKBPIECE> 0x392BE0 too. The original's level is
  * deeper still (eight, with the pair's own levels under alloc() and cap(): README "Level 6, or 8?"); this is its fit at seven.
