@@ -344,7 +344,7 @@ public:
 extern CReco theReco;
 
 /* the display's rates and the microphone meter's place (OVL1 .data 0x3DCB10-0x3DCB8F; the names ours) */
-static float s_tcmPulseRate = 8.0f;
+static float s_tcmUpdatePulseRate = 8.0f;
 static float s_tcmColumnRate = 7.0f;
 static float s_tcmFadeRate = 2.0f;
 static float s_tcmMicFadeRate = 100.0f;
@@ -373,7 +373,7 @@ void CTCM::Update(float dt)
     Layout(dt);
     TalkTick(dt);
     m_dc8 += dt;
-    m_dac += s_tcmPulseRate * (dt * m_db0);
+    m_dac += s_tcmUpdatePulseRate * (dt * m_db0);
     if (1.0f == m_db0) {
         if (!(m_dac <= 1.0f)) {
             m_dac = 1.0f;
