@@ -775,6 +775,82 @@ def test_superseded_lists_drafts_by_address():
         unmarked.unlink(missing_ok=True)
 
 
+def test_partial_check_holds_a_row_another_emitter_matches():
+    """sccheck --files, GCC round 38a (the integrator's request): built alone, zsys_init.cpp's inline
+    copy of ~vector<CIOPManager::CRegistrant> (6 words off) lost 0x39CD40 -- util_main.cpp's copy
+    matches it, and the full check never lost it -- like the thirteen rows README "Working in
+    parallel" lists, held by their drafts. A row a partial check loses only by inline copies is now
+    tried against its other emitters outside --files (the row's draft, a hand-written unit naming the
+    copy's own identifiers) and reported `not lost` when one matches. A fixture with a SYNTHETIC name
+    on a real 8-byte row (0x39CDC0, `jr ra; lw v0,8(a0)`, in a copy of the map and of MATCHED.txt):
+    one unit defines CFxGet::GetSize to load +8, another emits an inline copy loading +0. Built alone,
+    the copy is WRONG and the row held by the definition, rc 0; with the definition gone it is a
+    REGRESSION, rc 1 (the negative); a strong definition that misses is never held; and the row's
+    draft holds it as the definition did."""
+    import contextlib
+    import io
+    import re
+    va, name = 0x39CDC0, "GetSize__6CFxGetCFv"
+    tree = HERE / "build" / "tmp" / f"held.{os.getpid()}"
+    sym = HERE / "build" / "tmp" / f"held_symbols.{os.getpid()}.txt"
+    matched = HERE / "build" / "tmp" / f"held_matched.{os.getpid()}.txt"
+    if tree.exists():
+        shutil.rmtree(tree)
+    (tree / "fx").mkdir(parents=True)
+    text = E.SYMBOLS.read_text()
+    row = next(l for l in text.splitlines(True) if l.startswith(f"0x{va:08X} 0x8 "))
+    sym.write_text(text.replace(row, f"0x{va:08X} 0x8 {name}  # the canary's synthetic name\n"))
+    matched.write_text(f"# the canary's baseline\n0x{va:08X} {name}\n")
+    cls = "struct CFxGet {{ int a, b, c; int GetSize() const{}; }};\n"
+    definition = cls.format("") + "int CFxGet::GetSize() const { return c; }\n"
+    copy = cls.format(" { return a; }") + "int (CFxGet::*fx_keep)() const = &CFxGet::GetSize;\n"
+    strong = cls.format("") + "int CFxGet::GetSize() const { return a; }\n"
+    draft = ("/* sc: as=func_0039CDC0 GetSize__6CFxGetCFv */\n"
+             "int func_0039CDC0(int *self) { return self[2]; }\n")
+
+    def run(files: str):
+        st = E.SymbolTable(sym, E.DATA)
+        orig, orig_m, E.symbols = E.symbols, C.MATCHED, (lambda: st)
+        C.MATCHED = matched
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out):
+                rc = C.main(["--files", files, "--build-dir", str(BUILD / "held"), "-j", "2"], root=tree)
+        finally:
+            E.symbols, C.MATCHED = orig, orig_m
+        return rc, out.getvalue()
+
+    try:
+        (tree / "fx" / "held_def.cpp").write_text(definition)
+        (tree / "fx" / "held_copy.cpp").write_text(copy)
+        rc, out = run(r"^fx/held_def\.cpp$")
+        ck(rc == 0 and re.search(rf"^match\s+held_def\.cpp\s+{name}\s", out, re.M), f"the definition matches: {out}")
+        rc, out = run(r"^fx/held_copy\.cpp$")
+        ck(re.search(rf"^WRONG\s+held_copy\.cpp\s+{name}\s", out, re.M), f"built alone, the copy is WRONG: {out}")
+        ck(rc == 0 and "REGRESSIONS" not in out and re.search(
+            rf"^not lost -- .*{va:#x} {name} by fx/held_def\.cpp", out, re.M), f"and the row is held: {out}")
+        (tree / "fx" / "held_def.cpp").unlink()
+        rc, out = run(r"^fx/held_copy\.cpp$")
+        ck(rc == 1 and re.search(rf"^REGRESSIONS against \S+: {va:#x} {name}", out, re.M)
+           and "not lost" not in out, f"negative: with no other emitter it is a regression: {out}")
+        (tree / "fx" / "held_def.cpp").write_text(definition)
+        (tree / "fx" / "held_copy.cpp").write_text(strong)
+        rc, out = run(r"^fx/held_copy\.cpp$")
+        ck(rc == 1 and "REGRESSIONS" in out and "not lost" not in out,
+           f"negative: a strong definition that misses is never held: {out}")
+        (tree / "fx" / "held_copy.cpp").write_text(copy)
+        (tree / "fx" / "held_def.cpp").unlink()
+        (tree / "auto" / "ovl1").mkdir(parents=True)
+        (tree / "auto" / "ovl1" / f"{va:08X}.c").write_text(draft)
+        rc, out = run(r"^fx/held_copy\.cpp$")
+        ck(rc == 0 and re.search(rf"^not lost -- .*{va:#x} {name} by auto/ovl1/{va:08X}\.c", out, re.M),
+           f"and the row's draft holds it: {out}")
+    finally:
+        shutil.rmtree(tree, ignore_errors=True)
+        sym.unlink(missing_ok=True)
+        matched.unlink(missing_ok=True)
+
+
 def test_stale_follows_a_callee_rename():
     """automatch --stale redoes a draft that calls a name the map renamed, not only a placeholder
     (GCC round 28a): the UI's round 20 integration -- 0x2808D0's draft went on calling SkbOpen__Fv
@@ -1046,6 +1122,81 @@ def test_objcmp_aligns_anonymous_objects_by_content():
        "the referenced zero made a 1: it differs")
     ck(O.summary(base) == O.summary(obj("dead", OBJCMP_ANON_HEADER.format(lo="1"))),
        "the inserted object changed, still unreferenced: the same (nothing can read it)")
+
+
+def test_objcmp_verdict_is_independent_of_its_work_directory():
+    """tools/objcmp.py, GCC round 38a (the world's round 26: a first run in the default build/objcmp
+    printed `DIFF ai/ai_mapwalk.cpp` -- MAP_DIRCOUNT::GetBestDir 0x5350C0, byte-exact -- and a fresh
+    --work showed none). Nothing persisted: the two directories' paths had different LENGTHS, and
+    Metrowerks' code can depend on the length of the paths it is given (GetBestDir: 6 of 122 tree
+    lengths of the tree's text, 5 others of d14aeea6^1's -- the heap's layout). So objcmp builds both
+    sides at a path of one fixed length wherever its work directory lies, and a unit differing there
+    is built again at a second length, `PATH-DEPENDENT` when equal there. A fixture stands in for the
+    compiler (whose flips no small unit reproduces: GetBestDir alone compiles one way at all 98
+    lengths tried): a GCC unit whose BASE returns whether sizeof(__FILE__) is even -- its code a
+    function of the path's length -- against a tree returning 0. From two work directories of
+    different lengths the verdict is the same line, PATH-DEPENDENT, rc 0; unpadded (`--path-lengths
+    0`, the old behaviour) two directories one character apart disagree -- the negative; one length
+    alone is a DIFF; a real change (BASE returns 5) differs at both lengths and stays a DIFF. And
+    each side's stems are read again: BASE's cached set never stands for the tree's."""
+    import contextlib
+    import io
+    import objcmp as O
+    root = BUILD / "workdir"
+    if root.exists():
+        shutil.rmtree(root)
+
+    def fixture(name: str, body: str) -> Path:
+        d = root / name
+        (d / "src" / "fx").mkdir(parents=True)
+        (d / "include").mkdir()
+        (d / "src" / "fx" / "pathlen.c").write_text(
+            f"/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */\nint fx_pathlen(void) {{ {body} }}\n")
+        return d
+
+    base = fixture("base", "return sizeof(__FILE__) % 2 == 0;")
+    now = fixture("now", "return 0;")
+    real = fixture("real", "return 5;")
+
+    def run(b: Path, work: Path, *more: str):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = O.main([str(b), "^fx/", "--tree", str(now), "--work", str(work), *more])
+        return rc, [l for l in out.getvalue().splitlines() if not l.startswith("against")]
+
+    short, longer = root / "w", root / "a_work_directory_longer_by_far"
+    try:
+        ck(len(str(O.side_root(short, 160))) == 160 == len(str(O.side_root(longer, 160))),
+           "both sides lie at a 160-character path from either work directory")
+        ck(O.side_root(short, 0) == short / "tree", "and at <work>/tree unpadded (0)")
+        for n in (len(str(short / "tree")) - 1, O.MAX_SIDE_LENGTH + 1):
+            try:
+                O.side_root(short, n)
+                refused = False
+            except SystemExit:
+                refused = True
+            ck(refused, f"a {n}-character tree path is refused (too short for the work path, or past the limit)")
+        side = O.side_root(short, 160)
+        (side / "src").mkdir(parents=True)
+        D._SHARED_STEMS[(side / "src").resolve()] = {"stale"}
+        O.build_side(side, [], root / "obj-stems")
+        ck(D.shared_stems(side / "src") == set(), "each side's stems are read again (BASE's set never stands)")
+        shutil.rmtree(side)
+        rs, rl = run(base, short), run(base, longer)
+        ck(rs == rl, f"the same verdict from two work directories: {rs} / {rl}")
+        ck(rs[0] == 0 and any(l.startswith("PATH-DEPENDENT fx/pathlen.c: function fx_pathlen at a 160-character")
+                               for l in rs[1]) and "1 units compared, 0 differ, 1 path-dependent" in rs[1][-1],
+           f"PATH-DEPENDENT at 160, the same at 167, rc 0: {rs}")
+        a, b = run(base, root / "p", "--path-lengths", "0"), run(base, root / "pq", "--path-lengths", "0")
+        ck({a[0], b[0]} == {0, 1} and a[1] != b[1],
+           f"negative: unpadded, work directories one character apart disagree: {a} / {b}")
+        one = run(base, short, "--path-lengths", "160")
+        ck(one[0] == 1 and any(l.startswith("DIFF fx/pathlen.c") for l in one[1]), f"one length alone: DIFF {one}")
+        r = run(real, short)
+        ck(r[0] == 1 and any(l.startswith("DIFF fx/pathlen.c") for l in r[1])
+           and not any(l.startswith("PATH-DEPENDENT") for l in r[1]), f"a real change differs at both lengths: {r}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def test_unit_builds_the_same_bytes_at_any_path():
