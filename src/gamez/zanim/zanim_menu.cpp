@@ -2511,9 +2511,9 @@ extern "C" float data_003DF198;            /* the pitch's direction: inverted wh
 extern "C" unsigned char data_003DD4A0;    /* the dialog option (not named yet) */
 extern unsigned char ShouldConfirmVoiceCommands;   /* 0x3DF1D0 (SOCOM 1's) */
 extern "C" unsigned char data_003DF190;    /* the first-person bobbing (not named yet) */
-extern "C" unsigned char data_0044D500;    /* the fire mode swap, as func_00592050 last toggled it */
+extern "C" unsigned char data_0044D500;    /* the fire mode swap, as ToggleFireModeSwap last toggled it */
 extern "C" void func_002A41F0(int on);     /* (the whispers on or off) */
-extern "C" void func_00592050();           /* (the fire mode swap toggled) */
+void ToggleFireModeSwap();                 /* 0x592050 (seal_control.cpp's: the fire mode swap toggled) */
 void SetRumbleOn(bool on);                 /* 0x592BE0 (SOCOM 1's) */
 void RefreshSystemTuners();                /* 0x389C60 (zui_tuners.cpp's) */
 
@@ -2559,11 +2559,11 @@ bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
         data_003DF198 = 1.0f;
     if (firemode->m_value) {
         if (!data_0044D500)
-            func_00592050();
+            ToggleFireModeSwap();
         data_0044D500 = 1;
     } else {
         if (data_0044D500)
-            func_00592050();
+            ToggleFireModeSwap();
         data_0044D500 = 0;
     }
     if (autoaim)
