@@ -2790,13 +2790,15 @@ struct CAiSlice {
     }
     /* the window moved on and resized to a new count (inline: ai_posttick's three -- not SetSize, whose
      * stores run m_wrap, m_total, m_size where these run m_size, m_total, m_wrap). The zero arm of the
-     * wrap first (`m_total == 0 ? 0 : ...`, the target's `bnez total` to the divide) and the sum built
-     * in two steps from m_size (the target loads m_size first and keeps the sum in its register) */
+     * wrap first (`m_total == 0 ? 0 : ...`, the target's `bnez total` to the divide) and the sum
+     * built from m_size read into a local (the target loads m_size first and keeps the sum in its
+     * register: byte-exact with the caller's body under `#pragma opt_propagation off`, the kit's
+     * round 56) */
     void Next(int total, int size)
     {
-        int start = m_size;
+        int size0 = m_size;
+        int start = m_start + size0;
 
-        start += m_start;
         if (start >= m_total)
             start = m_total == 0 ? 0 : start % m_total;
         m_start = start;

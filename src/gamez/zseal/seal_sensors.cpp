@@ -955,24 +955,16 @@ bool CSealCtrlAi::PreTick(float dT, void *data)
  * (8-byte-spaced data in definition order: 6, 5, 1) (OVL2 0x5CCA30, new in SOCOM II -- SOCOM 1's
  * ai_post_tick was the
  * pool's post-tick, ai_target.cpp's 0x60B8F0 here; the name unknown).
- * OPEN, 3 instructions, one in each slice: the target adds the window's start to the size it loaded
- * first as `addu a1,v1,a1` (the start's load first among the operands, the sum in the size's
- * register), MW writes `addu a1,a1,v1` -- the two-step sum gives every register right but puts the
- * variable first in the add whichever way it is written (`start += m_start`, `start = m_start +
- * start`, `start = start + m_start`, a cast, a const accessor returning it); `m_start + m_size`
- * in one expression (in either order, through named copies of either field, a declaration split
- * from its assignment, an accessor, a wrap helper taking the sum and the count by value, a
- * named count before or after, the parameters swapped) loads the start first and trades the sum's
- * and the count's a0/a1 (27); `m_start += m_size` stores early (0x2C8); the wrap's arms the other
- * way round, `m_total ? x % m_total : 0` or an if/else, 0x2B0. Round 55 (18 more): a cast on either
- * operand (`m_start + (unsigned)start`) blocks the `x = y + x` rewrite but lets copy propagation fold
- * the size's load into the sum (27), as do a second variable for the size, a split declaration with
- * the cast and an inline taking the size by value or const reference (Advance(m_size), a returning
- * Advanced) -- all 27; `+ 0`, `- -start`, `* 1`, `| 0` and parentheses fold before the rewrite (3).
- * The target wants both blocked at once: the size loaded into a variable no pass propagates, then
- * `m_start + size` */
+ * The target adds the window's start to the size it loaded first as `addu a1,v1,a1` (the start's
+ * load first among the operands, the sum in the size's register): Next() loads the size into a named
+ * local and adds it to the start (`int size0 = m_size; int start = m_start + size0;`), and the function
+ * body opens `#pragma opt_propagation off` -- copy propagation would fold the local's load into the
+ * sum (the load order and a0/a1 traded, 27 off), and the two-step `start += m_start` the rounds before
+ * tried puts the variable first in the add (3 off). Round 56: byte-exact so (the brief's lead: MW
+ * substitutes `v = expr` into a single use -- here the substitution is the whole difference) */
 extern "C" bool func_005CCA30(float dT, void *data)
 {
+#pragma opt_propagation off
     static int size0 = 6;
     static int size4 = 5;
     static int size1 = 1;
@@ -983,6 +975,7 @@ extern "C" bool func_005CCA30(float dT, void *data)
     ai_slice4.Next(n, size4);
     return false;
 }
+#pragma opt_propagation reset
 
 /* the AI's current state a hold with its bit 7 set (OVL2 0x559000, the SEALs' seal_ai.cpp: unnamed) */
 extern "C" bool func_00559000(CSealCtrlAi *ai);
