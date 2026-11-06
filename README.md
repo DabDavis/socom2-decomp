@@ -2104,6 +2104,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     user-declared iterator copy constructor changes nothing. Not met (include/vector's note);
   - the fourth group (the cut class inserts, the deque tail, cdeque<PCv>'s erase/insert, the pair, remove_if,
     resize<reader>): no new lever found, not attempted.
+- **Tells from the zdb world, textures, rdr and sound, round 31** (five byte-exact: zdb::CNode::UpdateBBoxFromDI 0x318230 --
+  38 off since round 29 --, ComputeFacadeMatrix 0x317FC0, CShadowCaster(CNode *) 0x31F780, CPipe::RenderNode 0x3389C0 and
+  RenderMesh 0x338480, the last two unwritten before; RenderVisual's function-scoped strength-reduction pragma and hand-rotated
+  loop retired -- a plain `for` over an unsigned counter indexing `[(int)k]` gives the same 20-instruction diff):
+  - the same point passed TWICE to an inline (`PointBox(box, p, q)`) makes one common-subexpression temporary, numbered
+    after the loop invariants (what `igreplay --move 39=50.5` asked for); a single by-reference argument is numbered among
+    the caller's locals; an inline min / max taking both operands by reference re-reads an operand at a stack object's own
+    address, a ternary in place reuses the compare's load;
+  - a struct holding a `float[4]` copies a matrix row as a block (four loads, then four stores) through the row's address;
+    the member-array construction loop needs a constructor that cannot expand whole -- GetBBoxCorners with a visible inline
+    body is what makes CBBox8's constructor too big; an inline call's argument at the top (`CBBox8 c(m_node->GetBBox())`)
+    is checked a level deeper;
+  - an `a || b || c` returned from an inline bool is materialised (xor / sltu) before the branch; a colour built in place
+    folds to three zero stores, the target's shape is a `zero` local declared at the top plus a copy of it; `if (stamp !=
+    field) { field = stamp; return false; } return true;` reproduces the target's block layout;
+  - SCDIFF GAVE A FALSE MATCH on a call to a local static (the relocation marked "unchecked" and passed -- CShadowCaster
+    "matched" once calling the wrong static): the tools lane is making it check TU-local calls by their resolved code.
 - **Tells from the UI, round 36** (SkbTickDisplay 0x3949C0 -- open since round 32 -- and CStringTables::Unload 0x3A3740 --
   open since round 8 -- byte-exact, util_loc.cpp whole; the states' respells; five data rows, four of them SOCOM 1's names):
   - THE LOGICAL REBUILD NEEDS TWO TESTS: MW linearises `a && b` into `t = 0; if (!a) goto L; if (!b) goto L; t = 1; L:`,
