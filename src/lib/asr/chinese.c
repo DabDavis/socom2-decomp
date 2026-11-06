@@ -355,17 +355,15 @@ static void Translate_Prons_Into_Items_And_Tones(unsigned int node, unsigned int
     }
 }
 
-/* item n copied into the split tree's slot i, its child link apart (the pointers the block's own) */
-#define COPYITEM(t, i, n)                                               \
-    {                                                                   \
-        DICTITEM *d = &(t)->newitems[i];                                \
-        DICTITEM *s = &(t)->items[n];                                   \
-        d->kind = s->kind;                                              \
-        d->f4 = s->f4;                                                  \
-        d->f8 = s->f8;                                                  \
-        d->pron = s->pron;                                              \
-        d->tone = s->tone;                                              \
-    }
+/* an item copied, its child link apart: an inline, whose arguments expand as sums (the index first, `addu a1,a1,t1`) */
+static __inline__ void Copy_Item(DICTITEM *d, DICTITEM *s)
+{
+    d->kind = s->kind;
+    d->f4 = s->f4;
+    d->f8 = s->f8;
+    d->pron = s->pron;
+    d->tone = s->tone;
+}
 
 /* the subtree at node copied into the split tree (nitems and nlinks its counts): a chain of single
  * children copied as it stands; a leaf ends it; an item with a valid tone and several children
@@ -393,7 +391,7 @@ static unsigned int SplitUp_Finals(FSTREE *t, unsigned int node, unsigned int *n
     while (c != 0xFFFF && t->links[c].next == 0xFFFF) {
         if (first)
             first = 0;
-        COPYITEM(t, *nitems, node);
+        Copy_Item(&t->newitems[*nitems], &t->items[node]);
         t->newitems[(*nitems)++].child = *nlinks;
         t->newlinks[*nlinks].node = *nitems;
         t->newlinks[(*nlinks)++].next = 0xFFFF;
@@ -401,12 +399,12 @@ static unsigned int SplitUp_Finals(FSTREE *t, unsigned int node, unsigned int *n
         c = t->items[node].child;
     }
     if (c == 0xFFFF) {
-        COPYITEM(t, *nitems, node);
+        Copy_Item(&t->newitems[*nitems], &t->items[node]);
         t->newitems[(*nitems)++].child = 0xFFFF;
     } else if (Tone_Of_Final(t->items[node].tone, t->ntones)) {
         last = *nlinks - 1;
         while (c != 0xFFFF) {
-            COPYITEM(t, *nitems, node);
+            Copy_Item(&t->newitems[*nitems], &t->items[node]);
             t->newitems[(*nitems)++].child = *nlinks;
             t->newlinks[*nlinks].node = *nitems;
             t->newlinks[(*nlinks)++].next = 0xFFFF;
@@ -422,7 +420,7 @@ static unsigned int SplitUp_Finals(FSTREE *t, unsigned int node, unsigned int *n
             *nlinks = last + 1;
         }
     } else {
-        COPYITEM(t, *nitems, node);
+        Copy_Item(&t->newitems[*nitems], &t->items[node]);
         t->newitems[(*nitems)++].child = *nlinks;
         last = *nlinks;
         t->newlinks[last].node = *nitems;
@@ -457,15 +455,17 @@ static unsigned int SplitUp_Finals(FSTREE *t, unsigned int node, unsigned int *n
  * which moves every t-register up one here; five words of the two table stores' arms. */
 int Swap_Finals(unsigned short final, unsigned int prev, unsigned int node, FSTREE *t)
 {
-    unsigned int c = t->newitems[node].child;
     unsigned short pron = t->newitems[prev].pron;
+    unsigned int c = t->newitems[node].child;
+    unsigned int tone = 0xFFFF;
     unsigned short i;
 
     while (c != 0xFFFF) {
         {
             if (Tone_Of_Final(t->newitems[node].tone, t->ntones)) {
                 if (prev != 0) {
-                    t->newitems[prev].pron = t->table[t->na * final + t->nb * t->newitems[node].tone + pron];
+                    tone = t->newitems[node].tone;
+                    t->newitems[prev].pron = t->table[t->na * final + t->nb * tone + pron];
                     final = t->newitems[prev].tone;
                     pron = t->newitems[node].pron;
                     prev = node;
@@ -501,37 +501,34 @@ int Swap_Finals(unsigned short final, unsigned int prev, unsigned int node, FSTR
     if (t->newitems[node].child == 0xFFFF) {
         if (Tone_Of_Final(t->newitems[node].tone, t->ntones)) {
             if (prev != 0) {
-                t->newitems[prev].pron = t->table[t->na * final + t->nb * t->newitems[node].tone + pron];
+                tone = t->newitems[node].tone;
+                t->newitems[prev].pron = t->table[t->na * final + t->nb * tone + pron];
                 final = t->newitems[prev].tone;
                 pron = t->newitems[node].pron;
+                t->newitems[node].pron = t->table[t->na * final + pron];
             } else {
                 if (final == 0xFFFF)
                     final = 0;
                 pron = t->newitems[node].pron;
+                t->newitems[node].pron = t->table[t->na * final + pron];
             }
-            t->newitems[node].pron = t->table[t->na * final + pron];
         } else if (prev != 0) {
-            unsigned int tone;
-
             if (t->newitems[node].kind == 0 && t->newitems[node].tone != 0)
                 tone = t->ntones;
             else
                 tone = 0;
             t->newitems[prev].pron = t->table[t->na * final + t->nb * tone + pron];
         }
-    }
-    i = 0;
-    if (c != 0xFFFF) {
-        do {
+    } else {
+        for (i = 0; c != 0xFFFF; i++) {
             if (i != 0 && prev != 0) {
                 final = t->newitems[prev].tone;
                 prev = 0;
             }
-            i++;
             if (Swap_Finals(final, prev, t->newlinks[c].node, t) != 0)
                 return 1;
             c = t->newlinks[c].next;
-        } while (c != 0xFFFF);
+        }
     }
     return 0;
 }
