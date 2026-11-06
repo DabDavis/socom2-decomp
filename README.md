@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 21** (gridAddNodeToGrids, open since round 19, and buildOrderedCellAtomList, open since
+  round 9):
+  - `#pragma opt_strength_reduction off` matches game code as well as MSL -- the target recomputes `&m_Atoms[i]` every pass
+    (zdb::CGrid::buildOrderedCellAtomList 0x2D6E40); it applies to the whole function, so a target keeping some loops
+    reduced and others not cannot use it (LoadNodeNames, OPEN);
+  - a value computed inside an inline is numbered where the inline expands, among the front-end temporaries and after
+    every named local -- a way to put a local's first web late, exactly where `igreplay --want` asks; the round-12
+    preheader rule holds for a nested pair's inner loop: an invariant inline result used only there moves that loop's
+    preheader after the function's end (gridAddNodeToGrids 0x2D7580 through ThisGrid(this)->gridGetAtomBasePtr(x, z));
+  - in the caller itself, not only inside an inline: `x = c == 0 ? 0 : x;` leaves an unpadded branch, `if (!c) x = 0;`
+    pads the join, `x = c ? x : 0` becomes a movz; loop counters declared ahead of the loop ends are numbered at the
+    declaration (the SEALs' declaration-order rule, for loop counters).
 - **Tells from the game states, round 47** (GameSignalPacketHandler 0x2B9150 byte-exact and named -- SOCOM 1's, unwritten
   before; the teamwork rating 0x1F27C0 and UpdateLocalSeal 0x2BD640 written, OPEN at 0x678 of 0x680 and 2; two respells,
   SAME-BY-ADDRESS -- ZAnim.m_network_activation_callback for data_00414BFC, `new CZNetVoice` for func_003102E0):
