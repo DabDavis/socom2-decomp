@@ -602,6 +602,14 @@ bool CompareGameSeals(CZSealBody *p1, CZSealBody *p2)
  * begin/end through CEntity::m_list (no conversion to const_iterator) or an end local. The side
  * test's `bnez v0,count; b skip` is the `if (bSeals) { if (!A) continue; } else if (!B) continue;`
  * form SetStatLbUiVar matched with (round 18: the goto form inverted it; the ternary joins).
+ * Round 62: a second CEntityItr constructor for this walk alone, building the wrapper's iterator
+ * from the BASE list's begin() (`end_.next_` read directly: `std::list<CEntity *>::const_iterator(
+ * ((const std::__list_imp<const void *, std::allocator<const void *> > &)GetEntityList()).begin())`)
+ * gives the target's absolute begin load and &m_list in s7: 5 off, two frame slots swapped (the
+ * begin chain's wrapper temporary at sp+280, the end chain's base one at sp+276: the target makes
+ * both base temporaries first); changed in the shared constructor it costs four matched walks
+ * (ComputeNewRating, SetStatLbUiVar, SetMvpUiVars, UnInit), and a helper returning the wrapper
+ * (or the base iterator) a level deeper is 0x288.
  * __ptmf_cmpr (0x1828E0) is the PTMF comparison MW calls by name: the row needs that name for the
  * call to resolve */
 void SetFinalTeamTotalsUiVar(bool bSeals, const char *szUiVar)
@@ -848,7 +856,12 @@ void UpdateCareerRecord(int a, int b)
  * int / byte local for it, before or after the alive bool, and a GetGameType() accessor (int, byte,
  * enum, reference) are all forward-substituted into the switch (the load still follows the alive
  * bool's), so 19 each. Round 61: the type an int or byte local given a dead first definition at the
- * top (assigned at the switch, after bTerr or before the alive bool): 19 each */
+ * top (assigned at the switch, after bTerr or before the alive bool): 19 each. Round 62: an int
+ * local for the type defined BEFORE a conditional alive bool (`m_isAlive ? true : false`: a flow
+ * node boundary, so IRO_ExpressionPropagation -- per node, mweppc IroPropagate.c -- cannot
+ * forward-substitute it) keeps the type's load ahead of the alive bool's code: 16 (the alive bool
+ * in the target's a1; the type, the pointer and bTerr then a2 / a2 / a3 against a3 / a1 / t0);
+ * `if (bAlive) {}`, `switch (type = ...)`, `(int)` / `(unsigned int)` selectors: 19 */
 void GetRoundResult(CZSealBody *pSeal, int *pWins, int *pScore)
 {
     int iSeals = 0;

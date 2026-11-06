@@ -660,7 +660,8 @@ int tcmSelectTeam(CZSealBody *player, int team)
  * replay (igdump, igreplay --nb): the player takes s4 in the target, so a fifth saved-register
  * holder interferes with it there -- here the player's neighbours are r, m and unit only (caption,
  * the target's s3, is born after the player's last use): the original keeps the player live
- * longer, or numbers something else there. */
+ * longer, or numbers something else there. Round 62: igreplay --want 32=s4,34=s2,35=s1 over every
+ * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge */
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;
@@ -910,7 +911,9 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
  * initialised from the const view, the entity test written out, not AsSeal's ternary). Round
  * 53's replay: the 2 is a code-generation temporary made at the type test and hoisted (v53); the
  * one placement of 37 giving the target's a3/a2 is 46.5 -- between the end() copy's list address
- * and its temporary's stack address, inside the iterators' set-up */
+ * and its temporary's stack address, inside the iterators' set-up. Round 62: the unsigned count
+ * that closed tcmSelectPlayer (the index hoisted as a converted invariant) leaves this one at the
+ * same 7 -- the 2 (v54 then) still wants the iterators' set-up; an `(int)2` changes nothing */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;
