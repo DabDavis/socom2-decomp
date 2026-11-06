@@ -3,8 +3,7 @@
  * after fts_remote.cpp, to the static initialiser 0x400650's registered destructor (0x2BFFC0): the
  * remote guy list's vector instances (insert 0x2BF980, its temporary's deleter destructor 0x2BFDD0,
  * reserve 0x2BFE40, the list's destructor 0x2BFFC0) close it. Only some of it so far: not yet
- * UpdateLocalSeal (0x2BD640), IncrementalUpdateRemoteSeal (0x2BE150), zNetRegisterSeal (0x2BF2C0)
- * and the tail. Defined in reverse of their image order (-inline deferred). */
+ * IncrementalUpdateRemoteSeal (0x2BE150) and the tail; UpdateLocalSeal (0x2BD640) written, OPEN. Defined in reverse of their image order (-inline deferred). */
 
 class CZSealBody;
 
@@ -37,9 +36,18 @@ public:
     /* the SEAL's network data, 0x90 bytes (SOCOM 1's 0x98): only the packed weapons, the unit's id
      * (SOCOM 1's byte at 0x78) and the body */
     struct TypeSealState {
-        int m_0;   // 0x0
-        int m_4;   // 0x4
-        int m_8;   // 0x8
+        union {
+            int m_0;   // 0x0
+            float m_x;   // 0x0: the SEAL's position (UpdateLocalSeal's)
+        };
+        union {
+            int m_4;   // 0x4
+            float m_y;
+        };
+        union {
+            int m_8;   // 0x8
+            float m_z;
+        };
         unsigned int m_c;   // 0xc: flags handed to CreateRemoteSeal (SOCOM 1's byte at 0x78)
         int m_10;   // 0x10
         char m_14[0x34 - 0x14];   // 0x14
@@ -55,10 +63,10 @@ public:
         unsigned short m_unit_id;   // 0x74
         unsigned short m_76;   // 0x76
         unsigned short m_chartype;   // 0x78: a custom character type's index, 0 a persona's SEAL (SOCOM 1's byte at 0x7a)
-        unsigned char m_7a;   // 0x7a
-        unsigned char m_7b;   // 0x7b
-        unsigned char m_7c;   // 0x7c
-        unsigned char m_7d;   // 0x7d
+        signed char m_7a;   // 0x7a
+        signed char m_7b;   // 0x7b
+        signed char m_7c;   // 0x7c
+        signed char m_7d;   // 0x7d
         unsigned char m_7e;   // 0x7e
         unsigned char m_7f;   // 0x7f
         unsigned char m_80;   // 0x80
@@ -106,6 +114,39 @@ public:
     static CSealUnit *Create(unsigned int team);   /* 0x5EF380 */
     void SealJoinUnit(CZSealBody *body);   /* 0x5EE250 */
     void EscorteeJoinUnit(CZSealBody *body);   /* 0x5EE160 */
+
+    unsigned char _0[0x58];
+    int m_58;   // 0x58: its number (17 the escortees'; UpdateLocalSeal's)
+};
+
+/* a character type (zchar's CCharacterType: its name, its base name and the packed weapons) */
+struct CCharacterWeapPacked;
+class CCharacterType {
+public:
+    const char *GetBaseName();   /* 0x53B420 */
+    static void KorusGetPackedWeapons(CCharacterWeapPacked *packed);   /* 0x53EE10 */
+
+    char *m_name;   // 0x0
+};
+
+/* the kit (zkit's CZKit: only the current item and fire mode) */
+enum ITEM_ENUM {
+    ITEM_ENUM_0 = 0,
+    ITEM_ENUM_255 = 255
+};
+
+class CZKit {
+public:
+    void *GetCurItem() const;   /* 0x5C3780 */
+    ITEM_ENUM GetCurItemEnum() const;   /* 0x5C89D0 */
+    signed char GetCurFireMode();   /* 0x5C3790 */
+};
+
+/* a node (zdb::CNode: only the direction the network packet takes its heading from) */
+class CSealNode {
+public:
+    unsigned char _0[0x20];
+    CPnt3D m_20;   // 0x20
 };
 
 /* a SEAL's controller (only its unit, SOCOM 1's at 0xdc, and the virtual at +0x34 its unit's update
@@ -124,10 +165,32 @@ public:
     virtual void Slot2C();
     virtual void Slot30();
     virtual bool Slot34();
+    virtual void Slot38();
+    virtual void Slot3C();
+    virtual void Slot40();
+    virtual void Slot44();
+    virtual void Slot48();
+    virtual void Slot4C();
+    virtual void Slot50();
+    virtual void Slot54();
+    virtual void Slot58();
+    virtual void Slot5C();
+    virtual void Slot60();
+    virtual void Slot64();
+    virtual void Slot68();
+    virtual int Slot6C();   // (the network packet's word at 0x10)
 
-    unsigned char _4[0x10c - 0x4];
+    unsigned char _4[0x8 - 0x4];
+    float m_8;   // 0x8: three of the controls, -1 to 1 (the packet's bytes at 0x7a-0x7c)
+    float m_c;   // 0xc
+    float m_10;   // 0x10
+    unsigned char _14[0x10c - 0x14];
     CSealUnit *m_unit;   // 0x10c
-    unsigned char _110[0x1fc - 0x110];
+    unsigned char _110[0x170 - 0x110];
+    unsigned char m_170_0 : 2;
+    unsigned char m_170_2 : 1;   // 0x170, bit 2 (the packet's byte at 0x81)
+    unsigned char m_170_3 : 5;
+    unsigned char _171[0x1fc - 0x171];
     unsigned char m_1fc[0x210 - 0x1fc];   // 0x1fc (the two members the body's slot +0x3C takes)
     unsigned char m_210[4];   // 0x210
 };
@@ -154,14 +217,46 @@ public:
     virtual void Slot38();
     virtual void Slot3C(void *a, void *b);
 
+    CCharacterType *GetCharacter();   /* OVL2 0x599810 */
+    signed char GetWeaponState() const;   /* OVL2 0x5E0010 */
+
     int m_4;   // 0x4: its network object (SOCOM 1's m_NetObjectIndex)
-    unsigned char _8[0x1c - 0x8];
+    unsigned char _8[0xc - 0x8];
+    int m_c;   // 0xc: CEntity's m_vehicle_index (the packet's character type)
+    unsigned char _10[0x1c - 0x10];
     float m_posW[3];   // 0x1c: CEntity's position
-    unsigned char _28[0xc0 - 0x28];
+    CSealNode *m_node;   // 0x28: CEntity's node
+    unsigned char _2c[0xc0 - 0x2c];
     CSealCtrl *m_ctrl;   // 0xc0
     unsigned char _c4[4];
     unsigned int m_c8;   // 0xc8: CEntity's flags (0x20000 an escortee: SOCOM 1's at 0xc4)
-    unsigned char _cc[0xfc8 - 0xcc];
+    unsigned char _cc[0x220 - 0xcc];
+    unsigned char m_220;   // 0x220
+    unsigned char _221[0x228 - 0x221];
+    float m_228;   // 0x228: taken by the network packet and cleared
+    unsigned char _22c[0x374 - 0x22c];
+    signed char m_desiredState;   // 0x374 (zseal.h's)
+    signed char m_desiredStance;   // 0x375
+    unsigned char _376[0x550 - 0x376];
+    unsigned short m_550;   // 0x550
+    unsigned char _552[0x556 - 0x552];
+    unsigned short m_556;   // 0x556
+    unsigned char _558[0x580 - 0x558];
+    short m_580;   // 0x580
+    unsigned char _582[0x598 - 0x582];
+    unsigned short m_598;   // 0x598
+    unsigned char _59a[0x59e - 0x59a];
+    unsigned short m_59e;   // 0x59e
+    unsigned char _5a0[0x5c8 - 0x5a0];
+    short m_5c8;   // 0x5c8
+    unsigned char _5ca[0x5e0 - 0x5ca];
+    CZKit m_kit;   // 0x5e0
+    unsigned char _5e1[0xf7a - 0x5e1];
+    signed char m_netlife;   // 0xf7a (zseal.h's)
+    unsigned char _f7b[0xfbc - 0xf7b];
+    int m_lastkiller_id;   // 0xfbc (zseal.h's)
+    int m_fc0;   // 0xfc0: the death's kind (zseal.h's)
+    unsigned char _fc4[0xfc8 - 0xfc4];
     int m_fc8;   // 0xfc8: the client that owns it, -1 a remote's (SOCOM 1's at 0xeb8)
     unsigned char m_fcc;   // 0xfcc: cleared once its remote object is made (SOCOM 1's at 0xec0)
     unsigned char _fcd[0xfcf - 0xfcd];
@@ -172,11 +267,16 @@ public:
     int m_fd4;   // 0xfd4: a network time the lobby is told at (SOCOM II's; the names ours)
     float m_fd8;   // 0xfd8
     int m_fdc;   // 0xfdc: ten seconds past its creation (SOCOM 1's at 0xec8)
-    unsigned char _fe0[0x1044 - 0xfe0];
+    unsigned char _fe0[0xffc - 0xfe0];
+    float m_ffc[6];   // 0xffc: six values run down (zseal.h's)
+    float m_1014[6];   // 0x1014: and their full values
+    unsigned char _102c[0x1044 - 0x102c];
     float m_1044;   // 0x1044
     unsigned char _1048[0x105d - 0x1048];
     unsigned char _105d_0 : 6;
     unsigned char m_joined : 1;   // 0x105d, bit 6: set when it joins its unit (SOCOM 1's at 0xf59; the name ours)
+    unsigned char _105e[0x144c - 0x105e];
+    CPnt3D m_aim_goal;   // 0x144c (zseal.h's)
 };
 
 CZSealBody *ftsGetPlayer();
@@ -581,6 +681,146 @@ void CZSealState::RemoteSealDeletionCallback(int client, int index)
     if (client >= 0)
         CZSealBody::Destroy(body);
     data->m_body = 0;
+}
+
+extern "C" {
+bool func_002C2FD0(CZSealBody *body);   /* (fts_net_persona.cpp's: a SEAL not the network's to send) */
+void func_005A1FD0(CZSealBody *body, float *out, int arg);   /* (OVL2: a SEAL's four values out) */
+float atan2f(float y, float x);
+float ceilf(float x);
+char *strcpy(char *dst, const char *src);
+void *memcpy(void *dst, const void *src, unsigned int n);
+}
+
+/* a local SEAL's state put in its network object (SOCOM 1's CZSealState::UpdateLocalSeal, SOCOM II's
+ * with a second argument that sends it even when func_002C2FD0 says no; OVL1 0x2BD640): online only,
+ * a packet zeroed and filled -- the character's name (a custom type's or an escortee's own, else its
+ * base name), the flags, the controller's word, the unit's number (17 the escortees', an escortee's
+ * own unit or the player's, else its object's), the position, the heading as a 16-bit angle, three
+ * controls as bytes, the weapon state, the desired state and stance, the controller's flag, six
+ * values as fractions of their full ones (bytes, rounded up), the network life, the killer, the
+ * death's kind (saturated to a byte), the stats, the character type, the vertical aim, the current
+ * item and fire mode, the packed weapons and the body -- then copied into the object.
+ * OPEN, 2 instructions (written in the game states' round 47, unwritten before): the escortee's unit
+ * number falling back on the player's -- the target ends that then-arm with a branch to the join
+ * (`b; addiu a0,v0,32`) where this falls through onto an alignment nop; every ternary spelling
+ * (`id = id ? id : ...`, in the store, through an inline helper, `!id ? ... : id`) sinks the store
+ * into both arms instead (0x75C). The rest is the target's: the entry test one `||` expression
+ * with a `return` (the shared `b end` block), the heading converted through `short` (an unsigned
+ * short field converts unsigned), the killer stored chained (`p.m_76 = kind = ...`: no reload of
+ * the address-taken int), the vertical aim through a float local stored after the clear, the
+ * clamps' locals declared ahead in their slots' order */
+extern "C" void func_002BD640(CZSealBody *body, int send)
+{
+    if (!theNetwork.m_bNetwork || func_002C2FD0(body) && !send)
+        return;
+    NetObjectData p = {0};
+    const char *name = body->GetCharacter()->m_name;
+
+    if (body->m_c8 & 0x10000000 || body->m_c8 & 0x20000)
+        strcpy(p.m_14, name);
+    else
+        strcpy(p.m_14, body->GetCharacter()->GetBaseName());
+    p.m_c = body->m_c8;
+    p.m_10 = body->m_ctrl->Slot6C();
+    CSealCtrl *ctrl = body->m_ctrl;
+
+    if (ctrl->m_unit) {
+        int id = ctrl->m_unit->m_58;
+
+        if (id == 17) {
+            p.m_unit_id = 17;
+        } else if (body->m_c8 & 0x20000) {
+            if (!id)
+                id = ftsGetPlayer()->m_4 + 32;
+            p.m_unit_id = id;
+        } else {
+            p.m_unit_id = body->m_4 + 32;
+        }
+    }
+    int kind;
+    float c0;
+    float c1;
+    float c2;
+    float f0;
+    float f3;
+    float f5;
+    float f4;
+    float f2;
+    float f1;
+
+    p.m_x = body->m_posW[0];
+    p.m_y = body->m_posW[1];
+    p.m_z = body->m_posW[2];
+    CPnt3D dir = body->m_node->m_20;
+
+    p.m_64 = (short)(10430.06f * atan2f(dir.x, dir.z));
+    c0 = ctrl->m_8;
+    _saturate(&c0, -1.0f, 1.0f);
+    p.m_7a = 127.0f * c0;
+    c1 = ctrl->m_10;
+    _saturate(&c1, -1.0f, 1.0f);
+    p.m_7b = 127.0f * c1;
+    c2 = ctrl->m_c;
+    _saturate(&c2, -1.0f, 1.0f);
+    p.m_7c = 127.0f * c2;
+    p.m_7e = body->GetWeaponState();
+    p.m_7f = body->m_desiredState;
+    p.m_80 = body->m_desiredStance;
+    p.m_81 = body->m_ctrl->m_170_2 != 0;
+    f0 = body->m_ffc[0] / body->m_1014[0];
+    _saturate(&f0, 0.0f, 1.0f);
+    p.m_82 = ceilf(255.0f * f0);
+    f3 = body->m_ffc[3] / body->m_1014[3];
+    _saturate(&f3, 0.0f, 1.0f);
+    p.m_83 = ceilf(255.0f * f3);
+    f5 = body->m_ffc[5] / body->m_1014[5];
+    _saturate(&f5, 0.0f, 1.0f);
+    p.m_84 = ceilf(255.0f * f5);
+    f4 = body->m_ffc[4] / body->m_1014[4];
+    _saturate(&f4, 0.0f, 1.0f);
+    p.m_85 = ceilf(255.0f * f4);
+    f2 = body->m_ffc[2] / body->m_1014[2];
+    _saturate(&f2, 0.0f, 1.0f);
+    p.m_86 = ceilf(255.0f * f2);
+    f1 = body->m_ffc[1] / body->m_1014[1];
+    _saturate(&f1, 0.0f, 1.0f);
+    p.m_87 = ceilf(255.0f * f1);
+    p.m_88 = body->m_netlife;
+    p.m_76 = kind = body->m_lastkiller_id;
+    kind = body->m_fc0;
+    _saturate(&kind, 0, 255);
+    p.m_89 = kind;
+    CPnt3D out;
+
+    func_005A1FD0(body, &out.x, 0);
+    p.m_68 = body->m_59e;
+    p.m_6a = body->m_598;
+    p.m_6c = body->m_5c8;
+    p.m_6e = body->m_556;
+    p.m_70 = body->m_550;
+    p.m_72 = body->m_580;
+    p.m_chartype = body->m_c;
+    CPnt3D aim = body->m_aim_goal;
+
+    if (body->m_228 == 0.0f)
+        body->m_228 = aim.y;
+    float vert = 128.0f * body->m_228;
+
+    body->m_228 = 0.0f;
+    p.m_7d = vert;
+    p.m_8b = body->m_220;
+    if (body->m_kit.GetCurItem())
+        p.m_66 = (unsigned char)body->m_kit.GetCurItemEnum();
+    else
+        p.m_66 = 255;
+    p.m_8a = body->m_kit.GetCurFireMode();
+    CCharacterType::KorusGetPackedWeapons((CCharacterWeapPacked *)p.m_weapons);
+    p.m_body = body;
+    NetObject *obj = theNetwork.zNetGetObject(body->m_4);
+
+    if (obj)
+        memcpy(obj->m_data, &p, sizeof(NetObjectData));
 }
 
 /* the waiting remote SEALs forgotten (OVL1 0x2BD630; CLoadState::Init calls it -- SOCOM II's, the

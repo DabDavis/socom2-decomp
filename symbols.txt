@@ -4020,7 +4020,7 @@
 0x002B8580 0x40 DMEConnectToGameServer__Fv  # OVL1; s1:align
 0x002B85C0 0x9C func_002B85C0  # OVL1
 0x002B8660 0xAE4 func_002B8660  # OVL1
-0x002B9150 0x694 func_002B9150  # OVL1
+0x002B9150 0x694 GameSignalPacketHandler__FiiiPv  # OVL1; s1:calls (the game states' round 47: SOCOM 1's GameSignalPacketHandler -- the handler zNetRegisterMessage registers for "Game Signal" (0x2B8660, the type data_00440EB0 SendGameSignalMessage sends), the same SyncGameClock, LateJoiner, SetDatabase, AddToFixList twice, MPMajorGameState / MyMajorGameState and CRdrEditor list build in SOCOM 1's order; SOCOM II adds the refusal's reasons and the clan tag; byte-exact)
 0x002B97F0 0xC0 SendGameSignalMessage__FiUcUcUcib  # OVL1; s1:align
 0x002B98B0 0x60 func_002B98B0  # OVL1
 0x002B9910 0xF0 SendBombStateRequest__FiUcPC6CPnt3D  # OVL1; s1:callee

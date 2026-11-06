@@ -2221,7 +2221,6 @@ void func_0059AC60();
 void func_002B4190();
 bool func_00259240();
 void func_00259230(bool on);
-void *func_003102E0(void *p);
 void func_002CE8E0();
 void func_005E30F0(int);
 void func_0058CC30();
@@ -2230,6 +2229,14 @@ void func_002B7520();
 _zanim_cmd_hdr *func_002AE3A0(_zrdr *rdr);
 bool func_002AE340(_zanim_cmd_hdr *hdr, float *dT);
 }
+
+/* the radio (zNetVoice.cpp's CZNetVoice, 0x10DC bytes: only its constructor, 0x3102E0 -- the online
+ * lobby's round 26) */
+struct CZNetVoice {
+    CZNetVoice();
+
+    unsigned char _0[0x10dc];
+};
 
 void zBoneResetCallbacks();   /* 0x2875D0 */
 void zBoneLoad();   /* 0x288B80 */
@@ -2313,11 +2320,7 @@ bool CMission::Init()
     zBoneLoad();
     CSnd::Init();
     m_pNetGame = new CZNetGame;
-    void *obj = operator new(4316);
-
-    if (obj)
-        obj = func_003102E0(obj);
-    data_0045B718 = obj;
+    data_0045B718 = new CZNetVoice;
     func_002CE8E0();
     if (m_pNetGame) {
         CRdrFile *rdr = zrdr_read("hud.rdr", 0, 0);
