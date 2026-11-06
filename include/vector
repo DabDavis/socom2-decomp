@@ -168,6 +168,7 @@ public:
      * byte-exact so); a smaller element inlines both, as the loops always did. The name ours */
     static void construct(T *p, const T &x) { new (p) T(x); }
 #ifdef __MSL_POD_DTOR_ARGS
+    /* the element's destroy a level of its own (the opt-in's comment at the head of the 1-byte pod below) */
     static void __destroy(T *p) { p->~T(); }
 #endif
 
@@ -270,6 +271,7 @@ public:
      * constructors and __sinit_compass.cpp still inline theirs whole. A level more instead (the
      * stores in a helper) cuts those four too */
 #ifdef __MSL_POD_DTOR_ARGS
+    /* the capacity pair's two levels (the opt-in's comment at the head of the 1-byte pod below) */
     void __zero_cap2() { capacity_ = 0; }
     void __zero_cap() { __zero_cap2(); }
     __vector_pod()
@@ -307,6 +309,8 @@ public:
      * the round 26 measurement); a reference local (`T *&d = data_;` or `T *&d = data();`) is a
      * variable at every site and loses the resize, the test alone through data() all three */
 #ifdef __MSL_POD_DTOR_ARGS
+    /* THE DESTRUCTOR'S ACCESSORS (the MSL headers round 40, the UI's round 39 request): SOCOM 1's
+     * `if (data_) alloc().deallocate(data_, cap())`, the opt-in's comment at the head of the 1-byte pod below */
     ~__vector_pod()
     {
         if (data_)
@@ -487,10 +491,33 @@ inline void __pod_fill_n(unsigned short *first, unsigned int n, const unsigned s
     std::fill_n(first, n, *(const short *)&value);
 }
 
+/* THE OPT-IN, `#define __MSL_POD_DTOR_ARGS` ahead of a unit's includes with a level pragma (the MSL headers round 40, build/p40/, untracked: A
+ * MODELLING DEVICE, A "Level 6, or 8?" witness). SOCOM 1's pod destructor is `if (data_) alloc().deallocate(data_, cap())`, and the image calls
+ * its two accessors out of line in six functions, cap() first, the data word held in a saved register across them -- CNodeAction::Close 0x2B55E0
+ * and zui_hangul.cpp's five: why, read in MW's inliner and measured here:
+ *   - deallocate is a WHOLE STATEMENT, so it is expanded without walking its arguments (CInline_ExpandStatement -> CInline_InlineFunctionStatement;
+ *     CInline_ExpandStatements makes them the first statement of the copy, MW's right-to-left order: n = cap(), p = data_, this = alloc()), scanned
+ *     at the NEXT pass;
+ *   - the height check counts a call's arguments at the CALL's own level (CInline_EstimateSizeOfExpr), not a level below it: the destructor passes
+ *     as two high (deallocate, the accessors) and needs three passes. So when the destructor sits at pass L-2 of level L the check admits the whole
+ *     chain and the passes run out with the accessors unexpanded: A CHAIN CUT AT ITS LEAVES, which round 12 could not produce (its accessors were
+ *     the second statement's, at the height they took). One pass earlier they inline and leave nothing; one pass later the chain is too tall and
+ *     admitted at the last pass, its own body only, as ever;
+ *   - the two-high destructor is why this cannot be the level-5 header: every level-5 chain with the pod's destructor at pass 3 -- each vector
+ *     member's destructor inlined into its class's -- would call them where the image does not. In the original the level is deeper (eight; the
+ *     pair's first() and second() under alloc() and cap() are the leaves there: SOCOM 1's 0x173590 / 0x1735A0, and the real shape is one pass taller);
+ *   - THE PIECES THE OPT-IN ADDS, each read off zui_hangul.cpp's rows at level 7 (Close stands on the first alone, transform and its op being its
+ *     two extra passes): a `__destroy` level for a class element in the deleter's clear and the class erase (a destructor there a pass deeper than a
+ *     temporary's in resize: clear<SKBCOMPLETE> 0x393E40 cut at the leaves, resize<SKBCOMPLETE> 0x392770 whole; clear<SKBPIECE> 0x3929C0, too tall,
+ *     keeps the implicit destructor a call, `li a1,-1`), and the pods' default constructors two levels taller (the capacity pair's: SKBPIECE() eight
+ *     high, cut to its own body in resize<SKBPIECE> 0x392670 -- CJamoStr() and CInit<Us,0>() called -- SKBCOMPLETE() seven, whole).
+ * Rows named: the uint pod's cap() 0x2B5750 and alloc() 0x2B5740, the char pod's 0x392750 and 0x392740. Over every hand-written unit (objcmp master
+ * --by-address) only the two units carrying the define differ. */
 template <class T, class Allocator>
 class __vector_pod {
 public:
 #ifdef __MSL_POD_DTOR_ARGS
+    /* the capacity pair's two levels (above) */
     void __zero_cap2() { capacity_ = 0; }
     void __zero_cap() { __zero_cap2(); }
     __vector_pod() { __zero_cap(); size_ = 0; data_ = 0; }

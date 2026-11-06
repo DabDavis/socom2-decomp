@@ -69,8 +69,13 @@ class CJamoStr : public CSkbVec<char> {
 };
 
 /* a composed piece: its jamo and its character code (16 bytes; ours: the implicit destructor 0x390760,
- * six tests; the code's own constructor 0x392760) */
+ * six tests; the code's own constructor 0x392760). Declared for the units outside zui_hangul.cpp's level (the
+ * MSL headers round 40, its opening note): zui_skbkeys.cpp at level 5 calls it, as its tail always did */
 struct SKBPIECE {
+#ifndef __MSL_POD_DTOR_ARGS
+    ~SKBPIECE();
+
+#endif
     CJamoStr m_jamo;   // 0x0
     CInit<unsigned short, 0> m_code;   // 0xc
 };
