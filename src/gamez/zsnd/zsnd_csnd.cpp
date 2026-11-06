@@ -73,7 +73,7 @@ extern unsigned char data_0045A0C1;
 extern char data_00436B80[];
 /* the HUD's message queue (fts_message.cpp's C2DMessage_Q, SOCOM 1's class): only its add declared,
  * the kind a byte enum (fts_state.h's MSGTYPE; 0 the player's) -- respelled from its placeholder
- * func_002B6530 (the world lane's round 31) */
+ * (the world lane's round 31; the game states' round 51 named the row 0x2B6530) */
 enum MSGTYPE {
     MSGTYPE_PLAYER = 0
 };

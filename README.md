@@ -2066,6 +2066,85 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 38** (the three requests measured, none applied -- comments only in
+  include/vector and include/deque; probes build/p38/, untracked: permall.py runs tools/igreplay.py --permute keeping
+  every hit and prints each pair's relation, board.py / mkv.py / vrun.py / gen38.py score class-insert variants over the
+  67 inserts, igd.py dumps against a shadow include/ with mwccps2's IRO log, mkdq.py / genorder.py / dqcheck.sh read a
+  unit's tail order; runs in build/scratch/msl-r38/):
+  - REQUESTS (1) AND (2) ARE ONE LEVER: CTurretDef 0x3ABD90 and AcctRecord 0x2FE3E0 (zrdr_sym 0x3325E0 too) take the
+    target's registers in exactly 120 of the 720 orders of m, i, both j's, k and the end -- THE END BEFORE m
+    BEFORE THE ELSE BRANCH'S j, the rest free; the inlined population's saved-register witnesses (CUIVariable 0x2B1BD0,
+    ActionItem 0x383F20) want the converse, the else branch's j before k before the end, m free. The cut five's end is
+    the scalariser's pass-0 temporary or __copy_backward's `result` argument (level 1), m a declared local, so no
+    numbering the inliner and IRO give puts that end first; a pointer end before m does, in BOTH populations (its loop
+    tests sit deeper than its definition, so copy propagation never folds it away): +5 / -28, as round 33's thirty;
+  - A CUT construct() IS DEFERRED, NOT SHORTENED: bottom-up admits a callee only when its whole tree fits the passes
+    left, so an inline holding a big inline-copy element's construct() is admitted at the LAST pass and its callees are
+    called -- a member helper holding the else loop made its three argument temporaries at level 4 in the turret and at
+    level 0 in CUIVariable (igdump's origins); the whole in-place branch as one helper is deferred for every element;
+  - THE TAIL'S GENERATION ORDER IS IGDUMP'S RECORD ORDER (a record per colouring, written as each function is
+    code-generated -- the object's symbol order is not it): zanim_menu.cpp generates resize, reserve, push_back (deferred
+    in their walk, last first), then __recommend and max_size (both waiting on the unparsed __max_size(), last first),
+    then alloc() a walk later -- so the UI's out-of-class max_size calls alloc() (0x84 of 0x50); alloc() in class makes
+    max_size 0x285CE0 byte-exact but __recommend inlines it too (0xF8 of 0x120); reserve declared ahead of push_back gives
+    the image's resize, push_back, reserve; the image's __recommend, alloc(), max_size needs alloc() generated between
+    the two, which no declaration order gives while both wait on __max_size() (include/deque's note);
+  - request (3), resize<reader> 0x51C3F0, was closed by the AI core's round 36 (its device); the deque tail, cdeque<PCv>'s
+    erase / insert / pair / remove_if / AddItem / CountKeys / OnIsEquipmentSelected / the hangul pieces: no new idea, not
+    attempted.
+- **Tells from the HUD, round 63** (hud_actionbitmap.cpp whole: CZActionBitmap::HudTick 0x21D9D0,
+  CActionTxtrMachine::SpecializeActionString 0x220350, Render_ver_2 0x21F210 and Open 0x21F850 -- all four unwritten before,
+  SOCOM 1's, 6,200 bytes -- byte-exact and named; nine data rows; the SEALs' and the states' respells in four units,
+  SAME-BY-ADDRESS):
+  - a dead first definition placed just before a deferred named local numbers it ahead of that local; the later local is
+    then pushed a sweep earlier and coloured last (HudTick's `count = 0` before the controller -- a marked modelling device,
+    found with `igreplay --move`);
+  - for an unsigned count `count > 1` branches on `sltiu at` as the target does, `count >= 2` computes the compare into a
+    register (8 bytes short); in MW's unrolled `a[i-1] = a[i]` copy the source address is made first -- taking the
+    destination as a reference first (`T *&dst = a[i-1]; dst = a[i];`) gives the target's register order;
+  - `if (t < 0) t = 0;` puts an alignment nop at its join, `t = t < 0 ? 0 : t;` does not; a one-bit field returned as `m_bit
+    ? true : false` keeps the target's sltu, a plain bool return, `!= 0`, an int return or a cast test the bit directly; a
+    signed char field read into a signed local and indexed through `(unsigned char)` gives lb plus andi, an unsigned char
+    local lbu with its constant a daddiu;
+  - a global array element's constant address passed to an inline is folded into every field access (0x9D8 against 0x870);
+    held in one named pointer local, reassigned per block, it stays in one saved register; `bool b = false;` declared before
+    another named local and set in nested ifs keeps the branch form -- declared after it, or tested with `&&`, it becomes a
+    set-on-condition, and a switch adds a case jump;
+  - func_003FE550 (0x1B0) is __sinit_hud_actionbitmap.cpp by its content (it builds g_arrActionTxtrs and
+    ActionTxtrMachine_HUD, registering 0x220C10 / 0x220B50); the unit's file statics stay data_ placeholders until it is
+    written.
+- **Tells from the UI, round 37** (cdeque<const void *>::push_back 0x2858B0 and reserve 0x285A50 byte-exact -- declared in
+  include/deque but never defined: defined out of class, additively, so zanim_menu.cpp's tail emits them and the state
+  queue's push 0x2852B0 keeps calling them, as the target does; CSnd::m_vagEnabled declared on zsnd.h's CSnd and
+  zanim_menu.cpp's placeholder retired, SAME-BY-ADDRESS):
+  - an MSL member the target calls out of line but the headers only declare can simply be defined out of class: the unit's
+    tail emits it and its callers keep the call. Watch the tail: zrdr_edit.cpp's cdeque<PPCv> copy 0x333E40 (open) went from
+    8 to 11 off -- once the unit emits __recommend, alloc() is instantiated earlier and inlined into that tail where the
+    target calls 0x285CD0; `max_size` 0x285CE0 written out of class is 0x84 of 0x50, inline it folds into reserve (both the
+    MSL's, include/deque's note);
+  - `(*this)[size_++] = x` computes the slot's address before loading x, `data_[(start_ + size_++) % capacity_] = x` loads x
+    first; a pointer local declared before an inline-built iterator puts its `move` in that inline's ternary delay slot,
+    declared after it the move lands in the loop guard's delay slot;
+  - named locals are numbered before every inline copy, so a replay that wants a caller's local between two copies of one
+    inline needs an expansion to create it there: ReleaseSlotItem 0x283170 replays exactly at `--move 45=56.5 --move
+    44=56.6`, `--permute` over its eight movers finds 60 orders, and none of eight source shapes (the flag by value and
+    returned, by-value wrappers, a helper for the first two copies, the whole case as an inline) gives one.
+- **Tells from the AI core, round 36** (resize<reader> 0x51C3F0 -- open since round 22 at 6 off -- byte-exact through a
+  marked device, ai_mapio.cpp's explicit specialisation; UpdateNameTables 0x52B820 from 34 to 12 instructions off;
+  GetCellRepelParams 0x5169B0 to the target's size, 0x570 -> 0x558):
+  - MW'S CLASS SCALARISER RUNS FIRST IN EACH OPTIMISER PASS (igdump's pass labels): a named iterator initialised from a call
+    is scalarised in pass 0, an iterator temporary read as `end().m_p` only in pass 1, so its member is numbered after pass
+    0's common-subexpression and loop temporaries -- resize<reader>'s target needs the end numbered first (`igreplay
+    --permute`), which a named end iterator declared inside the insert arm gives;
+  - that body in include/vector is +1 / -16 (measured over the 20 units that emit class resizes, reverted): every class
+    resize whose element constructor inlines loses, its end then computed before the element's stores -- so the difference
+    is the element (reader() is a call into ai_maptable.cpp); why the original scalarised it in pass 0 is not found, and the
+    device stands in for that;
+  - taking a local object's address in pass 0 -- a reference or pointer local that pass 0's propagation folds away -- defers
+    its scalarisation to pass 1 at no code cost (UpdateNameTables: `iterator &rn = n`, marked as a modelling shape); an
+    inline taking the object by reference does not, the plain object is substituted;
+  - reading a CPnt3D member directly in two places shares only its address temporary (`&v + 8`) with a loop invariant, never
+    the load; a named float read once gives the target's single load (GetCellRepelParams).
 - **Tells from the game states, round 52** (CameraZoom::HandleNewZoom 0x1F0750 -- 0xD1C, unwritten before: SOCOM 1's body
   with SetLensFx inlined per zoom state, SOCOM II's thermal state and starlight scope --, SetRoundStatUiVars 0x1F21B0 -- 6
   off since round 50 -- and the teamwork rating 0x1F27C0 -- 0x678 of 0x680 since round 47 -- byte-exact; st_exit.cpp's
