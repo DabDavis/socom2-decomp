@@ -4217,6 +4217,10 @@ tail:
  * allocated; 21 for a client without a block, 20 for no free slot */
 /* OPEN (round 26b): d=14 with the stream in a one-member struct (a real alias set; a plain pointer's alias word did not
  * flip under pert.py): the constant -1 takes a1 in the target and a2 here, and pStream loads before pWorld. */
+/* three declarations nothing reads: they set the alias word (README "Round 26b") this function's locals need (round 27b, pert.py) */
+extern int dme_unused_0;
+extern int dme_unused_1;
+extern int dme_unused_2;
 int func_00619DD8(int *pnStream, int nSize, int nRate, int nType, int a4, int nTarget, int a6, unsigned short a7,
                   unsigned short a8)
 {
@@ -4745,8 +4749,9 @@ int func_00616820(DmeInitParams *pParams, DmeInitResult *pResult)
 extern int rt_msg_client_get_connection_ip(unsigned short nConnection, char *szIp);
 extern void (*data_00651190)(void *pReport);    /* the waiting caller's callback */
 extern int data_00651194;               /* and its user value */
-extern int rt_msg_client_get_connection_port(unsigned short nConnection);
-extern int rt_msg_client_get_connection_status(unsigned short nConnection);
+/* two declarations nothing reads, for this function's alias word as func_00619DD8's */
+extern int dme_unused_3;
+extern int dme_unused_4;
 extern int func_0061D440(int nClient);
 extern int func_0061C600(int nWorld, DmeWorld **ppWorld);
 extern int func_0061C7A8(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient);
