@@ -219,6 +219,9 @@ public:
 
     /* the walk begun, and whether it has ended (st_mpexit.cpp's; the teamwork rating's walk) */
     CEntityItr() : _it(GetEntityList().begin()), _iIdx(0) {}
+    /* the walk begun at a position the caller takes (the two rating walks pass the list's begin(),
+     * so its temporaries are made a pass ahead of Next()'s: the target's frame slots) */
+    CEntityItr(std::list<CEntity *>::const_iterator i) : _it(i), _iIdx(0) {}
     bool More() const { return _it != GetEntityList().end(); }
     void Next()
     {
@@ -449,6 +452,11 @@ float fabsf(float x);   /* 0x1B3620 */
  * under a fifth (5 under a half) --, and an enemy score -- 25 less 10 for each enemy dead, 4 under a
  * fifth and 2 under a half, plus 10 for each the player captured --; none online; the wounded, the
  * downed, the captured and the rating shown, the rating returned as a fraction (the name ours).
+ * Byte-exact since the game states' round 52: the walk `for (CEntityItr it(GetEntityList().begin());
+ * it._it != GetEntityList().end(); it.Next())` -- the begin and the test in the loop's own text, a
+ * pass shallower than Next()'s end() (MW's breadth-first expansion: a `for`'s init, increment and
+ * test in that order each pass), so the slots read [begin-bt More-bt] [begin-cp Next-bt More-cp]
+ * [Next-cp] as the target's; through More() 11 off, through Advance() 0x678. The history:
  * OPEN, 0x678 against 0x680 (written in the game states' round 47; everything but the walk's advance
  * and its temporaries is the target's): the down flags `int` locals set from a bool accessor (bool
  * locals are narrowed again at the sum), the lag's and the balance's clamps ternaries and the health's
@@ -546,7 +554,8 @@ extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
             health = 0;
         int enemy = 25;
 
-        for (CEntityItr it; it.More(); it.Advance()) {
+        for (CEntityItr it(CEntityItr::GetEntityList().begin()); it._it != CEntityItr::GetEntityList().end();
+             it.Next()) {
             if (&it.GetSeal()) {
                 CZSealBody &seal = it.GetSeal();
 
@@ -584,8 +593,13 @@ extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
  * stealth, accuracy, teamwork), the career taken up in a single-player game (theMission's byte at
  * 0x18 2), the overall rating -- 45 % objectives, 20 % stealth, 10 % accuracy, 25 % teamwork,
  * at least 60 in that game -- shown and kept in a valve, and the time in the game as "hhh:mm:ss".
- * OPEN, 6 instructions (written in the game states' round 50, unwritten before; at the target's size):
- * the walk's frame slots only. The walk is a do-while with the end test first (`count < 4` at the
+ * Byte-exact since the game states' round 52 (written in round 50, 6 off: the walk's frame slots).
+ * THE SLOTS FOLLOW MW'S BREADTH-FIRST EXPANSION (the MSL headers' round 37): a pass per inline level,
+ * each end()/begin() chain's base temporary made at its call's expansion and its copy a pass later,
+ * so the target's Next() chain one pass deeper than begin's and the first test's is those two
+ * written in the function's own text -- the walk begun through a constructor taking the list's
+ * begin() and the end test `it._it != end()` in place -- with Next() unchanged; every way to deepen
+ * Next() instead (below) moved the code. The walk is a do-while with the end test first (`count < 4` at the
  * bottom, jumping back to the one More() test at the top: a `for` / `while` with the count in its
  * condition is laid out test-at-the-bottom, `for (;;)` and `while (count < 4)` with the break give
  * this layout too); its step the in-class Next() with `!IsSeal()` (the target materialises the SEAL
@@ -595,7 +609,7 @@ extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
  * array initialiser's own block copy, both loads first, from the literal: strcpy and memcpy stay
  * calls, a struct assignment pairs each load with its store), the career's `this` a local declared
  * ahead of ftsGetPlayer (computed in its delay slot, held in s0), the four default stats four
- * statements (an unrolled loop schedules the stores apart). Left: the slots, high to low -- the
+ * statements (an unrolled loop schedules the stores apart). Round 50's slots, high to low -- the
  * target begin-bt 284, More-bt 280, begin-cp 276, More-cp 272, Next-bt 268, Next-cp 264, here
  * begin-bt, More-bt, Next-bt, begin-cp, More-cp, Next-cp (@1405 @1411 @1417, @1422 @1425 @1428 in
  * igdump's syms: every walk's base temporary is made one inline level before its copy, so the
@@ -603,7 +617,8 @@ extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
  * out of line (auto-inlined, dead-stripped), through More(), an End() / AtEnd() or a static IsEnd(it) / NotEnd(it) inline (each 0x614: any inline level around Next's end() lets MW share the end node in s7), behind a
  * Step() wrapper (the cut: 0x5C0, or the end node held in s7: 0x60C-0x614), the walk written in
  * place with a static step (0x600), the four loop forms above -- the order holds or the code moves.
- * The teamwork rating's open slots (below) are the same question */
+ * Round 52: the constructor alone or the test alone in place are 8 and 10 off; both, by value or by
+ * reference, byte-exact. The teamwork rating (above) was the same question, closed the same way */
 extern "C" void func_001F21B0(CObjectiveCounts *counts)
 {
     CSealStats none;
@@ -618,10 +633,10 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
     stats[3] = &none;
     int n = 0;
     int count = 0;
-    CEntityItr it;
+    CEntityItr it(CEntityItr::GetEntityList().begin());
 
     do {
-        if (!it.More())
+        if (!(it._it != CEntityItr::GetEntityList().end()))
             break;
         CZSealBody *seal = &it.GetSeal();
 
