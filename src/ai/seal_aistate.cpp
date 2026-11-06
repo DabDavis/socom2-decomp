@@ -773,6 +773,158 @@ struct CSealSignalBits {
     unsigned char m_signalled : 1;
 };
 
+/* the AI's focus: nothing, an entity or a point (the record at 0x660 -- zseal.h keeps it as bytes, the first
+ * entity field its m_664; the view and the names ours) and where it stands, copied, or 0 (inlined; the name ours) */
+struct CAiFocusView {
+    unsigned char m_kind;   // 0x0
+    unsigned char _1[3];
+    CEntity *m_entity;   // 0x4
+    CPnt3D m_point;   // 0x8
+};
+
+inline CPnt3D *FocusPos(CAiFocusView *f, CPnt3D *out)
+{
+    switch (f->m_kind) {
+    case 1:
+        {
+            CEntity *e = f->m_entity;
+
+            if (e) {
+                out->x = e->m_posW.x;
+                out->y = e->m_posW.y;
+                out->z = e->m_posW.z;
+                return out;
+            }
+        }
+        return 0;
+    case 2:
+        out->x = f->m_point.x;
+        out->y = f->m_point.y;
+        out->z = f->m_point.z;
+        return out;
+    }
+    return 0;
+}
+
+/* the kinds a state of a kind lets be pushed on it (inlined; the name ours) */
+inline unsigned int StatePushMask(CAiState *s)
+{
+    unsigned int mask = 0;
+
+    switch (s->m_state) {
+    case 0: mask = 0x3FFFFFFE; break;
+    case 1: mask = 0x3FFFFBD6; break;
+    case 2: mask = 0x3FFFFFFA; break;
+    case 3: mask = 0x010448C2; break;
+    case 4: mask = 0x19054BC6; break;
+    case 5: mask = 0x19044AC6; break;
+    case 6: mask = 0x19874A8E; break;
+    case 7: mask = 0x188D0040; break;
+    case 8: mask = 0x3FFFFEFE; break;
+    case 9: mask = 0x1FFFFDFE; break;
+    case 10: mask = 0x0FFFFBFE; break;
+    case 11: mask = 0x1FFFF7FE; break;
+    case 12: mask = 0x3BFFE8F6; break;
+    case 13: mask = 0x17FFDFFE; break;
+    case 14: mask = 0x11040000; break;
+    case 15: mask = 0x190449C6; break;
+    case 16: mask = 0x1FFE48C6; break;
+    case 17: mask = 0x190C48C6; break;
+    case 18: mask = 0x01000000; break;
+    case 19: mask = 0x31040800; break;
+    case 20: mask = 0x390448C2; break;
+    case 21: mask = 0x390448C2; break;
+    case 22: mask = 0x390549C2; break;
+    case 23: mask = 0x190F4BC0; break;
+    case 24: mask = 0x40000; break;
+    case 25: mask = 0x399C4942; break;
+    case 26: mask = 0x390448C2; break;
+    case 27: mask = 0x310468C2; break;
+    case 28: mask = 0x21042000; break;
+    case 29: mask = 0x1BFDE9DA; break;
+    }
+    return mask;
+}
+
+/* the two slots the update hands the AI to, and takes an int from (a view of the table: ai_states.h declares them
+ * without the argument, which every override ignores, as SOCOM 1's names have it) */
+class CAiStateFlagSlots {
+public:
+    virtual void s08();
+    virtual void s0c();
+    virtual void s10();
+    virtual void s14();
+    virtual void s18();
+    virtual void s1c();
+    virtual void s20();
+    virtual int CanAttackAi(CSealCtrlAi *ai);   // +0x24
+    virtual void s28();
+    virtual void s2c();
+    virtual void s30();
+    virtual void s34();
+    virtual void s38();
+    virtual void s3c();
+    virtual int Virtual40Ai(CSealCtrlAi *ai);   // +0x40
+};
+
+/* the stack's bits brought up to date when asked or marked (bit 0): from the bottom state up, bit 1 "may attack" while
+ * every state says so, bit 4 while a state with a focus has one (a breach clears it), bit 2 for a held script; the mask
+ * of kinds that may be pushed ANDed by each state's, the kinds on the stack listed; a group with cameras allows only the
+ * target state; the SEAL (and, squad mode 2, the squad's leader) marked (OVL2 0x5F7470; the name unknown) */
+extern "C" void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x)
+{
+    if (x || (stack->m_14 & 1)) {
+        stack->m_14 = 2;
+        stack->m_c = -1;
+        stack->m_10 = 0;
+        for (CAiStateStack::reverse_iterator i = stack->rbegin(); i != stack->rend(); ++i) {
+            CAiState *s = *i;
+            AI_STATE kind = s->m_state;
+
+            if (!((CAiStateFlagSlots *)s)->CanAttackAi(ai))
+                stack->m_14 &= ~2;
+            if (((CAiStateFlagSlots *)s)->Virtual40Ai(ai)) {
+                CPnt3D pos;
+                CPnt3D *out;
+                CAiFocusView *f = (CAiFocusView *)&ai->m_660;
+
+                out = &pos;
+                if (FocusPos(f, out))
+                    stack->m_14 |= 0x10;
+            }
+            switch (kind) {
+            case AI_STATE_BREACH:
+                stack->m_14 &= ~0x10;
+                break;
+            case AI_STATE_SCRIPT: {
+                CAiSScript *script = s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+
+                if (script->Held())
+                    stack->m_14 |= 4;
+                break;
+            }
+            }
+            stack->m_c &= StatePushMask(s);
+            stack->m_10 |= 1 << kind;
+        }
+        CAiGroup *group = ai->GetGroup();
+
+        if (group && (*(unsigned int *)group & 1))
+            stack->m_c = 0x100;
+        CEntity *seal = ai->m_entity;
+
+        if (seal) {
+            ((CSealSignalBits *)seal)->m_signalled = true;
+            if (ai->m_26c == 2 && ((CAiCtrl10C *)ai)->m_10c) {
+                CEntity *leader = GetSealByIndex__9CSealUnitFii(((CAiCtrl10C *)ai)->m_10c, 1, 0);
+
+                if (leader)
+                    ((CSealSignalBits *)leader)->m_signalled = true;
+            }
+        }
+    }
+}
+
 /* a state of a stack told a signal (OVL2 0x5F6FA0; SOCOM 1's CAiState::Signal, moved onto the
  * stack): entering (0) resets it to its own kind, sends it the reset (4) and starts its stack's
  * clock; leaving (1) empties its own stack; then, for the controller's own stack, the SEAL (and,
