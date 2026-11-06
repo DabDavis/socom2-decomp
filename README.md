@@ -2065,6 +2065,45 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 37** (the three concrete requests measured, none applied -- comments
+  only; probes build/p37/, untracked: four.sh, vprobe.py, calls.py, mkoies.py, sdiff.py; runs in build/scratch/msl-r37/):
+  - MW'S INLINER EXPANDS BREADTH FIRST (mweppc's CInline_Expand: one pass per inline level, every statement in order
+    each pass) and an inline's locals are made WHEN IT IS EXPANDED -- first its own (its named locals and the
+    temporaries its body made), then each by-value parameter whose argument is not a plain object or constant
+    (CInline_SetupArgsExpression; a plain object is substituted, no copy made); the parameters' initialisations are
+    chained into one comma built last-first, so the last argument's copy is evaluated first (remove_if's rule). The
+    frame takes the caller's own objects first, then pass 0's, pass 1's ... -- round 36's "frame slots by inline
+    depth" is this order. Bottom-up's admission test (CInline_InlineFunctionCheck) sizes the callee's whole tree
+    against the passes left, a call's arguments counted at the call's level, not below it;
+  - REQUEST (1), CUIListBox::AddItem 0x373F20 against 0x510B90, BuildRoute 0x2D14A0 and AddTask 0x34E6B0: 0x510B90
+    makes the pointer list's insert wrap the base's result through a temporary of its OWN, made at pass 0 wherever
+    the insert is inlined -- so AddItem's target (that result above push_back's two temporaries, the position copy
+    below them) needs push_back's temporaries a pass deeper (SOCOM 1's two-level push_back through the base's,
+    include/list's "vc") and the position copy a pass deeper still. The shape that gives it: `return
+    iterator(insert_node(position.i_.node_, x));` over a forwarder `insert_node(node_base *n, const void *const &x)
+    { return base::insert(typename base::iterator(n), x); }` (0x510B90 and BuildRoute kept; through the conversion
+    operator instead, BuildRoute's assigned insert -- an assignment's right side nests a level -- cuts the base
+    iterator's copy constructor), with vc's push_back: AddItem BYTE-EXACT (with zui_2d.cpp's `int i = 0` after the
+    iterator), +1 (CWhosTalking::Init) / -15 over every hand-written unit -- AddTask (its end insert's position a
+    pass deeper, below the loop's stand-in) and push_back's thirteen known witnesses (SetIncludeInTargetList,
+    CreateInstance, Add2D, the Inits of CZHudMissionCams, CAmmoDisplay, CInGameWeaponSel, CMPTeammateNames,
+    CTeamNames and CZMarkList, RefreshStatics, GetLoadedLibRefs, LoadFromDesign, the two LoadSpecs). The forwarder
+    alone is +0 / -1 (AddTask). Not applied: one more witness for the deeper push_back ("Level 6, or 8?");
+  - REQUEST (2), CKey::CountKeys 0x25B300: its second self-copy calls the raw end where ours inlines it -- in the
+    target's end() the raw end sits a level below __iter, as the raw begin does in begin(): `iterator end() { return
+    __iter(__raw_end()); }` makes CountKeys byte-exact and costs 217 over every hand-written unit (every walk whose end
+    is a loop test's argument, a level deeper; its 65 "gains" are each unit's out-of-line copy of the pod's end(),
+    0x34D920's code, cut and emitted) -- round 25's measurement grown with the walks written since: one more level-6
+    witness. Wipeout/RemoveEmptyTextureAssetCharacters' delete chains (node_world.cpp's notes) are the destructor
+    split of "Level 6, or 8?" again: nothing new;
+  - REQUEST (3), OnIsEquipmentSelected 0x280790: the class vector's end() through a const view whose accessors are
+    cast back (`const __vector_imp *v = this; ... const_cast<__vector_imp *>(v)->data() + const_cast<__vector_imp
+    *>(v)->size_`) re-reads BOTH size and data at the latch -- the target's loop -- but through the two field
+    addresses hoisted into registers (0x140; the target loads 4(a2) and 8(a2) off the list's register); the view's
+    fields read directly keep begin's and end's data loads apart at the entry and hoist the latch's (0x128); a
+    user-declared iterator copy constructor changes nothing. Not met (include/vector's note);
+  - the fourth group (the cut class inserts, the deque tail, cdeque<PCv>'s erase/insert, the pair, remove_if,
+    resize<reader>): no new lever found, not attempted.
 - **Tells from the HUD, round 62** (four long-open rows byte-exact: CTCMNode::RemoveChild 0x232030 -- since round 27 --,
   tcmSelectPlayer 0x22F5B0 -- since round 23 --, CPopUpDialog::Draw 0x370690 -- since round 58 -- and SetFinalTeamTotalsUiVar
   0x225BC0 -- since round 17, through a marked CEntityItr(int) modelling device; MW's IroSubable.c and InterferenceGraph.c
@@ -14622,7 +14661,12 @@ What is open across lanes, and what comes next:
   destructor need level 6 when the vector is a derived class; and CKey::DeleteChildren 0x25B580 (the
   engine core's round 19), whose deepest FreeVector calls SOCOM 1's compressed-pair pieces (0x25B920-
   0x25B9C0) -- code-exact with the 4-byte pod's capacity as that pair (include/vector's "MEASURED AGAIN"
-  note), which costs 253 functions at level 5 (+19).
+  note), which costs 253 functions at level 5 (+19). Two more (the MSL headers' round 37): CUIListBox::AddItem
+  0x373F20 is byte-exact under SOCOM 1's two-level push_back with the pointer list's insert through a by-value
+  forwarder (its frame: the insert's own result temporary at pass 0, push_back's two at pass 1, the position copy
+  after them) -- +1 / -15 at level 5, push_back's thirteen known witnesses among the losses; and CKey::CountKeys
+  0x25B300 under the symmetric end() `return __iter(__raw_end());` (the raw end a level below __iter, as begin()'s
+  raw begin) -- -217 at level 5, every walk whose end is a loop test's argument.
   THE IMAGE'S OWN POINTER-VECTOR end() (the MSL headers round 24) makes 19 natural walks need level 6: their
   eight units carry `#pragma inline_depth(6)`, their objects byte-identical to the level-5 fit's.
   MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
