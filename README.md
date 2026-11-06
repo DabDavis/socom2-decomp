@@ -2065,6 +2065,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 37** (func_003B1BF0 -- 17 off since round 29 -- and func_003B24C0 -- 15 off since round 30
+  -- byte-exact; Flatten, Ripple, zVid_Init and 0x3B0A70 measured with the optimiser's own log, `igdump --iro`):
+  - REUSING ONE VARIABLE ACROSS TWO LOOPS gives the later loop's use a temporary numbered after the loop passes'
+    temporaries (IRO_SplitLifetimes) -- the first use must be live, a dead first assignment does not split (0x3B1BF0's
+    counter and walk index in one `unsigned int`);
+  - a same-size signedness cast on a loop counter used as an index (`dst[(int)k]`, k unsigned) blocks MW's strength
+    reduction at no code cost -- PowerPC MW's IroLoop.c counts only widening casts as safe; indexing by the counter instead
+    of a pointer of your own puts MW's pointer after the rotated loop's guard, a pointer in the for-init is set before it;
+  - `#pragma opt_propagation` applies to the whole function as it stands at the function's end -- scoped around one
+    declaration it is ignored;
+  - MW hands stores to the back end in source order and the back end groups stores of the constant 0 with the function's
+    last run of them (zVid_Init's open); only `#pragma peephole off` stops it, `scheduling off` does not.
 - **Tells from the SEALs, round 55** (nine byte-exact: 0x54A3D0 -- open since round 51 --, CSealStats::Reset 0x545200,
   CSealCtrl::SetEnabled 0x598840, the turret seat 0x585CD0, CZSealBody::CalcGoalDir 0x5AE040, CLook::SetLookDir 0x5ADC70,
   InStateCarried 0x583AF0, InStateCarrying 0x583E70, UpdateQuadrant 0x5858A0; SetEyeLookDir's signature corrected):
