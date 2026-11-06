@@ -404,6 +404,7 @@ struct ButtonState {
      * c_str and keeps it across the assignment for the scale (SOCOM 1's data() call did the same);
      * read through `s` MW folds both into the spec's offsets, and the reference also gives the
      * target's saved registers (this s1, the spec s0) */
+    const char *TexName() const { return m_texName.c_str(); }
     void operator=(const ButtonState &s)
     {
         m_tex = s.m_tex;
@@ -418,6 +419,25 @@ struct ButtonState {
 
         m_texName = n.m_texName.c_str();
         m_scale = n.m_scale;
+    }
+
+    /* a look being built taken over (inline: the pop-up's command, through the button's setters --
+     * apart from LoadSpec's, as in SOCOM 1, whose two copies call different string members): the
+     * same fields, but the image's name through an accessor. The string's c_str is the argument of
+     * an inline statement, whose arguments wait a pass, so the accessor and the setter put it past
+     * the last pass: the target's six out-of-line calls of OVL1's copy 0x36E860; read through a
+     * parameter the scale folds into the look's frame offset */
+    void Set(const ButtonState &s)
+    {
+        m_tex = s.m_tex;
+        m_fadeMin = s.m_fadeMin;
+        m_fadeMax = s.m_fadeMax;
+        m_pulse = s.m_pulse;
+        m_period = s.m_period;
+        m_fadeTime = s.m_fadeTime;
+        m_color = s.m_color;
+        m_texName = s.TexName();
+        m_scale = s.m_scale;
     }
 
     CSaferStr m_texName;   // 0x0: the state's image (SOCOM 1's _TexName)
@@ -560,6 +580,12 @@ public:
     virtual void Slot27();
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     void SetCaptionStyle(const CPnt3D &color, bool pulse, float time, float min, float max);
+    /* the text's place in the button (inline: the pop-up's command, y loaded first; the name ours) */
+    void SetTextOffset(int x, int y)
+    {
+        _iTextX = x;
+        _iTextY = y;
+    }
 
     char *_szCaption;   // 0x18
     C2DString _strCaption;   // 0x1c
@@ -570,6 +596,12 @@ public:
 
 /* the animations (zanim.h's CZAnimMain and CZAnim: only what an action calls; ZAnim OVL1 bss
  * 0x414BB0) */
+class CZAnimArgList {
+public:
+    /* the index'th string argument (zanim.h's) */
+    char *GetCharP(int index);
+};
+
 class CZAnim {
 public:
     CZAnim *ActivateArg(int type, ...);
@@ -582,6 +614,9 @@ public:
      * zooms) */
     void Refresh(bool force);
     zdb::CNode *GetNode(int index, bool create);
+
+    unsigned char _0[0x18];
+    CZAnimArgList *m_arg_list;   // 0x18
 };
 
 class CZAnimMain {
@@ -645,6 +680,10 @@ public:
     virtual void SetCanHandleInput(bool val);
     virtual bool HandlePad(const CPad *pad, int port);
     void ShowState(ButtonState *state);
+    /* a look taken over (inline: the pop-up's command; the names ours) */
+    void SetPressedState(const ButtonState &s) { m_pressed.Set(s); }
+    void SetNormalState(const ButtonState &s) { m_normal.Set(s); }
+    void SetActiveState(const ButtonState &s) { m_active.Set(s); }
     virtual void Tick(float dT);
     virtual void SetActive();
     virtual void SetNormal();
@@ -826,6 +865,8 @@ public:
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual bool HandlePad(const CPad *pad, int port);
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     bool Load(zdb::CTextureRelocMgr *mgr);
 
@@ -839,7 +880,9 @@ public:
     CWrappedText m_text;   // 0xb0 (HandlePad empties it through slot 26)
     C2DFont *m_font;   // 0x300: the font (UiSys::LoadFromDesign stores it before Load)
     IPNT2D m_textOffset;   // 0x304
-    unsigned char _30c[0x32c - 0x30c];
+    int m_width;   // 0x30c: its command's WIDTH
+    int m_height;   // 0x310: its command's HEIGHT
+    unsigned char _314[0x32c - 0x314];
     C2D *m_32c;   // 0x32c
     CValve *m_330;   // 0x330: the valve the answer is set in (the two buttons drawn only with one)
     int m_choice;   // 0x334: the button chosen, 1 or 2
@@ -848,10 +891,10 @@ public:
     unsigned char _33a[0x340 - 0x33a];
     C2DButton m_340;   // 0x340: the first button
     IPNT2D m_340Offset;   // 0x780
-    unsigned char _788[0x790 - 0x788];
+    IPNT2D m_340Text;   // 0x788: its text's offset
     C2DButton m_790;   // 0x790: the second
     IPNT2D m_790Offset;   // 0xbd0
-    unsigned char _bd8[0xbe0 - 0xbd8];
+    IPNT2D m_790Text;   // 0xbd8: its text's offset
     bool m_keep;   // 0xbe0: the pop-up stays up after an answer
 };
 
@@ -2341,6 +2384,586 @@ int CRenderableString::GetZAnimCmdType(const char *name)
     return C2D::GetZAnimCmdType(name);
 }
 
+/* the map's node as the zooms move it (znode.h's CNode: its matrix's translation row, the
+ * position and scale accessors) and the pop-up's command places by its name */
+namespace zdb {
+class CNode {
+public:
+    float GetScale();
+    void SetScale(float s);
+    void SetPosition(float x, float y, float z);
+    void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
+    CPnt3D GetPosition() const { return *(const CPnt3D *)m_matrix.m_matrix[3]; }
+
+    CMatrix m_matrix;   // 0x0
+    unsigned char _40[0x90 - sizeof(CMatrix)];
+    char *m_name;   // 0x90
+};
+}
+
+/* a pop-up's button as its command keeps it (SOCOM 1's; 0x4C bytes each, the names ours) */
+struct CPopUpButtonCmd {
+    unsigned char m_tex[3];   // 0x0: the name indices of the pressed, the normal and the active look's images
+    int m_x;   // 0x4: POS
+    int m_y;   // 0x8
+    int m_width;   // 0xc: WIDTH
+    int m_height;   // 0x10: HEIGHT
+    unsigned char m_captionName;   // 0x14
+    unsigned short m_captionId;   // 0x16
+    int m_textX;   // 0x18: TEXTOFFSET
+    int m_textY;   // 0x1c
+    int m_color[3][3];   // 0x20: the looks' TEXT_COLOR
+    unsigned char m_centered;   // 0x44: HCENTERED
+    float m_scale;   // 0x48: SCALE
+};   // 0x4c bytes
+
+/* the pop-up's command (ParseZAnimCmd's: POPUP's, 0xEC bytes; the names ours) */
+class CPopUpAnimCmd : public C2DAnimCmdHdr {
+public:
+    unsigned char m_captionName;   // 0x10
+    unsigned short m_captionId;   // 0x12
+    unsigned char m_background;   // 0x14
+    int m_x;   // 0x18: POSITION
+    int m_y;   // 0x1c
+    int m_height;   // 0x20: HEIGHT
+    int m_width;   // 0x24: WIDTH
+    int m_yoffset;   // 0x28: YOFFSET
+    int m_xoffset;   // 0x2c: XOFFSET
+    float m_scale;   // 0x30: SCALE
+    int m_color[3];   // 0x34: COLOR
+    unsigned char _40[0x50 - 0x40];
+    unsigned char m_cancellable;   // 0x50: CANCELLABLE
+    unsigned char m_protected;   // 0x51: PROTECTED
+    unsigned char m_yesno;   // 0x52: YESNO
+    unsigned char m_valve;   // 0x53: VALVE
+    CPopUpButtonCmd m_yes;   // 0x54: YES
+    CPopUpButtonCmd m_no;   // 0xa0: NO
+};   // 0xec bytes
+
+const char *GetString(int id);
+int GetStringId(const char *name);
+bool zrdr_findPNT2D(const _zrdr *rdr, const char *tag, PNT2D *out);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+
+/* POPUP's command read from its block: its place, text, background, sizes, colour and flags, and
+ * with YESNO the valve and the two buttons, each with its place, text and three looks (SOCOM 1's
+ * CPopUpDialog::ParseZAnimCmd, 0x387C00 there, grown by the string ids). YES's lack of a caption
+ * clears NO's name, and either button's absence the dialog's own text offset's y, as the target does */
+C2DAnimCmdHdr *CPopUpDialog::ParseZAnimCmd(_zrdr *rdr)
+{
+    CPopUpAnimCmd *cmd = (CPopUpAnimCmd *)_calloc(1, sizeof(CPopUpAnimCmd), 0, 0);
+
+    cmd->header.timeless = 1;
+    cmd->header.data_size = sizeof(CPopUpAnimCmd);
+
+    PNT2D pos;
+
+    pos.y = 0.0f;
+    pos.x = 0.0f;
+    zrdr_findPNT2D(rdr, "POSITION", &pos);
+    cmd->m_x = pos.x;
+    cmd->m_y = pos.y;
+
+    const char *caption = zrdr_findstring(rdr, "CAPTION");
+
+    if (caption) {
+        unsigned short name, sid;
+        int id = GetStringId(caption);
+
+        if (id)
+            sid = id;
+        else {
+            name = ZAnim.m_CurAnim->AddName(caption);
+            sid = 0;
+        }
+        cmd->m_captionName = name;
+        cmd->m_captionId = sid;
+    }
+
+    const char *background = zrdr_findstring(rdr, "BACKGROUND");
+
+    if (background)
+        cmd->m_background = ZAnim.m_CurAnim->AddName(background);
+    zrdr_findint(rdr, "HEIGHT", &cmd->m_height, 1);
+    zrdr_findint(rdr, "WIDTH", &cmd->m_width, 1);
+    zrdr_findint(rdr, "XOFFSET", &cmd->m_xoffset, 1);
+    zrdr_findint(rdr, "YOFFSET", &cmd->m_yoffset, 1);
+    zrdr_findreal(rdr, "SCALE", &cmd->m_scale, 1);
+    cmd->m_no.m_scale = cmd->m_yes.m_scale = cmd->m_scale;
+
+    PNT3D color;
+
+    color.x = 128.0f;
+    color.y = 128.0f;
+    color.z = 128.0f;
+    zrdr_findPNT3D(rdr, "COLOR", &color);
+    cmd->m_color[0] = color.x;
+    cmd->m_color[1] = color.y;
+    cmd->m_color[2] = color.z;
+    cmd->_40[0] = 0;
+    if (zrdr_findtag(rdr, "CANCELLABLE"))
+        cmd->m_cancellable = 1;
+    else
+        cmd->m_cancellable = 0;
+    if (zrdr_findtag(rdr, "PROTECTED"))
+        cmd->m_protected = 1;
+    else
+        cmd->m_protected = 0;
+    if (!cmd->_40[0]) {
+        _zrdr *yesno = zrdr_findtag(rdr, "YESNO");
+
+        if (yesno) {
+            cmd->m_yesno = 1;
+
+            const char *valve = zrdr_findstring(yesno, "VALVE");
+
+            if (valve) {
+                cmd->m_valve = ZAnim.m_CurAnim->AddName(valve);
+                CValve::Create(valve, 0, VALVE_TEMP);
+            }
+
+            _zrdr *yes = zrdr_findtag(yesno, "YES");
+
+            if (yes) {
+                pos.y = 0.0f;
+                pos.x = 0.0f;
+                zrdr_findPNT2D(yes, "POS", &pos);
+                cmd->m_yes.m_x = pos.x;
+                cmd->m_yes.m_y = pos.y;
+                pos.y = 0.0f;
+                pos.x = 0.0f;
+                zrdr_findPNT2D(yes, "TEXTOFFSET", &pos);
+                cmd->m_yes.m_textX = pos.x;
+                cmd->m_yes.m_textY = pos.y;
+                zrdr_findint(yes, "WIDTH", &cmd->m_yes.m_width, 1);
+                zrdr_findint(yes, "HEIGHT", &cmd->m_yes.m_height, 1);
+                zrdr_findreal(yes, "SCALE", &cmd->m_yes.m_scale, 1);
+                const char *yesCaption = zrdr_findstring(yes, "CAPTION");
+
+                if (yesCaption) {
+                    unsigned short name, sid;
+                    int id = GetStringId(yesCaption);
+
+                    if (id)
+                        sid = id;
+                    else {
+                        name = ZAnim.m_CurAnim->AddName(yesCaption);
+                        sid = 0;
+                    }
+                    cmd->m_yes.m_captionName = name;
+                    cmd->m_yes.m_captionId = sid;
+                } else {
+                    cmd->m_yes.m_captionName = 255;
+                    cmd->m_no.m_captionName = 0;
+                }
+                _zrdr *active = zrdr_findtag(yes, "ACTIVE");
+
+                if (active) {
+                    ButtonState state;
+
+                    state.m_texName = zrdr_findstring(active, "IMAGE");
+                    zrdr_findPNT3D(active, "TEXT_COLOR", (PNT3D *)&state.m_color);
+                    zrdr_findreal(active, "PULSE", &state.m_period, 1);
+                    zrdr_findreal(active, "SCALE", &state.m_scale, 1);
+                    _zrdr *glow = zrdr_findtag(active, "TEXT_GLOW");
+
+                    if (glow) {
+                        float range[2];
+
+                        state.m_pulse = true;
+                        zrdr_findreal(glow, "RANGE", range, 2);
+                        state.m_fadeMin = range[0];
+                        state.m_fadeMax = range[1];
+                        zrdr_findreal(glow, "TIME", &state.m_fadeTime, 1);
+                    } else
+                        state.m_pulse = false;
+                    cmd->m_yes.m_color[0][0] = state.m_color.x;
+                    cmd->m_yes.m_color[0][1] = state.m_color.y;
+                    cmd->m_yes.m_color[0][2] = state.m_color.z;
+                    if (*state.m_texName.c_str())
+                        cmd->m_yes.m_tex[0] = ZAnim.m_CurAnim->AddName(state.m_texName.c_str());
+                    else
+                        cmd->m_yes.m_tex[0] = 255;
+                } else {
+                    cmd->m_yes.m_color[0][0] = cmd->m_yes.m_color[0][1] = cmd->m_yes.m_color[0][2] = cmd->m_yes.m_tex[0] = 255;
+                }
+                _zrdr *normal = zrdr_findtag(yes, "NORMAL");
+
+                if (normal) {
+                    ButtonState state;
+
+                    state.m_texName = zrdr_findstring(normal, "IMAGE");
+                    zrdr_findPNT3D(normal, "TEXT_COLOR", (PNT3D *)&state.m_color);
+                    zrdr_findreal(normal, "PULSE", &state.m_period, 1);
+                    zrdr_findreal(normal, "SCALE", &state.m_scale, 1);
+                    _zrdr *glow = zrdr_findtag(normal, "TEXT_GLOW");
+
+                    if (glow) {
+                        float range[2];
+
+                        state.m_pulse = true;
+                        zrdr_findreal(glow, "RANGE", range, 2);
+                        state.m_fadeMin = range[0];
+                        state.m_fadeMax = range[1];
+                        zrdr_findreal(glow, "TIME", &state.m_fadeTime, 1);
+                    } else
+                        state.m_pulse = false;
+                    cmd->m_yes.m_color[1][0] = state.m_color.x;
+                    cmd->m_yes.m_color[1][1] = state.m_color.y;
+                    cmd->m_yes.m_color[1][2] = state.m_color.z;
+                    if (*state.m_texName.c_str())
+                        cmd->m_yes.m_tex[1] = ZAnim.m_CurAnim->AddName(state.m_texName.c_str());
+                    else
+                        cmd->m_yes.m_tex[1] = 255;
+                } else {
+                    cmd->m_yes.m_color[1][0] = cmd->m_yes.m_color[1][1] = cmd->m_yes.m_color[1][2] = cmd->m_yes.m_tex[1] = 255;
+                }
+                _zrdr *pressed = zrdr_findtag(yes, "PRESSED");
+
+                if (pressed) {
+                    ButtonState state;
+
+                    state.m_texName = zrdr_findstring(pressed, "IMAGE");
+                    zrdr_findPNT3D(pressed, "TEXT_COLOR", (PNT3D *)&state.m_color);
+                    zrdr_findreal(pressed, "PULSE", &state.m_period, 1);
+                    zrdr_findreal(pressed, "SCALE", &state.m_scale, 1);
+                    _zrdr *glow = zrdr_findtag(pressed, "TEXT_GLOW");
+
+                    if (glow) {
+                        float range[2];
+
+                        state.m_pulse = true;
+                        zrdr_findreal(glow, "RANGE", range, 2);
+                        state.m_fadeMin = range[0];
+                        state.m_fadeMax = range[1];
+                        zrdr_findreal(glow, "TIME", &state.m_fadeTime, 1);
+                    } else
+                        state.m_pulse = false;
+                    cmd->m_yes.m_color[2][0] = state.m_color.x;
+                    cmd->m_yes.m_color[2][1] = state.m_color.y;
+                    cmd->m_yes.m_color[2][2] = state.m_color.z;
+                    if (*state.m_texName.c_str())
+                        cmd->m_yes.m_tex[2] = ZAnim.m_CurAnim->AddName(state.m_texName.c_str());
+                    else
+                        cmd->m_yes.m_tex[2] = 255;
+                } else {
+                    cmd->m_yes.m_color[2][0] = cmd->m_yes.m_color[2][1] = cmd->m_yes.m_color[2][2] = cmd->m_yes.m_tex[2] = 255;
+                }
+                if (zrdr_findtag(yes, "HCENTERED"))
+                    cmd->m_yes.m_centered = 1;
+                else
+                    cmd->m_yes.m_centered = 0;
+            } else {
+                cmd->m_yes.m_captionName = cmd->m_yes.m_tex[0] = cmd->m_yes.m_tex[1] = cmd->m_yes.m_tex[2] = 255;
+                cmd->m_yes.m_x = cmd->m_yes.m_y = cmd->m_yes.m_width = cmd->m_yes.m_height = 0;
+                cmd->m_yes.m_textX = m_340Text.y = 0;
+                cmd->m_yes.m_centered = 0;
+            }
+
+            _zrdr *no = zrdr_findtag(yesno, "NO");
+
+            if (no) {
+                pos.y = 0.0f;
+                pos.x = 0.0f;
+                zrdr_findPNT2D(no, "POS", &pos);
+                cmd->m_no.m_x = pos.x;
+                cmd->m_no.m_y = pos.y;
+                pos.y = 0.0f;
+                pos.x = 0.0f;
+                zrdr_findPNT2D(no, "TEXTOFFSET", &pos);
+                cmd->m_no.m_textX = pos.x;
+                cmd->m_no.m_textY = pos.y;
+                zrdr_findint(no, "WIDTH", &cmd->m_no.m_width, 1);
+                zrdr_findint(no, "HEIGHT", &cmd->m_no.m_height, 1);
+                zrdr_findreal(no, "SCALE", &cmd->m_no.m_scale, 1);
+                const char *noCaption = zrdr_findstring(no, "CAPTION");
+
+                if (noCaption) {
+                    unsigned short name, sid;
+                    int id = GetStringId(noCaption);
+
+                    if (id)
+                        sid = id;
+                    else {
+                        name = ZAnim.m_CurAnim->AddName(noCaption);
+                        sid = 0;
+                    }
+                    cmd->m_no.m_captionName = name;
+                    cmd->m_no.m_captionId = sid;
+                } else {
+                    cmd->m_no.m_captionName = 255;
+                    cmd->m_no.m_captionId = 0;
+                }
+                _zrdr *active = zrdr_findtag(no, "ACTIVE");
+
+                if (active) {
+                    ButtonState state;
+
+                    state.m_texName = zrdr_findstring(active, "IMAGE");
+                    zrdr_findPNT3D(active, "TEXT_COLOR", (PNT3D *)&state.m_color);
+                    zrdr_findreal(active, "PULSE", &state.m_period, 1);
+                    zrdr_findreal(active, "SCALE", &state.m_scale, 1);
+                    _zrdr *glow = zrdr_findtag(active, "TEXT_GLOW");
+
+                    if (glow) {
+                        float range[2];
+
+                        state.m_pulse = true;
+                        zrdr_findreal(glow, "RANGE", range, 2);
+                        state.m_fadeMin = range[0];
+                        state.m_fadeMax = range[1];
+                        zrdr_findreal(glow, "TIME", &state.m_fadeTime, 1);
+                    } else
+                        state.m_pulse = false;
+                    cmd->m_no.m_color[0][0] = state.m_color.x;
+                    cmd->m_no.m_color[0][1] = state.m_color.y;
+                    cmd->m_no.m_color[0][2] = state.m_color.z;
+                    if (*state.m_texName.c_str())
+                        cmd->m_no.m_tex[0] = ZAnim.m_CurAnim->AddName(state.m_texName.c_str());
+                    else
+                        cmd->m_no.m_tex[0] = 255;
+                } else {
+                    cmd->m_no.m_color[0][0] = cmd->m_no.m_color[0][1] = cmd->m_no.m_color[0][2] = cmd->m_no.m_tex[0] = 255;
+                }
+                active = zrdr_findtag(no, "NORMAL");
+
+                if (active) {
+                    ButtonState state;
+
+                    state.m_texName = zrdr_findstring(active, "IMAGE");
+                    zrdr_findPNT3D(active, "TEXT_COLOR", (PNT3D *)&state.m_color);
+                    zrdr_findreal(active, "PULSE", &state.m_period, 1);
+                    zrdr_findreal(active, "SCALE", &state.m_scale, 1);
+                    _zrdr *glow = zrdr_findtag(active, "TEXT_GLOW");
+
+                    if (glow) {
+                        float range[2];
+
+                        state.m_pulse = true;
+                        zrdr_findreal(glow, "RANGE", range, 2);
+                        state.m_fadeMin = range[0];
+                        state.m_fadeMax = range[1];
+                        zrdr_findreal(glow, "TIME", &state.m_fadeTime, 1);
+                    } else
+                        state.m_pulse = false;
+                    cmd->m_no.m_color[1][0] = state.m_color.x;
+                    cmd->m_no.m_color[1][1] = state.m_color.y;
+                    cmd->m_no.m_color[1][2] = state.m_color.z;
+                    if (*state.m_texName.c_str())
+                        cmd->m_no.m_tex[1] = ZAnim.m_CurAnim->AddName(state.m_texName.c_str());
+                    else
+                        cmd->m_no.m_tex[1] = 255;
+                } else {
+                    cmd->m_no.m_color[1][0] = cmd->m_no.m_color[1][1] = cmd->m_no.m_color[1][2] = cmd->m_no.m_tex[1] = 255;
+                }
+                active = zrdr_findtag(no, "PRESSED");
+
+                if (active) {
+                    ButtonState state;
+
+                    state.m_texName = zrdr_findstring(active, "IMAGE");
+                    zrdr_findPNT3D(active, "TEXT_COLOR", (PNT3D *)&state.m_color);
+                    zrdr_findreal(active, "PULSE", &state.m_period, 1);
+                    zrdr_findreal(active, "SCALE", &state.m_scale, 1);
+                    _zrdr *glow = zrdr_findtag(active, "TEXT_GLOW");
+
+                    if (glow) {
+                        float range[2];
+
+                        state.m_pulse = true;
+                        zrdr_findreal(glow, "RANGE", range, 2);
+                        state.m_fadeMin = range[0];
+                        state.m_fadeMax = range[1];
+                        zrdr_findreal(glow, "TIME", &state.m_fadeTime, 1);
+                    } else
+                        state.m_pulse = false;
+                    cmd->m_no.m_color[2][0] = state.m_color.x;
+                    cmd->m_no.m_color[2][1] = state.m_color.y;
+                    cmd->m_no.m_color[2][2] = state.m_color.z;
+                    if (*state.m_texName.c_str())
+                        cmd->m_no.m_tex[2] = ZAnim.m_CurAnim->AddName(state.m_texName.c_str());
+                    else
+                        cmd->m_no.m_tex[2] = 255;
+                } else {
+                    cmd->m_no.m_color[2][0] = cmd->m_no.m_color[2][1] = cmd->m_no.m_color[2][2] = cmd->m_no.m_tex[2] = 255;
+                }
+                if (zrdr_findtag(no, "HCENTERED"))
+                    cmd->m_no.m_centered = 1;
+                else
+                    cmd->m_no.m_centered = 0;
+            } else {
+                cmd->m_no.m_captionName = cmd->m_no.m_tex[0] = cmd->m_no.m_tex[1] = cmd->m_no.m_tex[2] = 255;
+                cmd->m_no.m_x = cmd->m_no.m_y = cmd->m_no.m_width = cmd->m_no.m_height = 0;
+                cmd->m_no.m_textX = m_790Text.y = 0;
+                cmd->m_no.m_centered = 0;
+            }
+        } else
+            cmd->m_yesno = 0;
+    } else
+        cmd->m_yesno = 0;
+    return cmd;
+}
+
+/* POPUP: the pop-up taken from its command -- text, background and place; with YESNO, the valve the
+ * answer goes to and the two buttons, each with three looks (the pressed one pulsing); any 2D object
+ * it held dropped (SOCOM 1's CPopUpDialog::TickZAnimCmd, 0x387020 there, grown by the string ids). */
+bool CPopUpDialog::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    CPopUpAnimCmd *cmd = (CPopUpAnimCmd *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    if (cmd) {
+        const char *background = anim->GetName(cmd->m_background);
+        const char *text = cmd->m_captionId ? GetString(cmd->m_captionId) : anim->GetName(cmd->m_captionName);
+
+        if (!strcmp(text, "INPUT_STRING"))
+            text = anim->m_arg_list->GetCharP(0);
+
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node_ref_index, false);
+
+        if (node && !strcmp("POPUP", node->m_name))
+            node->SetPosition(cmd->m_x, cmd->m_y, 0.0f);
+        m_width = cmd->m_width;
+        m_height = cmd->m_height;
+        m_textOffset.x = cmd->m_xoffset;
+        m_textOffset.y = cmd->m_yoffset;
+        m_339 = cmd->m_cancellable != 0;
+        m_keep = cmd->m_protected != 0;
+        if (m_330)
+            m_330 = 0;
+        if (cmd->m_yesno) {
+            const char *caption;
+            float w, h;
+
+            m_330 = CValve::Create(anim->GetName(cmd->m_valve), VALVE_TEMP);
+            m_choice = 1;
+
+            caption = (cmd->m_yes.m_captionId ? GetString(cmd->m_yes.m_captionId)
+                                                                : ZAnim.m_CurAnim->GetName(cmd->m_yes.m_captionName));
+            m_340._szCaption = (char *)caption;
+            if (caption) {
+                m_340._strCaption.SetString(caption, true);
+                m_340._strCaption.UpdatePos();
+            }
+            w = cmd->m_yes.m_width;
+            h = cmd->m_yes.m_height;
+            m_340._fWidth = w;
+            m_340._fHeight = h;
+            m_340._strCaption.m_scale = cmd->m_yes.m_scale;
+            m_340Offset.x = cmd->m_yes.m_x;
+            m_340Offset.y = cmd->m_yes.m_y;
+            m_340Text.x = cmd->m_yes.m_textX;
+            m_340Text.y = cmd->m_yes.m_textY;
+            m_340.SetTextOffset(m_340Text.x, m_340Text.y);
+
+            ButtonState state;
+
+            state.m_texName = ZAnim.m_CurAnim->GetName(cmd->m_yes.m_tex[0]);
+            state.m_tex = PrepTexture(state.m_texName.c_str(), m_mgr);
+            state.m_color.x = cmd->m_yes.m_color[0][0];
+            state.m_color.y = cmd->m_yes.m_color[0][1];
+            state.m_color.z = cmd->m_yes.m_color[0][2];
+            state.m_scale = cmd->m_yes.m_scale;
+            state.m_pulse = true;
+            state.m_fadeMin = 0.5f;
+            state.m_fadeMax = 1.0f;
+            state.m_fadeTime = 0.5f;
+            m_340.SetPressedState(state);
+
+            state.m_texName = ZAnim.m_CurAnim->GetName(cmd->m_yes.m_tex[1]);
+            state.m_tex = PrepTexture(state.m_texName.c_str(), m_mgr);
+            state.m_color.x = cmd->m_yes.m_color[1][0];
+            state.m_color.y = cmd->m_yes.m_color[1][1];
+            state.m_color.z = cmd->m_yes.m_color[1][2];
+            state.m_scale = cmd->m_yes.m_scale;
+            state.m_pulse = false;
+            m_340.SetNormalState(state);
+
+            state.m_texName = ZAnim.m_CurAnim->GetName(cmd->m_yes.m_tex[2]);
+            state.m_tex = PrepTexture(state.m_texName.c_str(), m_mgr);
+            state.m_color.x = cmd->m_yes.m_color[2][0];
+            state.m_color.y = cmd->m_yes.m_color[2][1];
+            state.m_color.z = cmd->m_yes.m_color[2][2];
+            state.m_scale = cmd->m_yes.m_scale;
+            state.m_pulse = false;
+            m_340.SetActiveState(state);
+
+            bool centered = cmd->m_yes.m_centered == 1;
+
+            m_340._strCaption.m_isCentered = centered;
+            m_340._bCaptionCentered = centered;
+
+            caption = (cmd->m_no.m_captionId ? GetString(cmd->m_no.m_captionId)
+                                                               : ZAnim.m_CurAnim->GetName(cmd->m_no.m_captionName));
+            m_790._szCaption = (char *)caption;
+            if (caption) {
+                m_790._strCaption.SetString(caption, true);
+                m_790._strCaption.UpdatePos();
+            }
+            w = cmd->m_no.m_width;
+            h = cmd->m_no.m_height;
+            m_790._fWidth = w;
+            m_790._fHeight = h;
+            m_790._strCaption.m_scale = cmd->m_no.m_scale;
+            m_790Offset.x = cmd->m_no.m_x;
+            m_790Offset.y = cmd->m_no.m_y;
+            m_790Text.x = cmd->m_no.m_textX;
+            m_790Text.y = cmd->m_no.m_textY;
+            m_790.SetTextOffset(m_790Text.x, m_790Text.y);
+
+            state.m_texName = ZAnim.m_CurAnim->GetName(cmd->m_no.m_tex[0]);
+            state.m_tex = PrepTexture(state.m_texName.c_str(), m_mgr);
+            state.m_color.x = cmd->m_no.m_color[0][0];
+            state.m_color.y = cmd->m_no.m_color[0][1];
+            state.m_color.z = cmd->m_no.m_color[0][2];
+            state.m_scale = cmd->m_no.m_scale;
+            state.m_pulse = true;
+            state.m_fadeMin = 0.5f;
+            state.m_fadeMax = 1.0f;
+            state.m_fadeTime = 0.5f;
+            m_790.SetPressedState(state);
+
+            state.m_texName = ZAnim.m_CurAnim->GetName(cmd->m_no.m_tex[1]);
+            state.m_tex = PrepTexture(state.m_texName.c_str(), m_mgr);
+            state.m_color.x = cmd->m_no.m_color[1][0];
+            state.m_color.y = cmd->m_no.m_color[1][1];
+            state.m_color.z = cmd->m_no.m_color[1][2];
+            state.m_scale = cmd->m_no.m_scale;
+            state.m_pulse = false;
+            m_790.SetNormalState(state);
+
+            state.m_texName = ZAnim.m_CurAnim->GetName(cmd->m_no.m_tex[2]);
+            state.m_tex = PrepTexture(state.m_texName.c_str(), m_mgr);
+            state.m_color.x = cmd->m_no.m_color[2][0];
+            state.m_color.y = cmd->m_no.m_color[2][1];
+            state.m_color.z = cmd->m_no.m_color[2][2];
+            state.m_scale = cmd->m_no.m_scale;
+            state.m_pulse = false;
+            m_790.SetActiveState(state);
+
+            centered = cmd->m_no.m_centered == 1;
+            m_790._strCaption.m_isCentered = centered;
+            m_790._bCaptionCentered = centered;
+
+            m_340.SetActive();
+            m_790.SetNormal();
+        }
+        if (m_32c) {
+            delete m_32c;
+            m_32c = 0;
+        }
+        m_text.m_scale = cmd->m_scale;
+        m_text.SetWidth(m_width - m_textOffset.x * 2);
+        m_text.SetString(text, false);
+        m_text.Update();
+        m_text.SetColor(cmd->m_color[0], cmd->m_color[1], cmd->m_color[2]);
+        zdb::CTexHandle *tex = PrepTexture(background, m_mgr);
+
+        C2DBitmap::Load(0.0f, 0.0f, m_width, m_height, tex);
+    }
+    return true;
+}
+
 /* the dialog's commands: Caption and Background (its count, as the image has it, one) */
 int CPopUpDialog::GetZAnimCmdType(const char *name)
 {
@@ -2466,21 +3089,6 @@ public:
     int m_accel;   // 0x18
     int m_limit;   // 0x1c
 };   // 0x20 bytes
-
-/* the map's node as the zooms move it (znode.h's CNode: its matrix's translation row, the
- * position and scale accessors) */
-namespace zdb {
-class CNode {
-public:
-    float GetScale();
-    void SetScale(float s);
-    void SetPosition(float x, float y, float z);
-    void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
-    CPnt3D GetPosition() const { return *(const CPnt3D *)m_matrix.m_matrix[3]; }
-
-    CMatrix m_matrix;   // 0x0
-};
-}
 
 /* the menu being shown (zui.cpp's UiGetCurMenu, 0x36A200, named by the integrator after the UI's round 18): a node, its vtable
  * pointer at 0x60 as CNode's -- slot +0x24 the child found by name (znode.h's order) */
