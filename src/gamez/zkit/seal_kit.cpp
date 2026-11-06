@@ -856,6 +856,7 @@ public:
     virtual void Virtual28();
     virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
+    virtual bool IsRemote() const;   /* +0x34 */
 };
 
 /* the local player as the recoil's screen scale reads it: the point its view starts from and the
@@ -876,6 +877,11 @@ static inline bool KitIsPlayer(CKitBody *body)
 static inline bool KitIsAi(CKitBody *body)
 {
     return body->m_control ? ((CKitSealCtrl *)body->m_control)->IsAi() : false;
+}
+
+static inline bool KitIsRemote(CKitBody *body)
+{
+    return body->m_control ? ((CKitSealCtrl *)body->m_control)->IsRemote() : false;
 }
 
 /* the kit set up (OVL2 0x5C7E00; SOCOM 1's Init, 0x2AE9E0, call for call): the reload, empty-click
@@ -2443,6 +2449,90 @@ float CZKit::GetFireDelay()
     if (fm == AUTOFIRE)
         return 0.8f * delay;
     return 0.2f * delay;
+}
+
+extern "C" {
+/* (OVL1's sequence weight: the SEAL's weapon sequence at 0x1160 -- SOCOM 1's WillFireWeapon's) */
+float Weight__9CSequenceFv(void *seq);
+}
+/* (whether the game is online: OVL1 data, the SEALs' name) */
+extern unsigned char data_0045A0C1;
+
+/* whether the current item fires this frame: the trigger up (or let go) ends the burst and a player's lock sound; a held trigger or
+ * a waiting raise fires once the weapon is up -- a direct-fire weapon raised first --, the burst not spent, the SEAL able
+ * and the fire delay out; rounds in the magazine (or no ammunition to use); under six explosives laid online (OVL2
+ * 0x5C0AE0; SOCOM 1's WillFireWeapon: CAiSDeploy::Tick and 0x563E10 call it) */
+bool CZKit::WillFireWeapon()
+{
+#pragma opt_propagation off
+    int shots;
+
+    if (!m_item[m_selected_item])
+        return false;
+    EQUIP_IDTYPE t = (EQUIP_IDTYPE)m_item[m_selected_item]->GetIDType();
+    bool notThrown = false;
+
+    if (t != IDTYPE_GRENADE && t != IDTYPE_EXPLOSIVE)
+        notThrown = true;
+    unsigned char trigger = ((CKitTriggerView *)((CKitBody *)m_body)->m_control)->m_trigger;
+
+    if (trigger == 0) {
+        m_burst_count = 0;
+        if (KitIsPlayer((CKitBody *)m_body) && m_lase_inst2) {
+            m_lase_inst2->Stop();
+            CSndInstance::ReleaseSoundInstance(m_lase_inst2);
+            m_lase_inst2 = 0;
+        }
+    } else if (trigger == 3) {
+        m_burst_count = 0;
+        if (KitIsPlayer((CKitBody *)m_body) && m_lase_inst2) {
+            m_lase_inst2->Stop();
+            CSndInstance::ReleaseSoundInstance(m_lase_inst2);
+            m_lase_inst2 = 0;
+        }
+    } else {
+        shots = GetShotCount();
+        GetFireDelay();
+        bool go = true;
+
+        if (!(trigger == 1 || trigger == 2 ? go : false) && !m_waiting_to_raise)
+            go = false;
+        if (go && !m_waiting_to_raise && Weight__9CSequenceFv((char *)m_body + 0x1160) < 1.0f && m_item[m_selected_item]->IsDirectFire()) {
+            m_waiting_to_raise = true;
+            return false;
+        }
+        if (go) {
+            if (!(m_item[m_selected_item]->IsDirectFire() && Weight__9CSequenceFv((char *)m_body + 0x1160) < 1.0f)
+                || m_item[m_selected_item]->GetIDType() == 205) {
+                if (m_burst_count < shots && CanFire__10CZSealBodyFbb(m_body, true, notThrown) && m_81c <= 0.0f) {
+                    if (CurMagHasAmmo() || !UsesAmmo(m_selected_item)) {
+                        bool ok;
+
+                        if (m_item[m_selected_item] && m_item[m_selected_item]->GetIDType() != 121
+                            && m_item[m_selected_item]->GetIDType() != 151 && m_item[m_selected_item]->GetIDType() != 171
+                            && m_item[m_selected_item]->GetIDType() != 185)
+                            ok = true;
+                        else {
+                            CZProjectileList *list = CZWeapon::m_pProjectilelist;
+
+                            if (list && data_0045A0C1 && !KitIsRemote((CKitBody *)m_body)
+                                && list->GetNumExplosives(((CEntity *)m_body)->m_id) >= 6)
+                                ok = false;
+                            else
+                                ok = true;
+                        }
+                        if (ok) {
+                            if (CurWeaponIsLauncherMode() && !CurItemHasAmmo())
+                                return false;
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+#pragma opt_propagation reset
 }
 
 /* the rounds a pull of the trigger fires: one without ammunition, none on safety, three in burst,

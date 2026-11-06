@@ -223,6 +223,8 @@ public:
     /* the rounds a pull of the trigger fires, and the wait after (OVL2 0x5C0940 -- new in SOCOM II,
      * SOCOM 1's WillFireWeapon did it inline: the name ours -- and 0x5C09F0, SOCOM 1's) */
     int GetShotCount();
+    /* whether the current item fires this frame (OVL2 0x5C0AE0; SOCOM 1's) */
+    bool WillFireWeapon();
     float GetFireDelay();
     /* the wait before the next shot set, -1 for the item in hand's own: its second wait when asked,
      * else its first -- the weapons' shared record told (OVL2 0x5C32B0, new in SOCOM II: CSealCtrl's

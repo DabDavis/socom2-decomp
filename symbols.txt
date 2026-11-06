@@ -11015,7 +11015,7 @@
 0x005C0940 0xA8 GetShotCount__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the rounds a trigger pull fires -- 1 without ammunition, 0 on safety, 3 in burst, 10000 in auto -- SOCOM 1's WillFireWeapon's inline switch moved out (new in SOCOM II, the name ours); called beside GetFireDelay by 0x5C0AE0 and 0x5C0FD0
 0x005C09F0 0xD8 GetFireDelay__5CZKitFv  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's GetFireDelay -- the item's wait (0.1 without one), 1.0 on safety, 0.8x in burst and auto, 0.2x otherwise -- the item through GetCurItem; the shot functions 0x5C0AE0 and 0x5C0FD0 call it where SOCOM 1's WillFireWeapon and Tick do
 0x005C0AD0 0x8 func_005C0AD0  # OVL2
-0x005C0AE0 0x4EC func_005C0AE0  # OVL2
+0x005C0AE0 0x4EC WillFireWeapon__5CZKitFv  # OVL2; by hand (the kit lane, round 60): SOCOM 1's WillFireWeapon by its body (the trigger, GetShotCount, CanFire, CurMagHasAmmo) and place after GetFireDelay; CAiSDeploy::Tick calls it
 0x005C0FD0 0x690 func_005C0FD0  # OVL2
 0x005C1660 0x1A0 PreTick__5CZKitFf  # OVL2; s1:callee by hand (the kit lane, round 26): CZSealBody::WeaponsTick (0x5DFC80) calls it last with the frame time, from the same instruction as SOCOM 1's WeaponsTick calls PreTick__5CZKitFf (0x2AA190, 0x17C there)
 0x005C1800 0x170 Apply_LensEffects__5CZKitFbP6CPnt3D  # OVL2; SOCOM 1's CZKit::Apply_LensEffects (kit round 38: the demo's 0x2AA310 between PreTick and TickFlashlight, the same work -- the camera's fog colour at m_world's camera +0xD0, the lens bit m_lensfx_enable at byte 1 bit 0 set in both arms -- the colour a CPnt3D *, HandleNewZoom filling three floats; a0 the kit, thezoom.cpp's HoldLensFx passing &m_seal->m_kit; 19 callers in CameraZoom and the HUD's map); seal_kit.cpp's, byte-exact
