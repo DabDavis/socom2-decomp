@@ -7,7 +7,8 @@
  * through its placeholders) and a CD file opened by its sector (the DNAS client's).
  *
  * The hard disk's game partition: HddFindFiles 0x39CE80, HddMountGame 0x39D050 (the UI lane's round
- * 31), WriteHddIcon and LoadHddIconFile (OPEN, its note). Not written: 0x39D910, 0x39DDB0 and
+ * 31), WriteHddIcon and LoadHddIconFile (OPEN, its note), HddUnmountGame, HddRebootCallback and
+ * HddRegisterReboot (the UI lane's round 34). Not written: 0x39DDB0 and
  * 0x39DFC0 (byte-exact as drafts). */
 
 #include <stdio.h>

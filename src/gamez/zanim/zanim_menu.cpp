@@ -334,7 +334,13 @@ namespace {
  * found flag in either loop's condition with a break (SequenceRunning's shape: 0x118-0x134, the
  * blocks moved), the end through reference accessors on the list (the size `unsigned int &`, the
  * data's reference, a const local) -- MW hoists the end whatever its spelling, so the target's
- * loop holds something that blocks the hoist (build/scratch/core/v_iseq2.py, v_iseq3.py) */
+ * loop holds something that blocks the hoist (build/scratch/core/v_iseq2.py, v_iseq3.py). Round 34
+ * (the UI lane): the target's test is a MATERIALISED `!(i == end)` (xor, sltiu, xori before the
+ * branch), a class iterator's operator!=; an inline `!(a == b)` over the iterators by const
+ * reference gives that test (d 20, still 0x120: end() hoisted), by value 0x178; with it, `#pragma
+ * opt_common_subs off` gives the size (0x138, 34 off), opt_propagation off 0x130, opt_loop_invariants
+ * off 0x118 -- so the original iterator is a class whose comparison re-reads the vector's end
+ * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py) */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
@@ -1102,7 +1108,16 @@ public:
  * lane's round 33): the word a CSaferStr, not a std::string, gives the target's this-tested base
  * destructor with flag 0 (+8 bytes); `slot` defined ahead of the list gives the early `addiu
  * s7,s1,2` (+4); a Word() accessor, `Done()` as `== 0`, a temporary item or a copied word change
- * nothing. Next: igdump/igreplay on the word's address variables */
+ * nothing. Round 34, read off igdump's PCode: it is not a numbering -- the target has ONE MORE
+ * NODE. Its loop guard reads the position straight off the frame (`lw v0,164(sp)`, its address
+ * folded) and its c_str() takes a fresh &m_word hoisted to the preheader (s8, s6 = +8, s2 = +1),
+ * while Next() and the bottom test share the constructor's member addresses (s1, s0); ours shares
+ * the constructor's addresses everywhere (r63, r58). Tried, none closer than 111: a reference /
+ * pointer to the word in or before the loop (128-155), the c_str in a named local, a for loop,
+ * `while (m_text[m_pos])` in place, Done() const / with locals / as an if, Word() accessors (by
+ * reference or c_str), the constructor's members set in its body, `for (;;) { if (Done()) break;`
+ * (107, 0x45C), an `if (!Done()) do ... while (!Done())` (86, 0x46C: the guard then materialised);
+ * build/scratch/ui/v_sche*.py */
 bool SelCharsHaveEquip(int equip, C2DAnimCmdHdr *hdr)
 {
     const char *text = ArgText(ArgName(hdr));
