@@ -1475,6 +1475,79 @@ def test_igdump_records_mws_colouring():
             ck(why in str(e), f"{unit.name} refused: {why} ({str(e)[:80]})")
 
 
+IG_LONG_FIXTURE = """extern "C" int ig_g(int);
+
+struct CIgProbe {
+    int buildOrderedCellAtomList(int a);
+};
+
+int CIgProbe::buildOrderedCellAtomList(int a)
+{
+    int first = ig_g(a);
+    return first + ig_g(first);
+}
+
+extern "C" int ig_a_function_named_past_24_characters(int a)
+{
+    int first = ig_g(a);
+    return first + ig_g(first);
+}
+"""
+
+
+def test_igdump_names_every_record():
+    """tools/igdump.py names every record (GCC round 39a, the engine core's round 21: igdump wrote no
+    name for buildOrderedCellAtomList, so `igreplay -f` selected it only as `-f '^$' --cls 0 -r N`):
+    names are read in full -- the reader took 24 bytes and refused a name that filled them -- and each
+    record carries the function's mangled name too (`link`, the Object's +0x30). A C++ method named in
+    exactly 24 characters and a C function in 38 are named, bare and mangled; `-f` searches the bare
+    name with igdump's `@0xK` suffix stripped, `--link` the mangled one, in igdump and igreplay alike;
+    a static initialiser (its name blank-padded in its node) is named. The negative: with the old
+    reader's 24 bytes (IGDUMP_NAME_MAX=24) both records are unnamed again and `-f` selects none."""
+    import contextlib
+    import io
+    import igdump
+    import igreplay as R
+    src = _ig_fixture("ig_long.cpp", IG_LONG_FIXTURE)
+    want = {"buildOrderedCellAtomList": "buildOrderedCellAtomList__8CIgProbeFi",
+            "ig_a_function_named_past_24_characters": "ig_a_function_named_past_24_characters"}
+    recs, out = igdump.dump(src, BUILD / "ig_long.jsonl")
+    got = {igdump.proc_name(r): r.get("link") for r in recs if r["cls"] == 0}
+    ck(got == want, f"both functions named, bare and mangled ({got})")
+    ck(all(r.get("proc") for r in recs), "every record named")
+    ck(len(igdump.select(recs, "^buildOrderedCellAtomList$", 0)) == 1
+       and len(igdump.select(recs, None, 0, link=r"^buildOrderedCellAtomList__8CIgProbeFi$")) == 1
+       and not igdump.select(recs, None, 0, link=r"^buildOrderedCellAtomList$"),
+       "-f searches the bare name, --link the mangled one")
+
+    def replay(*args):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = R.main([str(out), "--cls", "0", *args])
+        return rc, buf.getvalue()
+    rc, text = replay("-f", "^buildOrderedCellAtomList$")
+    ck(rc == 0 and "1 of 1 records replay exactly" in text and "] buildOrderedCellAtomList cls 0" in text,
+       f"igreplay -f selects it by its bare name ({text.strip()[-80:]!r})")
+    rc, text = replay("--link", "^ig_a_function_named_past_24_characters$")
+    ck(rc == 0 and "1 of 1 records replay exactly" in text, f"igreplay --link selects by the mangled name")
+    srecs, _ = igdump.dump(HERE / "src" / "gamez" / "zmath" / "zmath_pnt3d.cpp", BUILD / "ig_pnt3d.jsonl")
+    sinit = [r for r in srecs if igdump.proc_name(r).startswith("__sinit")]
+    ck(sinit and all(igdump.proc_name(r) == r.get("link") == "__sinit_zmath_pnt3d.cpp" for r in sinit)
+       and all(r.get("proc") for r in srecs), f"a static initialiser named ({len(sinit)} records)")
+    old = os.environ.get("IGDUMP_NAME_MAX")
+    os.environ["IGDUMP_NAME_MAX"] = "24"
+    try:
+        orecs, _ = igdump.dump(src, BUILD / "ig_long24.jsonl")
+    finally:
+        if old is None:
+            os.environ.pop("IGDUMP_NAME_MAX", None)
+        else:
+            os.environ["IGDUMP_NAME_MAX"] = old
+    ck(len(orecs) == len(recs) and not any(r.get("proc") for r in orecs)
+       and not igdump.select(orecs, "^buildOrderedCellAtomList$", 0),
+       "negative: the old 24-byte reader leaves both unnamed and -f selects nothing")
+
+
 def test_igreplay_replays_and_predicts():
     """tools/igreplay.py (GCC round 32a: the MSL lane's round-11 igreplay.py, the game states' round-37
     relabel.py and brute.py, the AI core's round-28 nbdeg.py): MW's simplify/colour replayed offline
