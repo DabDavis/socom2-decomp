@@ -3606,7 +3606,7 @@ extern int data_0066AFE8;
 extern float data_00650170;
 extern float data_00650168;
 bool func_0056A8E0(CEntity *vehicle, const CPnt3D *pos, float near);
-void func_00569550(CSealCtrlAi *ai, unsigned int id);
+bool func_00569550(CSealCtrlAi *ai, unsigned int id);
 }
 
 /* the entity as a vehicle (type 4, CVehicle's), if it is one (an inline, the name ours) */
@@ -3643,6 +3643,74 @@ extern "C" unsigned int func_0056A760(CSealCtrlAi *ai, const CPnt3D *pos, bool t
             func_00569550(ai, id);
     }
     return id;
+}
+
+extern "C" {
+/* (OVL2 data: how long the AI's dodge of a vehicle lasts, read as a variable) */
+extern float data_006501A0;
+}
+
+/* whether the current state is of kind 2 with flag 0x400 (InKind2Flag20's shape) */
+static inline bool IsKind2Flag400(CAiState *s)
+{
+    bool r = false;
+
+    AI_STATE st = s->m_state;
+
+    if (st == (AI_STATE)2 && (s->m_flags & 0x400))
+        r = true;
+    return r;
+}
+
+static inline bool InKind2Flag400(const CAiStateStack &st)
+{
+    CAiState *s;
+
+    if (st.size() == 0)
+        s = 0;
+    else
+        s = st.GetState();
+
+    return s ? IsKind2Flag400(s) : false;
+}
+
+/* the state of kind 2 on top, or none (an inline: the state's kind tested) */
+static inline CAiState *AsKind2(CAiState *s)
+{
+    return s && s->m_state == (AI_STATE)2 ? s : 0;
+}
+
+/* a vehicle by its id dodged: alive and moving, and not already dodged (a kind-2 state with flag
+ * 0x400 on top), a cell found away along its heading from the SEAL's (0x559580, mask 0xD0004, ten
+ * cells), the kind-2 state pushed with flags 0x404 and 4 and its time, and the cell made the avoid
+ * goal (0x570F90 told with 1 when it is); whether it was dodged (OVL2 0x569550, new in SOCOM II:
+ * 0x56A760 and 0x567900 call it; the name ours) */
+extern "C" bool func_00569550(CSealCtrlAi *ai, unsigned int id)
+{
+    bool r = false;
+    const CAiMapLoc *at = &ai->m_entity->m_mapLocValid;
+    CEntity *v = AsVehicle(CEntity::m_list.GetEntityById(id));
+
+    if (v && v->m_isAlive) {
+        CPnt3D dir = v->m_velW;
+
+        if (dir.Normalize() > 0.0f && !InKind2Flag400(ai->m_stateStack)) {
+            CAiMapLoc loc = CAiMapLoc::invalid;
+
+            func_00559580(at, &dir, 0xD0004, &loc, 10, 0);
+            if (ai->PushAiState((AI_STATE)2, 3)) {
+                CAiState *st = AsKind2(ai->GetAiState());
+
+                st->SetFlags(0x404, 0);
+                st->m_time = data_006501A0;
+                st->SetFlags(4, 0);
+                if (ai->SetGoalPos(GOAL_AVOID, loc, 5.0f))
+                    func_00570F90(ai, 1.0f);
+            }
+            r = true;
+        }
+    }
+    return r;
 }
 
 extern "C" {

@@ -1886,7 +1886,13 @@ extern "C" bool func_0057F7D0(CZSealBody *seal)
  * or false first) is 5 off with the `andi` on IsCurrentBlend's result, and the pad then comes free (the
  * extra word lands the call block on its 8-byte boundary) -- so the layout is an inline's, and only
  * the inline's masking of a bool call result is wrong; else / else-if / block forms, `while`, `== 0`,
- * `return 0`, a bool local, the kit's round-57 `ok` chain (9) and an `&&` join (0x70) don't move it. */
+ * `return 0`, a bool local, the kit's round-57 `ok` chain (9) and an `&&` join (0x70) don't move it.
+ * Round 57 (build/scratch/seal-r57/v_f530*.py): explicit gotos (`goto call;` after the test, the false
+ * return between) are laid out the plain function's way too (7) -- so it is MW's branch optimiser
+ * inverting a branch over the return block, not the front end's if-return pairing; a label before the
+ * call's return and the call through an inline wrapper (7), a `== false` ternary (0x80), the whole-body
+ * inline typed int or unsigned char, or the outer typed int (0x84), and the tests as an inline
+ * returning the SEAL or 0 (0x94) are no better; the kit's CSE-off pragma round the body is 0x88. */
 extern "C" bool func_0057F530(CZSealBody *seal)
 {
     if (seal->IsRemote())
