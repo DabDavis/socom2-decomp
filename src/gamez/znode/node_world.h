@@ -102,6 +102,15 @@ inline void CAssetLib::RemoveModel(CModel *model)
     }
 }
 
+/* the library's own model of a name taken off (the world's round 29, ~CModel's: the tree a level
+ * taller than RemoveModel's, so only this body is inlined -- RemoveModel and GetModel are called,
+ * their out-of-line copies 0x318AE0 and 0x318C30 following ~CModel last call first; written out
+ * in ~CModel, MW inlines RemoveModel's body there. The name ours) */
+inline void CAssetLib::RemoveModel(const char *name)
+{
+    RemoveModel(GetModel(name));
+}
+
 /* the recycle bin emptied (SOCOM 1's) */
 void EmptyAssetRecycleBin();
 

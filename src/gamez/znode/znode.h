@@ -859,7 +859,9 @@ public:
     int ReadChildren(CSaveLoad &io);
     static CNode *CreateInstance(CSaveLoad &io);
     void CopyParams(CNode *to) const;
-    void SetModel(CModel *model);
+    /* the model an instance (type 2) or a cross-reference (type 3, the model its one child) is of:
+     * false for any other node (SOCOM 1's; node_model.cpp's first row, 0x3178A0 -- `li v0,1`) */
+    bool SetModel(CModel *model);
     void RemoveFromParent();
     bool Rendered(int frames);
     void SetDynamic(bool on, bool recurse);
@@ -1244,6 +1246,9 @@ public:
     /* a model taken off the list again (inline, node_world.h defines it; the name ours) and a model
      * by name off the list (inline: ~CModel calls its out-of-line copy, 0x318C30; the name ours) */
     inline void RemoveModel(CModel *model);
+    /* the library's own model of that name taken off (inline, node_world.h: ~CModel's, the world's
+     * round 29; the name ours) */
+    inline void RemoveModel(const char *name);
     CModel *GetModel(const char *name) { return m_models.GetModel(name); }
     bool IsNamed(const char *name);
     char *RootName();

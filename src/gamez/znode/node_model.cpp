@@ -11,19 +11,17 @@ namespace zdb {
 /* a model let go of: taken off its library (the library's copy of it found by name), each
  * instance and cross-reference of it untied (SetModel(0) inlined: a cross-reference's children
  * deleted, the model and its name cleared, the dead arm of the name's ternary left in), the list
- * emptied (SOCOM 1's).
- * OPEN, 0x1B4 of 0x1AC: the target calls RemoveModel and CAssetLib::GetModel out of line (their
- * copies 0x318AE0 and 0x318C30 follow it, last call first) and inlines SetModel(0) (the dead
- * `lw a1,144(zero)` of its name ternary); this inlines RemoveModel whole and calls SetModel. With
- * both inlines defined after ~CModel instead (and node_io.cpp keeping its own RemoveModel) the size
- * is the target's, but RemoveModel's body is inlined one level, GetModel whole and SetModel still
- * called (73 off) -- MW spends ~CModel's inlining on the CAssetLib inlines first either way */
+ * emptied (SOCOM 1's). The library's copy taken off by name through RemoveModel(const char *),
+ * whose tree is taller than the level: its body inlined, RemoveModel(CModel *) and GetModel called
+ * (their copies 0x318AE0 and 0x318C30 follow, last call first) -- written out here, MW inlines
+ * RemoveModel's body (0x1B4 of 0x1AC, round 28). SetModel is this unit's own (its last function,
+ * generated first), inlined */
 CModel::~CModel()
 {
     CAssetLib *lib = m_AssetLib;
 
     if (lib) {
-        lib->RemoveModel(lib->GetModel(m_name));
+        lib->RemoveModel(m_name);
         m_AssetLib = 0;
     }
     if (m_list.size()) {
@@ -226,6 +224,24 @@ CNode *CNode::Delete(CNode *node)
     }
     delete node;
     return 0;
+}
+
+/* the node's model set: a cross-reference's children replaced by the model, an instance's model
+ * and model name -- only those two types (SOCOM 1's, the image's first function of the unit; its
+ * draft was 0x3178A0's). Defined last, so generated first: ~CModel inlines it, the dead `lw a1,
+ * 144(zero)` of its name's ternary left in */
+bool CNode::SetModel(CModel *model)
+{
+    if (m_type != 3 && m_type != 2)
+        return false;
+    if (m_type == 3) {
+        DeleteChildren();
+        if (model)
+            AddChild(model);
+    }
+    m_model = model;
+    SetModelname(model ? model->m_name : 0);
+    return true;
 }
 
 }

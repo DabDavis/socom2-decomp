@@ -1186,16 +1186,18 @@ void CNode::SetModelname(const char *name)
 
 /* the regions (a bit for the node's own) and the lights handed down the tree: a light keeps the
  * lights, anything else the regions, a type-10 node neither and nothing below it. Over a copy
- * of the child list, its size read once; how many lights below took some.
- * OPEN (4 differing): the mask and the constant 1 take each other's registers (a1, v1) -- not
- * moved by the statements' order, either spelling of the ORs, locals, inline accessors, or the
- * permuter's 21,048 candidates */
+ * of the child list, its size read once; how many lights below took some. The lights' OR first
+ * and the bitfield converted to int: MW then generates the shift amount ahead of the constant 1
+ * (igreplay: the mask's load numbered below the field's extract, the 1 above it), which gives the
+ * target's a1 / v1 -- the bare field, in either statement order, generates the 1 first (4-7 off;
+ * `1U <<`, a local one, `regions = regions | ...` alike); `(unsigned int)` and an `int` local
+ * match as well */
 int CNode::InheritRegionMasks(unsigned int regions, unsigned int lights)
 {
     if (m_type == 10)
         return 0;
-    regions |= 1 << m_region_shift;
     lights |= m_region_mask;
+    regions |= 1 << (int)m_region_shift;
     if (m_type == 8)
         m_region_mask = lights;
     else
