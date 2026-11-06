@@ -6,7 +6,7 @@
  * lines' test and the line's constructor and destructor (round 37); ClosePauseMenu (round 51: its old
  * menu state SOCOM 1's MENU_STATE m_oldmenustate -- a signed char field cast to the enum loads with lbu); TickOffState (round 59: the
  * unit's first function, 0x2011F0, as SOCOM 1's; HudTick 0x201690, Init 0x202520, HandleSelectionInput
- * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten); OpenPauseMenu (round 65). Defined in reverse of their
+ * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten); OpenPauseMenu and HandleSelectionInput (round 65). Defined in reverse of their
  * image order (-inline deferred): the unit ends with the lines' test 0x205A70, the line's
  * constructor 0x205970 (generated before the menu's constructor, which takes its address) and the
  * menu's constructor 0x205800. */
@@ -73,7 +73,7 @@ public:
     bool IsSelectable(signed char line);
     /* the menu closed: the start button opens it (SOCOM 1's TickOffState, 0x2011F0), the faded
      * parts fade out; and the menu's tick, set-up, pad and opening (SOCOM 1's HudTick, Init,
-     * and HandleSelectionInput: 0x201690, 0x202520, 0x2041E0, unwritten) */
+     * HandleSelectionInput 0x2041E0, OpenPauseMenu 0x204A40; HudTick 0x201690 and Init 0x202520 unwritten) */
     void TickOffState(const CPad &pad, float dT);
     void HudTick(CPad *pad, float dT);
     void Init();
@@ -157,6 +157,7 @@ class CHUD {
 public:
     void On();
     void Off();
+    static class CZSealBody *GetHUDOwner();
 
     unsigned char _0[0x11c90];
     CZNewHudMap *m_map;   // 0x11c90
@@ -306,12 +307,28 @@ public:
 extern CZLANLobby data_0044FE10;
 
 /* a valve (zvalve.h's): its value a 16-bit field */
+enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
+enum VALVE_STATE { VALVE_SAME, VALVE_ON, VALVE_OFF };
+
 class CValve {
 public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
     static CValve *GetByName(const char *name);
+    void MakeCallbacks(VALVE_STATE state);
+    /* the value set, the callbacks told when it turned on or off (zanim.h's) */
+    void SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME)
+            MakeCallbacks(state);
+    }
 
     char *m_name;   // 0x0
-    unsigned int m_value : 16;   // 0x4
+    unsigned short m_value;   // 0x4
 };
 
 /* whether a line can be chosen (0x205A70, the unit's last function; the name ours): online, the
@@ -740,6 +757,180 @@ void CZPauseTest::OpenPauseMenu()
     m_be0 = -1;
     if (m_bd0)
         m_bd0->Notify(0, 255);
+}
+
+/* the valve the quit confirmation sets (no row name yet); the word the delete-from-map line clears
+ * (no row name yet); the voice object and its modulation (hud_mpinfobox.cpp's data_0045B718) */
+extern CValve *data_0043668C;
+extern int data_003DC418;
+extern void *data_0045B718;
+extern "C" void func_0030E5A0(void *voice, bool off);
+
+void hudToggleHelpWindows();
+void EnableExternalWhispers(bool on);
+void SetRumbleOn(bool on);
+void ToggleFireModeSwap();
+
+/* the pad, with the menu open (SOCOM 1's HandleSelectionInput, much grown): start closes it; with the
+ * third panel up, the triangle or the cross answers it -- a line's kind kept in m_be0 sets the valve,
+ * and a confirmation closes the menu; otherwise the cross runs the selected line by its kind: the
+ * panels swapped, or an option toggled and its line's text put right */
+void CZPauseTest::HandleSelectionInput(const CPad &pad)
+{
+    char sel = 3;
+    /* a device: an int, so that the triangle's `cross = 3` is a plain copy of the compare's constant
+     * (a char local narrows it with dsll32/dsra32); the byte itself is sign-extended, lb, and its tests
+     * mask it again */
+    int cross = (signed char)pad.m_state[PAD_CROSS];
+
+    if ((unsigned char)cross == KEY_RISING)
+        sel = 0;
+    if (pad.m_state[PAD_START] == KEY_FALLING)
+        ClosePauseMenu();
+    if (m_socom2_bdc) {
+        if (pad.m_state[PAD_TRIANGLE] == KEY_RISING) {
+            cross = 3;
+            m_be4 = 0;
+            m_be0 = -1;
+        }
+        if ((unsigned char)cross == KEY_RISING) {
+            if (m_be4) {
+                if (m_be0 == 2) {
+                    data_0043668C->SetValue(1);
+                    CHUD::GetHUDOwner()->m_ctrl->StopRumbler();
+                } else if (m_be0 == 1) {
+                    data_0043668C->SetValue(2);
+                }
+                data_00409070 = 1;
+                m_socom2_bdc = 0;
+                m_be4 = 0;
+                m_be0 = -1;
+                ClosePauseMenu();
+            } else {
+                m_socom2_bdc = 0;
+                m_be4 = 0;
+                m_be0 = -1;
+            }
+            if (m_bd0)
+                m_bd0->Notify(0, 255);
+        }
+        return;
+    }
+    if (pad.m_state[PAD_START] != KEY_DOWN && pad.m_state[PAD_TRIANGLE] == KEY_RISING)
+        ClosePauseMenu();
+    if ((unsigned char)sel != 3 && m_bd0)
+        m_bd0->Notify(0, 255);
+    if ((unsigned char)sel != 3) {
+        CPauseItem *item = &m_items[m_sel];
+
+        switch ((signed char)item->m_kind) {
+        case 2:
+            m_textcf0.On();
+            m_textd88.On();
+            m_texte20.On();
+            m_texteb8.Off();
+            m_textf50.Off();
+            m_textfe8.Off();
+            m_socom2_bdc = 1;
+            m_be0 = 2;
+            break;
+        case 3: {
+            hackPitchFactor *= -1.0f;
+            CValve *valve = CValve::Create("INVERT_PITCH_CONTROLLER", VALVE_TEMP);
+
+            valve->SetValue(!(hackPitchFactor > 0.0f));
+            int id = hackPitchFactor < 0.0f ? 0xEC67 : 0xEC68;
+
+            C2DString *line = &m_items[3].m_text;
+
+            line->SetString(GetString(id), false);
+            break;
+        }
+        case 6: {
+            hudToggleHelpWindows();
+            int id = hudHelpWindowsEnabled() ? 0xEC65 : 0xEC66;
+
+            C2DString *line = &m_items[6].m_text;
+
+            line->SetString(GetString(id), false);
+            break;
+        }
+        case 7: {
+            _AutoAim = !_AutoAim;
+            CValve *valve = CValve::GetByName("AutoAim");
+
+            if (valve)
+                valve->SetValue(_AutoAim);
+            int id = _AutoAim ? 0xEC63 : 0xEC64;
+            C2DString *line = &m_items[7].m_text;
+
+            line->SetString(GetString(id), false);
+            break;
+        }
+        case 11:
+            EnableExternalWhispers(!g_bExternalWhispers);
+            m_items[11].m_text.SetString(g_bExternalWhispers ? "IN-GAME TEXT MESSAGES : ON" : "IN-GAME TEXT MESSAGES : OFF", true);
+            break;
+        case 8: {
+            SetRumbleOn(!IsRumbleOn());
+            CValve *valve = CValve::GetByName("VIBRATION_CONTROLLER");
+
+            if (valve)
+                valve->SetValue(IsRumbleOn());
+            const char *t = IsRumbleOn() ? "VIBRATION: ON" : "VIBRATION OFF";
+
+            m_items[8].m_text.SetString(t, true);
+            break;
+        }
+        case 4: {
+            bool on = !data_003DF1A8;
+
+            data_003DF1A8 = on;
+            m_items[4].m_text.SetString(on ? "VOICE MODULATION: ON" : "VOICE MODULATION: OFF", true);
+            CValve *valve = CValve::GetByName("VoiceMask");
+
+            if (valve)
+                valve->SetValue(data_003DF1A8);
+            func_0030E5A0(data_0045B718, !data_003DF1A8);
+            break;
+        }
+        case 10: {
+            bool on = !data_003DC3E0;
+
+            data_003DC3E0 = on;
+            m_items[10].m_text.SetString(on ? "SPECTATOR HUD: ON" : "SPECTATOR HUD: OFF", true);
+            break;
+        }
+        case 5: {
+            bool on = !data_0044D4F8;
+
+            data_0044D4F8 = on;
+            m_items[5].m_text.SetString(on ? "RUN AND TALK: ON" : "RUN AND TALK: OFF", true);
+            break;
+        }
+        case 9:
+            FireModeSwapIsOn = !FireModeSwapIsOn;
+            ToggleFireModeSwap();
+            m_items[9].m_text.SetString(theNetwork.m_bNetwork ? (FireModeSwapIsOn ? "FIREMODE/SCOREBOARD: ALTERNATE" : "FIREMODE/SCOREBOARD: DEFAULT")
+                                                              : (FireModeSwapIsOn ? "FIREMODE/TACMAP: ALTERNATE" : "FIREMODE/TACMAP: DEFAULT"),
+                                        true);
+            break;
+        case 1:
+            m_textcf0.Off();
+            m_textd88.Off();
+            m_texte20.Off();
+            m_texteb8.On();
+            m_textf50.On();
+            m_textfe8.On();
+            m_socom2_bdc = 1;
+            m_be0 = 1;
+            break;
+        }
+        if (item->m_flag3)
+            data_003DC418 = 0;
+        if (item->m_flag4)
+            ClosePauseMenu();
+    }
 }
 
 /* the menu closed (SOCOM 1's TickOffState, its unit's first function as here): nothing until two
