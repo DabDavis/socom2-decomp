@@ -1037,7 +1037,12 @@ extern "C" const float data_003E0850;
  * value -- kept &z.y/&z.z in a0/a1, 2 instructions long; a reference-returning or field-wise
  * reference inline stays long); the cosine declared ahead of the sine gives the target's f22/f21,
  * the negated sine and cosine named floats its f5/f4.
- * OPEN, 19 instructions, the target's size: the negation's schedule -- the target loads y, x, z,
+ * BYTE-EXACT since the weapons' round 40 (build/scratch/wep/v_aim40*.py), by two shapes. The negation:
+ * of 432 declaration, assignment, store and dot orders (v_aim40c.py) only x, y, z assigned and the stores
+ * z, x, y (or z, y, x) give the target's schedule -- the y-first loads and stores and the forwarded z.z
+ * are the scheduler's work on that order, not the source's. The pitch half: r[2] and r[1] as named
+ * locals -- the common-subexpression temporaries numbered r[2] after d.y's, where the target's f5 wants
+ * it coloured later. Before: OPEN, 19 instructions, the target's size: the negation's schedule -- the target loads y, x, z,
  * stores y, x, z and forwards z.z to the dot (`mov.s`), reloading only z.x; here the stores end on
  * y and both are reloaded (the inline's declaration and store orders change nothing) -- and the
  * pitch half's d.y in f5 where the target has f3. Round 36 (build/scratch/wep/v_aim36*.py): the
@@ -1047,11 +1052,14 @@ extern "C" const float data_003E0850;
  * x's reload moves ahead of the z store: 29 off, the right size */
 static inline void AimNeg3(float *r, const CPnt3D &p)
 {
-    float y = -p.y, x = -p.x, zz = -p.z;
+    float x, y, zz;
 
-    r[1] = y;
-    r[0] = x;
+    x = -p.x;
+    y = -p.y;
+    zz = -p.z;
     r[2] = zz;
+    r[0] = x;
+    r[1] = y;
 }
 
 extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch)
@@ -1092,8 +1100,10 @@ extern "C" bool func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *
     float h = len * inv;
     float v = d.y * inv;
     const float *r = t->m_pitchNode->m_matrix.m_matrix[1];
-    float dot2 = r[2] * v + r[1] * h;
-    float cross2 = r[2] * -h - -r[1] * v;
+    float rz = r[2];
+    float ry = r[1];
+    float dot2 = rz * v + ry * h;
+    float cross2 = rz * -h - -ry * v;
     float pv = cross2;
 
     if (dot2 > data_003E07E8)
