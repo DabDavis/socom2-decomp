@@ -235,7 +235,14 @@ const float CAiEvent::NoExpire = -99.0f;
  * the base's push_back out of line (0x50F810: end() inlined around insert); remove_copy_if inlines
  * the predicate one level -- Tick(float) called -- and calls the event list's own push_back
  * (0x50FE80: end() and insert called): byte-exact through the push_back specialised above (the
- * AI core round 19; 0x9C and 0x144 before) */
+ * AI core round 19; 0x9C and 0x144 before).
+ * remove_if 0x50F670 (its instance over this functor, include/algorithm's) stays OPEN, 9 off; the AI core round 37, unit-locally through
+ * a partial specialisation of the search over _tick & and an explicit specialisation of remove_if (build/scratch/ai/v_rif37*.py): the
+ * target's frame (return temporary 108, first 104, last 100) with first copied first. A by-value search has the slots with last copied
+ * first (4 off): mweppc's CInline_SetupArgsExpression allocates an inline's parameters in order and initialises them in reverse, its
+ * locals before either, so no one inline does it. A named walker object (first in it, `w.go(last, pred)`) has the order, with the walker
+ * above the return temporary (7 off); the reversed signature `find(last, It(first))` too, first and last swapped (7 off); two levels
+ * cut (the search is too tall, so the inner level is a call: 0xC0); a two-word frame struct adds a null test (0x114) */
 struct _tick {
     _tick(CAiEventList &pool, float dT) : m_pool(&pool), m_dT(dT) {}
     bool operator()(CAiEvent *e)
@@ -320,7 +327,15 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
  * Every spelling gives this block: the mask first, `/ 32` and `% 32`, the word through a char pointer,
  * `(w >> (i & 31)) & 1`, a bool cast, helper inlines (mask and word helpers, the mask or the word in a
  * local, the word by reference); `#pragma scheduling off` changes nothing (peephole or propagation off
- * 0x1AC, common_subs off 0x1CC) */
+ * 0x1AC, common_subs off 0x1CC).
+ * The AI core round 37 (the GCC front's pragma scan; build/scratch/ai/v_gne37*.py, igdump --pcode): `#pragma opt_dead_assignments off`
+ * gives the target's size (0x1A4, 16 off) because the seen test then STAYS A STATEMENT-LEVEL if/else: its blocks carry labels (`nop*`, the
+ * pad before the bit test) and the fill takes the false arm's move. Otherwise IRO_RegenerateExpressions rebuilds the two arms into one
+ * conditional expression (RebuildPossibleCondExpression; mweppc IroExprRegeneration.c), with no labels and no pad, and the fill steals
+ * the srl. The rebuild needs each arm to be its one assignment (CheckThenOrElseBranch), so the target's arm holds another statement at
+ * that point: its andi then srl first (a1, v0: the mask a0 reuses i's register) read as the bit and word indices computed ahead as
+ * statements. Written so (locals off it.m_bit, through a by-value i, `i >>= 5`, as an explicit if/else on a bool) IRO folds them back
+ * and the same 0x19C comes out. The pragma itself costs the head and tail their registers */
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;

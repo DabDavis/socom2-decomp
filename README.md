@@ -2066,6 +2066,79 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 37** (CAiMaps::RegisterPathPlan 0x52C5C0 -- 0x608, 105 off since round 32 -- and
+  CAiMaps::GetLocation(point) 0x52DC70 -- 0xA34, 172 off since round 31, its register order a marked modelling order --
+  byte-exact; THE FIVE CUT CLASS INSERTS byte-exact through a marked device, include/vector's `__insert_end_pointer<T>`:
+  CVehicleRdrEntry 0x534630 in the lane's own unit, and -- opted in by the integrator from its measurements, each +1 and
+  nothing lost -- AcctRecord 0x2FE3E0, CTurretDef 0x3ABD90, zrdr_sym 0x3325E0, CDlgDesignModel 0x384ED0; resize<line>
+  0x51C070 by a marked `#pragma inline_depth(6)` at ai_mapio.cpp's end, a "Level 6, or 8?" witness like util_loc.cpp's):
+  - SEARCH THE NUMBERING FIRST: annealing over the numbering (build/scratch/aicore-r37/ai/igallperm.py, iganneal.py) shows
+    whether a target numbering exists before any source is written; if `this` must sit above locals, named copies of
+    parameters can place it there (GetLocation -- what the original wrote behind those two copies is unknown);
+  - the class-insert dichotomy is settled for all five: each needs a pointer end numbered before m, chosen per element --
+    the trait is a no-op unless a unit specialises it (objcmp over 665 units: only the intended functions differ), a switch
+    per unit is too blunt where one unit emits both populations, and an explicit specialisation of insert generates before
+    the tail and so calls what the instance inlines. What the original wrote to number the two populations apart is still
+    not found: the trait stands for it;
+  - two frame slots below every temporary mean a reused variable's late webs from IRO_SplitLifetimes (RegisterPathPlan's one
+    iterator and one counter); `leg[1].y` stays `(&leg + 4) + 2` where `leg.to.y` folds to `&leg + 6`, so an array element's
+    address is hoisted in two steps and truly spilled where a frame constant would be rematerialised;
+    IRO_IsSubableExpression refuses `variable + constant` for a register-able local; a variable assigned an expression and
+    read once is expression-propagated in pass 0, a reference read twice keeps the two adds;
+  - `c ? (x = e, true) : false` with a dead value keeps `beqz L ... b L; L:`, the if / return form loses the jump and its L
+    gets a nop pad; the branch pass drops a branch to the next block only if no labelled block lies between -- dead bodies
+    are already empty at colouring; IRO_RegenerateExpressions rebuilds an if/else into a conditional when each arm is one
+    assignment, and that form has no labels or alignment pads;
+  - a void function's `.end` reads v0, so a call-free path to the end keeps v0 live back to the last call and temporaries
+    there avoid it, as when ~__vector_deleter is inlined; an inline's parameters get slots in order and are initialised in
+    reverse, its locals allocated first (mweppc's CInline.c, measured on remove_if's 4 off); explicit specialisations are
+    own functions, generated before the template tail.
+- **Tells from the zdb world, textures, rdr and sound, round 33** (nine byte-exact: Particle::BufferElement::DrawXZ
+  0x325CC0, DrawRotated 0x325580 and DrawStreaked 0x326350, Particle::Source::Tick 0x329B40, zdb::CRenderMap::CRenderMap
+  0x31A9A0 and Update 0x31A180 -- all but DrawXZ unwritten before -- zdb::CNode::DeleteVisuals 0x316100 (round 28),
+  CSndJukebox::PlayRandom 0x348B20 (round 9) and zdb::CGSTexBuffer::Hookup 0x3571D0 (round 14); 12,780 bytes):
+  - A `.set` DIRECTIVE IN A PLAIN `asm {}` SPLITS MW'S SCHEDULING BLOCK at that point and costs no code: it gives DrawXZ's
+    qmfc2.i ahead of the cursor's load, and measured the same on the engine core's NodeGetIntersect, one word off since its
+    round 25; a leading `.set reorder` alone does nothing;
+  - `CT(p, q) : m_min(p), m_max(q)` plus an implicit assign copies ld / sd at an aligned offset and three FPRs at +12 -- it
+    reaches sd onto a static only if the static has that class type; a by-value class parameter's copy shares `&b + 12` with
+    the reads, a temporary bound to `const &` keeps reads frame-relative;
+  - on a `char *` cursor `(q + i * 16) + 4` is subable where `p + 4` off a register local is not, so y and z addresses
+    become common off the strength-reduced pointer; a float literal compares `c.eq.s K,x`, a named local holding it `c.eq.s
+    x,K`; an expression written twice (`streak * size`) is a back-end temporary numbered where it first occurs, not among
+    the locals; a named product at FPR degree 32 defers its neighbour, coloured first in f0;
+  - a named begin() iterator is stored at its declaration, a plain pointer plus `iterator(d)` keeps last-argument-first
+    store order and merges the end's load; find's result in an iterator local makes its compare and the insert share a fresh
+    lui / addiu, compared in place MW reuses find's hoisted last; the scalariser-deferral lever (the AI core's round 36)
+    closed a register-only row once `igreplay --move` named the order; under `-enum min` an enum with only the enumerator 0
+    narrows as signed and needs a larger enumerator for `andi 0xff`;
+  - marked stand-ins, the original's spelling unknown: PlayRandom's no-op `(int)` conversion of the playlist's address,
+    Hookup's reference locals, Source::Tick's volatile read of the old phase; Source::GetBBox (32, at the size) wants the
+    same permutation of eight address temporaries as the engine core's SetCDIBBox.
+- **Tells from the HUD, round 64** (seven byte-exact: __sinit_hud_actionbitmap.cpp 0x3FE550 with the unit's data_
+  placeholders retired, CPauseItem() 0x205970 -- open since round 37 -- and five unwritten before: CZNewHudMap::InitMap
+  0x20B2C0, BitmapReticule::HudTick 0x216770, CSliderBar::HandlePad 0x371D00, CWrappedText::Draw 0x3794B0,
+  CTeamDisplay::SetupTeam 0x229D00; CZNewHudMap::HudTick, ThreatDirTick and CTeamDisplay::AddRow written at the target's
+  sizes, open; hud_mpinfobox.cpp's CRadioState respelled as the CZNetVoice view; 50 data rows, most SOCOM 1's names):
+  - MW NARROWS A ONE-BIT READ-MODIFY-WRITE BY THE FIELD'S DECLARATION: a template-dependent declared type is never narrowed,
+    giving an unaligned lwl / lwr word at the field's byte offset (CPauseItem(), through a marked `CPauseItemBits<unsigned
+    int>` view -- MAIN's round 7 rule); the narrowing is the declaration's, not the accessor's: template setters over a
+    plain field still narrow;
+  - a `for` lowers to init, body, increment, test, and the inliner expands statements in that order per pass, so frame slots
+    tell which pass made a temporary; a local slot below the destructor's temporaries, with its begin temporary among the
+    first, marks a reused local split by IRO_SplitLifetimes -- one iterator serves both walks;
+  - a field stored and read straight back before a call is forwarded by the back end (sw v0 plus mtc1 v0,$f20, no load);
+    float constants materialise in order of the first expression needing them -- computing the width before the height swaps
+    their FPRs; a member read before a call and held in a saved register is an inline accessor; a low-numbered address held
+    in a saved register (`--movers` asking for it among the named locals) is a named reference local (`float &py = p.y`);
+  - a const iterator's `const_iterator(base::const_iterator(base::end()))` scalarises its member only in pass 1, numbered
+    after pass 0's loop temporaries, through tail_ptr() it is an early EFORCELOAD, and `&end_` direct is rematerialised at
+    each use; copies read through an inline's const reference get their address temporaries only at the reads, written in
+    place at the first stores; two string-literal arguments in locals set a1 before a0; a qualified call
+    (`bmp->C2DBitmap::SetTrans`) gives a direct jal beside virtual siblings;
+  - CZNewHudMap::HudTick (11, s1/s2 only: `igreplay --move 54=55.5` gives every register) is one more "Level 6, or 8?"
+    witness for SOCOM 1's two-level push_back, with the same pass-depth evidence as CUIListBox::AddItem; modelled locally,
+    the header unchanged.
 - **Tells from the game states, round 53** (six byte-exact, fts_mission.cpp, fts_controller.cpp and fts_remote.cpp whole:
   zRemoteClientConnectsCallback 0x2BC620 -- 0x9F4, 184 off --, CMission::PreOpen 0x2ACC10, the per-layout parser 0x2C67F0,
   HitPacketHandler 0x2BBBD0, CCtrlrConfigs::GetFwdBackStickPos 0x2C6290, the button test 0x2C60C0; thezoom.cpp respelled

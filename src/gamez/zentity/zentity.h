@@ -34,6 +34,8 @@ public:
     CAiMapLoc(const CAiMapLoc &loc) : m_mapid(loc.m_mapid), x(loc.x), y(loc.y) {}
     /* a cell of a map (SOCOM 1's, s1:exact at OVL2 0x52D200) */
     CAiMapLoc(unsigned int ax, unsigned int ay, unsigned int mapid) : m_mapid(mapid), x(ax), y(ay) {}
+    /* a cell on another map, read in place (the AI core round 37: CAiMaps::GetLocation's best) */
+    CAiMapLoc(const CAiMapLoc &o, unsigned int mapid) : m_mapid(mapid), x(o.x), y(o.y) {}
 
     unsigned int m_mapid : 6;
     unsigned int x : 13;
