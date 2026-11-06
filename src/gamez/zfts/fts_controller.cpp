@@ -4,9 +4,9 @@
  * 0x2C5E70, with the copies its inlined layout constructor calls, 0x2C5FF0-0x2C60BF), the edited
  * layout's buttons, the pressures, the jump/action test, and SOCOM II's stick readers (the strafe
  * 0x2C6110, a function's button held 0x2C61E0, a stick's axis 0x2C6520, the pitch 0x2C65B0 and its
- * caller, the look 0x2C6290 open), and the chat line's USB keyboard (0x2C6C70, its last function
- * before the layouts' destructor), and the per-layout parser 0x2C67F0 (open). Defined in reverse of
- * their image order (-inline deferred). */
+ * caller, the look 0x2C6290), and the chat line's USB keyboard (0x2C6C70, its last function
+ * before the layouts' destructor), and the per-layout parser 0x2C67F0. Whole since round 53. Defined
+ * in reverse of their image order (-inline deferred). */
 
 #include <string>
 #include <vector>
@@ -360,18 +360,14 @@ const char *c_arrFuncNames[13] = {
  * it lives in the frame and every store reloads it; the function index is narrowed to the byte
  * enum before ReadBtnName (the target's andi in the call's delay slot), the mask an int narrowed
  * at each OR.
- * OPEN, 12 instructions, registers only: at the button store and the two mask ORs the target
- * colours the layout's reload a0 and the narrowed value v1 (the OR's operands mask first, then the
- * loaded byte in a1), this the reload a1/v1 and the narrowed value a0 -- MW's commutative operand
- * order puts the higher-numbered vreg first, so the target numbers the base's reload BEFORE the
- * index's narrowing (and the loaded byte before the mask's), where MW lowers `p->a[i]` and `x |= y`
- * index and right side first. Measured (build/scratch/states/sp_67f0*.py): the base as an rvalue
- * pointer -- `((CCfgButton *)((char *)pConfig + 0x12))[f]`, or a CCfgSticks * accessor for the
- * masks -- makes the button store the target's, and with `|= mask & 0xff` the ORs are 4 off (only
- * the narrowed mask and the loaded byte trade v1/a1); an inline accessor for the buttons' array
- * grows the function 8 bytes. Also tried: the index cast in place, an unsigned char local, a
- * byte-enum local before the call (it gives the delay slot's andi), SetButton/Add members taking
- * the enum or the byte, `mask | m_mask`, two-sided ORs, a CCfgSticks pointer local */
+ * Byte-exact since round 53 (written in round 20, 12 off). At the button store and the two mask ORs the target
+ * colours the layout's reload a0 and the narrowed value v1, and for the ORs that means the numbering
+ * byte < reload < mask, the loaded byte numbered ahead of the base it is loaded through -- only a
+ * variable can be. An integer local is forwarded into the OR (any of them), a local of the byte enum
+ * STICK is not (IRO's propagation leaves enum-typed variables alone, as in zRemoteClientConnectsCallback
+ * 0x2BC620), and written `mask | sticks` the OR's operands are the target's. The button store's
+ * base an rvalue pointer (the index then narrowed after the reload); `(unsigned char)mask` rather than
+ * the plain int, which folds the narrowing away (0x478) */
 extern "C" void func_002C67F0(_zrdr *config)
 {
     const char *name = zrdr_findstring(config, "Name");
@@ -395,7 +391,7 @@ extern "C" void func_002C67F0(_zrdr *config)
             if (!strcasecmp(result, c_arrFuncNames[func])) {
                 PadBtnFunc::_ f = (PadBtnFunc::_)func;
 
-                pConfig->m_btns.m_btn[f].m_btn = ReadBtnName(control);
+                ((CCfgButton *)&pConfig->m_btns)[f].m_btn = ReadBtnName(control);
                 found = true;
                 break;
             }
@@ -422,10 +418,16 @@ extern "C" void func_002C67F0(_zrdr *config)
             const char *aim = zrdr_findstring(input, "AimMode");
             bool on = !aim || strcasecmp(aim, "Off");
 
-            if (!hasAim || on)
-                pConfig->m_pitchSticksHeld.m_mask |= mask;
-            if (!hasAim || !on)
-                pConfig->m_pitchSticks.m_mask |= mask;
+            if (!hasAim || on) {
+                STICK sticks = (STICK)pConfig->m_pitchSticksHeld.m_mask;
+
+                pConfig->m_pitchSticksHeld.m_mask = (unsigned char)mask | sticks;
+            }
+            if (!hasAim || !on) {
+                STICK sticks = (STICK)pConfig->m_pitchSticks.m_mask;
+
+                pConfig->m_pitchSticks.m_mask = (unsigned char)mask | sticks;
+            }
         } else if (!strcasecmp(result, "Rotate")) {
             if (!strcasecmp(control, "LeftStickHoriz"))
                 pConfig->m_e.m_stick = STICK_LEFT;
@@ -529,7 +531,7 @@ extern "C" STICK func_002C6220(const STICK *stick);
 /* the look's pitch: the layout's stick's raw y, unless function 1's button holds the look (OVL1
  * 0x2C6290). The test is `!A || !B` over two inline bools: the target materialises both negations
  * (sltu; xori and xori; sltiu; xori) with the true in the first branch's delay slot.
- * Byte-exact since round 53 (6 off from round 18). The colouring needs config, look, button in that
+ * Byte-exact since round 53 (written in round 18, 6 off). The colouring needs config, look, button in that
  * order (v1, a1, a2): the button numbered before look's Linearize temporary, the layout after it --
  * so the button an inline's named local and the layout read from the global at each use, a common
  * subexpression (round 34 found those registers). What stopped it was the select: with a scalar
@@ -561,7 +563,7 @@ extern "C" float func_002C6290(const CPad *pad)
 /* whether a function's button is down on the pad (OVL1 0x2C60C0: the button's lb/andi through its
  * byte temporary, KEY_DOWN's runtime narrowing -- `li a2,2` in the test's delay slot, `andi` at the
  * join -- through one of its own).
- * Byte-exact since round 53 (2 off from round 18). The wanted state is an inline's by-value parameter
+ * Byte-exact since round 53 (written in round 26, 2 off). The wanted state is an inline's by-value parameter
  * compared on the LEFT, `state == ButtonState(...)`, and its argument a conversion through
  * CByteEnum, not a plain constant: MW substitutes a plain constant (xori), but holds this one in a
  * temporary assigned ahead of the inline's body, in another flow node than the compare, where
