@@ -2468,6 +2468,85 @@ CZBodyAnimBlend *CZSealBody::InStateCarried()
 
 extern "C" float fabsf(float x);
 
+/* the prone crawl: in water deeper than 1.5 a crouch instead; else the quadrant's axis alone kept, the
+ * idle anim 27 pushed below full speed and the strafe anim by the side's sign above none, at twice the
+ * blends cleared down to two, its weight made 1, the parts saved when the quadrant changed, and the
+ * playback from the larger throttle, its sign the side's (OVL2 0x583500: SOCOM 1's ProneControl, Crouch
+ * called where SOCOM 1 inlined it, the quadrant's switch new) */
+CZBodyAnimBlend *CZSealBody::ProneControl(float x, float, float z)
+{
+    float speed;
+    float t;
+    float zero;
+
+    if (m_inwater && !(m_waterdepth <= 1.5f)) {
+        m_desiredState = stateCrouch;
+        m_stancechanged = true;
+        return Crouch();
+    }
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    switch (m_quadrant) {
+    case 0:
+    case 2:
+        x = zero = 0.0f;
+        break;
+    case 1:
+    case 3:
+        z = zero = 0.0f;
+        break;
+    default:
+        return 0;
+    }
+    float ax = fabsf(x);
+    float az = fabsf(z);
+    speed = ax > az ? ax : az;
+
+    float len = sqrtf(x * x + z * z);
+
+    t = 0.0f;
+    if (len > t)
+        t = az / len;
+    if (t > 1.0f)
+        t = 1.0f;
+    else if (t < zero)
+        t = zero;
+    if (t < 1.0f && !IsCurrentBlend((AnimType)27)) {
+        ClearStack(2, true);
+        top = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)27, 2, 0, 0);
+    }
+    if (t > zero) {
+        if (z >= zero) {
+            if (!IsCurrentBlend((AnimType)AnimTypes::ProneRStrafe)) {
+                ClearStack(2, true);
+                top = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::ProneRStrafe, 2, 0, 0);
+            }
+        } else {
+            if (!IsCurrentBlend((AnimType)AnimTypes::ProneLStrafe)) {
+                ClearStack(2, true);
+                top = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::ProneLStrafe, 2, 0, 0);
+            }
+        }
+    }
+    top->SetRepresentativeWt(1.0f);
+    if (m_lastquadrant >= 0 && m_lastquadrant != m_quadrant) {
+        SaveParts();
+
+        float blend = top->Representative()->m_anim->m_20;
+
+        m_interp1 = blend;
+        m_interp2 = blend;
+    }
+    if (x < zero)
+        speed = -speed;
+    {
+        ACTIVE_ANIM *rep = top->Representative();
+
+        rep->SetPlayback(speed * rep->m_anim->m_1c);
+    }
+    return top;
+}
+
 /* the top blend turned: its weight made 1 and its playback set from the turn, doubled and negated,
  * its size scaled and capped by the state (0.6 standing, 0.3 crouched, 0.35 prone, 0.6 in states 9
  * and 10), its sign kept (OVL2 0x583960: SOCOM 1's TurnControl, the same caps; SOCOM II sets the

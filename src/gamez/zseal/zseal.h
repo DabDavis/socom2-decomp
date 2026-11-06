@@ -2234,6 +2234,8 @@ public:
      * MoveControl and CrouchMoveControl: OVL2 0x583030, 0x582D10) */
     CZBodyAnimBlend *MoveControl(float x, float z);
     CZBodyAnimBlend *CrouchMoveControl(float x, float z);
+    /* the prone crawl (SOCOM 1's ProneControl, the middle throttle unread: OVL2 0x583500) */
+    CZBodyAnimBlend *ProneControl(float x, float y, float z);
     /* the top blend popped, the new top returned (SOCOM 1's PopBlend: OVL2 0x589AA0 -- called where
      * SOCOM 1's is, the SEALs' round 48; it hides CBody::PopBlend, which no SEAL code calls) */
     CZBodyAnimBlend *PopBlend();
