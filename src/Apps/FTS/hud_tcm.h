@@ -212,6 +212,10 @@ public:
     void SetupItemBars();
     void ClearItems();
     void Init();
+    /* the menu built for the game's kind (the tree's 0x232BC0; the name ours) and the node actions on it (hud_tcm.cpp's
+     * 0x236260: the builder's call passes theTCM, unused) */
+    void Build(unsigned char mode);
+    void SetNodeActions();
 
     CTCMMode m_mode;   // 0x750
     std::vector<int> m_path;   // 0x754: the open column's selections, one per depth

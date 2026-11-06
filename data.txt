@@ -365,7 +365,7 @@
 0x003DCAC0 0x4 s_tcmDeadText  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, the HUD lane round 66): 32, a dead item's caption; 2 reference(s), CTCM::LayoutColumn
 0x003DCAC8 0xc s_tcmHighPulse  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, round 66): (85, 130, 130), the highlight's reach; CTCM::LayoutColumn
 0x003DCAD8 0xc s_tcmHighBase  # OVL1 data; hud_tcmcmds.cpp's file static (name ours, round 66): (80, 120, 120), the highlight's base; CTCM::LayoutColumn
-0x003DCAE8 0x6 @LOCAL@tcmBuildCaches__Fv@s_teams  # OVL1 data; hud_tcmtree.cpp's local static (name ours, the HUD lane round 66): the six teams' numbers 1, 2, 3, 17, 18, 29; 1 reference, tcmBuildCaches
+0x003DCAE8 0x6 s_tcmTeams  # OVL1 data; hud_tcmtree.cpp's file static (name ours, the HUD lane round 66): the six teams' numbers 1, 2, 3, 17, 18, 29; 2 references, tcmBuildCaches and CTCM::Build
 0x003DCAF0 0x4 s_tcm_slidehold  # OVL1 data; ours (the HUD lane, round 27): hud_tcmtree.cpp's file static, 0.2 -- the hold after a slide (CTCM::Next): 1 reference in 1 function
 0x003DCAF8 0x4 s_tcm_talkwait  # OVL1 data; ours (the HUD lane, round 57): hud_tcmtree.cpp's file static, 0.3 -- the hold before the closed menu's push-to-talk starts (CTCM::HandleClosedPad): 1 reference in 1 function
 0x003DCB00 0x4 s_tcm_talkmax  # OVL1 data; ours (the HUD lane, round 27): hud_tcmtree.cpp's file static, 10.0 -- the longest push-to-talk and the close test's wait (CTCM::TalkTick, CTCM::Tick): 2 references in 2 functions
