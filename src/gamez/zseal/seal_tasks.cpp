@@ -2574,6 +2574,74 @@ void CTGoto::End(_zanim_cmd_hdr *hdr)
     }
 }
 
+/* a point and its flags as a group's step holds them (CTGroup::Parse's; the names ours) */
+struct TASK_GROUPPOS {
+    float m_pos[3];   // 0x0
+    unsigned int m_flags;   // 0xc: 0x800 the group's own point, 0x400 a member's (its number the low byte)
+};
+
+/* an item a string of a name (inline: false for an item no string; the name ours) */
+static inline bool TaskItemIs(_zrdr *item, const char *name)
+{
+    return item->Type() == 3 ? strcmp(name, item->string) == 0 : false;
+}
+
+/* a point read for a group's step: three numbers, or "grp" and three (flag 0x800), or "rel", a
+ * member's number and three (flag 0x400 and the number) -- the point and the flags stored, true for
+ * the two tagged forms only (OVL2 0x5DAF50, CTGroup::Parse's three calls; new in SOCOM II -- the name
+ * a placeholder). The items read by an unsigned index (no strength reduction of i*8: CTGoto::Parse's
+ * reading), the plain form's point stepped, the tagged forms' through an unsigned index too (`p[i - 1]`
+ * plain is strength-reduced); the type read in place, its load kept for Count()'s test (through
+ * Type() MW loads it again) */
+extern "C" bool func_005DAF50(TASK_GROUPPOS *out, _zrdr *r, unsigned int flags)
+{
+    bool ok = false;
+
+    if (r && r->type == 4) {
+        float p[3];
+
+        switch (r->Count()) {
+        case 3:
+            for (int i = 0; i < 3; i++)
+                p[i] = r->Item((unsigned int)i)->Real();
+            out->m_pos[0] = p[0];
+            out->m_pos[1] = p[1];
+            out->m_pos[2] = p[2];
+            out->m_flags = flags;
+            break;
+        case 4:
+            if (zrdr_isitemtype(r, 0, 3)) {
+                for (int i = 1; i < 4; i++)
+                    p[(unsigned int)(i - 1)] = r->Item((unsigned int)i)->Real();
+                if (TaskItemIs(r->Item(0), "grp")) {
+                    ok = true;
+                    out->m_pos[0] = p[0];
+                    out->m_pos[1] = p[1];
+                    out->m_pos[2] = p[2];
+                    out->m_flags = flags | 0x800;
+                }
+            }
+            break;
+        case 5:
+            if (zrdr_isitemtype(r, 0, 3) && zrdr_isitemtype(r, 1, 1)) {
+                for (int i = 2; i < 5; i++)
+                    p[(unsigned int)(i - 2)] = r->Item((unsigned int)i)->Real();
+                if (TaskItemIs(r->Item(0), "rel")) {
+                    unsigned char n = r->Item(1)->Int();
+
+                    ok = true;
+                    out->m_pos[0] = p[0];
+                    out->m_pos[1] = p[1];
+                    out->m_pos[2] = p[2];
+                    out->m_flags = n | (flags | 0x400);
+                }
+            }
+            break;
+        }
+    }
+    return ok;
+}
+
 /* running until the group is gone (OVL2 0x5D9710) */
 bool CTGroup::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
