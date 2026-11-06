@@ -241,6 +241,11 @@ public:
     /* the item pointer of an index, cleared and set (OVL2 0x5B8FF0, 0x5B8FC0, 0x5B8F20: the kit lane's) */
     void *GetItemPtr(int index);
     void ClearItemPtr(int index);
+    /* the item's model named for the node, the item at an index, the reticule set (kit.h's: OVL2 0x5C72C0,
+     * 0x5C3740, 0x5BE570) */
+    bool InitItemModel(const char *model, const char *name);
+    class CZFTSWeapon *GetItemByIndex(int index) const;
+    void SetCurReticule(bool force);
     void SetItemPtr(int index, void *p);
     /* a weapon set at an index (SOCOM 1's; OVL2 0x5BC410), the rounds added, the slot a weapon picked up
      * takes and whether an item can be selected (OVL2 0x5BA3D0, 0x5BAE60, 0x5BDC30: the kit lane's) */
@@ -1851,6 +1856,8 @@ public:
     /* the rifle, pistol and launcher found among the made gears, the launcher's part added (SOCOM 1's;
      * OVL2 0x58B0F0, seal_cfg.cpp) */
     void SetupGear();
+    /* the MP bomb's gear shown or hidden (SOCOM 1's; OVL2 0x59DF60) */
+    void EnableMPBombGear(bool on);
     /* a part added to the anims' parts: a bare one by name (OVL2 0x58B630), or a gear's model attached to
      * the part it names (0x58B790; SOCOM 1's two AddItems, after SetupEyes in both builds) */
     bool AddItem(const char *name);
@@ -2398,7 +2405,12 @@ public:
     unsigned char m_21c_bit2 : 1;   // bit 2: a crouch 0x58A720 reports as a stand (the name ours)
     unsigned char m_fading : 1;   // bit 3: the node's opacity heads for m_fade_target (0x552780)
     unsigned char _21c_bits : 4;
-    unsigned char _21d[0x22c - 0x21d];
+    unsigned char _21d[0x220 - 0x21d];
+    /* (zeroed as the SEAL is made: PostCreateSeal; the names ours) */
+    unsigned char m_220;   // 0x220
+    unsigned char _221[0x224 - 0x221];
+    int m_224;   // 0x224
+    int m_228;   // 0x228
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
     /* a fade of the node's opacity: where to, how fast (its sign toward the target) and the priority
      * of whoever asked (0x552780 refuses a lower one; the names ours) */
@@ -2525,7 +2537,8 @@ public:
     unsigned char _5e4[0xe9c - 0x5e4];
     /* (inside the kit: zeroed as a launcher is picked up -- PickupItem; the name ours) */
     int m_e9c;   // 0xe9c
-    unsigned char _ea0[0xeac - 0xea0];
+    /* the SEAL's node extension (a CSealEx, declared below; SOCOM 1's: PostCreateSeal gives it to the node) */
+    unsigned char m_ex[0xeac - 0xea0];   // 0xea0
     /* the body carried (SOCOM 1's m_carry, 0xda8 -- right before m_adrenaline in both builds;
      * 0x5A88C0 refuses while one is) */
     CZSealBody *m_carry;   // 0xeac

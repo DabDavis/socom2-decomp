@@ -278,6 +278,148 @@ CZSealBody *CZSealBody::Create(const CCharacterType *type, const char *name, CSe
     return seal;
 }
 
+extern "C" {
+/* the SEALs made so far (OVL2 bss 0x66B420), shadows' switch (OVL1 data 0x3DF138, a byte), the gear's own
+ * step and the kit's after the items (OVL2 0x58B1A0, 0x5C7830) */
+extern int data_0066B420;
+extern unsigned char data_003DF138;
+void func_0058B1A0(CZSealBody *seal);
+void func_005C7830(CZKit *kit);
+void RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D(void *mgr, const void *owner, const CPnt3D *pos, float r, const CPnt3D *vel);
+}
+
+/* the task's select (seal_tasks.cpp's CTSelect::Create, OVL2 0x5D29F0) */
+struct CTSelect {
+    static void *Create(CZSealBody *seal);
+};
+
+/* what PostCreateSeal reads of the world: a shadow's owner and the clutter's animations (zdb::CWorld at 0x56C
+ * and 0x6AC; a view) */
+struct CWorldViews {
+    unsigned char _0[0x56c];
+    void *m_shadow_node;   // 0x56c
+    unsigned char _570[0x6ac - 0x570];
+    void *m_clutter_anims;   // 0x6ac
+};
+
+/* a box made of two corners (a stand-in: zmath.h's CBBox has no constructor; the first corner's copy through
+ * an ld, the second's a member's) */
+struct CBoxInit {
+    CPnt3D m_min;
+    CPnt3D m_max;
+
+    CBoxInit(const CPnt3D &a, const CPnt3D &b) : m_min(a), m_max(b) {}
+};
+
+/* the SEAL finished as made: the bounds and the controller set, the event and the task's select made, the
+ * gear added, the kit given each weapon's model and ammunition -- empty slots skipped --, the aim reset, the
+ * controller started; a clutter effector as wide as the body and a shadow for a player when the world has
+ * none yet (OVL2 0x599F00: SOCOM 1's PostCreateSeal, the effector's width and the shadow new).
+ * The round counts are read twice and held across GetAmmo by IRO_CommonSubs, which numbers them above the
+ * loop's scalarised iterator (s2): named locals would number below it. `fabsf(size.z > r)` is the disc's own
+ * oddity: the comparison's int, unsigned to float, its absolute value tested against no constant */
+void CZSealBody::PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl)
+{
+    seal->m_HudUpdateViewCone = 1;
+
+    zdb::CNode *node = seal->GetNode();
+
+    node->SetNodeEx((zdb::CNodeEx *)seal->m_ex, true);
+    {
+        CBoxInit t(CPnt3D(-12.0f, 0.0f, -14.0f), CPnt3D(12.0f, 20.0f, 14.0f));
+
+        node->m_bbox = (const CBBox &)t;
+    }
+    seal->SetController(ctrl);
+    seal->CreateAiEvent();
+    seal->m_select = CTSelect::Create(seal);
+
+    CCharacterType *type = seal->m_charType;
+
+    data_0066B420++;
+
+    CCharacterGearList &gear = type->m_gear;
+
+    for (CCharacterGearList::iterator g = gear.begin(); g != gear.end(); ++g)
+        seal->AddItem(*g);
+    seal->EnableMPBombGear(false);
+    func_0058B1A0(seal);
+    seal->SetupGear();
+
+    CZKit *kit = &seal->m_kit;
+
+    if (kit) {
+        kit->InitItemModel("null", "null");
+
+        CCharacterWeapList &weapons = seal->m_charType->m_weapons;
+        int slot = 0;
+
+        for (CCharacterWeapList::iterator w = weapons.begin(); w != weapons.end(); ++w) {
+            bool ok = kit->SetItem(slot, w->m_wepId);
+
+            if (ok) {
+                CZWeapon *item = (CZWeapon *)kit->GetItemByIndex(slot);
+
+                if (item) {
+                    char model[1024];
+
+                    strcpy(model, item->GetModelName());
+                    strlen(model);
+
+                    const char *name = "grenade";
+
+                    switch (CZKit::GetItemFireClass(item->m_ID)) {
+                    case 1:
+                        name = "rifle";
+                        break;
+                    case 2:
+                        name = "pistol";
+                        break;
+                    case 4:
+                        name = "launcher";
+                        break;
+                    }
+                    kit->InitItemModel(model, name);
+                }
+
+                if (w->m_ammoCount * w->m_magCount)
+                    kit->SetItemAmmo(slot, CZAmmo::GetAmmo(w->m_ammoId), w->m_ammoCount, w->m_magCount);
+                else
+                    kit->SetItemAmmo(slot, CZAmmo::GetAmmo(w->m_ammoId));
+                slot++;
+            }
+        }
+        kit->SetCurReticule(false);
+        func_005C7830(kit);
+    }
+    seal->m_220 = 0;
+    seal->m_224 = 0;
+    seal->m_228 = 0;
+    seal->SetAimDirR(&CPnt3D::unit_nz, false);
+    seal->m_fd1 = 0;
+    ctrl->Initalize();
+    if (((CWorldViews *)zdb::CWorld::m_world)->m_clutter_anims) {
+        const CBBox *box = node->GetBBox();
+        CPnt3D size;
+
+        box->GetSize(&size);
+
+        float r = fabsf(size.x);
+
+        if (fabsf(size.z > r))
+            r = size.z;
+        r *= 0.5f;
+        RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D(((CWorldViews *)zdb::CWorld::m_world)->m_clutter_anims, seal,
+            (const CPnt3D *)node->m_matrix.m_matrix[3], r, &seal->m_velW);
+    }
+    if (data_003DF138 && seal->IsPlayer() && !((CWorldViews *)zdb::CWorld::m_world)->m_shadow_node) {
+        node->m_socom2_a1_bits.bit5 = 1;
+        zdb::CWorld::m_world->AddShadow(node);
+    }
+    seal->m_useCachedReticuleSeal = false;
+    seal->m_cachedReticuleSeal = 0;
+}
+
 /* the character type taken and its model instanced: dynamic, its LODs made, added to the world,
  * flagged, its textures added; none without a type or a model (OVL2 0x59A7F0; SOCOM 1's with a
  * second flag) */
