@@ -262,6 +262,28 @@ public:
     void merge(__list_deleter &x, Compare comp);
     template <class Compare>
     void sort(Compare comp);
+    /* sort's second list (ours, A MARKED DEVICE): the deleter's layout with the original's destructor, erase(begin(), end())
+     * cut to its own body -- this header's ~__list_deleter inlines the clear loop, as every level-5 instance wants it
+     * (README "Level 6, or 8?"; the world's round 34: 0x33E510 byte-exact so, 0x1A4 before). The `(void)0;` is load-bearing:
+     * the erase alone, one statement, inlines whole (0x1A4); a second statement, of any size, leaves begin(), end() and the
+     * erase called, as the target -- a by-reference or pointer local there holds the cast in a saved register instead */
+    struct __sort_list {
+        unsigned int size_;
+        node_base end_;
+
+        __sort_list() : size_(0)
+        {
+            node_base *t = &end_;
+
+            t->next_ = t;
+            t->prev_ = t;
+        }
+        ~__sort_list()
+        {
+            (void)0;
+            ((__list_deleter *)this)->erase(((__list_deleter *)this)->begin(), ((__list_deleter *)this)->end());
+        }
+    };
 
 protected:
     unsigned int size_;
@@ -457,12 +479,11 @@ void __list_deleter<T, Allocator>::merge(__list_deleter &x, Compare comp)
 }
 
 /* the list sorted by merging: two elements swapped in place, more split at the middle into a
- * second list, each half sorted and the second merged back (SOCOM 1's sort). OPEN (0x1A4 against
- * the target's 0x178): the second list's teardown -- the target inlines ~__list_deleter one level
- * and calls begin(), end() (0x2A00B0, 0x2A00A0) and the range erase out of line, the destructor
- * written erase(begin(), end()) and cut ("Level 6, or 8?"), where this header's destructor inlines
- * the clear loop and the delete; the case-2 swap reads end_.next_ through &end_.next_ kept in a2 in
- * the target. Everything before the teardown is the target's but registers */
+ * second list, each half sorted and the second merged back (SOCOM 1's sort). Byte-exact since the world's
+ * round 34 (0x1A4 against 0x178 since round 12): the second list's teardown through __sort_list; every case inside the
+ * switch, so case 0 and 1 branch straight to the end (a `return` there is a conditional branch to a lone `b`, block
+ * optimization fires and the delay-slot pass hoists nothing from any fall-through: the engine core's round 28); the case-2
+ * swap's &end_.next_ a reference bound ahead of the compare (bound in the block it is forwarded and folds to 8(s0)) */
 template <class T, class Allocator>
 template <class Compare>
 void __list_deleter<T, Allocator>::sort(Compare comp)
@@ -470,9 +491,10 @@ void __list_deleter<T, Allocator>::sort(Compare comp)
     switch (size_) {
     case 0:
     case 1:
-        return;
+        break;
     case 2: {
         node_base *f = end_.next_;
+        node_base *&b = end_.next_;
         node_base *s = f->next_;
 
         if (comp(((node *)s)->data_, ((node *)f)->data_)) {
@@ -485,32 +507,34 @@ void __list_deleter<T, Allocator>::sort(Compare comp)
             s->prev_ = s->next_;
             s->next_ = t;
             t = end_.prev_;
-            end_.prev_ = end_.next_;
-            end_.next_ = t;
+            end_.prev_ = b;
+            b = t;
         }
-        return;
+        break;
+    }
+    default: {
+        iterator i(end_.next_);
+        unsigned int n = size_ / 2;
+
+        for (unsigned int k = n; k != 0; --k)
+            ++i;
+        __sort_list tmp;
+        iterator e(end_.prev_);
+        node_base *p = &tmp.end_;
+
+        i.node_->prev_->next_ = e.node_->next_;
+        e.node_->next_->prev_ = i.node_->prev_;
+        p->prev_->next_ = i.node_;
+        i.node_->prev_ = p->prev_;
+        p->prev_ = e.node_;
+        e.node_->next_ = p;
+        tmp.size_ = size_ - n;
+        size_ = n;
+        sort(comp);
+        ((__list_deleter &)tmp).sort(comp);
+        merge((__list_deleter &)tmp, comp);
     }
     }
-    iterator i(end_.next_);
-    unsigned int n = size_ / 2;
-
-    for (unsigned int k = n; k != 0; --k)
-        ++i;
-    __list_deleter tmp;
-    node_base *l = end_.prev_;
-    node_base *p = &tmp.end_;
-
-    i.node_->prev_->next_ = l->next_;
-    l->next_->prev_ = i.node_->prev_;
-    p->prev_->next_ = i.node_;
-    i.node_->prev_ = p->prev_;
-    p->prev_ = l;
-    l->next_ = p;
-    tmp.size_ = size_ - n;
-    size_ = n;
-    sort(comp);
-    tmp.sort(comp);
-    merge(tmp, comp);
 }
 
 template <class T, class Allocator>
