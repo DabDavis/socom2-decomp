@@ -369,6 +369,359 @@ void zAnimObjectMotionBegin(_zanim_cmd_hdr *hdr)
     }
 }
 
+/* the texture sequence's other form: a list of handles, its clear and its add (zparticle_source.cpp's) */
+extern "C" void func_0032B110(Particle::Source *src);
+extern "C" void func_0032AAE0(Particle::Source *src, zdb::CTexHandle *tex);
+
+/* PARTICLE_SOURCE's record: flags, a second word of flags, the source, the node, the sequences' counts and the
+ * values each flag sets (SOCOM 1's, the layout read off the handler) */
+struct zanim_cmd_particle {
+    _zanim_cmd_hdr hdr;
+    unsigned int flags;             /* 0x4 */
+    unsigned int flags2;            /* 0x8 */
+    unsigned char name;             /* 0xc */
+    unsigned char node;             /* 0xd */
+    unsigned char number;           /* 0xe */
+    unsigned char model;            /* 0xf */
+    unsigned char num_tex;          /* 0x10 */
+    unsigned char num_color;        /* 0x11 */
+    unsigned char num_scale;        /* 0x12 */
+    unsigned char type : 4;         /* 0x13 */
+    unsigned char cloud_type : 4;
+    CPnt3D offset;                  /* 0x14 */
+    CPnt3D velocity;                /* 0x20 */
+    CPnt3D world_velocity;          /* 0x2c */
+    float perturb_vel[6];           /* 0x38 */
+    float perturb_pos[6];           /* 0x50 */
+    float rotation[6];              /* 0x68 */
+    float period;                   /* 0x80 */
+    float accel[3];                 /* 0x84 */
+    float friction;                 /* 0x90 */
+    float wind;                     /* 0x94 */
+    float priority;                 /* 0x98 */
+    float radius[2];                /* 0x9c */
+    float initial_age[2];           /* 0xa4 */
+    float lifespan[2];              /* 0xac */
+    float near_fade[2];             /* 0xb4 */
+    float far_fade[2];              /* 0xbc */
+    unsigned short pos_rand;        /* 0xc4 */
+    short num_periods;              /* 0xc6 */
+    unsigned short tex_seq;         /* 0xc8 */
+    unsigned short color_seq;       /* 0xca */
+    unsigned short scale_seq;       /* 0xcc */
+    unsigned short rot_ranges;      /* 0xce */
+    unsigned short streak;          /* 0xd0 */
+    unsigned short tint;            /* 0xd2 */
+    float visual_density;           /* 0xd4 */
+    float distance;                 /* 0xd8 */
+};
+
+struct zanim_particle_tex_key {
+    short name;
+    float fraction;
+};
+
+/* an argument of a type (GetArgPnt3D's ternary) */
+static inline CPnt3D *ArgOfType(CZAnim *anim, CZAnimArg::TYPE type)
+{
+    return anim->m_arg_list ? anim->m_arg_list->GetPnt3D(type) : 0;
+}
+
+/* PARTICLE_SOURCE: a source's settings changed, each by its flag (SOCOM 1's; the second flag word's point
+ * through the node, its reflect and normalise flags, the streak and the bounding box SOCOM II's or moved) */
+bool zAnimParticleSourceTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    zanim_cmd_particle *cmd = (zanim_cmd_particle *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    Particle::Source *src = anim->GetParticleSource(cmd->name);
+
+    if (src) {
+        if (cmd->flags & 1) {
+            if (cmd->flags & 2)
+                src->SetActive(true);
+            else
+                src->SetActive(false);
+        }
+        if (cmd->type != 4) {
+            src->m_drawType = cmd->type;
+            if (cmd->type == 3) {
+                if (cmd->streak > 0) {
+                    float *v = (float *)((char *)cmd + cmd->streak);
+
+                    src->m_streakLen = v[0];
+                    src->m_streakFade = v[1];
+                }
+            } else if (cmd->type == 1) {
+                float a, b, c, d;
+
+                if (cmd->rot_ranges > 0) {
+                    float *v = (float *)((char *)cmd + cmd->rot_ranges);
+
+                    a = v[0];
+                    b = v[1];
+                    c = v[2];
+                    d = v[3];
+                } else {
+                    b = 0.0f;
+                    a = b;
+                    d = b;
+                    c = b;
+                }
+                src->m_minRot = a;
+                src->m_maxRot = b;
+                src->m_minRotAcc = c;
+                src->m_maxRotAcc = d;
+            }
+        }
+        if (cmd->flags & 0x10) {
+            src->m_node = anim->GetNode(cmd->node, false);
+            src->m_goodPos = 0;
+        }
+
+        CPnt3D pos(0.0f, 0.0f, 0.0f);
+        bool moved = false;
+
+        if (cmd->flags & 8) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_PNT3D);
+
+            if (arg) {
+                pos = pos + *arg;
+                moved = true;
+            }
+        }
+        if (cmd->flags & 4) {
+            pos = pos + cmd->offset;
+            moved = true;
+        }
+        if (cmd->flags & 0x20) {
+            CNode *node = anim->GetNode(cmd->node, false);
+
+            if (node) {
+                CPnt3D p(0.0f, 0.0f, 0.0f);
+
+                node->TransformToWorld(p);
+                pos = pos + p;
+                moved = true;
+            }
+        }
+        if (moved && (cmd->flags2 & 8) && cmd->pos_rand > 0) {
+            float *r = (float *)((char *)cmd + cmd->pos_rand);
+
+            pos.x += r[0] + r[3] * Rand01();
+            pos.y += r[1] + r[4] * Rand01();
+            pos.z += r[2] + r[5] * Rand01();
+        }
+        if (moved) {
+            src->SetOffset(pos.x, pos.y, pos.z);
+            src->m_goodPos = 0;
+        }
+        if (cmd->flags2 & 2) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                v.Scale(cmd->velocity.x, &v);
+                src->SetLocalVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags2 & 0x40) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                if (cmd->flags2 & 0x400)
+                    v.Normalize();
+                if (cmd->flags2 & 0x100) {
+                    CPnt3D *plane = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+
+                    if (plane)
+                        v = v.Reflect(plane);
+                }
+                v.Scale(cmd->velocity.x, &v);
+                src->SetLocalVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags2 & 0x100) {
+            CPnt3D *plane = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                if (cmd->flags2 & 0x400)
+                    v.Normalize();
+                v.Scale(cmd->velocity.x, &v);
+                if (plane)
+                    v = v.Reflect(plane);
+                src->SetLocalVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags & 0x40)
+            src->SetLocalVelocity(cmd->velocity.x, cmd->velocity.y, cmd->velocity.z);
+        if (cmd->flags2 & 4) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                v.Scale(cmd->world_velocity.x, &v);
+                src->SetWorldVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags2 & 0x80) {
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                if (cmd->flags2 & 0x800)
+                    v.Normalize();
+                v.Scale(cmd->world_velocity.x, &v);
+                src->SetWorldVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags2 & 0x200) {
+            CPnt3D *plane = ArgOfType(anim, CZAnimArg::TYPE_VEL);
+            CPnt3D *arg = ArgOfType(anim, CZAnimArg::TYPE_DIR);
+
+            if (arg) {
+                CPnt3D v(arg->x, arg->y, arg->z);
+
+                if (cmd->flags2 & 0x800)
+                    v.Normalize();
+                v.Scale(cmd->world_velocity.x, &v);
+                if (plane)
+                    v = v.Reflect(plane);
+                src->SetWorldVelocity(v.x, v.y, v.z);
+            }
+        } else if (cmd->flags & 0x80)
+            src->SetWorldVelocity(cmd->world_velocity.x, cmd->world_velocity.y, cmd->world_velocity.z);
+        if (cmd->flags2 & 0x10)
+            src->m_inheritVelocity = (cmd->flags2 & 0x20) != 0;
+        if (cmd->flags2 & 0x80000)
+            src->m_perParticleVelocity = 1;
+        if (cmd->flags & 0x100)
+            src->SetRange(src->m_perturbVelocityX, cmd->perturb_vel[0], cmd->perturb_vel[1]);
+        if (cmd->flags & 0x200)
+            src->SetRange(src->m_perturbVelocityY, cmd->perturb_vel[2], cmd->perturb_vel[3]);
+        if (cmd->flags & 0x400)
+            src->SetRange(src->m_perturbVelocityZ, cmd->perturb_vel[4], cmd->perturb_vel[5]);
+        if (cmd->flags & 0x800)
+            src->SetRange(src->m_perturbPositionX, cmd->perturb_pos[0], cmd->perturb_pos[1]);
+        if (cmd->flags & 0x1000)
+            src->SetRange(src->m_perturbPositionY, cmd->perturb_pos[2], cmd->perturb_pos[3]);
+        if (cmd->flags & 0x2000)
+            src->SetRange(src->m_perturbPositionZ, cmd->perturb_pos[4], cmd->perturb_pos[5]);
+        if (cmd->flags & 0x4000) {
+            float period;
+
+            src->m_distInterval = 1;
+            period = cmd->period;
+            src->m_period = period;
+            src->m_invPeriod = 1.0f / period;
+        }
+        if (cmd->flags & 0x8000) {
+            float period;
+
+            src->m_distInterval = 0;
+            period = cmd->period;
+            src->m_period = period;
+            src->m_invPeriod = 1.0f / period;
+        }
+        if (cmd->flags2 & 1) {
+            int n = cmd->num_periods;
+
+            src->m_numPeriods = n;
+            src->m_freezable = n == -1;
+        }
+        if (cmd->flags & 0x10000)
+            src->m_number = cmd->number;
+        if (cmd->flags & 0x20000)
+            src->SetAccel(cmd->accel[0], cmd->accel[1], cmd->accel[2]);
+        if (cmd->flags & 0x40000)
+            src->SetFriction(cmd->friction);
+        if (cmd->flags & 0x80000)
+            src->SetWindFactor(cmd->wind);
+        if (cmd->flags & 0x100000)
+            src->SetRange(src->m_radiusRange, cmd->radius[0], cmd->radius[1]);
+        if (cmd->flags & 0x200000)
+            src->SetRange(src->m_initialAgeRange, cmd->initial_age[0], cmd->initial_age[1]);
+        if (cmd->flags & 0x400000)
+            src->SetRange(src->m_lifespanRange, cmd->lifespan[0], cmd->lifespan[1]);
+        if (cmd->flags & 0x800000)
+            src->SetNearFade(cmd->near_fade[0] * cmd->near_fade[0], cmd->near_fade[1] * cmd->near_fade[1]);
+        if (cmd->flags & 0x1000000)
+            src->SetFarFade(cmd->far_fade[0] * cmd->far_fade[0], cmd->far_fade[1] * cmd->far_fade[1]);
+        if (cmd->flags2 & 0x100000)
+            src->m_tint = cmd->tint;
+        if (cmd->flags2 & 0x1000)
+            src->m_distance = cmd->distance * cmd->distance;
+        if (cmd->flags2 & 0x2000) {
+            if (cmd->flags2 & 0x4000)
+                src->m_landmark = 1;
+            else
+                src->m_landmark = 0;
+        }
+        if (cmd->flags2 & 0x8000) {
+            if (cmd->flags2 & 0x10000)
+                src->m_doAgeLOD = 1;
+            else
+                src->m_doAgeLOD = 0;
+        }
+        if (cmd->flags2 & 0x20000) {
+            if (cmd->flags2 & 0x40000)
+                src->m_doSpawnLOD = 1;
+            else
+                src->m_doSpawnLOD = 0;
+        }
+        if (cmd->flags & 0x40000000) {
+            src->SetHasBBox(true);
+            src->SetVisualDensity(cmd->visual_density);
+            src->m_cloudtype = cmd->cloud_type;
+        }
+        if (cmd->flags & 0x2000000)
+            src->SetPriority(cmd->priority);
+        if ((cmd->flags & 0x4000000) || (cmd->flags & 0x8000000)) {
+            zanim_particle_tex_key *key = (zanim_particle_tex_key *)((char *)cmd + cmd->tex_seq);
+
+            if (cmd->flags & 0x4000000)
+                func_0032B110(src);
+            else
+                src->TextureSequenceClear();
+            for (int i = 0; i < cmd->num_tex; i++, key++) {
+                CTexHandle *tex = anim->GetTexture(key->name);
+
+                if (tex) {
+                    if (cmd->flags & 0x4000000)
+                        func_0032AAE0(src, tex);
+                    else
+                        src->TextureSequenceAdd(key->fraction, tex);
+                }
+            }
+        }
+        if (cmd->flags & 0x10000000) {
+            float *key = (float *)((char *)cmd + cmd->color_seq);
+
+            src->ColorSequenceClear();
+            for (int i = 0; i < cmd->num_color; i++, key += 5)
+                src->ColorSequenceAdd(key[0], key[1], key[2], key[3], key[4]);
+        }
+        if (cmd->flags & 0x80000000) {
+            zdb::CModel *model = (zdb::CModel *)zdb::CWorld::GetModel(anim->GetName(cmd->model));
+
+            src->SetModel(model);
+            src->SetRange(src->m_rotationX, cmd->rotation[0], cmd->rotation[1]);
+            src->SetRange(src->m_rotationY, cmd->rotation[2], cmd->rotation[3]);
+            src->SetRange(src->m_rotationZ, cmd->rotation[4], cmd->rotation[5]);
+        }
+        if (cmd->flags & 0x20000000) {
+            float *key = (float *)((char *)cmd + cmd->scale_seq);
+
+            src->ScaleSequenceClear();
+            for (int i = 0; i < cmd->num_scale; i++, key += 2)
+                src->ScaleSequenceAdd(key[0], key[1]);
+        }
+    }
+    return true;
+}
+
 /* a surface's reaction in the record's list (SOCOM 1's, a word with SOCOM II's extra bits): the material
  * it answers, the sound and the sequence to start, the sound's fade distance and the bounce */
 struct zanim_motion_surface {
