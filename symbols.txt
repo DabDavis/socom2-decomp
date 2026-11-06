@@ -10635,7 +10635,7 @@
 0x005940D0 0x278 TickVictims__9CSealCtrlFv  # OVL2; s1:order (after TickPickups; ThrottlesPreTick calls it second, as SOCOM 1's)
 0x00594350 0x124 CanPerformAction__9CSealCtrlFP11CNodeAction  # OVL2; s1:order (after TickVictims); calls the next function first, as SOCOM 1's calls CanPlaceBomb
 0x00594480 0x17C CanPlaceBomb__9CSealCtrlFP11CNodeAction  # OVL2; s1:order (after CanPerformAction, which calls it)
-0x00594600 0x56C func_00594600  # OVL2
+0x00594600 0x56C TickAimPitch__9CSealCtrlFff  # OVL2; s1:order by hand (the SEALs, round 59): SOCOM 1's TickAimPitch__9CSealCtrlFff, by its place after the victims and ThrottlesPreTick's last call, the ground's tilt and the limits new
 0x00594B70 0x11C func_00594B70  # OVL2
 0x00594C90 0x5C func_00594C90  # OVL2
 0x00594CF0 0x19A8 PreTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10643,12 +10643,12 @@
 0x00596D60 0x1B0 func_00596D60  # OVL2
 0x00596F10 0x1A0 Tick__9CSealCtrlFf  # OVL2; s1:calls
 0x005970B0 0x43C PostTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005974F0 0x3C func_005974F0  # OVL2
-0x00597530 0x7C func_00597530  # OVL2
-0x005975B0 0x14 func_005975B0  # OVL2
+0x005974F0 0x3C Set__11CDynGrenadeFRC6CPnt3DRC6CPnt3Df  # OVL2; by hand (the SEALs, round 59): an inline's copy right after its first caller PostTick: the grenade set from a point, a direction and a speed (SOCOM 1's two PNT3D assignments and Scale); the kit's 0x5B8920, 0x5C1970 call it too; by hand (the SEALs, round 59): CDynGrenade's inline (ours), zseal.h
+0x00597530 0x7C RotateVectors__FPC7CMatrixP6CPnt3Di  # OVL2; by hand (the SEALs, round 59): an inline's copy: zmath.h's TransformVectors with one array for both (SOCOM 1's PostTick calls CMatrix::Rotate at the place)
+0x005975B0 0x14 LengthSqXZ__FRC6CPnt3D  # OVL2; by hand (the SEALs, round 59): an inline's copy: a vector's length squared on the ground plane
 0x005975D0 0x54 ComputeTimeToImpact__11CDynGrenadeFfff  # OVL2; s1:order (before ComputeElevOfs); SOCOM 1's quadratic(-49, b, c) and _max, scaled by a new first float argument -- the signature ours
-0x00597630 0x1C func_00597630  # OVL2
-0x00597650 0x4C func_00597650  # OVL2
+0x00597630 0x1C Lerp__Ffff  # OVL2; by hand (the SEALs, round 59): an inline's copy: a*(1-t) + b*t (inlined in SOCOM 1's PostTick)
+0x00597650 0x4C SinCos__FfRfRf  # OVL2; by hand (the SEALs, round 59): an inline's copy: sinf then cosf through references (inlined in SOCOM 1's PostTick)
 0x005976A0 0x40 ComputeElevOfs__11CDynGrenadeFf  # OVL2; s1:order; SOCOM 1's lerp of two statics (10, 12) times pi/180
 0x005976E0 0x60 ComputeMaxVel__11CDynGrenadeFffPf  # OVL2; s1:order (seal_control.cpp's tail after PostTick: ComputeTimeToImpact, ComputeElevOfs, ComputeMaxVel as SOCOM 1's); SOCOM 1's code but the guarded statics (MW 3.0 initialises them statically) and an inline sqrt
 0x00597740 0x48 SetMenuState__9CSealCtrlF10MENU_STATEb  # OVL2; the HUD lane's lead: CWeaponSel::AfterClose (0x21AAA0) and CInGameWeaponSel::AfterClose (0x227730) call it where SOCOM 1's call SetMenuState__9CSealCtrlF10MENU_STATE, passing 0 in a second argument; s1:order (seal_control.cpp: before SetTrigger, as SOCOM 1's); m_menustate (0x221) stored under SOCOM 1's stateLast test; the second parameter is bool by its use (a flag tested once, the callers passing 0 or `x == 5`), not pinned: int compiles the same in it and at all 17 call sites (probe: build/scratch/seal/p)

@@ -310,6 +310,19 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* the reticule's settling, 0 when settled (kit.h's; OVL2 0x5BE990) */
+    float GetReticuleSettle();
+    /* the zoom in hand and the bob's screen offset (kit.h's; OVL2 0x5BE660, 0x5B90C0 -- the throttles' tick
+     * asks them) */
+    float GetCurZoom();
+    void IncrScreenOffsetY(float dy);
+    /* whether the night vision is on (OVL2 0x5C80F0, kit.h's) */
+    bool NVG_Enabled() const;
+    /* the night vision and the binoculars put on or off, the lens's fog and colour (kit.h's: OVL2
+     * 0x5C8080, 0x5B9110, 0x5C1800) */
+    void NVG_Enabled(bool on);
+    void Binocs_Enabled(bool on);
+    void Apply_LensEffects(bool on, CPnt3D *color);
     /* whether the weapon in hand waits out a fire delay (kit.h's; OVL2 0x5C2400 -- IsReloading asks
      * it first) */
     bool IsFireDelayed();
@@ -449,6 +462,8 @@ public:
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
 class CAiMaps {
 public:
+    /* a cell taken and another freed for an id (SOCOM 1's; ai_maps.h's) */
+    void SetOccupied(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int id);
     /* a cell's centre, the point handed back -- none off the maps (ai_maps.h's, OVL2 0x52D480: a
      * `CPnt3D *`, not a bool -- the callers test v0 straight, with no `andi 0xff`) */
     CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
@@ -556,9 +571,17 @@ public:
 
 extern CZNetwork theNetwork;
 
+/* the game's rules (a view: the mode a defusal asks, CSealCtrl::PerformProximityActions; the name ours) */
+struct CNetGameMode {
+    unsigned char _0[4];
+    unsigned short m_4;   // 0x4
+};
+
 class CNetGameState {
 public:
-    unsigned char _0[0x38];
+    unsigned char _0[0x1c];
+    CNetGameMode *m_1c;   // 0x1c
+    unsigned char _20[0x38 - 0x20];
     /* the valves a hostage's death steps, by the killer's side (HandleKiller; the names ours) */
     CValve *m_38;   // 0x38
     CValve *m_3c;   // 0x3c
@@ -570,7 +593,9 @@ public:
     CValve *m_score2;   // 0x78: the side 0x2C30B0 says
     int m_bonus1;   // 0x7c
     int m_bonus2;   // 0x80
-    unsigned char _84[0xd2 - 0x84];
+    unsigned char _84[0xcc - 0x84];
+    unsigned char m_cc;   // 0xcc: online, the aim's pitch kept to the narrower limits (TickAimPitch; the name ours)
+    unsigned char _cd[0xd2 - 0xcd];
     unsigned char m_ghost;   // 0xd2
     unsigned char _d3[0xdc - 0xd3];
     unsigned char m_dc;   // 0xdc: a SEAL's death sends no squad order unless set (the name ours)
@@ -710,6 +735,32 @@ public:
     unsigned int m_visible_by_units;   // 0x1c (SOCOM 1's 0x18)
 };
 
+/* the throw's small inlines (OVL2 0x597630, 0x597650, 0x5975B0, 0x597530: out-of-line copies right after
+ * their first caller, CSealCtrl::PostTick: CDynGrenade::Initalize, over inline_max_size, calls them):
+ * a lerp; the sine and cosine of an angle; a vector's length squared on the ground plane; points turned by
+ * a matrix's rotation in place (zmath.h's TransformVectors with one array for both, so the input cursor
+ * is a copy of the output's). The names ours; SOCOM 1's PostTick has each expanded in place */
+inline float Lerp(float a, float b, float t)
+{
+    return a * (1.0f - t) + b * t;
+}
+
+inline void SinCos(float a, float &s, float &c)
+{
+    s = sinf(a);
+    c = cosf(a);
+}
+
+inline float LengthSqXZ(const CPnt3D &v)
+{
+    return v.x * v.x + v.z * v.z;
+}
+
+inline void RotateVectors(const CMatrix *m, CPnt3D *p, int count)
+{
+    TransformVectors(m, p, p, count);
+}
+
 /* a thrown grenade's flight, solved (SOCOM 1's: 0x1c bytes, passed by value to ai::DrawFunc, which
  * copies all seven words; the members' names ours) */
 class CDynGrenade {
@@ -725,6 +776,23 @@ public:
     {
         return m_pos + m_vel * t + CPnt3D(0.0f, -49.0f * (t * t), 0.0f);
     }
+
+    /* the flight set from a point, a direction and a speed (OVL2 0x5974F0, an inline's copy; SOCOM 1's two
+     * PNT3D assignments and its Scale) */
+    void Set(const CPnt3D &pos, const CPnt3D &dir, float speed)
+    {
+        m_pos.x = pos.x;
+        m_pos.y = pos.y;
+        m_pos.z = pos.z;
+        m_vel.x = dir.x;
+        m_vel.y = dir.y;
+        m_vel.z = dir.z;
+        m_vel.Scale(speed);
+    }
+
+    /* the throw solved: seal_throw.h's -- an inline's statics are emitted by every unit that sees its
+     * body, whether it calls it or not (a body here put them in eight more units) */
+    void Initalize(const CMatrix *m, const CPnt3D &aim, float dist, float power, CPnt3D &p);
 
     CPnt3D m_pos;   // 0x0
     CPnt3D m_vel;   // 0xc
@@ -750,6 +818,8 @@ enum AI_LOOK {
 class CSealCtrl : public CEntityCtrl {
 public:
     CSealCtrl();
+    /* the first-person bob's switch (SOCOM 1's static member, OVL1 data 0x3DF190) */
+    static bool m_bobbing1stperson_enabled;
     /* the controllers switched on or off (OVL2 0x598840, new in SOCOM II, seal_control.cpp's: CTStopAll::Tick
      * calls it beside CSealCtrlAi::SetAiEnabled, the mission cameras with false while one plays; the name
      * ours) */
@@ -894,7 +964,9 @@ public:
     void SetLookRate(float rate);
     /* the throttles read off the pad (SOCOM 1's ThrottlesPreTick, after PreTick: OVL2 0x5966A0 --
      * PostMortemPreTick calls it first) */
-    void ThrottlesPreTick(class CPad *pad, float dT);
+    bool ThrottlesPreTick(class CPad *pad, float dT);
+    /* the aim's pitch ticked (SOCOM 1's TickAimPitch; OVL2 0x594600, ThrottlesPreTick's last call) */
+    void TickAimPitch(float dT, float throttle);
     /* the speed a throttle gives along an axis (SOCOM 1's sealctrl.cpp; OVL2 0x592880: the body's
      * GetMaxZMotion/GetMaxXMotion) */
     float GetSpeedFromThrottle(float throttle, int axis);
@@ -1246,7 +1318,7 @@ public:
      * and turns the squad on the player past 190 (new in SOCOM II; the name ours) */
     float m_400;   // 0x400
     float m_404;   // 0x404 (zeroed by the constructor; the names from here to 0x7a4 ours)
-    unsigned char _408[0x40c - 0x408];
+    float m_408;   // 0x408: scales the anger a killer of the team raises (OnDeath; the name ours)
     float m_40c;   // 0x40c: a time on the game's clock 0x572190 measures from (the name ours)
     unsigned char _410[0x41c - 0x410];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
@@ -1352,7 +1424,7 @@ public:
     unsigned char _75e[0x760 - 0x75e];
     float m_sound_time;   // 0x760
     AI_SOUND_PRIORITY m_sound_priority;   // 0x764
-    unsigned char _768[0x76c - 0x768];
+    float m_768;   // 0x768: the speed factor the AI last asked (0x570F90; the name ours)
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x770 - 0x76d];
     /* when the AI last threw a grenade, on the game clock (the grenade choice 0x565110 waits a while
@@ -1397,6 +1469,8 @@ public:
     virtual void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj);
     /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */
     virtual void OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
+    /* (OVL2 0x5714B0, slot 0x18: seal_ai.cpp's) */
+    virtual void OnDeath();
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* the state sent to the other consoles, as a word's bits (OVL2 0x56F6C0, slot 0x6C) */
@@ -1847,6 +1921,8 @@ public:
     /* the character type taken and its model instanced, dynamic, with its LODs, in the world, its
      * textures added (SOCOM 1's; OVL2 0x59A7F0) */
     static const CCharacterType *PreCreateSeal(const CCharacterType *type, const char *name, zdb::CNode **node);
+    /* the bomb let go (SOCOM 1's; OVL2 0x59DD30) */
+    void DropMPBomb();
     /* every heartbeat loop stopped (SOCOM 1's; StopRumbler calls it with no body) */
     static void StopAllHeartbeatSounds();
     /* the loops let go, and looked up (SOCOM 1's; OVL2 0x543AD0, 0x543B40) */
@@ -2066,6 +2142,8 @@ public:
      * states 0, 1, 2, 10 and 9, as SOCOM 1's does) */
     CZBodyAnimBlend *InStateStand();
     CZBodyAnimBlend *InStateCrouch();
+    /* the top blend at its end: whether the next may start (SOCOM 1's CheckAnim: OVL2 0x582540) */
+    bool CheckAnim();
     CZBodyAnimBlend *InStateProne();
     CZBodyAnimBlend *InStateCarried();
     CZBodyAnimBlend *InStateCarrying();
@@ -2133,7 +2211,7 @@ public:
      * ImpactFront in both, $f12 set: OVL2 0x580A80, 0x580B70 -- the SEALs, round 48; ClimbOver's
      * float is never read) */
     void ClimbOver(float h);
-    void Climb(float h);
+    CZBodyAnimBlend *Climb(float h);
     /* the stances' blends (SOCOM 1's seal_body.cpp, in its order: BlendedClimb 0x581110 to Stand
      * 0x581DC0 -- Stand_0 gained a float in SOCOM II) */
     CZBodyAnimBlend *BlendedClimb(float h);
@@ -2150,6 +2228,8 @@ public:
      * MoveControl and CrouchMoveControl: OVL2 0x583030, 0x582D10) */
     CZBodyAnimBlend *MoveControl(float x, float z);
     CZBodyAnimBlend *CrouchMoveControl(float x, float z);
+    /* the prone crawl (SOCOM 1's ProneControl, the middle throttle unread: OVL2 0x583500) */
+    CZBodyAnimBlend *ProneControl(float x, float y, float z);
     /* the top blend popped, the new top returned (SOCOM 1's PopBlend: OVL2 0x589AA0 -- called where
      * SOCOM 1's is, the SEALs' round 48; it hides CBody::PopBlend, which no SEAL code calls) */
     CZBodyAnimBlend *PopBlend();
@@ -2400,7 +2480,7 @@ public:
     unsigned char m_zoomstate_echo;   // 0x202
     unsigned char _203;
     float m_zoom_range;   // 0x204
-    unsigned char _208[0x20c - 0x208];
+    float m_208;   // 0x208: under 396 the satchel may be offered (PerformProximityActions; the name ours)
     /* the material underfoot and the feet's step flags (SOCOM 1's 0x168-0x16D; HandleSealStep and
      * HandleFootfallSound read them) */
     int m_onMaterial;   // 0x20c
@@ -2609,7 +2689,8 @@ public:
     /* how long, online, the SEAL's network life has not been 1 (up): past 20 s it is ended
      * (0x543F70 runs it by the time step at 0x2e0; the name ours) */
     float m_f7c;   // 0xf7c
-    unsigned char _f80[0xf88 - 0xf80];
+    unsigned char _f80[0xf84 - 0xf80];
+    float m_f84;   // 0xf84: the mass a blast's throw is divided by (0x57E770; the name ours)
     float m_waterdepth;   // 0xf88 (SOCOM 1's 0xe70, by its use: in water a SEAL crouches only up to 8.5
                           // deep, 0x5857E0, and goes prone only up to 2, Prone)
     /* the feet's spots in the world while a turn in place pins one (0x54EA80 takes the right's
@@ -2714,13 +2795,15 @@ public:
     unsigned int m_1060_bit11 : 1;
     unsigned int m_1060_bit12 : 1;
     unsigned int m_1060_bit13 : 1;   // bit 13: online, 0x589900 refuses the SEAL with it set (the name ours)
-    unsigned int m_unused_bits2 : 2;
+    unsigned int m_bit14 : 1;   // bit 14: set when the fall of a jump begins (0x57E1B0; the name ours)
+    unsigned int m_unused_bits2 : 1;
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
     unsigned char _1064[0x1070 - 0x1064];
     CQuat m_fwdlook;   // 0x1070 (SOCOM 1's 0xf60: RotateHead sets it, the app camera's transitions call that)
-    unsigned char _1080[0x1090 - 0x1080];
+    float m_zoomval;   // 0x1080 (SOCOM 1's 0xf70, after m_fwdlook in both: TickAimPitch divides by it)
+    unsigned char _1084[0x1090 - 0x1084];
     /* a wall's hit the SEAL holds to (new in SOCOM II: held while its node is set -- 0x5B3890 drops
      * it once the SEAL strays, faces off it or the ledge is out of reach; the name ours) */
     zdb::IntersectStruct m_1090;   // 0x1090
@@ -2774,9 +2857,11 @@ public:
     float m_133c;   // 0x133c: the rate m_fac falls at (0x59B870; the name ours)
     float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
                     // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
-    CPnt3D m_1344;   // 0x1344: the direction the aim's prone limits measure the camera against (UpdateAimDir; the name ours)
+    /* the ground's normal the SEAL stands on (0x57E1B0 asks its y of a jump, TickAimPitch lays the prone aim
+     * along it, UpdateAimDir's prone limits measure the camera against it; the name ours) */
+    CPnt3D m_1344;   // 0x1344
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
-    unsigned char _135c[0x1360 - 0x135c];
+    float m_135c;   // 0x135c: the wait before another jump (0x57E1B0 sets 0.4; the name ours)
     float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
     float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
     unsigned char _1368[0x136c - 0x1368];

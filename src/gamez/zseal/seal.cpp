@@ -56,6 +56,7 @@ extern "C" void *func_00555170(CIndexedArray *a)
  * two flags and the word 0x545EE0 resets, its zdb camera and the SEAL it shows) */
 class CAppCamera {
 public:
+    void SetZoom(float zoom);
     virtual void Tick(float dT);
     virtual bool AttachTo(CZSealBody *prey);
     /* the camera given an entity, or a SEAL, to follow (OVL1 0x2956E0 and its 8-byte jump 0x295AF0: the
@@ -1036,6 +1037,7 @@ struct CZoomPref {
 
 class CMission {
 public:
+    void RefreshTeamValves();
     unsigned char _0[0x194];
     CZoomPref m_primary_zoom;   // 0x194
     CZoomPref m_secondary_zoom;   // 0x19c
@@ -1345,9 +1347,91 @@ bool CZSealBody::Virtual5C(CZSealBody *seal, CTurret *turret)
 }
 
 extern "C" {
-/* whether the SEAL may take a state now (OVL2 0x552EC0, new in SOCOM II: UpdateStance asks it with
- * the desired state; not written yet), and an empty kit stub (OVL2 0x5BE2F0, the kit lane's) */
-bool func_00552EC0(CZSealBody *seal, SEAL_STATE state);
+/* (OVL2 0x588080, 0x579EA0, 0x5857E0, 0x584C10: seal_body.cpp's and seal_anim.cpp's tests) */
+bool func_00588080(CZSealBody *seal);
+bool func_00579EA0(CZSealBody *seal);
+bool func_005857E0(CZSealBody *seal);
+bool func_00584C10(CZSealBody *seal);
+bool func_0054D620(CZSealBody *seal, float back, float ahead, float rise);
+void func_005B0BB0(CZSealBody *seal, const zdb::IntersectStruct *hit);
+}
+
+bool OKToStand(CZSealBody *seal, SEAL_STATE stance);
+
+static inline float Len3(float x, float y, float z)
+{
+    return sqrtf(x * x + y * y + z * z);
+}
+
+/* whether the SEAL may take a state now: not out of a blend that holds it, not in state 7; to stand or
+ * crouch a SEAL prone or crouched must have room over it (OKToStand) -- a remote one always -- its asked
+ * state put back if not; to crouch or go prone a SEAL standing also clear before and behind for its speed
+ * (0x54D620) (OVL2 0x552EC0, new in SOCOM II: UpdateStance asks it with the desired state; the name
+ * unknown) */
+extern "C" bool func_00552EC0(CZSealBody *seal, SEAL_STATE state)
+{
+    if (!func_005551A0(((CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends))->m_flags, 0x40) &&
+        !func_00588080(seal))
+        return false;
+    if (func_00579EA0(seal))
+        return false;
+    if (seal->m_state == 7)
+        return false;
+    switch (state) {
+    case stateStand:
+        if (seal->IsCurrentBlend((AnimType)19))
+            return false;
+        if (seal->m_state == stateCrouch || seal->m_state == stateProne) {
+            if (seal->IsRemote())
+                return true;
+            if (OKToStand(seal, stateStand))
+                return true;
+            seal->m_desiredState = (SEAL_STATE)seal->m_state;
+        }
+        break;
+    case stateCrouch:
+        if (seal->IsCurrentBlend((AnimType)25))
+            return false;
+        if (seal->m_state == stateStand || seal->m_state == stateProne) {
+            float len = Len3(seal->m_curr_firepos.x, 0.0f, seal->m_curr_firepos.z);
+            float back = 1.2f * len;
+
+            if (seal->m_state == stateProne)
+                back = 0.5f + len;
+            if (func_0054D620(seal, back, 7.0f, 1.2f * theCharacterDynamics.m_stepHeight))
+                return false;
+        }
+        if (!seal->IsRemote() && !func_005857E0(seal))
+            return false;
+        if (seal->m_state == stateStand)
+            return true;
+        if (seal->m_state == stateProne) {
+            if (seal->IsRemote())
+                return true;
+            if (OKToStand(seal, stateCrouch))
+                return true;
+            seal->m_desiredState = (SEAL_STATE)seal->m_state;
+        }
+        break;
+    case stateProne:
+        if (seal->IsCurrentBlend((AnimType)17))
+            return false;
+        if (seal->m_state != stateProne &&
+            func_0054D620(seal, 11.2f, 8.0f, 0.5f * theCharacterDynamics.m_stepHeight)) {
+            func_005B0BB0(seal, 0);
+            return false;
+        }
+        if (!seal->IsRemote() && !func_00584C10(seal))
+            return false;
+        if (seal->m_state == stateStand || seal->m_state == stateCrouch)
+            return true;
+        break;
+    }
+    return false;
+}
+
+extern "C" {
+/* an empty kit stub (OVL2 0x5BE2F0, the kit lane's) */
 void func_005BE2F0(CZKit *kit);
 /* (OVL2 0x584B00, seal_body.cpp's, and 0x57E540, not written yet) */
 bool func_00584B00(CZSealBody *seal);
@@ -2030,6 +2114,79 @@ static inline void PushOut(float &cur, float v)
         if (cur > v)
             cur = v;
     }
+}
+
+/* the point's words copied one by one (an inline: SOCOM 1's PNT3D::operator=, whose out-of-line copies
+ * its builds call) */
+static inline void CopyPnt(CPnt3D &to, const CPnt3D &from)
+{
+    to.x = from.x;
+    to.y = from.y;
+    to.z = from.z;
+}
+
+extern "C" {
+/* (seal_env.cpp's: two rays' hits at once; the hit taken as the SEAL's ground) */
+void func_005AB590(CEntity *ent, zdb::IntersectStruct **hit0, const CPnt3D *tail0, const CPnt3D *tip0,
+                   zdb::IntersectStruct **hit1, const CPnt3D *tail1, const CPnt3D *tip1);
+void func_005B0BB0(CZSealBody *seal, const zdb::IntersectStruct *hit);
+}
+
+/* what lies before and behind a SEAL on another's ground: two rays from the SEAL's place, risen by a
+ * height, along its facing -- back and ahead by their lengths, the facing tilted onto the ground's normal
+ * -- their first hit kept as the ground; whether either hit. None for a remote SEAL (OVL2 0x54D620, new
+ * in SOCOM II: 0x552EC0 calls it twice; the name unknown) */
+extern "C" bool func_0054D620(CZSealBody *seal, float back, float ahead, float rise)
+{
+    if (seal->IsRemote())
+        return false;
+    CPnt3D fwd;
+
+    CopyPnt(fwd, *(const CPnt3D *)seal->m_node->m_matrix.m_matrix[2]);
+    fwd.Normalize();
+
+    CPnt3D rev;
+
+    rev.x = -fwd.x;
+    rev.y = -fwd.y;
+    rev.z = -fwd.z;
+    rev.Scale(back);
+    fwd.Scale(ahead);
+
+    CPnt3D pos;
+
+    CopyPnt(pos, *(const CPnt3D *)seal->m_node->m_matrix.m_matrix[3]);
+    pos.y += rise;
+
+    CPnt3D from;
+    CPnt3D tip0;
+    CPnt3D tip1;
+
+    CopyPnt(from, pos);
+    CopyPnt(tip0, pos + rev);
+    CopyPnt(tip1, from + fwd);
+
+    CQuat q;
+    CPnt3D up(0.0f, 1.0f, 0.0f);
+
+    q.Align(up, seal->m_last_altitude.m_norm);
+
+    CPnt3D d[2];
+
+    CopyPnt(d[0], tip0 - pos);
+    CopyPnt(d[1], tip1 - from);
+    q.Apply(d, d, 2);
+    CopyPnt(tip0, pos + d[0]);
+    CopyPnt(tip1, from + d[1]);
+
+    zdb::IntersectStruct *hit0 = 0;
+    zdb::IntersectStruct *hit1 = 0;
+
+    func_005AB590(seal, &hit0, &pos, &tip0, &hit1, &from, &tip1);
+    func_005B0BB0(seal, hit0);
+    if (hit0 || hit1)
+        return true;
+    return false;
 }
 
 /* the push off a wall: a step of r from the point into the hit's plane, against its normal and at the
@@ -2835,6 +2992,115 @@ public:
     /* (OVL1 0x2C7A60, fts_net_platform.cpp's) */
     static void UpdateLocalPlatform(CTurret *t, bool b);
 };
+
+extern "C" {
+/* the kit told of the death (OVL2 0x5B8920, seal_weapon.cpp's) and the entity's sounds let go, by its
+ * id (OVL1 0x3428A0, zsnd's range) */
+void func_005B8920(CZKit *kit);
+void func_003428A0(unsigned int id);
+/* (OVL1 0x30E6E0, unowned: told of a death online, with the global at 0x45B718; seal_control.cpp's
+ * too) */
+void func_0030E6E0(void *obj, int a);
+extern void *data_0045B718;
+extern float data_004365C0;
+void func_00545EE0(CZSealBody *seal, int force);
+void func_0059D750(CZSealBody *seal);
+void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
+}
+
+/* the camera's zoom (thezoom.cpp's) */
+class CameraZoom {
+public:
+    static void ResetLensColors();
+    static void SetLensFx(unsigned char fx);
+};
+void SeeFarther(bool bEnable, float SeeFartherFactor);
+
+/* dead: the kit told, the entity's own death, its sounds let go, whatever it worked left, its map
+ * cell free; whoever followed it online forgets it; the time kept, the climb and the carried let go; a
+ * local player's view and heartbeat reset and the rumble's last kick; online the bomb dropped, the
+ * team valves refreshed; a remote SEAL's weapons hidden, a local one's net life over; the compass's
+ * anchor faded or dropped (OVL2 0x547AF0; SOCOM 1's OnDeath__10CZSealBodyFv, its followers, kit and
+ * lens moves new) */
+void CZSealBody::OnDeath()
+{
+    func_005B8920(&m_kit);
+    CEntity::OnDeath();
+    func_003428A0(m_id);
+    if (m_eb8)
+        func_00545EE0(this, 1);
+    AiMaps.SetOccupied(m_mapLocValid, CAiMapLoc::invalid, m_id);
+    if (m_followers) {
+        const CEntityList &list = CEntity::m_list;
+
+        for (CEntityList::const_iterator i = list.begin(); i != list.end(); ++i) {
+            CZSealBody *s = AsSeal(*i);
+            CSealCtrlAi *ai = s ? s->GetSealCtrlAi() : 0;
+
+            if (ai && (ai->m_stateStack.m_10 & 0x200) && ai->GetFollowMaster(false) == this)
+                ai->SetFollowMaster(0);
+        }
+    }
+    m_time_of_death = data_004365C0;
+    func_0059D750(this);
+    func_005B14E0(&m_climb, this);
+    m_1060_bit12 = true;
+    if (IsPlayer() && !IsRemote()) {
+        CSealCtrl *ctrl = (CSealCtrl *)m_control;
+
+        if (ctrl) {
+            m_kit.Apply_LensEffects(false, 0);
+            m_kit.NVG_Enabled(false);
+            m_kit.Binocs_Enabled(false);
+            SeeFarther(false, 0.0f);
+            CameraZoom::SetLensFx(1);
+            StopAllHeartbeatSounds();
+            ctrl->StopRumbler();
+            CZWeapon::ClearTimer(0);
+            m_iszooming = false;
+            SetCurZoomState((ZOOMSTATE)0);
+            appCamera->SetZoom(1.0f);
+        }
+        CameraZoom::ResetLensColors();
+        CSnd::OnListenerDeath();
+        if (theNetwork.m_9)
+            func_0030E6E0(data_0045B718, 0);
+        else
+            Headset::ftsGetHeadset()->Interrupt();
+        SetCurZoomState((ZOOMSTATE)0);
+        ctrl = (CSealCtrl *)m_control;
+        if (ctrl) {
+            ctrl->StopRumbler();
+            ctrl->SetLowRumbleTime(0.18f, 175.0f);
+            ctrl->SetHighRumbleTime(0.04f);
+        }
+    }
+    if (theNetwork.m_9 && IsPlayer())
+        DropMPBomb();
+    theMission.RefreshTeamValves();
+    if (IsRemote()) {
+        CZBodyPart *p = m_item_gear[1].m_part;
+
+        if (p && p->m_node)
+            p->m_node->SetActive(false);
+        p = m_item_gear[2].m_part;
+        if (p && p->m_node)
+            p->m_node->SetActive(false);
+        p = m_item_gear[4].m_part;
+        if (p && p->m_node)
+            p->m_node->SetActive(false);
+    }
+    if (!IsRemote() && m_netlife != (NET_LIFE)2) {
+        m_netlife = (NET_LIFE)2;
+        IsRemote();
+    }
+    if (m_compass_anchor && !theNetwork.m_9 && (m_team & 2))
+        m_compass_anchor->SetPoint(0);
+    else {
+        CCompass::DeleteAnchor(m_compass_anchor);
+        m_compass_anchor = 0;
+    }
+}
 
 /* whether an entity has a controller (an inline bool written `? true : false`: the target
  * materialises it, sltu, before the branch) */

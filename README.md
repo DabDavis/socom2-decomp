@@ -2066,7 +2066,32 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
-- **Tells from the HUD, round 65** (19 byte-exact, five units whole: SetMags 0x237B40, GetRoundResult 0x224D10,
+- **Tells from the kit and AI states, round 61** (11 rows new: CZKit::HasPickupSlot 0x5BAC30, PickupAmmo 0x5BB000 and
+  0x5BB990, SetCurAccuracy 0x5BD100, FirstFrame 0x5C0250, CZKit::Tick 0x5C0FD0, the goto's move 0x5DB8F0,
+  CZSealBody::UpdateAimDir 0x5DEEC0, WeaponsTick 0x5DFC80 -- open since round 52 --, the hold's callout 0x606EC0 and watch
+  0x6067A0, the last a marked device; CAiSHold::Tick and CSealCtrlAi::StateTick written open; nine rows named, FirstFrame
+  the one unsure):
+  - FIELD-ADDRESS STORES (x direct, y and z through one register recomputed before each store; also in 0x357F30, 0x5483D0,
+    ClipCameraChord): a field written once folds into the frame offset, separate temporaries get drawn to the block head
+    even when the IRO_CommonSubs temporary is forced with a late-folding guard over dead reads; one pointer with four
+    definitions, a no-code asm read and a guarded read reproduces it (as read in mweppc the asm keeps IRO_SplitLifetimes off
+    and the guarded read IRO_ExpressionPropagation; only the combined effect was measured). IRO_ExpressionPropagation counts
+    uses per flow node for every earlier definition, so a chain of N definitions loses one per pass from the end (a mweppc
+    reading, matching two lost of four on 0x6067A0);
+  - a `const float` holder closed WeaponsTick: the const keeps its number where a plain local propagates; a class iterator's
+    scalarised member numbers after every named local, so a plain cursor is needed when a named reference must colour lower;
+    a materialised iterator `!=` (xor; sltiu; xori) comes from an inline returning `!(a == b)`; `m_phase` read into a byte
+    enum, a lbu read with a lb reload from the spill slot, is CAiState::STEP as both the local and the return type;
+    `GetId()` as an argument gives lb where `(EQUIP_ITEM)w->m_ID` gives lbu, and in a compare it numbers the read below
+    hoisted constants;
+  - spill-pick ties go to the highest index, so C-style declaration order decides the top saved register (StateTick); `const
+    CPnt3D &p = v` gives pointer reads with frame-direct stores; an unsigned 4-byte enum parameter keeps n-1 and +1
+    unfolded; a derived constructor builds a bitfield temporary in place with narrow accesses where a by-value inline return
+    copies through the copy constructor; a call in an if arm keeps labels, pads and daddiu against RegenerateExpressions;
+    `GetId() != K` in `if (flag && ...)` stops the regenerated sltu chain; `> 3` gives slti at, `>= 4` materialises in a
+    register inside an `&&` chain; reference locals declared outside a loop keep addresses hoisted and the object
+    unscalarised; `#pragma opt_strength_reduction off` in a body keeps sll / addu indexing.
+- **Tells from the HUD, round 65** (21 byte-exact, five units whole: SetMags 0x237B40, GetRoundResult 0x224D10,
   CMPExitState::Init 0x223970, C2DButton::HandlePad 0x377040, CWrappedText::SetString 0x379F70, both CListItemArrayTypeImpl
   constructors, ~CUIListBox 0x375710, CUIListBox::Draw 0x373850, CTeleType::Tick 0x377B80, hudTurnOnScorePopup 0x22CC10,
   MapCompass::Tick 0x211510, the nav_package insert 0x212E50, the claymore and bomb Ticks, HandleScrolling 0x20A120,
