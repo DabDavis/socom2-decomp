@@ -17,6 +17,7 @@
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
+#include "int_shapes.h"
 #include <string.h>
 
 /* the last polygon's normal, w zero (new in SOCOM II: SOCOM 1's SetEdgeVecsAndNorm stored it in
@@ -412,28 +413,8 @@ int CDIBBox::GetAltitude(DiIntersect *di)
     return 0;
 }
 
-/* a point set from three values (the arguments evaluated right to left, so z, y and x are loaded
- * before the stores; an inline leaves no symbol: the name is ours) */
-inline void PntSet(CPnt3D &p, float x, float y, float z)
-{
-    p.x = x;
-    p.y = y;
-    p.z = z;
-}
-
-/* a box's eight corners: the bottom four, then the top four, each ring from the low x, high z
- * corner (new in SOCOM II, after SOCOM 1's SetCDIBBox; the name is ours) */
-void GetBBoxCorners(CPnt3D *out, const CBBox *b)
-{
-    PntSet(out[0], b->m_min.x, b->m_min.y, b->m_max.z);
-    out[1] = b->m_min;
-    PntSet(out[2], b->m_max.x, b->m_min.y, b->m_min.z);
-    PntSet(out[3], b->m_max.x, b->m_min.y, b->m_max.z);
-    PntSet(out[4], b->m_min.x, b->m_max.y, b->m_max.z);
-    PntSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
-    PntSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
-    out[7] = b->m_max;
-}
+/* GetBBoxCorners (0x2DCCD0): int_shapes.h's inline, its out-of-line copy generated after
+ * SetCDIBBox, the function needing it (the engine core's round 26: a plain definition here before) */
 
 /* a face of the unit box: a quad of four of its corners, its normal worked out (ours, inline: its
  * tree is a level taller than the level -- SetEdgeVecsAndNorm's is five high -- so only its body is

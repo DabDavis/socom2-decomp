@@ -1546,7 +1546,12 @@ inline int CZAnim::FindNodeRef(const char *name, int parent, int &search)
  * i hoisted and the continue as an else leave it. The array's count is unsigned (the target's
  * sltu) and the search is read late (by reference). Round 21: `#pragma opt_strength_reduction off` gives the target's
  * size (0x430) but un-reduces the inlined FindNodeRef walks the target keeps reduced (40 off): the pragma is
- * per function, so the path walk's shape is something else */
+ * per function, so the path walk's shape is something else. Round 26 (the GCC front's round-43a
+ * pragma scan named it again, 213 -> 38 its metric): under the pragma, FindNodeRef's walk reduced by
+ * hand (a node-ref pointer stepped beside i, four placements) is 0x420, the pointer loaded ahead of
+ * the count test where the target's preheader loads it; the weapons' round-37 cast in the index
+ * (a local Item with `array[(int)i]`, or `Item((unsigned)i)`, i signed or not) 0x440
+ * (build/scratch/core/v_lnn*.py) */
 int CZAnim::LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search)
 {
     if (!rdr && !name)
