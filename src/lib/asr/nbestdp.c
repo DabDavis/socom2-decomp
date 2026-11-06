@@ -8,7 +8,7 @@
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. Only the functions written so far are here, in image
  * order: CollectDummyMemory and InitViterbi (OPEN) (round 20c), BacktraceWordsParBT (OPEN) (round
- * 36c), InitNBestDynProgProcess and
+ * 36c), ControlNBestDynProgProcess and ConstructNBestDynProg (round 41c), InitNBestDynProgProcess and
  * PrunDynProg (round 19c; PrunDynProg closed in 20c), InitDynprogContext and SOCOM II's
  * func_004EC130 (round 21c), FindBestRecognised (round 17c), ExtendBacktraceStack, ScoreCompare
  * (NAME@nbestdp in the map: the iso-word object has its own). SOCOM II's rows hold SOCOM 1's in
@@ -1033,6 +1033,226 @@ int FindBestRecognised(NBESTDP *d)
     } else
         d->results = 0;
     return ret;
+}
+
+/* the block's commands: 26 and 27 its parameters; 28 and 30 the active states (a list or all of them set, or cleared), with each
+ * word that wants all its states (flag 0x80 clear) kept, the per-word lists rebuilt; 34 the language's counts; 35 the context; 36 the
+ * scorer; 3, 4, 5 and 255 the block's life. SOCOM 1's body, SOCOM II's unrolls (round 41c). */
+typedef struct NBPARAMS {
+    unsigned int maxframes;             /* +0 */
+    unsigned int nresults;              /* +4 */
+    int f8;                             /* +8 */
+    unsigned int beam10;                /* +12 */
+    int f16;                            /* +16 */
+} NBPARAMS;
+
+typedef struct NBLANG {
+    char pad0[24];
+    int (*f24)(struct NBLANG *l);       /* +24 */
+    char pad28[36];
+    int (*f64)(struct NBLANG *l);       /* +64 */
+    int (*f68)(struct NBLANG *l);       /* +68 */
+} NBLANG;
+
+extern int qQueueControl(void *q, unsigned char cmd, int arg, int n);
+extern void tosBaseBlockDestruct(void *b);
+extern void *memset(void *dst, int c, unsigned int n);
+
+static int ControlNBestDynProgProcess(NBESTDP *d, unsigned char cmd, void *arg, int arg2)
+{
+    switch (cmd) {
+    case 27: {
+        NBPARAMS *p = arg;
+
+        p->maxframes = d->maxframes;
+        p->beam10 = d->beam10;
+        p->nresults = d->nresults;
+        p->f8 = d->f172 != 0;
+        break;
+    }
+    case 37:
+        return qQueueControl(d->inputs->q, 7, d->inputs->reader, (int)arg);
+    case 38:
+        return qQueueControl(d->inputs->q, 6, d->inputs->reader, 0);
+    case 4: {
+        d->process = IdleProcess;
+        if (FindBestRecognised(d))
+            return _tosControl(d, 9, &d->results, 0) == 0;
+        else
+            return _tosControl(d, 10, 0, 0) == 0;
+    }
+    case 3:
+        InitViterbi(d);
+        d->process = NBestDynProgProcess;
+        break;
+    case 5:
+        d->process = IdleProcess;
+        break;
+    case 34: {
+        NBLANG *l = arg;
+
+        d->f60 = l->f24(l);
+        d->f164 = (unsigned short)l->f64(l);
+        d->f168 = (unsigned short)l->f68(l);
+        break;
+    }
+    case 35:
+        func_004EC130(d);
+        if (InitDynprogContext(d, arg) != 0)
+            return 0;
+        break;
+    case 36: {
+        void **a = arg;
+
+        d->f48 = a[2];
+        d->f44 = a[1];
+        d->f52 = a[3];
+        d->f40 = a[0];
+        break;
+    }
+    case 28: {
+        unsigned int *st = arg;
+        int n = arg2;
+        unsigned short *flags = d->flags;
+        unsigned char *bits = d->active;
+        int i;
+
+        if (st == 0) {
+            if (arg2 != 0) {
+                memset(bits, 255, d->f72 - 1);
+                bits[d->f72 - 1] = 255 << (-(d->f68 & 7) & 7);
+            } else {
+                memset(bits, 0, d->f72);
+            }
+        } else {
+            if (n > 0)
+                memset(bits, 0, d->f72);
+            else
+                n = -n;
+            for (i = 0; i < n; i++)
+                bits[st[i] >> 3] |= 128 >> (st[i] & 7);
+        }
+        n = d->f68;
+        for (i = 0; i < n; i++) {
+            if ((flags[i] & 0x80) == 0)
+                bits[i >> 3] |= 128 >> (i & 7);
+        }
+        {
+            int *out = d->f136;
+            int **ws = d->wstates;
+            int *offs = d->offsets, *o = offs;
+            unsigned char *b = d->active;
+            unsigned int nw = d->f68;
+            unsigned int w, k, end;
+
+            for (w = 0; w < nw; w++) {
+                *ws++ = out;
+                k = *o++;
+                end = *o;
+                for (; k < end; k++) {
+                    int s = offs[k];
+
+                    if (b[s >> 3] & (128 >> (s & 7)))
+                        *out++ = s;
+                }
+            }
+            *ws = out;
+        }
+        InitViterbi(d);
+        break;
+    }
+    case 30: {
+        unsigned int *st = arg;
+        unsigned int n = -arg2;
+        unsigned short *flags = d->flags;
+        unsigned char *bits = d->active;
+        unsigned int i;
+
+        if (st == 0) {
+            memset(bits, 0, d->f72);
+        } else {
+            for (i = 0; i < n; i++)
+                d->active[st[i] >> 3] &= ~(128 >> (st[i] & 7));
+        }
+        n = d->f68;
+        for (i = 0; i < n; i++) {
+            if ((flags[i] & 0x80) == 0)
+                bits[i >> 3] |= 128 >> (i & 7);
+        }
+        {
+            int *out = d->f136;
+            int **ws = d->wstates;
+            int *offs = d->offsets, *o = offs;
+            unsigned char *b = d->active;
+            unsigned int nw = d->f68;
+            unsigned int w, k, end;
+
+            for (w = 0; w < nw; w++) {
+                *ws++ = out;
+                k = *o++;
+                end = *o;
+                for (; k < end; k++) {
+                    int s = offs[k];
+
+                    if (b[s >> 3] & (128 >> (s & 7)))
+                        *out++ = s;
+                }
+            }
+            *ws = out;
+        }
+        InitViterbi(d);
+        break;
+    }
+    case 29:
+        *(unsigned char **)arg = d->active;
+        *(unsigned int *)arg2 = d->f72;
+        break;
+    case 26: {
+        NBPARAMS p = *(NBPARAMS *)arg;
+
+        if (d->maxframes != p.maxframes)
+            d->maxframes = p.maxframes;
+        d->beam10 = p.beam10;
+        d->beam = p.beam10 / 10;
+        d->nresults = p.nresults;
+        if (p.f8 != 0)
+            d->f172 = 1;
+        else
+            d->f172 = 0;
+        break;
+    }
+    case 39:
+        break;
+    case 255: {
+        BTSTACK *st, *pr;
+        DPTOS *tos;
+
+        CollectDummyMemory(d);
+        func_004EC130(d);
+        st = d->stack;
+        tos = d->tos;
+        while (st != 0) {
+            pr = st;
+            st = st->next;
+            FREE_REC(tos, 3, pr);
+        }
+        d->stack = 0;
+        tosBaseBlockDestruct(d);
+        break;
+    }
+    default:
+        return 0;
+    }
+    return 1;
+}
+
+extern void *tosBaseBlockConstruct(void *tos, unsigned char id, int ninputs, int noutputs, int (*process)(), int (*init)(),
+                                   int (*control)(), unsigned int size);
+
+void *ConstructNBestDynProg(void *tos, unsigned char id)
+{
+    return tosBaseBlockConstruct(tos, id, 2, 0, (int (*)())NBestDynProgProcess, (int (*)())InitNBestDynProgProcess,
+                                 (int (*)())ControlNBestDynProgProcess, sizeof(NBESTDP));
 }
 
 /* the qsort comparator of the backtraces (pointers to them): ascending scores */
