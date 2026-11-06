@@ -96,7 +96,7 @@ bool GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CAiMaps *maps, const 
 void *GetClosestRegion__7CAiMapsFRC9CAiMapLocQ36CAiMap6region4TYPEb(CAiMaps *maps, CAiMapLocCopy *from, int a, int b);
 bool GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(CAiMaps *maps, void *cell, unsigned int *loc);
 /* the goto pushed to a cell (OVL2 0x5F0830, seal_aistate.cpp's) */
-void func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int step);
+bool func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int step);
 /* (OVL2 0x563050, a goal set with a float) */
 void ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(CSealCtrlAi *ai, int a, int b, float f);
 /* (OVL2 0x5628F0, 0x5B3890: the SEAL lane's rows -- the first on the controller, the second on
@@ -1583,6 +1583,150 @@ extern "C" CAiState::STEP func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
     h->m_70 += CAiState::m_dT;
     h->m_6c = step;
     return r;
+}
+
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out, int a, int *got);
+
+/* (a signed byte here: its lb; zseal.h's enum loads it with lbu) */
+extern "C" short DoHandSignal__10CZSealBodyF15SEAL_HANDSIGNAL(CEntity *seal, signed char sig);
+
+/* the plan state on top of a stack, none otherwise (inline: `s ? (s && ...) : 0`; the name ours) */
+static inline CAiSPlan *HoldPlan(CAiStateStack &stack)
+{
+    CAiState *s = stack.GetState();
+
+    return s ? (s && s->m_state == AI_STATE_PLAN ? (CAiSPlan *)s : 0) : 0;
+}
+
+
+/* the hold's steps (OVL2 0x6060C0, the vtable's Tick; SOCOM 1's with its steps moved): the first sets the AI's mode and the time
+ * it ends at, plays what it was given -- an animation (flag bit 0) or a hand signal (bit 1) -- and crouches (bit 9); bit 5 first
+ * makes for the place, unless there is no line to it, by the plan states; the hold itself (7) runs the watch (bit 7), looks at
+ * the place (bit 4), nothing (bit 3) or round the cell, ducks as it can, and stops when its time is up.
+ * OPEN, 16 instructions (the kit's round 61, unwritten before; the target's size, frame and saved registers, `dir` and `duck`
+ * declared up top for them): one miss. In step 7's `s_holdCount != m_look_mode` arm the target reloads the flags for
+ * SetFlags(0x10, 0), `lw v1,44(s4)`, where IRO_CommonSubs here carries the tests' temporary into the first `|=` (a0, live one
+ * block longer, which shifts the tests' register too). Nothing between them in the target's code kills that read. Tried without
+ * effect: a named local for the look byte, SetFlags through a CAiState pointer, the tests through a named local, a no-code asm
+ * ahead of it (a nop, no kill); through an int view or a const pointer the `&= ~0` folds (16 bytes short) */
+int CAiSHold::Tick(CSealCtrlAi *ai)
+{
+    STEP step = (STEP)m_phase;
+    bool duck;
+    CPnt3D dir;
+    CEntity *seal = ai->m_entity;
+
+    switch (step) {
+    case STEP_0:
+        ai->SetAiMode((AI_MODE)1);
+        step = STEP_7;
+        if (m_flags & 4)
+            m_time = m_time + ai->m_stateStack.m_timer;
+        if (m_flags & 1) {
+            func_00571150(ai, m_58, (SEAL_STATE)*((unsigned char *)seal + 0x174));
+            step = STEP_8;
+            m_5a = m_58;
+        } else if (m_flags & 2) {
+            m_5a = DoHandSignal__10CZSealBodyF15SEAL_HANDSIGNAL(seal, m_58);
+            step = STEP_8;
+        }
+        if (m_flags & 0x200)
+            SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(ai, 2, -1.0f);
+        if (m_flags & 0x20)
+            step = STEP_1;
+        break;
+    case STEP_1: {
+        CPnt3D eye;
+
+        seal->GetTargetPosW(&eye);
+        if (!(AiMaps.ComputeLineVisibility(&eye, &m_pos, 2) <= 0.0f))
+            step = STEP_6;
+        else
+            step = STEP_2;
+        break;
+    }
+    case STEP_2:
+        if (func_005F0990(ai, &m_pos, 4, 6, 3))
+            HoldPlan(m_stack)->m_120 = 30;
+        break;
+    case STEP_3:
+        if (func_005F0830(ai, (unsigned int *)&m_cell, 4, 4, 5))
+            HoldPlan(m_stack)->m_130 = 5;
+        break;
+    case STEP_4: {
+        CPnt3D eye;
+
+        seal->GetTargetPosW(&eye);
+        if (!(AiMaps.ComputeLineVisibility(&eye, &m_pos, 2) <= 0.0f))
+            step = STEP_6;
+        else if (func_005F0990(ai, &m_pos, 4, 6, 5))
+            HoldPlan(m_stack)->m_120 = 30;
+        break;
+    }
+    case STEP_5:
+        ai->PlayAiSound((CHARACTER_SOUND)0x36, 1.0f, (CAiEvent::EVENT)-1);
+        step = STEP_7;
+        SetFlags(0x10, 0x20);
+        break;
+    case STEP_6:
+        step = STEP_7;
+        SetFlags(0x10, 0);
+        break;
+    case STEP_7: {
+        duck = true;
+
+        if (m_flags & 0x80) {
+            func_006067A0(this, ai);
+            duck = false;
+        }
+        if (m_flags & 0x10) {
+            if (ai->SetLookPosW((AI_LOOK)s_holdCount, &m_pos)) {
+                ai->ModifyLookFlags(5, 0);
+                ai->SetScanAngle(0.2617994f);
+                ai->SetLookTimer(CAiTimer::infinite);
+                SetFlags(0, 0x10);
+            }
+        } else if (m_flags & 8) {
+            ai->m_3fc = 0.0f;
+        } else if (!(m_flags & 0x40)) {
+            if (m_flags & 0x20) {
+                if (s_holdCount != ai->m_look_mode)
+                    SetFlags(0x10, 0);
+                ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 2, 1, -1.0f);
+                duck = false;
+            } else {
+                const CPnt3D *row = (const CPnt3D *)seal->m_node->m_matrix.m_matrix[2];
+                dir.x = -row->x;
+                dir.y = -row->y;
+                dir.z = -row->z;
+                CAiMapLoc cell = seal->m_mapLocValid;
+
+                if (ai->SetLookDirW((AI_LOOK)s_holdCount, func_00559580(&cell, &dir, 0x40000, 0, 10, 0))) {
+                    ai->ModifyLookFlags(5, 0);
+                    ai->SetScanAngle(0.2617994f);
+                    SetFlags(0x40, 0);
+                }
+            }
+        }
+        if (duck) {
+            SEAL_STANCE stance;
+
+            if (ai->GetDuckStance(0, stance))
+                SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(ai, stance, 2.5f);
+        }
+        if ((m_flags & 4) && !(ai->m_stateStack.m_timer < m_time))
+            m_active = false;
+        break;
+    }
+    case STEP_8:
+        if (func_005712F0(ai, m_5a))
+            ai->m_3fc = 0.0f;
+        else
+            step = STEP_8;
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
 }
 
 /* a SEAL's callout on being hit, under the state's flag bit 7: "^CS_0288" when the shooter shares

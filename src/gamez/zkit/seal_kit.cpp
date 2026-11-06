@@ -3460,10 +3460,11 @@ void CZKit::PickupAmmo(CZFTSWeapon *w, CZAmmo *ammo, int *rounds)
 /* whether a weapon or ammunition pickup can be taken: a weapon the kit holds tops it up, a new one needs a slot (two
  * for a weapon of two slots); ammunition must suit a weapon held with room for it (OVL2 0x5BA770, new in SOCOM II:
  * 0x5BB990's test -- the name ours).
- * OPEN, 128 instructions, registers only (the size and every block but two delay slots, which follow the colouring):
- * the -1 of the first test and of GetPickupSlot(-1) is one temporary -- s3 in the target, shared with `ammo`; coloured
- * after every volatile, so numbered low, where ours (v97) is deferred into v0 and shifts the ten hoisted constants by
- * one. An enum-typed local for it (kept, a0) stays deferred. */
+ * OPEN, registers only (0x4C8 against 0x4C0, the size off by two delay slots that follow the colouring; the kit's round 61):
+ * the walk's registers, the target's cursor a0, i t0, item t1, r a3, count a2 against item a0, i t1, r t0, count a3, cursor a2.
+ * The -1 of the first test and of GetPickupSlot(-1) is one temporary -- s3 in the target, shared with `ammo`; coloured after
+ * every volatile, so numbered low. Tried without gain: a const -1 holder, an unsigned enum holder, a named id, and GetId()
+ * here, which closed PickupAmmo and HasPickupSlot (kept: `(EQUIP_ITEM)w->m_ID`) */
 bool CZKit::CanPickup(CZFTSWeapon *w, void *ammo, int count)
 {
     if (w && w->m_ID != 255) {

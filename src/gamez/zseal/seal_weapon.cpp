@@ -464,29 +464,9 @@ void CZSealBody::SetWeaponState(WEAPON_STATE state)
  * a finished draw or put-away turns into the other's state; then the aim's direction, the aim and the
  * kit's frame -- but in state 16, which returns at once. The state read once into the byte enum
  * (GetWeaponState inlined loads the word again for the bit test).
- * OPEN, 5 instructions, the draw's hold test alone (case 1): the target loads the hold time (0xEE8)
- * into $f2, then the down time into $f0, the sequence's time into $f1, and sums `add.s $f0,$f0,$f2`
- * (down + hold, the sum in the down's register); every spelling here gives the down $f1 and the time
- * $f0 -- `hold + down` or `down + hold` in place (CSE'd for the store) or in a local, an inline
- * returning the sum on the view, inline accessors for both, a two-float inline taking (down, hold)
- * (its arguments evaluated right to left), the comparison reversed (`>=`: c.lt.s). SOCOM 1's (0x2C02C0)
- * loads the down first and sums into the hold's register: SOCOM II's source changed here. Round 52,
- * MW's colouring replayed (tools/igreplay.py on the FPR record, --want 33=f0,34=f2,35=f0,37=f1): every
- * placement giving the target's four is `sum < hold < currT < down` -- the sum a front-end temporary
- * (the store's CSE) and the three loads numbered hold, currT, down, where every spelling here loads
- * hold, down, then currT (the sum's operands first); hold in a named local (propagated: 6), the sum
- * through an inline accessor on the view, `down + hold` or `hold + down`, in a local or twice, or the
- * test reversed (5-7) do not reorder them */
-/* OPEN, 5 instructions, the hold time's sum only: the target loads the hold time first ($f2) and the
- * down time second ($f0), adds them as `add.s $f0,$f0,$f2` (the down time the first source, the sum in
- * its register) with the current time in $f1; MW puts the first-loaded operand first. Round 56: the
- * sum either way round in the test, the store or both, `>=` with the sum on the left, the sum in a
- * local (in one statement or two), and every declaration order of named locals for the hold, down
- * and current times (2 and 3 of them, each sum and compare way round, 36 variants): 5-7 off
- * (build/scratch/kit/v_wt.py); igreplay's float record: the colouring follows the numbering, the
- * operand order does not. Round 59: the test through a three-float inline taking (down, current,
- * hold) or (hold, current, down) -- its by-value copies bound last argument first, the numbering
- * the replay wants -- with the sum either way round, the store's sum either way: 5-6 */
+ * Byte-exact (the kit's round 61, open since round 52): the hold time a `const float` local read first and added second --
+ * the const keeps its number where a plain local propagates, which is the numbering `sum < hold < currT < down` the colouring
+ * replay asked for in round 52 */
 void CZSealBody::WeaponsTick(float dT)
 {
     CSealWepView *v = (CSealWepView *)this;

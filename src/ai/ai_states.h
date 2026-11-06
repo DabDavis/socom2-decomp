@@ -923,12 +923,14 @@ class CAiSHold : public CAiState {
 public:
     CAiSHold() : CAiState(AI_STATE_HOLD) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* the hold's steps (0x6060C0) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x40: a hold the flag's bit 8 has not ended (the name ours) */
     virtual bool Virtual40() { return !(m_flags & 0x100); }
     virtual ~CAiSHold();
 
     short m_58;   // 0x58 (-1 on a reset)
-    unsigned char _5a[0x5c - 0x5a];
+    short m_5a;   // 0x5a: the animation played, what the step waits on
     CPnt3D m_pos;   // 0x5c
     CAiMapLoc m_cell;   // 0x68 (the invalid cell on a reset)
     unsigned char m_6c;   // 0x6c
