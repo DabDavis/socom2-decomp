@@ -181,16 +181,21 @@ CBBox *CNode::UpdateBBoxFromDI(bool up)
     return (CBBox *)GetBBox();
 }
 
+/* a matrix row as a struct holding its array (ours): MW copies an array member as a block -- all
+ * four loads, then all four stores, through the member's address (the AI core's round-24 tell) */
+struct tag_MatrixRow {
+    float m_v[4];
+};
+
 /* a facade's rotation (a billboard): its first three rows turned to face from the viewer's
  * position to its own -- about y only (facade 1), or about y and then x (facade 2: the direction
  * turned into the yz plane to find the x angle).
- * OPEN (0x238 of 0x240): the target keeps &m(2,0) in s2 on both paths and copies the third row
- * out through it -- the address shared with facade 2's stores -- while copying each row as a
- * block (four loads, four stores). A source through the accessor shares the address but
- * copies element by element; through the array it copies by blocks and shares nothing. Round 29:
- * the rows copied out through the accessor (`*(CPnt4D *)&m(r, 0)`) give the size, 0x240, the
- * shared address held in s4 (not s2) and the rows copied element by element (32 off); a row-2
- * pointer local for the stores and the copy is 0x23C */
+ * Byte-exact since the world lane's round 31 (0x238 of 0x240 before): the target copies each row
+ * out as a block through the row's address in a register, the third row's &m(2,0) the address
+ * facade 2's stores share (s2 on both paths) -- the rows copied as tag_MatrixRow through the
+ * accessor's address. Before: through the accessor as CPnt4D, 0x240 with the shared address in s4
+ * and the rows element by element (32 off); through the array no shared address; a row-2 pointer
+ * local 0x23C */
 void CNode::ComputeFacadeMatrix(const CMatrix *view, CMatrix *out)
 {
     CMatrix m;
@@ -235,9 +240,9 @@ void CNode::ComputeFacadeMatrix(const CMatrix *view, CMatrix *out)
     default:
         return;
     }
-    *(CPnt4D *)out->m_matrix[0] = *(CPnt4D *)m.m_matrix[0];
-    *(CPnt4D *)out->m_matrix[1] = *(CPnt4D *)m.m_matrix[1];
-    *(CPnt4D *)out->m_matrix[2] = *(CPnt4D *)m.m_matrix[2];
+    *(tag_MatrixRow *)&(*out)(0, 0) = *(tag_MatrixRow *)&m(0, 0);
+    *(tag_MatrixRow *)&(*out)(1, 0) = *(tag_MatrixRow *)&m(1, 0);
+    *(tag_MatrixRow *)&(*out)(2, 0) = *(tag_MatrixRow *)&m(2, 0);
 }
 
 /* the node's bounds made current; the node's own are, a borrowed parent's are fetched (the base
