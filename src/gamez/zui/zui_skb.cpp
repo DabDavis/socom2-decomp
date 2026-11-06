@@ -149,6 +149,13 @@ namespace {
  * copies call compressed_pair_imp's second() and first()) -- a destructor chain cut at its leaves,
  * one inline level deeper than these headers (README "Level 6, or 8?"); the in-place copies also
  * swap s0/s1 (the class insert's end register, include/vector's insert comment) */
+/* OPEN, 1 instruction short (0x31C of 0x324; round 38, from 102 off -- the key a copied object at 184,
+ * the ternary's temporary then copied member by member, not a reference local holding a saved register
+ * and spilling the grid): the grid store reads the key's first union through a built address (`addiu
+ * v0,sp,184; lbu v0,0(v0)`) where here it reads the frame (`lbu v0,184(sp)`) -- its second union through
+ * the hoisted sp+186 alike in both. Tried: the store's members written through a reference and through
+ * casts, a pointer to the key, by-value and in-place helpers (build/scratch/ui/v_csk2.py, v_csk3.py); a
+ * reference local to the key does build the address but holds a saved register across the resizes */
 void CreateSoftKeyboard(_zrdr *rdr)
 {
     CSoftKeyboard *skb = new CSoftKeyboard;
@@ -161,7 +168,7 @@ void CreateSoftKeyboard(_zrdr *rdr)
         _zrdr *row = grid->Item(y);
         for (int x = 0; x < row->Count(); x++) {
             const _zrdr *item = row->Item(x);
-            const CSkbKey &key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
+            CSkbKey key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
 
             SkbSetGridKey(skb, x, y, key);
         }
@@ -399,11 +406,11 @@ bool SkbScaling();
 unsigned char SkbScale(CSoftKeyboard *skb, float dT);
 
 extern "C" {
-/* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump); the cursor's
- * key pressed (0x38D200) */
+/* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump) */
 void func_0038DFC0(unsigned char dir, CPad *pad);
-void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
 }
+/* the cursor's key pressed (0x38D200) */
+void SkbPressKey(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
 /* the two edit keys: the cursor back and on a character (the keys unit's) */
 void SkbCursorBack(CSoftKeyboard *skb);
 void SkbCursorForward(CSoftKeyboard *skb);
@@ -417,7 +424,9 @@ void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2);
 void SkbHangulClear();
 void SkbSwitchText(CSoftKeyboard *skb);
 void SkbCloseText0(CSoftKeyboard *skb);
-void SkbTypeJamo(int arg, signed char jamo, CPad *pad);
+/* zui_hangul.cpp's JAMO, a byte enum (33 letters, the rest of its enumerators there) */
+enum JAMO { JAMO_COUNT = 33 };
+void SkbTypeJamo(int arg, JAMO jamo, CPad *pad);
 void SkbToggleBmp4();
 void SkbTogglePair(CBmpWithNode *a, CBmpWithNode *b, void (*onToggle)(bool));
 void SkbTypeCased(unsigned short c, bool shifted, bool wide, CSoftKeyboard *skb);
@@ -432,30 +441,41 @@ static inline bool SkbIsAsciiUpper(unsigned short c)
         r = true;
     return r;
 }
-static inline bool SkbIsUpper(unsigned short c)
+/* (the bool off region: the target's test is an int all through, no narrowing anywhere -- `sltu v0,zero,a0`
+ * on the first test's byte, `slti; xori` for the `>=` -- so the int results of comparisons a chain of
+ * ifs passes along in one register. Round 38; round 32 had reached the first operand with `||`, whose
+ * nested `&&` normalises each stage with another sltu) */
+#pragma bool off
+static inline int SkbIsLatinUpper(unsigned short c)
 {
-    return SkbIsAsciiUpper(c) || (c >= 0xC0 && c < 0xDF && c != 0xD7);
+    int r = c >= 0xC0;
+
+    if (r)
+        r = c < 0xDF;
+    if (r)
+        r = c != 0xD7;
+    return r;
 }
+static inline int SkbIsUpper(unsigned short c)
+{
+    int r = !!SkbIsAsciiUpper(c);
+
+    if (!r)
+        r = SkbIsLatinUpper(c);
+    return r;
+}
+#pragma bool on
 
 /* a key of the keyboard pressed (0x38D200; the name ours): a character key types its letter in
  * lower case, a function key (row 1) does its job -- 7 the shift lock --, a jamo key types its jamo
  * and a switch key switches keyboards; then the shift lock set by whether it was the lock key, the
- * key rows shown again and the sound played for it. Written round 29 (the row keeps its placeholder:
- * SkbHandleKey calls it so).
- * OPEN, at the target's size (0x2E0), every call, case order and register the target's but the
- * capital test: the target materialises `upper || (c >= 0xC0 && c < 0xDF && c != 0xD7)` as an
- * int with no narrowing (`sltu v0,zero,a0` on SkbIsAsciiUpper's byte, `slti; xori` for the `>=`),
- * where every C++ form here narrows its bools (`andi 0xff` after each stage, 2-4 words): an int
- * return, an int chain written out (`int r = a != 0; if (!r) { r = ...; if (r) r = ...; }`: two
- * narrowings left), an unsigned char SkbIsAsciiUpper, `!(c < 0xC0)`, `c > 0xBF`
- * (build/scratch/ui/v_kh*.py). Round 32: the target's shape is MW's int-valued `||` / `&&`
- * materialised into one register -- `#pragma bool off` around SkbIsUpper (an int return) gives the
- * first operand exactly (`andi` then `sltu v0,zero,a0`, no narrowing anywhere) but normalises the
- * `&&` chain's last operands with an extra `sltu` each (0x2E8, 8 long); the chain as a separate
- * inline inside or outside the pragma, nested `&&`, int / unsigned char returns, int locals, a cast
- * to int, ternaries with 0/1 arms (0x2D8-0x2E8) do no better. The letter caser 0x39A8D0 opens with
- * the same test (on c - 32, its flag unnarrowed) */
-void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu)
+ * key rows shown again and the sound played for it. Written round 29, byte-exact and named since round
+ * 38 (SkbHandleKey calls it): the capital test (SkbIsUpper's note), the lock a value-form `&&` (each
+ * stage's `andi s0,v0,0xff` in the target), the jamo argument the JAMO byte enum (`lbu a1,2(s4)`, where
+ * a signed char parameter narrows the load to lb: the chain SkbTypeJamo / SkbHangulTypeJamo /
+ * SkbHangulType / KeyToJamo all take or give the enum, their code alike). The letter caser 0x39A8D0 opens
+ * with the same test (on c - 32, its flag unnarrowed) */
+void SkbPressKey(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu)
 {
     switch (key.m_urow) {
     case 0: {
@@ -513,17 +533,15 @@ void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu 
         }
         break;
     case 2:
-        SkbTypeJamo((int)skb, key.m_code, pad);
+        SkbTypeJamo((int)skb, (JAMO)key.m_code, pad);
         break;
     case 3:
         skb->SwitchToNamed(key.m_code - 1);
         SkbPlaySound(3);
         break;
     }
-    bool lock = key.m_urow == 1;
+    bool lock = key.m_urow == 1 && key.m_code == 7;
 
-    if (lock)
-        lock = key.m_code == 7;
     SkbToggleShiftLock(lock);
     SkbShowKeyRows(pad, skb, skb->m_174);
     if (lock)
@@ -549,7 +567,7 @@ void SkbHandleKey(int key, CPad *pad, CGameMenu *menu)
         func_0038DFC0(4, pad);
         break;
     case 5:
-        func_0038D200(g_pActiveSkb->GetCurKey(), g_pActiveSkb, pad, menu);
+        SkbPressKey(g_pActiveSkb->GetCurKey(), g_pActiveSkb, pad, menu);
         break;
     case 6:
         SkbCursorBack(g_pActiveSkb);
@@ -956,8 +974,7 @@ static const char *s_actionKeyNames[14] = {"CapsLock", "Recip", "BackSpace", "Cl
                                            "MsgPlayer", "Action2"};
 
 extern "C" int strncasecmp(const char *a, const char *b, size_t n);
-/* zui_hangul.cpp's jamo by name (its JAMO: JAMO_COUNT for none) */
-enum JAMO { JAMO_COUNT = 33 };
+/* zui_hangul.cpp's jamo by name (JAMO_COUNT for none) */
 JAMO FindJamo(const char *name);
 
 
@@ -1012,24 +1029,41 @@ static inline int SkbFindInt(_zrdr *rdr, const char *tag, int def)
     return i;
 }
 
-/* a rectangle from a place and a size (ours: built in place, as the display unit's out-of-line
- * 0x396C80 builds it) */
-static inline CSkbRect SkbRect(const CIntPair &pos, const CIntPair &size)
+/* a rectangle from a place and a size, inlined in place here where the display unit calls its copy
+ * out of line (0x396C80, zui_skbview.cpp pins it): the header's declaration is defined `inline` for this
+ * unit -- the ctor is an inline of the original's header, the look parser's calls the cut ones */
+inline CSkbRect::CSkbRect(const CIntPair &pos, const CIntPair &size)
 {
-    CSkbRect r;
+    m_pos[0] = pos.Get1st();
+    m_pos[1] = pos.Get2nd();
+    m_size[0] = size.Get1st();
+    m_size[1] = size.Get2nd();
+}
 
-    r.Set(pos, size);
-    return r;
+/* the spec given to the props found (ours, A MODELLING SHAPE: an inline whose argument holds the find
+ * defers that to the next inline pass -- the arm's int and the find's iterator take their frame slots
+ * in the order the expansions make them, 208 then 204, where a top-level FindKeyProps is expanded in
+ * pass 0 and the ternary's arm, a level down under the copy constructor, in pass 1. SkbFindProps is
+ * FindKeyProps with the end passed in: FindKeyProps itself, a pass later, is cut at its tail() call at
+ * level 5, and `#pragma inline_depth(6)` costs SkbMoveAlong 0x38C130, which keeps the level-5 cut) */
+static inline void SkbSetSpec(CSkbKeyProps *props, _zrdr *spec)
+{
+    props->SetSpec(spec);
+}
+
+static inline CSkbKeyProps *SkbFindProps(CSkbKeyMap &map, const CSkbKey &key, CSkbKeyMap::iterator e)
+{
+    CSkbKeyMap::iterator i = map.find(key);
+
+    if (i != e)
+        return (*i).second;
+    return 0;
 }
 
 /* the keys' props a keyboard's KeyProps list gives: each item's Key (a name, or a code), its Pos and
- * Size and its ButtonSpec (0x38DCB0; CreateSoftKeyboard calls it; the name ours).
- * OPEN, 0x220 against 0x1F0 (written round 15, untuned): the calls and their order are the target's
- * (SkbRdrCount each pass, Size read before Pos, the ButtonSpec tag before the inlined FindKeyProps);
- * the frame differs -- the target keeps the code path's key at 212, StrToSkbKey's at 216, the key at
- * 220, the pairs at 184/192 and the rectangle at 160, with sp+214, 222, 196 and 164 hoisted into
- * s4/s6/s7/s8, `this` in s2 and this+360 in s3; here the rectangle's own addresses are hoisted and
- * `this` is s5 (SkbRect's named result, and the ternary key, are the first suspects) */
+ * Size and its ButtonSpec (0x38DCB0; CreateSoftKeyboard calls it; the name ours). Byte-exact since
+ * round 38: the rectangle built in place by its own constructor (no zeroing, no copy), the ButtonSpec
+ * tag read into a local first, SkbSetSpec's deferral */
 void CSoftKeyboard::ParseKeyProps(_zrdr *rdr)
 {
     _zrdr *list = zrdr_findtag(rdr, "KeyProps");
@@ -1039,8 +1073,10 @@ void CSoftKeyboard::ParseKeyProps(_zrdr *rdr)
         const char *name = zrdr_findstring(item, "Key");
         CSkbKey key = name ? StrToSkbKey(name) : CSkbKey(0, SkbFindInt(item, "Key", 0));
 
-        AddKeyProps(key, SkbRect(ReadIntPair(item, "Pos"), ReadIntPair(item, "Size")));
-        FindKeyProps(key)->SetSpec(zrdr_findtag(item, "ButtonSpec"));
+        AddKeyProps(key, CSkbRect(ReadIntPair(item, "Pos"), ReadIntPair(item, "Size")));
+        _zrdr *spec = zrdr_findtag(item, "ButtonSpec");
+
+        SkbSetSpec(SkbFindProps(m_keyProps, key, m_keyProps.end()), spec);
     }
 }
 

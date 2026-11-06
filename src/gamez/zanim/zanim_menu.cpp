@@ -42,25 +42,33 @@ extern int data_00441470;
 extern char data_00437E30[];               /* the career stats */
 }
 
-/* the online armory (an object at 0x45B718; only the flag VCButton tests, and the selected
- * player CheckForcedLaunch names) */
-struct COnlineArmoryView {
+/* the radio -- zNetVoice.cpp's CZNetVoice, the voice object CMission::Init makes and keeps at
+ * data_0045B718 (the online lobby's round 29 named its two talk tests by every caller -- the HUD's radio
+ * icon, who's-talking line, teammate names and compass, and UICheckForcedLaunch here -- so this unit's
+ * old COnlineArmoryView was a misreading of it): only what the menu's handlers read, with
+ * zNetVoice.cpp's names */
+class CZNetVoice {
+public:
+    bool IsTalking();     /* 0x30E710: we are talking (the state 3), the talk valve told so */
+    bool IsReceiving();   /* 0x30E790: the current slot held by another client */
+
     unsigned char _0[0x24];
-    int m_24;   // 0x24: the selected entry
+    int m_slot;   // 0x24: the channel's current slot
     unsigned char _28[0x4a - 0x28];
-    unsigned char m_4a;   // 0x4a
+    unsigned char m_quiet;   // 0x4a: set, the talk key served (VCButton turns the radio on only when clear)
     unsigned char _4b[0x4f - 0x4b];
-    unsigned char m_4f;   // 0x4f: the scale defaulted
-    unsigned char m_50;   // 0x50: the range defaulted
+    unsigned char m_noagc;   // 0x4f: set when the gain's level was defaulted
+    unsigned char m_nonoise;   // 0x50: set when the noise stage's two were defaulted
     unsigned char _51[0x70 - 0x51];
     struct {
-        int m_id;   // a persona's id
-        int m_4;
-    } m_entries[1];   // 0x70
+        int m_client;   // the client holding the slot (256, none)
+        unsigned int m_4;
+    } m_slots[12];   // 0x70
 };
 
-/* a character type's figures the armory is told (six floats: the last three a range and a scale,
- * defaulted when negative; ours) */
+/* a character type's voice figures the radio is told (six floats -- zNetVoice.cpp's m_settings, the
+ * encoder's preprocessing: the last three the noise stage's two and the gain's level, defaulted when
+ * negative; ours) */
 struct CharTypeFigures {
     float m_0;
     float m_4;
@@ -82,10 +90,10 @@ public:
 };
 
 extern "C" {
-extern COnlineArmoryView *data_0045B718;
-void func_0030E6E0(COnlineArmoryView *p, int arg);
-void func_0030E490(COnlineArmoryView *p);
-void func_0030E6A0(COnlineArmoryView *p, CharTypeFigures *figures);
+extern CZNetVoice *data_0045B718;
+void func_0030E6E0(CZNetVoice *p, int arg);
+void func_0030E490(CZNetVoice *p);
+void func_0030E6A0(CZNetVoice *p, CharTypeFigures *figures);
 }
 
 class CZGameState {
@@ -296,7 +304,18 @@ namespace {
  * with the latch's along the back edge (its @N first appears after that pass) -- so the target's
  * latch end is an expression the guard's does not equal or the loop kills (the iterator scalarised
  * early here, IRO_ScalarizeClassDataMembers, so ++i kills nothing the end depends on); a postfix,
- * `+= 1`, `i = i + 1` or assigned iterator, `i->`, copy initialisation all 0x120 */
+ * `+= 1`, `i = i + 1` or assigned iterator, `i->`, copy initialisation all 0x120.
+ * Round 38, the pragma scan's lead followed (opt_dead_assignments off: the size and 6 words off, only
+ * the latch's registers; build/scratch/ui/oies_da.iro against oies_base.iro): pass 0's dead-store removal
+ * leaves one occurrence of the end in the latch and IRO_CommonSubs merges it with the guard's; with the
+ * pass off, the operator==() result's store keeps a second occurrence there and the latch makes its own
+ * temporaries. THE TARGET'S LATCH LOOKS LIKE NEITHER (reasoned from its colouring -- size a0, data v0,
+ * size*12 v1, the end v0 -- not replayed): one tree generated right operand first with no
+ * common-subexpression temporary, which would mean the end is never merged: something stops its
+ * loads being available around the back edge and leaves no code. Measured: a used reference to the
+ * iterator does stop them (the latch re-reads both words) but keeps the iterator in memory (0x158);
+ * an unused reference, the element or the bool through locals, a per-use it.m_weapons, end().m_p are
+ * all still merged (build/scratch/ui/v_oies1-5.py) */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
@@ -496,8 +515,9 @@ bool UpdateSelItemValves();
 inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
 {
     CCharacterWeap &w = (*(CCharacterWeapList *)it.m_weapons)[1];
+    EQUIP_ITEM id = w.m_wepId;   /* (a local: the item's narrowing then numbered after the load) */
 
-    if (item == w.m_wepId)
+    if (item == id)
         return true;
     w.SetupCharacterWeapon(item);
     UpdateCharWeaponUiVars(it.m_index);
@@ -1411,12 +1431,9 @@ namespace {
 /* the item put on one selected character: none when the character has it already or carries fewer
  * than two weapons, else a primary or a secondary through its pick, anything else into the first free
  * equipment slot (-1); whether it took, the character's UI variables updated (SOCOM 1's, which set the
- * two weapons up itself and pushed the rest when four slots allowed). OPEN, 6 instructions at the
- * target's size (0x184; round 35: 0x154), all in the inlined secondary pick's compare: the target
- * generates the element's load ahead of the item's narrowing (`lbu` numbered before the `andi`, the
- * andi into v0 and the pointer chain into v1), here the narrowing comes first -- the element in the
- * compare, a pointer or list local, casts on either side and a by-reference item change nothing,
- * and the inline's operand order is UIChooseSecondary's (swapped it costs that one an instruction).
+ * two weapons up itself and pushed the rest when four slots allowed). Byte-exact since round 38: the
+ * inlined secondary pick reads the element's item into a local first, so its load is numbered ahead
+ * of the item's narrowing.
  * Round 36 (the materialised-flag rule, ReleaseSlotItem's): each pick is `ok = ok && pick` with `ok`
  * true from its declaration -- the constant left operand folds away, the one test left cannot be
  * rebuilt into an `&&` (RebuildLogicalExpressions wants two tests), so the logical temporary stays
@@ -1581,6 +1598,128 @@ bool UIChooseEquip3(C2DAnimCmdHdr *hdr, float *dT)
 bool UIUpdateSelItemValves(C2DAnimCmdHdr *hdr, float *dT)
 {
     return UpdateSelItemValves();
+}
+
+/* the game state's message to the player, slot 0x2C of its vtable (fts_state.h's CGameState, which this
+ * unit does not include; only the slots) */
+class CStateMessages {
+public:
+    virtual ~CStateMessages();
+    virtual void PreInit();
+    virtual bool Init();
+    virtual bool Tick(float dT);
+    virtual void PreUnInit();
+    virtual void UnInit();
+    virtual void OnPush(int userdata);
+    virtual void OnPop(int userdata);
+    virtual void SetSkipSwap(int swap);
+    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                                unsigned char e, int type);
+};
+
+void AuxSendChatMsg(const char *msg, void *arg);   /* 0x2BA870 */
+
+/* the SDK libc's character table (newlib's _ctype_, MAIN 0x1D08D0): bit 8 is white space */
+extern "C" const char _ctype_[];
+
+/* a chat line worth sending: not none, not a `$~` control line, a character that is not white space */
+inline bool ChatHasText(const char *s)
+{
+    const char *p = s;
+    char c;
+
+    if (!s || (s[0] == '$' && s[1] == '~'))
+        return false;
+    while ((c = *p) != 0) {
+        if (!((_ctype_ + 1)[c] & 8))
+            return true;
+        p++;
+    }
+    return false;
+}
+
+/* SendChatText's and SendMediusChat's body (SOCOM II's, 0x281D40, unwritten until the UI's round 38; the
+ * name ours): the argument's text -- a UI variable's when it names one -- sent through the callback,
+ * or, in the LAN lobby, on the game's chat unless the Medius lobby asked; `to` the recipient's UI
+ * variable (RECIP_UIVAR, UIChatParse), else a line opening `/w "player" message` gives the player and
+ * the message; a whisper without an end to its name is told its usage.
+ * OPEN, 6 instructions at the target's size (0x400), all in the argument variable's test: the target
+ * lays it `beq a0,v1,A; nop; b L; nop; A: bne a0,v1,L; move s2,zero; lw s2,4(v0); L:` -- the ternary's
+ * empty arm first, no pad at A -- where this form lays `bne a0,v1,L; nop; bne a0,v1,B; move s2,zero; lw
+ * s2,4(v0); B: b L; nop`. The reversed ternary `type != 3 ? text : String()` gives the target's head but
+ * keeps `b L; nop` inside the inner String() (0x408). Tried, none both: if / else with an empty arm, a
+ * goto, an `||` with a folded operand, a one-case switch (pads A), inline bools, inline returns, a
+ * statement-inline String (build/scratch/ui/v_chat1-6.py) */
+/* (materialised, sltu and xori, before the test branches on it) */
+inline bool ChatNul(char c)
+{
+    return !(bool)c;
+}
+
+void SendChatLine(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby)
+{
+    const char *text = ArgName(hdr);
+    CUIVariable *var = theUIVarManager.Find(text);
+
+    if (var)
+        text = var->type == 3 ? var->String() : text;
+    var = 0;
+    if (((UIChatCmd *)hdr)->m_recip_uivar[0])
+        var = theUIVarManager.Find(((UIChatCmd *)hdr)->m_recip_uivar);
+    const char *to = var ? var->String() : 0;
+
+    if (to && !*to)
+        to = 0;
+    bool whisper = !to && text;
+
+    whisper = whisper && *text == '/';
+    bool cmd = false;
+
+    if (whisper) {
+        bool w = true;
+
+        if (text[1] != 'w' && text[1] != 'W')
+            w = false;
+        if (w)
+            cmd = true;
+    }
+    cmd = cmd && text[2] == ' ';
+    const char *args = 0;
+
+    if (cmd) {
+        args = text + 3;
+        while ((_ctype_ + 1)[*args] & 8)
+            args++;
+    }
+    CSaferStr who;
+
+    if (args && *args) {
+        bool quoted = *args == '"';
+        char end = quoted ? '"' : ' ';
+        const char *p = args + quoted;
+        char c;
+
+        while (!ChatNul(c = *p) && end != c) {
+            who.push_back(c);
+            p++;
+        }
+        if (c) {
+            text = p + 1;
+            while ((_ctype_ + 1)[*text] & 8)
+                text++;
+            to = who.c_str();
+        } else {
+            ((CStateMessages *)theGame.CurrentState())->DisplayMessage("Whisper usage: /w ''player name'' message", "", 0, 0, 0, 0, 0, 1);
+            return;
+        }
+    }
+    if (ChatHasText(text)) {
+        if (data_0044FE10.IsActive()) {
+            if (!lobby)
+                AuxSendChatMsg(text, 0);
+        } else
+            cb(text, to);
+    }
 }
 
 /* the selection's item valves brought up to date from the first selected character (SOCOM II's,
@@ -2189,7 +2328,7 @@ bool UIVCButton(C2DAnimCmdHdr *hdr, float *dT)
     if (theMission.m_pNetGame && !theMission.m_pNetGame->m_late_joiner) {
         const char *text = ArgText(ArgName(hdr));
 
-        if (*text == '1' && !data_0045B718->m_4a)
+        if (*text == '1' && !data_0045B718->m_quiet)
             func_0030E6E0(data_0045B718, 1);
         else if (*text == '0')
             func_0030E6E0(data_0045B718, 0);
@@ -2441,7 +2580,7 @@ static void SendMediusChatCallback(const char *text, const char *to)
 
 bool UISendMediusChat(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_00281D40(hdr, SendMediusChatCallback, 1);
+    SendChatLine(hdr, SendMediusChatCallback, 1);
     return true;
 }
 
@@ -2473,27 +2612,21 @@ bool UISwitchSides(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-/* the armory's view brought up to date and whether it has an entry selected (not named yet) */
-extern "C" {
-void func_0030E710(COnlineArmoryView *p);
-bool func_0030E790(COnlineArmoryView *p);
-}
-
 /* the milliseconds from the network's clock to a time (ours) */
 inline int TimeLeft(unsigned int when) { return when - theNetwork.zNetGetTime(); }
 
-/* the multiplayer game's launch clocks shown, in whole seconds, in their valves, and the player the
- * armory has selected named in PLAYERTACOVAR (with the clan's tag), unless a late joiner; the
- * session master's persona updated once the ten-second launch has run out */
+/* the multiplayer game's launch clocks shown, in whole seconds, in their valves, and the player on the
+ * radio named in PLAYERTACOVAR (with the clan's tag; the talk test first, which sets the talk valve),
+ * unless a late joiner; the session master's persona updated once the ten-second launch has run out */
 bool UICheckForcedLaunch(C2DAnimCmdHdr *hdr, float *dT)
 {
     CZNetGame *game = theMission.m_pNetGame;
 
     if (!game || game->m_late_joiner)
         return true;
-    func_0030E710(data_0045B718);
-    if (func_0030E790(data_0045B718)) {
-        int id = data_0045B718->m_entries[data_0045B718->m_24].m_id;
+    data_0045B718->IsTalking();
+    if (data_0045B718->IsReceiving()) {
+        int id = data_0045B718->m_slots[data_0045B718->m_slot].m_client;
         const char *name = CZPersonaState::GetPersonaName(id);
         const char *tag = CZPersonaState::GetPersonaClanTag(id);
 
@@ -2551,7 +2684,7 @@ static void SendChatTextCallback(const char *text, const char *to)
 
 bool UISendChatText(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_00281D40(hdr, SendChatTextCallback, 0);
+    SendChatLine(hdr, SendChatTextCallback, 0);
     return true;
 }
 
@@ -3446,8 +3579,8 @@ bool UIGetUsagePolicy(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-/* the player's character type changed to the custom one the argument numbers (from 1), the armory
- * told its figures */
+/* the player's character type changed to the custom one the argument numbers (from 1), the radio
+ * told its voice figures */
 bool UIChangeCharacterType(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *type = GetCustomCharTypeName(atoi(ArgText(ArgName(hdr))) - 1);
@@ -3470,11 +3603,11 @@ bool UIChangeCharacterType(C2DAnimCmdHdr *hdr, float *dT)
         if (figures.m_min < 0.0f || figures.m_max < 0.0f) {
             figures.m_min = 0.0f;
             figures.m_max = 0.0f;
-            data_0045B718->m_50 = 1;
+            data_0045B718->m_nonoise = 1;
         }
         if (figures.m_scale < 0.0f) {
             figures.m_scale = 0.5f;
-            data_0045B718->m_4f = 1;
+            data_0045B718->m_noagc = 1;
         }
         func_0030E6A0(data_0045B718, &figures);
     }

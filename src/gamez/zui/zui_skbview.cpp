@@ -1322,7 +1322,13 @@ struct SKBTOGGLE {
  * int-to-float conversion, a product local, a by-value or by-reference t (by reference 0x398), an
  * int, double or self-cast argument, `1.0f - 0.0f`, an extra inline level, x / w / t as the inline's
  * three parameters (int or float), a multiply inline, the node in a local, t a caller local defined
- * before the calls (the constant is propagated before numbering in each). */
+ * before the calls (the constant is propagated before numbering in each).
+ * Round 38, read in MW's own code generator (mweppc's fp_binary_operator, a prediction for mwcps2):
+ * `if (right->hascall) { right first, then left } else { left first, then right }`, then `op reg, left,
+ * right` -- the target's word is exactly that branch's output, `t * w` with the width generated first:
+ * its width operand carries hascall although no call survives in its code. 14 casts and spellings of
+ * the operands and product move nothing (4 off or 1 off: build/scratch/ui/v_ssd1.py); what sets the
+ * flag without leaving a call is not found (the pass that computes it is not among the sources). */
 /* the legend (bitmap 3) placed slid in by t, a fraction of its width (ours: the 1.0f a caller
  * passes is still multiplied; the width written first gives the target's registers -- the 1.0 then
  * numbered after it, so coloured first into f0 -- with the product's operands the wrong way round,

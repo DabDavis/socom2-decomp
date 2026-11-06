@@ -311,9 +311,11 @@ int func_00626110(GRID *p)
 
 /* Whether the codec can take the group's voices (0x68): a member connected, and fewer decoders
  * in use than it has, or no more queued than one over.
- * OPEN (9 words): the queue's count is read before nMax + 1 only with the call on the left (the
- * other order puts nMax + 1 in a saved register before the call); what is left is the second
- * test's branch sense and its stores' order (`beqz` to the 1 in the target, `bnezl` to the 0). */
+ * The queue's count is read before nMax + 1 only with the call on the left (the other order puts
+ * nMax + 1 in a saved register before the call). Byte-exact since round 25b: the target lays the 0
+ * store out as the second test's fall-through and the 1 store after it, both tests branching forward
+ * to it -- SCEA's `goto` past the 0 (2.96 does not reorder blocks: an if/else, a negated `||`, a
+ * nested else and returns in either order all put the 1 first, 9 words). */
 void func_00626140(GRID *p)
 {
     int nId = 0xFFFF;
@@ -329,12 +331,13 @@ void func_00626140(GRID *p)
     if (i < p->nMembers) {
         pCodec = func_0060FFB0(p->pAudio);
         nMax = func_0062AAF8(pCodec);
-        if (func_0062AB08(pCodec) < nMax || func_0062A2E8(&p->list) <= nMax + 1) {
-            p->x68 = 1;
-            return;
-        }
+        if (func_0062AB08(pCodec) < nMax || func_0062A2E8(&p->list) <= nMax + 1)
+            goto one;
     }
     p->x68 = 0;
+    return;
+one:
+    p->x68 = 1;
 }
 
 typedef struct GRID_SLOTS {             /* a type-5 message: the room left in the group */
@@ -462,7 +465,6 @@ void func_006265F0(GRID *p)
         func_00624510(&p->pMembers[i]);
 }
 
-/* 0x626658: not written */
 
 /* A client leaves the group (and, in a growing group spoken in here, the others are told). */
 void func_00626788(GRID *p, unsigned int nId)
@@ -586,4 +588,41 @@ void func_00626A38(GRID *p)
         if (p->pMembers[i].pPeer != 0 && p->pMembers[i].nState == 2)
             func_00610FA0(p->pAudio, ((GRID_PEER *)p->pMembers[i].pPeer)->nId, &h, data, sizeof(data));
     }
+}
+
+extern void func_0062A218(RT_LIST *pList, void *pPeer);
+
+/* a peer joins the group's list (0x626658): in the group this client speaks in, unless it is this client or the
+ * group is fixed, it also takes a member slot -- its own again, or the first free, the table grown when full.
+ * Round 25b, unwritten before. */
+void func_00626658(GRID *p, GRID_PEER *pPeer)
+{
+    int nId = 0xFFFF;
+    int nPeerId;
+    int i;
+    GRID_MEMBER *m;
+
+    if (p == 0)
+        return;
+    func_00611E60(p->pAudio, &nId);
+    func_0062A218(&p->list, pPeer);
+    if (p->nId <= 0)
+        return;
+    if (pPeer->nId == nId)
+        return;
+    if (p->nId != func_00611E70(p->pAudio))
+        return;
+    if (p->nMaxMembers != 0)
+        return;
+    nPeerId = pPeer->nId;
+    m = p->pMembers;
+    for (i = 0; i < p->nMembers; i++, m++) {
+        if (m->nId == nPeerId || m->nState == 0)
+            break;
+    }
+    if (i >= p->nMembers) {
+        func_00624C60(p);
+        m = &p->pMembers[i];
+    }
+    func_00624530(p->pAudio, m, 2, nPeerId);
 }
