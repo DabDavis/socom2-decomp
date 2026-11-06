@@ -1714,6 +1714,71 @@ int func_00641308(RT_UDP *pUdp, int nConn, void *pData)
     return result;
 }
 
+/* a datagram for a connection (0x641490): the session handled first (0x641BA0); a reliable one goes in sequence into the
+ * receive ring, a duplicate not at all, an unreliable one at its end */
+int func_00641490(RT_UDP *pUdp, RT_UDP_HEADER *pHeader, unsigned int nConn)
+{
+    RT_UDP_HEADER header;
+    void *pMsg = 0;
+    unsigned char bDup = 0;
+    void *pAfter = 0;
+    int bInserted = 0;
+    RT_UDP_CONN *pConn;
+    RT_UDP_BUF *pBuf;
+    RT_UDP_BUF *pBuf2;
+    int result;
+
+    if (nConn == (unsigned int)-1)
+        return 7;
+    pConn = &pUdp->pConns[nConn];
+    rt_time_get_time_stamp(&pConn->tLastRecv);
+    result = func_00641BA0(pUdp, pConn, pHeader, &bDup);
+    if (bDup == 0) {
+        if ((*(unsigned int *)pHeader & 6) == 6 || (pHeader->nType & 4)) {
+            pBuf = &pConn->recv;
+            func_00631B10(pBuf, &pMsg);
+            while (pMsg != 0) {
+                if (func_00631E70(pMsg) != 0) {
+                    memcpy(&header, func_00631E58(pMsg), sizeof header);
+                    if ((*(unsigned int *)&header & 6) == 6 || (header.nType & 4)) {
+                        if (header.nSeq - pHeader->nSeq > 0) {
+                            if (((unsigned int)header.nSeq <= 0x7FFFFFFE && (unsigned int)pHeader->nSeq <= 0x7FFFFFFE)
+                                || ((unsigned int)header.nSeq > 0x7FFFFFFE && (unsigned int)pHeader->nSeq > 0x7FFFFFFE)) {
+                                if (pAfter != 0) {
+                                    if (func_00631508(pBuf, pAfter, pUdp->pRecvBuf, pHeader->nLength + 12) != 0)
+                                        return 10;
+                                } else if (func_00631670(pBuf, pUdp->pRecvBuf, pHeader->nLength + 12) != 0)
+                                    return 10;
+                                bInserted = 1;
+                                break;
+                            }
+                        }
+                        pAfter = pMsg;
+                    }
+                }
+                pMsg = func_00631E88(pMsg);
+            }
+            if (bInserted == 0) {
+                if (func_00631B60(pBuf, &pMsg) != 0)
+                    return 10;
+                if (func_00631508(pBuf, pMsg, pUdp->pRecvBuf, pHeader->nLength + 12) != 0)
+                    return 10;
+            }
+            result = func_00641B08(pUdp, pConn, pHeader);
+        } else {
+            if (pHeader->nType & 2)
+                pConn->x80 = pHeader->nSeq;
+            pBuf2 = &pConn->recv;
+            if (func_00631B60(pBuf2, &pMsg) != 0)
+                return 10;
+            if (func_00631508(pBuf2, pMsg, pUdp->pRecvBuf, pHeader->nLength + 12) != 0)
+                return 10;
+        }
+    } else if (pHeader->nType & 4)
+        result = func_00641B08(pUdp, pConn, pHeader);
+    return result;
+}
+
 /* a datagram queued on the endpoint's ring: its sender (address and port) as a message after the
  * last, then the header and the data appended to it; on a failure after the sender was stored, the
  * last message is taken off again. 10 the ring refused. The steps are a do-while(0)'s breaks: 2.96
@@ -2056,3 +2121,4 @@ void func_00642200(void *pUpnp, int nError, int a2, char *szAddress, unsigned sh
     else
         pUdp->pfnCallback(pUdp, -2, 5, 15, pUdp->pUser);
 }
+
