@@ -1470,8 +1470,8 @@ int func_005C3EE0(CZKit *kit, int index, CZFTSWeapon *w, EQUIP_ITEM kind)
             return NextLauncherMode(kit, index, 4, kind);
         if (id == 63)
             return NextLauncherMode(kit, index, 5, kind);
+    } else
         return -1;
-    }
     return -1;
 }
 
