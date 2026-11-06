@@ -1968,10 +1968,10 @@ int func_006400A8(RT_UDP *pUdp, RT_UDP_CONN *pConn)
                 }
                 if (header.nType & 4) {
                     rt_time_start((RT_TIME *)&sent.nId);
-                    if (sent.nType != 0)
-                        sent.nType++;
-                    else
+                    if (sent.nType == 0)
                         sent.nType = 2;
+                    else
+                        sent.nType++;
                     func_0063FDE8(pMsg, &sent);
                 } else
                     pDone = pMsg;
