@@ -223,6 +223,9 @@ class CZItemStash;
 /* the SEAL's kit: its weapons and gear (SOCOM 1's CZKit, 0x87c bytes there; only its start here) */
 class CZKit {
 public:
+    /* the kit's frame, and the mode the hand was last given (kit.h's; OVL2 0x5C0FD0, 0x5C4960) */
+    void Tick(float dT);
+    int GetHandFireMode();
     /* whether the kit holds an item, and whether that item has ammunition (SOCOM 1's; OVL2
      * 0x5C86F0, 0x5BDB20, the kit lane's) */
     bool HasItem(EQUIP_ITEM item) const;
@@ -492,8 +495,9 @@ public:
     /* whether a straight line runs from one cell to another, where it stops handed back (ai_maps.h's,
      * OVL2 0x52CC80) */
     bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
-    /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) */
+    /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) and its ground's height (ai_maps.h's, OVL2 0x52CD30) */
     CAiCell *GetCell(const CAiMapLoc &loc);
+    bool GetAltitude(const CAiMapLoc &loc, float &alt);
     /* an action by its id, its cell and its record (ai_maps.h's, OVL2 0x52DAA0) */
     bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
     /* a path planned from a cell through a list of cells, and a cell's region (ai_maps.h's, OVL2

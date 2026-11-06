@@ -1733,8 +1733,10 @@ public:
     void ClearEffectors();
     /* every animation deleted, the list emptied (SOCOM 1's) */
     void ClearAnimations(bool detach);
-    /* an owner's effector taken off (SOCOM 1's) */
+    /* an owner's effector taken off (SOCOM 1's), and one put on: a body pushing the props within a radius
+     * (SOCOM 1's, OVL1 0x2D7F30; the SEAL's creation calls it) */
     void UnRegisterEffector(const void *owner);
+    void RegisterEffector(const void *owner, const CPnt3D *pos, float r, const CPnt3D *vel);
     /* whether an effector is near a cell: m_CellAnimate set when one is (SOCOM 1's) */
     void TestCellMid(CPnt3D *mid, CPnt3D *pos);
     /* a prop's animation ticked, its node handed back (SOCOM 1's, 0x217BA0) */

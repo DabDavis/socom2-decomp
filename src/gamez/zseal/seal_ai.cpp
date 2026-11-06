@@ -835,11 +835,6 @@ static inline bool AiDriven(CZSealBody *seal)
     return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
 }
 
-extern "C" {
-/* (OVL2 0x5F55E0, the AI states' lane: the AI's alarm raised over a time) */
-void func_005F55E0(CSealCtrlAi *ai, float t);
-}
-
 /* the AI switched on or off: each SEAL the AI drives has its throttles let go; switched off, the
  * suspended state (18) pushed, its flags 0x10 -- and 1 without the alarm -- set and running, the alarm
  * raised over a thirtieth without it; switched on, that state popped and the body's parts oriented.
@@ -873,7 +868,7 @@ void CSealCtrlAi::SetAiEnabled(bool on, bool alarm)
                     st->SetFlags(flags, 0);
                     st->SetActive(true);
                     if (!alarm)
-                        func_005F55E0(ai, 0.0333f);
+                        ai->StateTick(0.0333f);
                 }
             } else {
                 ai->PopAiState((AI_STATE)18);
@@ -6301,11 +6296,60 @@ int CAiSGrenade::Virtual14(CSealCtrlAi *ai, CAiState *sub)
     return Result();
 }
 
+/* the grenade's landing point, whether found: a shot from an AI's hand lands where that AI aimed; one that hardly
+ * moves lies where it is; else its flight is stepped (a twentieth of a second, the fall under gravity 98) until
+ * the map's ground stands above it, a point over a soil no one can step on not counting; the shot's time handed
+ * back as well (OVL2 0x55CDC0, new in SOCOM II: CAiSGrenade::Tick asks it; the name unknown) */
+extern "C" bool func_0055CDC0(CZProjectile *proj, CPnt3D *pos, float *fuse)
+{
+    bool ok;
+
+    if (!proj)
+        return false;
+    CZSealBody *seal = AsSeal(CEntity::m_list.GetEntityById(proj->m_shooterID));
+    const CPnt3D &vel = proj->m_vel;
+    const CPnt3D &from = proj->m_framestartpos;
+
+    ok = false;
+    *fuse = proj->m_time;
+    if (seal && AiDriven(seal)) {
+        *pos = ((CSealCtrl *)seal->m_control)->GetSealCtrlAi()->m_774;
+        ok = true;
+    } else if (!ai::is_moving(&vel, 200.0f)) {
+        ok = true;
+        *pos = from;
+    } else {
+        static CPnt3D k_fall(0.0f, -98.0f, 0.0f);
+
+        *pos = from;
+        for (float t = 0.0f; t < *fuse; ) {
+            *pos = from + vel * t + k_fall * (0.5f * (t * t));
+            CAiMapLoc loc;
+            float alt;
+
+            if (AiMaps.GetLocation(pos, loc)) {
+                CAiCell *cell = AiMaps.GetCell(loc);
+
+                if (cell) {
+                    if (!cell->IsTraversable())
+                        ok = false;
+                    if (AiMaps.GetAltitude(loc, alt) && !(alt <= pos->y)) {
+                        ok = true;
+                        break;
+                    }
+                }
+            }
+            static float k_dt = 0.05f;
+
+            t += k_dt;
+        }
+    }
+    return ok;
+}
+
 extern "C" {
-/* the grenade's landing point solved from its flight, whether found (OVL2 0x55CDC0, not written
- * yet) and the dodge's look and sound (0x55C870, not written yet); a path is planned to a cell by the
+/* the dodge's look and sound (0x55C870, not written yet); a path is planned to a cell by the
  * AI core's CAiPath::InsertPathLoc(loc, map) 0x526C10 */
-bool func_0055CDC0(CZProjectile *proj, CPnt3D *pos, float *fuse);
 void func_0055C870(CAiSGrenade *g, CSealCtrlAi *ai);
 /* (below: a map's cell inside; the AI states' range: a plan pushed to a cell) */
 bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);

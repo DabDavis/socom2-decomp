@@ -428,7 +428,6 @@ extern int data_0066B420;
 extern unsigned char data_003DF138;
 void func_0058B1A0(CZSealBody *seal);
 void func_005C7830(CZKit *kit);
-void RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D(void *mgr, const void *owner, const CPnt3D *pos, float r, const CPnt3D *vel);
 }
 
 /* the task's select (seal_tasks.cpp's CTSelect::Create, OVL2 0x5D29F0) */
@@ -442,7 +441,7 @@ struct CWorldViews {
     unsigned char _0[0x56c];
     void *m_shadow_node;   // 0x56c
     unsigned char _570[0x6ac - 0x570];
-    void *m_clutter_anims;   // 0x6ac
+    zdb::CClutterAnimManager *m_clutter_anims;   // 0x6ac
 };
 
 /* a box made of two corners (a stand-in: zmath.h's CBBox has no constructor; the first corner's copy through
@@ -552,7 +551,7 @@ void CZSealBody::PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl)
         if (fabsf(size.z > r))
             r = size.z;
         r *= 0.5f;
-        RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D(((CWorldViews *)zdb::CWorld::m_world)->m_clutter_anims, seal,
+        ((CWorldViews *)zdb::CWorld::m_world)->m_clutter_anims->RegisterEffector(seal,
             (const CPnt3D *)node->m_matrix.m_matrix[3], r, &seal->m_velW);
     }
     if (data_003DF138 && seal->IsPlayer() && !((CWorldViews *)zdb::CWorld::m_world)->m_shadow_node) {
@@ -590,7 +589,6 @@ extern "C" {
 bool func_002C2FD0(CZSealBody *seal);
 void func_00543D50(CZSealBody *seal);
 void func_00552780(CZSealBody *seal, unsigned char priority, float target, float rate);
-int func_005C4960(CZKit *kit);
 int func_005C4890(CZKit *kit);
 void func_005C48A0(CZKit *kit, int value);
 }
@@ -628,7 +626,7 @@ bool CZSealBody::ReCreate(CZSealBody *seal, const CCharacterType *type)
     unsigned int id = seal->m_id;
     unsigned int team = GetTeamOf(seal);
     unsigned int vehicle = GetVehicleOf(seal);
-    int mode = func_005C4960(&seal->m_kit);
+    int mode = seal->m_kit.GetHandFireMode();
     int mode2 = func_005C4890(&seal->m_kit);
     CMatrix m(seal->m_node->m_matrix);
 

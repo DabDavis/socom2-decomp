@@ -1374,10 +1374,6 @@ extern int data_003DF148;
 extern int data_003DF150;
 extern int data_003DF158;
 extern int data_003DF160;
-/* (the clutter's and the world's, by their mangled names: zdb::CClutterAnimManager::UnRegisterEffector, OVL1
- * 0x2D7EA0; zdb::CWorld::DeleteTextureAssetCharacter(char *, CNode *), OVL1 0x31D130) */
-void UnRegisterEffector__Q23zdb19CClutterAnimManagerFPCv(void *mgr, const void *effector);
-void DeleteTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode(void *world, const char *lib, zdb::CNode *node);
 }
 
 /* the view pulled back and the zoom's lens (OVL1 0x1F1470, 0x1EFEA0: st_core.cpp's) */
@@ -1474,7 +1470,7 @@ CZSealBody::~CZSealBody()
         delete m_control;
         m_control = 0;
     }
-    UnRegisterEffector__Q23zdb19CClutterAnimManagerFPCv(zdb::CWorld::m_world->m_grid.m_ClutterAnimManager, this);
+    zdb::CWorld::m_world->m_grid.m_ClutterAnimManager->UnRegisterEffector(this);
     CBodyAnimBlendStack *stack = &m_blends;
 
     while (stack->m_top + 1 > 0)
@@ -1493,9 +1489,9 @@ CZSealBody::~CZSealBody()
     zdb::CNode *parent = m_node->m_parent;
 
     zdb::CWorld::m_world->m_grid.gridRemoveNodeFromGrids(m_node);
-    DeleteTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode(zdb::CWorld::m_world, "clib", m_node);
+    zdb::CWorld::m_world->DeleteTextureAssetCharacter("clib", m_node);
     if (zdb::CAssetMgr::m_assets.FindLib("flib"))
-        DeleteTextureAssetCharacter__Q23zdb6CWorldFPcPQ23zdb5CNode(zdb::CWorld::m_world, "flib", m_node);
+        zdb::CWorld::m_world->DeleteTextureAssetCharacter("flib", m_node);
     if (CZWeapon::m_pProjectilelist)
         CZWeapon::m_pProjectilelist->ForgetHitNode(m_node);
     parent->DeleteChild(m_node);
@@ -1768,7 +1764,6 @@ void func_005483D0(CZSealBody *seal, float dT);
 void func_005B0840(CZSealBody *seal);
 void func_005762E0(CZSealBody *seal);
 void func_00548090(CZSealBody *seal);
-void func_005C0FD0(CZKit *kit, float dT);
 }
 
 extern "C" {
@@ -1928,7 +1923,7 @@ void CZSealBody::PrePostTick(float dT)
     UpdateAimParams();
     ((CSealCtrl *)m_control)->PostTick(dT);
     HandleGrenadeExplosion();
-    func_005C0FD0(&m_kit, dT);
+    m_kit.Tick(dT);
     TickStun(dT);
     HandleSealStep();
     HandleBloodDrip(dT);
