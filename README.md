@@ -2065,6 +2065,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 53** (CAiSSuspended::OnSignal, CAiTarget::ModifyAimDir, the reticule node
+  tracker 0x5BE6F0 and CSealCtrl::OnSetTargetVisible, all four unwritten before -- 2,852 bytes):
+  - a local assigned from an inline wrapper's result (`float range = GetRange()`, the wrapper returning
+    `m_target.GetRange()`) is numbered after the front-end temporaries -- `igreplay --movers` called it before the source
+    was written; read straight into a local it took $f21 instead of $f20 (CAiTarget::ModifyAimDir 0x60A000);
+  - kind tests written as ternary inlines (`e && e->m_type == k ? e : 0`) keep the target's dead-else-copy layout; the
+    if / return forms collapse the caller's other ternaries (91 off) -- the UI's round-31 rule again; taking both kind
+    results into locals before the `||` closed the last 18 (CSealCtrl::OnSetTargetVisible 0x5CA170);
+  - `!(a->m_team & b->m_team)` written out branches on the AND, through the IsEnemy inline the bool is materialised
+    (sltu / xori); MW 3.0b52 puts a zero-valued function-local static in .bss where the target has .data (0x650B20,
+    0x6510F8): no effect on scoring.
 - **Tells from the weapons, round 33** (CVisual::VuUpdate at last -- 0xCC4, unwritten for 32 rounds -- with GetVid's copy
   and three helper copies; CVisual::ApplyDecal and CMesh::ApplyDecal written; hookupVisuals / hookupMesh and node_index,
   SOCOM 1's, named):
