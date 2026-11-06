@@ -20,8 +20,7 @@
  * erase 0x60EA90 and Tick's erase(position) 0x60EB60 come out of this unit byte-exact.
  * OPEN: Start and TickStep (registers / the camera flag's negation), RemoveMember (two registers),
  * the group remove_if (the list remove_if family), Tick (the cell index's strength reduction),
- * AddMember (Is() materialised) and act_camera::Tick (the
- * translation row's copy) -- each with its note. Defined in reverse of
+ * and AddMember (Is() materialised) -- each with its note. Defined in reverse of
  * their image order (-inline deferred) where it matters. */
 
 #include <list>
@@ -1179,18 +1178,27 @@ static void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
  * group runs no cameras: the flag tested bare, not through CamerasOn(); the unused matrix is the
  * target's two sceVu0UnitMatrix calls on one slot; the group read into a local ahead of the end
  * point's flags, as the target loads it there for the second Get).
- * OPEN, 0x194 against 0x18C: the start point copied into the translation row -- the target loads
- * its three floats and then stores them at sp offsets (a copy construction's shape), here each
- * float goes through &m[3] kept in a saved register (tried: `*(PNT3D *)`, the element stores, a
- * scalar copy first, the three-float constructor, a by-value inline setter: 0x194-0x1AC), and with
- * it every saved register numbered one off (`this` s3 against s1) */
+ * Byte-exact in the kit's round 59 (0x194 since round 17): the optimiser's common subexpressions
+ * and propagation off in the body -- with them on MW shares the translation row's address between
+ * the start point's copy and LookAt's argument, holding it in a saved register from the copy on,
+ * where the target stores the copy at frame offsets and makes the address again in the look-at
+ * arm (in Get's delay slot); what the target does share is shared by hand: the end point's flags
+ * in a local, and each rotation's matrix in a block local of its own (one value for both
+ * arguments, `move a1,a0`; propagation off keeps it from being folded back into two addresses).
+ * The flag and the row pointer declared uninitialised at the block's top, ahead of the camera:
+ * numbered before it they put `this` in s1 and the camera in s2 as the target (igreplay --permute
+ * over the four holders: set and the pointer before the camera, the camera's own place free) */
 CAiGroup::action::STATE CAiGroup::act_camera::Tick(CSealCtrlAi *ai, float t)
 {
+#pragma opt_common_subs off
+#pragma opt_propagation off
     if (!(m_ticking->m_flags & 1))
         return DONE;
     switch (m_state) {
     case WAITING:
         if (!(t < m_time)) {
+            bool set;
+            CPnt3D *tr;
             zdb::CNode *cam = appCamera->m_camera;
             CMatrix unused;
             CPnt3D pos;
@@ -1198,22 +1206,38 @@ CAiGroup::action::STATE CAiGroup::act_camera::Tick(CSealCtrlAi *ai, float t)
             unused.SetIdentity();
             if (m_from.Get(m_ticking, &pos)) {
                 CMatrix m = CMatrix::identity;
-                bool set = false;
-                CPnt3D *t = (CPnt3D *)m.m_matrix[3];
                 CAiGroup *g;
 
-                *t = pos;
+                set = false;
+                m.m_matrix[3][0] = pos.x;
+                m.m_matrix[3][1] = pos.y;
+                m.m_matrix[3][2] = pos.z;
                 g = m_ticking;
-                if (m_to.m_flags & 0x200) {
-                    sceVu0RotMatrixY(m.m_matrix, m.m_matrix, m_to.m_pos.y);
-                    sceVu0RotMatrixX(m.m_matrix, m.m_matrix, m_to.m_pos.x);
-                    sceVu0RotMatrixZ(m.m_matrix, m.m_matrix, m_to.m_pos.z);
+                unsigned int f = m_to.m_flags;
+
+                if (f & 0x200) {
+                    {
+                        float (*mm)[4] = m.m_matrix;
+
+                        sceVu0RotMatrixY(mm, mm, m_to.m_pos.y);
+                    }
+                    {
+                        float (*mm)[4] = m.m_matrix;
+
+                        sceVu0RotMatrixX(mm, mm, m_to.m_pos.x);
+                    }
+                    {
+                        float (*mm)[4] = m.m_matrix;
+
+                        sceVu0RotMatrixZ(mm, mm, m_to.m_pos.z);
+                    }
                     set = true;
-                } else if (m_to.m_flags & 0x100) {
+                } else if (f & 0x100) {
                     CPnt3D at;
 
+                    tr = (CPnt3D *)m.m_matrix[3];
                     if (m_to.Get(g, &at)) {
-                        LookAt(t, &at, &m);
+                        LookAt(tr, &at, &m);
                         set = true;
                     }
                 }
@@ -1229,6 +1253,8 @@ CAiGroup::action::STATE CAiGroup::act_camera::Tick(CSealCtrlAi *ai, float t)
     }
     return m_state;
 }
+#pragma opt_common_subs reset
+#pragma opt_propagation reset
 
 /* (OVL2 0x60CD40) */
 void CAiGroup::SetMemberLoc(unsigned int i, const CAiMapLoc &loc)
