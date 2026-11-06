@@ -12235,7 +12235,12 @@ the separate form; tty.c's loop dump the same file from both). (3) **`tools/try.
 source (`'\n'`, `"%d\n"`) must match as typed (tty.c's canaries rely on it), and `-n` (both sides' `\n`/`\t`) was
 there all along; `-e` decodes the usual escapes (`\n \t \r \\ \" \'`) in each NEW alone, OLD as typed, and a variant
 that fails to build with a typed `\n`/`\t` in its NEW now says on stderr what -e and -n do; canary
-`test_try_decodes_escapes_in_new_when_asked` (5). sccheck.py, scdiff.py and scdecomp.py are master's, byte for byte.
+`test_try_decodes_escapes_in_new_when_asked` (5). sccheck.py, scdiff.py and scdecomp.py are master's, byte for byte
+(after merging master 1e7d3232: `--files '^(?!auto/|lib/)'` 8,479 byte-exact of 8,718, no regression; `--files
+'^lib/'` 2,882 of 3,011, none). **automatch** over the lane's ranges (`--max-size 0x400 --emit --no-prune --jobs 2
+--obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses),
+`1C6200 1E7000` and OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 30 tried, 0 hits (2 build failures -- 0x24DBB8 and
+0x24B2F8 as before -- 4 refusals, 24 misses): 41 tried, none byte-exact (round 42a: 42; 0x2485D0 is hand-written now).
 
 **The scan, run** (`build/scratch/gcc/r43/ps/`, master 86dc84c8's tree, every hand-written MW unit, 2 jobs): 298
 units, 238 open functions -- 184 found in their unit's text (all confirmed by their probes, no probe build failed), 54
@@ -12253,8 +12258,9 @@ assignments: 6 words at the right size), ReadArray__8CRdrFile 0x331940 9 -> 7 (p
 -> 70 and SkbParseComplete 0x392130 140 -> 77 (loop invariants). The scan's own base saw GetBestDir 0x5350C0 byte-exact
 (238 open there, sccheck's 239 here): in this lane's worktree -- a 71-character tree, EVERY agent worktree's length
 -- MAP_DIRCOUNT::GetBestDir compiles 31 words off, round 38a's PATH-DEPENDENT row at a new length, so any lane's
-partial check of ai_mapwalk.cpp in a worktree reports it a REGRESSION on master 86dc84c8; at 97 and 98 characters
-(try.py's scratch trees) and 160 (the scan's) it matches, and the main tree's 29 is the integrator's to see.
+partial check of ai_mapwalk.cpp in a worktree reported it a REGRESSION on master 86dc84c8; at 97 and 98 characters
+(try.py's scratch trees) and 160 (the scan's) it matched -- and on master 1e7d3232 (the MSL headers' round 38 and the
+world's round 32 merged) it matches at 71 again: the flip lengths move with the tree's text, as round 38a found.
 
 **Round 43a** (2026-11-06, the requests first, then the opens): 1 row newly byte-exact -- the codec's harmonic cost
 **0x2485D0** (324 bytes; open since round 18a, never written: m2c refuses its accumulator ops), an assembler unit
