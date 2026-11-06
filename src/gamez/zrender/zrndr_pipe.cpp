@@ -1042,17 +1042,21 @@ void BuildNodeLocalLightList(zdb::CNode *node);
  * wrapper (StackTop, ours -- a local from an inline's result is numbered after the front-end
  * temporaries, which gives m s1 and the visual s2; read as `CStack::m_top` straight into the local
  * the two swap, 16 off), the visuals' vector and the alpha pass's texture list as references, the
- * material index a local of its own (read twice, the target's one lbu), bit 8's test `== 0`.
+ * material index a local of its own (read twice, the target's one lbu), bit 8's test `== 0`, the
+ * detail layers through a local declared after the counter (the counter, layers, count and test
+ * then take the target's a2 / a1 / a0 / v1).
  * THE DETAIL LOOP IS NOT STRENGTH-REDUCED in the target (sll/addu of the index each pass, as SOCOM 1's
  * loop): no loop form tried changes MW's pointer walk (an inline test by pointer or reference, an int
  * counter, the increment in the body, a while, the layers through a local) -- only the
  * function-scoped `#pragma opt_strength_reduction off` gives the target's size (0x3DC: a stand-in,
  * its original spelling unknown).
- * OPEN, at the target's size (22 by alignment): (1) the prologue's schedule -- the vector's address
- * (s6) is placed at the top, the texture list's (s7) in the entry test's delay slot, where the target
- * puts the vector's in the slot and the list's after the hoisted fov narrowing (orders of the two
- * references, pointers for either, accessors, a reference in the alpha block: none moves them); (2)
- * the detail loop's count, layers and test take a1 / v1 / a0 where the target has a0 / a1 / v1 */
+ * OPEN, 24 instructions at the target's size, every register the target's -- placement only: the
+ * vector's address (s6) is computed at the top and the texture list's (s7) fills the entry test's
+ * delay slot, the layers' load precedes the detail loop's entry test, where the target computes all
+ * three in the loops' preheaders as hoisted invariants (the vector's in the slot, then the fov
+ * narrowing, then the list's; the layers after the test). Named locals keep their definitions'
+ * place, and every form that leaves them to LICM (the vector read in place, the list or the layers
+ * assigned inside the loop, accessors, pointers, other orders) loses the registers (22-36) */
 static inline CMatrix *StackTop()
 {
     return CStack::m_top;
@@ -1090,8 +1094,11 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
 
             zdb::CVisual::m_rangeSqdToCamera = d;
             zdb::CVisual::m_applyDetailTexture = false;
-            for (unsigned int k = 0; k < vis->m_numDetails; k++)
-                if (d <= vis->m_details[k].m_rangeSq) {
+            unsigned int k;
+            zdb::CVisual::DETAIL *det = vis->m_details;
+
+            for (k = 0; k < vis->m_numDetails; k++)
+                if (d <= det[k].m_rangeSq) {
                     zdb::CVisual::m_applyDetailTexture = true;
                     break;
                 }
