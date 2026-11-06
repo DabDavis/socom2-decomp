@@ -1165,11 +1165,11 @@ bool CMission::Sample_ExtractionLoc()
     return false;
 }
 
-/* the external whispers' option: its global (0x3DE620, the HUD reads it) and EnableExternalWhispers
- * (SOCOM II's; the options' store and the HUD call it; OVL1 0x2A41F0) */
+/* the external whispers' option: its global (0x3DE620, the HUD reads it) and the setter (the name ours,
+ * its valve's: EnableExternalWhispers -- SOCOM II's; the options' store and the HUD call it; OVL1 0x2A41F0) */
 extern "C" bool data_003DE620;
 
-extern "C" void func_002A41F0(bool on)
+void EnableExternalWhispers(bool on)
 {
     /* the valve set written out: `on` converted for the comparison and again for the store */
     CValve *valve = CValve::Create("EnableExternalWhispers", (VALVE_TYPE)1);
