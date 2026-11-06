@@ -782,21 +782,34 @@ extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
 }
 
 /* MESSAGE: put up a message -- string `text` of the game's text table, or else the anim's name
- * number `name` -- for `time` seconds. SOCOM 1 called C2DMessage_Q::Add_Message on its
- * message queue; SOCOM II calls a six-argument function at 0x2B6530 (this, the text, 0, the
- * byte at +11, 0 in t0, the time) whose name is not carried. */
+ * number `name` -- for `time` seconds, on theMission's message queue (0x4366A0, theMission +
+ * 0x6A0) through C2DMessage_Q::Add_Message 0x2B6530 (SOCOM 1's, grown: the game states' round 51
+ * named the row) -- the kind 0, the byte at +11 passed as its bool unconverted (an lbu straight
+ * into a3: a bool field), 0 for its int, the time as its float */
 struct zanim_cmd_message {
     _zanim_cmd_hdr hdr;
     unsigned short name;
     unsigned short text;
     unsigned char pad[3];
-    unsigned char style;
+    bool centered;
     float time;
+};
+
+/* fts_state.h's message kind and fts_message.cpp's queue (only its line add), as the game
+ * states' units declare them */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
 };
 
 extern char data_004366A0[];
 const char *GetString(int id);   /* 0x361B40 */
-extern "C" void func_002B6530(char *queue, const char *text, int a, int style, int b, float time);
 
 bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -808,7 +821,7 @@ bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
         text = GetString(cmd->text);
     else
         text = anim->GetName(cmd->name);
-    func_002B6530(data_004366A0, text, 0, cmd->style, 0, cmd->time);
+    ((C2DMessage_Q *)data_004366A0)->Add_Message(text, MSGTYPE_PLAYER, cmd->centered, 0, cmd->time);
     return true;
 }
 

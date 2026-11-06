@@ -479,7 +479,19 @@ struct UnitBoxCorners {
  * (a 4-byte member ahead of the array does too, but moves the frame 16 bytes: v_sb5.py). Settled on
  * the way: the poly one named local (s0 throughout; SetFace handed bbox_poly[k] straight gives each
  * face its own register), the guard a bool (li 1), the box built field by field before the corners
- * (the target's stores ahead of the loop) */
+ * (the target's stores ahead of the loop).
+ * Round 25, the numbering read: igdump's pass labels make all eight IRO_CommonSubs temporaries, made
+ * at each corner's FIRST REUSE in linear order (mweppc's IroCSE.c: ReplaceCommonSub's MoveCommonSub
+ * at the first ReplaceCSE-marked use) -- here c7, c4, c6, c3, c5, c2, c1, c0 (v41-v48, the faces'
+ * arguments linearised left to right at their memcpys). Every permutation of the eight among their
+ * slots replayed (build/scratch/core/permsb.py, 40,320 in 35 s; the GCC front's igreplay --permute
+ * agrees): 8 give the target, all the order c3, c2, c0, c6, c7, c5, c4 with c1 anywhere. Moving only
+ * the top ring (c4-c7) to other zones of the numbering (permsb2.py, 196k placements): 243 hits, every
+ * one with the whole top ring numbered AFTER the bottom ring's (as a second CSE pass would make them:
+ * pass 0 the bottom ring in its first-reuse order c3, c2, c1, c0, pass 1 the top ring as c6, c7, c5,
+ * c4 -- which the face order gives only if face 0's and face 1's top-ring uses are not CSE'd in pass
+ * 0). Not met by a pointer to corner 4 for the top ring (all faces or face 0 alone: 0x50C / 0x528) or
+ * SOCOM 1's one-iteration point loop (its SetPnts: 0x538 / 0x544; v_sbtop.py, v_sbloop.py) */
 void CDIBBox::SetCDIBBox()
 {
     if (initCDIBBoxOnce)

@@ -233,43 +233,81 @@ static inline const CBBox *NodeBBox(CNode *node)
     return node->GetBBox();
 }
 
+/* a point set from three values (ours; int_shapes.cpp's PntSet) */
+static inline void CornerSet(CPnt3D &p, float x, float y, float z)
+{
+    p.x = x;
+    p.y = y;
+    p.z = z;
+}
+
+/* a box's eight corners: the bottom four, then the top four, each ring from the low x, high z
+ * corner. AN INLINE IN THE ORIGINAL (the world lane's round 31): 0x2DCCD0 is int_shapes.cpp's
+ * out-of-line copy of it -- SOCOM 1's CBBox8::Build, the same stores in the same order -- since only
+ * a body MW can see makes the corners' constructor below too big to expand whole (then inlined one
+ * level: the member array's CPnt3D() constructions a loop, this called). int_shapes.cpp defines it
+ * out of line under the same name (an engine core unit; node_world.h declares it), so it is defined
+ * here again, inline, with int_shapes.cpp's body */
+inline void GetBBoxCorners(CPnt3D *out, const CBBox *b)
+{
+    CornerSet(out[0], b->m_min.x, b->m_min.y, b->m_max.z);
+    out[1] = b->m_min;
+    CornerSet(out[2], b->m_max.x, b->m_min.y, b->m_min.z);
+    CornerSet(out[3], b->m_max.x, b->m_min.y, b->m_max.z);
+    CornerSet(out[4], b->m_min.x, b->m_max.y, b->m_max.z);
+    CornerSet(out[5], b->m_min.x, b->m_max.y, b->m_min.z);
+    CornerSet(out[6], b->m_max.x, b->m_max.y, b->m_min.z);
+    out[7] = b->m_max;
+}
+
+/* a box's eight corners as an object (SOCOM 1's class CBBox8, its Build SOCOM II's GetBBoxCorners
+ * above) */
+class CBBox8 {
+public:
+    CBBox8(const CBBox *b) { GetBBoxCorners(m_pts, b); }
+
+    CPnt3D m_pts[8];
+};
+
+/* a box of two points: the pair assigned as a CBBox (node_model.cpp's; an inline's local, below
+ * the caller's own) */
+static inline void PointBox(CBBox *box, const CPnt3D &p, const CPnt3D &q)
+{
+    CPnt3D corners[2] = { p, q };
+
+    *box = *(CBBox *)corners;
+}
+
+/* the smaller and the larger of two floats, both by reference (node_model.cpp's) */
+static inline float MinOf(const float &a, const float &b) { return a <= b ? a : b; }
+static inline float MaxOf(const float &a, const float &b) { return a >= b ? a : b; }
+
 /* a caster for the node: its box's size, and the box of its corners carried into the world by the
- * node's matrix (new in SOCOM II, the name ours).
- * OPEN, 0x1F0 of 0x228: the target calls CPnt3D()'s out-of-line copy (0x1FB3C0) for each corner
- * and GetBBox straight, which is what an inline helper inlined ONE level gives (its callees called,
- * as hud_linemap.cpp's GetCellCenter calls CPnt3D()) -- the corners, their transform and the box
- * likely an inline of the original's too tall to inline whole; the box is then built through a
- * temporary (the first corner copied whole into 0xD0, from there whole into the temporary's
- * minimum at 0x50 and field by field into its maximum at 0x5C, the temporary assigned to m_bbox
- * field by field: a CBBox made from one point, by value?), the minimum kept with `<=` and the
- * maximum with `<`. The world lane's round 21 (build/scratch/wld/v_sc.py): the construction LOOP is
- * a member array's -- `struct { const CBBox *m_box; CPnt3D m_pts[8]; }` built by a constructor
- * taking the node, `m_box(node->GetBBox())` in its mem-initializers (the recursive GetBBox cuts it
- * one level: GetBBox straight, then the loop calling CPnt3D(), then GetBBoxCorners) gives the
- * target's order at 0x230 -- the box pointer then stored in the struct (sp+112) where the target
- * keeps it in s3; a local array in a helper cut one level unrolls into eight calls instead (h1) */
+ * node's matrix (new in SOCOM II, the name ours). Byte-exact since the world lane's round 31 (0x1F0
+ * of 0x228 before): the corners SOCOM 1's CBBox8 built by GetBBoxCorners as an inline (above), the
+ * box made from the first corner through a {p, p} pair (copy-constructed, then field by field) and
+ * widened through MinOf / MaxOf, as UpdateBBoxFromDI; GetBBox passed straight to the corners'
+ * constructor, where an argument of an inline call at the top is checked a level deeper (the
+ * recursive GetBBox then called straight, its result numbered ahead of the construction loop's
+ * pointer: a local taken through NodeBBox first swaps s2 / s3). Round 21's member array with the
+ * box pointer ahead of it in the struct kept the order but stored the pointer (0x230) */
 CShadowCaster::CShadowCaster(CNode *node)
 {
     m_node = node;
     node->GetBBox()->GetSize(&m_size);
-    const CBBox *box = NodeBBox(m_node);
-    CPnt3D pts[8];
+    CBBox8 c(m_node->GetBBox());
 
-    GetBBoxCorners(pts, box);
-    m_node->m_matrix.Transform(pts, 8);
-    CPnt3D p = pts[0];
-    CBBox b;
+    m_node->m_matrix.Transform(c.m_pts, 8);
+    CPnt3D p = c.m_pts[0];
 
-    b.m_min = p;
-    b.m_max = p;
-    m_bbox = b;
+    PointBox(&m_bbox, p, p);
     for (int i = 1; i < 8; i++) {
-        m_bbox.m_min.x = m_bbox.m_min.x >= pts[i].x ? pts[i].x : m_bbox.m_min.x;
-        m_bbox.m_min.y = m_bbox.m_min.y >= pts[i].y ? pts[i].y : m_bbox.m_min.y;
-        m_bbox.m_min.z = m_bbox.m_min.z >= pts[i].z ? pts[i].z : m_bbox.m_min.z;
-        m_bbox.m_max.x = m_bbox.m_max.x > pts[i].x ? m_bbox.m_max.x : pts[i].x;
-        m_bbox.m_max.y = m_bbox.m_max.y > pts[i].y ? m_bbox.m_max.y : pts[i].y;
-        m_bbox.m_max.z = m_bbox.m_max.z > pts[i].z ? m_bbox.m_max.z : pts[i].z;
+        m_bbox.m_min.x = MinOf(c.m_pts[i].x, m_bbox.m_min.x);
+        m_bbox.m_min.y = MinOf(c.m_pts[i].y, m_bbox.m_min.y);
+        m_bbox.m_min.z = MinOf(c.m_pts[i].z, m_bbox.m_min.z);
+        m_bbox.m_max.x = MaxOf(c.m_pts[i].x, m_bbox.m_max.x);
+        m_bbox.m_max.y = MaxOf(c.m_pts[i].y, m_bbox.m_max.y);
+        m_bbox.m_max.z = MaxOf(c.m_pts[i].z, m_bbox.m_max.z);
     }
 }
 

@@ -646,14 +646,6 @@ extern "C" CZBodyAnimBlend *func_005A21B0(CZSealBody *seal)
     return b;
 }
 
-extern "C" {
-/* the stats' events (seal.cpp's): a hit scored, a hit taken, a head shot (SOCOM 1's CSealStats::Hit,
- * WasHit and HeadShot, by these calls; OVL2 0x5458A0, 0x544CF0, 0x5459C0) */
-void func_005458A0(CSealStats *s, const CZSealBody *seal, const CZSealBody *other);
-void func_00544CF0(CSealStats *s, const CZSealBody *seal);
-void func_005459C0(CSealStats *s, const CZSealBody *seal);
-}
-
 /* an entity that is a SEAL (kind 2), or none (the inline cast HandleWeaponEvent's walk and ReportWeaponHitDamage show) */
 static inline CZSealBody *AsSeal(CEntity *e)
 {
@@ -680,8 +672,8 @@ void CZSealBody::ReportWeaponHitDamage(CZProjectile *proj, int shooter_id, int v
             SendHitMessage(shooter_id, victim_id, where, damage, pierce, hit, weapon);
         if (hit) {
             if (shooter)
-                func_005458A0(&shooter->m_stats, shooter, this);
-            func_00544CF0(&m_stats, this);
+                shooter->m_stats.Hit(*shooter, *this);
+            m_stats.WasHit(*this);
         }
         bool grenade = false;
 
@@ -694,7 +686,7 @@ void CZSealBody::ReportWeaponHitDamage(CZProjectile *proj, int shooter_id, int v
         }
         if (where == 0 && m_stats.m_count[1] <= 0 && !grenade) {
             if (shooter)
-                func_005459C0(&shooter->m_stats, shooter);
+                shooter->m_stats.HeadShot(*shooter);
             m_stats.m_count[1]++;
         }
     }
@@ -1881,7 +1873,12 @@ bool CZSealBody::CanUseCQB(CZSealBody *victim)
  * CanUseRestraint/CanUseCQB/CanUseKnife share the shape and matched with the Sub's `this` (the victim's
  * position) a pointer local declared before the facing -- here the Sub's `this` is this SEAL's own
  * position, and that local (pointer, reference, node pointer, either order, an inline helper taking
- * the facing by value and both points by reference) still loads after the stores: 10 every time. */
+ * the facing by value and both points by reference) still loads after the stores: 10 every time.
+ * Round 56 (igdump --pcode): the pre-colouring code already has this node's load after the facing's
+ * stores, so its register falls free (v0) -- the target's v1/a3 need the load among the facing's
+ * loads; this SEAL's position first through a pointer, a reference pair, both nodes in locals (either
+ * order) and the facing assigned after the pointer: 10 each (build/scratch/seal-r56/v_cqb.py). SOCOM 1's
+ * own code (0x299900) has the target's order with the facing and the Sub's slots swapped. */
 AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 {
     CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
@@ -2789,9 +2786,8 @@ void CZSealBody::HandleDamageNonExplosive(CZProjectile *proj, CZBodyPart *part, 
 extern "C" {
 /* (the kill's credit, 0x547AA0, takes whether the weapon was one of five: the id kept, then 0x547860
  * and 0x59EE20 -- ExecuteAction_CQBAttack inlines it) the five items (OVL1 0x3C5AC0,
- * zwep_ftsweapon.cpp's) and the stats' death (OVL2 0x545D10, seal.cpp's) */
+ * zwep_ftsweapon.cpp's) */
 bool func_003C5AC0(EQUIP_ITEM id);
-void func_00545D10(CSealStats *s, const CZSealBody *seal);
 }
 
 /* a projectile's damage: none from no ammunition or from the explosive already taken (a detonated
@@ -2850,7 +2846,7 @@ void CZSealBody::HandleDamage(CZProjectile *proj)
                 b = true;
             func_00547AA0(this, id, b);
         } else
-            func_00545D10(&m_stats, this);
+            m_stats.Death(*this);
     }
 }
 
@@ -3160,8 +3156,8 @@ extern "C" bool func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProject
     if (FirstHit(proj)) {
         proj->SetIsFirstHit(false);
         if (shooter)
-            func_005458A0(&shooter->m_stats, shooter, seal);
-        func_00544CF0(&seal->m_stats, seal);
+            shooter->m_stats.Hit(*shooter, *seal);
+        seal->m_stats.WasHit(*seal);
     }
     took = func_005A5830(seal, where, proj->GetDamage(&seal->m_posW, 0.0f), proj->m_ammo->GetArmorPierce());
 
@@ -4047,15 +4043,14 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
 }
 
 extern "C" {
-/* the stats' events (seal.cpp's: a hostage killed, a suicide, a team-mate killed, an enemy killed,
- * and two tallies by a count -- OVL2 0x545390, 0x545C90, 0x545C10, 0x545290, 0x5451A0, 0x5451C0),
+/* the stats' events (seal.cpp's: a hostage killed, a suicide, a team-mate killed -- the kill is
+ * CSealStats::Kill -- and two tallies by a count -- OVL2 0x545390, 0x545C90, 0x545C10, 0x5451A0, 0x5451C0),
  * the network game's side test (OVL1 0x2C30B0, unowned), whether a time of the AI's lies within a
  * span of now (OVL2 0x564CF0, seal_ai.cpp's) and the animation set the stats skip (OVL1 bss
  * 0x44D400, seal.cpp's) */
 unsigned short func_00545390(CSealStats *s, const CZSealBody *seal);
 void func_00545C90(CSealStats *s, const CZSealBody *seal);
 void func_00545C10(CSealStats *s, const CZSealBody *seal);
-void func_00545290(CSealStats *s, const CZSealBody *seal);
 void func_005451A0(CSealStats *s, int n);
 void func_005451C0(CSealStats *s, int n);
 int func_002C30B0(const CZSealBody *seal);
@@ -4102,9 +4097,9 @@ void CZSealBody::HandleKiller(int killer, bool b)
             func_00545C10(&k->m_stats, k);
         else if (m_animset != data_0044D400) {
             if (k && !(k->m_team & m_team))
-                func_00545290(&k->m_stats, k);
+                k->m_stats.Kill(*k);
             if (!theNetwork.m_9 && m_deathType == DEATH_HEADSHOT)
-                func_005459C0(&k->m_stats, k);
+                k->m_stats.HeadShot(*k);
             CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
 
             if (ai) {
@@ -4118,7 +4113,7 @@ void CZSealBody::HandleKiller(int killer, bool b)
             }
         }
     }
-    func_00545D10(&m_stats, this);
+    m_stats.Death(*this);
 }
 
 /* another console's dropped weapon made here, with the pickups open, unless this SEAL is a player:

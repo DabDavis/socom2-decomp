@@ -347,7 +347,7 @@ struct CAiTargetFlags {
     unsigned int m_flags;   // 0x2c
 };
 
-extern "C" bool func_0060A850(void *target);
+extern "C" int func_0060A850(void *target);
 
 /* whether the current state is of kind 2 with flag 0x20 (0x559000's shape) */
 static inline bool IsKind2Flag20(CAiState *s)
@@ -568,6 +568,76 @@ SEAL_VALVE CSealCtrlAi::get_valve(const char *name)
                 return (SEAL_VALVE)i;
     }
     return SEAL_VALVE_NONE;
+}
+
+extern "C" {
+/* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's: the stack, the AI, a flag) */
+void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
+}
+
+/* the AI's controller made: the bases (CSealCtrl's and SEAL_AI_PARAMS's constructors, out of line),
+ * then no debug, no group, full speed, the leg's cells invalid, the flags cleared but bit 12, the view
+ * cone a quarter turn wide and 1000 long, the alertness nil, mode 1, the valves and both anim tables
+ * cleared, the stack's bits brought up to date, the stances standing (OVL2 0x574080; SOCOM 1's
+ * constructor, which built SEAL_AI_PARAMS's members in place -- SOCOM II's 0x60BF40 does) */
+CSealCtrlAi::CSealCtrlAi()
+{
+    m_debug = false;
+    SetGroup(0);
+    m_speed = 1.0f;
+    m_61c = m_620 = CAiMapLoc::invalid;
+    m_774 = CPnt3D::zero;
+    m_770 = 0;
+    m_aibit2 = false;
+    m_aibit3 = false;
+    m_aibit5 = false;
+    m_aibit6 = false;
+    m_aibit7 = false;
+    m_aibit13 = false;
+    m_aibit8 = false;
+    m_aibit9 = false;
+    m_nosnooze = false;
+    m_aibit11 = false;
+    m_aibit12 = true;
+    m_aibit15 = false;
+    m_spraytimer = 0.0f;
+    m_5c8 = 0.0f;
+    m_awareTimer = 0.0f;
+    m_awarePending = (AI_AWARE)0;
+    m_5c4 = 0;
+    m_5c0 = -100.0f;
+    SetViewFOV(0.7853982f);
+    SetViewRange(1000.0f);
+    m_aware.m_value = 0.0f;
+    m_aware.m_goal = 0.0f;
+    m_3f4 = (AI_MODE)1;
+    m_700 = 1.0f;
+    m_704 = 1.0f;
+    m_70c = 1.0f;
+    m_710 = 1.0f;
+    m_follow_master = 0;
+    m_follow_master_id = CEntity::invalidId;
+    m_padid = 1;
+    m_6f0 = 0.0f;
+    m_scan_limits = 1.0471976f;
+    memset(m_valve, 0, sizeof m_valve);
+    memset(_44c, 0, 16);
+    memset(&m_anims[3], 0, 16);
+    func_005F7470(&m_stateStack, this, 1);
+    m_stance_asked = STANCE_STAND;
+    m_stance = STANCE_STAND;
+    m_stance_delay = 0.0f;
+    m_280 = 0.0f;
+    m_pathTolerance = 0.0f;
+    m_724 = CPnt3D::zero;
+    m_730 = CEntity::invalidId;
+    m_71c = 0;
+    m_6ec = 1.0f;
+    m_400 = 0.0f;
+    m_404 = 0.0f;
+    m_26c = 0;
+    m_26d = 0;
+    m_780 = m_78c = m_798 = CPnt3D::zero;
 }
 
 /* the controller unmade: its stack's states deleted (CAiStateStack::Clear, out of line), then the
@@ -1686,7 +1756,7 @@ extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
 }
 
 /* (OVL2 0x60A850, unowned: a test of the AI's object at 0x67C) */
-extern "C" bool func_0060A850(void *p);
+extern "C" int func_0060A850(void *p);
 
 /* the AI's target held, with its bit 9 (an inline bool, the kit lane's TargetHeld: the target
  * materialises the `&&`) */
@@ -2219,9 +2289,9 @@ extern "C" void func_00561B90(CSealCtrlAi *ai, bool now)
 }
 
 extern "C" {
-/* whether the SEAL can take a stance where it stands (OVL2 0x562C80, not written yet: an int the
+/* whether the SEAL can take a stance where it stands (OVL2 0x562C80, defined below: an int the
  * caller makes a bool) */
-int func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance);
+bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance);
 }
 
 /* a stance taken: nothing to do when it is the stance already; else the body's state for it -- prone
@@ -2799,6 +2869,117 @@ static inline bool Bit16Only(CSealCtrlAi *ai)
 static inline bool NotBit16Only(CSealCtrlAi *ai)
 {
     return !(AiBit16(ai) && !AiBit17(ai));
+}
+
+/* whether the SEAL may lie down where it stands (inline helpers, the names ours): its cell holds an
+ * action, is inside (for a Navy SEAL), or is of soil 7, 6, 11 or 2 -- each step a bool of its own */
+static inline bool CellBarsProne(const CAiCell *cell, const CSealCtrlAi *ai)
+{
+    bool r5 = true;
+    bool r4 = true;
+    bool r3 = true;
+    bool r2 = true;
+    bool r1 = true;
+
+    if (!cell->m_action) {
+        bool r0 = false;
+
+        if (cell->m_inside && ai->IsNavySeal())
+            r0 = true;
+        if (!r0)
+            r1 = false;
+    }
+    if (!r1 && cell->m_soil != 7)
+        r2 = false;
+    if (!r2 && cell->m_soil != 6)
+        r3 = false;
+    if (!r3 && cell->m_soil != 11)
+        r4 = false;
+    if (!r4 && cell->m_soil != 2)
+        r5 = false;
+    return r5;
+}
+
+/* whether the AI is no Navy SEAL (the negation an inline's: materialised before the branch) */
+static inline bool NotNavySeal(const CSealCtrlAi *ai)
+{
+    return !ai->IsNavySeal();
+}
+
+/* whether the SEAL can take a stance where it stands: standing and crouching always; prone unless the
+ * target held (bit 9) is not under bit 16 without 17 and stands high above or below it or within 250,
+ * the cell bars it, or the SEAL is hurt below a quarter and no Navy SEAL -- any of those overruled when
+ * a state of kind 27 is on the stack, or a restrained SEAL is not in a kind 9 (OVL2 0x562C80, new in
+ * SOCOM II: DoSetStance and 0x591520 ask it -- 0x591520 masks the result as a bool; the name unknown;
+ * written the round 56). Each test a bool of its own, the cell's ors CellBarsProne's nested bools,
+ * the state test AiStateIs's explicit false arm through a bool local (an inline negation, `!` in the
+ * `&&` or a bool local in StackIs fold it into branches), 0x60A850 an int here (`(bool)` gives the
+ * target's sltu; as a bool it is andi -- the unit's other callers unchanged), `exposed` declared bare
+ * ahead of the SEAL (igreplay --movers: numbered before it, s1 and s0 as the target).
+ * OPEN, 17 instructions -- ONE WORD: the bit-16-without-17 test's merge gets an `andi v0,0xff` the
+ * target lacks (the other 16 are branch offsets it shifts, until the 8-byte pad after `exposed = true`
+ * absorbs it). The andi is MW converting the `!` of the bit-17 bool into the && value (igdump: op1087
+ * into the temporary, in the bit-17 block) -- a bool, int, unsigned or unsigned char variable, the
+ * helper or the caller, `!(x != 0)`, `x ? false : true`, `^ true`, a `!= 0` accessor, `!x ? true :
+ * false`, `(bool)!x` and `x != true` all keep it;
+ * `== false` drops it but compiles to xor/sltiu; `(b16 ? !b17 : false) == false` moves it to the merge
+ * and drops the first sltu (7); the target's `sltu; xori` reaches the branch clean
+ * (build/scratch/seal-r56/v_c80*.py) */
+extern "C" bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance)
+{
+    bool exposed;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    bool r = false;
+
+    switch (stance) {
+    case STANCE_STAND:
+    case STANCE_CROUCH:
+        r = true;
+        break;
+    case STANCE_PRONE: {
+        CTarget *t = (CTarget *)ai->m_67c;
+        exposed = false;
+        bool ok = (bool)func_0060A850(t);
+
+        if (ok)
+            ok = (t->m_flags & 0x200) != 0;
+        if (ok) {
+            if (!Bit16Only(ai)) {
+                if (t->m_vec.y * t->m_vec.y / t->m_distSq > 0.07f)
+                    exposed = true;
+                if (t->m_distSq < 62500.0f)
+                    exposed = true;
+            }
+        }
+        bool barred = false;
+        CAiCell *cell = AiMaps.GetCell(seal->m_mapLocValid);
+
+        if (cell)
+            barred = CellBarsProne(cell, ai);
+        bool held = true;
+
+        if (!(ai->m_stateStack.m_10 & (1 << 27))) {
+            bool e = false;
+
+            bool out = !ai->AiStateIs((AI_STATE)9);
+
+            if (out && seal->m_restrained)
+                e = true;
+            if (!e)
+                held = false;
+        }
+        bool weak = false;
+
+        if (seal->m_health < 0.25f && NotNavySeal(ai))
+            weak = true;
+        if ((!exposed && !barred && !weak) || held)
+            r = true;
+        else
+            r = false;
+        break;
+    }
+    }
+    return r;
 }
 
 /* whether a turret the AI drives may take targets: unless the AI has bit 16 without 17, flagged 2,
