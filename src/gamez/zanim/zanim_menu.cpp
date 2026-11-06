@@ -290,7 +290,13 @@ namespace {
  * base() compares, == by value, const references to the fields) all hoist the end (0x120); a const
  * view's size() re-reads only the size (0x140), a const self pointer the data (0x128). SOCOM 1's
  * DWARF and symtab: vector's iterators are raw pointers there (do_assign<PC14CCharacterWeap>), the
- * only vector iterator class vector<bool>'s {vec_, pos_}. No header change */
+ * only vector iterator class vector<bool>'s {vec_, pos_}. No header change. Round 36, read in
+ * mwccps2's optimiser log (igdump --iro): IRO's own loop passes leave the latch's end loads in the
+ * loop (could_error loads, not marked invariant); it is IRO_CommonSubs that merges the guard's end
+ * with the latch's along the back edge (its @N first appears after that pass) -- so the target's
+ * latch end is an expression the guard's does not equal or the loop kills (the iterator scalarised
+ * early here, IRO_ScalarizeClassDataMembers, so ++i kills nothing the end depends on); a postfix,
+ * `+= 1`, `i = i + 1` or assigned iterator, `i->`, copy initialisation all 0x120 */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
@@ -845,13 +851,8 @@ inline void ReplaceAccessory(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP
     }
 }
 
-/* whether the kept item goes into this slot: the first time, slot 3 (ours) */
-inline bool KeepFirst(bool first, int s)
-{
-    return first && s == 3;
-}
-
-/* the same for an M203 rifle's grenades: slot 3, the first time, the kept second item (ours) */
+/* the same for an M203 rifle's grenades: slot 3, the first time, the kept second item (ours; the
+ * flag `k` defined ahead of `first`, so MW keeps it a value -- ReleaseSlotItem's note) */
 inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_ITEM &pick, bool &used,
                            EQUIP_ITEM keep, int keepSlot)
 {
@@ -860,9 +861,12 @@ inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_I
     while (s != -1) {
         data_003DD060[it.m_index].a = EQUIP_NONE;
         pick = NextPickBesides(it, pick, EQUIP_NONE, EQUIP_NONE);
+        bool k = false;
         bool first = !used;
 
-        ChooseSlotForCharacter(it, KeepFirst(first, s) ? keep : pick, s);
+        if (first && s == 3)
+            k = true;
+        ChooseSlotForCharacter(it, k ? keep : pick, s);
         s = FindItemSlot(it, what, 1);
         used = first ? keepSlot == 3 : false;
     }
@@ -874,15 +878,19 @@ inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_I
  * its grenades (175, 171, 173) by picks, 143's 179, 178 and 176, 63's 183, 182 and 181, and a
  * two-slot item's second (185 for 145, 186 for 146, else EQUIP_END) by picks besides the new item --
  * the saved picks (data_003DD060) cycled on, a 145/146 pick dropped when it is the new item.
- * Written in the UI's round 35 (unwritten before). OPEN, 58 instructions at the target's size
- * (0x9D8): every call, block and loop the target's but ReplaceGrenade's slot-3 test -- the target
- * MATERIALISES the flag (`move v1,zero` in the first test's delay slot, `daddiu v1,zero,1` when
- * both hold, then `beqz v1` choosing a1), where every form here is jump-threaded into the choice's
- * branches: `use ? keep : pick` over a bool set in an if, an inline returning `first && s == 3`
- * (or `if (...) return true; return false;`: an if/else of two assignments, 0x9E0, or a local
- * `r`), an int, an unsigned char, a ternary, a direct condition, a reference out-parameter, the
- * flag a caller-scope variable passed by reference (build/scratch/ui/v_rsi*.py) -- then the
- * registers (43 instructions differ in them alone). Measured on the way, each the target's: the
+ * Written in the UI's round 35 (unwritten before). OPEN, 34 instructions at the target's size
+ * (0x9D8), saved registers alone: the M203 case's `used` / the grenade loops' `first` take s0 and the
+ * loops' slot s3 where the target has s3 and s0 (s141 s2 since round 36: declared bare ahead of
+ * `used`, assigned after it; 40 -> 34). igreplay --want finds only placements of `used` and s141
+ * among the SECOND grenade copy's own variables (v54.5-56.5), none for the copies' slots or flags
+ * alone -- the original's locals are not these. Round 36 closed the flag: the target MATERIALISES
+ * ReplaceGrenade's `first && s == 3` (`move v1,zero`, `daddiu v1,zero,1`, `beqz v1`) because MW's
+ * RebuildLogicalExpressions (IroExprRegeneration.c: it folds the linearised `t = 0; if (!a) goto L;
+ * if (!b) goto L; t = 1; L:` back into an && only when nothing but the tests' own expressions lies
+ * between `t = 0` and the tests -- CheckForTopLevelExpressions) found a statement there: the flag
+ * `k = false` defined BEFORE `first = !used` (58 -> 40; every other form -- inlines, locals, ints,
+ * ternaries -- was rebuilt and then folded into the choice's branches by RebuildCondExpressions:
+ * read in mwccps2's own optimiser log, igdump --iro). Measured on the way, each the target's: the
  * saved picks read field by field with the second into a local ahead of the first NextPick (a
  * struct copy goes through the frame); each loop a while with its FindItemSlot before the flag's
  * update (`first = true` / `used = ...` in the back branch's delay slot); a `return` closing the
@@ -924,8 +932,10 @@ void ReleaseSlotItem(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item)
                         ChooseSlotForCharacter(it, wa.m_wepId, s);
                     }
                 } else if (CZFTSWeapon::IsM203Weapon(old) || old == 142) {
+                    int s141;
                     bool used = false;
-                    int s141 = FindItemSlot(it, (EQUIP_ITEM)141, 1);
+
+                    s141 = FindItemSlot(it, (EQUIP_ITEM)141, 1);
 
                     if (s141 != -1) {
                         data_003DD060[it.m_index].a = EQUIP_NONE;
@@ -1388,37 +1398,43 @@ namespace {
 /* the item put on one selected character: none when the character has it already or carries fewer
  * than two weapons, else a primary or a secondary through its pick, anything else into the first free
  * equipment slot (-1); whether it took, the character's UI variables updated (SOCOM 1's, which set the
- * two weapons up itself and pushed the rest when four slots allowed). OPEN, 0x154 against 0x184:
- * the walk and the early return are the target's (its `i != e` narrowed and reused after the loop;
- * a1/a2 swapped), the three picks are not -- the target materialises each pick's result into the
- * bool (`move s0,zero; beqz v0; daddiu s0,zero,1; andi s0,s0,0xff` in every arm, the secondary's
- * inlined pick behind a `daddiu a1,zero,1; beqz a1` test of its own), where a bool assigned a bool
- * call is a move. `ok = false; if (f()) ok = true;` in the two calling arms gives their first three
- * instructions (0x16C); ternaries, int-returning picks (sltu), if-return wrappers, `&&` forms and a
- * ternary chain fold or lose (build/scratch/core/v_cefc.py). Round 9: each pick `!= false`, `?
- * true : false`, `!!`, `== true` or `!= 0`, and the three picks as an inline returning each (or
- * through a bool local) -- 0x154 to 0x16C. The target's secondary arm tests a constant 1 (`daddiu
- * a1,zero,1; beqz a1`) ahead of the inlined pick and narrows the pick's result (andi) at the join:
- * the pick sits inside an inline of its own whose bool MW does not fold */
+ * two weapons up itself and pushed the rest when four slots allowed). OPEN, 6 instructions at the
+ * target's size (0x184; round 35: 0x154), all in the inlined secondary pick's compare: the target
+ * generates the element's load ahead of the item's narrowing (`lbu` numbered before the `andi`, the
+ * andi into v0 and the pointer chain into v1), here the narrowing comes first -- the element in the
+ * compare, a pointer or list local, casts on either side and a by-reference item change nothing,
+ * and the inline's operand order is UIChooseSecondary's (swapped it costs that one an instruction).
+ * Round 36 (the materialised-flag rule, ReleaseSlotItem's): each pick is `ok = ok && pick` with `ok`
+ * true from its declaration -- the constant left operand folds away, the one test left cannot be
+ * rebuilt into an `&&` (RebuildLogicalExpressions wants two tests), so the logical temporary stays
+ * materialised (`move s0,zero; beqz; daddiu s0,1; andi s0,s0,0xff`), and the secondary's inline
+ * keeps its `daddiu a1,1; beqz a1` (0x154 -> 0x184, 18 off); the walk with no end local (the end
+ * re-read, a common subexpression numbered after the hoisted item) and the element read into a
+ * named local compared `item == w`, the item first in the beq (18 -> 6). Round 9 tried each pick
+ * `!= false`, `? true : false`, `!!`, `== true`, `!= 0`, inline wrappers and bool locals (0x154 -
+ * 0x16C) */
 bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
 {
     CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
-    CCharacterWeapList::iterator i = weapons->begin(), e = weapons->end();
+    CCharacterWeapList::iterator i = weapons->begin();
 
-    for (; i != e; ++i)
-        if ((*i).m_wepId == item)
+    for (; i != weapons->end(); ++i) {
+        EQUIP_ITEM w = (*i).m_wepId;
+
+        if (item == w)
             break;
-    if (i != e || weapons->size() < 2)
+    }
+    if (i != weapons->end() || weapons->size() < 2)
         return false;
 
-    bool ok;
+    bool ok = true;
 
     if (CZWeapon::IsPrimary(item))
-        ok = ChoosePrimaryForCharacter(it, item);
+        ok = ok && ChoosePrimaryForCharacter(it, item);
     else if (CZWeapon::IsSecondary(item))
-        ok = ChooseSecondaryForCharacter(it, item);
+        ok = ok && ChooseSecondaryForCharacter(it, item);
     else
-        ok = ChooseSlotForCharacter(it, item, -1);
+        ok = ok && ChooseSlotForCharacter(it, item, -1);
     UpdateCharWeaponUiVars(it.m_index);
     return ok;
 }
@@ -2444,13 +2460,10 @@ bool UISwitchSides(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-/* the armory's view brought up to date, whether it has an entry selected (not named yet), and a
- * persona's name and clan tag by its id (not named yet) */
+/* the armory's view brought up to date and whether it has an entry selected (not named yet) */
 extern "C" {
 void func_0030E710(COnlineArmoryView *p);
 bool func_0030E790(COnlineArmoryView *p);
-const char *func_002C3A70(int id);
-const char *func_002C3AC0(int id);
 }
 
 /* the milliseconds from the network's clock to a time (ours) */
@@ -2468,8 +2481,8 @@ bool UICheckForcedLaunch(C2DAnimCmdHdr *hdr, float *dT)
     func_0030E710(data_0045B718);
     if (func_0030E790(data_0045B718)) {
         int id = data_0045B718->m_entries[data_0045B718->m_24].m_id;
-        const char *name = func_002C3A70(id);
-        const char *tag = func_002C3AC0(id);
+        const char *name = CZPersonaState::GetPersonaName(id);
+        const char *tag = CZPersonaState::GetPersonaClanTag(id);
 
         if (name) {
             char text[256];
@@ -2670,12 +2683,18 @@ bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
  * mode swap, auto aim, vibration, subtitles, dialog, the order responses, the first pad's stick
  * preset, the controller configuration, the whispers, the first-person bobbing and the screen's
  * origin (SOCOM 1's stored fewer) */
-extern "C" float data_003DF198;            /* the pitch's direction: inverted when not above 0 (not named yet) */
-extern "C" unsigned char data_003DD4A0;    /* the dialog option (not named yet) */
+extern float hackPitchFactor;              /* 0x3DF198 (SOCOM 1's): the pitch's direction, inverted when not above 0 */
+/* the dialog option (0x3DD4A0: SOCOM 1's bDialogIsOn, a static of this unit's anonymous namespace there,
+ * 0x474D88 -- declared, not defined: the unit's data is not written yet) */
+namespace { extern unsigned char bDialogIsOn; }
 extern unsigned char ShouldConfirmVoiceCommands;   /* 0x3DF1D0 (SOCOM 1's) */
-extern "C" unsigned char data_003DF190;    /* the first-person bobbing (not named yet) */
-extern "C" unsigned char data_0044D500;    /* the fire mode swap, as ToggleFireModeSwap last toggled it */
-extern "C" void func_002A41F0(int on);     /* (the whispers on or off) */
+/* the first-person bobbing (SOCOM 1's static member, 0x3DF190) */
+class CSealCtrl {
+public:
+    static unsigned char m_bobbing1stperson_enabled;
+};
+extern unsigned char FireModeSwapIsOn;     /* 0x44D500: the fire mode swap, as ToggleFireModeSwap last toggled it (ours) */
+void EnableExternalWhispers(bool on);      /* 0x2A41F0 (fts_mission.cpp's: the whispers on or off) */
 void ToggleFireModeSwap();                 /* 0x592050 (seal_control.cpp's: the fire mode swap toggled) */
 void SetRumbleOn(bool on);                 /* 0x592BE0 (SOCOM 1's) */
 void RefreshSystemTuners();                /* 0x389C60 (zui_tuners.cpp's) */
@@ -2698,13 +2717,13 @@ bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
     CPad *pad = CInput::m_pads[0];
 
     if (whispers->m_value)
-        func_002A41F0(1);
+        EnableExternalWhispers(true);
     else
-        func_002A41F0(0);
+        EnableExternalWhispers(false);
     if (bobbing->m_value)
-        data_003DF190 = 1;
+        CSealCtrl::m_bobbing1stperson_enabled = 1;
     else
-        data_003DF190 = 0;
+        CSealCtrl::m_bobbing1stperson_enabled = 0;
     switch (stereo->m_value) {
     case 1:
         snd_SetPlaybackMode(2);
@@ -2717,20 +2736,20 @@ bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
         break;
     }
     if (invert->m_value)
-        data_003DF198 = -1.0f;
+        hackPitchFactor = -1.0f;
     else
-        data_003DF198 = 1.0f;
+        hackPitchFactor = 1.0f;
     if (firemode->m_value) {
-        if (!data_0044D500)
+        if (!FireModeSwapIsOn)
             ToggleFireModeSwap();
-        data_0044D500 = 1;
+        FireModeSwapIsOn = 1;
     } else {
-        if (data_0044D500)
+        if (FireModeSwapIsOn)
             ToggleFireModeSwap();
-        data_0044D500 = 0;
+        FireModeSwapIsOn = 0;
     }
     if (autoaim)
-        data_003DF1A0 = autoaim->m_value != 0;
+        _AutoAim = autoaim->m_value != 0;
     if (vibration->m_value)
         SetRumbleOn(true);
     else
@@ -2740,9 +2759,9 @@ bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
     else
         CSnd::SetSubtitles(false);
     if (dialog->m_value)
-        data_003DD4A0 = 1;
+        bDialogIsOn = 1;
     else
-        data_003DD4A0 = 0;
+        bDialogIsOn = 0;
     if (order->m_value)
         ShouldConfirmVoiceCommands = 1;
     else
@@ -2829,7 +2848,7 @@ bool UIInitializeOptions(C2DAnimCmdHdr *hdr, float *dT)
         SetValveValue(subtitle, 1);
     else
         SetValveValue(subtitle, 0);
-    SetValveValue(invert, !(data_003DF198 > 0.0f));
+    SetValveValue(invert, !(hackPitchFactor > 0.0f));
     if (IsRumbleOn())
         SetValveValue(vibration, 1);
     else
@@ -2838,7 +2857,7 @@ bool UIInitializeOptions(C2DAnimCmdHdr *hdr, float *dT)
         SetValveValue(order, 1);
     else
         SetValveValue(order, 0);
-    if (data_003DD4A0)
+    if (bDialogIsOn)
         SetValveValue(dialog, 1);
     else
         SetValveValue(dialog, 0);
@@ -3189,9 +3208,9 @@ bool UIAutoAim(C2DAnimCmdHdr *hdr, float *dT)
     const char *text = ArgText(ArgName(hdr));
 
     if (!strcmp(text, "ON"))
-        data_003DF1A0 = 1;
+        _AutoAim = 1;
     else if (!strcmp(text, "OFF"))
-        data_003DF1A0 = 0;
+        _AutoAim = 0;
     return true;
 }
 
@@ -3775,7 +3794,7 @@ bool UIHardDriveOperation(C2DAnimCmdHdr *hdr, float *dT)
                 MissionDesc desc;
 
                 HddFindFiles(".ZDB", &desc, sizeof(desc), i);
-                MPMissionInfo *m = static_cast<CMultiMissionList &>(data_00441650).Add(&desc);
+                CMultiMission *m = static_cast<CMultiMissionList &>(data_00441650).Add(&desc);
 
                 m->m_on_hdd = 1;
             }
@@ -4511,7 +4530,7 @@ bool UIGetMissionInformation(C2DAnimCmdHdr *hdr, float *dT)
         unsigned char multiplayer = cmd->m_multiplayer;
         int n = 0;
 
-        for (std::vector<MPMissionInfo *>::iterator it = data_00441650.begin(); it != data_00441650.end(); ++it) {
+        for (std::vector<CMultiMission *>::iterator it = data_00441650.begin(); it != data_00441650.end(); ++it) {
             if (multiplayer == (*it)->m_multiplayer) {
                 if (n == want) {
                     *(theUIVarManager.Add(name, 0, UIVAR_SESSION)) = (*it)->m_name.c_str();
@@ -4859,9 +4878,9 @@ bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
  * function object; ours) */
 struct CAddAvailableMission {
     CAddAvailableMission(CRdrEditor *rdr, bool respawn) : m_rdr(rdr), m_respawn(respawn) {}
-    bool Listed(MPMissionInfo *m) { return m->m_multiplayer && (m_respawn ? m->m_kind == 5 : true); }
-    bool Available(MPMissionInfo *m) { return Listed(m) && func_002C94F0(m); }
-    void operator()(MPMissionInfo *m)
+    bool Listed(CMultiMission *m) { return m->m_multiplayer && (m_respawn ? m->m_kind == 5 : true); }
+    bool Available(CMultiMission *m) { return Listed(m) && IsNewestVersion(m); }
+    void operator()(CMultiMission *m)
     {
         if (Available(m)) {
             m_rdr->push(0);

@@ -131,9 +131,10 @@ static inline int HashName(const char *name)
     return h;
 }
 
-/* a table's entries (a plain vector: Load inlines the table's constructor whole, which a vector
- * subclass -- Unload's three this-tests -- makes six levels high; see Unload) */
-typedef std::vector<LOCENTRY> CLocEntries;
+/* a table's entries: a vector subclass (Unload's inlined ~CLocTable tests their address three times,
+ * one level more than a plain vector's two), which makes the table's constructor six levels high --
+ * Load inlines it whole under the unit's `#pragma inline_depth(6)` (at its end; see Unload) */
+class CLocEntries : public std::vector<LOCENTRY> {};
 
 /* one table of localised strings: the largest id, the strings, the entries sorted by id, the
  * table's name, the entry found last and the entries hashed by name */
@@ -431,19 +432,15 @@ void CStringTables::Load(const char *name, LANGUAGE lang)
     }
 }
 
-/* a table unloaded by name.
- * OPEN, 2 instructions short: the target's inlined ~CLocTable tests the entries' address three times
- * before the deleter's destructor (a vector subclass's implicit destructor -- matched so), but a
- * subclass makes CLocTable() six levels high and Load (0x2C0 bytes, byte-exact with a plain vector)
- * then calls the members' constructors out of line; include/vector's class-vector constructor (4
- * levels) leaves no room for both at -inline level=5. The walk -- `next` its own variable, stepped
- * before the compare and set from erase -- is the target's. Round 25, measured again (a LEVEL, not
- * the engine core's refusal propagation: nothing here is refused): a subclass with everything
- * implicit, with a user-declared constructor or with a user-declared destructor all give Unload
- * byte-exact and cut CLocTable() in Load one level (CLocEntries(), Item, Count and vector's reserve
- * forwarder called out of line); deriving from __vector_imp directly gives the plain vector's two
- * tests. CLocTable() is then six high (itself, the subclass's, vector's, __vector_imp's, the
- * deleter's and the capacity's constructors) */
+/* a table unloaded by name. Byte-exact in the UI's round 36 (OPEN at 2 since round 8): the target's
+ * inlined ~CLocTable tests the entries' address three times before the deleter's destructor -- a vector
+ * subclass's implicit destructor -- and Load (0x2C0) inlines CLocTable() whole, which the subclass makes
+ * six levels high (itself, the subclass's, vector's, __vector_imp's, the deleter's and the capacity's
+ * constructors): the unit carries `#pragma inline_depth(6)` at its end (a "Level 6, or 8?" witness: the
+ * README's), every other function of the unit unchanged under it (25 of 25 byte-exact; at 5 the
+ * subclass cuts CLocTable() in Load one level -- CLocEntries(), Item, Count and vector's reserve
+ * forwarder called -- and a plain vector gives Unload two tests). The walk -- `next` its own variable,
+ * stepped before the compare and set from erase -- is the target's */
 void CStringTables::Unload(const char *name)
 {
     if (name) {
@@ -576,3 +573,7 @@ LOCENTRY *CStringTables::Find(const char *name, const char *table)
     }
     return e;
 }
+
+/* (the depth the deferred generation inlines at: six for CLocTable() in Load with Unload's vector
+ * subclass -- see Unload) */
+#pragma inline_depth(6)
