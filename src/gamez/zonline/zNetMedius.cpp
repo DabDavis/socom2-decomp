@@ -31,7 +31,26 @@
  * reverse call order, so __deque_buf(const Allocator &) 0x2E09A0 is generated before the
  * temporary's ~cdeque 0x2E0A10, cdeque(const Allocator &) 0x2E0D50 and the allocators 0x2E0D40 /
  * 0x2E0D70 and calls them all, where this object generates ~cdeque first and inlines it (an
- * out-of-class ~cdeque: still inlined, ~__deque_buf 0x2E19E0 lost) */
+ * out-of-class ~cdeque: still inlined, ~__deque_buf 0x2E19E0 lost).
+ * THE ONLINE LANE'S ROUND 29 (igdump's record order -- the object's SECTION order too, one .text per
+ * function, build/scratch/onl/slist.py; v_dev1.py / v_dev2.py / v_opplus.py, untracked): the tail is
+ * generated SyncGameClock ... CZOnlineLobby(), ~CLobbyStateQueue, ~queue, ~deque, the ReleaseVectors,
+ * ~__deque_buf 39, push_back 40, pop_front 42, the copy 43, deque() 45, alloc() 47, allocator<PCv>()
+ * 49, init 50, __deque_buf(A) 54, ~cdeque<P11> 57, end / begin 61-62, the pair 64, do_assign 67, the
+ * buffer's copy 69, make_iterator const 71, the buffer's init / end / begin 78-80, make_iterator 81 --
+ * one class per walk-level, as include/deque's comment says. A dead own function naming the buffer's
+ * begin() const, defined last, gets it generated at 40 (a walk before __deque_imp, declared after
+ * cdeque<T *> and walked first, reaches the make_iterators at 73/82): both then inline begin() as
+ * the target's do (0xE4 -> 0xF4) -- and with the const_iterator's operator+ as `{ const_iterator
+ * t(*this); return t += n; }` (include/deque, measured only) the const one is the target's size and
+ * frame (0x138; begin()'s t at sp+0, the copy at sp+16, fields through address registers), 70 off:
+ * the target keeps +='s this (&t, a3) for the store and the copy-out where MW folds it into sp+16
+ * (round 14's), the non-const one 0x138 against 0x130 (the target addresses begin()'s first_ / last_
+ * at sp+8 / sp+12 directly there). But the buffer's copy 0x2E0AC0 then inlines begin() too (0x70 ->
+ * 0xC8; the target calls 0x2E0CB0), and naming the copy in the device does not help: deferred in its
+ * walk by its unparsed allocator base (allocator<PCv>(), called in the target), it is generated after
+ * begin() whatever the device's order -- the target generates the copy first, begin() later, the
+ * make_iterators last, which only the exported-inline layout gives. Not applied (no row gained). */
 
 #include <stdio.h>
 #include "zonline.h"
@@ -490,4 +509,17 @@ void CZOnlineLobby::SyncGameClock(int t)
     if (!theLobby.uiv_GameClock)
         theLobby.uiv_GameClock = theUIVarManager.Add("GameClock", 0, UIVL_PERMANENT);
     *theLobby.uiv_GameClock = 10.0f + (float)t;
+}
+
+/* A MODELLING DEVICE (the online lane's round 29, the MSL headers' round-35 probe made the unit's;
+ * the name ours): an own function building the state queue's implementation from an allocator, never
+ * called and dead-stripped at link (src/ABSENT.txt). Defined last, so code-generated first, it has
+ * __deque_imp(const Allocator &) parsed before the end-of-unit walk: the deque's copy constructor
+ * 0x2E07B0 is then generated IN the walk instead of after it, its call instantiates allocator<PCv>()
+ * there, and deque() 0x2E0D90 -- generated after the walk -- inlines it as the target's does (byte-
+ * exact from source; its draft had held it). The unit's copy of cdeque<PCv>::__recommend then inlines
+ * alloc() (the linked copy is zanim_menu.cpp's, 0x285BD0: `elsewhere`) */
+void LobbyQueueImp(const std::allocator<LOBBY_STATE> &a)
+{
+    std::__deque_imp<LOBBY_STATE, std::allocator<LOBBY_STATE> > d(a);
 }
