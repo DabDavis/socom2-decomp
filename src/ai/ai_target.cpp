@@ -521,15 +521,18 @@ static inline CZSealBody *SealEntity(CEntity *e)
 }
 
 /* a SEAL's light, worked out once a frame (inline: its EntityLight a level deeper takes the frame's
- * lower slots, as the target's; the name ours) */
+ * lower slots, as the target's; the name ours). The SEAL held in a one-member struct, a modelling
+ * device: IRO_ScalarizeClassDataMembers makes its member's variable, numbered after every inline's locals
+ * and the linearizer's temporaries and before the CSE pass -- where igreplay (rounds 56-57) wanted it */
 static inline float SealLight(CZSealBody *seal)
 {
-    CSealLightView *sl = (CSealLightView *)seal;
+    struct { CSealLightView *v; } sl;
 
-    if (zVid.frameNumber != sl->m_light_frame)
-        sl->m_light = EntityLight(seal);
-    sl->m_light_frame = zVid.frameNumber;
-    return sl->m_light;
+    sl.v = (CSealLightView *)seal;
+    if (zVid.frameNumber != sl.v->m_light_frame)
+        sl.v->m_light = EntityLight(seal);
+    sl.v->m_light_frame = zVid.frameNumber;
+    return sl.v->m_light;
 }
 
 /* how well a viewer sees a target through its finished ray, -1 when nothing of the line is left
@@ -544,30 +547,7 @@ static inline float SealLight(CZSealBody *seal)
  * SealLight (its EntityLight a level deeper takes the frame's lower slots: shadow 204 / inside 208 for
  * the SEAL, 216 / 220 for the rest -- inside declared first), the fog's product from a local, the
  * light's position before the 0x60B470 call (the target's delay slot) and `spot *= p.m_spot` (the
- * product in the light's register).
- * OPEN, 14 instructions, registers only: the target SEAL (ts, the ternary's temporary @6305) takes s2
- * and its light's position (&ts->m_posW, @6342) s3, ours the other way round. igreplay --movers: ts
- * numbered anywhere after the position and before &p.m_valid (43.5-46.5), or the position before ts
- * as a named variable would be (34.5-39.5). The non-SEAL copy's position is created BEFORE the SEAL
- * copy's (@6311): MW expands the inlines a level at a time, so SealLight's EntityLight comes last.
- * Tried: the test written in place, through wrapper inlines two and three levels deep (no change: the
- * level-at-a-time reading does not reach the ternary's temporary), an if/return form (0x574), ts declared
- * at the top or after `light`, one variable for both SEAL tests (vs and ts), the position as a
- * reference, assigned twice, after a dead first definition, or a parameter (EntityLight(e, pos): a
- * saved register lost, 0x570). Round 56, with igdump --origins (the GCC front's round 40a): the SEAL
- * held is SealLight's own `sl` (@6305), the position EntityLight's `pos` inside SealLight's copy
- * (@6342, level 1), and the s0/s1 holders (@6434, @6436, @6442) come from no inline -- an optimiser
- * pass's; SealLight without `sl` (the casts in place, 0x588), `sl` declared after the EntityLight
- * arm or the light through a local (14, unchanged), SealLight over a CSealLightView parameter (0x588)
- * -- every SealLight-level variable is numbered before a level-1 one, so the SEAL wants a variable
- * made one level deeper or by that pass. Round 57, with the GCC front's round-41a igdump (each @N's
- * pass): the s0 / s1 holders are IRO_CommonSubs' `m_world` (EntityLight's two GetLightIntensity
- * calls, one temporary per copy) and `&p + 36` -- both already the target's registers; renumbering
- * either m_world temporary to where a kept `w` local would sit (41.5 / 43.5) breaks five more, so they
- * stay. Still only sl (v40, wants s2) and SealLight's EntityLight pos (v43, wants s3): --movers puts sl
- * at 43.5-46.5 (after the level-1 locals and the linearizer's two ternary temporaries, before the CSE
- * pass) or pos at 34.5-39.5. Re-evaluating SealEntity(te) at each use (three ternaries, or in
- * SealLight's argument) 0x59C-0x5CC */
+ * product in the light's register). */
 float func_0060AA20(void *viewer, zdb::DiIntersect *di, CTarget *t)
 {
     static float flagged = 2.0f;
