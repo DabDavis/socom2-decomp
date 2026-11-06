@@ -10635,7 +10635,7 @@
 0x005940D0 0x278 TickVictims__9CSealCtrlFv  # OVL2; s1:order (after TickPickups; ThrottlesPreTick calls it second, as SOCOM 1's)
 0x00594350 0x124 CanPerformAction__9CSealCtrlFP11CNodeAction  # OVL2; s1:order (after TickVictims); calls the next function first, as SOCOM 1's calls CanPlaceBomb
 0x00594480 0x17C CanPlaceBomb__9CSealCtrlFP11CNodeAction  # OVL2; s1:order (after CanPerformAction, which calls it)
-0x00594600 0x56C func_00594600  # OVL2
+0x00594600 0x56C TickAimPitch__9CSealCtrlFff  # OVL2; s1:order by hand (the SEALs, round 59): SOCOM 1's TickAimPitch__9CSealCtrlFff, by its place after the victims and ThrottlesPreTick's last call, the ground's tilt and the limits new
 0x00594B70 0x11C func_00594B70  # OVL2
 0x00594C90 0x5C func_00594C90  # OVL2
 0x00594CF0 0x19A8 PreTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

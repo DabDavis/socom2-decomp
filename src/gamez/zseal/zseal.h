@@ -584,7 +584,9 @@ public:
     CValve *m_score2;   // 0x78: the side 0x2C30B0 says
     int m_bonus1;   // 0x7c
     int m_bonus2;   // 0x80
-    unsigned char _84[0xd2 - 0x84];
+    unsigned char _84[0xcc - 0x84];
+    unsigned char m_cc;   // 0xcc: online, the aim's pitch kept to the narrower limits (TickAimPitch; the name ours)
+    unsigned char _cd[0xd2 - 0xcd];
     unsigned char m_ghost;   // 0xd2
     unsigned char _d3[0xdc - 0xd3];
     unsigned char m_dc;   // 0xdc: a SEAL's death sends no squad order unless set (the name ours)
@@ -1000,6 +1002,8 @@ public:
     /* the throttles read off the pad (SOCOM 1's ThrottlesPreTick, after PreTick: OVL2 0x5966A0 --
      * PostMortemPreTick calls it first) */
     bool ThrottlesPreTick(class CPad *pad, float dT);
+    /* the aim's pitch ticked (SOCOM 1's TickAimPitch; OVL2 0x594600, ThrottlesPreTick's last call) */
+    void TickAimPitch(float dT, float throttle);
     /* the speed a throttle gives along an axis (SOCOM 1's sealctrl.cpp; OVL2 0x592880: the body's
      * GetMaxZMotion/GetMaxXMotion) */
     float GetSpeedFromThrottle(float throttle, int axis);
@@ -2826,7 +2830,8 @@ public:
     unsigned int m_ladder : 16;   // 0x1062
     unsigned char _1064[0x1070 - 0x1064];
     CQuat m_fwdlook;   // 0x1070 (SOCOM 1's 0xf60: RotateHead sets it, the app camera's transitions call that)
-    unsigned char _1080[0x1090 - 0x1080];
+    float m_zoomval;   // 0x1080 (SOCOM 1's 0xf70, after m_fwdlook in both: TickAimPitch divides by it)
+    unsigned char _1084[0x1090 - 0x1084];
     /* a wall's hit the SEAL holds to (new in SOCOM II: held while its node is set -- 0x5B3890 drops
      * it once the SEAL strays, faces off it or the ledge is out of reach; the name ours) */
     zdb::IntersectStruct m_1090;   // 0x1090
@@ -2880,9 +2885,9 @@ public:
     float m_133c;   // 0x133c: the rate m_fac falls at (0x59B870; the name ours)
     float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
                     // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
-    unsigned char _1344[0x1348 - 0x1344];
-    float m_1348;   // 0x1348: the ground slope 0x57E1B0 asks of a jump (the name ours)
-    unsigned char _134c[0x1350 - 0x134c];
+    /* the ground's normal the SEAL stands on (0x57E1B0 asks its y of a jump, TickAimPitch lays the prone aim
+     * along it; the name ours) */
+    CPnt3D m_1344;   // 0x1344
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     float m_135c;   // 0x135c: the wait before another jump (0x57E1B0 sets 0.4; the name ours)
     float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)

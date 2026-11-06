@@ -1009,7 +1009,7 @@ extern "C" CZBodyAnimBlend *func_0057E1B0(CZSealBody *seal)
         return 0;
     if (seal->m_airborne || !(seal->m_135c <= 0.0f))
         return 0;
-    if (seal->m_1348 < theCharacterDynamics.m_maxSlopeCos)
+    if (seal->m_1344.y < theCharacterDynamics.m_maxSlopeCos)
         return 0;
     if (!func_0057F150((CSealCtrl *)seal->m_control))
         return 0;

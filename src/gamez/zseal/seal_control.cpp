@@ -387,8 +387,8 @@ float func_002C6230(CPad *pad);
 float func_002C6110(CPad *pad);
 float func_002C6280(CPad *pad);
 float GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad(CPad *pad);
-/* (OVL2 0x594600: SOCOM 1's TickAimPitch) */
-void func_00594600(CSealCtrl *ctrl, float dT, float pitch);
+/* the first steps' mark on the aim's pitch (OVL2 bss, a static of SOCOM 1's by its place) */
+extern unsigned char data_0066B3D8;
 /* SOCOM 1's globals (hackPitchFactor, m_bobbing1stperson_enabled, the bob's two pairs by the stance) */
 extern float hackPitchFactor;
 extern float data_0044D4E8[2];
@@ -450,7 +450,6 @@ bool CSealCtrl::ThrottlesPreTick(CPad *pad, float dT0)
         fwd = GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad(pad);
         static float k_pitch = 1.72f;
         static float k_turn = 1.72f;
-        static unsigned char first = 0;
         static bool dilate = false;
 
         float raw = func_002C6280(pad);
@@ -459,8 +458,8 @@ bool CSealCtrl::ThrottlesPreTick(CPad *pad, float dT0)
         pitch = hackPitchFactor * raw;
         pitch *= k_pitch;
         turn *= k_turn;
-        if (first == 1 && fwd)
-            first = 2;
+        if (data_0066B3D8 == 1 && fwd)
+            data_0066B3D8 = 2;
         if (dilate) {
             turn = Dilated(turn, theCharacterDynamics.m_turnThrottleA, theCharacterDynamics.m_turnThrottleB);
             pitch = Dilated(pitch, theCharacterDynamics.m_pitchThrottleA, theCharacterDynamics.m_pitchThrottleB);
@@ -519,8 +518,131 @@ bool CSealCtrl::ThrottlesPreTick(CPad *pad, float dT0)
         else
             t1 = side;
     }
-    func_00594600(this, dT, pitch);
+    TickAimPitch(dT, pitch);
     return false;
+}
+
+enum TWO { TWO_0, TWO_1, TWO_2, TWO_BIG = 0x7fff };
+
+/* an arc cosine kept to its domain (an inline, seal_env.cpp's) */
+static inline float ClampAcos(float c)
+{
+    if (c >= 1.0f)
+        return 0.0f;
+    if (c <= -1.0f)
+        return 3.1415927f;
+    return acosf(c);
+}
+
+/* the aim's pitch ticked: its limits by the stance -- prone added the ground's tilt, or for the first steps
+ * the initial pitch held -- moved by the throttle (500 times the rate over the zoom), set as throttle 3, and
+ * back inside its limits at half a unit a second; online kept to the game's limits; the head turned to it and
+ * the rate of the change kept (OVL2 0x594600: SOCOM 1's TickAimPitch with the tilt, the zoom's and the
+ * limits new). OPEN, 2 instructions, the first test of the mark: the target has `li v1,2` before the load and
+ * `bne v0,v1` -- the 2 coloured v1, the value v0, where the later test of the same mark (read `== 2`) has the
+ * value v1 and the 2 v0. Only a non-propagated holder on the LEFT (an enum local, below) takes the
+ * colours, at `daddiu` and `bne v1,v0`; `data == 2` (either way round), a const, cast, int or byte holder, an
+ * inline's parameter, a local read, propagation off and `!(two != data)` are 8-9 off */
+void CSealCtrl::TickAimPitch(float dT, float throttle)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CharacterDynamics *dyn = seal->GetDynamics();
+    float lo = dyn->m_proneMinAimPitch;
+    float hi = dyn->m_proneMaxAimPitch;
+    bool prone = seal->m_state == stateProne;
+    float prev = m_aimPitch;
+
+    TWO two = TWO_2;
+
+    if (two == data_0066B3D8) {
+        if (prone) {
+            float init = dyn->m_initAimPitch;
+
+            if (init > hi)
+                lo = hi;
+            else if (init < lo)
+                hi = lo;
+            else {
+                hi = init;
+                lo = init;
+            }
+        } else {
+            hi = dyn->m_initAimPitch;
+            lo = hi;
+        }
+    } else {
+        lo = prone ? lo : dyn->m_minAimPitch;
+        hi = prone ? hi : dyn->m_maxAimPitch;
+    }
+    if (prone) {
+        CPnt3D up;
+
+        TransformVectors(&seal->m_node->m_matrix, &CPnt3D::unit_nz, &up, 1);
+
+        float dot = seal->m_1344.x * up.x + seal->m_1344.y * up.y + seal->m_1344.z * up.z;
+        float tilt = 1.5707964f - ClampAcos(fabsf(dot));
+
+        if (dot > 0.0f)
+            tilt = -tilt;
+        lo += tilt;
+        hi += tilt;
+    }
+    if (throttle != 0.0f) {
+        float zoom = seal->m_zoomval;
+        float rate = 500.0f * dyn->m_pitchRate / zoom;
+        float step = rate * throttle;
+
+        SetThrottle(3, step);
+        step *= dT;
+        if (!seal->m_eb8) {
+            if (throttle > 0.0f && m_aimPitch < hi) {
+                m_aimPitch += step;
+                if (m_aimPitch > hi)
+                    m_aimPitch = hi;
+            } else if (throttle < 0.0f && m_aimPitch > lo) {
+                m_aimPitch += step;
+                if (m_aimPitch < lo)
+                    m_aimPitch = lo;
+            }
+        }
+    } else
+        SetThrottle(3, 0.0f);
+    if (m_aimPitch > hi) {
+        m_aimPitch -= 0.5f * dT;
+        if (m_aimPitch < hi)
+            m_aimPitch = hi;
+    } else if (m_aimPitch < lo) {
+        m_aimPitch += 0.5f * dT;
+        if (m_aimPitch > lo)
+            m_aimPitch = lo;
+    }
+    if (data_0066B3D8 == 2 && lo == m_aimPitch)
+        data_0066B3D8 = 0;
+    if (theNetwork.m_9 && data_00437CE8->m_cc) {
+        if (seal->m_netlife != 1) {
+            if (m_aimPitch > 0.5f)
+                m_aimPitch = 0.5f;
+            else if (m_aimPitch < 0.0f)
+                m_aimPitch = 0.0f;
+        } else {
+            if (m_aimPitch > 1.0f)
+                m_aimPitch = 1.0f;
+            else if (m_aimPitch < 0.0f)
+                m_aimPitch = 0.0f;
+        }
+    } else if (seal->m_netlife != 1) {
+        if (m_aimPitch > -0.1f)
+            m_aimPitch = -0.1f;
+        else if (m_aimPitch < -0.4f)
+            m_aimPitch = -0.4f;
+    } else {
+        if (m_aimPitch > 1.4f)
+            m_aimPitch = 1.4f;
+        else if (m_aimPitch < -1.4f)
+            m_aimPitch = -1.4f;
+    }
+    seal->RotateHead(m_aimPitch);
+    *(float *)&seal->m_unk60 = (prev - m_aimPitch) / dT;
 }
 
 /* the reload button: double-clicked, or held past the limit, reloads the SEAL's kit; while held its
