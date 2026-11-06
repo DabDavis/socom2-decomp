@@ -1910,7 +1910,7 @@ unsigned int func_002C32C0();   /* (the SEALs' team mask) */
  * join test `p->a > 1` (the target's fused `slti at`; `>= 2` materialises into v0), the colour three
  * stores (an initialiser block-copies it from .rodata), and an `int` counter -- an `unsigned int` one
  * matching Item()'s parameter is strength-reduced to an offset stepped by 8 */
-extern "C" int func_002B9150(int, int, int, void *data)
+int GameSignalPacketHandler(int, int, int, void *data)
 {
     GameSignalPacket *p = (GameSignalPacket *)data;
     int team = p->b;
@@ -2230,7 +2230,6 @@ void func_002C2B20();   /* (fts_net_persona.cpp's registration's twin: the platf
 extern unsigned int data_00440EA0;   /* (SOCOM II's: "All Switch") */
 int func_002B9B20(int, int, int, void *);
 int func_002BADC0(int, int, int, void *);
-int func_002B9150(int, int, int, void *);
 }
 
 int PickupAckPacketHandler(int, int, int, void *data);   /* 0x2BA1A0 */
@@ -2411,7 +2410,7 @@ extern "C" void func_002B8660()
     func_00620C60(&mGameSignal, &mGameSignal.m_f, 1, 1);
     func_00620C60(&mGameSignal, &mGameSignal.m_8, 4, 1);
     func_00620C60(&mGameSignal, &mGameSignal.m_0[0], 1, 5);
-    theNetwork.zNetRegisterMessage(&data_00440EB0, func_002B9150, "Game Signal");
+    theNetwork.zNetRegisterMessage(&data_00440EB0, GameSignalPacketHandler, "Game Signal");
     data_0045B718->zNetRegisterVoice();
 }
 
