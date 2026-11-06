@@ -276,8 +276,10 @@ zdb::CVisual *CreateVisuals(CPnt3D *p0, CPnt3D *p1, CPnt3D *p2, CPnt3D uv0, CPnt
  * OPEN, 2 instructions (0x5EC of 0x5E4): one block off, the fan's first point (`uv1.x`): the target has the constant in f1 and
  * the high half in f2 where its other two blocks, and all three of ours, have f2 and f1 -- so ours has mtc1's hazard nop there
  * and the pad after it. igreplay: the high half numbered before the constant gives the target (`--move 60=44.5`, or the
- * constant to 60.5). Tried without effect: the half named, const, cast; inlines for the half, the low half and the pass;
- * the constant on the left; the second coordinate first. */
+ * constant to 60.5). Tried without effect: the half named, const, cast, a short; both halves named, as ints or floats; inlines
+ * for the half, the low half and the pass; the constant on the left or in a named local; the second coordinate first; the point
+ * built by the constructor; the word declared after uv1 or assigned inside the first product. Worse: the word read in place, by
+ * a reference or a pointer (the low half folds to lhu); `/ 4096.0f` (div.s, and the constant is 0x397FFFD5, not 1/4096). */
 void Create3Sided(zdb::CDIVector *dis, zdb::CNode *node, CPnt4D *color, zdb::CTexHandle *tex, float f,
                   zdb::CModel *model, CPnt3D *a, CPnt3D *b, CPnt3D *c, CPnt3D *d, Props *props, float g)
 {
