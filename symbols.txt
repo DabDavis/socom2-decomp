@@ -11495,7 +11495,7 @@
 0x005F52D0 0x244 Tick__10CAiSPickupFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F5520 0x68 SetPickup__10CAiSPickupFP7CPickupUi  # OVL2; by hand: stores the pickup and its network id (what CAiSPickup::Tick checks at 0x58/0x5C) and the flags through SetFlags (the name ours; the kit lane, round 3)
 0x005F5590 0x50 OnSignal__10CAiSPickupFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005F55E0 0x4E8 func_005F55E0  # OVL2
+0x005F55E0 0x4E8 StateTick__11CSealCtrlAiFf  # OVL2; s1:calls by hand (the kit lane, round 61): SOCOM 1's StateTick, the controller's PreTick and 0x5AC... call it with the frame's time; the stack's Tick, its Find(script) with SequenceRunning and the follow's push as there -- the stack's own pieces moved into CAiStateStack
 0x005F5AD0 0x34 func_005F5AD0  # OVL2
 0x005F5B10 0x8 func_005F5B10  # OVL2
 0x005F5B20 0x80 func_005F5B20  # OVL2

@@ -1470,6 +1470,8 @@ public:
      * tests (0x5F5CD0) -- popped to a state or a kind, popped, and found */
     bool SetAiState(AI_STATE state, unsigned int flags);
     bool PushAiState(AI_STATE state, unsigned int flags);
+    /* the stack's frame (SOCOM 1's; OVL2 0x5F55E0, seal_aistate.cpp's) */
+    void StateTick(float dT);
     bool PopToAiState(CAiState *state, bool inclusive);
     bool PopToAiState(AI_STATE state, bool inclusive);
     AI_STATE PopAiState();
