@@ -1012,24 +1012,41 @@ static inline int SkbFindInt(_zrdr *rdr, const char *tag, int def)
     return i;
 }
 
-/* a rectangle from a place and a size (ours: built in place, as the display unit's out-of-line
- * 0x396C80 builds it) */
-static inline CSkbRect SkbRect(const CIntPair &pos, const CIntPair &size)
+/* a rectangle from a place and a size, inlined in place here where the display unit calls its copy
+ * out of line (0x396C80, zui_skbview.cpp pins it): the header's declaration is defined `inline` for this
+ * unit -- the ctor is an inline of the original's header, the look parser's calls the cut ones */
+inline CSkbRect::CSkbRect(const CIntPair &pos, const CIntPair &size)
 {
-    CSkbRect r;
+    m_pos[0] = pos.Get1st();
+    m_pos[1] = pos.Get2nd();
+    m_size[0] = size.Get1st();
+    m_size[1] = size.Get2nd();
+}
 
-    r.Set(pos, size);
-    return r;
+/* the spec given to the props found (ours, A MODELLING SHAPE: an inline whose argument holds the find
+ * defers that to the next inline pass -- the arm's int and the find's iterator take their frame slots
+ * in the order the expansions make them, 208 then 204, where a top-level FindKeyProps is expanded in
+ * pass 0 and the ternary's arm, a level down under the copy constructor, in pass 1. SkbFindProps is
+ * FindKeyProps with the end passed in: FindKeyProps itself, a pass later, is cut at its tail() call at
+ * level 5, and `#pragma inline_depth(6)` costs SkbMoveAlong 0x38C130, which keeps the level-5 cut) */
+static inline void SkbSetSpec(CSkbKeyProps *props, _zrdr *spec)
+{
+    props->SetSpec(spec);
+}
+
+static inline CSkbKeyProps *SkbFindProps(CSkbKeyMap &map, const CSkbKey &key, CSkbKeyMap::iterator e)
+{
+    CSkbKeyMap::iterator i = map.find(key);
+
+    if (i != e)
+        return (*i).second;
+    return 0;
 }
 
 /* the keys' props a keyboard's KeyProps list gives: each item's Key (a name, or a code), its Pos and
- * Size and its ButtonSpec (0x38DCB0; CreateSoftKeyboard calls it; the name ours).
- * OPEN, 0x220 against 0x1F0 (written round 15, untuned): the calls and their order are the target's
- * (SkbRdrCount each pass, Size read before Pos, the ButtonSpec tag before the inlined FindKeyProps);
- * the frame differs -- the target keeps the code path's key at 212, StrToSkbKey's at 216, the key at
- * 220, the pairs at 184/192 and the rectangle at 160, with sp+214, 222, 196 and 164 hoisted into
- * s4/s6/s7/s8, `this` in s2 and this+360 in s3; here the rectangle's own addresses are hoisted and
- * `this` is s5 (SkbRect's named result, and the ternary key, are the first suspects) */
+ * Size and its ButtonSpec (0x38DCB0; CreateSoftKeyboard calls it; the name ours). Byte-exact since
+ * round 38: the rectangle built in place by its own constructor (no zeroing, no copy), the ButtonSpec
+ * tag read into a local first, SkbSetSpec's deferral */
 void CSoftKeyboard::ParseKeyProps(_zrdr *rdr)
 {
     _zrdr *list = zrdr_findtag(rdr, "KeyProps");
@@ -1039,8 +1056,10 @@ void CSoftKeyboard::ParseKeyProps(_zrdr *rdr)
         const char *name = zrdr_findstring(item, "Key");
         CSkbKey key = name ? StrToSkbKey(name) : CSkbKey(0, SkbFindInt(item, "Key", 0));
 
-        AddKeyProps(key, SkbRect(ReadIntPair(item, "Pos"), ReadIntPair(item, "Size")));
-        FindKeyProps(key)->SetSpec(zrdr_findtag(item, "ButtonSpec"));
+        AddKeyProps(key, CSkbRect(ReadIntPair(item, "Pos"), ReadIntPair(item, "Size")));
+        _zrdr *spec = zrdr_findtag(item, "ButtonSpec");
+
+        SkbSetSpec(SkbFindProps(m_keyProps, key, m_keyProps.end()), spec);
     }
 }
 
