@@ -231,7 +231,9 @@ struct LANGVT {
     unsigned int (*GetNbrGastone)(void *cb);          /* +132, slot 33 */
     struct WARP *(*GetpWarpFactors)(LANGVT *l);       /* +136, slot 34 */
     unsigned short *(*GetpGastone)(LANGVT *l);        /* +140, slot 35 */
-    void *s36[5];
+    void *s36;
+    int (*GetSilPhenome)(LANGVT *l);                  /* +148, slot 37 */
+    void *s38[3];
     void *(*GetpCodeBook)(LANGVT *l, int n);          /* +164, slot 41 */
     int *(*GetpSpeechUnit)(LANGVT *l);                /* +168, slot 42 */
     void *s43[3];
