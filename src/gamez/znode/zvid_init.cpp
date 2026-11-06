@@ -862,7 +862,15 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
  * Round 31: 31 off at the round's start (not 11: an earlier round's header change); the target
  * keeps 1 in a1 from the top for flag91 AND both of Create's arguments (`move a2,a1`: one shared
  * constant) and 255 in v1 -- the fade's two stores right after swapMode 21 off, at the top 23,
- * the alpha alone at the top 22, through an unsigned char or int local 31 */
+ * the alpha alone at the top 22, through an unsigned char or int local 31.
+ * Round 37 (igdump --iro / --pcode, build/scratch/wep/vorder.py, v_zvi37*.py): IRO hands the stores
+ * to the back end in SOURCE order (its last dump), and the target keeps that order; our back end
+ * moves every store of a constant 0 but the first to the function's last run of zero stores
+ * (swapMode / pcrtcDo to flag90's; with the flags first, finalBlend and runTime move too), and
+ * `swapMode = 1` or `= mode` stays put. `#pragma scheduling off` changes nothing, `#pragma peephole
+ * off` scatters the zero stores up instead (the pre-pass scheduler then places them freely) -- the
+ * grouping is the peephole's; false, a zero local (char or int), casts, an enum 0 and field types
+ * bool / char (swapMode's or the flags') all group the same */
 void zVid_Init(_zvid_mode mode)
 {
     zVid.runTime = 0;
@@ -1074,7 +1082,12 @@ extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, un
  * built first all schedule as the by-value setter does. Round 36 (build/scratch/wep/v_rect*.py):
  * the setter's two stores swapped, each OR's operands swapped, the high halves into locals first
  * (33-37), and any of the fields through an inline with a body of its own (ApplyDecalRender's
- * argument rule: 35-36) -- the target's load order h, y, w, x is not an argument order */
+ * argument rule: 35-36) -- the target's load order h, y, w, x is not an argument order. Round 37
+ * (igdump --pcode; v_rect37.py): the inliner substitutes x and y (used before the first store) and
+ * gives only w and h argument temporaries, so the PCode already reads h, w, y, x before colouring
+ * (igreplay --target: 14 PCode instructions unmatched -- the schedule, not a numbering); the body
+ * written in place with either OR's halves in either order and either store first, and wrapper
+ * inlines taking the fields as (x, w, y, h), (h, w, y, x) or (w, x, h, y): 35-38 */
 extern "C" void func_003B0A70(ZVID_RECT *r)
 {
     func_003B09E0(r->x, r->y, r->w, r->h);

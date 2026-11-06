@@ -182,7 +182,12 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
  * `float *` with the non-const setter, leave it at 57 (v_rip36.py); a member Get on the point or a
  * reference parameter hoists its field addresses as here (build/scratch/wep/t/f8-f9.cpp: only a
  * pointer variable, `P *pp = &p` in the outer body, gives one register with offsets -- hoisted to
- * the function's top, not set per strip as the target's s3).
+ * the function's top, not set per strip as the target's s3). Round 37 (v_rip37*.py): the point
+ * through an inline returning its pointer (the HUD's round-61 temporary MW does not propagate) in the
+ * strip loop 0x358, in the vertex loop 0x340, at each use 57; the outer loop written as an `if`
+ * around a do-while, or a while, 57-59. The structural difference: the target's OUTER loop is
+ * rotated (the iterator test copied ahead of the body, &off / &n / &p's fields hoisted into s1 / s0
+ * / s7 in that preheader), MW rotates only our vertex loop (Flatten's shared open).
  * a surface's vertices moved: each one's normal tilted by the offset, its height set where a
  * ripple lifts it */
 void CWaterRippleManager::Ripple(CNode *node)
@@ -758,7 +763,20 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
  * &p.z as addresses of their own (here s1/s0); with a `float *` parameter every access goes
  * through one register with offsets, as the target's s3 -- but hoisted out of both loops (0x248),
  * where the target sets it in SelectVertexStrips' delay slot each strip (no placement of the
- * pointer, in the strip loop, after the select or in the lift's arm, keeps it there) */
+ * pointer, in the strip loop, after the select or in the lift's arm, keeps it there).
+ * Round 37 (igdump --iro, build/scratch/wep/flat.iro.log; v_flat37*.py): IRO_ScalarizeClassDataMembers
+ * makes up's fields scalars, the FIRST IRO_CopyAndConstantPropagation substitutes 0 / 1 into the
+ * products and the first IRO_ConstantFolding folds them -- all before the loop passes, so the target's
+ * products (hoisted by IRO_MoveInvariantExpressions, multiplied at run time) reached the loop passes
+ * with an operand IRO could not propagate. Double literals or a `(float)1.0` fold at parse time; an
+ * inline taking double, int or float parameters folds the whole store to `li 32767` (0x240); a static
+ * const array is loaded per vertex (0x288); the internal pragmas opt_foldconstants, convertfpconsts,
+ * scalarize, decomposeaggregates, pulloutconstants (and seven more) change nothing; opt_propagation
+ * off (it governs the whole function, wherever it sits -- scoped around up's declaration it is
+ * ignored) with up at the top gives run-time products but in the strip loop, the 16.0 hoisted too
+ * (0x27C). AND THE TARGET'S OUTER LOOP IS ROTATED (its test copied ahead of the body, the products in
+ * that preheader), ours is not -- the log rotates only the vertex loop (header 5); Ripple's target
+ * rotates its outer loop too */
 void CWaterRipple::Flatten(CNode *node)
 {
     for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
