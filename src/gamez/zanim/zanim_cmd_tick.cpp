@@ -4095,3 +4095,9 @@ bool zAnimStopSequenceTick(_zanim_cmd_hdr *hdr, float *dT)
     ZAnim.StopSequence(ZAnim.m_CurAnim->GetName(((zanim_cmd_sequence *)hdr)->name));
     return true;
 }
+
+/* The unit inlines to depth 8, not the flags' 5, as seal_ai.cpp does for CSealUnit::GetTop's copy (a pragma
+ * acts through its state at the unit's end): zdb::CNode::GetBBox's out-of-line copy 0x262550, the
+ * self-recursive inline, holds seven self-copies and then a call, README "Level 6, or 8?" -- every other
+ * function of the unit compiles the same (objcmp against the unit without it: GetBBox alone differs). */
+#pragma inline_depth(8)
