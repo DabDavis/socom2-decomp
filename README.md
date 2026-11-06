@@ -2065,6 +2065,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 55** (nine byte-exact: 0x54A3D0 -- open since round 51 --, CSealStats::Reset 0x545200,
+  CSealCtrl::SetEnabled 0x598840, the turret seat 0x585CD0, CZSealBody::CalcGoalDir 0x5AE040, CLook::SetLookDir 0x5ADC70,
+  InStateCarried 0x583AF0, InStateCarrying 0x583E70, UpdateQuadrant 0x5858A0; SetEyeLookDir's signature corrected):
+  - A `(float)` CAST OF A FLOAT IS AN EXPRESSION NODE THAT COSTS NO CODE but makes that operand the heavier one, so MW
+    numbers it first and emits the other operand first -- 0x54A3D0's `r * (float)(1.3f - t) * 0.6f` and both carry
+    states' `x * (float)rep->m_anim->m_1c`: the lever for any float operand order;
+  - a float tested as a bool (`if (len)`, `!a && !b`) compiles to `c.eq.s x,0`; `x != 0.0f`, `x == 0.0f` and `0.0f != x`
+    all put the zero first;
+  - an inline returning from two places keeps its loop variable in v0 when the caller assigns the result; with one result
+    variable for both arms MW merges it into the caller's saved-register variable and a fourth saved register appears;
+  - a float declared bare and assigned later is numbered at its declaration (CLook::SetLookDir's pitch $f24 -> $f20);
+    globals read into locals are loaded ahead of the computation, the computed value declared after them takes the lowest
+    register; a copy constructed inside an `if` loads all three fields, then stores through the next call's argument
+    register;
+  - a parameter the only caller never sets does not exist (SetEyeLookDir: SOCOM II dropped SOCOM 1's direction); a
+    "constructor" without `move v0,a0` is not a constructor (0x545200 is SOCOM 1's Reset, called twice by CZSealBody's
+    constructor in both games).
 - **Tells from the engine core, round 24** (GetDeadCamPoints 0x297A30 -- the weapons' round-36 rule: the rotation's second
   argument through a `static inline MatrixRows(CMatrix *)` that assigns a local and returns it -- and CZAnim::Copy 0x26D940,
   unwritten before, byte-exact; zdb::CDIBBox::SetCDIBBox 0x2DC7A0 written under its name, OPEN at the size, 32):
