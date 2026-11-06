@@ -1480,7 +1480,6 @@ typedef struct DmeConnectParams {
 typedef struct DmeConnectStatus {
     int field_00;
     int nResult;                        /* 0x04: 3 while connecting */
-    int field_08;
 } DmeConnectStatus;
 
 extern int func_0061D3C8(void);
@@ -4095,7 +4094,7 @@ int func_006181B8(DmeHostPeerParams *pParams, DmeConnectStatus *pStatus)
     world.p->field_448 = pParams->nValue;
     data_00651190 = pParams->pfnCallback;
     data_00651194 = pParams->nUser;
-    pStatus->field_08 = 0;
+    ((int *)pStatus)[2] = 0;
     world.p->pfnClientCallback = pParams->pfnClient;
     world.p->field_42C = pParams->nClientUser;
     world.p->field_438 = 2;
