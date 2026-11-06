@@ -2066,6 +2066,31 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 38** (six byte-exact: SkbParseKoreanRules 0x390C40 -- open since round 10, 205 off --,
+  SkbParseComplete 0x392130 -- 140 off --, both from the pragma scan's leads; LoadHddIconFile 0x39D650, util_sonyio.cpp
+  whole; CSoftKeyboard::ParseKeyProps 0x38DCB0 -- round 15 --, SkbPressKey 0x38D200 -- the key handler, round 29 -- and
+  ChooseEquipmentForCharacter 0x282A90; deque<SSMState>() 0x3A6410 from source over its draft; zanim_menu.cpp's
+  COnlineArmoryView respelled as the CZNetVoice view, SAME-BY-ADDRESS):
+  - A SCAN LEAD CAN NEED THE PAIR AND THE SHAPE: `opt_loop_invariants` and `opt_strength_reduction` both off keep
+    IRO_FindLoops from running (read in IrOptimizer.c) -- SkbParseComplete was 0x2B0 under one, exact under both with bare
+    locals in the target's order; SkbParseKoreanRules needed an AddSeq inline and named Val / Val2 record locals besides. A
+    unit's template tail wants the optimiser on: off at the unit's end gained none and lost 3;
+  - a union read through two members: the two loads of different types share only their address, and a local object's
+    inlined copy keeps the built address and jump form while the out-of-line copy folds to the value form, from one source
+    (LoadHddIconFile's IsOpen, `m_file != -1 && m_cd != 0`);
+  - a class holding one pointer numbers it after an inlined callee's counter, which a plain local never does
+    (CSkbRdrHolder);
+  - a ternary arm under an inlined copy constructor expands one pass late, so a top-level inline's locals take earlier frame
+    slots; deferring a find through an inline's argument cuts its end() at level 5 -- pass the end in; `inline_depth(6)`
+    cost SkbMoveAlong;
+  - `#pragma bool off`: an int chain of ifs gives un-narrowed comparisons in one register, where a nested `&&` adds an sltu
+    at each stage (SkbPressKey); `(char &)c` binds a byte-enum parameter's own frame byte with no temporary; `id =
+    w.m_wepId; item == id` numbers the load before the narrowing, which casts on either operand do not;
+  - the extern "C" trap: renaming a placeholder declared in such a block leaves a mangled row no-target and its callers
+    WRONG REFERENCE -- re-score after every rename;
+  - devices, each marked in the source: CSkbRdrHolder, SkbSetSpec / SkbFindProps, SSMQueueImp (src/ABSENT.txt), and `inline
+    CSkbRect::CSkbRect` defined only for zui_skb.cpp while zui_skbview.cpp keeps its out-of-line definition -- a deliberate
+    ODR stretch across the two units, not evidence of the original's shape.
 - **Tells from the online lobby, round 29** (the lobby's deque<LOBBY_STATE>() 0x2E0D90 -- through a marked dead-stripped
   device, zNetMedius.cpp's LobbyQueueImp in src/ABSENT.txt -- and the chat's deque<MediusChatMessage>() 0x2F6230 byte-exact
   from source, two of the twelve draft-held rows; 0x30E710 / 0x30E790 named CZNetVoice::IsTalking / IsReceiving by every
