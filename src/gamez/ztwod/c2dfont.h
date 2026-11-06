@@ -208,9 +208,4 @@ public:
     CSaferStr m_name;   // 0x58
 };   // 0x64 bytes
 
-inline float C2DString::GetFullScale()
-{
-    return m_scale * m_socom2_78 * m_font->GetScaleFactor();
-}
-
 #endif

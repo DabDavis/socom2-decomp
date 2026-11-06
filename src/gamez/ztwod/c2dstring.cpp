@@ -31,6 +31,12 @@ public:
  * glyphs its layout measures) */
 #include "c2dfont.h"
 
+/* the string's scale whole (ztwod.h declares it; here, as c2dfont.cpp sees no C2DString) */
+inline float C2DString::GetFullScale()
+{
+    return m_scale * m_socom2_78 * m_font->GetScaleFactor();
+}
+
 /* the string's default colour (black, opaque: a 16-aligned block, copied with lq / sq) and the PRIM
  * word its glyphs draw with (0x11E: textured sprites by UV; a transparent string ORs alpha blending
  * in, for good) -- c2dstring.cpp's .data 0x3E0350 and 0x3E0360 (the names ours) */
