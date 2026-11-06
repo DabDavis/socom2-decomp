@@ -2528,7 +2528,6 @@ static inline int TaskRand(TASK_WORD max)
 /* (OVL2 0x52D8C0's neighbour: a random cell of a region) */
 extern "C" bool GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(CAiMaps *maps, const CAiMapRegion *r, CAiMapLoc &loc);
 /* the SEAL sent to a cell (OVL2 0x5623B0: seal_ai.cpp's draft) and its speed set (OVL2 0x570F90, as CTParam::Tick calls it) */
-extern "C" bool func_005623B0(CSealCtrlAi *ai, const CAiMapLoc *loc);
 extern "C" void func_00570F90(CSealCtrlAi *ai, float t);
 extern "C" bool func_00562A10(CSealCtrlAi *ai, const CAiMapLoc &loc, int dir);
 
@@ -2565,7 +2564,7 @@ bool func_005DB8F0(CSealCtrlAi *ai, void *c, int x)
             if (cmd->m_done)
                 ok = func_00562A10(ai, loc, 8);
             else
-                ok = func_005623B0(ai, &loc);
+                ok = ai->SetRoute(loc);
         }
     } else if (waypts && n > 1) {
         if (cmd->m_done) {

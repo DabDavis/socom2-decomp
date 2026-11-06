@@ -100,8 +100,33 @@ public:
  * CZKit of its own, is not included here): its body (CEntityCtrl's entity), a base accuracy, the
  * accuracy the aim is perturbed by, the target (+0x67C, SEAL_AI_PARAMS's) and a scale -- the names
  * of the three floats ours */
+struct CKitState {
+    unsigned char _0[0x30];
+    unsigned char m_state;   // 0x30
+    unsigned char _31[0x84 - 0x31];
+    void *m_84;   // 0x84: the breach state's charge
+};
+
+class CAiStateStack {
+public:
+    const CKitState *GetState() const;
+    unsigned int size() const { return m_size; }
+
+    unsigned int m_size;   // 0x0
+    void *m_4;
+    void *m_8;
+};
+
+typedef CAiStateStack CKitStateStack;
+
 class CSealCtrlAi {
 public:
+    bool StackNotEmpty() const { return !(m_stateStack.size() == 0); }
+    bool AiStateIs(unsigned char state) const
+    {
+        return StackNotEmpty() ? (m_stateStack.GetState()->m_state == state ? true : false) : false;
+    }
+    CKitState *GetAiState();
     float GetAccuracyFactor();
     void PerturbAimVector(CPnt3D *v);
     CZSealBody *GetBody() { return m_entity; }
@@ -115,7 +140,11 @@ public:
     float m_d4;   // 0xd4
     unsigned char _d8[0x3d0 - 0xd8];
     float m_3d0;   // 0x3d0
-    unsigned char _3d4[0x67c - 0x3d4];
+    unsigned char _3d4[0x41c - 0x3d4];
+    /* the state stack (ai_states.h's; SOCOM 1's AiStateIs: `!(size() == 0)`, materialised, then the
+     * state's own test) */
+    CKitStateStack m_stateStack;   // 0x41c
+    unsigned char _428[0x67c - 0x428];
     CAiTarget m_target;   // 0x67c
     unsigned char _6f4[0x70c - 0x6f4];
     float m_70c;   // 0x70c
@@ -857,6 +886,22 @@ public:
     virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
     virtual bool IsRemote() const;   /* +0x34 */
+    virtual CSealCtrlAi *GetSealCtrlAi();   /* +0x38 */
+    virtual void Virtual3C();
+    virtual void Virtual40();
+    virtual void Virtual44();
+    virtual void Virtual48();
+    virtual void Virtual4C();
+    virtual void Virtual50();
+    virtual void Virtual54();
+    virtual void Virtual58();
+    virtual void Virtual5C();
+    virtual void Virtual60();
+    virtual void Virtual64();
+    virtual void Virtual68();
+    virtual void Virtual6C();
+    virtual void Virtual70();
+    virtual void PerturbAimVector(CPnt3D *v);   /* +0x74 */
 };
 
 /* the local player as the recoil's screen scale reads it: the point its view starts from and the
@@ -3136,7 +3181,6 @@ extern "C" {
  * 0x5C5340, unwritten) and an explosive placed (SOCOM 1's HandleRemotePlaceExplosive, which took the
  * point and the SEAL's rotation: SOCOM II's takes two more, here 0; OVL2 0x5BC730, unwritten) */
 CZProjectile *func_005C5340(CZKit *kit, int index, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
-CZProjectile *func_005BC730(CZKit *kit, const CPnt3D *pos, const void *rot, int a, int b);
 }
 
 /* a grenade thrown from a point at a velocity -- the current item fired with no spin, or, an
@@ -3149,7 +3193,7 @@ CZProjectile *CZKit::FireGrenade(const CPnt3D *pos, const CPnt3D *vel)
     if (!w)
         return 0;
     if (w->GetIDType() == IDTYPE_EXPLOSIVE)
-        return func_005BC730(this, pos, (char *)m_body + 0x50, 0, 0);
+        return (CZProjectile *)HandleRemotePlaceExplosive(pos, (const CQuat *)((char *)m_body + 0x50), 0, 0);
     return func_005C5340(this, m_selected_item, pos, vel, &v);
 }
 
@@ -3302,6 +3346,8 @@ int strcasecmp(const char *a, const char *b);
 /* the pickup as the kit reads it (zseal.h's CPickup: its stash and its owner's id; zseal.h is not included here) */
 class CPickup {
 public:
+    enum PU_TYPE { PU_TYPE_FIRST = 0, PU_TYPE_LAST = 255 };
+    static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);
     unsigned int GetPickupNetEntityID();
 
     unsigned char _0[0x8];
@@ -3970,6 +4016,912 @@ void CZKit::ResetRetOffsetXY()
 {
     m_retoffsetx = 0.0f;
     m_retoffsety = 0.0f;
+}
+
+/* a thrown grenade's flight (zseal.h's CDynGrenade, which this unit cannot include -- it declares a CZKit
+ * of its own; the same class by name, so the inline's statics are seal_throw.h's: OVL2 data 0x65E630,
+ * 0x65E638, 0x6505C8) */
+class CDynGrenade {
+public:
+    static float ComputeTimeToImpact(float scale, float b, float c);
+    static float ComputeElevOfs(float t);
+    static float ComputeMaxVel(float dist, float height, float *vel);
+    void Set(const CPnt3D &pos, const CPnt3D &dir, float speed)
+    {
+        m_pos.x = pos.x;
+        m_pos.y = pos.y;
+        m_pos.z = pos.z;
+        m_vel.x = dir.x;
+        m_vel.y = dir.y;
+        m_vel.z = dir.z;
+        m_vel.Scale(speed);
+    }
+    void Initalize(const CMatrix *m, const CPnt3D &aim, float dist, float power, CPnt3D &p);
+
+    CPnt3D m_pos;   // 0x0
+    CPnt3D m_vel;   // 0xc
+    float m_18;   // 0x18
+};
+
+/* zseal.h's: the inlines the throw solver calls out of line, kept out of line (their copies 0x5975B0 ...) */
+inline float Lerp(float a, float b, float t)
+{
+    return a * (1.0f - t) + b * t;
+}
+
+inline void SinCos(float a, float &s, float &c)
+{
+    s = sinf(a);
+    c = cosf(a);
+}
+
+inline float LengthSqXZ(const CPnt3D &v)
+{
+    return v.x * v.x + v.z * v.z;
+}
+
+inline void RotateVectors(const CMatrix *m, CPnt3D *p, int count)
+{
+    TransformVectors(m, p, p, count);
+}
+
+extern "C" float asinf(float x);
+namespace ai {
+void elevate(CPnt3D &p, float y, float scale);
+}
+
+/* seal_throw.h's body, word for word (see there) */
+inline void CDynGrenade::Initalize(const CMatrix *m, const CPnt3D &aim, float dist, float power, CPnt3D &p)
+{
+    static const float elev_min = 0.0f;
+    static const float elev_max = 0.9599311f;
+    static bool from_range = true;
+    float height = p.y;
+    float unused = 0.0f;
+    float maxvel = ComputeMaxVel(dist, height, &unused);
+    float elev = asinf(aim.y);
+
+    _saturate(&elev, elev_min, elev_max);
+    elev += ComputeElevOfs(power);
+
+    float s, c;
+
+    SinCos(elev, s, c);
+
+    float speed = Lerp(0.05f * maxvel, maxvel, power);
+    float t = m_18 = ComputeTimeToImpact(speed * c, speed * s, height);
+
+    if (from_range) {
+        speed = sqrtf(t * t + LengthSqXZ(p) + 2.0f * t * p.z);
+        _saturate(&speed, 0.0f, maxvel);
+        m_vel.x = -p.x;
+        m_vel.z = -(t + p.z);
+        m_vel.y = 0.0f;
+        m_vel.Normalize();
+        ai::elevate(m_vel, s, c);
+    } else {
+        m_vel.x = 0.0f;
+        m_vel.z = -c;
+        m_vel.y = s;
+    }
+
+    CPnt3D q;
+
+    RotateVectors(m, &m_vel, 1);
+    m->Transform(&p, &q, 1);
+    Set(q, (const CPnt3D &)m_vel, speed);
+}
+
+/* the throw of a grenade the SEAL held: the hand's place, a player's solved at no power, an AI's by its
+ * fire parameters (0x55EAA0, zseal.h's) -- each fired through 0x5C5340 */
+extern "C" bool func_0055EAA0(void *ai, void *params, bool clear);
+CZProjectile *func_005C5340(CZKit *kit, int index, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
+
+/* what the throw reads of the SEAL (zseal.h's CZSealBody and CSealCtrl) */
+struct CKitThrowBody {
+    unsigned char _0[0x28];
+    const CMatrix *m_node;   // 0x28: its node (the matrix first)
+    unsigned char _2c[0x2f8 - 0x2c];
+    void *m_lhand;   // 0x2f8
+    unsigned char _2fc[0x300 - 0x2fc];
+    void *m_rhand;   // 0x300
+    unsigned char _304[0x404 - 0x304];
+    float m_404;   // 0x404
+    unsigned char _408[0x105c - 0x408];
+    bool InfiniteAmmo() const { return m_infiniteammo ? true : false; }
+
+    unsigned int m_105c_0 : 5;   // 0x105c
+    unsigned int m_infiniteammo : 1;   // zseal.h's, bit 5
+    unsigned int _105c_6 : 26;
+    unsigned char _1060[0x144c - 0x1060];
+    CPnt3D m_aim;   // 0x144c
+};
+
+struct CKitThrowDyn {
+    float m_abort_threshold;   // 0x0
+    float max_distance_stand;   // 0x4
+    float max_distance_crouch;   // 0x8
+};
+
+/* the AI's fire parameters as this reads them (zseal.h's AI_FIREPARAMS at CSealCtrlAi + 0x370) */
+struct CKitFireParams {
+    unsigned char _0[0x44];
+    CPnt3D m_vel;   // 0x44
+    unsigned char _50[0x58 - 0x50];
+    float m_58;   // 0x58
+    unsigned char _5c[0x6c - 0x5c];
+    unsigned int m_flags;   // 0x6c
+};
+
+extern "C" int IsCurrentBlend__10CZSealBodyCF8AnimType(CZSealBody *seal, short type);
+extern "C" void *GetDynamics__10CZSealBodyFv(CZSealBody *seal);
+extern short TossGrenadePeekLeft__9AnimTypes;
+extern bool data_00650988;
+
+/* the kit told of the SEAL's death: the rifle's model opaque again, the launcher modes put back and, with
+ * a throw under way -- not of the placed explosives --, the round taken and the grenade let go where it
+ * is held (OVL2 0x5B8920, new in SOCOM II: CZSealBody::OnDeath calls it; the name ours) */
+void CZKit::OnDeath()
+{
+    CKitBody::Attach::Record *rec = ((CKitBody *)m_body)->AttachPart(4);
+
+    if (rec) {
+        zdb::CNode *node = (zdb::CNode *)rec->m_node;
+
+        if (node)
+            node->m_Opacity = 1.0f;
+    }
+    for (int i = 0; i < m_num_items; i++)
+        if (m_firemode[i] > 3)
+            m_firemode[i] = 0;
+    if (m_waiting_to_fire) {
+        m_waiting_to_fire = false;
+        m_firetime = 0.0f;
+        unsigned char id = m_item[m_selected_item]->m_ID;
+
+        if (id != 153 && id != 152 && id != 154 && id != 151 && id != 158) {
+            m_burst_count++;
+            int sel = m_selected_item;
+
+            if (!((CKitThrowBody *)m_body)->InfiniteAmmo()) {
+                int n = wrap(sel, m_num_items);
+
+                m_weaponinfoChanged = true;
+                if (m_reloads[n][m_currentmag[n]] > 0)
+                    m_reloads[n][m_currentmag[n]]--;
+            }
+            m_81c = 0.0f;
+            static CPnt3D s_handOfs(2.0f, 0.0f, 0.0f);
+            static CPnt3D s_handOfs2(2.0f, 0.0f, 0.0f);
+            void *part = ((CKitThrowBody *)m_body)->m_rhand;
+
+            if (IsCurrentBlend__10CZSealBodyCF8AnimType(m_body, TossGrenadePeekLeft__9AnimTypes))
+                part = ((CKitThrowBody *)m_body)->m_lhand;
+            CPnt3D p = CPnt3D::zero;
+
+            PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat(((CKitBody *)m_body)->m_cbody, part, &s_handOfs, &p, 0);
+            if (data_00650988) {
+                int state = ((CKitBody *)m_body)->m_state;
+                CKitThrowDyn *dyn = (CKitThrowDyn *)((char *)GetDynamics__10CZSealBodyFv(m_body) + 0x198);
+                float dist = state == 0 ? dyn->max_distance_stand : dyn->max_distance_crouch;
+                const CPnt3D *zero = &CPnt3D::zero;
+
+                if (KitIsPlayer((CKitBody *)m_body)) {
+                    CKitThrowBody *b = (CKitThrowBody *)m_body;
+                    CDynGrenade g;
+
+                    g.Initalize(b->m_node, b->m_aim, dist, 0.0f, p);
+                    func_005C5340(this, m_selected_item, &g.m_pos, &g.m_vel, zero);
+                } else if (KitIsAi((CKitBody *)m_body)) {
+                    CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
+                    CPnt3D q;
+
+                    ((CKitThrowBody *)m_body)->m_node->Transform(&p, &q, 1);
+                    CKitFireParams *fp = (CKitFireParams *)((char *)ai + 0x370);
+
+                    func_0055EAA0(ai, fp, true);
+                    func_005C5340(this, m_selected_item, &q, &fp->m_vel, zero);
+                    fp->m_flags &= 0xFBDFFFFF;
+                    fp->m_58 = 0.0f;
+                }
+                if (m_last_selected >= 0) {
+                    SetCurItemByIndex(m_last_selected);
+                    m_last_selected = -1;
+                }
+            }
+        }
+    }
+}
+
+/* what the placing reads besides: the pickups (zseal.h's CPickup; OVL2 0x542B90), the bomb's state
+ * (CZBombState, OVL1 0x2C2090: from the SEAL's id, a state and a point), the world's tree (OVL1 bss
+ * 0x45C380: CWorld::m_world) and the local player (OVL1 bss 0x440C38, ftsPlayer) */
+
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+};
+
+class CZBombState {
+public:
+    enum EnumBombState { BOMB_STATE_FIRST = 0 };
+    static void RequestNewBombState(int id, EnumBombState state, const CPnt3D *pos);
+};
+
+extern CZSealBody *ftsPlayer;
+extern float data_004365C8;
+
+extern "C" void *GetNode__7CEntityFv(CZSealBody *seal);
+
+/* an explosive placed: its model made a projectile's node at the point and rotation -- on another node,
+ * or with a word, when given --, drawn with the characters, its fire anim run, its projectile set off, its
+ * pickup made by kind, its timer run for those who may see it, the round taken, the detonator taken up
+ * for a remote charge and a breaching SEAL told (SOCOM 1's HandleRemotePlaceExplosive with two more
+ * arguments; OVL2 0x5BC730) */
+PlacedExplosive *CZKit::HandleRemotePlaceExplosive(const CPnt3D *pos, const CQuat *rot, zdb::CNode *on, zdb::CNode *node2)
+{
+    zdb::CNode *n;
+    bool remote = false;
+    bool prox = false;
+    PlacedExplosive *x = 0;
+    zdb::CModel *model = (zdb::CModel *)zdb::CWorld::GetModel(m_item[m_selected_item]->GetModelName());
+    CZFTSWeapon *w = m_item[m_selected_item];
+    bool timed = false;
+    unsigned char id = w->m_ID;
+
+    if (id == 151 || id == 152 && w->GetTimer(0) != 9999999.0f)
+        timed = true;
+    if (id == 152 || id == 154)
+        EnableMPBombGear__10CZSealBodyFb(m_body, false);
+    if (id == 153)
+        remote = true;
+    if (m_ammo[m_selected_item] && !(((CZAmmo *)m_ammo[m_selected_item])->GetProximityDistance() <= 0.0f))
+        prox = true;
+    if (id == 154) {
+        if (data_0045A0C1) {
+            CZBombState::RequestNewBombState(((CEntity *)m_body)->m_id, (CZBombState::EnumBombState)3, pos);
+            return 0;
+        }
+        data_004365C8 = 9999999.0f;
+    }
+    if (model) {
+        x = new PlacedExplosive;
+        zdb::CNode *inst = zdb::CNode::CreateXRef();
+
+        x->SetInstance(inst);
+        inst->SetActive(false);
+        n = x->GetInstance();
+
+        n->SetModel(model);
+        if (pos)
+            n->SetPosition(pos->x, pos->y, pos->z);
+        if (rot)
+            n->SetRotation(*rot);
+        if (KitIsRemote((CKitBody *)m_body) && id == 151 && !node2 && !on)
+            inst->m_Opacity = 0.0f;
+        if (node2) {
+            CMatrix inv;
+
+            node2->BuildMTW(inv);
+            Vu0MatrixInverseWithUniformScale(&inv, &inv);
+            CMatrix m(n->m_matrix);
+
+            m.Multiply(&inv, &m);
+            x->SetMatrix((int)node2, &m);
+        }
+        if (on)
+            x->SetWord((int)on);
+        n->m_socom2_a1_bits.bit2 = true;
+        n->m_bumpmap = true;
+        n->m_socom2_a1_bits.bit3 = true;
+        zdb::CWorld::m_world->AddTextureAssetCharacter((zdb::_RenderPhase)2, n);
+        n->SetActive(true);
+        zdb::CWorld::m_world->AddChild(n);
+        CPnt3D v(0, 0, 0);
+
+        x->SetUseFlyout(m_body == ftsGetPlayer__Fv());
+        x->SetIsPlayer(!KitIsRemote((CKitBody *)m_body));
+        CZAmmo *ammo = (CZAmmo *)m_ammo[m_selected_item];
+
+        if (!ammo)
+            ammo = m_item[m_selected_item]->GetDefaultAmmo();
+        /* (marked device: a byte enum holds the zoom class ahead of the item -- enums are not propagated, so the
+         * read generates first and the item takes v0 over its v1; const, int and inline holders all fold) */
+        CZKit::FIRE_CLASS zc = (CZKit::FIRE_CLASS)((CKitBody *)m_body)->m_200;
+        CZAnim *anim = m_item[m_selected_item]->GetFireAnim((signed char)zc > 0);
+
+        if (anim) {
+            void *fire = ((CEntity *)m_body)->GetFirepointNode(0);
+
+            if (!fire)
+                fire = GetNode__7CEntityFv(m_body);
+            if (fire && CZWeapon::m_allowFireAnimations)
+                anim->ActivateArg(3, 2, fire, 5, &((CEntity *)m_body)->m_posW, 0);
+        }
+        CZSealBody *body = m_body;
+
+        bool ok = x->SetProjectile((zdb::CNode *)GetNode__7CEntityFv(body), m_item[m_selected_item], ammo, pos, &v, &v,
+                                   ((CEntity *)body)->m_id, model);
+
+        if (!ok) {
+            delete x;
+            return 0;
+        }
+        CPickup *pickup;
+        unsigned int owner = ((CEntity *)m_body)->m_id;
+
+        switch (m_item[m_selected_item]->m_ID) {
+        case 151:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)4, n, x);
+            break;
+        case 152:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)5, n, x);
+            break;
+        case 153:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)6, n, x);
+            break;
+        case 158:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)6, n, x);
+            break;
+        case 154:
+        default:
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)7, n, x);
+            break;
+        }
+        if (timed && m_body) {
+            x->m_b8 = true;
+            CZSealBody *player = ftsPlayer;
+
+            if (data_0045A0C1) {
+                if (m_body == player)
+                    CZWeapon::RegisterTimer(&x->m_time, x->m_time, true);
+            } else if (((CEntity *)player)->m_team & ((CEntity *)m_body)->m_team)
+                CZWeapon::RegisterTimer(&x->m_time, x->m_time, true);
+        }
+        x->m_pickup = pickup;
+        x->SetRemote(remote);
+        x->SetFlag(prox);
+        PlacedExplosive *t = x;
+
+        CZWeapon::m_pProjectilelist->m_explosives.push_back(t);
+        if (m_item[m_selected_item]->m_ID == 158 && (!data_0045A0C1 || x->m_isplayer))
+            CZWeapon::m_placedExplosives.Add(x);
+        int sel = m_selected_item;
+
+        if (!((CKitThrowBody *)m_body)->InfiniteAmmo()) {
+            int i = wrap(sel, m_num_items);
+
+            m_weaponinfoChanged = true;
+            if (m_reloads[i][m_currentmag[i]] > 0)
+                m_reloads[i][m_currentmag[i]]--;
+        }
+        if (remote)
+            SetCurItemEnum((EQUIP_ITEM)193);
+        CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
+
+        if (ai) {
+            if (ai->AiStateIs(4)) {
+                CKitState *st = ai->GetAiState();
+
+                st = st && st->m_state == 4 ? st : 0;
+                st->m_84 = x;
+            }
+        }
+    }
+    ((CKitBody *)m_body)->m_control->SetBombPlaced(true);
+    return x;
+}
+
+extern zdb::CNode *data_0066B6A0;
+extern CPnt3D data_0066B6A8;
+extern CPnt3D data_0066B6B8;
+extern bool data_00650948;
+
+/* what a pull of the trigger reads besides (zseal.h's CZSealBody): an action pushed (OVL2 0x57D540: its anim's
+ * record, whose timer the C4 sets), the throw's and the fire point's questions */
+struct CKitActionAnim {
+    unsigned char _0[0x60];
+    float m_60;   // 0x60
+    void (*m_64)(void *, void *);   // 0x64
+    void *m_68;   // 0x68
+};
+
+struct CKitFireBody {
+    /* the ladder's height while on one (the bit tested again by the inline; the names ours) */
+    float LadderHeight() const { return m_onladder ? m_f88 : 0.0f; }
+
+    unsigned char _0[0x208];
+    float m_208;   // 0x208
+    unsigned char _20c[0x258 - 0x20c];
+    unsigned char m_258;   // 0x258: bit 0, may fire
+    unsigned char _259[0x2e8 - 0x259];
+    void *m_2e8;   // 0x2e8: the part the charge is placed from
+    unsigned char _2ec[0xe84 - 0x2ec];
+    float m_e84;   // 0xe84
+    unsigned char _e88[0xf88 - 0xe88];
+    float m_f88;   // 0xf88
+    unsigned char _f8c[0x105c - 0xf8c];
+    unsigned int _105c_0 : 2;   // 0x105c
+    unsigned int m_aim_point_valid : 1;   // zseal.h's, bit 2
+    unsigned int _105c_3 : 20;
+    unsigned int m_onladder : 1;   // bit 23
+    unsigned int _105c_24 : 8;
+    unsigned char _1060[0x1440 - 0x1060];
+    CPnt3D m_1440;   // 0x1440: the aim direction
+    unsigned char _144c[0x1458 - 0x144c];
+    CPnt3D m_1458;   // 0x1458: the point the aim looks at
+};
+
+extern "C" CKitActionAnim *func_0057D540(CZSealBody *seal, short type, int state);
+extern "C" bool func_0059D830(CZSealBody *seal);
+extern "C" bool func_005499E0(CZSealBody *seal);
+extern "C" float func_005DEE90(CZSealBody *seal);
+extern "C" bool GetFirepointPos__10CZSealBodyFR6CPnt3DPCc(CZSealBody *seal, CPnt3D &pos, const char *name);
+extern "C" bool GetFP__10CZSealBodyFR6CPnt3D(CZSealBody *seal, CPnt3D &pos);
+extern "C" bool BeginThrowItem__10CZSealBodyFfRf(CZSealBody *seal, float t, float &out);
+extern "C" zdb::IntersectStruct *GetReticuleDi__10CZSealBodyFv(CZSealBody *seal);
+extern "C" void Shot__10CSealStatsFRC10CZSealBody(void *stats, CZSealBody *seal);
+void Timer_PlaceC4(void *, void *data);
+extern short data_003DEB48;
+
+/* whether the charge is within reach, not running (inline: the tests in a register; the name ours) */
+static inline bool PlaceOk(CKitFireBody *fb)
+{
+    bool ok = fb->m_208 < 396.0f;
+
+    if (ok)
+        ok = fb->m_e84 == 0.0f;
+    return ok;
+}
+
+/* (KitIsRemote's shape: the result narrowed in the call's arm too; the name ours) */
+static inline bool KitIsPlayerB(CKitBody *body)
+{
+    bool r = body->m_control ? (bool)((CKitSealCtrl *)body->m_control)->IsPlayer() : false;
+
+    return r;
+}
+
+/* a pull of the trigger: the laser's target fetched or the lock dropped; else, unless the binoculars are up,
+ * by the item -- the remote charges (four at most, the message once) and the mines placed by an anim, the
+ * C4 on the node under the reticule within reach (its timer on the anim), or everything about it cleared,
+ * the detonator set off, the bomb placed --, a grenade's throw begun, and a weapon's rounds fired: each
+ * projectile's aim perturbed, the round taken, a launcher's from its grenades (OVL2 0x5BE9A0; SOCOM 1's
+ * HandleFireWeapon).
+ * OPEN, 0xEE0 against 0xF00: every word but the block optimization's copies -- the target steals `move v0,zero` by a copy
+ * behind a `b; andi` at each KitIsPlayer here (the engine core's round 28: something in this function fires 0x4C6D60; not
+ * found: none of the `?:` shapes tried fires it, nor the else-if chain, v_hf5, v_hf6), the bound's movn, the registers
+ * (this s5, index s4, index * 4 s6 in the target: the numbering falls out once the size is right) */
+void CZKit::HandleFireWeapon(int index, float a, float b)
+{
+    EQUIP_ITEM id = m_item[index]->GetId();
+    EQUIP_ITEM type = CZWeapon::GetIDType(id);
+    unsigned char item = id;
+
+    if (item == 11) {
+        if (!m_lase_mapname || !m_lase_anim) {
+            if (!FetchLaseTarget()) {
+                if (KitIsPlayerB((CKitBody *)m_body)) {
+                    if (m_lasesnd_fin && !m_lase_inst2)
+                        m_lase_inst2 = m_lasesnd_fin->PlaySound(0, 255);
+                    if (m_lase_inst) {
+                        m_lase_inst->Stop();
+                        CSndInstance::ReleaseSoundInstance(m_lase_inst);
+                        m_lase_inst = 0;
+                    }
+                }
+                ClearLase();
+            }
+        }
+        return;
+    }
+    if (((CKitBody *)m_body)->m_200 == 4)
+        return;
+    if (item == 153) {
+        if (CZWeapon::m_pProjectilelist->GetNumRemoteExplosives(((CEntity *)m_body)->m_id) >= 4) {
+            if (m_8 <= 0.0f) {
+                ((C2DMessage_Q *)theMission.m_messages)->Add_Message("Unable To Deploy: Max Equipment Items Placed (4)", (MSGTYPE)2, false, 0, 0.0f);
+                m_8 = 2.0f;
+            }
+            return;
+        }
+        {
+            CKitFireBody *fb = (CKitFireBody *)m_body;
+            unsigned int ladder = fb->m_onladder;
+
+            if (ladder && !((ladder ? fb->m_f88 : 0.0f) <= 0.32f * zdb::CWorld::m_scale))
+                return;
+        }
+        func_0057D540(m_body, data_003DEB48, 0);
+        m_waiting_to_fire = true;
+        m_firetime = 1.3f;
+        m_burst_count++;
+    } else if (item == 158) {
+        if (CZWeapon::m_pProjectilelist->GetNumRemoteExplosives(((CEntity *)m_body)->m_id) >= 4) {
+            if (m_8 <= 0.0f) {
+                ((C2DMessage_Q *)theMission.m_messages)->Add_Message("Unable To Deploy: Max Equipment Items Placed (4)", (MSGTYPE)2, false, 0, 0.0f);
+                m_8 = 2.0f;
+            }
+            return;
+        }
+        {
+            CKitFireBody *fb = (CKitFireBody *)m_body;
+            unsigned int ladder = fb->m_onladder;
+
+            if (ladder && !((ladder ? fb->m_f88 : 0.0f) <= 0.32f * zdb::CWorld::m_scale))
+                return;
+        }
+        func_0057D540(m_body, data_003DEB48, 0);
+        m_waiting_to_fire = true;
+        m_firetime = 1.3f;
+        m_burst_count++;
+    } else if (item == 152) {
+        func_0057D540(m_body, data_003DEB48, 0);
+        m_waiting_to_fire = true;
+        m_firetime = 1.3f;
+        m_burst_count++;
+    } else if (item == 151) {
+        zdb::CNode *node = (zdb::CNode *)((CKitBody *)m_body)->m_last_reticule.m_node;
+        zdb::CNodeEx *ex = node ? node->m_nodeEx : 0;
+
+        if (ex && ex->Slot10(m_explosiveDamage)) {
+            CPnt3D z = CPnt3D::zero;
+            CPnt3D pos = z;
+            CPnt3D off = z;
+
+            PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat(((CKitBody *)m_body)->m_cbody, ((CKitFireBody *)m_body)->m_2e8, &off, &pos, 0);
+            ((CEntity *)m_body)->m_quat.Apply(&pos, &pos, 1);
+            CPnt3D t = Added(pos, &((CEntity *)m_body)->m_posW);
+            zdb::IntersectStruct *hit = GetReticuleDi__10CZSealBodyFv(m_body);
+
+            if (hit && PlaceOk((CKitFireBody *)m_body)) {
+                {
+                    (zdb::IntersectStruct &)g_placeHit = *hit;
+                    data_0066B6A0 = node;
+                    data_0066B6A8.x = hit->m_pos.x;
+                    data_0066B6A8.y = hit->m_pos.y;
+                    data_0066B6A8.z = hit->m_pos.z;
+                    CKitActionAnim *anim = func_0057D540(m_body, 62, 0);
+                    CPnt3D d = CPnt3D::zero;
+
+                    if (node) {
+                        CopyPoint(&d, (const CPnt3D *)node->m_matrix.m_matrix[3]);
+                        CMatrix m;
+
+                        if (node->m_parent) {
+                            node->m_parent->BuildMTW(m);
+                            CopyPoint(&d, &(d + *(const CPnt3D *)m.m_matrix[3]));
+                        }
+                    }
+                    data_0066B6B8.x = d.x;
+                    data_0066B6B8.y = d.y;
+                    data_0066B6B8.z = d.z;
+                    if (anim) {
+                        anim->m_64 = Timer_PlaceC4;
+                        anim->m_60 = 0.45f;
+                        anim->m_68 = &m_firetime;
+                    }
+                    m_waiting_to_fire = true;
+                    m_firetime = 99.0f;
+                    m_burst_count++;
+                }
+            } else {
+                g_placeHit.m_poly = 0;
+                g_placeHit.m_node = 0;
+                data_0066B6B8 = CPnt3D::zero;
+                g_placeHit.m_pos = CPnt3D::zero;
+                g_placeHit.m_norm = CPnt3D::zero;
+                if (GetCurItemEnum() == 151)
+                {
+                    SetCurItemByIndex(m_last_selected < 0 ? 0 : m_last_selected);
+                }
+            }
+        }
+    } else if (item == 193)
+        DetonateRemoteExplosives();
+    else if (item == 154) {
+        func_0057D540(m_body, data_003DEB48, 0);
+        m_waiting_to_fire = true;
+        m_firetime = 2.25f;
+        m_burst_count++;
+        m_81c = b;
+    } else {
+        unsigned char t = type;
+
+        if (t == 121) {
+        bool can = func_0059D830(m_body);
+
+        if (can)
+            can = func_005499E0(m_body);
+        if (a < ((CKitThrowDyn *)((char *)GetDynamics__10CZSealBodyFv(m_body) + 0x198))->m_abort_threshold || !can)
+            func_00592D40(((CKitBody *)m_body)->m_control);
+        else if (BeginThrowItem__10CZSealBodyFfRf(m_body, a, m_firetime))
+            m_waiting_to_fire = true;
+        else {
+            m_waiting_to_fire = false;
+            m_firetime = 0.0f;
+        }
+        return;
+        }
+        bool launcher = false;
+        CPnt3D fp;
+        bool have;
+
+        m_burst_count++;
+        m_81c = b;
+        if (CurWeaponIsGrenadeLauncherMode()) {
+            have = GetFirepointPos__10CZSealBodyFR6CPnt3DPCc(m_body, fp, "firepoint_203");
+            launcher = true;
+        } else {
+            CKitBody *body = (CKitBody *)m_body;
+
+            if (body->m_eb8)
+                have = ((CEntity *)body->m_eb8)->Virtual60(&fp);
+            else
+                have = GetFP__10CZSealBodyFR6CPnt3D(m_body, fp);
+        }
+        if (!have)
+            return;
+        CPnt3D dir;
+        float zoom = func_005DEE90(m_body);
+        CKitFireBody *fb = (CKitFireBody *)m_body;
+
+        if (fb->m_aim_point_valid && (zoom > 0.9f || ((CKitBody *)fb)->m_state == 2)) {
+            CPnt3D v = fb->m_1458 - fp;
+
+            v.Normalize();
+            CQuat q;
+            const CQuat &from = ((CEntity *)m_body)->m_quat;
+
+            CopyPoint(&q.vec, &from.vec);
+            q.w = from.w;
+            q.vec.x = -q.vec.x;
+            q.vec.y = -q.vec.y;
+            q.vec.z = -q.vec.z;
+            q.Apply(&v, &dir, 1);
+        } else if (KitIsAi((CKitBody *)fb) || ((CKitBody *)m_body)->m_eb8) {
+            dir.x = ((CKitFireBody *)m_body)->m_1440.x;
+            dir.y = ((CKitFireBody *)m_body)->m_1440.y;
+            dir.z = ((CKitFireBody *)m_body)->m_1440.z;
+        } else
+            return;
+        if (!(((CKitFireBody *)m_body)->m_258 & 1))
+            return;
+        CZFTSWeapon *w = GetCurItem();
+        CZAmmo *ammo = (CZAmmo *)GetCurAmmo();
+
+        if (launcher && KitIsPlayerB((CKitBody *)m_body))
+            LobAim(m_body, &fp, &((CKitBody *)m_body)->m_last_reticule.m_pos, &dir, w->GetMuzzleVelocity());
+        int shots = 1;
+
+        if (ammo)
+            shots = ammo->GetNumProjectilesFired();
+        if (w->IsDirectFire())
+            Shot__10CSealStatsFRC10CZSealBody((char *)m_body + 0x58c, m_body);
+        for (m_shot = 0; m_shot < shots; m_shot++) {
+            CPnt3D v = dir;
+            CKitBody *body = (CKitBody *)m_body;
+
+            if (body->m_eb8) {
+                ((CEntity *)body->m_eb8)->Virtual68(&v);
+                ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->PerturbAimVector(&v);
+            } else {
+                ((CKitSealCtrl *)body->m_control)->PerturbAimVector(&v);
+                ((CEntity *)m_body)->m_quat.Apply(&v, &v, 1);
+            }
+            func_005C5340(this, index, &fp, &v, &((CKitBody *)m_body)->m_velW);
+            if (!WeaponIsLauncherMode(index)) {
+                if ((t != 81 || m_shot == 0) && !((CKitThrowBody *)m_body)->InfiniteAmmo()) {
+                    int n = wrap(index, m_num_items);
+
+                    m_weaponinfoChanged = true;
+                    if (m_reloads[n][m_currentmag[n]] > 0)
+                        m_reloads[n][m_currentmag[n]]--;
+                }
+            } else {
+                int k = FindItemWithAmmo((EQUIP_ITEM)m_firemode[index]);
+
+                if (k != -1 && !((CKitThrowBody *)m_body)->InfiniteAmmo()) {
+                    int n = wrap(k, m_num_items);
+
+                    m_weaponinfoChanged = true;
+                    if (m_reloads[n][m_currentmag[n]] > 0)
+                        m_reloads[n][m_currentmag[n]]--;
+                }
+            }
+        }
+    }
+}
+
+/* the node the explosive is being placed on, its place and how far it was then (0x66B680's neighbours:
+ * HandleFireWeapon 0x5BE9A0 sets them, this tick reads them; the names ours) */
+
+/* metres in the world's units: the argument cast so that the product by 1 stays (a plain `1.0f * scale`
+ * folds; the name ours) */
+static inline float Metres(float m)
+{
+    return (float)m * zdb::CWorld::m_scale;
+}
+
+/* a point less another, by value (Added's shape; the name ours) */
+static inline CPnt3D Subbed(const CPnt3D &a, const CPnt3D *b)
+{
+    CPnt3D r;
+
+    a.Sub(b, &r);
+    return r;
+}
+
+/* the explosives' frame: the wait after the pull run down and, when it is out, by the item's kind -- the
+ * placed explosive set on the node it was aimed at (when that node still takes it and has not moved) or
+ * back in the bag, the mines and the bomb set on the floor under the hand, or a grenade let go, a player's
+ * solved at the controller's power, an AI's by its fire parameters; false while one is being placed (OVL2
+ * 0x5C1970; SOCOM 1's TickExplosives) */
+bool CZKit::TickExplosives(float dT)
+{
+    if (KitIsRemote((CKitBody *)m_body))
+        return true;
+    if (!m_item[m_selected_item])
+        return false;
+    bool place = false;
+    bool onfloor = false;
+    bool thrown = false;
+
+    if (m_waiting_to_fire && !(m_firetime < 0.0f))
+        m_firetime -= dT;
+    if (m_waiting_to_fire && m_firetime <= 0.0f) {
+        unsigned char id = m_item[m_selected_item]->m_ID;
+
+        if (id == 152 || id == 153 || id == 154 || id == 158)
+            onfloor = true;
+        else if (id == 151)
+            place = true;
+        else
+            thrown = true;
+        m_waiting_to_fire = false;
+        m_firetime = 0.0f;
+    }
+    if (place || onfloor) {
+        CPnt3D pos;
+
+        if (place) {
+            CKitHit *hit = &g_placeHit;
+
+            if (!hit)
+                return false;
+            zdb::CNode *node = data_0066B6A0;
+            zdb::CNodeEx *ex = 0;
+
+            ex = node ? node->m_nodeEx : ex;
+            CPnt3D d = CPnt3D::zero;
+
+            if (node) {
+                CopyPoint(&d, (const CPnt3D *)node->m_matrix.m_matrix[3]);
+                CMatrix m;
+
+                if (node->m_parent) {
+                    node->m_parent->BuildMTW(m);
+                    CopyPoint(&d, &(d + *(const CPnt3D *)m.m_matrix[3]));
+                }
+                CopyPoint(&d, &(d - data_0066B6B8));
+            }
+            float len = d.x * d.x + d.y * d.y + d.z * d.z;
+
+            if (!(ex && ex->Slot10(m_explosiveDamage) && len <= 0.0f)) {
+                if (m_last_selected == m_selected_item || m_last_selected < 0)
+                    SetCurItemByIndex(0);
+                else
+                    SetCurItemByIndex(m_last_selected);
+                m_last_selected = -1;
+                data_0066B6A0 = 0;
+                g_placeHit.m_poly = 0;
+                g_placeHit.m_node = 0;
+                data_0066B6B8 = CPnt3D::zero;
+                g_placeHit.m_pos = CPnt3D::zero;
+                g_placeHit.m_norm = CPnt3D::zero;
+                return false;
+            }
+            CMaterialEx *mat = CMaterialExArray::GetMaterialEx(hit->GetMaterial());
+
+            if (hit->GetMaterial() == 1)
+                return false;
+            if (!strcmp(mat->m_name, "INVISIBLE_DI"))
+                return false;
+            if ((mat->m_volumetric ? true : false) || (mat->m_liquid ? true : false))
+                return false;
+            CQuat q;
+
+            pos.x = data_0066B6A8.x;
+            pos.y = data_0066B6A8.y;
+            pos.z = data_0066B6A8.z;
+
+            q.Align(CPnt3D::unit_z, hit->m_norm);
+            HandleRemotePlaceExplosive(&pos, &q, node, node);
+            if (m_last_selected == m_selected_item || m_last_selected < 0)
+                SetCurItemByIndex(0);
+            else
+                SetCurItemByIndex(m_last_selected);
+            m_last_selected = -1;
+            return false;
+        }
+        if (onfloor) {
+            zdb::IntersectStruct *hit = GetHandFloorHit(false);
+
+            if (hit) {
+            float one = 1.0f;
+            float k;
+
+            k = (float)one;
+            k *= zdb::CWorld::m_scale;
+            if (!(hit->m_pos.y <= ((CKitThrowBody *)m_body)->m_404 - k)) {
+
+                pos.x = hit->m_pos.x;
+                pos.y = hit->m_pos.y;
+                pos.z = hit->m_pos.z;
+                HandleRemotePlaceExplosive(&pos, (CQuat *)((char *)m_body + 0x50), hit->m_node, 0);
+                if (m_last_selected >= 0) {
+                    SetCurItemByIndex(m_last_selected);
+                    m_last_selected = -1;
+                }
+                return false;
+            }
+            }
+            return false;
+        }
+    } else if (thrown) {
+        float power = ((CKitBody *)m_body)->m_control->m_11c;
+
+        m_burst_count++;
+        int sel = m_selected_item;
+
+        if (!((CKitThrowBody *)m_body)->InfiniteAmmo()) {
+            int n = wrap(sel, m_num_items);
+
+            m_weaponinfoChanged = true;
+            if (m_reloads[n][m_currentmag[n]] > 0)
+                m_reloads[n][m_currentmag[n]]--;
+        }
+        m_81c = 0.0f;
+        static CPnt3D s_handOfs(2.0f, 0.0f, 0.0f);
+        static CPnt3D s_handOfs2(2.0f, 0.0f, 0.0f);
+        void *part = ((CKitThrowBody *)m_body)->m_rhand;
+
+        if (IsCurrentBlend__10CZSealBodyCF8AnimType(m_body, TossGrenadePeekLeft__9AnimTypes))
+            part = ((CKitThrowBody *)m_body)->m_lhand;
+        CPnt3D p = CPnt3D::zero;
+
+        PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat(((CKitBody *)m_body)->m_cbody, part, &s_handOfs, &p, 0);
+        if (data_00650948) {
+            int state = ((CKitBody *)m_body)->m_state;
+            CKitThrowDyn *dyn = (CKitThrowDyn *)((char *)GetDynamics__10CZSealBodyFv(m_body) + 0x198);
+            float dist = state == 0 ? dyn->max_distance_stand : dyn->max_distance_crouch;
+            const CPnt3D *zero = &CPnt3D::zero;
+
+            if (KitIsPlayer((CKitBody *)m_body)) {
+                CKitThrowBody *b = (CKitThrowBody *)m_body;
+                CDynGrenade g;
+
+                g.Initalize(b->m_node, b->m_aim, dist, power, p);
+                func_005C5340(this, m_selected_item, &g.m_pos, &g.m_vel, zero);
+            } else if (KitIsAi((CKitBody *)m_body)) {
+                CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
+                CPnt3D q;
+
+                ((CKitThrowBody *)m_body)->m_node->Transform(&p, &q, 1);
+                CKitFireParams *fp = (CKitFireParams *)((char *)ai + 0x370);
+
+                func_0055EAA0(ai, fp, true);
+                func_005C5340(this, m_selected_item, &q, &fp->m_vel, zero);
+                fp->m_flags &= 0xFBDFFFFF;
+                fp->m_58 = 0.0f;
+            }
+            if (m_last_selected >= 0) {
+                SetCurItemByIndex(m_last_selected);
+                m_last_selected = -1;
+            }
+        }
+    }
+    return true;
 }
 
 /* the per-item pointers at 0x834, one place on so that item -1 has slot 0: read (or 0 past the

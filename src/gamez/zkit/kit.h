@@ -43,7 +43,9 @@ struct CKitCtrl {
     /* (inlined with false: the target keeps `andi v0,zero,1`, the mask unfolded) */
     void SetThrowing(bool b) { m_throwing = b; }
 
-    unsigned char _0[0x130];
+    unsigned char _0[0x11c];
+    float m_11c;   // 0x11c: the throw's power (TickExplosives)
+    unsigned char _120[0x130 - 0x120];
     float m_130;   // 0x130
     unsigned char _134[0x170 - 0x134];
     unsigned char m_170 : 4;   // 0x170
@@ -254,6 +256,9 @@ public:
      * alive -- the slot's item kind noted (OVL2 0x5C48B0, new in SOCOM II: CZSealBody::ReCreate
      * calls it; the name ours) */
     void SetHandFireMode(int mode);
+    /* the kit told of the SEAL's death (OVL2 0x5B8920, new in SOCOM II: CZSealBody::OnDeath calls it; the
+     * name ours) */
+    void OnDeath();
     /* the item in hand's node hung under a part of the body -- hidden, made the part's child, kept in
      * the body's attachment of a kind (OVL2 0x5C6980, new in SOCOM II: 0x5C50B0 hangs it on
      * "aimnodes"; the name ours) */
@@ -350,6 +355,8 @@ public:
      * trigger (OVL2 0x5BE9A0; SOCOM 1's HandleFireWeapon) */
     bool TickExplosives(float dT);
     void HandleFireWeapon(int index, float a, float b);
+    /* an explosive placed (SOCOM 1's HandleRemotePlaceExplosive with two more arguments; OVL2 0x5BC730) */
+    class PlacedExplosive *HandleRemotePlaceExplosive(const CPnt3D *pos, const CQuat *rot, zdb::CNode *on, zdb::CNode *node2);
     /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
      * II: the name ours) */
     void StartSniperKick();
@@ -760,7 +767,7 @@ public:
     float m_retmin;   // 0x874 (SOCOM 1's 0x858)
     int m_tracercount;   // 0x878 (SOCOM 1's 0x85c)
     float m_firetime;   // 0x87c (SOCOM 1's 0x860)
-    unsigned char _880[0x884 - 0x880];
+    int m_shot;   // 0x880: the projectile of a shot being fired (HandleFireWeapon)
     zdb::CLightMap *m_lightMap;   // 0x884 (SOCOM 1's 0x864)
     CSnd *m_rldsnd;   // 0x888 (SOCOM 1's 0x868)
     CSnd *m_clicksnd;   // 0x88c (SOCOM 1's 0x86c)

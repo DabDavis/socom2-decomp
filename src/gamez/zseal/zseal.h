@@ -516,6 +516,11 @@ public:
     /* how much of a line between two points the maps' cells let the eye through (ai_maps.h's, OVL2
      * 0x538E30: the visibility score 0x60AA20 asks it of the ray, flags 1) */
     float ComputeLineVisibility(const CPnt3D *from, const CPnt3D *to, unsigned int flags);
+    /* (ai_maps.h's; the kit, round 62: 0x5F8D40's) */
+    bool CanSeePoint(const CPnt3D *from, const CPnt3D *to, float rangeSq);
+    bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    /* a cell to a point, raised by a height (ai_maps.h's; the kit, round 62: 0x5CAC00) */
+    float ComputeLineVisibility(const CAiMapLoc &from, const CPnt3D *to, unsigned int flags, float height);
 };
 
 extern CAiMaps AiMaps;
@@ -1007,7 +1012,10 @@ public:
     /* the scan's reach, scaling the yaw throttle's look in Tick (SOCOM 1's m_scan_limits, at 0x60 in
      * both builds: the scan timer ends there in each) */
     float m_scan_limits;   // 0x60
-    unsigned char _64[0x80 - 0x64];
+    unsigned char _64[0x70 - 0x64];
+    /* (the kit, round 62: the depth and the vector ContainsPoint leaves, 0x5CAC00's) */
+    float m_cone_dot;   // 0x70
+    float m_cone_vec[3];   // 0x74
     /* the view cone's sizes (SOCOM 1's CAiCone m_view_cone at 0x70 in both builds: its m_height,
      * m_radius, m_point_radius and m_inv_height, which the constructor makes 1, 1, 0 and 1 in member
      * order; the kit's seal_sensors.cpp reads the whole cone through a view of its own) */
@@ -1015,7 +1023,8 @@ public:
     float m_cone_radius;   // 0x84
     float m_cone_point_radius;   // 0x88
     float m_cone_inv_height;   // 0x8c
-    unsigned char _90[0xa8 - 0x90];
+    float m_cone_pos[3];   // 0x90 (the kit, round 62: 0x5CAC00's)
+    float m_cone_dir[3];   // 0x9c
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
     /* the alertness: its value and the goal it holds to (SOCOM 1's m_aware, 0xc0 there -- SOCOM II
      * has no m_vissens before it; the SetAiAware pair 0x561110/0x5612F0 set it, the bands of its value
@@ -1180,6 +1189,35 @@ struct CAiPathBytes {
     unsigned char _90[0x9c - 0x90];
     void *m_9c;   // 0x9c: the points vector's second word
     unsigned char _a0[0xa8 - 0xa0];
+};
+
+/* CAiEvent's members with no constructor or destructor: the AI's own event reached as a member, its addresses plain
+ * (through a cast of m_event each is a common subexpression, HandleEvent holds them in saved registers). Not CAiEvent
+ * itself in the union: ~SEAL_AI_PARAMS would destroy it, on top of the call its hand-written body makes (objcmp: 0x573E60
+ * differs). The assignment is CAiEvent's implicit one, member by member (the kit, round 62; the names ours) */
+extern "C" int Resize__5CBitsFUi(void *bits, unsigned int count);
+class CBitsFields {
+public:
+    CBitsFields &operator=(const CBitsFields &o)
+    {
+        Resize__5CBitsFUi(this, o.m_bits);
+        memcpy(m_vec, o.m_vec, ((m_bits >> 5) + 1) * 4);
+        return *this;
+    }
+
+    int m_bits;   // 0x0
+    unsigned int *m_vec;   // 0x4
+};
+
+class CAiEventFields {
+public:
+    CPnt3D m_pos;   // 0x0
+    float m_rangeSq;   // 0xc
+    float m_duration;   // 0x10
+    int m_owner;   // 0x14
+    unsigned int m_18;   // 0x18: the id, the visible bit and the kind
+    unsigned int m_userdata;   // 0x1c
+    CBitsFields m_bits;   // 0x20: a user assignment, so the class's implicit one goes member by member
 };
 
 /* a route: a path and its state (a byte enum: copied with lb, compared with lbu; the class and its
@@ -1397,7 +1435,10 @@ public:
     CAiMapLoc m_61c;   // 0x61c: the constructor sets both invalid, 0x620 first
     CAiMapLoc m_620;   // 0x620
     CAiMapLoc m_624;   // 0x624: the cell the SEAL last left (UpdateAiMapLoc; the name ours)
-    unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
+    union {
+        unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
+        CAiEventFields m_ev;   // (the kit, round 62: the same, reached without a cast: HandleEvent's addresses)
+    };
     unsigned char m_eventQueue[0xc];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8: SOCOM II's lists are 0xc bytes)
     /* the kinds of event the AI hears (SOCOM 1's m_eventMask, 0x4b8: UpdateEventMask, OVL2 0x572D70,
      * stores it at 0x65c) */
