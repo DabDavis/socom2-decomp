@@ -12110,8 +12110,8 @@
 0x006209B0 0xD8 func_006209B0  # OVL2
 0x00620A88 0xB8 func_00620A88  # OVL2 unaligned
 0x00620B40 0x98 func_00620B40  # OVL2
-0x00620BD8 0x88 func_00620BD8  # OVL2 unaligned
-0x00620C60 0xC4 func_00620C60  # OVL2
+0x00620BD8 0x88 NetRegisterMessageStart  # OVL2 unaligned; s1:calls+order (gcc r21b: the game's message registration 0x2B8660 calls it before each run of 0x620C60 calls, as SOCOM 1's DMERegister__Fv calls NetRegisterMessageStart before its NetMessageField calls; Dme.c's locked wrapper of 0x623EF8, the first of SOCOM 1's object NetRegisterMessageStart .. NetRegisterDataStream, wrapped in that order -- the API name on the wrapper, round 7b)
+0x00620C60 0xC4 NetMessageField  # OVL2; s1:calls+order (gcc r21b: called (message, &message.field, size, count) per field after 0x620BD8 in the game's registration 0x2B8660, as SOCOM 1's DMERegister__Fv calls NetMessageField(base, field, size, count) after NetRegisterMessageStart; Dme.c's locked wrapper of 0x623F00, the object's second function, its four parameters SOCOM 1's)
 0x00620D28 0x88 NetRegisterObjectStart  # OVL2 unaligned; s1:calls (the DME's; every registration opens with it, as SOCOM 1's) -- the states lane
 0x00620DB0 0xE4 NetObjectField  # OVL2; s1:calls (the DME's; once per field between start and structure, as SOCOM 1's) -- the states lane
 0x00620E98 0xB8 NetRegisterStructure  # OVL2 unaligned; s1:calls (the DME's; closes each registration before the callbacks, as SOCOM 1's) -- the states lane
