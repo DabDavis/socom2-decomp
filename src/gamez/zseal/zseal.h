@@ -507,7 +507,8 @@ public:
      * its first caller, inlines itself eight times; a caller inlines it once -- the name ours) */
     CSealUnit *GetTop() { return m_parent ? m_parent->GetTop() : this; }
 
-    unsigned char _8[0x60 - 0x8];
+    unsigned char _8[0x5c - 0x8];
+    unsigned int m_mask;   // 0x5c: the squad's bit, 1 << (number & 31) (new in SOCOM II; the name ours)
     CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
     unsigned char _64[0x9c - 0x64];
     /* the squad's current order: its kind a byte at 8 (a kill by the local player under order 19
@@ -1181,7 +1182,10 @@ public:
      * bit 19: the sightings ticked in PostTick (the names ours) */
     unsigned int m_aibit18 : 1;
     unsigned int m_aibit19 : 1;
-    unsigned int m_bits20 : 12;
+    unsigned int m_bits20 : 2;
+    /* bit 22: set when a player's detonated shot hits the AI (OnWeaponHit 0x572330; the name ours) */
+    unsigned int m_aibit22 : 1;
+    unsigned int m_bits23 : 9;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
     unsigned char m_26d;   // 0x26d (cleared with 0x26c by the constructor; the name ours)
@@ -1363,6 +1367,10 @@ public:
     /* never on in the AI mode 7 (OVL2 0x557EE0) */
     virtual void SetDoAiMapCollide(bool on);
     virtual void OnSetHealth(float health, float old);
+    /* a projectile's hit taken (SOCOM 1's; OVL2 0x572330, seal_ai.cpp's) */
+    virtual void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj);
+    /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */
+    virtual void OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* the state sent to the other consoles, as a word's bits (OVL2 0x56F6C0, slot 0x6C) */

@@ -350,7 +350,7 @@ struct CAiTargetFlags {
     unsigned int m_flags;   // 0x2c
 };
 
-extern "C" int func_0060A850(void *target);
+extern "C" bool func_0060A850(void *target);
 
 /* whether the current state is of kind 2 with flag 0x20 (0x559000's shape) */
 static inline bool IsKind2Flag20(CAiState *s)
@@ -1554,6 +1554,293 @@ extern "C" bool func_00572D30(CSealCtrlAi *ai, CEntity *e)
     return ai->m_26c == 4 || (e && !(e->m_team & me->m_team));
 }
 
+extern "C" {
+/* an alert from an entity taken in (OVL2 0x572240, below: auto-inlined into OnWeaponEvent) */
+void func_00572240(CSealCtrlAi *ai, CEntity *alert, float amount);
+/* how near a player's shot must pass to be called out, and the alert's factor (OVL2 data 0x64FFF8,
+ * 70, as SOCOM 1's guarded static; 0x64FDE0, 2) */
+extern float data_0064FFF8;
+extern float data_0064FDE0;
+}
+
+/* a weapon of the grenades' 121-128, and of the explosives' 151-153 (inlines, the names ours: each
+ * test's bool through the null test's own, the target masks at the second's join) */
+static inline bool IsGrenadeId(EQUIP_ITEM id)
+{
+    switch (id) {
+    case 121:
+    case 122:
+    case 123:
+    case 124:
+    case 125:
+    case 126:
+    case 127:
+    case 128:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static inline bool IsGrenade(CZWeapon *w)
+{
+    return w ? IsGrenadeId(w->m_ID) : false;
+}
+
+static inline bool IsExplosiveId(EQUIP_ITEM id)
+{
+    switch (id) {
+    case 152:
+    case 153:
+    case 151:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static inline bool IsExplosive(CZWeapon *w)
+{
+    return w ? IsExplosiveId(w->m_ID) : false;
+}
+
+/* a projectile's flight heard: awake and alive, a shooter to take as a target whose line passes near
+ * -- the player's own shot within 70 called out as an event of 9 -- within the hearing range an alert
+ * by how near, unless a grenade's or an explosive's, and the shooter's target flagged (SOCOM 1's
+ * OnWeaponEvent, 0x31C bytes: SOCOM II's takes the alert from 0x572240, new, for SOCOM 1's point,
+ * event and alertness; OVL2 0x5729F0) */
+void CSealCtrlAi::OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data)
+{
+    CZSealBody *player;
+    CEntity *e = m_entity;
+    int id;
+    bool a = !(m_aibit9 || m_aibit8);
+
+    if (!a || !e->m_isAlive)
+        return;
+    float dist = 999999.0f;
+    const CPnt3D *pos = &e->m_posW;
+    const CPnt3D *from = &proj->m_framestartpos;
+    const CPnt3D *to = &proj->m_frameendpos;
+    CEntity *shooter = CEntity::m_list.GetEntityById(proj->m_shooterID);
+    bool taken = func_00572D30(this, shooter);
+
+    id = proj->m_shooterID;
+    player = ftsGetPlayer();
+    if (taken && pos->DistToVector(from, to, &dist)) {
+        if (dist < data_0064FFF8 && id == player->m_id)
+            ((CSealCtrl *)player->m_control)->CreateAiEvent((CAiEvent::EVENT)9, 0.5f, 1500.0f, false, &player->m_posW, e->m_id);
+        if (dist < m_aiParams.thip_range) {
+            if (!IsGrenade(proj->m_weapon) && !IsExplosive(proj->m_weapon))
+                func_00572240(this, shooter, data_0064FDE0 * (1.0f - dist / m_aiParams.thip_range));
+            CTarget *t = m_entity->m_targets.FindTarget(shooter);
+
+            if (t)
+                t->m_flags |= 0x400;
+        }
+    }
+}
+
+/* whether a map action is a door (an inline bool: the test's type written in the `if` loses the pad at
+ * the type's join, its false arm then filling the branch's delay slot; the name ours) */
+static inline bool ActionIsDoor(const CAiMap::action *a)
+{
+    return a->GetType() == 1;
+}
+
+/* what the AI is at, as the team names show it: by its state's kind and the state's flags, a follower
+ * of an AI leader as the leader is (OVL2 0x5743C0, new in SOCOM II: CTeamNames::Tick asks it; the name
+ * unknown). The cases written so, their tests run reversed */
+extern "C" const char *func_005743C0(CSealCtrlAi *ai)
+{
+    CEntity *e = ai->m_entity;
+    AI_STATE kind = ai->GetJumpFlag();
+    CZSealBody *leader = ai->m_unit->GetLeader();
+    bool lead = e == leader;
+    bool leaderAi = leader->m_control ? ((CSealCtrl *)leader->m_control)->IsAi() : false;
+    CAiState *s = ai->GetAiState();
+    const char *r = 0;
+
+    switch (kind) {
+    case 0:
+        r = "HOLDING";
+        break;
+    case 2:
+        if (s->m_flags & 0x20)
+            r = "COVERING";
+        else if (s->m_flags & 0x80)
+            r = "OVERWATCH";
+        else
+            r = "HOLDING";
+        break;
+    case 8:
+        if (s->m_flags & 8)
+            r = "LEADING";
+        else if (s->m_flags & 0x10)
+            r = "ATTACKING";
+        else if (s->m_flags & 0x100)
+            r = "CLEARING";
+        else if (s->m_flags & 0x200)
+            r = "REGROUPING";
+        else
+            r = "TRAVELING";
+        break;
+    case 4:
+        r = "DEPLOYING";
+        break;
+    case 10:
+        if (s->m_phase < 8)
+            r = "BREACHING";
+        else
+            r = "CLEARING";
+        break;
+    case 9:
+        if (!lead && leaderAi)
+            r = func_005743C0(((CSealCtrl *)leader->m_control)->GetSealCtrlAi());
+        else
+            r = "FOLLOWING";
+        break;
+    case 5:
+        r = "LASING";
+        break;
+    case 12:
+    case 26:
+        r = "ENGAGING";
+        break;
+    case 11: {
+        CAiSAction *a = s && s->m_state == AI_STATE_ACTION ? (CAiSAction *)s : 0;
+        CNodeAction *na = a ? a->m_58 : 0;
+
+        if (na) {
+            CAiMapLoc loc;
+            CAiMap::action *act = 0;
+
+            if (AiMaps.GetActionById(na->m_id, loc, &act) && ActionIsDoor(act)) {
+                if (a->m_5c == 1)
+                    r = "OPENING";
+                else
+                    r = "CLOSING";
+            }
+        }
+        if (!r)
+            r = "WORKING";
+        break;
+    }
+    }
+    return r;
+}
+
+/* the AI's anger raised by a time's worth, when the switch is on (an inline: OVL2 data 0x64FDF8, a
+ * byte, and 0x64FE00, 60 a second; the name ours) */
+extern "C" {
+extern unsigned char data_0064FDF8;
+extern float data_0064FE00;
+extern float data_0064FDD8;
+/* the noise a shot's point takes when it is no target's, the anger's rate (OVL2 data 0x64FDB0;
+ * 0x64FE20, the range's factor at 0x70C) */
+extern PNT2D data_0064FDB0;
+extern float data_0064FE20;
+/* the held team's response to a hit (OVL2 0x606DB0, seal_airesponse.cpp's) and whether the player hit
+ * is the one held for (OVL2 0x572880, below) */
+void func_00606DB0(CAiState *s, CSealCtrlAi *ai, CEntity *e);
+bool func_00572880(CZSealBody *seal, CSealCtrlAi **ai, CAiState **state);
+}
+
+static inline void AddAnger(CSealCtrlAi *ai, float t)
+{
+    if (data_0064FDF8)
+        ai->m_400 += data_0064FE00 * t;
+}
+
+/* a projectile's hit taken: the shooter's team told, an enemy's shot heard as a voice's event and its
+ * point (the shooter's, or behind the shot) noised, an alert from the shooter unless a grenade's or an
+ * explosive's; a player's own shot angers a Navy SEAL unless it is a grenade's -- bit 22 set for a
+ * detonation; the time kept, nothing at all done twice in a frame (OVL2 0x572330: SOCOM 1's OnWeaponHit
+ * grown) */
+void CSealCtrlAi::OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CZSealBody *shooter = AsSeal(CEntity::m_list.GetEntityById(proj->m_shooterID));
+    bool enemy = func_00572D30(this, shooter);
+
+    if ((float)data_004365C0 - m_40c == 0.0f)
+        return;
+    if (shooter && shooter->IsPlayer()) {
+        if (data_0066AFE0) {
+            CAiState *state = 0;
+            CSealCtrlAi *ai = 0;
+
+            if (func_00572880(shooter, &ai, &state))
+                func_00606DB0(state, ai, seal);
+        } else if (enemy) {
+            CSealUnit *unit = ((CSealCtrl *)shooter->m_control)->m_unit;
+
+            if (unit) {
+                unsigned int bit = unit->m_mask;
+                bool seen = (((const CEntity *)seal)->m_UnitsSeenBy & bit) != 0;
+
+                if (!seen)
+                    seal->m_UnitsSeenBy |= bit;
+                if (!seen)
+                    unit->Notify(shooter, UNIT_MESSAGE_0, seal);
+            }
+        }
+    }
+    if (enemy) {
+        func_0055FEE0(this, (CAiEvent::EVENT)2);
+
+        CPnt3D p;
+
+        if (shooter) {
+            CTarget *t = m_entity->m_targets.FindTarget(shooter);
+
+            p = shooter->m_posW;
+            if (t)
+                t->m_flags |= 0x400;
+        } else
+            proj->m_vel.Scale(-100.0f, &p);
+        if (((CAiTargetFlags *)m_67c)->m_entity != shooter)
+            ai::AddNoise(&p, data_0064FDB0);
+        m_70c *= data_0064FE20;
+        if (!IsGrenade(proj->m_weapon) && !IsExplosive(proj->m_weapon))
+            func_00572240(this, shooter, data_0064FDD8);
+    } else if (shooter && shooter->IsPlayer()) {
+        CZWeapon *w = proj->m_weapon;
+        EQUIP_ITEM item = w ? w->m_ID : (EQUIP_ITEM)255;
+
+        if (proj != seal->m_lastprojectile) {
+            if (proj->WasDetonated()) {
+                switch (item) {
+                case 159:
+                case 127:
+                case 128:
+                case 122:
+                case 123:
+                    break;
+                default:
+                    m_aibit22 = 1;
+                    break;
+                }
+            } else {
+                switch (item) {
+                case 159:
+                case 151:
+                case 127:
+                case 128:
+                case 122:
+                case 123:
+                case 121:
+                    break;
+                default:
+                    AddAnger(this, 1.0f);
+                    break;
+                }
+            }
+        }
+    }
+    m_40c = data_004365C0;
+}
+
 /* a valve, or none past the three (OVL2 0x5621C0; SOCOM 1's, which had four) */
 CValve *CSealCtrlAi::GetValve(SEAL_VALVE v) const
 {
@@ -1856,7 +2143,7 @@ extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
 }
 
 /* (OVL2 0x60A850, unowned: a test of the AI's object at 0x67C) */
-extern "C" int func_0060A850(void *p);
+extern "C" bool func_0060A850(void *p);
 
 /* the AI's target held, with its bit 9 (an inline bool, the kit lane's TargetHeld: the target
  * materialises the `&&`) */
@@ -3039,10 +3326,8 @@ extern "C" bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance)
     case STANCE_PRONE: {
         CTarget *t = (CTarget *)ai->m_67c;
         exposed = false;
-        bool ok = (bool)func_0060A850(t);
+        bool ok = func_0060A850(t) && (t->m_flags & 0x200);
 
-        if (ok)
-            ok = (t->m_flags & 0x200) != 0;
         if (ok) {
             if (!Bit16Only(ai)) {
                 if (t->m_vec.y * t->m_vec.y / t->m_distSq > 0.07f)
@@ -4528,25 +4813,6 @@ extern float data_004365C0;   /* (OVL1 data: the delay a new stance waits, read 
 extern float data_00650000;
 }
 
-/* what 0x572240 is handed: a table whose slot 0x30 fills a point by an amount, and a word at 4 (the AI
- * states' 0x5F8D40 and 0x5F95D0 pass it; a stand-in, the names ours) */
-class CAiAlert {
-public:
-    virtual void V08();
-    virtual void V0C();
-    virtual void V10();
-    virtual void V14();
-    virtual void V18();
-    virtual void V1C();
-    virtual void V20();
-    virtual void V24();
-    virtual void V28();
-    virtual void V2C();
-    virtual void Fill(CPnt3D *p, float amount);   /* +0x30 */
-
-    int m_4;   // 0x4
-};
-
 extern "C" {
 /* the amount for none given, the range's factor, and the range that stands (OVL2 data 0x64FDD8,
  * 0x64FDF0, 0x64FE48, read as variables) */
@@ -4569,14 +4835,14 @@ static inline void ScaleRange(CSealCtrlAi *ai, float k)
  * unknown). Byte-exact since round 33: the range's second load (`lwc1; mul.s $f0,$f0,$f2`) is the
  * const view's in ScaleRange -- the kit's round-34 rule for two loads of one member with nothing
  * between */
-extern "C" void func_00572240(CSealCtrlAi *ai, CAiAlert *alert, float amount)
+extern "C" void func_00572240(CSealCtrlAi *ai, CEntity *alert, float amount)
 {
     if (alert) {
         if (amount == 0.0f)
             amount = data_0064FDD8;
         ai->m_718 += amount;
-        alert->Fill(&ai->m_724, amount);
-        ai->m_730 = alert->m_4;
+        alert->GetTargetPosW(&ai->m_724);
+        ai->m_730 = alert->m_id;
         ScaleRange(ai, data_0064FDF0);
 
         CAiGroup *g = ai->GetGroup();
