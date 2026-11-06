@@ -240,8 +240,8 @@ class CSkbSplit {
 public:
     CSkbSplit() : m_n(0) {}
     inline CSkbSplit(int n, int k);
-    unsigned int Sum(int n);
-    unsigned int Part(int i);
+    inline unsigned int Sum(int n);
+    inline unsigned int Part(int i);
     void Next();
     /* the parts through a reference: the walks' vector address hoisted (ours) */
     CSkbVec<unsigned int> &Parts() { return m_parts; }
@@ -288,7 +288,7 @@ inline CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
  * opt_propagation off` in the body (the kit's round 56) 13, opt_common_subs off 0x108,
  * opt_loop_invariants off 0xB0, opt_strength_reduction / opt_lifetimes off 12 (build/scratch/ui/
  * v_sum.py). */
-unsigned int CSkbSplit::Sum(int n)
+inline unsigned int CSkbSplit::Sum(int n)
 {
     unsigned int s = 0;
 
@@ -298,7 +298,7 @@ unsigned int CSkbSplit::Sum(int n)
 }
 
 /* a split's part i (0x391E50; the composer calls it out of line; ours) */
-unsigned int CSkbSplit::Part(int i)
+inline unsigned int CSkbSplit::Part(int i)
 {
     CSkbVec<unsigned int> &p = m_parts;
 
@@ -306,7 +306,7 @@ unsigned int CSkbSplit::Part(int i)
 }
 
 /* a sequence's jamo i, sign-extended (0x391E20; the composer calls it out of line; ours) */
-char SkbSeqJamo(SKBSEQ *seq, int i)
+inline char SkbSeqJamo(SKBSEQ *seq, int i)
 {
     return seq->m_jamo[i];
 }
@@ -334,14 +334,16 @@ inline bool SkbMatchComplete(CSkbPieces *pieces, std::vector<char> *jamo, int st
                 for (q = 0; q < nseq; q++) {
                     SKBSEQ *seq = rule->Seq(q);
 
-                    if (split.Part(r) == seq->m_jamo.size()) {
+                    if (split.Part(r) == seq->Size()) {
                         int j;
 
-                        for (j = 0; j < (int)seq->m_jamo.size(); j++) {
-                            if ((unsigned char)(*jamo)[start + j] != (unsigned char)SkbSeqJamo(seq, j))
+                        for (j = 0; j < seq->Size(); j++) {
+                            JAMO a = (JAMO)(*jamo)[start + j];
+
+                            if (a != (JAMO)SkbSeqJamo(seq, j))
                                 break;
                         }
-                        if (j >= (int)seq->m_jamo.size()) {
+                        if (j >= seq->Size()) {
                             bool v2 = complete->Val2(i);
 
                             pieces->Append(*seq, v2);
@@ -383,14 +385,14 @@ inline bool SkbMatchWhole(CSkbPieces *pieces, std::vector<char> *jamo, int n)
                 for (q = 0; q < nseq; q++) {
                     SKBSEQ *seq = rule->Seq(q);
 
-                    if (split.Part(r) == seq->m_jamo.size()) {
+                    if (split.Part(r) == seq->Size()) {
                         int j;
 
-                        for (j = 0; j < (int)seq->m_jamo.size(); j++) {
+                        for (j = 0; j < seq->Size(); j++) {
                             if ((unsigned char)(*jamo)[sum + j] != (unsigned char)SkbSeqJamo(seq, j))
                                 break;
                         }
-                        if (j >= (int)seq->m_jamo.size()) {
+                        if (j >= seq->Size()) {
                             bool v2 = complete->Val2(i);
 
                             pieces->Append(*seq, v2);
@@ -643,6 +645,13 @@ unsigned short CSkbPieces::PrevCode()
     return (int)size() >= 2 ? (unsigned short)(*this)[size() - 2].m_code : 0;
 }
 
+/* a piece's destructor (0x390760; its jamo string's whole chain inlined here, six this-tests; every
+ * caller -- PopPiece, the pieces' clear and erase -- calls it out of line: pinned) */
+#pragma auto_inline off
+SKBPIECE::~SKBPIECE()
+{
+}
+
 /* the last piece destroyed (0x390740) */
 void CSkbPieces::PopPiece()
 {
@@ -654,11 +663,12 @@ void CSkbPieces::RemovePiece()
 {
     PopPiece();
 }
+#pragma auto_inline reset
 
 /* an empty piece added (0x390720) */
 void CSkbPieces::AddPiece()
 {
-    resize(((CSkbCount &)size_).Get() + 1);
+    resize(((const std::vector<SKBPIECE> *)this)->size() + 1);
 }
 
 /* the next split of the same total into as many parts, none (the parts cleared) after the last

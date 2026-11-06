@@ -71,6 +71,8 @@ class CJamoStr : public CSkbVec<char> {
 /* a composed piece: its jamo and its character code (16 bytes; ours: the destructor 0x390760, six
  * tests; the code's own constructor 0x392760) */
 struct SKBPIECE {
+    ~SKBPIECE();
+
     CJamoStr m_jamo;   // 0x0
     CInit<unsigned short, 0> m_code;   // 0xc
 };
@@ -82,6 +84,8 @@ struct SKBPIECE {
  * (block copies at both, a user copy constructor still pairing the loads) do not give */
 struct SKBSEQ {
     SKBSEQ() {}
+    /* (0x391E40: the composer's out-of-line copy) */
+    int Size() { return m_jamo.size(); }
 
     std::vector<char> m_jamo;   // 0x0
     CInit<int, 0> m_val;   // 0xc
