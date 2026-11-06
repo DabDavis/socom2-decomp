@@ -2066,6 +2066,67 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 40** (all ten open rows byte-exact: the turret aim 0x3A8910 and 0x3B0A70 with no device;
+  CVehicle::~CVehicle 0x3ACA60, zVid_Init 0x3B1200, CVisual::ApplyDecal 0x3B3AB0, CMesh::ApplyDecal 0x3B8680,
+  CDecal::AddDecal 0x3BECA0, CWaterRipple::Flatten 0x3C0CF0, CWaterRippleManager::ClearGroups 0x3C2A10 and Ripple 0x3C2CB0
+  through marked stand-ins, the original's spelling unknown; the lane's units 792 of 797, the five misses the MSL's band
+  inserts and two draft-held copies):
+  - WHICH ENUMS AREN'T PROPAGATED (the game states' round 53, refined): an unsigned 4-byte enum holds a pointer or word, a
+    1-byte enum a byte; a 4-byte enum holding a zero-extended byte folds, and a signed enum behaves as int and folds;
+  - A NO-CODE READ: `asm { beq x, x, L1; L1: }` reads x for a call's argument order and costs nothing, the branch to the
+    next instruction removed later -- every C read dies before that order, an asm `move` is dropped, an instruction that
+    remains also counts but costs its word, and the label pads with a nop if it lands misaligned (CMesh::ApplyDecal's last
+    2);
+  - A LATE-FOLDING GUARD: a struct flag stored outside the loops and read through a reference bound at the read (`F &r = f;
+    if (r.on) p = &x;`) survives pass 0's loop phase as conditional, then folds to a plain per-iteration assignment in pass
+    1; a store inside the loop gets pulled out, a reference bound at the function's top never folds (Ripple's per-strip
+    pointer, 5);
+  - `K * (float)x`, x a float local holding a constant, stays unfolded to the back end and the product is hoisted at run
+    time (Flatten); named short locals defined at a body's top and read in a later block are not expression-propagated, so
+    IRO_PullOutInvariantAssignments pulls them into the out-of-line guard-plus-preheader, and a third local for an equal
+    value makes a third pull;
+  - a li whose store is ready at once gets that store next, so a run of such pairs gives a zero store no slot, and a li
+    whose store is not ready lets the first ready zero store in behind it: where an enum-typed constant is defined decides
+    where zero stores land (zVid_Init, whose wrong data symbols for all those rounds showed only as WRONG REFERENCE at d=0:
+    a wrong data symbol is invisible until the code aligns);
+  - READ COLOURS BY HAND: a node's register implies a coloured neighbour for each lower register, which gives the
+    code-generation order -- for 0x3B0A70 w, 640, h, 448, y, x led to the plain source form; a variable two neighbours over
+    K is deferred (AddDecal's prim, reached by computing strip just before its first store); read igreplay's last record
+    when a function spills;
+  - FLATTENING A TALL CHAIN AT LEVEL 5: calling a member's destructor from the function's own text inlines it whole
+    (`g->m_nodes.~CNodeVector()`, six high at a delete site: ClearGroups), and holding a member as raw words lets the
+    constructor and destructor chains differ in height (~CVehicle's CVehicleRegion). Both rows also close at `#pragma
+    inline_depth(6)`, each noted in its function's comment; the level-5 forms were kept, needing no pragma;
+  - the turret's y-first schedule came from assigning x, y, z and storing z, x, y (432 orders tried), not from y-first
+    source.
+- **Tells from the SEALs, round 58** (22 byte-exact: seal_ai.cpp's OnWeaponEvent 0x5729F0, OnWeaponHit 0x572330, 0x5743C0,
+  0x56A8E0; seal_env.cpp's HandleLanding 0x5AF590, DropItem 0x59F730, PickupItem 0x59F0C0, HandleSealStep 0x5A3570,
+  RemoteWeaponDamageVictim 0x5A1B80, HandleGrenadeExplosion 0x5A0E70, CanTraverse 0x5B3CE0 and seven more; seal_create.cpp's
+  PostCreateSeal 0x599F00 and ReCreate 0x599B60; AnimPush 0x5777D0, PrePostTick 0x5506A0; five rows named; 0x60A850 back to
+  bool at no cost; SetAiMode, SetTarget and ImpactFront written open):
+  - SEARCH THE TREE FOR A SHAPE FIRST: CSealCtrlAi::AiStateIs already has the explicit-false-arm shape (`b J; sltiu; nop; E:
+    move; nop; J:`), and the stack's Is threads it away -- many tries went before finding it;
+  - reading `w->m_x` twice with a call between keeps the value through IRO_CommonSubs, numbered above the loop's scalarised
+    iterator, where named locals number below it (PostCreateSeal); values read through an expression inline get temporaries
+    above all named locals, spilled in 16-byte slots where named locals take 4 (ReCreate); a bare declaration at the top
+    sets the volatile numbering too (AnimPush);
+  - a `for` over a local bound unrolls eightfold, a guarded do-while does not; with a global bound the `for` does not unroll
+    either but reloads the global each pass (AnimPush);
+  - `(unsigned char)bit != 0` gives andi; sltu where the bare cast folds; an int-returning inline of a float compare keeps
+    li 1; c.le; bc1t; move zero; andi where a bool inline folds into the branch; `bool r = f(); return r;` adds an andi that
+    `return f();` does not; `x = !(a || b)` has no pad at its join; a value `&&` of plain `f() != 0` builds in v0 with no
+    join labels, an inline per test takes a saved register per step, and `if (ok) ok = ...` pads the joins;
+  - `fabsf(a > b)` takes the bool through the unsigned-to-float sequence; `if (float)` gives `c.eq x,0`, `x != 0.0f` puts
+    the constant first; `f()->m_float = 0.0f` holds the zero in f20 across the call, a named pointer avoids it;
+    `f()->g(h())` evaluates the object first, a named pointer puts the argument's call first; `recs[id].m` adds the base
+    last, through a pointer or an inline taking `&recs[id]` the base is the first operand; `node->SetRotation(&rot)` folds
+    its null test, a cast through void keeps it;
+  - a dead statement's shape can flip delay-slot fills across a whole function (SetAiMode); `CPnt3D t = v * k` puts named t
+    above the inline's result with an ld / sd copy; `(char *)seal + K` repeated is CSE'd into a saved register, `&seal->m`
+    is not; `((const CPnt3D &)p).x` reads a stack object directly, `float &y = p.y` keeps an address temporary; `anim > K`
+    branches on slti at, `>= 0` on bltz; seven contiguous `||` values fold the first six into sltiu at; a byte parameter
+    cast to an enum at several calls is a CSE temporary with a 16-byte slot; functions every caller calls out of line need
+    `#pragma auto_inline off` even when defined earlier in the unit.
 - **Tells from the engine core, round 27** (22 rows new, five units whole -- grid_di, grid_main, grid_clutter, int_shapes,
   zanim_anim: NodeGetIntersect 0x2D2890 and NodeGetIntersectBatch 0x2D3030 by the world's `.set noreorder`,
   GetIntersectBatch 0x2D3CF0, SetCDIBBox 0x2DC7A0, CDIBBox and CDIPoly::GetIntersect, LoadTipAndTail, SetCellBoundary,
@@ -9772,7 +9833,7 @@ online lane's round 10 renamed their rows, the lobby queue's 0x2E0DC0 (its draft
 ~CLobbySaveModule's copy 0x2FD070, once listed with it, matches from source since the online lane's round 18, and the
 lobby's and the chat's deque() 0x2E0D90 and 0x2F6230 since its round 29 -- whose names added the lobby buffer's
 allocator constructor 0x2E0D50, 0x2C against 0x18, and the chat's __deque_buf() 0x2F6260, 0x20 against 0x30, each
-draft with an `sc: as=` line: twelve still), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
+draft with an `sc: as=` line: twelve still -- and 0x2E0D50, 0x2E0DC0, 0x2F6260 and the rdr editor's 0x3340B0 match from source since the MSL headers' round 39: EIGHT left, 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3929C0, 0x3B7FA0, 0x3C6880, 0x510080), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
 sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
 built and scored against its other emitters outside `--files` (its draft, and the hand-written units
@@ -15596,6 +15657,44 @@ Hand-written in round 25b: `medius/dmelocal.c` (+9: 0x61A118 closed; 0x615D88, 0
 `medius/rt_udp.c` (+6: 0x63E4A0 closed; 0x63FA28, 0x63FC08, 0x640B70, 0x641308, 0x641BA0 written; 48 of 54) -- 25 rows new to the map's
 byte-exact rows (9,604 bytes; `src/lib/medius` 985 -> 1,013 of 1,027 -> 1,049), 3 superseding matched drafts; unwritten rows 84 -> 65. No
 rows named: DME's API names are Dme.c's wrappers' (round 7b), and these bodies' own names have no evidence past their position. No tool changed.
+
+**Round 26b: an alias word nobody wrote, image order for the RT units, and the unwritten rows -- 40 rows written, 27 of them byte-exact.**
+
+- **A MEM's alias set can be half uninitialised, and it decides reloads and PRE**: a MEM made by purge_addressof (`gen_rtx_MEM`) has its
+  8-byte HOST_WIDE_INT alias set only half written. The dump shows it plainly, `(mem:SI (plus:SI (reg:SI 1 at) (const_int 36)) -578781546471751680)`.
+  The high word is stale obstack bytes, so it depends on what compiled before. Zero: an address-taken local reloads after every store. Nonzero:
+  the reload survives int stores (only a byte store, alias 0, kills it) and GCSE's PRE acts (a load inserted on the other arm's edge, a reaching
+  copy). That is why a declaration with no connection to a function flips it: 0x617060 flipped only with both `int field_08` in DmeConnectStatus
+  and func_0061CCA8's prototype changed. It explains round 25b's 0x63C170 note ("it looks like PRE, which this compile does not do"): this compile
+  does, in the other state. `pert.py`'s K dummy declarations or moved definitions can flip it, but did not on 0x63B5D0, 0x63C170, 0x63F168, 0x6419E8,
+  0x639FB8, 0x61F7B0, 0x637318 or 0x61F518.
+- **A one-member struct or array holds a real alias set, a union does not**: `struct { T *p; } s;` gives reloads only after byte stores. On 0x61F518
+  that took the master pointer's PRE home (d=30 to 14); on 0x619DD8 CSE1 merged instead, with no PRE copy. A union gives set 0.
+- **Image order keeps paying**: declarations first, a prototype for each function, functions sorted by address (a scratch sortunit.py). rt_udp.c +3
+  and rt_p2p.c +1 with nothing lost, and 0x636B30 is exact only at its image place: a callee compiled above or not changes `bne`/`bnel`.
+  dmelocal.c stayed as it was: sorted it gives the same 113 with other opens.
+- **A run's last store can come first**: 0x64A750's run of `sw zero` came out 248, 252, 28, 32, 48, 244 from a source ending in the 248 store: sched1's dump has all six
+  in the ready list and takes the last statement's first. So on this one function the target's 252, 28, 32, 48, 244, 248 is 28, 32, 48, 244, 248, 252 in the source, field
+  order, and writing it so made the row exact. Read a run of equal stores from its second element.
+- **An addressed scalar's slot comes with its first `&`**: 0x635A70 has its two key arrays, then the short and bytes, then the signature; the signature
+  belongs in the inner block that uses it, and declared at the top it takes the scalars' place (0x63C4F0 is the same).
+- **A pointer reassigned in two statements keeps its register**: `pBody += round; pBody = (char *)(pBody - pList->pBuf);` is `addu s0,s0,v0; subu s0,s0,a0`
+  where one expression gives v0 and swaps the loads (0x631848). Its third short-lived pointer is what puts pNew in s1: global-alloc's priority again.
+- **Smaller shapes**: `if (a || b) return X;` keeps `bnezl p,X; b end` because of the label between (0x619DD8, 0x63B9A0's range test, 0x6400A8's send, and
+  0x61F518's four-term chain). A reorg likely/annul follows the source's polarity (`if (n == 0) n = 2; else n++;` gives bnez, the other bnezl). A found arm
+  after the loop via goto lets the other arms' calls cross-jump to it (0x63F4C8). `do { } while (0)` rotation and arms ending in break or return are what
+  loop.c moves (0x640EA0). Fail arms written apart keep a loop long enough that loop.c does not hoist its constants (0x61BC68). A guard round a do-while
+  avoids the known-zero register in a first loop test (0x61BEE8). Distinct function-pointer types let loads pass stores (rt_p2p's callbacks, 0x6395B8).
+  floor_log2(refs)*refs/live drops at 16 refs: one `return result` against a goto flipped 0x640EA0. Check a callee's arity before fitting registers: KM_SetLocalClientID
+  takes two, so a2/a3 were free pseudos (0x617060), and 0x61F518's `li a2,5` is a compare's constant, not a third argument to 0x61C998.
+- **tools/retsweep.py over `lib/medius` (46 units, 118 flips): 0 HIT, 1 closer**: rt_circ_buf_destroy declared void brings 0x61B6E8 from 70 to 64, not home. rt_circ_buf.c
+  defines it returning int, so it is not applied. The open Medius rows are not the callee's declaration.
+- **Open, diagnosed in place** (OPEN notes above each): 0x61F518 (the report's six stores: the full 720 orders leave pWorld and pClient's loads swapped, d=9), 0x61BC68
+  (one word: a no-op `movz v0,s0,s0`), 0x6164E0, 0x619DD8, 0x6181B8, 0x614B18 (the alias word), 0x61B6E8, 0x61F920 and 0x61ED48 (first drafts, shape incomplete), 0x63ACA0
+  (3), 0x63EF38 (two arms that do not cross-jump, 0x30 long), 0x6404D8 and 0x645380 (registers).
+- **Correction**: the commit d1d7fb79 says 0x63ACA0 is byte-exact. It is open, d=3 (`move s0,zero` stands before `lw a1,120(sp)`).
+
+Hand-written in round 26b: `medius/dmelocal.c` (+8: 0x6158F8, 0x6193F8, 0x617060, 0x61BEE8, 0x6187A0, 0x6197A0, 0x61CCA8, 0x61BA10 byte-exact, 0x614B18, 0x6164E0, 0x6181B8, 0x619DD8, 0x61B6E8, 0x61BC68 written, open; 113 of 122), `medius/dmemessage.c` (+0: 0x61ED48, 0x61F518, 0x61F920 written, open; 18 of 22), `medius/mediusapi.c` (+1, 0x64A750; whole, 111 of 111), `medius/mediusresp.c` (new, span 0x64D490; 1 of 1), `medius/rt_frag.c` (+1, 0x645528; 0x645380 written, open; 3 of 5), `medius/rt_list.c` (+1, 0x631848; whole, 23 of 23), `medius/rt_msg_client.c` (+2: 0x636B30, 0x635A70; 93 of 97), `medius/rt_p2p.c` (+8: 0x6395B8, 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63B708, 0x63B9A0, 0x63C4F0; 0x63ACA0 written, open; 40 of 46), `medius/rt_udp.c` (+5: 0x63F4C8, 0x6400A8, 0x640940, 0x640EA0, 0x641490; 0x63EF38, 0x6404D8 written, open; 53 of 61) -- 27 rows new to the map's byte-exact rows (16,500 bytes; `src/lib/medius` 1,013 -> 1,040 of 1,049 -> 1,089), unwritten rows 65 -> 25. No rows named: these bodies' own names have no evidence past their position, and no symtab row changed. No tool changed.
 
 ## Open, and next
 

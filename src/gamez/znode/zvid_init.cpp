@@ -74,6 +74,10 @@ public:
  * the other: SOCOM 1's code loaded zon_writeon_dmaref on both arms) */
 extern u_long128 zon_writeon_dmaref;
 extern u_long128 zon_writeoff_dmaref;
+/* the VIF packets zVid_Init hands the zVid (SOCOM 1's ztest_on_vif and ztest_off_vif: TEST register
+ * packets, the z test on and off) */
+extern u_long128 ztest_on_vif;
+extern u_long128 ztest_off_vif;
 /* the full-screen brightness quad, a GIF packet (SOCOM 1's; SOCOM II adds a ZBUF pair after the
  * TEST one, so its ALPHA pair is the fourth quadword and its RGBAQ the sixth) */
 extern u_long128 brightnesscode[];
@@ -852,9 +856,15 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
     FlushCache(0);
 }
 
+/* (a marked device, zVid_Init's note: a byte-sized value IRO does not propagate) */
+enum ZviByte {
+    ZVI_0 = 0,
+    ZVI_FF = 255
+};
+
 /* the video system set up: the display 640x448 in the GS's 1728,1824 window, its buffers, the z
  * range, the fade cleared, the LOD valve made, the video thread started and the mode set (SOCOM 1's,
- * with SOCOM II's window, second buffer and thread). OPEN, 11 instructions, the same size: the two
+ * with SOCOM II's window, second buffer and thread). BYTE-EXACT since round 40 (below). Before: OPEN, 11 instructions, the same size: the two
  * zero byte stores (0x7C, 0x7D) sink with the fade alpha's 255 (in v0) to the 0x90 flags, where the
  * target keeps them in source order with 255 hoisted into v1 at the top, as SOCOM 1's does -- every
  * position of the two stores (a 23x23 sweep), bool/char/bitfield/volatile fields, chained and 0.0f
@@ -875,9 +885,26 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
  * just ahead of flag90's, with `li 1` (a1) and `li 255` between them -- so 255 is live only there and
  * takes v0; the target's 255 is live from the top (v1), its zero stores where the source writes them.
  * SOCOM 1's zVid_Init (the demo's 0x308690) has the same shape: 255 into v1 near the top, its two zero
- * byte stores in source order among the constants -- a code-generation property of both builds */
+ * byte stores in source order among the constants -- a code-generation property of both builds.
+ * Round 40 (build/scratch/wep/v_zvi40*.py): BYTE-EXACT, by two things. THE DATA: every earlier round's
+ * diff hid that the two pointers are SOCOM 1's ztest_on_vif and ztest_off_vif, not the DMA refs (the
+ * relocation mismatch shows only once the code is aligned: `try.py` printed WRONG REFERENCE, d=0).
+ * THE ENUM LEVER (the game states' round 53): 1 and 255 in enum-typed locals, which IRO does not
+ * propagate, so each is one `li` where it is defined. WHERE they are defined is what orders the stores:
+ * the pre-pass scheduler issues a `li` whose store is ready at once and the store next, so a run of
+ * such pairs leaves a zero byte store no slot, while a `li` whose store is not ready (flag91's and the
+ * fade's follow other stores) lets the first ready zero store in behind it. So one such `li` ahead of
+ * 640 -- exactly one -- lets swapMode's store in at the top, the other just before pcrtcDo's store
+ * lets that store in behind ztest_off's; two at the top put pcrtcDo at the top too, none sinks both
+ * (11 / 31 off in the earlier rounds). And 255 lives from there to its store, so it takes v1, and
+ * the post-pass scheduler hoists its `li` (it has a height, its store being in the block) over the
+ * parameter's move. Either of the two may come first (v_zvi40t.py): one marked device, what the
+ * original held the two constants in is not known. On the way, recorded for other functions: a `.set`
+ * after each store from 640 to ztest_off gave 2 off (the short blocks issue every `li` at once
+ * otherwise) */
 void zVid_Init(_zvid_mode mode)
 {
+    ZviByte one = (ZviByte)1;
     zVid.runTime = 0;
     zVid.swapMode = 0;
     zVid.renderWidth = 640;
@@ -888,20 +915,21 @@ void zVid_Init(_zvid_mode mode)
     zVid.screenBottom = 2272;
     zVid.renderBuf = 140;
     zVid.renderBuf2 = 280;
-    zVid.ztest_on = &zon_writeon_dmaref;
-    zVid.ztest_off = &zon_writeoff_dmaref;
+    zVid.ztest_on = &ztest_on_vif;
+    zVid.ztest_off = &ztest_off_vif;
+    ZviByte ff = (ZviByte)255;
     zVid.pcrtcDo = 0;
     zVid.iMinZ = 10;
     zVid.iMaxZ = 0xFFFF;
     zVid.textureBaseAddr = 11200;
     zVid.textureEndAddr = 16384;
     zVid.flag90 = 0;
-    zVid.flag91 = 1;
+    zVid.flag91 = one;
     zVid.finalBlend = 0;
     zVid.displayBuf = 0;
     zVid.psm = 0;
     *(unsigned long *)zvid_fade = 0;
-    zvid_fade[3] = 255;
+    zvid_fade[3] = ff;
     zVid.minZ = zVid.iMinZ;
     zVid.maxZ = zVid.iMaxZ;
     if (!lodLevel)
@@ -1081,7 +1109,14 @@ extern "C" void func_003B0B10(ZVID_RECT *r)
 
 extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 
-/* func_003B09E0 of a rectangle, through it (inline; new in SOCOM II, not named). OPEN, 35
+/* func_003B09E0 of a rectangle, written out (new in SOCOM II, not named). BYTE-EXACT since the weapons'
+ * round 40 (build/scratch/wep/v_rect40*.py), with no device: the scaled width and height held in two
+ * locals ahead of the first store -- NOT func_003B09E0 inlined, whose own body, the same words, keeps the
+ * subtractions after it. The colours gave it away: the target's registers ask for numbers w, 640, h,
+ * 448, y, x (each node's colour needs a coloured neighbour for every lower register), so w's and h's
+ * parts are generated first, and h is no inline's temporary. The way there: moving the setter's
+ * subtractions ahead of its first store in a throwaway copy fell from 35 to 24 off, and the same with the
+ * fields read in place matched. Before: OPEN, 35
  * instructions, the same size: scheduling -- the target loads h, y, w, x and keeps more of the
  * products live (t3-t5); the inline call, the fields into locals (both orders) and the two words
  * built first all schedule as the by-value setter does. Round 36 (build/scratch/wep/v_rect*.py):
@@ -1095,7 +1130,12 @@ extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, un
  * inlines taking the fields as (x, w, y, h), (h, w, y, x) or (w, x, h, y): 35-38 */
 extern "C" void func_003B0A70(ZVID_RECT *r)
 {
-    func_003B09E0(r->x, r->y, r->w, r->h);
+    unsigned int w = (640 - r->w) * 16;
+    unsigned int h = (448 - r->h) * 16;
+
+    *(unsigned long *)UNCACHED(&finalcode[14]) =
+        (unsigned long)(r->x * 16 + 0x6C00) | ((unsigned long)(r->y * 16 + 0x7200) << 16);
+    *(unsigned long *)UNCACHED(&finalcode[16]) = (unsigned long)(0x9400 - w) | ((unsigned long)(0x8E00 - h) << 16);
 }
 
 /* the GS's FRAME register (Sony's sceGsFrame) */
