@@ -828,9 +828,82 @@ struct CAiFollowKind {
     unsigned char m_kind : 5;
 };
 
+extern "C" bool func_005FC550(const CAiFollowKind *k);
+
+/* a map's cell (CAiMap::GetCell, ai.h's in-class inline, by its address: a member call inlines it where
+ * the target calls it -- seal_ai.cpp's spelling) */
+extern "C" void *func_00511F80(const CAiMap *map, const CAiMapLoc *loc, int layer);
+
+/* whether a cell's map lets it be walked, none for no map (seal_ai.cpp's CellTraversable) */
+static inline bool CellTraversable(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? map->IsTraversable(loc) : false;
+}
+
+/* whether a cell's own kind is one 0x5FC550 takes (inline; the name ours) */
+static inline bool CellKindOk(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+    const CAiFollowKind *cell = map ? (const CAiFollowKind *)func_00511F80(map, &loc, 0) : 0;
+
+    return cell ? func_005FC550(cell) : false;
+}
+
+/* a cell beside a point of the route: from the route's point `index`, up to `n` cells sideways of the
+ * direction (to its left; to its right for a negative count), each in the route's band, walkable and,
+ * if asked, of a kind 0x5FC550 takes -- the last such cell put out; false without a route, the point
+ * or its map (OVL2 0x5FD790, new in SOCOM II: CAiSFollow::Tick calls it with its own `this`, unread;
+ * the name unknown). Byte-exact (the kit's round 54): the floats read and set before the two copies of
+ * the point's cell (the target loads the direction and builds the 0.5 ahead of the copies' masks; with
+ * the copies first the scheduling and the parameters' saved registers both move -- 46 / 74 off),
+ * declared in the order that numbers them f23 / f22 / f21 / f20, and 0x5FC550 pinned out of line */
+extern "C" bool func_005FD790(CAiSFollow *f, CAiPath *path, unsigned int index, int n, CAiMapLoc *out,
+                              const CPnt3D *dir, bool kinds)
+{
+    if (!path->m_snake_len)
+        return false;
+    const CAiPath::point *pt = index < path->m_points.size() ? &path->m_points[index] : 0;
+
+    if (!pt)
+        return false;
+    if (!AiMaps.GetMapByIndex(pt->m_loc.m_mapid))
+        return false;
+    float dz = -dir->z;
+    float dx = dir->x;
+    float sx = 0.5f;
+    float sz = 0.5f;
+    CAiMapLoc last(pt->m_loc);
+    CAiMapLoc cur(pt->m_loc);
+
+    if (n < 0) {
+        n = -n;
+        dz = -dz;
+        dx = -dx;
+    }
+    while (n--) {
+        sx += dz;
+        sz += dx;
+        cur.x = pt->m_loc.x + (int)sx;
+        cur.y = pt->m_loc.y + (int)sz;
+        if (!path->PointInPath(cur, 0))
+            break;
+        if (!CellTraversable(cur))
+            break;
+        if (kinds && !CellKindOk(cur))
+            break;
+        last = cur;
+    }
+    *out = last;
+    return true;
+}
+
 /* whether the kind is 2, 4, 5 or 12 (OVL2 0x5FC550; the name ours): a bit test written out -- MW
  * lowers a switch over those cases to a compare chain -- true through a bool local (`andi v0,a0,
- * 0xff` from the shift's 1) */
+ * 0xff` from the shift's 1). Pinned (the kit's round 54): 0x5FD790 calls it out of line, which MW's
+ * auto-inlining would not */
+#pragma auto_inline off
 extern "C" bool func_005FC550(const CAiFollowKind *k)
 {
     bool r = false;
@@ -840,6 +913,7 @@ extern "C" bool func_005FC550(const CAiFollowKind *k)
         r = true;
     return r;
 }
+#pragma auto_inline reset
 
 extern "C" {
 /* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) */
