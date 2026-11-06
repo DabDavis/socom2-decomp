@@ -202,7 +202,10 @@ public:
     /* out = b * this (SOCOM 1's Multiply, out of line wherever an inlining runs out) */
     void Multiply(const CMatrix *b, CMatrix *out) const
     {
-        sceVu0MulMatrix((Rows &)*out, (float (*)[4])(CRows &)*b, (float (*)[4])(CRows &)*this);
+        float (*a)[4] = (float (*)[4])(CRows &)*this;
+        float (*c)[4] = (float (*)[4])(CRows &)*b;
+
+        sceVu0MulMatrix((Rows &)*out, c, a);
     }
     /* copied on VU0 (CNode::ComputeFacadeMatrix: a product's return copied out, then assigned) */
     CMatrix(const CMatrix &m) { sceVu0CopyMatrix(m_matrix, (float (*)[4])m.m_matrix); }
