@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the zdb world, textures, rdr and sound, round 26** (CNode::DeleteVisual and its remove_copy,
+  GetLightIntensity, CPipeEffect::Tick and Particle::Instance::Render -- open since round 22):
+  - a float literal multiplying a value comes out `mul.s d,k,x` whichever side it is written on; the same constant in a
+    named local keeps source order (`mul.s d,x,k`); a sub-product held in a local keeps the target's operand order for
+    `0.5f + c * m_c`;
+  - `0.0f + a + b + c` drops the zero and reassociates; a loop adding into a variable that starts at 0.0f keeps the order,
+    and its zero is the one a later `<= 0.0f` test copies (CPipeEffect::Tick 0x33CD50, 76 -> 0);
+  - an array element's components read through a `const T &` local number the accumulator's load ahead of the element's
+    (CWorld::GetLightIntensity 0x31D940 -- its light walk a marked two-label goto device entered at the bottom test: every
+    for / while tried gets rotated behind a duplicated test);
+  - a byte read through an inline returning an enum by a cast, into a local of the enum type, is numbered ahead of the
+    code-generation temporaries (Particle::Instance::Render 0x327910 with SOCOM 1's tag_ZVIS_FOV: 7 -> 0); an unsigned
+    short field converted to float takes MW's unsigned path, an (int) cast gives cvt.s.w; pushing a local directly makes
+    it address-taken (reloaded at every use) -- push a copy.
 - **Tells from the SEALs, round 51** (CSealCtrlAi::CreepTick and PostTick, both unwritten before; PlayAiSound's event
   parameter an enum at last):
   - an enum-typed parameter is passed on raw: PlayAiSound's third parameter is CAiEvent::EVENT (0x55FF60 / 0x5978A0
