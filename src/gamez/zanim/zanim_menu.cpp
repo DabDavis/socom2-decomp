@@ -122,6 +122,29 @@ inline C2D *GetCommandC2D(unsigned short node_ref)
     return c2d;
 }
 
+/* the same into the caller's own variable (ours: zAnimUIMenuTick's -- a variable the inline writes
+ * through a reference stays the caller's, numbered where the caller declares it, ahead of anim) */
+inline void GetCommandC2D(unsigned short node_ref, C2D *&c2d)
+{
+    c2d = 0;
+
+    if (node_ref) {
+        ZAnim.m_CurAnim->Refresh(false);
+        CNode *node = ZAnim.m_CurAnim->GetNode(node_ref, false);
+
+        if (node) {
+            zdb::CVisual *visual = node->GetFirstVisual();
+
+            if (visual) {
+                C2DVisual *v2d = visual->Get2DVisual();
+
+                if (v2d)
+                    c2d = v2d->m_c2d;
+            }
+        }
+    }
+}
+
 char database[64];
 zdb::CNode *g_menuRootNode;
 /* the saved game's name the memory card handlers build (0x414E50) */
@@ -154,6 +177,9 @@ public:
     /* (an accessor: the loop's test then reads the index apart from the body, as the target's
      * does -- written out, MW keeps the test's load for the shift) */
     bool Valid() const { return m_index < 32; }
+    /* the weapons list (an accessor: UpdateSelItemValves reads it off the frame, where a plain
+     * `it.m_weapons` shares the constructor's hoisted address -- a saved register more) */
+    void *Weapons() const { return m_weapons; }
 
     unsigned int m_mask;   // 0x0
     int m_index;   // 0x4
@@ -171,96 +197,11 @@ public:
  * four lookups they make) */
 enum EQUIP_ITEM { EQUIP_PISTOL = 0, EQUIP_END = 254, EQUIP_NONE = 255 };
 
-/* a list of items: MSL's vector over a one-byte scalar, on the byte pod (memmove, memset, memcpy) --
- * its insert this unit's template tail copy 0x284BA0, include/vector's char pod's code over
- * EQUIP_ITEM (the two equipment tests' argument lists; the char pod's own copy is zui's 0x3923E0) */
-namespace std {
-
-inline void __pod_fill_n(EQUIP_ITEM *first, unsigned int n, const EQUIP_ITEM &value)
-{
-    memset(first, (unsigned char)value, n);
-}
-
-template <class Allocator>
-class __vector_pod<EQUIP_ITEM, Allocator> {
-public:
-    typedef EQUIP_ITEM T;
-
-    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
-    ~__vector_pod()
-    {
-        if (data_)
-            deallocate(data_);
-    }
-    static void deallocate(T *p) { operator delete(p); }
-    T *&data() { return data_; }
-    unsigned int capacity() const { return capacity_; }
-    unsigned int size() const { return size_; }
-    static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
-    static T *allocate(unsigned int n)
-    {
-        T *p = (T *)operator new(n * sizeof(T));
-        if (!p)
-            __msl_error("Memory allocation failure");
-        return p;
-    }
-    void insert(T *position, unsigned int n, const T &x);
-    void push_back(const T &x) { insert(data() + size_, 1, x); }
-    T &operator[](unsigned int n) { return data()[n]; }
-
-    unsigned int capacity_;
-    unsigned int size_;
-    T *data_;
-};
-
-template <class Allocator>
-void __vector_pod<EQUIP_ITEM, Allocator>::insert(T *position, unsigned int n, const T &x)
-{
-    if (n == 0)
-        return;
-    if (n > max_size() || size_ > max_size() - n)
-        __msl_error("vector::insert length error\n");
-    const T *xp = &x;
-    unsigned int newsize = size_ + n;
-
-    if (newsize <= capacity()) {
-        T *e = data_ + size_;
-        unsigned int m = e - position;
-
-        if (e - (m - n) <= xp && xp < e)
-            xp += n;
-        if (m)
-            __pod_copy_backward(position, e, e + n);
-        __pod_fill_n(position, n, *xp);
-        size_ += n;
-    } else {
-        unsigned int k = position - data_;
-        T *old = data_;
-        unsigned int newcap = capacity_ ? capacity_ : 1;
-
-        while (newsize > newcap) {
-            if (newcap < max_size() / 2)
-                newcap *= 2;
-            else
-                newcap = max_size();
-        }
-        data() = allocate(newcap);
-        __pod_fill_n(data_ + k, n, *xp);
-        if (old) {
-            __pod_copy(old, old + k, data_);
-            __pod_copy(old + k, old + size_, data_ + k + n);
-            deallocate(old);
-        }
-        size_ = newsize;
-        capacity_ = newcap;
-    }
-}
-
-template <class Allocator>
-class vector<EQUIP_ITEM, Allocator> : public __vector_pod<EQUIP_ITEM, Allocator> {
-};
-
-}
+/* a list of items: MSL's vector over a one-byte scalar runs on the byte pod over the element type
+ * (include/vector's __vector_is_byte: memmove, memset, memcpy) -- its insert this unit's template tail
+ * copy 0x284BA0, the char pod's code over EQUIP_ITEM (the two equipment tests' argument lists; the
+ * char pod's own copy is zui's 0x3923E0). A __vector_pod<EQUIP_ITEM> specialisation here until the
+ * MSL headers' round 36 mapped every one-byte scalar */
 class CZWeapon {
 public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
@@ -340,7 +281,16 @@ namespace {
  * reference gives that test (d 20, still 0x120: end() hoisted), by value 0x178; with it, `#pragma
  * opt_common_subs off` gives the size (0x138, 34 off), opt_propagation off 0x130, opt_loop_invariants
  * off 0x118 -- so the original iterator is a class whose comparison re-reads the vector's end
- * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py) */
+ * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py).
+ * The MSL headers round 36 (build/p36/oies.py, untracked): include/vector's class-vector iterator IS
+ * a class (__MSL_VECTOR_ACCESS: m_p, != as !(==)) -- the materialised test above is today's code
+ * already -- and the target's loop is plain: its latch re-reads size and data through the list's
+ * register and adds size*12 (scdiff printed that addu masked, round 33's tell). Ten header
+ * forms of end() and == (a reference or const count, size(), straight data_ + size_, begin() + n,
+ * base() compares, == by value, const references to the fields) all hoist the end (0x120); a const
+ * view's size() re-reads only the size (0x140), a const self pointer the data (0x128). SOCOM 1's
+ * DWARF and symtab: vector's iterators are raw pointers there (do_assign<PC14CCharacterWeap>), the
+ * only vector iterator class vector<bool>'s {vec_, pos_}. No header change */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
@@ -530,9 +480,9 @@ bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item);
 namespace {
 bool ChooseSlotForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
 }
-/* the selection's item valves brought up to date (SOCOM II's, not named yet: UpdateSelItemValves
- * 0x282410 is a jump to it) */
-extern "C" void func_00282140();
+/* the selection's item valves brought up to date (SOCOM II's, 0x282140, below; the command
+ * UpdateSelItemValves' handler 0x282410 is a jump to it) */
+bool UpdateSelItemValves();
 
 /* the secondary weapon given to one selected character: its second weapon set up as the item unless
  * it is that already, its UI variables and the selection's valves updated (SOCOM II's; the name ours,
@@ -545,12 +495,14 @@ inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM 
         return true;
     w.SetupCharacterWeapon(item);
     UpdateCharWeaponUiVars(it.m_index);
-    func_00282140();
+    UpdateSelItemValves();
     return true;
 }
 
-/* the item set into a slot after its old one is let go (SOCOM II's, 0x283170: not named yet) */
-extern "C" void func_00283170(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item);
+/* the item in a slot let go before another goes in (SOCOM II's, 0x283170, below) */
+namespace {
+void ReleaseSlotItem(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item);
+}
 /* the equipment slots a weapon takes in a loadout, 1 for an unknown item (zwep_weapon.cpp's 0x3D3750,
  * not named yet: char_type.cpp declares it alike) */
 extern "C" int func_003D3750(EQUIP_ITEM item);
@@ -625,7 +577,7 @@ bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
 
     if (item == first)
         return true;
-    func_00283170(it, 0, item);
+    ReleaseSlotItem(it, 0, item);
     (*weapons)[0].SetupCharacterWeapon(item);
 
     CZFTSWeapon *w = m_listWeapons__8CZWeapon.GetWeapon(item);
@@ -657,7 +609,7 @@ bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
         ChooseSlotForCharacter(it, (EQUIP_ITEM)183, slot);
     }
     UpdateCharWeaponUiVars(it.m_index);
-    func_00282140();
+    UpdateSelItemValves();
     return true;
 }
 
@@ -877,6 +829,153 @@ EQUIP_ITEM NextPickBesides(const CSelectedCharsItr &it, int index, EQUIP_ITEM it
     return item;
 }
 
+/* every slot holding an accessory of the old item given a pick instead: the first such slot the
+ * kept item, the rest the next picks besides (ours: ReleaseSlotItem's 143 and 63 cases) */
+inline void ReplaceAccessory(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_ITEM &pick, bool &first,
+                             EQUIP_ITEM keep)
+{
+    int s = FindItemSlot(it, what, 1);
+
+    while (s != -1) {
+        data_003DD060[it.m_index].a = EQUIP_NONE;
+        pick = NextPickBesides(it, pick, EQUIP_NONE, EQUIP_NONE);
+        ChooseSlotForCharacter(it, first ? pick : keep, s);
+        s = FindItemSlot(it, what, 1);
+        first = true;
+    }
+}
+
+/* whether the kept item goes into this slot: the first time, slot 3 (ours) */
+inline bool KeepFirst(bool first, int s)
+{
+    return first && s == 3;
+}
+
+/* the same for an M203 rifle's grenades: slot 3, the first time, the kept second item (ours) */
+inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_ITEM &pick, bool &used,
+                           EQUIP_ITEM keep, int keepSlot)
+{
+    int s = FindItemSlot(it, what, 1);
+
+    while (s != -1) {
+        data_003DD060[it.m_index].a = EQUIP_NONE;
+        pick = NextPickBesides(it, pick, EQUIP_NONE, EQUIP_NONE);
+        bool first = !used;
+
+        ChooseSlotForCharacter(it, KeepFirst(first, s) ? keep : pick, s);
+        s = FindItemSlot(it, what, 1);
+        used = first ? keepSlot == 3 : false;
+    }
+}
+
+/* the item in a selected character's slot let go before another goes in (SOCOM II's, 0x283170; the
+ * name ours): the old item's accessories elsewhere in the equipment slots replaced by picks -- a
+ * type-101 single-slot item's 195 by the first saved pick, an M203 rifle's or 142's 141 likewise and
+ * its grenades (175, 171, 173) by picks, 143's 179, 178 and 176, 63's 183, 182 and 181, and a
+ * two-slot item's second (185 for 145, 186 for 146, else EQUIP_END) by picks besides the new item --
+ * the saved picks (data_003DD060) cycled on, a 145/146 pick dropped when it is the new item.
+ * Written in the UI's round 35 (unwritten before). OPEN, 58 instructions at the target's size
+ * (0x9D8): every call, block and loop the target's but ReplaceGrenade's slot-3 test -- the target
+ * MATERIALISES the flag (`move v1,zero` in the first test's delay slot, `daddiu v1,zero,1` when
+ * both hold, then `beqz v1` choosing a1), where every form here is jump-threaded into the choice's
+ * branches: `use ? keep : pick` over a bool set in an if, an inline returning `first && s == 3`
+ * (or `if (...) return true; return false;`: an if/else of two assignments, 0x9E0, or a local
+ * `r`), an int, an unsigned char, a ternary, a direct condition, a reference out-parameter, the
+ * flag a caller-scope variable passed by reference (build/scratch/ui/v_rsi*.py) -- then the
+ * registers (43 instructions differ in them alone). Measured on the way, each the target's: the
+ * saved picks read field by field with the second into a local ahead of the first NextPick (a
+ * struct copy goes through the frame); each loop a while with its FindItemSlot before the flag's
+ * update (`first = true` / `used = ...` in the back branch's delay slot); a `return` closing the
+ * single-slot cases (the target runs the two destructors at each exit) */
+void ReleaseSlotItem(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item)
+{
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+    if (slot < weapons->size()) {
+        EQUIP_ITEM old = (*weapons)[slot].m_wepId;
+        EQUIP_ITEM pick = EQUIP_NONE;
+
+        if (old != EQUIP_NONE) {
+            EQUIP_ITEM pb = data_003DD060[it.m_index].b;
+            EQUIP_ITEM a = NextPick(it, data_003DD060[it.m_index].a, -1);
+            EQUIP_ITEM b = NextPick(it, pb, -1);
+
+            if (item == a && (a == 145 || a == 146))
+                a = EQUIP_NONE;
+            if (item == b && (b == 145 || b == 146))
+                b = EQUIP_NONE;
+            CCharacterWeap wa;
+            CCharacterWeap wb;
+
+            if (CZFTSWeapon::IsM203Weapon(old) || old == 143 || func_003D3750(old) == 2 || old == 142 ||
+                old == 63) {
+                wa.SetupCharacterWeapon(a);
+                wb.SetupCharacterWeapon(b);
+            }
+            EQUIP_ITEM ia = wa.m_wepId;
+            EQUIP_ITEM ib = wb.m_wepId;
+
+            if (func_003D3750(old) == 1) {
+                if (CZWeapon::GetIDType(old) == 101 && CZWeapon::GetIDType(item) != 101) {
+                    int s = FindItemSlot(it, (EQUIP_ITEM)195, 1);
+
+                    if (s != -1) {
+                        data_003DD060[it.m_index].a = EQUIP_NONE;
+                        ChooseSlotForCharacter(it, wa.m_wepId, s);
+                    }
+                } else if (CZFTSWeapon::IsM203Weapon(old) || old == 142) {
+                    bool used = false;
+                    int s141 = FindItemSlot(it, (EQUIP_ITEM)141, 1);
+
+                    if (s141 != -1) {
+                        data_003DD060[it.m_index].a = EQUIP_NONE;
+                        ChooseSlotForCharacter(it, wa.m_wepId, s141);
+                    }
+                    ReplaceGrenade(it, (EQUIP_ITEM)175, pick, used, ib, s141);
+                    ReplaceGrenade(it, (EQUIP_ITEM)171, pick, used, ib, s141);
+                    ReplaceGrenade(it, (EQUIP_ITEM)173, pick, used, ib, s141);
+                } else if (old == 143) {
+                    bool first = false;
+
+                    ReplaceAccessory(it, (EQUIP_ITEM)179, pick, first, ia);
+                    ReplaceAccessory(it, (EQUIP_ITEM)178, pick, first, ia);
+                    ReplaceAccessory(it, (EQUIP_ITEM)176, pick, first, ia);
+                } else if (old == 63) {
+                    bool first = false;
+
+                    ReplaceAccessory(it, (EQUIP_ITEM)183, pick, first, ia);
+                    ReplaceAccessory(it, (EQUIP_ITEM)182, pick, first, ia);
+                    ReplaceAccessory(it, (EQUIP_ITEM)181, pick, first, ia);
+                }
+                return;
+            }
+            if (func_003D3750(old) == 2) {
+                EQUIP_ITEM second = EQUIP_END;
+
+                if (old == 145)
+                    second = (EQUIP_ITEM)185;
+                else if (old == 146)
+                    second = (EQUIP_ITEM)186;
+                bool first = false;
+
+                if (ia == item)
+                    first = true;
+                int s = FindItemSlot(it, second, slot);
+
+                while (s != -1) {
+                    data_003DD060[it.m_index].a = EQUIP_NONE;
+                    pick = NextPickBesides(it, pick, EQUIP_NONE, EQUIP_NONE);
+                    while (pick == item)
+                        pick = NextPickBesides(it, -1, EQUIP_NONE, item);
+                    ChooseSlotForCharacter(it, first ? pick : ia, s);
+                    s = FindItemSlot(it, second, 1);
+                    first = true;
+                }
+            }
+        }
+    }
+}
+
 /* a weapon put into a selected character's slot (SOCOM II's, 0x282F20; the name ours): an item taking
  * two slots first takes the next free one past it (round the equipment slots, past any locked) for
  * its second -- 185 for a 145, 186 for a 146, else EQUIP_END: what the slot held let go and kept in
@@ -911,7 +1010,7 @@ void PutInSlot(const CSelectedCharsItr &it, const CCharacterWeap &w, int slot)
         else if (id == 146)
             second = (EQUIP_ITEM)186;
         if (s < weapons->size()) {
-            func_00283170(it, s, id);
+            ReleaseSlotItem(it, s, id);
             data_003DD060[it.m_index].a = (*weapons)[s].m_wepId;
 
             CCharacterWeap tmp;
@@ -929,7 +1028,7 @@ void PutInSlot(const CSelectedCharsItr &it, const CCharacterWeap &w, int slot)
     }
     (*weapons)[slot] = w;
     UpdateCharWeaponUiVars(it.m_index);
-    func_00282140();
+    UpdateSelItemValves();
 }
 
 /* the slot of a character's first weapon of the item past the one to skip, among the first five,
@@ -980,7 +1079,7 @@ bool ChooseSlotForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item, int sl
         UpdateCharWeaponUiVars(it.m_index);
         return true;
     }
-    func_00283170(it, slot, item);
+    ReleaseSlotItem(it, slot, item);
     if (cur == EQUIP_NONE) {
         if (slot < weapons->size())
             PutInSlot(it, w, slot);
@@ -1446,6 +1545,70 @@ bool UIChooseEquip3(C2DAnimCmdHdr *hdr, float *dT)
         if (ChooseSlotForCharacter(it, item, 4))
             chosen = true;
     return chosen;
+}
+
+/* "UpdateSelItemValves" (SOCOM II's command 9, the UI command table's record 8; the name ours, after
+ * the table's): the selection's item valves brought up to date (0x282410, a tail call) */
+bool UIUpdateSelItemValves(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return UpdateSelItemValves();
+}
+
+/* the selection's item valves brought up to date from the first selected character (SOCOM II's,
+ * 0x282140; the name ours, after the command UpdateSelItemValves, 0x282410's): its weapons padded to
+ * five with empty ones, then each slot's item's menu value set into the slot's valve -- primsel,
+ * secsel, equip1sel to equip3sel, each made when missing; true, or false with nothing selected.
+ * The weapons read through Weapons() (the frame's slot, no hoisted address) and the valve declared
+ * ahead of the item (its number below the item's: s2 / s1, the target's) */
+bool UpdateSelItemValves()
+{
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)it.Weapons();
+
+        while (weapons->size() < 5) {
+            CCharacterWeap w;
+
+            w.SetupCharacterWeapon(EQUIP_NONE);
+            weapons->push_back(w);
+        }
+        int i = 0;
+
+        for (CCharacterWeapList::iterator p = weapons->begin(); p != weapons->end(); ++p, ++i) {
+            CValve *v = 0;
+            EQUIP_ITEM item = p->m_wepId;
+
+            switch (i) {
+            case 0:
+                v = CValve::GetByName("primsel");
+                if (!v)
+                    v = CValve::Create("primsel", (VALVE_TYPE)2);
+                break;
+            case 1:
+                v = CValve::GetByName("secsel");
+                if (!v)
+                    v = CValve::Create("secsel", (VALVE_TYPE)2);
+                break;
+            case 2:
+                v = CValve::GetByName("equip1sel");
+                if (!v)
+                    v = CValve::Create("equip1sel", (VALVE_TYPE)2);
+                break;
+            case 3:
+                v = CValve::GetByName("equip2sel");
+                if (!v)
+                    v = CValve::Create("equip2sel", (VALVE_TYPE)2);
+                break;
+            case 4:
+                v = CValve::GetByName("equip3sel");
+                if (!v)
+                    v = CValve::Create("equip3sel", (VALVE_TYPE)2);
+                break;
+            }
+            v->SetValue(CZWeapon::GetMenuValue(item));
+        }
+        return true;
+    }
+    return false;
 }
 
 namespace {
@@ -2511,9 +2674,9 @@ extern "C" float data_003DF198;            /* the pitch's direction: inverted wh
 extern "C" unsigned char data_003DD4A0;    /* the dialog option (not named yet) */
 extern unsigned char ShouldConfirmVoiceCommands;   /* 0x3DF1D0 (SOCOM 1's) */
 extern "C" unsigned char data_003DF190;    /* the first-person bobbing (not named yet) */
-extern "C" unsigned char data_0044D500;    /* the fire mode swap, as func_00592050 last toggled it */
+extern "C" unsigned char data_0044D500;    /* the fire mode swap, as ToggleFireModeSwap last toggled it */
 extern "C" void func_002A41F0(int on);     /* (the whispers on or off) */
-extern "C" void func_00592050();           /* (the fire mode swap toggled) */
+void ToggleFireModeSwap();                 /* 0x592050 (seal_control.cpp's: the fire mode swap toggled) */
 void SetRumbleOn(bool on);                 /* 0x592BE0 (SOCOM 1's) */
 void RefreshSystemTuners();                /* 0x389C60 (zui_tuners.cpp's) */
 
@@ -2559,11 +2722,11 @@ bool UIStoreOptions(C2DAnimCmdHdr *hdr, float *dT)
         data_003DF198 = 1.0f;
     if (firemode->m_value) {
         if (!data_0044D500)
-            func_00592050();
+            ToggleFireModeSwap();
         data_0044D500 = 1;
     } else {
         if (data_0044D500)
-            func_00592050();
+            ToggleFireModeSwap();
         data_0044D500 = 0;
     }
     if (autoaim)
@@ -4795,9 +4958,11 @@ inline bool RunUICommand(C2DAnimCmdHdr *hdr, float *dT)
  * before the type's lookup, the scan's preheader after the epilogue with a trampoline), the type an
  * if/else (the cached arm's `b` with the byte's `andi` in its slot, round 12: 0x2AC -> the size);
  * node_ref declared ahead of anim (17 -> 9).
- * OPEN, 9 instructions, registers only: node_ref and the C2D trade s3/s5 (the target's colouring
- * wants the C2D -- GetCommandC2D's own local, numbered after the caller's -- pushed ahead of anim and
- * node_ref in the first sweep: numbered below both). Tried in round 12: the declarations permuted
+ * BYTE-EXACT since the UI's round 35: `igreplay --move` read the numbering off the target -- the node
+ * reference no named local (its load a late temporary) and the C2D the caller's own variable,
+ * declared just ahead of anim and written by GetCommandC2D through a reference (the UI's round-18
+ * rule). Before (9 instructions, registers only): node_ref and the C2D traded s3/s5, the C2D --
+ * GetCommandC2D's own local -- numbered after the caller's. Tried in round 12: the declarations permuted
  * with a C2D local among them (tools/perm.py, 1544 steps, no gain), the C2D declared first, last or
  * as a dead first definition, the lookup written out in the tick (13), an early-return inline with
  * no local (0x2BC), the type through an inline of its own, the lookup in the caller, the index by
@@ -4807,14 +4972,13 @@ bool zAnimUIMenuTick(_zanim_cmd_hdr *cmd, float *dT)
     C2DAnimCmdHdr *hdr = (C2DAnimCmdHdr *)cmd;
     bool handled = false;
     bool done = true;
-    unsigned short node_ref;
+    C2D *c2d;
     CZAnim *anim = ZAnim.m_CurAnim;
 
     anim->GetName(hdr->m_command_index);
-    node_ref = hdr->node_ref_index;
 
-    if (node_ref) {
-        C2D *c2d = GetCommandC2D(node_ref);
+    if (hdr->node_ref_index) {
+        GetCommandC2D(hdr->node_ref_index, c2d);
 
         if (c2d) {
             handled = c2d->TickZAnimCmd(cmd, dT, &done);

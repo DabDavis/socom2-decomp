@@ -1105,7 +1105,15 @@ static inline int SkbRepeats(float held)
  * `rest >= 0.0f ? rest : 0.0f` gives the target's bc1t with the product duplicated into both arms
  * (`if (rest < 0.0f)` a bc1f, 6 short); frac and rest declared ahead of e number e after them (the
  * first copy's $f7/$f9/$f8: 29 -> 17); the held event compared as `(SKBKEY)s_keyEvent ==
- * SKBKEY_NONE` loads with lbu (the plain signed char lb) */
+ * SKBKEY_NONE` loads with lbu (the plain signed char lb). Round 35, read off the FPR replay
+ * (igreplay --target, the FPR record): (1) is a NUMBERING -- the width's three code-generation
+ * nodes (its lwc1, cvt.s.w and the product) numbered ahead of x's two (mtc1, cvt.s.w) give the
+ * target's f1/f0 exactly (`--move 69=66.5 --move 70=66.6 --move 71=66.7`: 7 -> 2 differ), i.e. the
+ * product generated before the conversion of x, as PowerPC MW's fp_binary_operator does only for a
+ * right operand that holds a call; the width or the whole position through an inline with a body
+ * of its own (the weapons' round-36 rule for call arguments) does not do it for a float operand
+ * (SkbStartDisplay's legend, the same placement: 1 -> 4 or 1); (2) the second repeat copy's two
+ * nodes: no placement of the copy's six nodes found within a 150 s search */
 int SkbTickDisplay(CSoftKeyboard *skb, float dT)
 {
     if (s_bmp4Timer >= 0.0f) {

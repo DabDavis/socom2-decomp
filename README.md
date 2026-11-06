@@ -2065,6 +2065,67 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 36** (every one-byte scalar vector on the byte pod; the list's range init
+  through push_back; the HUD's frame-slot hypothesis confirmed and measured; probes build/p36/, untracked: mkbyte.py,
+  rmequip.py, oies.py, additem.py, imsprobe.py, runcheck.sh, cmpcheck.py; runs and objcmp output in build/scratch/msl-r36/.
+  Over every hand-written unit against master aa9059d9: 11,274 -> 11,279 byte-exact, +9 rows, nothing lost; objcmp
+  master --by-address, 662 units: 16 differ -- the range init's three (ai_group.cpp, seal_unit.cpp, node_main.cpp),
+  zanim_menu.cpp's no-target EQUIP_ITEM destructors, and the erase step's twelve, tail-code list destructors):
+  - APPLIED (the UI's round 33): include/vector's byte pod is __vector_pod's PRIMARY template and every one-byte scalar
+    element runs on it over its own type -- the primary vector's base chosen by __vector_is_byte<T> (sizeof 1, not a
+    class by MW's SFINAE test, not bool: MSL's bit vector is hud_objectives.cpp's), the char imp generic over T,
+    vector<char> through the primary; zanim_menu.cpp's __vector_pod<EQUIP_ITEM> specialisation goes, its insert 0x284BA0
+    byte-exact from the header. Keyed by the ELEMENT type, not a storage type: the char insert 0x3923E0 and the item one
+    0x284BA0 are two copies in one overlay, so two names (the 2-byte pod is SOCOM 1's __vector_pod<Us> for the one
+    2-byte element there is);
+  - A MEMBER TYPEDEF OF A NON-DEPENDENT BASE HIDES A DERIVED CLASS TEMPLATE'S PARAMETER OF THE SAME NAME: the 4-byte
+    pod as `__vector_pod<unsigned int, A>` with `typedef unsigned int T;` turned every pointer vector's push_back(T *const
+    &) into push_back(unsigned int *const &) -- so the 4-byte pod is a partial specialisation on its ALLOCATOR,
+    `__vector_pod<T, allocator<unsigned int> >`, T a template parameter still (objcmp: every other object identical);
+  - APPLIED (the online lobby's round 28, the weapons' round 35): the list's range init appends through push_back. Tail
+    code that inlines push_back after the unit generated insert finds it past inline_max_size (insert's 253 units) and
+    cuts it one level -- end() and insert called on every element: init<> 0x317720 and OVL2's 0x5EF8D0 byte-exact, the
+    out-of-line end() 0x2A00A0 / 0x50FED0 emitted. The "end() a level taller" of "Level 6, or 8?" is this size cut;
+  - FRAME SLOTS BY INLINE DEPTH, CONFIRMED (the HUD's round 60 hypothesis): an inline that RETURNS ITS CALL'S VALUE
+    DIRECTLY hands the caller's result slot -- the caller's depth, the frame's top -- to the call; one returning a wrapper
+    built from it gives the call a temporary of its own a level down. list<T *>::insert returning the base iterator makes
+    CUIListBox::AddItem 0x373F20 byte-exact (with `int i = 0` declared after the iterator), but costs the wrapper's own
+    copy 0x510B90 (the target wraps through a temporary), CGraph::BuildRoute 0x2D14A0 and CSched_Manager::AddTask
+    0x34E6B0: +1 / -3, not applied (include/list, AddItem's note);
+  - APPLIED (the weapons' round 35): THE RANGE ERASE STEPS ITS WALKER BY THE ITERATOR'S operator++, not `first.node_ =
+    n->next_`. The out-of-line erase 0x1EAAF0 and remove_if's inlined copies are the same code, but the step re-reads
+    first's node -- an inlined erase's loop test then reloads it apart from the node it frees (vis_texfx.cpp's resize
+    0x3C0AC0) -- and the erase is a level taller in tail code: a temporary list's ~__list_imp, where the erase is
+    inlinable, is inlined one level and calls the deleter's destructor with 0 (a base subobject's call), the sized insert
+    0x3C0B90's teardown, and node_wave.cpp's ~list<CRipple *> 0x322370 (draft-held until now) matches from hand source:
+    +3, nothing lost. Not a size cut (inline_max_size 150 to 400 changes nothing there). Tried first: ~__list_deleter as
+    `erase(begin(), end())` (+4 / -15, fifteen user-code destructors cut) and end_first() a level deeper (+2 / -17,
+    remove_if's inlined erase cut in every unit) -- the height belongs to the erase's step alone;
+  - the UI's round 34: include/vector's class-vector iterator is ALREADY a class (m_p, != as !(==)); OnIsEquipmentSelected
+    0x280790's latch re-reads size and data and adds size*12 -- scdiff printed that addu as a masked word (round 33's
+    tell: read the image with `scd.py show`), so the "dropped add" was the display. Ten forms of end() and == hoist the
+    whole end (0x120 of 0x138), a const view's size() re-reads the size alone (0x140); SOCOM 1's vector iterators are raw
+    pointers (its symtab's do_assign<PC14CCharacterWeap>), the only vector iterator class its DWARF has vector<bool>'s
+    {vec_, pos_}. Not met;
+  - MAP_DIRCOUNT::GetBestDir 0x5350C0 (the GCC front's round 38a layout dependence) flips with a header's TEXT too: lost
+    in this worktree's sccheck under one header, back under the next, ai_mapwalk.cpp byte-identical in objcmp's
+    fixed-length builds each time -- an sccheck miss of it alone is the layout, not a loss;
+  - the five cut class inserts and the deque tail: no new lever found, not attempted.
+- **Tells from the HUD, round 61** (CZLineMap::TickAnchors 0x20E750, open since round 60, and BitmapReticule::DrawLaseTarget
+  0x217550, open since round 59, byte-exact; SeekGlyph / Advance's shared SetPiece registers fixed, OPEN by one
+  scheduling move each):
+  - A POINTER RETURNED BY AN INLINE (`static inline T *F(U *p) { return &p->m; }`) IS A TEMPORARY MW DOES NOT PROPAGATE:
+    its fields are read at offsets from one register, and only loads in the block that computes it fold into the base's
+    offsets -- the target's a0 / a1 address registers with y and z read at offsets (TickAnchors' `*AnchorPos(pExtract) ==
+    *AnchorPos(pAnchor)`, DrawLaseTarget's `KitOf(seal)`); a reference returned by an inline, pointer or reference
+    locals and a cast pointer all fold, or hoist the field addresses out of the loop; a global object's address
+    propagates through any temporary, so the trick cannot keep it in a register;
+  - that pointer taken before an `if` test puts its address computation in the test's delay slot, and the test's own
+    load still folds;
+  - `x = a * b - c; x += k;` keeps the product's register for the sum; written as one expression MW puts the constant
+    first, shifting two float registers and adding two alignment nops; a float declared from a load and then scaled in
+    place is numbered before the constant, so the constant is coloured first ($f0);
+  - an anchor type held as an `int` makes the objective tests slti (TickAnchors).
 - **Tells from the game states, round 50** (no new row: SetRoundStatUiVars 0x1F21B0, unwritten before, written at the
   size, OPEN by its walk's six frame slots; five rows named -- SOCOM 1's CZPersonaState::GetPersonaName 0x2C3A70 and
   GetSOUPString 0x2C3C30, ours GetPersonaClanTag 0x2C3AC0, EnableExternalWhispers 0x2A41F0, IsNewestVersion 0x2C94F0):
@@ -2327,8 +2388,9 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     its float to unsigned three times inside SetValue, as SOCOM 1's does); `when - zNetGetTime()` wrapped in an inline
     loads `when` before the call; a local defined just before a call lands in that call's delay slot;
   - a CSaferStr member is destroyed with a this-test and flag 0, a std::string member with flag -1 and no test;
-    include/vector maps only char and pointers to the pod base, so a vector over another 1-byte scalar (EQUIP_ITEM)
-    needed a `__vector_pod<EQUIP_ITEM>` specialisation (in zanim_menu.cpp) to emit the image's byte-pod insert -- its code
+    include/vector mapped only char and pointers to the pod base, so a vector over another 1-byte scalar (EQUIP_ITEM)
+    needed a `__vector_pod<EQUIP_ITEM>` specialisation (in zanim_menu.cpp; gone since the MSL headers' round 36 mapped
+    every one-byte scalar) to emit the image's byte-pod insert -- its code
     the char pod's (0x3923E0) with a string pool of its own; OPEN: SelCharsHaveEquip 0x281160 and
     UIDoAllSelCharsHaveWeapon 0x2808E0, one saved register each (the word string's address register inside the loop).
 - **Tells from the SEALs, round 53** (CAiSRescued::Tick 0x559070 and CSealCtrlAi::PostMortemPreTick 0x56EE80 -- 10 and 67
@@ -9025,7 +9087,7 @@ carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230
 (each draft carries an `sc: as=` line; ~CLobbySaveModule's copy 0x2FD070, once listed with them, matches from source
-since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all -- 0x29FF60 and
+since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
 sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
 built and scored against its other emitters outside `--files` (its draft, and the hand-written units
@@ -14241,7 +14303,10 @@ What is open across lanes, and what comes next:
   0x5EF8D0 (0x70 of 0x78) and its do_assign 0x5EF470 (0x1D8 of 0x198) inline the pointer list's
   end() where the target calls it out of line before each insert (OVL2's copy 0x50FED0, OVL1's
   0x2A00A0; OVL1's init 0x317720 calls it the same way) -- an end() a level taller in the original
-  than include/list's, which level 5 inlines whole. Two more (the MSL headers' round 32): ~CUIListBox
+  than include/list's, which level 5 inlines whole. (NOT A HEIGHT, the MSL headers' round 36: the range
+  init appends through push_back, which tail code cuts one level by inline_max_size once insert is
+  generated -- 0x317720 and 0x5EF8D0 byte-exact so at level 5; the do_assign stays open, its own
+  frame.) Two more (the MSL headers' round 32): ~CUIListBox
   0x375710 (the HUD's round 56) -- four this-tests on a vector freed inside a deleted object's written
   destructor need level 6 when the vector is a derived class; and CKey::DeleteChildren 0x25B580 (the
   engine core's round 19), whose deepest FreeVector calls SOCOM 1's compressed-pair pieces (0x25B920-
