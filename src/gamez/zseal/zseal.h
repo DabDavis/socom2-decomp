@@ -2155,6 +2155,9 @@ public:
     static bool m_allow_friendly_fire;
     /* a landing's damage by its speed, the severity returned (SOCOM 1's; OVL2 0x5AC1F0) */
     LANDING_TYPE HandleFallingDamage(float speed);
+    /* a landing taken: its damage, the anim its grade or the pace asks and the state it leaves -- in
+     * state 8 the ladder and the climb let go (SOCOM 1's; OVL2 0x5AF590) */
+    void HandleLanding(float speed);
     /* the health taken from the six locations' values: dead when the head's or the body's runs out
      * (a bullet in the head a head shot), else their weighted average (SOCOM 1's; OVL2 0x5A54D0; the
      * six values' setter 0x5A5790 calls it too) */
@@ -2661,7 +2664,10 @@ public:
     /* the last weapon hit (SOCOM 1's m_wephit, an IntersectStruct * at 0xf84; SOCOM II holds it:
      * HandleDamage takes this + 0x10E0 when its node is set, HandleWepHit clears the node) */
     zdb::IntersectStruct m_wephit;   // 0x10e0
-    unsigned char _1100[0x1160 - 0x1100];
+    unsigned char _1100[0x111c - 0x1100];
+    /* zeroed when the SEAL lands out of state 2, and when the ground is lost (0x5B0420; the name ours) */
+    int m_111c;   // 0x111c
+    unsigned char _1120[0x1160 - 0x1120];
     /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
      * seal_weapon.cpp's view names it so too) */
     CSequence m_wep_seq;   // 0x1160

@@ -102,7 +102,8 @@ struct CMaterialEx {
     CSnd *m_fallsound;   // 0x14: a landing's (HandleFallingDamage plays it)
     unsigned char _18[0x24 - 0x18];
     float m_penetration;   // 0x24: PENETRATION (int_material.h's)
-    unsigned char _28[0x3c - 0x28];
+    unsigned char _28[0x38 - 0x28];
+    float m_foot_step_offset;   // 0x38: FOOT_STEP_OFFSET (int_material.h's: the ground probes add it to a hit)
     /* int_material.h's flags: VOLUMETRIC (bit 0), LIQUID (bit 1) and PICKUP (bit 4) here */
     unsigned int m_volumetric : 1;   // 0x3c
     unsigned int m_liquid : 1;   // bit 1
@@ -907,6 +908,85 @@ extern "C" void func_005B0840(CZSealBody *seal)
     else
         SetAltitudeCharacters(di, false);
     di->m_Node = seal->GetNode();
+}
+
+extern "C" {
+/* the alert a lost ground raises, when the switch is on (OVL1 data 0x3DF1C8, a byte: no row; OVL2
+ * 0x5582C0, seal_ai.cpp's) and the landing's test (OVL2 0x59AD30, seal_create.cpp's) */
+extern unsigned char data_003DF1C8;
+extern float data_004365C0;
+bool func_005582C0(CAiStamp *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount);
+bool func_0059AD30(CZSealBody *seal, const CPnt3D *pos);
+}
+
+/* the ground probe's answer once the batch has run: a hit taken as the altitude (a SEAL's only its point),
+ * the height set on a landing, the material's height added; no hit, with the switch on, an alert and the
+ * SEAL back on the last ground; else that ground kept where the SEAL stands, lowered by its material's
+ * height (OVL2 0x5B0420, new in SOCOM II: PostTick calls it; the name unknown) */
+extern "C" void func_005B0420(CZSealBody *seal)
+{
+    if (seal->m_1060_bit11 ? true : false)
+        return;
+    if (seal->m_down_di >= 0) {
+        zdb::DiIntersect *di = data_0044D588[seal->m_down_di];
+        zdb::IntersectStruct *hit = seal->SealProcessAltitude(di, &di->m_Tail, 1.0f);
+
+        if (hit) {
+            func_0059AD30(seal, &hit->m_pos);
+            if (seal->m_landed) {
+                CPnt3D p = seal->m_node->GetPosition();
+                float &y = p.y;
+
+                seal->SetLanded(false);
+                y = hit->m_pos.y;
+                y += MaterialEx(hit->GetMaterial())->m_foot_step_offset;
+                seal->m_node->SetPosition(((const CPnt3D &)p).x, ((const CPnt3D &)p).y, ((const CPnt3D &)p).z);
+                seal->m_alt = y;
+                if (seal->m_state != 2)
+                    seal->m_111c = 0;
+            }
+            if (CZSealBody::GetSeal(hit->m_node))
+                seal->m_last_altitude.m_pos = hit->m_pos;
+            else
+                seal->m_last_altitude = *hit;
+            seal->m_420 = data_004365C0;
+            seal->UpdatePosW();
+        } else if (data_003DF1C8) {
+            CSealCtrlAi *ai = ((CSealCtrl *)seal->m_control)->GetSealCtrlAi();
+
+            if (ai)
+                func_005582C0(&ai->m_stamp, ai, (const CPnt3D *)seal->m_node->m_matrix.m_matrix[3], 0.0333f);
+            seal->SetBit9(false);
+            seal->SetBit10(true);
+            seal->m_1340 = 0.0f;
+            seal->m_node->SetPosition(seal->m_last_altitude.m_pos.x, seal->m_last_altitude.m_pos.y, seal->m_last_altitude.m_pos.z);
+            seal->UpdatePosW();
+            seal->m_111c = 0;
+        } else {
+            CPnt3D norm(seal->m_last_altitude.m_norm);
+            float y = seal->m_last_altitude.m_pos.y;
+
+            seal->m_last_altitude.m_pos = CPnt3D::zero;
+            seal->m_last_altitude.m_norm = CPnt3D::zero;
+            seal->m_last_altitude.m_poly = 0;
+            seal->m_last_altitude.m_node = 0;
+            seal->m_last_altitude.m_pos = *(const CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+            seal->m_last_altitude.m_norm = norm;
+            seal->m_last_altitude.m_pos.y = y;
+            seal->m_node->SetPosition(seal->m_last_altitude.m_pos.x, seal->m_last_altitude.m_pos.y, seal->m_last_altitude.m_pos.z);
+
+            CMaterialEx *mat = MaterialEx(seal->m_last_altitude.GetMaterial());
+
+            if (mat) {
+                CPnt3D d;
+
+                d.x = d.y = d.z = mat->m_foot_step_offset;
+                seal->m_last_altitude.m_pos.Sub(&d, &seal->m_last_altitude.m_pos);
+            }
+        }
+        seal->m_down_di = -1;
+    }
+    seal->SetLanded(false);
 }
 
 /* the intersection pool let go: each deleted, the array freed, the words cleared (OVL2 0x5B61A0, new
@@ -4659,6 +4739,94 @@ extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
     }
     climb->m_state = 0;
     climb->m_active = 0;
+}
+
+extern "C" {
+/* (OVL1 data: a time that holds the landings off while above zero; a static 65535, the ladder index of
+ * none, read as a float; the three anims a landing picks from; the pace a soft landing keeps an anim
+ * under -- SOCOM 1's guarded statics) */
+extern float data_004365E8;
+extern float data_003F3438;
+extern short data_003DEDF0;
+extern short data_003DEE00;
+extern short data_003DEEE8;
+extern float data_003F3428;
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+void func_005781C0(CZSealBody *seal);
+void func_005A5DA0(CZSealBody *seal);
+}
+
+/* the SEAL off its ladder: the ladder's count of holders down, none held (OVL2 0x59D750's body, inlined
+ * here; the name ours) */
+static inline void LeaveLadder(CZSealBody *seal)
+{
+    if (seal->m_ladder != data_003F3438) {
+        CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(seal->m_ladder);
+
+        if (ladder)
+            ladder->m_users--;
+        seal->m_ladder = data_003F3438;
+    }
+}
+
+/* whether landings are taken (an inline bool: built with its 1 first) */
+static inline int LandingsOpen()
+{
+    return data_004365E8 <= 0.0f;
+}
+
+/* a landing taken: its damage; over the hard fall rate an anim by the grade, a hurt one in state 8, a
+ * slow step else unless the throttles are all but off; with no body carried the blends cleared to the base
+ * and the anim pushed; state 8 lets go of the ladder and the climb (OVL2 0x5AF590: SOCOM 1's HandleLanding,
+ * without its two blend tests) */
+void CZSealBody::HandleLanding(float speed)
+{
+    if (LandingsOpen()) {
+        AnimType anim;
+        SEAL_STATE state = (SEAL_STATE)0;
+        LANDING_TYPE landing = HandleFallingDamage(speed);
+
+        if (!m_isAlive)
+            landing = LANDING_HURT;
+        if (speed > theCharacterDynamics.m_landHardFallRate) {
+            switch (landing) {
+            case LANDING_NONE:
+            case LANDING_SOFT:
+                anim = (AnimType)11;
+                break;
+            case LANDING_HARD:
+                anim = 4.656612873e-10f * (float)rand() > 0.5f ? (AnimType)data_003DEE00 : (AnimType)data_003DEDF0;
+                break;
+            case LANDING_HURT:
+                anim = (AnimType)data_003DEEE8;
+                state = (SEAL_STATE)8;
+                break;
+            }
+        } else if (m_velW.x * m_velW.x + m_velW.y * m_velW.y + m_velW.z * m_velW.z > 400.0f &&
+                   m_244 * m_244 + m_240 * m_240 > data_003F3428 * data_003F3428) {
+            anim = animTypeUndefined;
+            m_interp1 = 0.4f;
+            m_interp2 = 0.4f;
+            m_prevx = m_244;
+            m_prevz = m_240;
+        } else
+            anim = (AnimType)10;
+        if (!m_carry && anim > animTypeUndefined) {
+            ClearToBase(false);
+            func_00588BC0(this, anim, state, 0, 0);
+            m_21c_bit2 = false;
+        }
+        if (state != 8)
+            BodySetState(state);
+        else {
+            BodySetState(0);
+            func_005781C0(this);
+            func_005A5DA0(this);
+            LeaveLadder(this);
+            func_005B14E0(&m_climb, this);
+            SetAmStunned(false);
+        }
+    }
 }
 
 extern "C" {

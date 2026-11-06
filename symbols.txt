@@ -10868,7 +10868,7 @@
 0x005AE980 0xAE8 func_005AE980  # OVL2
 0x005AF470 0x90 RotateHead__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1's RotateHead__10CZSealBodyFff, after GetLookQuat and before GetLookDirW in both builds: the same body -- MakeXRot into the forward look, SOCOM 1's m_fwdlook 0xf60 = 0x1070, else the identity; every SOCOM II caller sets only $f12 (both app-camera transitions, 0x29A180, CZSealBody(), 0x594600), so its second float is gone) -- the SEAL lane, round 12
 0x005AF500 0x90 GetLookDirW__10CZSealBodyCFP6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's GetLookDirW__10CZSealBodyCFP6CPnt3D, after RotateHead in both builds: the same VU0 rotation of the look's direction by the node's matrix, the look held at 0x1190) -- the SEAL lane, round 12
-0x005AF590 0x39C func_005AF590  # OVL2
+0x005AF590 0x39C HandleLanding__10CZSealBodyFf  # OVL2; s1:calls by hand (the SEALs, round 58): SOCOM 1's HandleLanding__10CZSealBodyFf 0x29E8F0, the same first test, HandleFallingDamage, the grade's switch and BodySetState; PostCheckDIDown calls it as SOCOM 1's
 0x005AF930 0xAD4 PostCheckDIDown__10CZSealBodyFRfRfRf  # OVL2; s1:calls by hand (the SEALs, round 48): SOCOM 1's PostCheckDIDown 0x29EB00, after HandleLanding before PreCheckDIDown there; CZSealBody::Tick calls it with three member addresses (a1 = x + 4, a2 = x + 8, a3 = x: 0x240/0x244/0x23C here, 0x18C/0x190/0x188 there); reads AnimTypes::StepUp once then ClimbOver three times, as SOCOM 1's
 0x005B0410 0xC func_005B0410  # OVL2
 0x005B0420 0x3E0 func_005B0420  # OVL2
