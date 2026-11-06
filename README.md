@@ -2066,6 +2066,36 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 60** (twelve new rows by the full check, 20,744 bytes, all unwritten before: CSealCtrlAi's
+  AllowCommand 0x590BC0, OnStunDamage 0x571B10, ChooseWeapon 0x563470, SetRoute 0x5623B0; CZSealBody's UpdateAiMapLoc
+  0x5B7BA0, RemoteRespawn 0x598B90, PopBlend 0x589AA0, ~CZSealBody 0x5533E0, WeaponHitAnim 0x5A2690;
+  CSealCtrl::OnActionButton 0x592D50; a lobbed weapon's aim 0x55ECC0, a grenade's landing point 0x55CDC0; scratch
+  build/scratch/seals-r60/):
+  - A LOCAL DECLARED BEFORE THE REFERENCES CAN DECIDE A SWEEP: `bool ok;` moved above `vel` and `from` moved them into an
+    earlier sweep and fixed 39 register differences; a counter `int i;` above two references settled 0x55ECC0's 10. A case
+    body `ok = false;` with `ok` already false leaves a `b end; nop` case block, where an empty case jumps straight to the
+    end.
+  - `((const CEntity *)other)->m_team` written twice makes `other+200` a CSE temporary hoisted across a switch. `CZKit
+    *const kit = &seal->m_kit` keeps the address across a call where a plain local is forwarded. An inline parameter
+    `unsigned int i` keeps `i*12` out of strength reduction with an int counter. A by-value iterator inline
+    `DeleteAll(begin(), end())` keeps both iterators in the frame, end first.
+  - VALUE FORMS: `(x != 0) ^ 1` over an inline bool gives sltu; sltu; xori with no andi, `!inlineBool()` adds the andi; `(A
+    && B) ? 0 : 1` assigned to a bit gives xori; andi 1, `!(A && B)` adds andi; sltu. `coin ? (int)a : (int)b` into an `int`
+    gives lh per arm and an unthreaded `b` to a `b`, a short ternary narrows at the join. `ex = 0; ex = c ? v : ex;` and a
+    value `&&` leave no pad. `start.x > loc.x` and `loc.x < start.x` swap the v0/v1 colours.
+  - A plain struct view assigned from `*(View *)&m` scalarises; an array member copies as a block. A float test `(top <
+    1.0f) && i < n` in a `for` condition materialises the bool and leaves the loop unrotated. `#pragma auto_inline off`
+    around out-of-line-called siblings keeps their callers' calls. The engine core's round 28 held on AllowCommand: `st = st
+    && st->m_state == K ? st : 0` fixed its empty delay slots.
+  - THE SCORER'S GAP: `fn_static_row` leaves a static unchecked when two functions in one object give their statics the same
+    name; renaming one `k_gravity` to `k_fall` resolved its 4 relocations.
+  - Open: AnimBlend 0x577000 (0x6F8 of 0x700, saved registers right: the last loop's second read of the count), 0x559580 (3:
+    `sw s1,180(sp)` and `addiu s7,sp,216` swap across a delay slot, registers right), 0x550A80 (0x3C8 of 0x3D0, about 16:
+    the awake test's value `||`). 0x553D60 was already held by its draft, and is now written and named CObjAnim's
+    destructor, the class name less certain (`~CZSealBody` hands it to `__destroy_arr` for m_item_gear, and zseal.h's
+    CObjAnim). Static names are descriptive: `k_height` (13.0) has no known meaning, `k_gravity` (98.0) is inferred from
+    `reach = v*v/k`. Six new no-target lines (@368@BodySetState and two more thunks, SetAiNetState, ~CLook, ~CSeqBase)
+    affect no match and were not looked for in the image.
 - **Tells from the HUD, round 66** (eleven rows, 34,392 bytes: BitmapReticule's ChangeReticule 0x213E20, Init 0x2178C0,
   UpdateAccuracy 0x215250 and ThreatDirTick 0x216DE0, open since round 64; CLensFlareEntry's Tick 0x1FF8A0 and LoadFlare
   0x1FFF40; C2DStringPacket::Write 0x361BD0; CTCM::LayoutColumn 0x230870 and Build 0x232BC0; tcmBuildCaches 0x2344E0;
