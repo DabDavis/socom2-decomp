@@ -185,6 +185,9 @@ public:
     bool Render_ver_2(class CZActionBitmap &bmp);
     /* the icons for an action mask made (SOCOM 1's Open, OVL1 0x21F850) */
     unsigned int Open(unsigned int cursel_mask);
+    /* one icon added and shown when its bit is in the mask, marked active or not (ours: Open's
+     * every action) */
+    inline bool OpenIcon(unsigned int mask, unsigned int bit, CActionTxtr *pActionTxtr);
 
     CPnt3D *m_main_iconcolor;   // 0xc
     CPnt3D *m_side_iconcolor;   // 0x10
@@ -394,6 +397,112 @@ extern float data_003DC630;   /* its top */
 extern float data_003DC638;   /* an icon's width (the side icons 12 further apart) */
 extern float data_003DC640;   /* its height */
 extern float data_0040C160;   /* its half width */
+
+/* the pop-up a texture's name triggers (hud_scorepopup.cpp's, OVL1 0x22D270) */
+struct CNamedObject;
+void hudTriggerPopup(CNamedObject *source);
+
+inline bool CActionTxtrMachine::OpenIcon(unsigned int mask, unsigned int bit, CActionTxtr *pActionTxtr)
+{
+    if (mask & bit) {
+        Add(pActionTxtr);
+        pActionTxtr->m_2DBitmap.On();
+        pActionTxtr->m_active = true;
+        hudTriggerPopup((CNamedObject *)pActionTxtr->m_texhandle);
+    } else
+        pActionTxtr->m_active = false;
+    return pActionTxtr->m_active;
+}
+
+/* the icons remade for the driver's action mask, in the HUD's order of importance -- each bit
+ * the action of that number's icon -- and counted, the driver's pickup noted and its bomb timer
+ * offered when the first icon is the bomb's (SOCOM 1's CActionTxtrMachine::Open, 0x3D7380 there).
+ * Byte-exact (the HUD's round 63) with each icon held in the named pointer local (the target's s3:
+ * passed as &g_arrActionTxtrs[k] the constant address propagates into every field access, 0x9D8)
+ * and the bomb flag declared before the controller local and set in nested ifs: declared after it,
+ * or tested with `&&`, MW makes the flag a set-on-condition (sltu / sltiu, 0x864-0x868); a switch
+ * keeps branches but adds a case jump (0x880) */
+unsigned int CActionTxtrMachine::Open(unsigned int cursel_mask)
+{
+    unsigned int n = 0;
+    CActionTxtr *pActionTxtr;
+
+    clear();
+    if (cursel_mask) {
+        pActionTxtr = &g_arrActionTxtrs[19];
+        if (OpenIcon(cursel_mask, 1 << 19, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[20];
+        if (OpenIcon(cursel_mask, 1 << 20, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[11];
+        if (OpenIcon(cursel_mask, 1 << 11, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[10];
+        if (OpenIcon(cursel_mask, 1 << 10, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[12];
+        if (OpenIcon(cursel_mask, 1 << 12, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[7];
+        if (OpenIcon(cursel_mask, 1 << 7, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[16];
+        if (OpenIcon(cursel_mask, 1 << 16, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[1];
+        if (OpenIcon(cursel_mask, 1 << 1, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[2];
+        if (OpenIcon(cursel_mask, 1 << 2, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[13];
+        if (OpenIcon(cursel_mask, 1 << 13, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[18];
+        if (OpenIcon(cursel_mask, 1 << 18, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[17];
+        if (OpenIcon(cursel_mask, 1 << 17, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[3];
+        if (OpenIcon(cursel_mask, 1 << 3, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[21];
+        if (OpenIcon(cursel_mask, 1 << 21, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[4];
+        if (OpenIcon(cursel_mask, 1 << 4, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[5];
+        if (OpenIcon(cursel_mask, 1 << 5, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[8];
+        if (OpenIcon(cursel_mask, 1 << 8, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[9];
+        if (OpenIcon(cursel_mask, 1 << 9, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[14];
+        if (OpenIcon(cursel_mask, 1 << 14, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[15];
+        if (OpenIcon(cursel_mask, 1 << 15, pActionTxtr))
+            n++;
+        pActionTxtr = &g_arrActionTxtrs[6];
+        if (OpenIcon(cursel_mask, 1 << 6, pActionTxtr))
+            n++;
+    }
+    UpdateDriverPickup();
+    bool bomb = false;
+    CSealCtrl *ctrl = m_driver->m_ctrl;
+
+    if (ActionTxtrMachine_HUD.size())
+        if (ActionTxtrMachine_HUD[0]->m_action_id == 7)
+            bomb = true;
+    ctrl->MPBomb_TimerAvailable(bomb);
+    return n;
+}
 
 /* the icons laid out, faded and coloured: the first in the middle, the next two to its right and
  * left -- the rest off -- each pulsing in its colour pair (3, a door the driver's sides cannot
