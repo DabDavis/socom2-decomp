@@ -14,7 +14,12 @@
  * 2.9's loop optimiser hoists only from while/do/for -- and `if (eie) { asm(".p2align 3");
  * again: di; sync.p; mfc0; if (sr & 0x10000) goto again; }` gives 7s with the mask in the loop
  * (build/scratch/gcc/v_dintr.c); what remains is the loop's v0/v1 pair and the target's own
- * `move a0,zero; jr ra; move v0,a0` for the disabled path. */
+ * `move a0,zero; jr ra; move v0,a0` for the disabled path. GCC round 43a: that path is res = 0 in an
+ * else, returned through the one `return res` (the `sltu` before the branch, reorg's slot fill, and
+ * `move a0,zero` on the else: the target's) -- 3 words, the right size: only the loop's pair is left
+ * (the target reads SR into v0 and the mask into v1, the AND into v0; here SR v1, mask v0, the AND
+ * into the mask's v0; `eie &= 0x10000; if (eie)` in the loop keeps eie's v1 throughout, 4; a second
+ * variable for the loop's SR, 5: build/scratch/gcc/r43/v_dintr.py). */
 int DIntr(void)
 {
 	int eie, res;
@@ -22,13 +27,16 @@ int DIntr(void)
 	asm volatile ("mfc0 %0, $12" : "=r" (eie));
 	eie &= 0x10000;
 	res = eie != 0;
-	if (!eie)
-		return 0;
-	do {
+	if (eie) {
+		asm (".p2align 3");
+	again:
 		asm volatile ("di");
 		asm volatile ("sync.p");
 		asm volatile ("mfc0 %0, $12" : "=r" (eie));
-	} while (eie & 0x10000);
+		if (eie & 0x10000)
+			goto again;
+	} else
+		res = 0;
 	return res;
 }
 
