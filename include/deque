@@ -68,6 +68,9 @@
  * const and init in class make deque() 0x2E0D90 byte-exact but stop the queue's constructor inlining
  * into CZOnlineLobby(), CSimpleStateMachine() and the chat's queue (-4 over the deque units);
  * cdeque<T *>() out of class lost game_main's 0x2CEE40 (-1) -- closed in round 39, see __cdeque_buf. Not applied.
+ * THE MSL HEADERS ROUND 39 (README "Tells from completing the MSL headers, round 39") READ THE REST: the out-of-class chain's order is the walk
+ * after all, given what the walk waits for -- std::queue's and std::stack's constructors have deque's __chain parse the three in-class callees that
+ * deferred it; the image's depth-first look is each member generated before its callees in one walk. No unit needs a device for it now.
  *
  * The MSL headers' round 13 (probes build/p13/, untracked): A CLASS ELEMENT IS DESTROYED, a scalar one
  * is not -- the chat lines' clear (0x2F5A30) calls make_iterator twice (end first) and a range destroy
@@ -684,7 +687,8 @@ public:
      * reserve ahead of push_back gives the image's first three, resize, push_back, reserve (last deferred
      * first); moving alloc() and max_size() after __recommend changes nothing (both still wait). Not met:
      * no declaration order lets __recommend run before alloc() and max_size after it while both wait on
-     * __max_size() */
+     * __max_size() -- CLOSED in round 39: neither waits once resize has parsed __max_size() by its address; declared below,
+     * after __recommend */
     /* THE GROWTH RECOMMENDATION (0x285BB0, out of line in an earlier unit, zanim_menu.cpp's tail; the
      * MSL headers round 32, named for the online lane's round 24): the capacity a buffer that must hold
      * n is given, one less than its storage -- n past max_size() is "cdeque max_size error", then the
@@ -1832,7 +1836,8 @@ deque<T, Allocator>::deque()
 }
 
 /* the copy (0x2E07B0 the lobby's, 0x3A5E50 the state machine's: begin() / end() const called; the
- * chat's 0x2F5F80 inlines both and calls make_iterator 0x2F6A70 for x's end, then its begin -- OPEN).
+ * chat's 0x2F5F80 inlines both and calls make_iterator 0x2F6A70 for x's end, then its begin -- closed in
+ * round 39, below).
  * The MSL headers round 33: begin() / end() DECLARED AHEAD of the copy constructor (so generated
  * before it in the same pass, round 7's ord7) leave both calls (0x60) as the online lane's round 25
  * found generating them a round earlier does -- neither generation order nor declaration order is

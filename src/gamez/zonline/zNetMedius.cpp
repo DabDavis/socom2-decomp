@@ -50,7 +50,10 @@
  * 0xC8; the target calls 0x2E0CB0), and naming the copy in the device does not help: deferred in its
  * walk by its unparsed allocator base (allocator<PCv>(), called in the target), it is generated after
  * begin() whatever the device's order -- the target generates the copy first, begin() later, the
- * make_iterators last, which only the exported-inline layout gives. Not applied (no row gained). */
+ * make_iterators last, which only the exported-inline layout gives. Not applied (no row gained). CLOSED BY THE MSL
+ * HEADERS' ROUND 39, in include/deque alone: the make_iterators inline make_begin() and a non-const begin() (both in
+ * class), so begin() const stays a call in the copy; the copy chain comes out in the first walk through deque's __chain;
+ * every deque row of this unit is byte-exact and the LobbyQueueImp device that stood here is gone. */
 
 #include <stdio.h>
 #include "zonline.h"
