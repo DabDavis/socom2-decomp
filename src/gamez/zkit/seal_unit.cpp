@@ -2748,7 +2748,9 @@ extern "C" bool func_005EC230(CZSealBody *from, CZSealBody *seal, CNodeAction *n
  * to the shared `return r` (move v0,s1), MW folds r's false into a `return 0` of their own; and the
  * result, the action and the SEAL's cell take s2/s0/s1 where the target has s1/s2/s0. Tried: one
  * nested if (0x17C), `(bool)` and `!= 0` for the bit (0x1A8), the cell read in place (0x19C), the
- * two tests as one `||` (0x1A0) */
+ * two tests as one `||` (0x1A0). Round 53: the rest inside `if (!a->m_type && !(range < minRange))`
+ * (nested, or `range >= minRange`), and both tests `goto` a label on the shared `return r` (the join
+ * keeps r unknown there, as the target's `b` to `move v0,s1` wants) -- all 0x190 */
 bool CanUseDoorAction(CZSealBody *seal, CNodeAction *a, float range)
 {
     bool r = false;
