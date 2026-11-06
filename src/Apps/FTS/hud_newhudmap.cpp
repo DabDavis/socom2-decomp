@@ -1013,14 +1013,9 @@ static inline CEntity *AsSeal(CEntity *e)
     return e && e->m_type == 2 ? e : 0;
 }
 
-static inline void ListPush(std::list<CZMapItem *> &list, CZMapItem *const &x)
-{
-    list.push_back(x);
-}
-
 inline void CZNewHudMap::AddItem(CZMapItem *item)
 {
-    ListPush(m_itemlist, item);
+    m_itemlist.__push_back_deep(item);
 }
 
 /* a seal's controller, and whether its input is on (ours: the two ternaries, inline) */
@@ -1061,7 +1056,8 @@ inline void CZNewHudMap::TickCompassMap(CPad *pad, MENU_STATE menustate)
  * versus ternary is function-wide"); a `for` lowers to init, body, increment, test, which reads the
  * frame: the temporaries of the third push_back sit between the walk's begin and its end's, so its
  * expansion is a pass deeper than the first's -- SOCOM 1's two-level push_back (include/list's vc,
- * not applied: ListPush models the level here, AddItem the third's by-value new).
+ * not applied: include/list's __push_back_deep models the level here -- the MSL headers' round 39 opt-in, by call site --,
+ * AddItem the third's by-value new).
  * OPEN, 11 instructions, all s1 against s2 (0x3F8 of 0x3F8, frame exact): the target numbers the
  * scalarised member holding &m_list + 4 (const_iterator(base::end()), IRO_ScalarizeClassDataMembers
  * in pass 1, @2417) before the common subexpression (&removelist + 4) + 4 (pass 0's IRO_CommonSubs,
@@ -1094,7 +1090,7 @@ void CZNewHudMap::HudTick(CPad *pad, float dT)
         bool deleteitem = item->Tick(this, dT);
 
         if (deleteitem)
-            ListPush(removelist, item);
+            removelist.__push_back_deep(item);
     }
 
     for (it = removelist.begin(); it != removelist.end(); ++it) {
