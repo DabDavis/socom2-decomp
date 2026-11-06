@@ -4617,7 +4617,6 @@ extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
 void func_00326FB0();
 void func_005781C0(CZSealBody *player);   /* (OVL2) */
-extern unsigned char data_0048DB50;
 extern int data_00488EA0;
 }
 
@@ -4638,7 +4637,7 @@ void _OnMissionComplete()
     CSndInstance::StopAllSounds();
     CSnd::Close();
     CSndJukebox::Stop();
-    data_0048DB50 = 0;
+    CSnd::m_listenerIsValid = false;
     CZSealBody *player = ftsGetPlayer();
     CSealCtrl *ctrl = player ? (CSealCtrl *)player->m_control : 0;
 
