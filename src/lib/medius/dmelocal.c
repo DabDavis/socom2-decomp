@@ -2541,3 +2541,64 @@ int func_00618F70(unsigned int nWorld)
     data_006511B4 = 0;
     return DME_OK;
 }
+
+/* an object update's head (4 bytes), then its fields */
+typedef struct DmeUpdateHeader {
+    unsigned char nClass;               /* 0x00: the object's class */
+    unsigned char nFields;              /* 0x01: the fields that follow (func_0061A488's count) */
+    unsigned short nIndex;              /* 0x02: the object */
+} DmeUpdateHeader;
+
+typedef struct DmeUpdateMsg {
+    DmeUpdateHeader hdr;
+    unsigned char abData[508];
+} __attribute__((aligned(4))) DmeUpdateMsg;
+
+extern DmeUpdateMsg data_0066C4F8;      /* the update being sent */
+extern int data_00686A20;               /* the object update's message type */
+extern int func_0061A328(DmeTargetMask *pMask, unsigned int nIndex);
+extern unsigned char func_0061A488(DmeObject *pObject, unsigned int nIndex, char *pnMsgClass, void *pData,
+                                   int *pnLength);
+
+/* SOCOM 1's NetSendObjectFullUpdate's head (0x61A6D8; its body is 0x61A488 now): the object's changed
+ * fields to the clients its filter picks, or to everyone. Measured: the header goes in by memcpy through a
+ * pointer to a word-aligned buffer (lw/sw -- a struct assignment of the 2-aligned header is lwl/lwr/swl/swr;
+ * the attribute stands for whatever made SCEA's buffer type word-aligned); the buffer's address a local
+ * (one register for the fill's +4 and both sends); the sends an if/else before one `return DME_OK` -- the
+ * join is an eleventh block at sched1, past haifa's 10-block region limit, so the call's arguments are not
+ * moved above the range test as they are with a `return` in each arm (-fno-sched-interblock does the same);
+ * the zeroed locals in declaration order, the length set before the class byte (ccperm-style sweep). */
+int func_0061A6D8(unsigned int nIndex)
+{
+    DmeUpdateHeader hdr;
+    DmeTargetMask mask;
+    DmeObject *pObject = 0;
+    int nLength = 0;
+    char nMsgClass = 0;
+    DmeUpdateMsg *pMsg;
+    int result;
+
+    if (nIndex >= DME_MAX_OBJECTS)
+        return DME_ERR_ARGUMENT;
+    result = func_00614EC8((void **)&pObject, nIndex);
+    if (result != DME_OK)
+        return result;
+    if (pObject == 0)
+        return result;
+    if (pObject->field_01 != 0)
+        func_0061A328(&mask, nIndex);
+    memset(&hdr, 0, sizeof(hdr));
+    pMsg = &data_0066C4F8;
+    hdr.nIndex = nIndex;
+    nLength = sizeof(hdr);
+    hdr.nClass = pObject->nClass;
+    hdr.nFields = func_0061A488(pObject, nIndex, &nMsgClass, pMsg->abData, &nLength);
+    memcpy(pMsg, &hdr, sizeof(hdr));
+    if (hdr.nFields == 0)
+        return DME_OK;
+    if (pObject->field_01 != 0)
+        func_00615B48(nMsgClass, data_00651178, 0, data_00686A20, nLength, pMsg, &mask);
+    else
+        func_00615DE0(nMsgClass, data_00651178, -1, data_00686A20, nLength, pMsg);
+    return DME_OK;
+}
