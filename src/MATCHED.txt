@@ -2327,6 +2327,7 @@
 0x00248350 libnetb_prepare_async_receive
 0x002483F8 libnetb_prepare_async_send
 0x002484A0 func_002484A0
+0x002485D0 func_002485D0
 0x00248718 func_00248718
 0x00248738 func_00248738
 0x00248760 func_00248760
@@ -7014,6 +7015,7 @@
 0x00390A30 SkbHangulType__FP10CSkbPiecesc
 0x00390BB0 FindJamo__FPCc
 0x003910B0 SkbRdrCount__FP5_zrdr
+0x003910E0 SkbHangulBack__Fv
 0x00391270 SetCount__25CSkbFixedVec<8CJamoStr,1>Fi
 0x00391280 __ct__8CJamoStrFv
 0x003912A0 __dt__8CJamoStrFv
