@@ -13,8 +13,8 @@
  * TickRegions (0x20DF70, SOCOM 1's); (round 60) Clip (0x20D5F0, SOCOM 1's: the clipper held in a local --
  * SOCOM 1's s5 too --, zdb's CCircleClip, SetClipInfo's count passed) and TickWayPoints (0x20DAC0, SOCOM
  * II's labels with SOCOM 1's names) and SetupPolygon (0x20F5C0, SOCOM 1's; the kind-to-look table made the
- * file's, TickLine reading the same one); TickAnchors (0x20E750) written, OPEN. Defined in reverse of their
- * image order (-inline deferred). */
+ * file's, TickLine reading the same one); (round 61) TickAnchors (0x20E750: the position test through a
+ * pointer an inline returns); LineTo (0x20FA70) OPEN. Defined in reverse of their image order (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
 #include "../../ai/ai.h"
@@ -716,12 +716,18 @@ float s_fAnchorV1 = 1.02f;
  * the map shows, each a new plain bitmap at its drawn point in its compass image and colour, an
  * insertion point (kinds 7 and 8) shown once -- the others at its place left out -- and pulsing when
  * the current objective lights it. Both walks count with SOCOM 1's int iAnchor (an unsigned counter is
- * strength-reduced, the target indexes each pass).
- * OPEN, 0x46C against 0x474 (round 60, written): the walks, the bitmap, its set-up and the pulse are
- * the target's; the position test differs -- the target takes the two positions' addresses into a0 / a1
- * (`addiu a0,s3,4`, `addiu a1,s1,4`) after reading the x's off the anchors and reads y and z through
- * them, where zmath.h's operator== folds every offset (s3+8, s1+8 ...); reference or pointer locals,
- * with the && or a bool chain, fold too or grow it (0x44C / 0x484) */
+ * strength-reduced, the target indexes each pass). The extract's place is compared through a pointer
+ * an inline returns (round 61): the target takes the two positions' addresses into a0 / a1 (`addiu
+ * a0,s3,4`, `addiu a1,s1,4`) and reads y and z at offsets from them, only the x's folded into the
+ * anchors' own offsets in the first block -- zmath.h's operator== on the members (or on a reference an
+ * inline returns, or on reference or pointer locals) folds every offset (0x46C), a cast pointer
+ * hoists the invariant extract's field addresses (s3+8, s3+12) out of the loop. The type is an int:
+ * the objective tests are slti (sltiu as an unsigned int, 2 off). */
+static inline CPnt3D *AnchorPos(CCompassAnchor *a)
+{
+    return &a->m_posW;
+}
+
 void CZLineMap::TickAnchors(float fPulseTrans)
 {
     CCompassAnchor *pExtract = 0;
@@ -737,10 +743,10 @@ void CZLineMap::TickAnchors(float fPulseTrans)
 
         if (!pAnchor)
             continue;
-        if (pExtract && pExtract != pAnchor && pExtract->m_posW == pAnchor->m_posW)
+        if (pExtract && pExtract != pAnchor && *AnchorPos(pExtract) == *AnchorPos(pAnchor))
             continue;
 
-        unsigned int iType = pAnchor->m_type;
+        int iType = pAnchor->m_type;
         bool bShow = false;
 
         for (int i = 0; i < 15; i++)

@@ -49,7 +49,10 @@ static CPnt3D s_tcmColor4 = s_tcmColor3;
  * object (`addiu v0,v0,lo(cache)`) and takes the name off it (`addiu a0,v0,12`), where MW folds the
  * name's address into one lui/addiu pair. Tried: the name through a pointer or reference local, a
  * cast of this, &m_name[0], an inline setter or accessor, a member class holding the name, the
- * constructor out of class, member-initialised, copy- or converting-initialised globals -- all fold */
+ * constructor out of class, member-initialised, copy- or converting-initialised globals -- all fold.
+ * Round 61: the name or `this` through a pointer-returning inline (member or free: the device that
+ * keeps TickAnchors' and DrawLaseTarget's addresses), the name as a second base class -- all fold
+ * too (the object's address is a constant, propagated through any temporary) */
 CTCM theTCM;
 CTCMCache mpCache("mpCache");
 CTCMCache spCache("spCache");

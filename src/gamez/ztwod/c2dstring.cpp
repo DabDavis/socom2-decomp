@@ -58,7 +58,8 @@ public:
     /* the glyph's current piece taken, and the font's drop-shadow colour written for a glyph without
      * its own (inline: SeekGlyph and Advance end alike). The glyph through a local: m_piece is then
      * loaded after Get()'s ternary, the target's order (indexing Get()'s result evaluates the
-     * subscript first) */
+     * subscript first). The cap declared from the opacity and scaled in place, the alpha assigned
+     * after it: the target's registers (round 61; SeekGlyph's note) */
     void SetPiece()
     {
         C2DGlyph *g = m_glyph.Get();
@@ -70,9 +71,11 @@ public:
             m_color[1] = (int)m_str->m_font->m_48.y;
             m_color[2] = (int)m_str->m_font->m_48.z;
 
-            float alpha = m_str->m_color[3];
-            float cap = (float)(int)(128.0f * m_str->m_font->m_54);
+            float alpha;
+            float cap = m_str->m_font->m_54;
 
+            alpha = m_str->m_color[3];
+            cap = (float)(int)(128.0f * cap);
             if (cap < alpha)
                 alpha = cap;
             m_color[3] = (int)alpha;
@@ -732,7 +735,8 @@ C2DStringCursor::C2DStringCursor(C2DString *str, int *color)
  * character -- a '#B' after it toggles the bright flag and moves on again (one byte: the next call's
  * UTF8CharLen skips the 'B'), any other advances the pen by the passed character's width and seeks
  * the next glyph. An if / else chain: early returns each branch to a shared `b` (2 words).
- * OPEN, 0x328 against 0x320: SetPiece's shadow alpha, as SeekGlyph's (see there) */
+ * OPEN, 0x328 against 0x320: SetPiece's shadow alpha, as SeekGlyph's (see there: since round 61 only
+ * the last colour store's scheduling, the same 8 bytes) */
 void C2DStringCursor::Advance()
 {
     if (m_colorSet) {
@@ -773,9 +777,16 @@ void C2DStringCursor::Advance()
  * glyph its first piece is taken, and when the font colours its glyphs and this one has no colour of
  * its own the font's drop-shadow colour is written (C2DFont's m_3c, m_48 and m_54: the faces rdr's
  * "dropshadow" block), its alpha the string's capped at the shadow's opacity (whole).
- * OPEN, 0x298 against 0x290, one spot shared with Advance (SetPiece's): the shadow alpha's FPRs --
- * the target colours the 128 first ($f0, live across the three colour stores, which take $f1) and
- * schedules the last store's address after the cvt (two alignment nops here follow from it); MW numbers
+ * OPEN, 0x298 against 0x290, one spot shared with Advance (SetPiece's): round 61 closed the shadow
+ * alpha's registers -- the opacity read into the cap's own declaration and scaled in place, the alpha
+ * assigned after it (SetPiece) gives the target's FPRs (the 128 $f0, live across the three colour
+ * stores in $f1, the opacity $f1) and its loads (the string a0, the font v1); left: the last store's
+ * address (`lw v1,36(s0)`) is scheduled ahead of the clamp's cvt.w.s at the join (the target's after
+ * it), with a nop after the clamp's mov.s and one before UTF8CharLen's jal -- tried since: the clamp
+ * as a ternary (a `b` more), an if/else of two stores (0x2A8), `alpha > cap`, the conversion into an
+ * int local, through an inline (FloatToInt, Clamp, an int-returning clamp) or an inline setter of the
+ * colour word, a pointer local for the store (17-22 differing, each the same 8 bytes). Before round 61:
+ * the target colours the 128 first; MW numbers
  * the constant before the opacity's load whichever side it is written on (it canonicalises the
  * constant to the first operand), and the replay (tools/igreplay.py --want 53=f0,54=f1,46=f1 --movers
  * 54) wants the load anywhere below it. Tried: an accessor (C2DFont::GetShadowOpacity, folded away --

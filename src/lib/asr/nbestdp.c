@@ -7,7 +7,8 @@
  * IdleProcess, all but the constructor and FindBestRecognised LOCAL there), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. Only the functions written so far are here, in image
- * order: CollectDummyMemory and InitViterbi (OPEN) (round 20c), InitNBestDynProgProcess and
+ * order: CollectDummyMemory and InitViterbi (OPEN) (round 20c), BacktraceWordsParBT (OPEN) (round
+ * 36c), InitNBestDynProgProcess and
  * PrunDynProg (round 19c; PrunDynProg closed in 20c), InitDynprogContext and SOCOM II's
  * func_004EC130 (round 21c), FindBestRecognised (round 17c), ExtendBacktraceStack, ScoreCompare
  * (NAME@nbestdp in the map: the iso-word object has its own). SOCOM II's rows hold SOCOM 1's in
@@ -47,10 +48,10 @@ typedef struct BTSTACK {
 typedef struct BTREC {
     struct BTREC *prev;                 /* +0 */
     struct BTLINK *links;               /* +4 */
-    int f8;                             /* +8 */
+    int f8;                             /* +8: the score */
     unsigned short users;               /* +12 */
-    unsigned short f14;                 /* +14 */
-    int f16;                            /* +16 */
+    unsigned short f14;                 /* +14: the word */
+    short *f16;                         /* +16: the end state, null at the utterance's start */
 } BTREC;
 
 /* a link of a backtrace's chain (three words): the backtrace it holds and the next link; a
@@ -89,13 +90,18 @@ typedef struct NBWORD {
 
 /* a recognised word's record in a result (five words), chained at +16 */
 typedef struct NBRWORD {
-    int pad0[4];
+    int state;                          /* +0: the word's end state, an index into +84 */
+    int score;                          /* +4 */
+    int word;                           /* +8: its id */
+    int f12;                            /* +12 */
     struct NBRWORD *next;               /* +16 */
 } NBRWORD;
 
 /* a recognised word sequence, chained best first */
 typedef struct NBRESULT {
-    char pad0[12];
+    int f0;
+    int score;                          /* +4 */
+    int f8;
     NBRWORD *words;                     /* +12 */
     struct NBRESULT *next;              /* +16 */
 } NBRESULT;
@@ -206,7 +212,7 @@ static int ScoreCompare();
 extern void qsort(void *base, unsigned int n, unsigned int size, int (*cmp)());
 static void CleanUpParBTProc(NBESTDP *d, BTREC *bt);
 static void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top);
-extern NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTRACE *bt);
+static NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTOKEN *t);
 extern void heap_Free(void *heap, void *p);
 extern void *heap_Alloc(void *heap, unsigned int size);
 extern unsigned char _tosErrorLog(void *log, unsigned short code);
@@ -671,6 +677,159 @@ static BTREC *CopyParBT(NBESTDP *d, BTREC *src)
     return n;
 }
 
+/* the token's word sequence: a five-word record per word its backtrace chain holds (the newest
+ * first; a word's record when the next backtrace ends another word or state), each shared
+ * backtrace on the way copied and pushed on the stack at +88; then back down the stack, each
+ * backtrace's best link (the lowest score) made its head and the chain re-scored by the
+ * difference, the token left holding the new chain (its score moved by the difference) or none
+ * (32767). SOCOM 1's body (0x4F4; 0x534 here with the free lists through pointers, ALLOC_REC).
+ * OPEN (round 36c, the right size, 218 words, registers and three shapes): the target gives the
+ * second loop's best link and the first's next s0, b s1, nb s2, prev and the stack's walker s6, w
+ * s8; here nb (59 refs over 129 insns: both loops) outranks the link and b, and w prev. Measured
+ * (build/scratch/gcc/r36/v_bw*.py): the loop's record built through r with `w = r` after its stores
+ * (the copy first makes the longer-lived w CSE's canonical register: every store through s8); the
+ * first record's last two stores go through w in the target (`w = r` after the third: 3 words, but
+ * w's priority grows); `b = top->prev->entry; top = top->prev;` (CleanUpParBTProc's) gives the
+ * walker a register of its own as the target's but moves delta's zero before the second loop (a
+ * word long); the f16 == 0 arm -- the target sets b = 0 and branches to the loop's test, for /
+ * continue gives `next = 0` into `b = next`, while / else threads it to the exit; and GCSE keeps
+ * the head link's score from the search's start for the swap (a copy in a3) where the target
+ * reloads it. A copy of its own in the first loop (c) gives b 69 refs and s0. */
+static NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTOKEN *t)
+{
+    DPTOS *tos = d->tos;
+    BTSTACK *top = d->stack;
+    BTREC *b = t->bt;
+    BTREC *next, *nb, *prev = 0;
+    BTLINK *l, *q, *best;
+    NBRWORD *w = 0, *r;
+    NBRESULT *res;
+    unsigned int min, old, tmp;
+    BTREC *tb;
+    int delta = 0;
+
+    if (b != 0) {
+        ALLOC_REC(tos, 5, r);
+        w = r;
+        r->next = 0;
+        r->f12 = 0;
+        r->state = t->state - d->f84;
+        r->word = d->f176;
+        r->score = t->f4 + d->f284;
+    }
+    for (; b != 0; b = next) {
+        if (b->f16 == 0) {
+            next = 0;
+            continue;
+        }
+        next = b->prev;
+        if (next != 0 && (next->f14 != b->f14 || next->f16 != b->f16)) {
+            ALLOC_REC(tos, 5, r);
+            r->next = w;
+            r->f12 = 0;
+            r->state = b->f16 - d->f84;
+            r->word = b->f14;
+            r->score = b->f8;
+            w = r;
+        }
+        nb = b;
+        if (b != t->bt && b->users >= 2)
+            nb = CopyParBT(d, b);
+        top->entry = (int)nb;
+        if (top->next == 0)
+            ExtendBacktraceStack(d, top);
+        top = top->next;
+        if (nb != b && prev != 0) {
+            nb->users++;
+            if (--prev->prev->users == 0)
+                CleanUpParBTProc(d, prev->prev);
+            prev->prev = nb;
+        }
+        prev = nb;
+    }
+    if (w != 0) {
+        ALLOC_REC(tos, 5, res);
+        res->words = w;
+        res->score = t->f4 + d->f284;
+    } else
+        res = 0;
+    nb = 0;
+    while (top != d->stack) {
+        top = top->prev;
+        b = (BTREC *)top->entry;
+        if (nb == 0) {
+            l = b->links;
+            if (l != 0) {
+                best = 0;
+                min = l->f8;
+                for (q = l->next; q != 0; q = q->next)
+                    if (q->f8 < min) {
+                        min = q->f8;
+                        best = q;
+                    }
+                if (best != 0) {
+                    tmp = best->f8;
+                    best->f8 = l->f8;
+                    l->f8 = tmp;
+                    tb = best->bt;
+                    best->bt = l->bt;
+                    l->bt = tb;
+                }
+                ALLOC_REC(tos, 5, nb);
+                nb->prev = l->bt;
+                nb->links = l->next;
+                nb->f8 = l->f8;
+                nb->f16 = b->f16;
+                nb->users = 0;
+                nb->f14 = b->f14;
+                FREE_REC(tos, 3, l);
+                b->links = 0;
+                delta = (short)(nb->f8 - b->f8);
+            }
+        } else {
+            b = CopyParBT(d, b);
+            nb->users++;
+            if (--b->prev->users == 0)
+                CleanUpParBTProc(d, b->prev);
+            old = b->f8;
+            b->prev = nb;
+            b->f8 = old + delta;
+            best = 0;
+            min = b->f8;
+            for (q = b->links; q != 0; q = q->next)
+                if (q->f8 < min) {
+                    min = q->f8;
+                    best = q;
+                }
+            if (best != 0) {
+                tmp = best->f8;
+                best->f8 = b->f8;
+                b->f8 = tmp;
+                tb = best->bt;
+                best->bt = b->prev;
+                b->prev = tb;
+            }
+            nb = b;
+            delta = (short)(nb->f8 - old);
+        }
+    }
+    if (nb != 0) {
+        nb->users++;
+        if (--t->bt->users == 0)
+            CleanUpParBTProc(d, t->bt);
+        t->bt = nb;
+        t->f4 = delta + t->f4;
+    } else {
+        if (t->bt != 0) {
+            if (--t->bt->users == 0)
+                CleanUpParBTProc(d, t->bt);
+            t->bt = 0;
+        }
+        t->f4 = 32767;
+    }
+    return res;
+}
+
 /* the backtraces the pass can end on: every seven-word token whose state ends a word the context
  * flags as an end (bit 1) kept and counted, the others given back; the five-word tokens and the
  * word records given back as SOCOM 1's CollectDummyMemory does (SOCOM II's own CollectDummyMemory
@@ -849,7 +1008,7 @@ int FindBestRecognised(NBESTDP *d)
         best = bt[0]->score;
         for (i = 0; i < n; i++)
             bt[i]->score -= best;
-        first = BacktraceWordsParBT(d, bt[0]);
+        first = BacktraceWordsParBT(d, (NBTOKEN *)bt[0]);
         r = first;
         if (first != 0) {
             for (; k < d->nresults; ) {
@@ -859,7 +1018,7 @@ int FindBestRecognised(NBESTDP *d)
                     bt[j - 1] = bt[j];
                 bt[j - 1] = top;
                 k++;
-                r->next = BacktraceWordsParBT(d, bt[0]);
+                r->next = BacktraceWordsParBT(d, (NBTOKEN *)bt[0]);
                 r = r->next;
                 if (r == 0)
                     break;

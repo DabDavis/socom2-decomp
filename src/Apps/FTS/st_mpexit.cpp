@@ -849,7 +849,8 @@ void UpdateCareerRecord(int a, int b)
  * switch, after the alive bool's v88-v91) numbered anywhere from 42.5 (after bTerr) to 89.5; an
  * int / byte local for it, before or after the alive bool, and a GetGameType() accessor (int, byte,
  * enum, reference) are all forward-substituted into the switch (the load still follows the alive
- * bool's), so 19 each */
+ * bool's), so 19 each. Round 61: the type an int or byte local given a dead first definition at the
+ * top (assigned at the switch, after bTerr or before the alive bool): 19 each */
 void GetRoundResult(CZSealBody *pSeal, int *pWins, int *pScore)
 {
     int iSeals = 0;
