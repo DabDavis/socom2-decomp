@@ -1131,8 +1131,9 @@ struct CTMacro : TASK_HDR {
 
 /* ai::LOOKAT (SOCOM 1's CTLookAt) */
 struct CTLookAt : TASK_HDR {
-    /* (the names ours) */
+    /* (the names ours; Parse's kinds through the int setter: `daddiu`, its constants not folded) */
     void SetLooking(unsigned int n) { m_looking = n; }
+    void SetKind(int kind) { m_kind = kind; }
 
     Rfloat m_wait;   // 0x8: the tag "wait"
     float m_timer;   // 0x10
@@ -1147,7 +1148,7 @@ struct CTLookAt : TASK_HDR {
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
     static void End(_zanim_cmd_hdr *hdr);
-    static CTLookAt *Create(const char *name);    /* (RegisterCommands' handlers, unwritten) */
+    static CTLookAt *Create(const char *name);
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
@@ -2715,7 +2716,9 @@ void CTHold::Begin(_zanim_cmd_hdr *hdr)
 
 /* a block made for an entity's name or none (OVL2 0x5D7E70: out of line, CTLookAt::Parse's first
  * call; SOCOM 1's Parse built it inline and copied the name to the block's end -- SOCOM II still
- * sizes the block for it but adds the name to the running anim's names; the name ours) */
+ * sizes the block for it but adds the name to the running anim's names; the name ours). Kept out of
+ * line under `#pragma auto_inline off`: Parse, defined after it, would inline it */
+#pragma auto_inline off
 CTLookAt *CTLookAt::Create(const char *name)
 {
     unsigned int size = TaskAlign(TaskStrLen(name)) + 48;
@@ -2734,6 +2737,81 @@ CTLookAt *CTLookAt::Create(const char *name)
     cmd->m_ent.m_type = 0;
     cmd->m_ent.SetName(name);
     return cmd;
+}
+#pragma auto_inline reset
+
+/* a direction's name to a CAiMap::DIR (OVL2 0x518D80, the AI core's -- unnamed) and a look flag's
+ * name to its bit (OVL2 0x5752B0, seal_ai.cpp's) */
+extern "C" unsigned char func_00518D80(const char *name);
+extern "C" unsigned char func_005752B0(const char *name);
+
+/* a look read: at the "entity" (kind 2), a "pos", a "region"'s centre, a "net" or "node" line's cell
+ * (kind 1) or a "dir" (kind 3); then the "flags" by name, each set -- or cleared, after a '!' --, a
+ * "wait" (the look's bits 0 and 1 set with it) and the "rate" (OVL2 0x5D79F0; SOCOM 1's built the
+ * block in place). The region's centre a named local (the target's frame: the region's cell, the
+ * centre, the line's cell, then GetCenter's own -- passed as `GetCellCenter(r->GetCenter(), ...)` the
+ * copy is a temporary below the line's cell) */
+_zanim_cmd_hdr *CTLookAt::Parse(_zrdr *rdr)
+{
+    const char *name = zrdr_findstring(rdr, "entity");
+    CTLookAt *cmd = Create(name);
+    CPnt3D p;
+
+    if (name)
+        cmd->SetKind(2);
+    else if (zrdr_findPNT3D(rdr, "pos", &p)) {
+        cmd->m_pos = p;
+        cmd->SetKind(1);
+    } else if (const char *rn = zrdr_findstring(rdr, "region")) {
+        CAiMapLoc loc;
+        CAiMap::region *r = AiMaps.GetRegion(rn, loc);
+
+        if (r) {
+            CAiMapLoc c = r->GetCenter();
+
+            if (AiMaps.GetCellCenter(c, &cmd->m_pos))
+                cmd->SetKind(1);
+        }
+    } else {
+        _zrdr *t = zrdr_findtag(rdr, "net");
+
+        if (t || (t = zrdr_findtag(rdr, "node"))) {
+            CAiMapLoc loc;
+            _zrdr *i = t->Item(0);
+
+            if (AiMaps.GetLocation(i ? i->String() : 0, loc) && AiMaps.GetCellCenter(loc, &p)) {
+                cmd->m_pos = p;
+                cmd->SetKind(1);
+            }
+        } else if (const char *d = zrdr_findstring(rdr, "dir")) {
+            cmd->m_18_24 = func_00518D80(d);
+            cmd->SetKind(3);
+        }
+    }
+    _zrdr *flags = zrdr_findtag(rdr, "flags");
+
+    if (flags) {
+        int n = flags->Count();
+
+        for (int i = 0; i < n; i++) {
+            const char *f = TaskItem(flags, i)->String();
+
+            if (f) {
+                if (*f == '!')
+                    cmd->m_flags &= ~func_005752B0(f + 1);
+                else
+                    cmd->m_flags |= func_005752B0(f);
+            }
+        }
+    }
+    Rfloat wait(0.0f);
+
+    if (zrdr_findRfloat(rdr, "wait", &wait)) {
+        cmd->m_wait = wait;
+        cmd->m_looking |= 3;
+    }
+    zrdr_findreal(rdr, "rate", &cmd->m_rate, 1);
+    return &cmd->hdr;
 }
 
 /* the look drawn (OVL2 0x5D7850: the bit cleared in place gives the byte mask `andi 0xfb`; through
