@@ -1421,6 +1421,16 @@ static inline void HoldSubXZ(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
     out->z = a->z - b->z;
 }
 
+static inline bool HoldNe(const CTarget *a, const CTarget *b)
+{
+    return !(a == b);
+}
+
+static inline void HoldBit17(CSealCtrlAi *ai, bool on)
+{
+    ai->m_aibit17 = on;
+}
+
 static inline bool HoldEnemy2(unsigned int &team, CEntity *b)
 {
     return !(team & b->m_team);
@@ -1436,7 +1446,7 @@ static inline bool HoldEnemy(CEntity *a, CEntity *b)
  * flags put back; the first time a callout, then the SEALs not of its team that it has seen for half a second or are near the
  * first of them are counted and called out, the wait begun anew, a callout again after a minute with none; those called out
  * dead, the watch begun again (OVL2 0x6067A0: CAiSHold::Tick calls it; the step's value before returned; the name unknown) */
-extern "C" signed char func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
+extern "C" CAiState::STEP func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
 {
 #pragma opt_strength_reduction off
     static int s_far = 3;
@@ -1444,8 +1454,10 @@ extern "C" signed char func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
     static float s_again = 3.0f;
     static float s_nearSq = 10000.0f;
     static float s_seen = 0.5f;
+    CAiState::STEP r;
     CEntity *seal = ai->m_entity;
-    unsigned char r = h->m_phase;
+
+    r = (CAiState::STEP)h->m_phase;
     HOLD_STEP step = (HOLD_STEP)h->m_6c;
     CZSealBody *player = ftsGetPlayer__Fv();
 
@@ -1462,7 +1474,7 @@ extern "C" signed char func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
         step = (HOLD_STEP)2;
         h->m_78++;
         ai->m_aibit16 = true;
-        SetBit17(ai, false);
+        HoldBit17(ai, false);
         break;
     case 1:
         if (!(h->m_70 <= h->m_74))
@@ -1475,15 +1487,19 @@ extern "C" signed char func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
         float &dy = d.y;
         float &dz = d.z;
         CTargetList &list = seal->m_targets;
+        CEntity *e;
+        CTarget *i;
         unsigned int n;
         unsigned int &team = seal->m_team;
 
         h->m_94 = 0;
-        for (CTargetList::iterator i = list.begin(); (n = h->m_94) < 6 && i != list.end(); ++i) {
-            CZSealBody *t = HoldSeal((*i).m_ent);
+        for (i = &*list.begin(); (n = h->m_94) < 6 && HoldNe(i, &*list.end()); ++i) {
+            e = (*i).m_ent;
+            const float vis = (*i).m_visibility;
+            CZSealBody *t = HoldSeal(e);
 
             if (t && HoldEnemy2(team, t) && t->m_isAlive) {
-                if ((*i).m_visibility < s_seen) {
+                if (vis < s_seen) {
                     if (!n)
                         continue;
                 }
@@ -1496,9 +1512,12 @@ extern "C" signed char func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
                 } else {
                     CZSealBody *first = HoldSeal(CEntity::m_list.GetEntityById(h->m_ids[0]));
 
-                    d.x = t->m_posW.x - first->m_posW.x;
+                    float dx0 = t->m_posW.x - first->m_posW.x;
+                    float dz0 = t->m_posW.z - first->m_posW.z;
+
+                    d.x = dx0;
                     dy = 0.0f;
-                    dz = t->m_posW.z - first->m_posW.z;
+                    dz = dz0;
                     if (d.x * d.x + dy * dy + dz * dz < s_nearSq) {
                         unsigned int k = h->m_94++;
 
