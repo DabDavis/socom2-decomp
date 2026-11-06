@@ -846,6 +846,137 @@ extern "C" void *func_0057E050(CZSealBody *seal)
 }
 
 extern "C" {
+void func_005A5DA0(CZSealBody *seal);
+void func_0059D750(CZSealBody *seal);
+void func_00545EE0(CZSealBody *seal, int n);
+CZBodyAnimBlend *func_005807D0(CZSealBody *seal, bool other, int state);
+AnimType func_005A0950(CZSealBody *seal, int a, int b);
+CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type);
+extern short data_003DECE0;
+}
+
+static inline void NegateF(float &v)
+{
+    v = -v;
+}
+
+/* the blast's words zeroed (an inline: the target loads CPnt3D::zero's words each time) */
+static inline void ClearBlast(CZSealBody *seal)
+{
+    seal->m_1314 = CPnt3D::zero;
+    seal->m_1320 = 0.0f;
+    seal->m_1324 = 0.0f;
+}
+
+/* a blast held at 0x1314 taken: within its radius of the SEAL's middle the body and the overlay let go, the
+ * blends cleared; prone a stand of a kind by its death or a hit anim, else a fall begun toward the side the
+ * blast comes from and the SEAL thrown, as the blast's power less the fall of the square of its distance,
+ * over the SEAL's mass (at most 100, and up by 50 at most); the blast forgotten; the blend back (OVL2
+ * 0x57E770, new in SOCOM II beside the set-up that stores it; the name unknown) */
+extern "C" CZBodyAnimBlend *func_0057E770(CZSealBody *seal)
+{
+    if (seal->m_1320 == 0.0f) {
+        ClearBlast(seal);
+        return 0;
+    }
+    if (seal->IsRemote()) {
+        ClearBlast(seal);
+        return 0;
+    }
+    float power = seal->m_1320;
+    float radius = seal->m_1324;
+    CPnt3D p = seal->m_posW;
+
+    p.y += seal->GetRootPart()->m_pos.y;
+
+    CPnt3D d;
+
+    p.Sub(&seal->m_1314, &d);
+
+    float dist = d.Normalize();
+
+    if (!(dist < radius) && seal->m_isAlive)
+        return 0;
+    if (seal->m_bit9 && seal->m_alt < seal->m_posW.y)
+        seal->m_alt = seal->m_posW.y;
+
+    float f = 1.0f - dist * dist / (radius * radius);
+
+    if (f > 1.0f)
+        f = 1.0f;
+    else if (f < 0.0f)
+        f = 0.0f;
+    seal->DropBody();
+    func_005A5DA0(seal);
+    if (seal->m_eb8)
+        func_00545EE0(seal, 1);
+    seal->ClearToBase(false);
+    func_0059D750(seal);
+
+    int st;
+    SEAL_STATE state = (SEAL_STATE)seal->m_state;
+    CZBodyAnimBlend *b;
+
+    if (!seal->m_isAlive)
+        state = stateDead;
+    if ((SEAL_STATE)seal->m_state == stateProne) {
+        st = state;
+        b = seal->ClearToBase(false);
+        if (!seal->IsRemote()) {
+            if (seal->m_isAlive)
+                st = 2;
+            else {
+                st = 8;
+                b = func_005A2490(seal, func_005A0950(seal, 3, 2));
+            }
+        }
+        if (seal->m_isAlive) {
+            b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DECE0, st, 0, 13);
+            b->m_flags = func_0058A920(b->m_flags, 2, true);
+            if (theNetwork.m_9 && !seal->IsRemote())
+                func_002BBAF0(seal->m_id, 34, st, false, 16);
+        }
+        if (!theNetwork.m_9)
+            seal->m_am_stunned = true;
+        ClearBlast(seal);
+        return b;
+    } else {
+        CQuat q = seal->m_quat;
+
+        NegateF(q.vec.x);
+        NegateF(q.vec.y);
+        NegateF(q.vec.z);
+
+        CPnt3D r;
+
+        q.Apply(&d, &r, 1);
+        if (r.z > 0.0f)
+            b = func_005807D0(seal, true, state);
+        else
+            b = func_005807D0(seal, false, state);
+
+        float speed = f * (theCharacterDynamics.m_gravity / (9.81f * 10.0f) * (power * theCharacterDynamics.m_DamageToNewtons)) / seal->m_f84;
+
+        if (speed > 100.0f)
+            speed = 100.0f;
+        d.Scale(speed);
+
+        float up = 50.0f * f;
+
+        if (d.y < up)
+            d.y = up;
+        seal->m_133c = -d.y;
+        seal->SetBit9(true);
+        seal->SetBit10(false);
+        seal->m_1350 = d;
+        if (!theNetwork.m_9)
+            seal->m_am_stunned = true;
+    }
+    ClearBlast(seal);
+    return b;
+}
+
+extern "C" {
 bool func_005B4340(CZSealBody *seal, int b);
 bool func_0054F6E0(CZSealBody *seal, int a, int b, int c);
 bool func_0057F150(CSealCtrl *ctrl);

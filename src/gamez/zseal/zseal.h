@@ -2697,7 +2697,8 @@ public:
     /* how long, online, the SEAL's network life has not been 1 (up): past 20 s it is ended
      * (0x543F70 runs it by the time step at 0x2e0; the name ours) */
     float m_f7c;   // 0xf7c
-    unsigned char _f80[0xf88 - 0xf80];
+    unsigned char _f80[0xf84 - 0xf80];
+    float m_f84;   // 0xf84: the mass a blast's throw is divided by (0x57E770; the name ours)
     float m_waterdepth;   // 0xf88 (SOCOM 1's 0xe70, by its use: in water a SEAL crouches only up to 8.5
                           // deep, 0x5857E0, and goes prone only up to 2, Prone)
     /* the feet's spots in the world while a turn in place pins one (0x54EA80 takes the right's
