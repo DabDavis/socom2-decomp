@@ -17,6 +17,8 @@
 class CZSealState {
 public:
     static void SealDeleteCleanup(int id);
+    /* (SOCOM 1's; OVL1 0x2BD3D0: the packed weapons a remote SEAL came in with) */
+    static void *GetPackedWeaponData(CZSealBody *seal);
 };
 
 /* (CZWeapon's projectile list, m_pProjectilelist, and its clear of a shooter's projectiles,
@@ -29,6 +31,10 @@ public:
 class CMission {
 public:
     void RefreshTeamValves();
+
+    unsigned char _0[0x1814];
+    /* the vehicle file's entries (seal_tasks.cpp's reading: OVL1 bss 0x437CF4) */
+    CVehicleRdr *m_vehicles;   // 0x1814
 };
 
 extern CMission theMission;
@@ -159,6 +165,142 @@ CZSealBody *CZSealBody::CreateRemoteSeal(int index, int id, const char *name, in
         seal->m_full_update_time = 0;
     }
     return seal;
+}
+
+/* a SEAL's stats as RemoteRespawn keeps them: thirty counters, the score, three more and the hit percent
+ * member by member (CSealStats' layout; MW scalarises the assigned local where CSealStats' array is copied as
+ * a block) */
+struct CSealStatsCopy {
+    unsigned short m_0, m_2, m_4, m_6, m_8, m_a, m_c, m_e, m_10, m_12, m_14, m_16, m_18, m_1a, m_1c, m_1e, m_20,
+        m_22, m_24, m_26, m_28, m_2a, m_2c, m_2e, m_30, m_32, m_34, m_36, m_38, m_3a;
+    short m_score;
+    unsigned short m_3e, m_40, m_42;
+    float m_hit_percent;
+};
+
+extern "C" {
+extern unsigned char data_0045A0C1;
+/* the place a respawning SEAL takes (OVL1 0x2B8100: SOCOM 1's findAlign__FP10CZSealBodyP6CPnt3DP7CMatrix, a
+ * kind more), which side it is on (0x2C30B0), and its state told the network (0x2BD640: SOCOM 1's
+ * CZSealState::UpdateLocalSeal) */
+void func_002B8100(CZSealBody *seal, CPnt3D *pos, CMatrix *m, int kind);
+bool func_002C30B0(const CZSealBody *seal);
+void func_002BD640(CEntity *seal, int x);
+bool func_002C2FD0(CZSealBody *seal);
+}
+
+/* a vehicle entry by index, or none (an inline, the name ours) */
+static inline CVehicleRdrEntry *VehicleEntry(CVehicleRdr *rdr, unsigned int i)
+{
+    return i < rdr->size() ? &(*rdr)[i] : 0;
+}
+
+/* another console's SEAL brought back (OVL2 0x598B90, this unit's first function; SOCOM 1's RemoteRespawn):
+ * online only; its packed weapons read into its type unless a hostage or escort or a player's; made over with
+ * its two stats and its AI state kept -- the player's at the place of its side and the respawn's kind (the point
+ * put in the matrix's last row), the AI's at its vehicle entry's start, the remote's the same way or from its
+ * controller's kept place -- its alive valve opened, its fade reset. The two stats assigned from a member by
+ * member view: MW scalarises the locals (34 shorts and a float, each its own register or 16-byte slot) where
+ * CSealStats' array would be copied as a block */
+void CZSealBody::RemoteRespawn(bool first)
+{
+    if (!data_0045A0C1)
+        return;
+    unsigned int team = m_team;
+
+    if (!(team & 0x10000000) && !(team & 0x20000)) {
+        if (!(m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false)) {
+            const CCharacterWeapPacked *packed = (const CCharacterWeapPacked *)CZSealState::GetPackedWeaponData(this);
+
+            if (packed) {
+                CCharacterType *t = m_charType;
+
+                CCharacterType::UnPack(packed, t);
+                t->m_istemporary = 1;
+            }
+        }
+    }
+    CPnt3D pos(m_posW);
+    CMatrix mat(m_node->m_matrix);
+    CSealStatsCopy stats;
+    CSealStatsCopy stats2;
+
+    stats = *(CSealStatsCopy *)&m_stats;
+    stats2 = *(CSealStatsCopy *)&m_stats2;
+    unsigned int net = ((CSealCtrl *)m_control)->GetAiNetState();
+
+    ReCreate(this, 0);
+    *(CSealStatsCopy *)&m_stats = stats;
+    *(CSealStatsCopy *)&m_stats2 = stats2;
+    int kind;
+
+    if (first)
+        kind = func_002C30B0(this) ? 3 : 1;
+    else
+        kind = func_002C30B0(this) ? 2 : 0;
+    if (m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false) {
+        func_002B8100(this, &pos, &mat, kind);
+        mat.m_matrix[3][0] = pos.x;
+        mat.m_matrix[3][1] = pos.y;
+        mat.m_matrix[3][2] = pos.z;
+        TeleportTo(&mat);
+        ((CSealCtrl *)m_control)->OnMissionStart();
+        func_002BD640(this, 0);
+    } else if (m_control ? ((CSealCtrl *)m_control)->IsAi() : false) {
+        CVehicleRdr *rdr = theMission.m_vehicles;
+        CVehicleRdrEntry *entry = rdr ? VehicleEntry(rdr, m_vehicle_index) : 0;
+
+        if (entry)
+            entry->GetStartMatrix(mat, -1);
+        TeleportTo(&mat);
+        ((CSealCtrl *)m_control)->GetSealCtrlAi()->InitAiBrain();
+        func_002BD640(this, 0);
+    } else if (m_control ? ((CSealCtrl *)m_control)->IsRemote() : false) {
+        CSealCtrl *remote = (CSealCtrl *)((CSealCtrl *)m_control)->GetRemoteControl();
+
+        if (func_002C2FD0(this))
+            SetHealth(0.0f, (SEAL_DEATH_TYPE)6);
+        if (!first) {
+            CVehicleRdr *rdr = theMission.m_vehicles;
+
+            if (m_vehicle_index) {
+                if (rdr) {
+                    CVehicleRdrEntry *entry = VehicleEntry(rdr, m_vehicle_index);
+
+                    if (entry)
+                        entry->GetStartMatrix(mat, -1);
+                    TeleportTo(&mat);
+                    CPnt3D *const k = (CPnt3D *)mat.m_matrix[3];
+
+                    pos = *k;
+                }
+            } else {
+                func_002B8100(this, &pos, &mat, kind);
+                mat.m_matrix[3][0] = pos.x;
+        mat.m_matrix[3][1] = pos.y;
+        mat.m_matrix[3][2] = pos.z;
+                TeleportTo(&mat);
+            }
+            *(CPnt3D *)((char *)remote + 0x1fc) = pos;
+        } else
+            TeleportTo((CPnt3D *)((char *)remote + 0x1fc), (CQuat *)((char *)remote + 0x210));
+        remote->SetAiNetState(net);
+    }
+    CSealUnit *unit = ((CSealCtrl *)m_control)->m_unit;
+
+    if (unit)
+        unit->Revive(this);
+    char name[100];
+
+    sprintf(name, "%s_valve_alive", m_node->m_name);
+    CValve *v = CValve::GetByName(name);
+
+    if (v)
+        v->SetValue(1);
+    m_full_update_time = 0;
+    m_movespeedmod = 1.0f;
+    theMission.RefreshTeamValves();
+    m_needs_respawn = 0;
 }
 
 /* a SEAL brought back: an AI one at a random start of its vehicle entry's respawning set -- the

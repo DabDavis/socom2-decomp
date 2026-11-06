@@ -442,7 +442,9 @@ public:
     bool Acquire(unsigned int who);
     void Release(unsigned int who);
 
-    unsigned char _4[0x14 - 0x4];
+    unsigned char _4[0x10 - 0x4];
+    /* the anim an action runs (OnActionButton hands it to the SEAL's m_538; the name ours) */
+    class CZAnim *m_10;   // 0x10
     /* (SOCOM 1's m_node: CanPlaceBomb matches it against the sides' bomb sites, TickMPBomb against the
      * bomb's node) */
     zdb::CNode *m_node;   // 0x14
@@ -457,6 +459,11 @@ public:
     unsigned int m_owner;   // 0x34: the entity using it, CEntity::invalidId for none (SOCOM II's)
     unsigned char _38[0x3c - 0x38];
     unsigned short m_id;   // 0x3c (SOCOM 1's at 0x2c)
+    unsigned char _3e;
+    /* bit 2: pressing it raises the mission's action flag instead (OnActionButton; the name ours) */
+    unsigned char m_3f_0 : 1;   // 0x3f
+    unsigned char m_3f_1 : 1;
+    unsigned char m_3f_2 : 1;
 };
 
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
@@ -539,6 +546,8 @@ public:
     /* a SEAL in the squad of a number, or with `recurse` in a squad under it (SOCOM 1's; OVL2
      * 0x5EDDD0, the kit lane's seal_unit.cpp, which declares it alike) */
     static bool IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse);
+    /* (SOCOM 1's; OVL2 0x5EDE40, seal_unit.cpp's: a member brought back) */
+    void Revive(CZSealBody *seal);
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
@@ -2085,6 +2094,7 @@ public:
     /* a crouch to pick a buddy up, its blend's timed call left to do it (OVL2 0x579A30, seal_body.cpp) */
     CZBodyAnimBlend *CrouchToPickupBuddy(CZSealBody *buddy);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
+    bool ExecuteAction_KnifeAttack(CZSealBody *victim);
     bool ExecuteAction_CQBAttack(CZSealBody *victim);
     /* a pickup taken up: a grenade thrown back, the others each their own way (SOCOM 1's; OVL2
      * 0x547570) */
@@ -2628,7 +2638,9 @@ public:
      * SetCurZoomState starts and releases it; the name ours) */
     class CZAnim *m_zoom_anim;   // 0x53c
     class CCharacterType *m_charType;   // 0x540 (SOCOM 1's 0x468: TickStun reads its recovery factor)
-    unsigned char _544[0x58c - 0x544];
+    /* the other of the SEAL's two stats (the constructor resets both; RemoteRespawn keeps both across
+     * ReCreate; the name ours) */
+    CSealStats m_stats2;   // 0x544
     /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its
      * counters -- the CQB attack two of them -- and 0x545890 returns its address) */
     CSealStats m_stats;   // 0x58c

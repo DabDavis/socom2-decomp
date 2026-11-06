@@ -2867,6 +2867,190 @@ namespace ai {
 int CheckLineOfFire(const CEntity *e, const CTarget *target, float slack);
 }
 
+/* the AI's weapon hints (the kit lane's kit.h CAiWepHint, completed here with the static this unit
+ * calls: a weapon's accuracy at a distance -- OVL2 0x5C9340) */
+class CAiWepHint {
+public:
+    /* (the defaults, an inline: SetTarget 0x566540 builds one in place -- seal_tasks.cpp's fields; the
+     * range a float) */
+    CAiWepHint(float range)
+    {
+        SetMode(0);
+        m_2 = 2;
+        m_auto = 1;
+        m_burst = 1;
+        SetBit8(false);
+        m_range = 0.0f;
+        SetHasWeapon(false);
+        SetHigh(0);
+        m_range = range;
+        SetBit8(true);
+    }
+    void SetMode(unsigned int m) { m_mode = m; }
+    void SetBit8(bool b) { m_bit8 = b; }
+    void SetHasWeapon(bool b) { m_hasWeapon = b; }
+    void SetHigh(unsigned int n) { m_high = n; }
+    static float GetWeaponAccuracy(CZWeapon *w, float d, bool b);
+
+    unsigned int m_mode : 2;   // bits 0-1
+    unsigned int m_2 : 2;   // bits 2-3
+    unsigned int m_auto : 2;   // bits 4-5
+    unsigned int m_burst : 2;   // bits 6-7
+    unsigned int m_bit8 : 1;   // bit 8
+    unsigned int m_hasWeapon : 1;   // bit 9
+    unsigned int m_weapon : 4;   // bits 10-13
+    unsigned int m_high : 18;   // bits 14-31
+    float m_range;   // 0x4
+};
+
+/* a weapon's item a charge, a grenade, a launcher's round or a mounted gun: never chosen (inlines, the names
+ * ours: each a switch, its answer a value) */
+static inline bool IsChargeId(EQUIP_ITEM id)
+{
+    switch ((unsigned char)id) {
+    case 152:
+    case 153:
+    case 151:
+        return true;
+    }
+    return false;
+}
+
+static inline bool IsThrownId(EQUIP_ITEM id)
+{
+    switch ((unsigned char)id) {
+    case 121:
+    case 122:
+    case 123:
+    case 124:
+    case 125:
+    case 126:
+    case 127:
+    case 128:
+        return true;
+    }
+    return false;
+}
+
+static inline bool IsRoundId(EQUIP_ITEM id)
+{
+    switch ((unsigned char)id) {
+    case 142:
+    case 143:
+    case 171:
+    case 172:
+    case 173:
+    case 174:
+    case 175:
+    case 176:
+    case 177:
+    case 178:
+    case 179:
+        return true;
+    }
+    return false;
+}
+
+/* a weapon's score docked by one of the hint's preferences: 1 prefers the good weapon a little, 2 refuses the
+ * good one, 3 refuses any other (an inline, the name ours: the answer by value, read first) */
+static inline void HintScore(float &score, unsigned int mode, bool good)
+{
+    switch (mode) {
+    case 1:
+        score -= good ? 0.0f : 0.2f;
+        break;
+    case 2:
+        score -= good ? 1.0f : 0.0f;
+        break;
+    case 3:
+        score -= good ? 0.0f : 1.0f;
+        break;
+    }
+}
+
+extern "C" {
+/* a weapon's sound radius and its highest fire mode, called out of line (OVL2 0x563BC0, 0x563BB0: this
+ * unit's copies, CZWeapon's m_soundradius and m_maxfiremode) */
+float func_00563BC0(CZWeapon *w);
+unsigned char func_00563BB0(CZWeapon *w);
+/* the AI's look at its weapon's change (OVL2 0x565D30, unwritten) */
+void func_00565D30(CSealCtrlAi *ai);
+}
+
+/* the weapon a hint asks for (SOCOM 1's ChooseWeapon; OVL2 0x563470): the one it names, or of those with
+ * ammunition, not a charge, grenade or launcher's round, the one with the best score -- its accuracy at the
+ * hint's range, docked by the hint's preferences. Taken if it is not in hand; the trigger let go. Whether
+ * there was one */
+bool CSealCtrlAi::ChooseWeapon(CAiWepHint &hint)
+{
+    int best = -1;
+    int n;
+    bool same;
+    int i;
+    CZWeapon *w;
+    CZKit *kit = &((CZSealBody *)m_entity)->m_kit;
+    float top = hint.m_bit8 ? -1.0f : 0.0f;
+
+    same = true;
+    n = kit->GetNumItems();
+    unsigned char named = hint.m_hasWeapon;
+
+    if (named && named < n) {
+        best = hint.m_weapon;
+        CZWeapon *one = (CZWeapon *)kit->GetItemByIndex(best);
+
+        same = one ? one == (CZWeapon *)kit->GetCurItem() : true;
+    } else {
+        for (i = 0; (top < 1.0f) && i < n; i++) {
+            if (kit->ItemHasAmmo(i)) {
+                w = (CZWeapon *)kit->GetItemByIndex(i);
+                if (w) {
+                    EQUIP_ITEM id = w->m_ID;
+
+                    if (!IsChargeId(id) && !IsThrownId(id) && !IsRoundId(id)) {
+                        float score = 1.0f;
+
+                        if (hint.m_bit8)
+                            score = CAiWepHint::GetWeaponAccuracy(w, hint.m_range, false);
+                        if (!(score <= 0.0f) && hint.m_mode)
+                            HintScore(score, hint.m_mode, func_00563BC0(w) < 100.0f);
+                        if (!(score <= 0.0f) && hint.m_auto)
+                            HintScore(score, hint.m_auto, func_00563BB0(w) >= 3);
+                        if (!(score <= 0.0f) && hint.m_burst)
+                            HintScore(score, hint.m_burst, func_00563BB0(w) >= 2);
+                        if (!(score <= 0.0f) && hint.m_2)
+                            HintScore(score, hint.m_mode, false);
+                        {
+                            static float lo = 0.0f;
+                            static float hi = 1.0f;
+
+                            _saturate(&score, lo, hi);
+                        }
+                        if (!(score <= top)) {
+                            top = score;
+                            best = i;
+                            same = w == (CZWeapon *)kit->GetCurItem();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    bool ok = true;
+
+    if (best >= 0) {
+        if (!same) {
+            kit->GetCurItem();
+            kit->SetCurItemByIndex(best);
+            kit->GetItemByIndex(best);
+            func_00565D30(this);
+        }
+        SetTrigger(false);
+    } else
+        ok = false;
+    return ok;
+}
+
 /* the shot taken once it may be: the time run up; under 0x2000000 the look turned onto the fire's
  * direction (11) and no shot until the body faces within acos 0.92 of it; the body able to fire and,
  * under 0x800000, a clear line to the target (8 of slack); then the aim set -- in the SEAL's frame
@@ -4317,42 +4501,6 @@ extern "C" bool func_0055EAA0(CSealCtrlAi *ai, AI_FIREPARAMS *p, bool clear)
     }
     return r;
 }
-
-/* the AI's weapon hints (the kit lane's kit.h CAiWepHint, completed here with the static this unit
- * calls: a weapon's accuracy at a distance -- OVL2 0x5C9340) */
-class CAiWepHint {
-public:
-    /* (the defaults, an inline: SetTarget 0x566540 builds one in place -- seal_tasks.cpp's fields; the
-     * range a float) */
-    CAiWepHint(float range)
-    {
-        SetMode(0);
-        m_2 = 2;
-        m_auto = 1;
-        m_burst = 1;
-        SetBit8(false);
-        m_range = 0.0f;
-        SetHasWeapon(false);
-        SetHigh(0);
-        m_range = range;
-        SetBit8(true);
-    }
-    void SetMode(unsigned int m) { m_mode = m; }
-    void SetBit8(bool b) { m_bit8 = b; }
-    void SetHasWeapon(bool b) { m_hasWeapon = b; }
-    void SetHigh(unsigned int n) { m_high = n; }
-    static float GetWeaponAccuracy(CZWeapon *w, float d, bool b);
-
-    unsigned int m_mode : 2;   // bits 0-1
-    unsigned int m_2 : 2;   // bits 2-3
-    unsigned int m_auto : 2;   // bits 4-5
-    unsigned int m_burst : 2;   // bits 6-7
-    unsigned int m_bit8 : 1;   // bit 8
-    unsigned int m_hasWeapon : 1;   // bit 9
-    unsigned int m_weapon : 4;   // bits 10-13
-    unsigned int m_high : 18;   // bits 14-31
-    float m_range;   // 0x4
-};
 
 /* the AI's target as the AI holds it (SOCOM 1's CAiTarget at 0x67C, ai_target.cpp's) */
 class CAiTarget {

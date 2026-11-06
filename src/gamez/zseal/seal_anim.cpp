@@ -114,8 +114,10 @@ public:
     /* the top frame laid over the one below it at a fraction and popped (SOCOM 1's; OVL2 0x576BB0) */
     int AnimOverlay(float t);
     /* the top count frames blended into one (SOCOM 1's AnimBlend, between CombineRotations and AnimPop in
-     * both builds; OVL2 0x577000, not written yet) */
-    void AnimBlend(int count);
+     * both builds; OVL2 0x577000) */
+    int AnimBlend(int count);
+    /* a frame by its place (an inline, the name ours) */
+    CSealAnimFrame *Frame(unsigned int i) const { return &m_frames->m_frames[i]; }
 
     int m_count;   // 0x0
     CZSealBody *m_seal;   // 0x4
@@ -244,6 +246,172 @@ extern "C" void func_00577BA0(CZSealBody *seal, CZSIScriptCommon *script, unsign
  * counter with the global READ THROUGH A CONST VIEW -- which MW's CSE keeps apart from the plain read
  * (the kit's round 34 rule) -- around a do-while on the local. The original's spelling (an accessor
  * returning a const reference, a macro) is not known; this one is the target's, byte for byte. */
+
+extern "C" {
+/* out = a * s + b, the x, y and z, out's fourth word kept (OVL1 0x309280, zmath_pnt4d.cpp's) */
+void func_00309280(float *out, const float *a, const float *b, float s);
+}
+
+static inline void CopyRots(CSealAnimRec *d, CSealAnimRec *e, unsigned int m)
+{
+    for (unsigned int k = 0; k < m; k++, e++, d++)
+        d->m_rot = e->m_rot;
+}
+
+/* the top count frames blended into the lowest of them: its positions the frames' weighted sum; then the
+ * frames' rotations combined two at a time -- the lateral anims first, then the others, then what is left --
+ * each combined frame marked used; a lone survivor's rotations copied down (OVL2 0x577000, SOCOM 1's AnimBlend
+ * with the records' count SOCOM II's); the depth left returned.
+ * OPEN, 2 instructions short (0x6F8 of 0x700), every saved register right (the numbering k, n, i, r, base;
+ * `Frame(unsigned)`: the conversion keeps the frame's index out of strength reduction, as the target has it):
+ * the last loop. The target reads the count twice ahead of it -- the bound in a3, then a second read in the
+ * entry test's v0 -- and the loop is unrolled eightfold. A pre-test `for` is what MW unrolls (a guarded do-while
+ * is not), and with the count in a local or an inline's parameter its entry test folds onto that (one load);
+ * through the const view (THE RECORD LOOPS, below) a guard adds a second test (0x710). Tried: the bound as the
+ * plain global (not hoisted, not unrolled -- also with no address taken in the unit, and with a const
+ * declaration), a const reference, two levels of inline, a guard on the local (0x700 by a pad, still one load),
+ * opt_common_subs off (0x728) */
+int CSealAnim::AnimBlend(int count)
+{
+    int k;
+    unsigned int n;
+    unsigned int i;
+    CSealAnimRec *r;
+    int base;
+    int next;
+
+    if (count < 2)
+        return m_count;
+    base = m_count - count;
+    n = siNumBodyObjects;
+    i = 0;
+    CSealAnimFrame *f = Frame(base);
+    float wt = f->m_wt;
+
+    r = f->m_recs;
+    next = base + 1;
+    if (i < *(const unsigned int *)&siNumBodyObjects) {
+        do {
+            if (r->m_nopos == 0 && r->m_id > -1)
+                r->m_pos.Scale(wt, &r->m_pos);
+            i++;
+            r++;
+        } while (i < n);
+    }
+    for (k = base + 1; k < m_count; k++) {
+        CSealAnimRec *src = Frame(k)->m_recs;
+        CSealAnimRec *dst = Frame(base)->m_recs;
+        float w = Frame(k)->m_wt;
+
+        i = 0;
+        if (i < n) {
+            do {
+                if (dst->m_nopos == 0 && dst->m_id > -1)
+                    func_00309280((float *)dst, (float *)src, (float *)dst, w);
+                i++;
+                src++;
+                dst++;
+            } while (i < n);
+        }
+    }
+
+    int used[10];
+    int pick[10];
+    int j;
+    int c;
+    int tries;
+
+    for (j = 0; j < 10; j++)
+        used[j] = 0;
+    c = 0;
+    for (tries = 0; tries < 30; tries++) {
+        for (j = 0; j < 10; j++)
+            pick[j] = 0;
+        int got = 0;
+
+        for (j = 0; j < m_count; j++) {
+            if (used[j] >= 0) {
+                if (Frame(j)->m_anim->m_4a_0) {
+                    pick[got] = j;
+                    got++;
+                    c++;
+                }
+                if (got >= 2)
+                    break;
+            }
+        }
+        if (c == 2) {
+            CombineRotations(pick[0], pick[1]);
+            used[pick[1]] = -1;
+        } else if (c < 2)
+            break;
+        c = 0;
+    }
+    c = 0;
+    for (tries = 0; tries < 30; tries++) {
+        for (j = 0; j < 10; j++)
+            pick[j] = 0;
+        int got = 0;
+
+        for (j = 0; j < m_count; j++) {
+            if (used[j] >= 0) {
+                if (!Frame(j)->m_anim->m_4a_0) {
+                    pick[got] = j;
+                    got++;
+                    c++;
+                }
+                if (got >= 2)
+                    break;
+            }
+        }
+        if (c == 2) {
+            CombineRotations(pick[0], pick[1]);
+            used[pick[1]] = -1;
+        } else if (c < 2)
+            break;
+        c = 0;
+    }
+    c = 0;
+    for (tries = 0; tries < 30; tries++) {
+        for (j = 0; j < 10; j++)
+            pick[j] = 0;
+        int got = 0;
+
+        for (j = 0; j < m_count; j++) {
+            if (used[j] >= 0) {
+                pick[got] = j;
+                got++;
+                c++;
+                if (got >= 2)
+                    break;
+            }
+        }
+        if (c == 2) {
+            CombineRotations(pick[0], pick[1]);
+            used[pick[1]] = -1;
+        } else if (c < 2)
+            break;
+        c = 0;
+    }
+    int left = m_count;
+
+    for (j = 0; j < left; j++) {
+        if (!used[j])
+            break;
+    }
+    int last = next - 1;
+
+    if (j != last) {
+        CSealAnimRec *d = Frame(last)->m_recs;
+        CSealAnimRec *e = Frame(j)->m_recs;
+
+        unsigned int m = siNumBodyObjects;
+
+        CopyRots(d, e, m);
+    }
+    m_count = next;
+    return m_count;
+}
 
 /* the top frame's records put back on the SEAL's parts, each with a part, its position and rotation
  * (OVL2 0x577700; SOCOM 1's AnimPop, after AnimBlend in both builds, its 32 records a count now) --
