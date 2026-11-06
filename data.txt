@@ -435,6 +435,7 @@
 0x003DE2B0 0x4 deathFlashHeld2  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 2: its held time (0.1): 1 reference in 1 function
 0x003DE2B8 0x4 deathFlashIn2  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 2: its fade-in time (0.3): 1 reference in 1 function
 0x003DE2C0 0x4 deathEndFadeTime  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 4: FadeToEndMission's time (1.0): 1 reference in 1 function
+0x003DE2C8 0x4 flyCamSpeed  # OVL1; ours, a camera.cpp static (the engine core round 28): the free camera's (mode 6's) speed (-300 in data, loaded with lwc1): 4 references in 1 function
 0x003DE2D0 0x4 m_debug__8CConsole  # OVL1; s1:data-seq (size SOCOM 1's; via Debug__8CConsoleFiP7CPacketPCc)
 0x003DE2E0 0x4 recycler_index  # OVL1; s1:data-seq (size SOCOM 1's; via CreateEntity__7CEntityFP7CEntityb)
 0x003DE2E8 0x4 rrTargetListCount__7CEntity  # OVL1; SOCOM 1's CEntity::rrTargetListCount ($gp-32296 there, read by its UpdateTargetList for CRobin::setup): 3, how many entities a tick's target-list slice takes; SOCOM II's UpdateTargetList reads it once (the core lane round 11); ent_target.cpp's

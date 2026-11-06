@@ -73,6 +73,8 @@ public:
     float GetAcceleration(int stick);
     void SetAcceleration(int stick, float accel);
     void Tick(float dt);
+    /* an axis of the sticks as the game reads them (the free camera's; the name ours) */
+    float GetStick(int i) const { return m_220[i]; }
     /* SOCOM II's takes whether to read the pad a few frames to settle it (the name SOCOM 1's) */
     void Flush(bool settle);
     bool IsOpen() const;

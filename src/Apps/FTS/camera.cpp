@@ -1463,7 +1463,8 @@ public:
     unsigned char _0[0xfc];
     unsigned char m_fcHold : 1;   // 0xfc
     unsigned char _fc1 : 7;
-    unsigned char _fd[0x1910 - 0xfd];
+    unsigned char _fd[0x18f8 - 0xfd];
+    CBBox m_bounds;   // 0x18f8: the free camera's bounds (the name ours)
     CCamPath m_campath;   // 0x1910
 };
 
@@ -1997,6 +1998,205 @@ void CAppCamera::APTeatherCam(CMatrix &cTw, float dT)
     }
     LookAt(&cam_new_pos, &cam_aim_point, cTw);
     UpdateRegions(this);
+}
+
+/* the fly speed (data: -300, a variable), and the pitch's sign the options keep (SOCOM 1's hackPitchFactor);
+ * one of the pad's buttons out of its read (libpad2's, zin_pad.cpp's) */
+extern "C" float flyCamSpeed;
+extern float hackPitchFactor;
+extern "C" int func_001BDA78(int port, void *data, int button);
+
+/* a level over TransformVectors: its two vectors below the two cross products' in the frame */
+static inline void TransformVectorInPlace(const CMatrix *m, CPnt3D *p)
+{
+    TransformVectors(m, p, p, 1);
+}
+
+/* the unit vector across two points, through VU0 */
+static inline void CrossNormalized(CPnt3D *out, const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt4D v0;
+    CPnt4D v1;
+    CPnt4D v2;
+
+    v1.x = a.x;
+    v1.y = a.y;
+    v1.z = a.z;
+    v1.w = 1.0f;
+    v2.x = b.x;
+    v2.y = b.y;
+    v2.z = b.z;
+    v2.w = 1.0f;
+    sceVu0OuterProduct((float *)&v0, (float *)&v1, (float *)&v2);
+    sceVu0Normalize((float *)&v0, (float *)&v0);
+    out->x = v0.x;
+    out->y = v0.y;
+    out->z = v0.z;
+}
+
+/* a pad to read and the player's controller free for it */
+static inline bool FlyCamActive(CPad *pad)
+{
+    PLAYER_CAM_STATE mode = *(PLAYER_CAM_STATE *)&ftsGetPlayer()->m_control->m_221;
+    bool on = false;
+
+    if (pad && mode == 0)
+        on = true;
+    return on;
+}
+
+/* an altitude to read */
+static inline bool FlyCamHits(zdb::DiIntersect *di)
+{
+    bool any = false;
+
+    if (di && di->m_Cnt > 0)
+        any = true;
+    return any;
+}
+
+/* mode 6: the free camera (SOCOM II's): first time placed at the third person's point, then flown by the pad's
+ * sticks and triggers in the view's frame -- or, the death camera's state 2, the sticks' y zooming -- held inside
+ * the mission's bounds and over the ground below it, the view's matrix set, the regions updated */
+void func_002964F0(CAppCamera *cam, CMatrix &cTw, float dT)
+{
+    if (cam->m_44) {
+        CPnt3D offset;
+        float len;
+
+        cam->m_44 = 0;
+        cam->m_wPos = cam->GetThirdPersonCamPos(&offset, &len);
+        if (cam->m_entity)
+            cam->m_entity->GetMatrix()->Transform(&cam->m_wPos, 1);
+    }
+    if (cam->m_ctrl && cam->m_ctrl->IsPlayer())
+        cam->m_padid = cam->m_ctrl->m_padid;
+
+    CPad *pad = cam->m_padid < CInput::NUM_PADS ? CInput::m_pads[cam->m_padid] : 0;
+
+    if (!pad)
+        pad = CInput::m_pads[0];
+
+    bool active = FlyCamActive(pad);
+    CPnt3D prev(cam->m_wPos.x, cam->m_wPos.y, cam->m_wPos.z);
+    float fwd = !active ? 0.0f : dT * (flyCamSpeed * pad->GetStick(1));
+    float zoom = !active ? 0.0f : dT * pad->m_220[1];
+    float strafe = !active ? 0.0f : dT * (flyCamSpeed * pad->GetStick(0));
+    float rise = !active ? 0.0f : dT * (flyCamSpeed * (0.003921569f * func_001BDA78(pad->m_port, pad->m_e4, 28)));
+
+    if (active)
+        rise -= dT * (flyCamSpeed * (0.003921569f * func_001BDA78(pad->m_port, pad->m_e4, 30)));
+
+    float yaw = !active ? 0.0f : dT * (1.8849558f * pad->GetStick(2));
+    float pitch = !active ? 0.0f : dT * (1.8849558f * pad->GetStick(3));
+
+    cam->m_fc += yaw;
+    cam->m_f8 += pitch * hackPitchFactor;
+    if (cam->m_f8 > 1.5f)
+        cam->m_f8 = 1.5f;
+    else if (cam->m_f8 < -1.5f)
+        cam->m_f8 = -1.5f;
+    while (cam->m_fc < 0.0f)
+        cam->m_fc += 6.2831855f;
+    while (cam->m_fc > 6.2831855f)
+        cam->m_fc -= 6.2831855f;
+    cTw.SetRotate((CPnt3D *)&cam->m_f8);
+    if (*(unsigned char *)&cam->m_f4 == 0) {
+        CPnt3D dir = CPnt3D::unit_z;
+
+        TransformVectorInPlace(&cTw, &dir);
+        cam->m_wPos += dir * fwd;
+
+        CPnt3D up(dir.x, 10000.0f, dir.z);
+        CPnt3D right;
+
+        CrossNormalized(&right, dir, up);
+        cam->m_wPos -= right * strafe;
+
+        CPnt3D up2;
+
+        CrossNormalized(&up2, dir, right);
+        cam->m_wPos += up2 * rise;
+    } else if (*(unsigned char *)&cam->m_f4 == 2) {
+        float k = 1.3f;
+
+        cam->m_118 += k * (zoom * cam->m_118);
+        if (cam->m_118 < 1.0f)
+            cam->m_118 = 1.0f;
+        else if (cam->m_118 > 30.0f)
+            cam->m_118 = 30.0f;
+
+        float z = cam->m_118;
+
+        cam->m_118 = z;
+        appCamera->SetZoom(z);
+    }
+
+    CPnt3D *lo = &theMission.m_bounds.m_min;
+    CPnt3D *hi = &theMission.m_bounds.m_max;
+    bool bounded = false;
+
+    if (hi->x - lo->x > 5.0f)
+        bounded = true;
+    if (bounded) {
+        if (cam->m_wPos.x < lo->x)
+            cam->m_wPos.x = lo->x;
+        else if (cam->m_wPos.x > hi->x)
+            cam->m_wPos.x = hi->x;
+        if (cam->m_wPos.z < lo->z)
+            cam->m_wPos.z = lo->z;
+        else if (cam->m_wPos.z > hi->z)
+            cam->m_wPos.z = hi->z;
+    }
+
+    zdb::DiIntersect *di = zdb::CWorld::m_world->GetAltitudes(&cam->m_wPos);
+
+    bool any = FlyCamHits(di);
+
+    if (!any) {
+        if (bounded) {
+            if (cam->m_wPos.y < lo->y)
+                cam->m_wPos.y = lo->y;
+            else if (cam->m_wPos.y > hi->y)
+                cam->m_wPos.y = hi->y;
+        } else {
+            zdb::CWorld::m_world->GetAltitudes(&prev);
+            cam->m_wPos = prev;
+        }
+    } else {
+        float *low = 0;
+        float *high = 0;
+        int i;
+        int n = di->m_Cnt;
+
+        for (i = 0; i < n; i++) {
+            zdb::IntersectStruct *is = &di->m_Intersects[i];
+
+            if (!low) {
+                low = &is->m_pos.y;
+                high = low;
+            } else {
+                if (is->m_pos.y < *low)
+                    low = &is->m_pos.y;
+                if (is->m_pos.y > *high)
+                    high = &is->m_pos.y;
+            }
+        }
+
+        float below = 10.0f;
+        float above = 0.5f * cam->m_camera->GetFarPlane();
+
+        if (*low >= cam->m_wPos.y - below) {
+            cam->m_wPos.y = *low + below;
+        } else {
+            float top = *high + above;
+
+            if (cam->m_wPos.y > top)
+                cam->m_wPos.y = top;
+        }
+    }
+    LaSet3(cTw.m_matrix[3], cam->m_wPos.x, cam->m_wPos.y, cam->m_wPos.z);
+    cam->UpdateCameraRegions();
 }
 
 /* the controller's aim pitched by a rate (OVL2 0x594600, the SEALs' controller: not named yet) and
