@@ -435,6 +435,9 @@ struct CTSound : TASK_HDR {
      * names ours) */
     void SetStarted(bool b) { m_started = b; }
     void SetBit7(bool b) { m_bit7 = b; }
+    void SetBlocking(bool b) { m_blocking = b; }
+    void SetSitrep(bool b) { m_sitrep = b; }
+    void SetBroadcast(bool b) { m_broadcast = b; }
 
     /* the n'th name, 0 past the last: the entity's first, then the sounds (inline; the name ours) */
     const char *GetName(int n)
@@ -3887,6 +3890,80 @@ bool CTSound::Tick(_zanim_cmd_hdr *hdr, float *dT)
         done = !cmd->m_inst->IsPlaying();
     *dT = 0.0f;
     return done;
+}
+
+/* a sound task read: the "name" (or "NAME") list's sounds -- none, no block --, the block sized to the
+ * "entity"'s name and theirs, the names laid end to end after the entity's; then the tags (OVL2
+ * 0x5D1290; SOCOM 1's). The size summed in steps (the entity's length first in the add, the sum
+ * duplicated into both arms of TaskStrLen's test: written in one expression, the names' length comes
+ * first and the align block gains a pad, 0x454); the rdr spilled to the frame as the target's (nine
+ * saved registers) */
+_zanim_cmd_hdr *CTSound::Parse(_zrdr *rdr)
+{
+    CTSound *cmd = 0;
+    _zrdr *names = zrdr_findtag(rdr, "name");
+
+    if (!names)
+        names = zrdr_findtag(rdr, "NAME");
+    if (names && names->type == 4) {
+        int items = names->Count();
+        int count = 0;
+        int len = 0;
+
+        for (int i = 0; i < items; i++) {
+            _zrdr *it = TaskItem(names, i);
+
+            if (it && it->type == 3) {
+                len += strlen(it->String()) + 1;
+                count++;
+            }
+        }
+        if (count > 0) {
+            const char *ent = zrdr_findstring(rdr, "entity");
+            unsigned int size = TaskStrLen(ent);
+
+            size += len;
+            size = TaskAlign(size) + 20;
+
+            cmd = (CTSound *)_calloc(size, 1, 0, 0);
+            cmd->hdr.data_size = size;
+            cmd->hdr.data_type = ai_cmdid[0];
+            ((TASK_NAME *)cmd->m_names)->Set(ent);
+            int k = 1;
+
+            for (int j = 0; j < count; j++) {
+                _zrdr *it = TaskItem(names, j);
+
+                if (it && it->type == 3) {
+                    const char *name = it->String();
+                    char *d = cmd->m_names;
+                    int n = k;
+
+                    while (n--)
+                        d += strlen(d) + 1;
+                    ((TASK_NAME *)d)->Set(name);
+                    k++;
+                }
+            }
+            cmd->m_count = count;
+            cmd->m_items = items;
+            if (zrdr_findtag(rdr, "blocking"))
+                cmd->SetBlocking(true);
+            if (zrdr_findtag(rdr, "sitrep"))
+                cmd->SetSitrep(true);
+            if (zrdr_findtag(rdr, "broadcast"))
+                cmd->SetBroadcast(true);
+            int aware = 4;
+
+            zrdr_findint(rdr, "aware", &aware, 1);
+            cmd->m_aware = aware;
+            int event = 0;
+
+            if (zrdr_findint(rdr, "event", &event, 1))
+                cmd->m_event = (int)(127.0f * event);
+        }
+    }
+    return &cmd->hdr;
 }
 
 /* (OVL2 0x5D1250) */
