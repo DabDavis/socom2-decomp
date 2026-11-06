@@ -13,7 +13,7 @@
  * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
  * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open);
  * CDIPoly::GetAltitude (0x2DD8E0) and CDIBBox::GetIntersect in round 14, SetCDIBBox in round 24
- * (open, registers only) with its two statics, SOCOM 1's bbox_poly and initCDIBBoxOnce.
+ * (byte-exact since round 27) with its two statics, SOCOM 1's bbox_poly and initCDIBBoxOnce.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
@@ -410,22 +410,6 @@ int CDIBBox::GetAltitude(DiIntersect *di)
 /* GetBBoxCorners (0x2DCCD0): int_shapes.h's inline, its out-of-line copy generated after
  * SetCDIBBox, the function needing it (the engine core's round 26: a plain definition here before) */
 
-/* a face of the unit box: a quad of four of its corners, its normal worked out (ours, inline: its
- * tree is a level taller than the level -- SetEdgeVecsAndNorm's is five high -- so only its body is
- * inlined and SetEdgeVecsAndNorm is called, as in the target, where written in place MW inlines it;
- * the DI type stored straight, as the target's inline bit-field store, since SetDiType here would be
- * called too) */
-inline void SetFace(CDI *poly, const CPnt3D *a, const CPnt3D *b, const CPnt3D *c, const CPnt3D *d)
-{
-    poly->Allocate(4);
-    poly->m_flags.m_ditype = 2;
-    memcpy(&poly->m_pnts[0], a, 12);
-    memcpy(&poly->m_pnts[1], b, 12);
-    memcpy(&poly->m_pnts[2], c, 12);
-    memcpy(&poly->m_pnts[3], d, 12);
-    poly->SetEdgeVecsAndNorm();
-}
-
 /* a box's eight corners as a member array (ours -- the device of zparticle_source.cpp's FaceCorners
  * and node_model.cpp's BoxCorners: the target builds the corners through CPnt3D()'s out-of-line copy
  * 0x1FB3C0 in a loop, which a member array built by a constructor MW cannot expand whole gives; a
@@ -442,31 +426,24 @@ struct UnitBoxCorners {
  * GetBBoxCorners and SetEdgeVecsAndNorm): the box -0.5..0.5, its corners, and a quad newed into
  * bbox_poly for each face -- 7654, 0374, 2673, 5621, 4510 and 0123 -- each read back from the
  * array into one local (the target's s0 for all six, stored then reloaded).
- * OPEN, 32 instructions (unwritten before round 24; the target's size, 0x52C, its frame, every call
- * and every instruction but registers; build/scratch/core/v_sb*.py): the eight corner addresses'
- * saved registers -- the target gives c7, c6, c5, c4, c0, c3, c2, c1 s1, s2, s6, s7, s3, s5, s4,
- * s1, ours s5, s3, s1, s4, s7, s2, s6, s3 (igreplay --target: those eight nodes alone differ; no
- * single renumbering of one gives the target's, the eight together are past any search budget).
- * The first corner's address is a common subexpression in the target (s3 from face 2 on), but
- * `&c.m_pts[0]` is the object's own address, which MW never holds -- 0x518 in every spelling (a
- * local array, a member array, `c.m_pts + 0`, `&*c.m_pts`, by index through a member, by reference,
- * as PNT3D *, void * or float *) -- and only the no-op integer conversion below makes it a temporary
- * (a 4-byte member ahead of the array does too, but moves the frame 16 bytes: v_sb5.py). Settled on
- * the way: the poly one named local (s0 throughout; SetFace handed bbox_poly[k] straight gives each
- * face its own register), the guard a bool (li 1), the box built field by field before the corners
- * (the target's stores ahead of the loop).
- * Round 25, the numbering read: igdump's pass labels make all eight IRO_CommonSubs temporaries, made
- * at each corner's FIRST REUSE in linear order (mweppc's IroCSE.c: ReplaceCommonSub's MoveCommonSub
- * at the first ReplaceCSE-marked use) -- here c7, c4, c6, c3, c5, c2, c1, c0 (v41-v48, the faces'
- * arguments linearised left to right at their memcpys). Every permutation of the eight among their
- * slots replayed (build/scratch/core/permsb.py, 40,320 in 35 s; the GCC front's igreplay --permute
- * agrees): 8 give the target, all the order c3, c2, c0, c6, c7, c5, c4 with c1 anywhere. Moving only
- * the top ring (c4-c7) to other zones of the numbering (permsb2.py, 196k placements): 243 hits, every
- * one with the whole top ring numbered AFTER the bottom ring's (as a second CSE pass would make them:
- * pass 0 the bottom ring in its first-reuse order c3, c2, c1, c0, pass 1 the top ring as c6, c7, c5,
- * c4 -- which the face order gives only if face 0's and face 1's top-ring uses are not CSE'd in pass
- * 0). Not met by a pointer to corner 4 for the top ring (all faces or face 0 alone: 0x50C / 0x528) or
- * SOCOM 1's one-iteration point loop (its SetPnts: 0x538 / 0x544; v_sbtop.py, v_sbloop.py) */
+ * Byte-exact since the engine core's round 27 (32 off since round 24): the eight corner addresses'
+ * saved registers (c7, c6, c5, c4, c0, c3, c2, c1 in s1, s2, s6, s7, s3, s5, s4, s1) are a pure numbering
+ * -- all eight were IRO_CommonSubs temporaries, numbered by each corner's first reuse (c7, c4, c6, c3,
+ * c5, c2, c1, c0 as the faces read), and `igreplay --permute` (8 of the 40,320 orders, round 25) wants
+ * c3, c2, c0, c6, c7, c5, c4 with c1 anywhere. The source shape: each address held in an int local
+ * (ours, a marked device: a type conversion stops propagation and the common subexpression, so the
+ * local keeps its number; an enum holds it too) declared in that order and assigned at its first use.
+ * The six faces are written out so the assignments land at their memcpys; EndFace keeps
+ * SetEdgeVecsAndNorm called (its tree is a level taller than the level: only EndFace's body is
+ * inlined, where written in place MW inlines it). Settled on the way: the poly one named local (s0
+ * throughout), the guard a bool (li 1), the box built field by field before the corners (the target's
+ * stores ahead of the loop). */
+/* a face's normal worked out (ours, inline; see SetCDIBBox) */
+inline void EndFace(CDI *poly)
+{
+    poly->SetEdgeVecsAndNorm();
+}
+
 void CDIBBox::SetCDIBBox()
 {
     if (initCDIBBoxOnce)
@@ -482,26 +459,63 @@ void CDIBBox::SetCDIBBox()
     box.m_max.x = 0.5f;
     box.m_max.y = 0.5f;
     box.m_max.z = 0.5f;
+    int w3, w2, w0, w6, w7, w5, w4, w1;
     UnitBoxCorners c(&box);
 
     bbox_poly[0] = new CDIPoly;
     poly = bbox_poly[0];
-    SetFace(poly, &c.m_pts[7], &c.m_pts[6], &c.m_pts[5], &c.m_pts[4]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)(w7 = (int)&c.m_pts[7]), 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)(w6 = (int)&c.m_pts[6]), 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)(w5 = (int)&c.m_pts[5]), 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)(w4 = (int)&c.m_pts[4]), 12);
+    EndFace(poly);
     bbox_poly[1] = new CDIPoly;
     poly = bbox_poly[1];
-    SetFace(poly, (CPnt3D *)(unsigned int)&c.m_pts[0], &c.m_pts[3], &c.m_pts[7], &c.m_pts[4]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)(w0 = (int)&c.m_pts[0]), 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)(w3 = (int)&c.m_pts[3]), 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w7, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)w4, 12);
+    EndFace(poly);
     bbox_poly[2] = new CDIPoly;
     poly = bbox_poly[2];
-    SetFace(poly, &c.m_pts[2], &c.m_pts[6], &c.m_pts[7], &c.m_pts[3]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)(w2 = (int)&c.m_pts[2]), 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)w6, 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w7, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)w3, 12);
+    EndFace(poly);
     bbox_poly[3] = new CDIPoly;
     poly = bbox_poly[3];
-    SetFace(poly, &c.m_pts[5], &c.m_pts[6], &c.m_pts[2], &c.m_pts[1]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)w5, 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)w6, 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w2, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)(w1 = (int)&c.m_pts[1]), 12);
+    EndFace(poly);
     bbox_poly[4] = new CDIPoly;
     poly = bbox_poly[4];
-    SetFace(poly, &c.m_pts[4], &c.m_pts[5], &c.m_pts[1], (CPnt3D *)(unsigned int)&c.m_pts[0]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)w4, 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)w5, 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w1, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)w0, 12);
+    EndFace(poly);
     bbox_poly[5] = new CDIPoly;
     poly = bbox_poly[5];
-    SetFace(poly, (CPnt3D *)(unsigned int)&c.m_pts[0], &c.m_pts[1], &c.m_pts[2], &c.m_pts[3]);
+    poly->Allocate(4);
+    poly->m_flags.m_ditype = 2;
+    memcpy(&poly->m_pnts[0], (CPnt3D *)w0, 12);
+    memcpy(&poly->m_pnts[1], (CPnt3D *)w1, 12);
+    memcpy(&poly->m_pnts[2], (CPnt3D *)w2, 12);
+    memcpy(&poly->m_pnts[3], (CPnt3D *)w3, 12);
+    EndFace(poly);
 }
 
 }
