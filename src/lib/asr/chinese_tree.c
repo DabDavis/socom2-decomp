@@ -98,6 +98,147 @@ __inline__ unsigned char Tone_Of_Final_TreeCtx(unsigned short final, unsigned sh
         d->tone = s->tone;                                              \
     }
 
+typedef struct TREEITEM {
+    int id;
+    int pron;                           /* +4 */
+    unsigned short link;                /* +8 */
+} TREEITEM;
+
+typedef struct TREEWORD {
+    int id;
+    int f4;
+} TREEWORD;
+
+typedef struct TREELINK {
+    unsigned short node;
+    unsigned short next;
+} TREELINK;
+
+/* the menu's sentences as a tree of pronunciations: start, then the sentence's word, then end, each
+ * with its prefix shared when already in the tree; a pronunciation count multiplies down a chain.
+ * SOCOM 1's LOCAL (round 41c). */
+static void Build_Tree_ForChinese_TreeCtx(TREEITEM *items, TREELINK *links, int start, int end, int *bow,
+                                          unsigned int nwords, TREEWORD *words, unsigned int *pnlinks,
+                                          unsigned int *pnnodes)
+{
+    int bow0 = bow[0];
+    unsigned int nlinks = *pnlinks;
+    unsigned int nnodes = *pnnodes;
+    unsigned int wi;
+    TREEWORD *wp = words;
+    unsigned int prevnp;
+
+    for (wi = 0; wi < nwords; wi++, wp++) {
+        unsigned int prev = 0;
+        unsigned int lnk = items[0].link;
+        int w = wp->id;
+        int first = bow[start] - bow0;
+        unsigned int np, i, j, k;
+
+        for (;;) {
+            unsigned int n;
+
+            if (lnk == 0xFFFF) {
+                if (prev != 0)
+                    prevnp = bow[items[prev].id + 1] - bow[items[prev].id];
+                else
+                    prevnp = 1;
+                break;
+            }
+            n = links[lnk].node;
+            if (items[n].pron == first) {
+                prev = n;
+                break;
+            }
+            lnk = links[lnk].next;
+        }
+        if (lnk == 0xFFFF) {
+            unsigned int ns = bow[start + 1] - bow[start];
+
+            lnk = items[prev].link;
+            for (i = 0; i < ns; i++) {
+                for (j = 0; j < prevnp; j++) {
+                    links[nlinks + j].node = nnodes + i;
+                    if (lnk != 0xFFFF)
+                        links[nlinks + j].next = lnk + j;
+                    else
+                        links[nlinks + j].next = -1;
+                }
+                lnk = nlinks;
+                if (i == ns - 1) {
+                    for (j = 0; j < prevnp; j++)
+                        items[prev + j].link = nlinks + j;
+                }
+                items[nnodes + i].pron = first + i;
+                nlinks = (unsigned short)(nlinks + prevnp);
+                items[nnodes + i].id = start;
+            }
+            prev = nnodes;
+            nnodes = (unsigned short)(nnodes + ns);
+            prevnp = ns;
+            lnk = 0xFFFF;
+        } else {
+            lnk = items[prev].link;
+        }
+        first = bow[w] - bow0;
+        if (lnk != 0xFFFF) {
+            for (;;) {
+                unsigned int n;
+
+                if (lnk == 0xFFFF) {
+                    if (prev != 0)
+                        prevnp = bow[items[prev].id + 1] - bow[items[prev].id];
+                    else
+                        prevnp = 1;
+                    break;
+                }
+                n = links[lnk].node;
+                if (items[n].pron == first) {
+                    prev = n;
+                    break;
+                }
+                lnk = links[lnk].next;
+            }
+            lnk = items[prev].link;
+        }
+        for (k = 0; k < 2; k++) {
+            unsigned int t;
+
+            np = bow[w + 1] - bow[w];
+            for (i = 0; i < np; i++) {
+                for (j = 0; j < prevnp; j++) {
+                    links[nlinks + j].node = j * np + nnodes + i;
+                    if (lnk != 0xFFFF)
+                        links[nlinks + j].next = lnk + j;
+                    else
+                        links[nlinks + j].next = -1;
+                }
+                lnk = nlinks;
+                if (i == np - 1) {
+                    for (j = 0; j < prevnp; j++)
+                        items[prev + j].link = nlinks + j;
+                }
+                nlinks = (unsigned short)(nlinks + prevnp);
+                for (j = 0; j < prevnp; j++) {
+                    items[j * np + nnodes + i].pron = first + i;
+                    items[j * np + nnodes + i].id = w;
+                }
+            }
+            prev = nnodes;
+            w = end;
+            t = np * prevnp;
+            nnodes = (unsigned short)(nnodes + t);
+            prevnp = t;
+            first = bow[w] - bow0;
+            lnk = 0xFFFF;
+        }
+        for (i = 0; i < prevnp; i++)
+            items[prev + i].link = -1;
+    }
+    *pnlinks = nlinks;
+    *pnnodes = nnodes;
+}
+
 /* the pronunciation tree Build_Tree_ForChinese_TreeCtx makes (12-byte nodes, 4-byte links), the item
  * tree it is translated into (DICTITEM / DICTLINK), and the lexicon's tables, as the translation
  * reads them */
@@ -432,21 +573,10 @@ void FreeSecondPassContext_ForChinese_TreeCtx(CASR *c)
     }
 }
 
-typedef struct TREEITEM {
-    int id;
-    int pron;                           /* +4 */
-    unsigned short link;                /* +8 */
-} TREEITEM;
-
 typedef struct TREEUW {
     unsigned short *lex;
     int *begin;
 } TREEUW;
-
-typedef struct TREEWORD {
-    int id;
-    int f4;
-} TREEWORD;
 
 typedef struct CTXVT CTXVT;
 struct CTXVT {
@@ -466,9 +596,6 @@ typedef struct IMPORT {
     void *heap;
 } IMPORT;
 
-extern void Build_Tree_ForChinese_TreeCtx(TREEITEM *items, unsigned int *links, int start, int end, int *bow,
-                                          unsigned int nwords, TREEWORD *words, unsigned int *pnlinks,
-                                          unsigned int *pnnodes);
 extern int Swap_Finals_TreeCtx(unsigned short final, unsigned int prev, unsigned int node, FSTREE *t);
 
 static __inline__ unsigned short IsStartWord(unsigned short f)
@@ -651,7 +778,7 @@ FreeSecondPassContext_ForChinese_TreeCtx(c);
 return 1;
     }
     items[0].link = -1;
-    Build_Tree_ForChinese_TreeCtx(items, links, n2, end, bow, nwords, words, &nlinks, &nnodes);
+    Build_Tree_ForChinese_TreeCtx(items, (TREELINK *)links, n2, end, bow, nwords, words, &nlinks, &nnodes);
     for (l = items[0].link; l != 0xFFFF; l = ((unsigned short *)&links[l])[1])
         nroots++;
     {
