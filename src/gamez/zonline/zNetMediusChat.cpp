@@ -336,8 +336,6 @@ void func_002ED9C0(int, int, int, MediusFindWorldByNameResponse *);   /* cbFindR
 void func_002EE210(int, int, int, MediusFindWorldByNameResponse *);   /* cbFindGameByName */
 MediusErrorCode MediusCreateGame(MediusCreateGameRequest *req,
                               void (*cb)(int, int, int, MediusCreateGameResponse *));   /* MediusCreateGame */
-void func_002E9840(CValve *valve);   /* the clan game's team set from the valve (the clan unit's) */
-int func_002E99F0();   /* the clan game's field (the clan unit's) */
 
 extern NetConnectionInfo data_0066A540;   /* the room's lobby server (OVL2 bss) */
 extern NetConnectionInfo data_0066A8F0;   /* the game's server (OVL2 bss) */
@@ -346,7 +344,6 @@ extern int MediusWorldID;   /* the game joined (SOCOM 1's) */
 extern unsigned char g_bJoiningRandomGame;
 extern float data_004A44A0;   /* (a clock) */
 extern float data_0044F9E8;   /* when the room was joined */
-int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator */
 void func_002F4080(void *msg, int type);   /* a request put into the network's order (empty) */
 
 void func_00300680();   /* the Medius connection closed */

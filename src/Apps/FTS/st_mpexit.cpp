@@ -844,7 +844,12 @@ void UpdateCareerRecord(int a, int b)
  * bitfield's). Every saved register, the frame and the code are the target's. Tried: the alive
  * bool, the stats reference and the side bools declared in each order, uninitialised and assigned
  * later, as unsigned char, through an inline IsAlive(); the type in an int or byte local; the
- * score's add spelled out */
+ * score's add spelled out. Round 59's replay (igreplay -r 1 --target, the spilled pass's record):
+ * one move closes all three -- the game's type (v96, a code-generation temporary loaded at the
+ * switch, after the alive bool's v88-v91) numbered anywhere from 42.5 (after bTerr) to 89.5; an
+ * int / byte local for it, before or after the alive bool, and a GetGameType() accessor (int, byte,
+ * enum, reference) are all forward-substituted into the switch (the load still follows the alive
+ * bool's), so 19 each */
 void GetRoundResult(CZSealBody *pSeal, int *pWins, int *pScore)
 {
     int iSeals = 0;
@@ -939,17 +944,19 @@ inline void SetTimeUiVar(const char *szUiVar, unsigned int (CNetClock::*pfnTime)
 
 /* the round's and the game's stats lists for each side, the player's points, the rounds won and
  * the times (SOCOM 1's SetMpStatUiVars; SOCOM II's lists sort each by its own stats and leave the
- * ladder alone, the team totals to SetFinalStatsUiVars).
- * OPEN, 8 instructions, one register pair: the points (the round's MVP score, loaded before Add)
- * take s0 and PointsEarned's variable s3, where the target has them the other way round; every
- * other register is the target's. Tried (round 18): the score in a named local declared first,
- * after the bools or last; the setter as this inline assignment, as a free inline with a named
- * variable, or written out with a function-scope variable; tools/perm.py over the declaration
- * order of all seven locals (best: this one's 8, from 34) */
+ * ladder alone, the team totals to SetFinalStatsUiVars). The points in a named local after the
+ * bools (SOCOM 1's iPts), read off the member: open for 41 rounds at 8 (the points in s0 and
+ * PointsEarned's variable in s3, the target's the other way round) until round 59's replay
+ * (igreplay --want 37=s0,44=s3 --movers 44: the points' load among the named locals, 33.5-36.5).
+ * An int local read through GetMvpScore() is propagated into the accessor's result temporary (a
+ * local assigned once from a copy is no node: 8 off); read off m_score, or converted (an unsigned
+ * int local), it keeps its declaration's number -- a short local takes the place too but extends
+ * at each use (+0x10) */
 void SetMpStatUiVars()
 {
     bool bSeals;
     bool bTerrs;
+    int iPts;
     int iWon;
     int iSealsWon;
     int iTerrsWon;
@@ -961,7 +968,8 @@ void SetMpStatUiVars()
     SetStatLbUiVar(true, "GameStatLbContentsSeals", &CZSealBody::GetGameStats, true);
     SetStatLbUiVar(false, "GameStatLbContentsTerrs", &CZSealBody::GetGameStats, true);
 
-    *theUIVarManager.Add("PointsEarned", 0, UIVL_TEMPORARY) = ftsGetPlayer()->GetRoundStats().GetMvpScore();
+    iPts = ftsGetPlayer()->GetRoundStats().m_score;
+    *theUIVarManager.Add("PointsEarned", 0, UIVL_TEMPORARY) = iPts;
 
     iSealsWon = data_00437CE8->m_seals_won;
     iTerrsWon = data_00437CE8->m_terrs_won;
@@ -1074,7 +1082,11 @@ CMPExitState::CMPExitState() : CGameState("MPExitState")
  * frame, the draws spilled to the stack, the inline Add's order, the hit percentage through an
  * unsigned local, the clock reset through one load (an inline on the game), CMPExitMenu's 0x930
  * bytes. Tried: tools/perm.py over the six top declarations (14 after 1,644 steps), the pointer
- * declared first, tested `!= 0`, the late locals declared ahead, the draws' sum reversed */
+ * declared first, tested `!= 0`, the late locals declared ahead, the draws' sum reversed. Round
+ * 59's replay (-r 1, the spilled pass's record): the pointer's node (v52, numbered last as the first
+ * null-tested) placed anywhere from 39.5 to 46.5 -- after the first walk's pSeal, before the walk's
+ * list address @2023 -- gives all three; an inline wrapper for the global (with or without a local
+ * of its own) and the null test on the global itself leave it where it is */
 bool CMPExitState::Init()
 {
     sealSaveFireModes();

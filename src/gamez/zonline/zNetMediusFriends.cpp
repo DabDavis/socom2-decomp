@@ -42,7 +42,7 @@ struct MediusBuddyConfirmationResponse {
     int AddType;   // 0x34
 };   // 0x38
 
-struct MediusBuddyResponse;
+struct MediusBuddyResponse { MEDIUS_RESPONSE_HEAD };
 
 typedef void (*MediusBuddyCallback)(int, int, int, MediusBuddyResponse *);
 
@@ -286,7 +286,10 @@ bool CZOnlineLobby::IsIgnored(const char *name)
 
 /* the Medius library's set up: three callbacks and a timeout (SOCOM II's; OVL1 0x300840; in this
  * unit, ahead of the buddy code, by its place) */
-struct MediusErrorMessage;
+struct MediusErrorMessage {
+    int ErrorType;   // 0x0
+    char ErrorMessage[256];   // 0x4
+};
 
 struct MediusInitializeParams {
     void (*cb0)(int, int, int, MediusChatFwdMessage *);   // 0x0: the chat unit's cbChatMessage
@@ -300,6 +303,13 @@ struct MediusInitializeParams {
 
 void cbErrorMessage(int, int, int, MediusErrorMessage *);
 void cbChatMessage(int, int, int, MediusChatFwdMessage *msg);   /* (the chat unit's) */
+
+/* a Medius error handed to the menus with its text (SOCOM II's; OVL1 0x3008A0: MediusInit's error
+ * callback) */
+void cbErrorMessage(int, int, int, MediusErrorMessage *msg)
+{
+    LobbyEvent("MP_MEDIUS_ERROR", msg->ErrorMessage);
+}
 
 extern "C" {
 void func_003009C0(int, int, int, void *);
@@ -320,7 +330,23 @@ bool MediusInit()
     return ok;
 }
 
-/* the friends emptied and asked for (OVL1 0x301750): the call's result not looked at */
+extern "C" {
+/* a friend kept, the list shown at its end; on a failure shown as it is (OVL1 0x3017A0:
+ * GetFriendsList's callback) */
+void func_003017A0(int, int, int, MediusBuddyResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetBuddyList", resp->StatusCode)) {
+        FriendVec.Add((MediusGetBuddyList_ExtraInfoResponse *)resp);
+        if (((MediusGetBuddyList_ExtraInfoResponse *)resp)->EndOfList)
+            FriendVec.UpdateDisplay();
+    } else
+        FriendVec.UpdateDisplay();
+}
+}
+
+/* the friends emptied and asked for (OVL1 0x301750): the call's result not looked at.
+ * Called, not inlined, by the three callbacks that ask for the friends again: pinned */
+#pragma auto_inline off
 void CZOnlineLobby::GetFriendsList()
 {
     FriendVec.DeleteAll();
@@ -329,6 +355,16 @@ void CZOnlineLobby::GetFriendsList()
     memset(&req, 0, sizeof(req));
     func_0064AE58(&req, func_003017A0);
     CheckMediusError(MediusSuccess);
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* a friend let go of: the friends asked for again (OVL1 0x301710: RemoveFriend's callback) */
+void func_00301710(int, int, int, MediusBuddyResponse *resp)
+{
+    if (CheckMediusCallbackStatus("RemoveFromBuddyList", resp->StatusCode))
+        theLobby.GetFriendsList();
+}
 }
 
 /* the player to befriend found: asked to confirm, the menu told (OVL1 0x3015D0) */
@@ -458,6 +494,20 @@ void CZOnlineLobby::RemoveFromIgnore(int id)
     }
 }
 
+extern "C" {
+/* someone ignored kept, the list shown at its end; on a failure shown as it is (OVL1 0x300F70:
+ * GetIgnoreList's callback) */
+void func_00300F70(int, int, int, MediusBuddyResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetIgnoreList", resp->StatusCode)) {
+        data_0044FDE0.Add((IgnoreItem *)resp);
+        if (((IgnoreInfo *)resp)->EndOfList)
+            data_0044FDE0.UpdateDisplay();
+    } else
+        data_0044FDE0.UpdateDisplay();
+}
+}
+
 /* the ignore list emptied and asked for (OVL1 0x300F00) */
 void CZOnlineLobby::GetIgnoreList()
 {
@@ -509,6 +559,23 @@ void CZOnlineLobby::AddToIgnore(const char *name)
         }
         LobbyEvent("PLAYER_IS_IGNORED", 0);
     }
+}
+
+extern "C" {
+/* a friend added: the friends asked for again (OVL1 0x300C10: AddFriendDirectly's callback) */
+void func_00300C10(int, int, int, MediusBuddyResponse *resp)
+{
+    if (CheckMediusCallbackStatus("AddToBuddyList", resp->StatusCode))
+        theLobby.GetFriendsList();
+}
+
+/* the confirmation asked for answered: the friends asked for again once it is given (status 2)
+ * (OVL1 0x300BE0) */
+void func_00300BE0(int, int, int, MediusStatusResponse *resp)
+{
+    if (resp->StatusCode == 2)
+        theLobby.GetFriendsList();
+}
 }
 
 /* an account made a friend at once (OVL1 0x300B70) */
@@ -753,6 +820,16 @@ MediusErrorCode MediusConnect(FriendsConnectParams *params, FriendsConnectResult
 void func_002F3FF0(void *params);   /* (the chat unit's) */
 void func_00300800(int index);   /* the connection made: the caller's callback called */
 
+/* the connection made: its index kept and the caller's callback called once (OVL1 0x300800) */
+void func_00300800(int index)
+{
+    myConnectionIndex = index;
+    if (data_0044FDA8) {
+        data_0044FDA8(index);
+        data_0044FDA8 = 0;
+    }
+}
+
 /* a connection asked for: the one open closed first (a lobby's through Medius), the caller's
  * callback kept and ours put in its place (OVL1 0x300740: the lobby's and the universes'
  * connect handlers call it) */
@@ -771,6 +848,45 @@ bool func_00300740(int kind, FriendsConnectParams *params)
     params->Callback = func_00300800;
     myConnectionIndex = -1;
     return CheckMediusError(MediusConnect(params, &result));
+}
+}
+
+extern "C" {
+int MediusUpdate();   /* (OVL2: the lobby connection's traffic) */
+int func_00647AC0();   /* (OVL2: the universes' connection's) */
+int NetUpdate();   /* (OVL2: the network's, with no connection) */
+void MediusCloseBare();   /* (OVL2: the library shut down) */
+
+/* the connection's traffic handled: a lobby's through Medius, another's (the universes') through
+ * 0x647AC0, the network's when none is open (OVL1 0x3006D0: the DME's tick calls it) */
+int func_003006D0()
+{
+    int r;
+
+    if (myConnectionIndex != -1) {
+        if (data_0044FDA0 == 1)
+            r = MediusUpdate();
+        else
+            r = func_00647AC0();
+    } else
+        r = NetUpdate();
+    return r;
+}
+
+/* the connection closed: a lobby's through Medius (OVL1 0x300680: Close, the states and the chat
+ * unit's bailout call it) */
+void func_00300680()
+{
+    if (data_0044FDA0 == 1)
+        CheckMediusError(MediusDisconnect());
+    data_0044FDA0 = 0;
+    myConnectionIndex = -1;
+}
+
+/* the Medius library shut down (OVL1 0x300670: the chat unit's bailout calls it) */
+void func_00300670()
+{
+    MediusCloseBare();
 }
 }
 

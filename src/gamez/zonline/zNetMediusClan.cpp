@@ -163,6 +163,14 @@ extern unsigned int data_0044F778;   /* the clan whose team we are on */
 extern unsigned char data_0044F780;   /* our side, 0 none */
 }
 
+/* a valve as the clan's helpers read one (zvalve's CValve: its name, then the value's halfword) */
+class CValve {
+public:
+    char *m_name;   // 0x0
+    unsigned short m_value;   // 0x4
+    unsigned short m_flags;   // 0x6
+};
+
 /* a team's side (an int: a byte would make each case's constant a daddiu) */
 inline int ClanTeamSide(unsigned int team)
 {
@@ -179,11 +187,43 @@ inline int ClanTeamSide(unsigned int team)
     return 0;
 }
 
+/* on a clan's team at all (OVL1 0x2E9B30: the network game's persona and DME ask it) */
+bool IsOnClanTeam()
+{
+    return data_0044F778 != 0;
+}
+
 /* the team kept (JoinGame and 0x2F9220; OVL1 0x2E9AB0) */
 void SetClanTeam(unsigned int team)
 {
     data_0044F778 = team & 0x0FFFFFFF;
     data_0044F780 = ClanTeamSide(team);
+}
+
+/* the team as the lobby's game reports carry it: the clan's id with its side's tag in the top four
+ * bits, 0 for none (OVL1 0x2E99F0: the state handlers' GenericField3) */
+unsigned int GetClanTeam()
+{
+    switch (data_0044F780) {
+    case 0:
+        return 0;
+    case 1:
+        return data_0044F778 | 0xA0000000;
+    case 2:
+        return data_0044F778 | 0xB0000000;
+    case 3:
+        return data_0044F778 | 0xC0000000;
+    case 4:
+        return data_0044F778 | 0xD0000000;
+    default:
+        return 0;
+    }
+}
+
+/* our side, signed (OVL1 0x2E99E0: the menus' 'START' test and the persona's) */
+signed char GetClanTeamSide()
+{
+    return (signed char)data_0044F780;
 }
 
 /* a team we may join: any but side 3 of another clan (0x2F8C60, 0x2F8FD0; OVL1 0x2E9940) */
@@ -194,6 +234,47 @@ bool IsClanTeamAllowed(unsigned int team)
     if ((unsigned char)ClanTeamSide(team) == 3 && id != StoredClanInfo.ClanID)
         return false;
     return true;
+}
+
+/* the team forgotten (OVL1 0x2E9920: Init and Open call it) */
+void ClearClanTeam()
+{
+    data_0044F778 = 0;
+    data_0044F780 = 0;
+}
+
+/* our clan's team taken on the side the valve holds (1-4), else none (OVL1 0x2E9840: the clan
+ * game's creation reads the 'CreateClanAffiliation' valve) */
+void SetClanTeamFromValve(CValve *valve)
+{
+    switch (valve->m_value) {
+    case 1:
+        data_0044F780 = 1;
+        data_0044F778 = StoredClanInfo.ClanID;
+        break;
+    case 2:
+        data_0044F780 = 2;
+        data_0044F778 = StoredClanInfo.ClanID;
+        break;
+    case 3:
+        data_0044F780 = 3;
+        data_0044F778 = StoredClanInfo.ClanID;
+        break;
+    case 4:
+        data_0044F780 = 4;
+        data_0044F778 = StoredClanInfo.ClanID;
+        break;
+    default:
+        data_0044F778 = 0;
+        data_0044F780 = 0;
+        break;
+    }
+}
+
+/* the team ours (OVL1 0x2E9820: the DME's player test) */
+bool IsOurClanTeam()
+{
+    return StoredClanInfo.ClanID == data_0044F778;
 }
 
 /* The lists' members, defined first: they close the unit's own code in the image (0x2E9030-0x2E981F),
@@ -255,6 +336,26 @@ void ClanInvitationVector::Add(MediusGetClanInvitationsSentResponse *resp)
 }
 
 #pragma auto_inline reset
+
+extern "C" void func_002FAA80(CZOnlineLobby *lobby);   /* the player's info refreshed (the lobby unit's) */
+
+/* the clan left: forgotten -- its id, leader and name, the menus' name, description and messages --
+ * its roster emptied, the player's info refreshed (SOCOM 1's; OVL1 0x2E8F70: QuitClan's callback) */
+void cbQuitClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusRemovePlayerFromClanResponse *resp)
+{
+    if (CheckMediusCallbackStatus("QuitClan", resp->StatusCode)) {
+        PlayerClanID = -1;
+        StoredClanInfo.ClanID = -1;
+        StoredClanInfo.LeaderAccountID = -1;
+        memset(StoredClanInfo.ClanName, 0, sizeof(StoredClanInfo.ClanName));
+        *theLobby.uiv_ClanNameVar = "";
+        *theLobby.uiv_ClanDescription = "";
+        *theLobby.uiv_ClanMessages = "No clan messages.";
+        ClanMemberVec.DeleteAll();
+        UpdateClanRoster();
+        func_002FAA80(&theLobby);
+    }
+}
 
 /* the clan left (SOCOM 1's; OVL1 0x2E8EF0) */
 void CZOnlineLobby::QuitClan()
@@ -364,6 +465,14 @@ bool CZOnlineLobby::GetClan()
     return false;
 }
 
+/* an invitation answered: the invitations asked for again (SOCOM 1's; OVL1 0x2E8A60) */
+void cbRespondToClanInvitation(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                               MediusRespondToClanInvitationResponse *resp)
+{
+    CheckMediusCallbackStatus("RespondToClanInvitation", resp->StatusCode);
+    theLobby.CheckClanInvitations();
+}
+
 /* an invitation accepted (SOCOM 1's; OVL1 0x2E89F0) */
 void CZOnlineLobby::AcceptClanInvitation(int id)
 {
@@ -458,7 +567,9 @@ void cbCheckMyClanInvitations(MediusErrorCode, MediusErrorCode, MediusErrorCode,
     }
 }
 
-/* the invitations received asked for again (SOCOM 1's; OVL1 0x2E8650) */
+/* the invitations received asked for again (SOCOM 1's; OVL1 0x2E8650). Called, not
+ * inlined, by the unit's callbacks (the online lane's round 27): pinned */
+#pragma auto_inline off
 void CZOnlineLobby::CheckClanInvitations()
 {
     InvitationVec.DeleteAll();
@@ -470,6 +581,7 @@ void CZOnlineLobby::CheckClanInvitations()
     CheckMediusError(MediusCheckMyClanInvitations(&req,
         cbCheckMyClanInvitations));
 }
+#pragma auto_inline reset
 
 /* a message of our clan's: added to the lines the menu shows, after a blank one; on a failure the
  * menu told there are none (SOCOM 1's; OVL1 0x2E84E0) */
@@ -575,6 +687,12 @@ void CZOnlineLobby::TransferLeadership(const char *name)
     if (m->AccountName)
         memcpy(req.NewLeaderAccountName, m->AccountName, 32);
     CheckMediusError(MediusTransferClanLeadership(&req, cbTransferClanLeadership));
+}
+
+/* the clan to be asked for again (OVL1 0x2E81A0: ReleaseUIResources calls it) */
+void ForgetClanRequest()
+{
+    data_0044F788 = 0;
 }
 
 extern "C" {
@@ -733,6 +851,20 @@ void cbCreateClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusCreat
     }
 }
 
+/* the invitation sent: the invitations out asked for again; a full clan told, any other failure
+ * but -0x3D9 told as no such player -- the search over either way (SOCOM 1's; OVL1 0x2E7960) */
+void cbInvitePlayerToClanInvitation(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                                    MediusInvitePlayerToClanResponse *resp)
+{
+    if (CheckMediusCallbackStatus("MediusInvitePlayerToClanInvitation", resp->StatusCode))
+        theLobby.GetInvitedPlayers();
+    else if (resp->StatusCode == -0x3BC)
+        LobbyEvent("MP_CLAN_FULL", 0);
+    else if (resp->StatusCode != -0x3D9)
+        LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+    data_0044F798 = 3;
+}
+
 /* the player to invite found: invited, with a message he is also told (SOCOM 1's; OVL1 0x2E7850) */
 void cbInvitePlayerToClanGetID(int, int, int, MediusAccountGetIDResponse *resp)
 {
@@ -839,6 +971,14 @@ void CZOnlineLobby::CreateClan(const char *name)
     }
 }
 
+/* an invitation taken back: the invitations out asked for again (SOCOM 1's; OVL1 0x2E7420) */
+void cbRevokePlayerInvitation(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                              MediusRevokeClanInvitationResponse *resp)
+{
+    CheckMediusCallbackStatus("MediusRevokePlayerInvitation", resp->StatusCode);
+    theLobby.GetInvitedPlayers();
+}
+
 /* an invitation sent taken back, by the invited player's name (SOCOM 1's; OVL1 0x2E72A0) */
 bool CZOnlineLobby::RevokeInvite(const char *name)
 {
@@ -861,6 +1001,19 @@ bool CZOnlineLobby::RevokeInvite(const char *name)
     req.PlayerAccountID = id;
     CheckMediusError(MediusRevokeClanInvitation(&req, cbRevokePlayerInvitation));
     return true;
+}
+
+/* a member put out: told, and the roster asked for again; a failure told as no such player
+ * (SOCOM 1's; OVL1 0x2E7580) */
+void cbRemovePlayerFromClan(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                            MediusRemovePlayerFromClanResponse *resp)
+{
+    if (CheckMediusCallbackStatus("MediusRemovePlayerFromClan", resp->StatusCode)) {
+        LobbyEvent("MP_SUCCESS", 0);
+        theLobby.GetClanRoster();
+        return;
+    }
+    LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
 }
 
 /* the named member put out of the clan -- not ourselves (SOCOM 1's; OVL1 0x2E7450) */
@@ -996,7 +1149,9 @@ void cbGetClanInvitationsSent(MediusErrorCode, MediusErrorCode, MediusErrorCode,
         ClanUpdateInvitations();
 }
 
-/* the invitations sent asked for again (SOCOM 1's; OVL1 0x2E6EA0) */
+/* the invitations sent asked for again (SOCOM 1's; OVL1 0x2E6EA0). Called, not
+ * inlined, by the unit's callbacks (the online lane's round 27): pinned */
+#pragma auto_inline off
 bool CZOnlineLobby::GetInvitedPlayers()
 {
     if (!m_isopen)
@@ -1013,6 +1168,7 @@ bool CZOnlineLobby::GetInvitedPlayers()
         cbGetClanInvitationsSent));
     return true;
 }
+#pragma auto_inline reset
 
 /* a UI variable given an integer, its watchers told when it changes (as zui.h's float setter; the
  * name ours) */
@@ -1095,6 +1251,17 @@ void UpdateClanRoster()
     ed.pop();
     theLobby.uiv_ClanRoster->Set(&ed);
     SetVarInt(theUIVarManager.Add("ClanRating", 0, UIVL_TEMPORARY), data_0044F770);
+}
+
+/* a page of the member list kept; the roster shown at its end (SOCOM 1's; OVL1 0x2E6A90) */
+void cbGetClanMemberList(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                         MediusGetClanMemberListResponse *resp)
+{
+    if (CheckMediusCallbackStatus("MemberListRequest", resp->StatusCode)) {
+        ClanMemberVec.Add(resp);
+        if (resp->EndOfList)
+            UpdateClanRoster();
+    }
 }
 
 /* the member list asked for again, the old one shown emptied (SOCOM 1's; OVL1 0x2E69F0). Called,
@@ -1234,6 +1401,19 @@ void UpdateLeaderMessages()
     theUIVarManager.Add("ClanLeaderMessages", 0, UIVL_TEMPORARY)->Set(&ed);
 }
 
+/* a leader's message kept, the list shown at its end; on a failure shown as it is (SOCOM II's;
+ * OVL1 0x2E6390) */
+void cbGetLeaderMessages(MediusErrorCode, MediusErrorCode, MediusErrorCode,
+                         MediusGetAllClanMessagesResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetLeaderMessages", resp->StatusCode)) {
+        ClanMessageVec.Add(resp);
+        if (resp->EndOfList)
+            UpdateLeaderMessages();
+    } else
+        UpdateLeaderMessages();
+}
+
 /* the leader's messages emptied and asked for (SOCOM II's; OVL1 0x2E6310). Never inlined in the
  * target, though three callbacks of this unit call it: pinned */
 #pragma auto_inline off
@@ -1261,6 +1441,13 @@ struct MediusModifyClanMessageRequest {
 struct MediusModifyClanMessageResponse { MEDIUS_RESPONSE_HEAD };
 
 void cbModifyClanMessage(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusModifyClanMessageResponse *);
+/* a leader's message rewritten: the messages asked for again (SOCOM II's; OVL1 0x2E62D0) */
+void cbModifyClanMessage(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusModifyClanMessageResponse *resp)
+{
+    if (CheckMediusCallbackStatus("ModifyClanMessage", resp->StatusCode))
+        theLobby.GetLeaderMessages();
+}
+
 extern "C" MediusErrorCode MediusModifyClanMessage(MediusModifyClanMessageRequest *req,
     void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusModifyClanMessageResponse *));
 
@@ -1293,6 +1480,13 @@ void CZOnlineLobby::ModifyClanMessage(int id, const char *text)
         LobbyEvent("CLAN_MESSAGE_EMPTY", 0);
 }
 
+/* a leader's message deleted: the messages asked for again (SOCOM II's; OVL1 0x2E6080) */
+void cbDeleteClanMessage(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusDeleteClanMessageResponse *resp)
+{
+    if (CheckMediusCallbackStatus("DeleteClanMessage", resp->StatusCode))
+        theLobby.GetLeaderMessages();
+}
+
 /* a message deleted (SOCOM II's; OVL1 0x2E6010): the API's result not looked at, a success
  * handed to the check instead */
 void CZOnlineLobby::DeleteClanMessage(int id)
@@ -1306,4 +1500,19 @@ void CZOnlineLobby::DeleteClanMessage(int id)
         MediusDeleteClanMessage(&req, cbDeleteClanMessage);
         CheckMediusError(MediusSuccess);
     }
+}
+
+/* a clan member's page: the member looked for by name (SOCOM II's, named after the UI command
+ * 'GetClanMemberInfo' that calls it on theLobby; OVL1 0x2E6000) */
+void CZOnlineLobby::GetClanMemberInfo(const char *name)
+{
+    ClanMemberVec.Find(name);
+}
+
+/* room in the clan for one more invitation: its members and the invitations out under sixteen
+ * (SOCOM II's, named after the UI command 'CanInviteMorePlayersToClan' that calls it on theLobby;
+ * OVL1 0x2E5FE0) */
+bool CZOnlineLobby::CanInviteMorePlayersToClan()
+{
+    return (int)(ClanMemberVec.size() + ClanInvitationVec.size()) < 16;
 }

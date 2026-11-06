@@ -2719,10 +2719,12 @@ inline bool IsPlayerSeal(CZSealBody *seal)
 
 extern "C" unsigned char data_0044CE50;   /* (set by OVL2's NetworkPlayerCreate: the objects asked for) */
 
-/* the network objects made when asked (SOCOM II's; OVL1 0x2B7A90): the request cleared, the player's
- * SEAL put in, then every player SEAL's and every turret's local object made by the session master
- * (0x2B7CF0 and 0x2B7C90 inlined), and the mission's team valves refreshed */
-extern "C" void func_002B7A90()
+/* the network objects made when asked (SOCOM 1's ftsNetworkSealInit -- the load state's tick calls
+ * it ahead of UnloadRemoteGuyList as SOCOM 1's does --, with SOCOM II's turrets; OVL1 0x2B7A90): the
+ * request cleared, the player's SEAL put in, then every player SEAL's and every turret's local
+ * object made by the session master (0x2B7CF0 and 0x2B7C90 inlined), and the mission's team valves
+ * refreshed */
+void ftsNetworkSealInit()
 {
     if (!data_0044CE50)
         return;

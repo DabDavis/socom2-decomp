@@ -277,6 +277,14 @@ RoomGame::RoomGame(LANGameInfo *info) : m_194(0)
     m_199 = 0;
 }
 
+/* a game another console announced on the LAN: an empty room game with the console's address and
+ * port (SOCOM II's; OVL1 0x2E1CE0: the LAN lobby's game info callback 0x304470 builds it) */
+LANGame::LANGame(LANAddress *addr, int port) : TransientGame(0)
+{
+    memcpy(&m_addr, addr, sizeof(m_addr));
+    m_port = port;
+}
+
 /* a game of the room's list reported: its game updated or a new one kept, and the list shown once
  * the last has come (SOCOM 1's cbGameList; OVL1 0x2E2B00) */
 void cbGameList(int, int, int, MediusGameListResponse *resp)
@@ -532,6 +540,13 @@ void CZOnlineLobby::GetCurrentGameInfo()
     var->Set(&ed);
 }
 
+/* the game's mission sequence (SOCOM II's; OVL1 0x2E24C0: RoomGame's one virtual, slot 0 of the three
+ * game tables) */
+unsigned char *RoomGame::GetMissionSequence()
+{
+    return m_missionSeq;
+}
+
 /* the game's missions pass the menu's type filter (0x44F528): all of one type, and the type the
  * filter names -- 248-252 a game type, anything else the one mission (SOCOM 1's took the type;
  * OVL1 0x2E31E0). Round 19, byte-exact: the first mission an `int` (an unsigned char kept three
@@ -774,6 +789,13 @@ bool CZOnlineLobby::CanJoinRoom(const char *name)
     return ok;
 }
 
+/* the game's friendly fire, its rules' flag 1 (SOCOM II's, the name ours; OVL1 0x2E34D0: both
+ * JoinGames set 'mp_friendly_fire' from it) */
+bool RoomGame::IsFriendlyFire()
+{
+    return (m_info.m_30 & 1) != 0;
+}
+
 /* every mission of the game's sequence known here (OVL1 0x2E33E0: JoinGame asks it) */
 bool RoomGame::HasMissions()
 {
@@ -795,6 +817,13 @@ bool RoomGame::AllowsType(int type)
             r = false;
     }
     return r;
+}
+
+/* the game's respawns, its rules' flag 2 (SOCOM II's, the name ours; OVL1 0x2E33D0: both JoinGames
+ * set 'mp_allow_respawn' from it) */
+bool RoomGame::IsRespawnAllowed()
+{
+    return (m_info.m_30 & 2) != 0;
 }
 
 /* a room's games deleted and the list emptied (OVL1 0x2E47D0, among the unit's room-list

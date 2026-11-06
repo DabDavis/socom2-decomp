@@ -1712,18 +1712,18 @@
 0x00200D60 0x1C8 Load__13CFlareElementFP5_zrdr  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the element's record: texture, color, position_scale, size, opacity, scale; LoadFlare 0x1FFF40 calls it on each new element and keeps the element when it returns true; 3 instructions open)
 0x00200F30 0x118 NextFlareName__Fv  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the loader's next name: the wildcards' digits counted up as an odometer, 0 when they come round; byte-exact)
 0x00201050 0x1A0 FirstFlareName__FPc  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the flare loader 0x1FF630 calls it on a strdup'd node name, then 0x200F30 until it returns 0, finding a node by each: up to five '*' wildcards in the name counted through as digits; byte-exact)
-0x002011F0 0x384 func_002011F0  # OVL1
+0x002011F0 0x384 TickOffState__11CZPauseTestFRC4CPadf  # OVL1; s1:order by hand (the HUD lane, round 59: hud_pausemenu.cpp's first function in the image, as SOCOM 1's TickOffState 0x3BE590 is that unit's first; the menu's HudTick 0x201690 calls it first with the pad and dT, as SOCOM 1's HudTick does; it calls 0x204A40 where SOCOM 1's calls OpenPauseMenu)
 0x00201580 0xC On__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201590 0x8 Off__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002015A0 0xF0 Draw__11CZPauseTestFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00201690 0xB78 func_00201690  # OVL1
+0x00201690 0xB78 HudTick__11CZPauseTestFP4CPadf  # OVL1; s1:calls (the HUD lane, round 59: CHUD::Tick 0x1F7FF0 calls it at 0x1F8848 on CHUD+0x18900 with the pad, as SOCOM 1's CHUD::Tick calls CZPauseTest::HudTick; after Draw in the unit as SOCOM 1's)
 0x00202210 0x154 Clear__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's second call on CHUD+0x18900, after ClosePauseMenu, as SOCOM 1's; right after HudTick in hud_pausemenu.cpp, as SOCOM 1's)
 0x00202370 0x1B0 ReInit__11CZPauseTestFv  # OVL1; by hand (hud_pausemenu.cpp: CHUD::ReInit_Init's call on CHUD+0x18900; the first selectable line through 0x205A70 into the signed char at 0x1C, the ACCEPT/BACK prompts, the abort and replay questions and YES/NO set through C2DString's slot 26; the name ours)
-0x00202520 0x1C20 func_00202520  # OVL1
+0x00202520 0x1C20 Init__11CZPauseTestFv  # OVL1; s1:calls (the HUD lane, round 59: CHUD::Init 0x1FA360 calls it at 0x1FAFB0, as SOCOM 1's CHUD::Init calls CZPauseTest::Init; after ReInit in the unit as SOCOM 1's)
 0x00204140 0x50 SetIsTrans__13C2DBitmapPolyFb  # OVL1; by hand (slot 8 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 8; an inline's out-of-line copy, the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
 0x00204190 0x50 SetHasTexture__13C2DBitmapPolyFb  # OVL1; by hand (slot 6 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 6; an inline's out-of-line copy, this one the CZPauseTest unit's, linked first; the name ours, as C2DBitmap's)
-0x002041E0 0x854 func_002041E0  # OVL1
-0x00204A40 0x7B4 func_00204A40  # OVL1
+0x002041E0 0x854 HandleSelectionInput__11CZPauseTestFRC4CPad  # OVL1; s1:calls (the HUD lane, round 59: the menu's HudTick 0x201690 calls it at 0x201BE8, as SOCOM 1's HudTick calls HandleSelectionInput; after Init in the unit as SOCOM 1's)
+0x00204A40 0x7B4 OpenPauseMenu__11CZPauseTestFv  # OVL1; s1:calls (the HUD lane, round 59: TickOffState 0x2011F0 calls it at 0x201328 where SOCOM 1's TickOffState calls OpenPauseMenu; between HandleSelectionInput and ClosePauseMenu 0x205200 as SOCOM 1's)
 0x00205200 0x278 ClosePauseMenu__11CZPauseTestFv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's first call on CHUD+0x18900, as SOCOM 1's; the last function before the pause menu's destructor and constructor, as SOCOM 1's before its constructor); byte-exact (the HUD lane, round 51: SOCOM 1's with SOCOM II's lens colour and camera zoom put back offline)
 0x00205480 0x318 __dt__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002057A0 0x58 __dt__10CPauseItemFv  # OVL1; ours by hand (the HUD lane, round 37: hud_pausemenu.cpp -- the line's implicit destructor, handed to __construct_new_array beside the constructor; destroys the string member with -1)
@@ -1785,7 +1785,7 @@
 0x00209230 0x11C UpdateExplosives__11CZNewHudMapFv  # OVL1; s1:calls by hand (hud_newhudmap.cpp; the explosives walked for claymores, then the bomb, as SOCOM 1's)
 0x00209350 0x434 TickFullScreenAnims__11CZNewHudMapCFf  # OVL1; s1:calls by hand (the HUD lane, round 57: hud_newhudmap.cpp -- SOCOM 1's TickFullScreenAnims (float dT) const, 0x3C3790: the scroll arrows' pulse into the four g_bmpScroll* by GetScrollPermissions, then the grid lines grown in; SOCOM II's pulse is a bouncing 0-1 clock and its lines time from guarded statics)
 0x00209790 0x348 Draw__11CZNewHudMapFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00209AE0 0x3F8 func_00209AE0  # OVL1
+0x00209AE0 0x3F8 HudTick__11CZNewHudMapFP4CPadf  # OVL1; s1:calls (the HUD lane, round 59: CHUD::Tick 0x1F7FF0 calls it at 0x1F8884 on its map (CHUD+0x11C90) with the pad and dT off line, as SOCOM 1's CHUD::Tick calls CZNewHudMap::HudTick; hud_newhudmap.cpp's header placed it by SOCOM 1's order since round 48)
 0x00209EE0 0x234 TickFullScreenMap__11CZNewHudMapFP4CPad10MENU_STATE  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's TickFullScreenMap(CPad *, MENU_STATE): HudTick 0x209AE0 calls it with the pad and the menu state; the objective list's animation test, the owner's input bit, the close / step / select / frame / centre buttons, then HandleScrolling and the zoom step 0x20A330 on the sticks, the legend flag from R2)
 0x0020A120 0x208 HandleScrolling__11CZNewHudMapFff  # OVL1; s1:calls by hand (the HUD lane, round 48: hud_newhudmap.cpp -- SOCOM 1's HandleScrolling(float fStickX, float fStickY) 0x3C4950 by its code: both sticks zero or no viewer returns, the viewer's reversed facing stored (SealDir), 36/|xz| the step, a guarded static fallback box, the first AI map's (AiMaps.GetMapByIndex(0)) bounds, x then z moved while inside; TickFullScreenMap 0x209EE0's call)
 0x0020A330 0x13C func_0020A330  # OVL1
@@ -1907,16 +1907,16 @@
 0x00213680 0x1BC TimerProgressTick__14BitmapReticuleFf  # OVL1; s1:order by hand (the HUD lane, round 41: hud_bitmapreticule.cpp -- SOCOM 1's TimerProgressTick, the code alike: the bomb timer's bar from m_pCurval, m_maxval_frac and m_bIncrTimer, faded out at 400 a second without one; SOCOM II takes the frame time, SOCOM 1 read a global) 
 0x00213840 0x220 ReloadTimerTick__14BitmapReticuleFfP10CZSealBody  # OVL1; ours by hand (the HUD lane, round 41: hud_bitmapreticule.cpp -- SOCOM II's second bar, TimerProgressTick's sibling on the 0x43A0/0x4420 bitmaps and the second timer 0x44A0-0x44A8, shown while the seal reloads at a turret (IsReloading and its +0xEB8); 0x216770 calls it after TimerProgressTick)
 0x00213A60 0x3C0 SetGBarVal__14BitmapReticuleFf  # OVL1; s1:order by hand (the HUD lane, round 57: hud_bitmapreticule.cpp -- SOCOM 1's SetGBarVal(float val), 0x3CD490 there, by the unit's order after ReloadTimerTick: the grenade reticle's picture, full and empty bars by the value, the two level bitmaps; its static flag 0x3DC618)
-0x00213E20 0x1354 func_00213E20  # OVL1
+0x00213E20 0x1354 ChangeReticule__14BitmapReticuleFi  # OVL1; s1:calls (the HUD lane, round 59: the reticule's HudTick 0x216770 calls it four times and its Init 0x2178C0 once, as SOCOM 1's HudTick and Init call ChangeReticule; after SetGBarVal in hud_bitmapreticule.cpp as SOCOM 1's; 0xB8C there)
 0x00215180 0x14 OnPauseTest__14BitmapReticuleFv  # OVL1; split by hand (the HUD lane: a tail call through a member's vtable, padded to 0x2151A0); by hand (the HUD lane, round 16): BitmapReticule's (this+0x34, the second of the three plain C2D groups its constructor builds at 0x1C/0x34/0x4C, turned on through its vtable); CHUD::Off calls it on its reticle (+0x...) only in the pause test menu state -- SOCOM II's, the name ours
 0x002151A0 0x50 Off__14BitmapReticuleFv  # OVL1; split from 0x215180 (three virtual calls on members at 0x1c, 0x34 and 0x4c); s1:vtable by hand (the HUD lane, round 16): slot 4 of BitmapReticule's vtable (0x4055B8), C2D's Off slot, as SOCOM 1's BitmapReticule::Off; SOCOM II's turns off the three groups
 0x002151F0 0x54 On__14BitmapReticuleFv  # OVL1; s1:vtable by hand (the HUD lane, round 16): slot 5 of BitmapReticule's vtable (0x4055BC), C2D's On slot, as SOCOM 1's BitmapReticule::On; SOCOM II's calls C2D::On, then the three groups' On
-0x00215250 0x9B8 func_00215250  # OVL1
-0x00215C10 0xB50 func_00215C10  # OVL1
+0x00215250 0x9B8 UpdateAccuracy__14BitmapReticuleFv  # OVL1; s1:calls (the HUD lane, round 59: ChangeReticule 0x213E20 calls it at 0x214000 and HudTick 0x216770 at 0x216C28, as SOCOM 1's ChangeReticule and HudTick call UpdateAccuracy; after On in the unit as SOCOM 1's)
+0x00215C10 0xB50 UpdateColor__14BitmapReticuleFv  # OVL1; s1:calls (the HUD lane, round 59: HudTick 0x216770's last call, 0x216DA8, as SOCOM 1's HudTick ends calling UpdateColor; after UpdateAccuracy in the unit as SOCOM 1's)
 0x00216760 0x8 Slot10__Q23zdb7CNodeExFf  # OVL1; by vtable (CNodeEx's third slot, inline, returns false; CZAnimEx overrides it with 0x2739B0 -- the name ours, the float CZAnimEx's)
-0x00216770 0x664 func_00216770  # OVL1
-0x00216DE0 0x76C func_00216DE0  # OVL1
-0x00217550 0x364 func_00217550  # OVL1
+0x00216770 0x664 HudTick__14BitmapReticuleFf  # OVL1; s1:calls (the HUD lane, round 59: CHUD::Tick 0x1F7FF0 calls it at 0x1F8C2C, as SOCOM 1's CHUD::Tick calls BitmapReticule::HudTick; it gets the HUD's owner first and hands it to 0x217550 and ThreatDirTick, as SOCOM 1's)
+0x00216DE0 0x76C ThreatDirTick__14BitmapReticuleFP10CZSealBody  # OVL1; s1:calls (the HUD lane, round 59: HudTick 0x216770 calls it at 0x2167CC with the HUD's owner, as SOCOM 1's HudTick's first call after GetHUDOwner; after HudTick in the unit as SOCOM 1's)
+0x00217550 0x364 DrawLaseTarget__14BitmapReticuleFP10CZSealBody  # OVL1; ours by hand (the HUD lane, round 59: hud_bitmapreticule.cpp -- HudTick 0x216770 calls it with the HUD's owner before ThreatDirTick; with the HUD on and the kit's lasing bit (seal+0x5E2 bit 0) the kit's point at seal+0x5EC is projected through the world camera's world-to-screen matrix and a red box of six Draw2DLine calls drawn round it; SOCOM II's, the name ours)
 0x002178C0 0x1488 Init__14BitmapReticuleFPQ23zdb6CWorldP7C2DFont  # OVL1; s1:order (hud_bitmapreticule.cpp: before UnInit, as SOCOM 1's; 0xDB4 then, 0x1488 now)
 0x00218D50 0x50 UnInit__14BitmapReticuleFv  # OVL1; s1:exact by hand (hud_bitmapreticule.cpp: the three strings wiped, as SOCOM 1's)
 0x00218DA0 0x34 Draw__14BitmapReticuleFPQ23zdb7CCamera  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -4009,7 +4009,7 @@
 0x002B7950 0x98 func_002B7950  # OVL1
 0x002B79F0 0x28 ftsNetworkGameUninit__Fv  # OVL1; s1:align
 0x002B7A20 0x70 ftsNetworkGameInit__Fv  # OVL1; s1:align
-0x002B7A90 0x200 func_002B7A90  # OVL1
+0x002B7A90 0x200 ftsNetworkSealInit__Fv  # OVL1; s1:calls by hand (the states lane, round 48): SOCOM 1's ftsNetworkSealInit -- SOCOM 1's CLoadState::Tick calls it just ahead of UnloadRemoteGuyList (0x37F090 / 0x37F098) where SOCOM II's Tick calls 0x2B7A90 just ahead of it, twice; its body calls ftsNetworkPlayerInit first, then CreateLocalSeal and UpdateLocalSeal, and RefreshTeamValves last, as SOCOM 1's (SOCOM II adds the turrets' CreateLocalPlatform)
 0x002B7C90 0x60 func_002B7C90  # OVL1
 0x002B7CF0 0x68 func_002B7CF0  # OVL1
 0x002B7D60 0x174 ftsNetworkPlayerInit__Fv  # OVL1; s1:align
@@ -4707,10 +4707,10 @@
 0x002E2CE0 0x394 UpdateGameListDisplay__FP12BriefingRoom  # OVL1; s1:name (SOCOM 1's UpdateGameListDisplay, the room passed in SOCOM II: the games sorted, filtered by GamePassesFilters and built into uiv_GameList)
 0x002E3080 0x160 GamePassesFilters__FP8RoomGame  # OVL1; s1:name (SOCOM 1's GamePassesFilters: the same tests in the same order, SOCOM II's password filter first)
 0x002E31E0 0x1EC GamePassesTypeFilter__FP8RoomGame  # OVL1; s1:name (SOCOM 1's GamePassesTypeFilter, which took the type: here the game, its mission sequence through the vtable, tested against the type filter 0x44F528)
-0x002E33D0 0x10 func_002E33D0  # OVL1
+0x002E33D0 0x10 IsRespawnAllowed__8RoomGameFv  # OVL1; ours, the online lane round 27 (the game info's word at 0x30, bit 2: both JoinGames (0x2F8638, the LAN lobby's 0x303AE0) set 'mp_allow_respawn' from it with the game in a0; byte-exact from zNetMediusRoom.cpp)
 0x002E33E0 0xAC HasMissions__8RoomGameFv  # OVL1; ours (each byte of the game's mission sequence -- the vtable's GetMissionSequence -- found in the mission list 0x441650 by Find(id, true); JoinGame, 0x2F8FD0 and the LAN JoinGame ask it)
 0x002E3490 0x40 AllowsType__8RoomGameFi  # OVL1; ours (a game's type mask at +0x1A1 tested for bit type-1, none set allowing any; the bit test 0x2E34E0 makes inline on a room)
-0x002E34D0 0x10 func_002E34D0  # OVL1
+0x002E34D0 0x10 IsFriendlyFire__8RoomGameFv  # OVL1; ours, the online lane round 27 (the game info's word at 0x30, bit 1: both JoinGames (0x2F85E8, the LAN lobby's 0x303A90) set 'mp_friendly_fire' from it with the game in a0; byte-exact from zNetMediusRoom.cpp)
 0x002E34E0 0x124 CanJoinRoom__13CZOnlineLobbyFPCc  # OVL1; ours (UICanJoinRoom 0x27D690 calls it on theLobby: the room found by name, FindRoom's loop inlined, its types at +0x34 tested for GetRankTier(-1)'s bit)
 0x002E3610 0x11C FindPlayer__12BriefingRoomFPCc  # OVL1; ours (find_if over the room's players at +0x7C, 208-byte elements, by the name at +0x20; the player-info callback 0x2F0020 calls it)
 0x002E3730 0x54 RejoinRoom__13CZOnlineLobbyFv  # OVL1; s1:ui ('ConnectToGameServer' 0x27E4C0 and 'DisconnectFromGameServer' 0x27E420 call it on theLobby, as SOCOM 1's UIConnectToGameServer and UIDisconnectFromGameServer call RejoinRoom)
@@ -4754,8 +4754,8 @@
 0x002E5D90 0x1BC __selection_sort<Q33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator,8GameLess>__3stdFQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iteratorQ33std56__vector_imp<P8RoomGame,Q23std21allocator<P8RoomGame>,1>8iterator8GameLess_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; __selection_sort of the room unit's game list (BriefingRoom::SortGames, GameLess inlined); byte-exact as written, its shuffle static's relocations aside)
 0x002E5F50 0x8 clear__Q23std110__vector_deleter<34MediusLobbyWorldPlayerListResponse,Q23std47allocator<34MediusLobbyWorldPlayerListResponse>>Fv  # OVL1; ours (the room players' deleter's clear: the size zeroed; the deleter's destructor 0x2E56F0 calls it); the online lane round 16: SOCOM 1's cbRoomPlayerList__FiiiP34MediusLobbyWorldPlayerListResponse names the room's player record MediusLobbyWorldPlayerListResponse (was RoomPlayer, ours)
 0x002E5F60 0x80 __dt__14BriefingRoomDBFv  # OVL1; ours, the online lane round 10 (the room list's destructor, `DeleteAll();` then the pointer vector's: __sinit_zNetMediusRoom.cpp registers it for 0x44F568; byte-exact)
-0x002E5FE0 0x1C func_002E5FE0  # OVL1
-0x002E6000 0xC func_002E6000  # OVL1
+0x002E5FE0 0x1C CanInviteMorePlayersToClan__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (the clan's members plus the invitations out under 16: ClanMemberVec's and ClanInvitationVec's sizes, 0x44F744 + 0x44F724; the UI command 'CanInviteMorePlayersToClan' calls it on theLobby, as UIRemovePlayerFromClan calls RemovePlayerFromClan; byte-exact from zNetMediusClan.cpp)
+0x002E6000 0xC GetClanMemberInfo__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 27 (ClanMemberVec.Find(name) as a tail call; the UI command 'GetClanMemberInfo' calls it on theLobby with the member's name; byte-exact from zNetMediusClan.cpp)
 0x002E6010 0x70 DeleteClanMessage__13CZOnlineLobbyFi  # OVL1; ours (the UI command table's 'DeleteClanMessage' handler 0x27A1C0 calls it on theLobby; a message id, -1 none; its callback 0x2E6080 reports 'DeleteClanMessage')
 0x002E6080 0x34 cbDeleteClanMessage__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusDeleteClanMessageResponse  # OVL1; ours (DeleteClanMessage's callback; reports 'DeleteClanMessage', then the leader's messages asked for again)
 0x002E60C0 0x20C ModifyClanMessage__13CZOnlineLobbyFiPCc  # OVL1; ours ('ModifyClanMessage' 0x27A0E0 calls it on theLobby; a message id and the text: a new message sent when the id is none)
@@ -4793,7 +4793,7 @@
 0x002E7F50 0x158 UpdateClanRanking__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 9 (UpdateClanStats 0x2E7D70 and cbCreateClan 0x2E7B80 call it on theLobby: with eight members or more the best eight's LadderStat (+0x1CC) averaged after the std::sort 0x2E9B40, kept in 0x44F770 and sent through OVL2 0x64B248 with cbUpdateClanRanking, whose status string names it) -- byte-exact, zNetMediusClan.cpp
 0x002E80B0 0x10 cbUpdateClanRanking__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP31MediusUpdateClanRankingResponse  # OVL1; ours, the online lane round 9 (func_002E7F50 hands it to OVL2 0x64B248 with the clan's ranking stat; it checks the status as 'MediusUpdateClanRanking', 0x3F43C0) -- byte-exact, zNetMediusClan.cpp
 0x002E80C0 0xDC OnCorrectClanTeam__13CZOnlineLobbyFv  # OVL1; s1:callee
-0x002E81A0 0xC func_002E81A0  # OVL1
+0x002E81A0 0xC ForgetClanRequest__Fv  # OVL1; ours, the online lane round 27 (0x44F788, GetClan's request state -- 0 not yet, 1 waiting, 2 answered -- zeroed; ReleaseUIResources calls it with no this; byte-exact from zNetMediusClan.cpp)
 0x002E81B0 0xF0 TransferLeadership__13CZOnlineLobbyFPCc  # OVL1; s1:ui (UITransferLeadership, as SOCOM 1's calls TransferLeadership)
 0x002E82A0 0x6C cbTransferClanLeadership__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP36MediusTransferClanLeadershipResponse  # OVL1; s1 by hand (TransferLeadership's callback; reports 'TransferClanLeadership')
 0x002E8310 0xE0 SendClanMessage__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('SendClanMessage' 0x2797F0, as SOCOM 1's UISendClanMessage)
@@ -4818,14 +4818,14 @@
 0x002E9460 0x130 Find__16ClanMemberVectorFPCc  # OVL1; ours (the member by name -- strcasecmp on +0x20 -- or by atoi(name) as an account id: IsLeaderOfClan, RemovePlayerFromClan, TransferLeadership, InvitePlayerToClan call it on ClanMemberVec; byte-exact)
 0x002E9590 0x1AC Add__16ClanMemberVectorFP31MediusGetClanMemberListResponse  # OVL1; ours (cbGetClanMemberList's only call, on ClanMemberVec: a member not found by account id is kept as a whole copy of the response, 0x1DC bytes; byte-exact)
 0x002E9740 0xD4 DeleteAll__16ClanMemberVectorFv  # OVL1; ours (ClanMemberVec's items deleted and the list emptied -- std::transform with a deleter, then clear: GetClanRoster, cbDisbandClan, cbQuitClan, ReleaseUIResources and the list's destructor 0x2EA440 call it on 0x44F740; byte-exact)
-0x002E9820 0x1C func_002E9820  # OVL1
-0x002E9840 0xD8 func_002E9840  # OVL1
-0x002E9920 0x14 func_002E9920  # OVL1
+0x002E9820 0x1C IsOurClanTeam__Fv  # OVL1; ours, the online lane round 27 (StoredClanInfo.ClanID == the clan team 0x44F778; the DME's player test calls it after IsOnClanTeam; byte-exact from zNetMediusClan.cpp)
+0x002E9840 0xD8 SetClanTeamFromValve__FP6CValve  # OVL1; ours, the online lane round 27 (the valve's value 1-4 kept as the side 0x44F780 with our clan's id as the team, else both cleared; the clan game's creation passes the 'CreateClanAffiliation' valve; byte-exact from zNetMediusClan.cpp)
+0x002E9920 0x14 ClearClanTeam__Fv  # OVL1; ours, the online lane round 27 (the clan team 0x44F778 and side 0x44F780 zeroed; Init and Open call it; byte-exact from zNetMediusClan.cpp)
 0x002E9940 0xA0 IsClanTeamAllowed__FUi  # OVL1; ours (0x2F8C60 and 0x2F8FD0 ask it of a team: false only for side 3 of a clan not ours, StoredClanInfo+0x1c; byte-exact)
-0x002E99E0 0xC func_002E99E0  # OVL1
-0x002E99F0 0xB8 func_002E99F0  # OVL1
+0x002E99E0 0xC GetClanTeamSide__Fv  # OVL1; ours, the online lane round 27 (the side 0x44F780 read signed, lb; the menus' 'START' test and the persona compare it; byte-exact from zNetMediusClan.cpp)
+0x002E99F0 0xB8 GetClanTeam__Fv  # OVL1; ours, the online lane round 27 (the team rebuilt as the reports carry it: the clan id with the side as 0xA-0xD in the top four bits, 0 for none -- SetClanTeam 0x2E9AB0's inverse; the state handlers' GenericField3; byte-exact from zNetMediusClan.cpp)
 0x002E9AB0 0x7C SetClanTeam__FUi  # OVL1; ours (JoinGame and 0x2F9220 call it with a clan game's team: the low 28 bits kept at 0x44F778 as the clan, the top nibble 0xA-0xD as side 1-4 at 0x44F780; byte-exact)
-0x002E9B30 0x10 func_002E9B30  # OVL1
+0x002E9B30 0x10 IsOnClanTeam__Fv  # OVL1; ours, the online lane round 27 (the clan team 0x44F778 non-zero; the persona and the DME ask it; byte-exact from zNetMediusClan.cpp)
 0x002E9B40 0x574 sort<Q33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iterator,15ClanMemberOrder>__3stdFQ33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iteratorQ33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iterator15ClanMemberOrder_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; sort of the clan unit's members, by LadderStat, highest first (0x2E6AF0 and 0x2E7F50 call it; the comparator empty, by value and inlined, its name ours: struct ClanMemberOrder { bool operator()(ClanMemberItem *a, ClanMemberItem *b) const { return a->LadderStat > b->LadderStat; } }); the probe build/p6/clan.cpp; byte-exact as written, its shuffle static's relocations aside)
 0x002EA0C0 0x180 __sort132<Q33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iterator,15ClanMemberOrder>__3stdFQ33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iteratorQ33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iteratorQ33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iterator15ClanMemberOrder_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; __sort132 of the clan unit's members, by LadderStat, highest first (0x2E6AF0 and 0x2E7F50 call it; the comparator empty, by value and inlined, its name ours: struct ClanMemberOrder { bool operator()(ClanMemberItem *a, ClanMemberItem *b) const { return a->LadderStat > b->LadderStat; } }); the probe build/p6/clan.cpp; byte-exact as written, its shuffle static's relocations aside)
 0x002EA240 0x180 __selection_sort<Q33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iterator,15ClanMemberOrder>__3stdFQ33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iteratorQ33std104__vector_imp<P31MediusGetClanMemberListResponse,Q23std45allocator<P31MediusGetClanMemberListResponse>,1>8iterator15ClanMemberOrder_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; __selection_sort of the clan unit's members, by LadderStat, highest first (0x2E6AF0 and 0x2E7F50 call it; the comparator empty, by value and inlined, its name ours: struct ClanMemberOrder { bool operator()(ClanMemberItem *a, ClanMemberItem *b) const { return a->LadderStat > b->LadderStat; } }); the probe build/p6/clan.cpp; byte-exact as written, its shuffle static's relocations aside)
@@ -4851,10 +4851,10 @@
 0x002EB510 0xF4 GetLadderList__13CZOnlineLobbyFii  # OVL1; ours (the player ladder's 'TheRest' page from a position, 2n players, unless one is pending (0x44F878) or LadderLeaders 0x44F7B0 reaches it; cbGetLadderPosition asks it around our position)
 0x002EB610 0x88 GetLadderBest__13CZOnlineLobbyFi  # OVL1; ours (the player ladder's 'TheBest' page: LadderRanking 0x44F7E0 emptied through 0x2EC140, positions 1..n asked for)
 0x002EB6A0 0xC0 func_002EB6A0  # OVL1
-0x002EB760 0xC func_002EB760  # OVL1
-0x002EB770 0xC func_002EB770  # OVL1
-0x002EB780 0xC func_002EB780  # OVL1
-0x002EB790 0xC func_002EB790  # OVL1
+0x002EB760 0xC GetClanLadderTotal__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (ClanLadderRanking's word at 0xC, 0x44F85C: the clan ladder's bound GetClanLadderList pages up to; UIGetLadderInfo calls it on theLobby once, as it calls 0x2EB770 for the player ladder; byte-exact from zNetMediusLadder.cpp)
+0x002EB770 0xC GetLadderTotal__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (LadderLeaders' word at 0x10, 0x44F7C0: the player ladder's count of rankings, cbGetLadderPosition's TotalRankings; UIGetLadderInfo calls it on theLobby against the start plus 14; byte-exact from zNetMediusLadder.cpp)
+0x002EB780 0xC GetClanLadderStart__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (ClanLadderRanking's word at 0x10, 0x44F860: the clan list's first position, GetClanLadderList's start; UIGetLadderInfo calls it on theLobby four times; byte-exact from zNetMediusLadder.cpp)
+0x002EB790 0xC GetLadderStart__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (LadderLeaders' word at 0xC, 0x44F7BC: the player list's first position, GetLadderList's start; UIGetLadderInfo calls it on theLobby four times -- under 2 no page up, plus 14 the next page; byte-exact from zNetMediusLadder.cpp)
 0x002EB7A0 0x15C UpdateLadderBestDisplay__Fv  # OVL1; ours (the player ladder's best, LadderRanking 0x44F7E0, sorted -- std::sort's instance 0x2EC260 -- and built into uiv_MediusLadderTop10: '%d', the name and clan strings at +0x8C/+0x98)
 0x002EB900 0x318 UpdateLadderListDisplay__Fv  # OVL1; ours, the online lane round 14 (the player ladder around us sorted by compare_ladder 0x2EC260 and handed to uiv_MediusLadderRanking -- each one's figure, name, position, GetRankLevel medal and clan, ours (AccountInfo's name) in colour -- then ON_LADDER_REFRESH: UpdateClanLadderList's shape over LadderLeaders 0x44F7B0; the pages' callback func_002EB6A0 calls it)
 0x002EBC20 0xC8 Find__10LadderListFPCc  # OVL1; ours (the MSL headers round 6, written in zNetMediusLadder.cpp: a player ladder's item by name, case-blind, none for no name -- the name read through LadderItem::GetName, the inlined c_str() folding the string's offset into the item's; the chat unit's player-info callback 0x2F0020 calls it); byte-exact
@@ -4971,7 +4971,7 @@
 0x002F6A60 0x8 func_002F6A60  # OVL1
 0x002F6A70 0x144 make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>CFUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, const (the copy constructor 0x2F5F80 calls it for x's end and begin); include/deque's make_iterator, open as every instance's
 0x002F6BC0 0x138 __dt__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; the MSL headers round 19: the chat deque's block buffer's out-of-class destructor (the blocks freed, the buffer's five this-tests), called with 0 by the teardown level 0x2F62B0 -- the name 0x2F62B0 carried until then; byte-exact from the chat unit's tail (include/deque's ~__deque_buf, as the lobby's 0x2E19E0)
-0x002F6D00 0x6C func_002F6D00  # OVL1
+0x002F6D00 0x6C JoinAsSpectator__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (the 'JoinAsSpectator' valve, looked up once into 0x44FA90, on -- or the byte 0x4413D8 -- as a bool; JoinGame calls it on theLobby out of line; named after the valve; byte-exact from zNetMediusLobby.cpp)
 0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
 0x002F6E30 0x90 cbCountGamePlayers__FiiiP28MediusGetGamePlayersResponse  # OVL1; ours (CountGamePlayers' MediusGetGamePlayers callback: 'MediusGetGamePlayers' checked, flagged players counted into 0x66A990, the total to 0x66A9A0 at the list's end)
 0x002F6EC0 0x15C RefreshGamePlayerList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGamePlayerList' 0x27D820, as SOCOM 1's UIRefreshGamePlayerList calls RefreshGamePlayerList)
@@ -4991,10 +4991,10 @@
 0x002F82E0 0x6C GetMissionSequence__13CZOnlineLobbyFPUcPUc  # OVL1; s1 by hand (CZGameState::UpdateLocalGame calls it on theLobby, as SOCOM 1's calls GetMissionSequence)
 0x002F8350 0x54 ForceStatusReport__13CZOnlineLobbyFv  # OVL1; s1:ui (UIForceMediusStatusReport, as SOCOM 1's calls ForceStatusReport)
 0x002F83B0 0x80C JoinGame__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('JoinMPGame' 0x27D730 calls it on theLobby where SOCOM 1's UIJoinMPGame calls JoinGame; a1 live)
-0x002F8BC0 0x9C func_002F8BC0  # OVL1
-0x002F8C60 0x80 func_002F8C60  # OVL1
-0x002F8CE0 0x6C func_002F8CE0  # OVL1
-0x002F8D50 0x80 func_002F8D50  # OVL1
+0x002F8BC0 0x9C GameRejectsRank__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 27 (the current room's game by name whose AllowsType refuses our GetRankTier(-1); the UI command 'GameRejectsRank' calls it on theLobby; byte-exact from zNetMediusLobby.cpp)
+0x002F8C60 0x80 ClanGameClosed__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 27 (the current room's game by name whose clan team IsClanTeamAllowed refuses; the UI command 'ClanGameClosed' calls it on theLobby; byte-exact from zNetMediusLobby.cpp)
+0x002F8CE0 0x6C IsSwitchTeamsOK__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (false on a clan game's sides 1, 2 or 4, GetClanTeamSide called for each test; the UI command 'IsSwitchTeamsOK' calls it on theLobby; byte-exact from zNetMediusLobby.cpp)
+0x002F8D50 0x80 GameHasSpectatorPassword__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 27 (the current room's game by name with its info's flag 4 set, as GameIsPasswordProtected tests 1; the UI command 'GameHasSpectatorPassword' calls it on theLobby; byte-exact from zNetMediusLobby.cpp)
 0x002F8DD0 0x80 GameIsPasswordProtected__13CZOnlineLobbyFPCc  # OVL1; s1:ui ('GameHasPassword' 0x27D390, as SOCOM 1's UIGameHasPassword calls GameIsPasswordProtected)
 0x002F8E50 0x78 cbClearGameListFilter__FiiiP33MediusClearGameListFilterResponse  # OVL1; ours (JoinGame("RANDOM") passes it to MediusClearGameListFilter: 'GetRandomGame::ClearGameListFilter' checked, then a filter set through 0x649960 with 0x2F8ED0)
 0x002F8ED0 0xF4 cbSetGameListFilter__FiiiP31MediusSetGameListFilterResponse  # OVL1; ours (cbClearGameListFilter's filter callback: the five filter valves read, then a 999-game page asked through 0x64B008 with 0x2F8FD0)
@@ -5005,14 +5005,14 @@
 0x002F95F0 0x8C BanSelfFromGame__13CZOnlineLobbyFv  # OVL1; s1:ui ('BanSelfFromGame' 0x278D30, as SOCOM 1's UIBanSelfFromGame)
 0x002F9680 0x10 cbBanSelfFromGame__FiiiP23MediusBanPlayerResponse  # OVL1; s1 by hand (BanSelfFromGame's callback, as SOCOM 1's: only the status checked, SOCOM 1's an empty body)
 0x002F9690 0x4C func_002F9690  # OVL1
-0x002F96E0 0xC func_002F96E0  # OVL1
+0x002F96E0 0xC GetAccountID__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (AccountInfo's first word, 0x66A4F0; the persona's 0x4 asks it on theLobby; byte-exact from zNetMediusLobby.cpp)
 0x002F96F0 0x1FC func_002F96F0  # OVL1
 0x002F98F0 0x1C8 func_002F98F0  # OVL1
 0x002F9AC0 0x854 UnpackPlayerStats__FP15GamePlayerStatsPCc  # OVL1; ours, the online lane round 20 (the stats text unpacked into the 'E' record, older records 'N'/'Q', 'A'-'D' upgraded a version at a time: the ladder item, the game players', the player info's and our own stats' readers call it; SOCOM 1 has none, reading its stats text with atoi)
 0x002FA320 0x234 Register__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyRegister' 0x27DDE0 calls it on theLobby where SOCOM 1's UILobbyRegister calls Register)
 0x002FA560 0x3C Logout__13CZOnlineLobbyFv  # OVL1; s1:ui ('LobbyLogout' 0x27DCC0, as SOCOM 1's UILobbyLogout calls Logout)
 0x002FA5A0 0x234 Login__13CZOnlineLobbyFPCcPCc  # OVL1; s1:ui ('LobbyLogin' 0x27DD20, as SOCOM 1's UILobbyLogin calls Login)
-0x002FA7E0 0xC func_002FA7E0  # OVL1
+0x002FA7E0 0xC GetAccountName__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 27 (AccountInfo's name, 0x66A4F4; the DME's player record copies it on theLobby; byte-exact from zNetMediusLobby.cpp)
 0x002FA7F0 0x10 SetPlayerDescription__13CZOnlineLobbyFPCc  # OVL1; s1:ui (UISetPlayerDescription calls it; Censor(desc, 0x2FA800, 0) as SOCOM 1's SetPlayerDescription censors through cbFilterPlayerDescription)
 0x002FA800 0x64 cbFilterPlayerDescription__FPCcPv  # OVL1; s1 by hand (the censor callback SetPlayerDescription hands to Censor, as SOCOM 1's)
 0x002FA870 0x74 func_002FA870  # OVL1

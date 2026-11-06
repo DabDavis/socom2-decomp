@@ -4,7 +4,23 @@
  * 0x2DF560-0x2E1CDF: after int_material.cpp (the zdb-world lane's, to 0x2DF554), its static
  * initialiser 0x401E30 constructing theLobby (0x2E0710) and registering its destructor (0x2E0630);
  * the queue's deque instances (0x2E07B0-0x2E1BB0) close it, before the rooms' unit (0x2E1CE0).
- * Only some of it so far. Defined in reverse of their image order (-inline deferred).
+ * Every own function written (SyncGameClock 0x2DF560, the last, in the online lane's round 27).
+ * Defined in reverse of their image order (-inline deferred).
+ * THE TAIL'S ORDER, measured in the online lane's round 27 (build/scratch/onl/v_lobord.py, v_decl.py,
+ * v_inl.py, order.py, untracked): the object's tail comes out in the same order -- ~__deque_buf,
+ * push_back, ~alloc_ptr, pop_front, the copy constructor, ~__deque_imp, deque(), clear ... -- whether
+ * the constructor and destructor of CZOnlineLobby swap places, a dead own function copying the deque
+ * (`new deque(x)`) or building the block buffer from an allocator is defined first or last, or
+ * __deque_buf's / deque's members are declared in any of five other orders: the same six misses
+ * every time. The image's copy chain is laid out depth first, each function followed by its callees
+ * in REVERSE call order (the copy constructor; init, end, begin, __deque_buf(alloc); its ~cdeque and
+ * the pair; the pair's cdeque copy; that one's init, end, begin, __cdeque_buf(alloc); the pair's
+ * allocator copy; __deque_buf(alloc)'s 0x2E0D50 and the rebind; the copy's alloc()), then deque()'s
+ * chain, the non-inline members (the do_assigns, the iterators' operators, make_iterator, push_back,
+ * ~__deque_buf) after -- the layout of inline functions referenced but not expanded, each generated
+ * right after its user (README "MAIN's Metrowerks runtime", round 6), where ours shows out-of-class
+ * members' rounds (a reading, not yet a shape: declaring the chain's members `inline` expands them,
+ * CZOnlineLobby() lost) -- for include/deque, with the chat unit's (whose inits come at the end).
  * The deque instances still open are include/deque's (the MSL lane's); measured in the online
  * lane's round 23 (build/scratch/onl/dq1.py, dqb.py): the cdeque begin() 0x2E0CB0 wants the scaled
  * start (start_ << 2, a code-generator temporary here, v41 in MW's dump) numbered between the
@@ -34,7 +50,6 @@ void KM_GenerateRSAKeyPair(void *pPublic, void *pPrivate);   /* (OVL2 0x6305C8: 
 
 extern BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
 extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
-void func_002E81A0();   /* the clan team forgotten (the clan unit's) */
 void func_002E3AA0(CZOnlineLobby *lobby, C2D *page);   /* the room list asked for (the rooms' unit's) */
 }
 
@@ -100,8 +115,10 @@ extern int data_0066A990;
 extern int data_0066A998;
 extern int data_0044F518;
 extern unsigned char data_0066A5F8;   /* the details to go at once (the chat unit's) */
-void func_002E9920();   /* the clan team forgotten (the clan unit's) */
 }
+
+void ClearClanTeam();   /* the clan team forgotten (the clan unit's) */
+void ForgetClanRequest();   /* the clan to be asked for again (the clan unit's) */
 
 /* the lobby itself (0x44F370): the unit's one dynamically initialised static -- its initialiser
  * 0x401E30 constructs it and registers the destructor 0x2E0630 */
@@ -148,7 +165,7 @@ bool CZOnlineLobby::Init()
         data_0066A990 = 0;
         data_0066A998 = 0;
         data_0044F518 = 0;
-        func_002E9920();
+        ClearClanTeam();
         PlayerClanID = -1;
         StoredClanInfo.ClanID = -1;
         StoredClanInfo.LeaderAccountID = -1;
@@ -265,7 +282,7 @@ bool CZOnlineLobby::Open(const char *host, int port)
     data_0066A750.m_side = STATS_SEALS;
     sprintf(data_0066A750.m_desc, "Description Not Set");
     data_0066A838 = 65000;
-    func_002E9920();
+    ClearClanTeam();
     AccountInfo.AccountID = -1;
     CopyTo(AccountInfo.AccountName, "zname_a", 32);
     CopyTo(AccountInfo.AccountPassword, "zpass_a", 32);
@@ -332,7 +349,7 @@ void CZOnlineLobby::ReleaseUIResources()
     ReleaseVector<RoomGame>(data_0044FAB0);
     FriendVec.DeleteAll();
     ReleaseVector(FriendVec);
-    func_002E81A0();
+    ForgetClanRequest();
     ReleaseFileTransfers();
     uiv_GameList = 0;
     uiv_RoomList = 0;
@@ -462,4 +479,15 @@ void CZOnlineLobby::UnInit()
 int CZOnlineLobby::MediusConnectionIndex()
 {
     return myConnectionIndex;
+}
+
+/* the game clock set from the host's: ten seconds ahead of the time sent, the variable made when it
+ * is first wanted (SOCOM 1's, through a global; here the lobby's member, read through theLobby, and
+ * the float setter's equality test -- OVL1 0x2DF560: the game signal handler 0x2B9150 calls it on
+ * theLobby) */
+void CZOnlineLobby::SyncGameClock(int t)
+{
+    if (!theLobby.uiv_GameClock)
+        theLobby.uiv_GameClock = theUIVarManager.Add("GameClock", 0, UIVL_PERMANENT);
+    *theLobby.uiv_GameClock = 10.0f + (float)t;
 }
