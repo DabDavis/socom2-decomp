@@ -2066,6 +2066,39 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 40** (all ten open rows byte-exact: the turret aim 0x3A8910 and 0x3B0A70 with no device;
+  CVehicle::~CVehicle 0x3ACA60, zVid_Init 0x3B1200, CVisual::ApplyDecal 0x3B3AB0, CMesh::ApplyDecal 0x3B8680,
+  CDecal::AddDecal 0x3BECA0, CWaterRipple::Flatten 0x3C0CF0, CWaterRippleManager::ClearGroups 0x3C2A10 and Ripple 0x3C2CB0
+  through marked stand-ins, the original's spelling unknown; the lane's units 792 of 797, the five misses the MSL's band
+  inserts and two draft-held copies):
+  - WHICH ENUMS AREN'T PROPAGATED (the game states' round 53, refined): an unsigned 4-byte enum holds a pointer or word, a
+    1-byte enum a byte; a 4-byte enum holding a zero-extended byte folds, and a signed enum behaves as int and folds;
+  - A NO-CODE READ: `asm { beq x, x, L1; L1: }` reads x for a call's argument order and costs nothing, the branch to the
+    next instruction removed later -- every C read dies before that order, an asm `move` is dropped, an instruction that
+    remains also counts but costs its word, and the label pads with a nop if it lands misaligned (CMesh::ApplyDecal's last
+    2);
+  - A LATE-FOLDING GUARD: a struct flag stored outside the loops and read through a reference bound at the read (`F &r = f;
+    if (r.on) p = &x;`) survives pass 0's loop phase as conditional, then folds to a plain per-iteration assignment in pass
+    1; a store inside the loop gets pulled out, a reference bound at the function's top never folds (Ripple's per-strip
+    pointer, 5);
+  - `K * (float)x`, x a float local holding a constant, stays unfolded to the back end and the product is hoisted at run
+    time (Flatten); named short locals defined at a body's top and read in a later block are not expression-propagated, so
+    IRO_PullOutInvariantAssignments pulls them into the out-of-line guard-plus-preheader, and a third local for an equal
+    value makes a third pull;
+  - a li whose store is ready at once gets that store next, so a run of such pairs gives a zero store no slot, and a li
+    whose store is not ready lets the first ready zero store in behind it: where an enum-typed constant is defined decides
+    where zero stores land (zVid_Init, whose wrong data symbols for all those rounds showed only as WRONG REFERENCE at d=0:
+    a wrong data symbol is invisible until the code aligns);
+  - READ COLOURS BY HAND: a node's register implies a coloured neighbour for each lower register, which gives the
+    code-generation order -- for 0x3B0A70 w, 640, h, 448, y, x led to the plain source form; a variable two neighbours over
+    K is deferred (AddDecal's prim, reached by computing strip just before its first store); read igreplay's last record
+    when a function spills;
+  - FLATTENING A TALL CHAIN AT LEVEL 5: calling a member's destructor from the function's own text inlines it whole
+    (`g->m_nodes.~CNodeVector()`, six high at a delete site: ClearGroups), and holding a member as raw words lets the
+    constructor and destructor chains differ in height (~CVehicle's CVehicleRegion). Both rows also close at `#pragma
+    inline_depth(6)`, each noted in its function's comment; the level-5 forms were kept, needing no pragma;
+  - the turret's y-first schedule came from assigning x, y, z and storing z, x, y (432 orders tried), not from y-first
+    source.
 - **Tells from the SEALs, round 58** (22 byte-exact: seal_ai.cpp's OnWeaponEvent 0x5729F0, OnWeaponHit 0x572330, 0x5743C0,
   0x56A8E0; seal_env.cpp's HandleLanding 0x5AF590, DropItem 0x59F730, PickupItem 0x59F0C0, HandleSealStep 0x5A3570,
   RemoteWeaponDamageVictim 0x5A1B80, HandleGrenadeExplosion 0x5A0E70, CanTraverse 0x5B3CE0 and seven more; seal_create.cpp's
@@ -15077,6 +15110,63 @@ casrDoSpelling's seven doubles run into casrInitSampleFormat's jump table, whose
 "CONTENT-MISMATCH", every instruction equal). No tool changed in this round (scratch: build/scratch/gcc/r39/ -- ndiff.py and
 cdiff.py normalised alignments, rtlsum.py expand_end_loop's insn count, tr1.py a compare through the pass dumps, nohard.py
 the pseudos without a register, dlit.py a C constant's bits, rdd.py the image's literals, v_*.py the variants).
+
+**Round 40c: the Mandarin context's fill, the context builders, casrCreateResult, the two distance passes.**
+
+- **An inline's pointer arguments put locals in the frame** (FillOut_Syntax_Statedict_And_Wordprops_ForChinese and its twin):
+  the target's `lw a3,4(sp)` in the first block and `sw a3,0(s7)`, `addiu s7,sp,4` hoisted, past the join are one
+  `*po` through a parameter given `&o`: CSE folds the address inside the extended block, past a label the pseudo stays,
+  and loop.c hoists it. **A local takes its slot when its address is parsed**: `&total` first in the call puts it at sp+0.
+- **loop.c's threshold falls with each register moved** (`threshold * savings * lifetime >= insn_count`, measured on one loop with
+  volatile stores as filler, `tools/ccdump --dump -dL`): at 118 real insns two life-1 constants move, at 122 one, at 124 none.
+  The target hoists `1` and leaves `-4` and `-2` in the loop, so its first pass counts 119 to 122. **SOCOM 1's `madd`
+  recomputing `items[i]` after the inner loop said where the insns were**: `items[i]` everywhere rather than a walker is 116 to
+  122, and an argument `i - 1` in place of a local `k` is one over.
+- **A store before the local** (the same): `ctx->wtp = heap_Alloc(...); w = ctx->wtp;` stores `v0` and copies, a ref fewer
+  than `w = heap_Alloc(...); ctx->wtp = w;` (`sw s6,...`); one function can hold both forms, the target's first allocation
+  is the other one. **`*w++` in both arms**, cross-jumped after reload to one bump, is 14 refs where a bump after the join is
+  10: the difference between s3 and s8. **One walker for two loops** (the twin's `lw a2,16(a0)`, `ch`'s register): chinese.c's
+  copy compiles the same either way, chinese_tree.c's does not.
+- **A value's refs and live decide its s-register, and the arm's order decides both** (casrCreateResult, 952 words): moving a
+  load in an arm shifts live by one per arm (wend against wscore); a copy next to its load is swapped by CSE; a value's last use
+  takes the REG_DEAD and so the lower weight in sched1, so the order of the expressions moves hoisted pseudos' live.
+  `a = *p++; a -= x;` is one pseudo set twice, global, where an initialiser gives untied local choices. `try.py --variants`
+  makes 2^7 arm forms cheap: it closed the function from 38 words to 2.
+- **Unroll margins from one load** (AddFollowers): the phoneme loop unrolls by 2 only at 50 real insns or fewer; an `int` local
+  compared with an `unsigned short` field is one zero-extending load, an `unsigned short` local load and extension (51,
+  "Loop too big"). `while (p < end)` can stay "multiple entry points" and never unroll where
+  `if (p < end) do {} while (p < end)` does.
+- **Spellings that decide a shape, measured** (CreateCtxInfo, DistCalc, RePruneToPho): `x = x + (c ? 256 : k)` keeps the sum after
+  the select, `x += c ? ...` pushes it into both arms, a variable for the constant gives `slt`; `if (n >= 256) n -= 255; else n =
+  0;` keeps the branch, the reverse if-converts to movz; `c->n++; c->tab[c->n] = v` schedules unlike `c->tab[++c->n] = v` (a whole
+  loop's registers); `t[n].ph = ...` sums index first, `p = t + n` copies; a single-exit inline (`goto done; ... done: return id;`)
+  keeps its -1 in a pseudo, an early `return id` folds it; a variable reused across a call explains an s-register for a
+  short-lived value (`move s0,v0` and the walker's copy); several statements on one counter add refs (35 against 31 flips s4);
+  `fr = load; fr += x;` ties the load into the pseudo and frees v0 for the head's locals; a pointer kept in use across a call
+  pushes others to t-registers with `sq` caller-saves; an empty `for` is kept and unrolled with nops; one `return 0` after a join
+  lets reorg steal `move v0,zero` into the arm's `b` and the else's store into a branch-likely slot, two merge.
+- **RePruneToPho's tables through locals** (h, sc, w) rather than `e->`: the refs move so e spills. `while (A) { if (!B) break; ...}`
+  is a rolled test with an entry `b`: A's label blocks jump.c's exit-test copy and the in-loop refs double. `size = cnt*2` in the
+  loop, 4 insns or more before its use, in one block, is hoisted ("not desirable" otherwise), and PRE reuses it before the loop
+  for the later `s + cnt`. One set of walkers shared across loops gives the target's t0/t1/t3; a pseudo per loop where a tie must
+  change (the thinning's node).
+- **Measured, not closed**: `tools/retsweep.py` over lib/asr, 60 units and 52 flips: 0 hits, nothing closer (most flips will not
+  build: the results are used).
+- **Open, diagnosed in place**: InitCalculateDistances (written, 4 words, the right size: sched1 must issue off's copy, insn 16,
+  ahead of the table load, 36; 1440+ head orders, best0 and fr at every position, n's type and d's: none closer), FrameDPacoust
+  (586 of 587 as round 39c: `unsigned short word` is SI under PROMOTE_MODE, so CSE folds the arm's re-read; do-while(0), `||`, an
+  index local and a block local change nothing), the rest as round 39c. Not reached: CreateSecondPassContext (978 words, the draft
+  in hand), CreateSecondPassTreeContext, Build_Tree_ForChinese and Translate_Prons.
+
+Hand-written in round 40c: `asr/casr.c` (casrCreateResult with CalcWordConfidence and CalcSentenceConfidence: the object whole, 67 of
+67), `asr/ctxtree.c` (func_004D3450, AddFollowers, GetIsolatedWordDpActiveWords: whole, 16 of 16), `asr/ctxinfo.c` (CreateCtxInfo: 5 of 5
+written), `asr/distsil.c` (DistCalc, DistCalc4Bit, InitCalculateDistances OPEN: 17 of 18), `asr/isowdp.c` (RePruneToPho: 13 of 15),
+`asr/chinese.c` and `asr/chinese_tree.c` (FillOut_Syntax_Statedict_And_Wordprops_ForChinese and its twin: 3 of 6 each), `asr/casr.h`
+(CASR's map at +600 and uw_cap at +1128, uw_n unsigned, LANGVT slot 37). 10 rows new to the map's byte-exact rows (5,752 words, 23,008
+bytes), and an eleventh written OPEN; none superseding a draft; `src/lib/asr` 607 of 638 (597 of 627 before). Two names (DistCalc and
+DistCalc4Bit: SOCOM 1's order and bodies). No tool changed in this round (scratch: build/scratch/gcc/r40/ -- allunits.py every unit's
+score, cdiff.py the normalised alignment, rtllist.py a pass dump's real insns between two uids, probe_fo.py loop.c's decisions under
+filler stores, v_*.py the variants).
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

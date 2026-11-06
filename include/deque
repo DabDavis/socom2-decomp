@@ -506,12 +506,26 @@ public:
             : p_(data + start), data_(data), first_(*&data_ + start), last_(*&data_ + cap)
         {
         }
+        iterator(const iterator &x)
+        {
+            p_ = x.p_;
+            data_ = x.data_;
+            first_ = x.first_;
+            last_ = x.last_;
+        }
         value_type *const &d() const { return data_; }
         value_type &operator*() const { return *p_; }
         iterator &operator++()
         {
             if (++p_ == last_)
                 p_ = data_;
+            return *this;
+        }
+        iterator &operator--()
+        {
+            if (p_ == data_)
+                p_ = last_;
+            p_--;
             return *this;
         }
         iterator &operator+=(int n)
@@ -664,7 +678,9 @@ public:
         this->start_ = 0;
     }
     /* out of line in an earlier unit (zanim_menu.cpp's tail: erase 0x285D30, insert 0x286160 -- SOCOM 1's
-     * signatures, the four-word iterators by value; resize calls both). UNWRITTEN; erase's shape read off
+     * signatures, the four-word iterators by value; resize calls both). The insert UNWRITTEN; the erase
+     * written since the UI's round 39 as an explicit specialisation in zanim_menu.cpp's tail (OPEN, 76: its
+     * note); its shape read off
      * the image (the MSL headers round 35): MSL's deque erase -- the empty range returned at once; pos =
      * first - begin(), back = end() - last, n = last - first through the friend operator- of cdeque<T *>'s
      * const_iterator form (x's first_ / last_ / data_ re-read); when pos < back, copy_backward(begin(),
@@ -1022,6 +1038,13 @@ public:
         {
             if (++p_ == last_)
                 p_ = data_;
+            return *this;
+        }
+        iterator &operator--()
+        {
+            if (p_ == data_)
+                p_ = last_;
+            p_--;
             return *this;
         }
         iterator &operator+=(int n)
