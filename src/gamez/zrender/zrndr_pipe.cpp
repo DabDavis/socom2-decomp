@@ -180,6 +180,8 @@ public:
     void RandomizeOverlay();
     void SetOverlayTexture(zdb::CTexHandle *tex);
     void RenderAtom(zdb::CNode *node);
+    /* the frame (SOCOM 1's); which of the two buffer sets is in use */
+    int RenderWorld(zdb::CWorld *world);
     void SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     void RenderDelayedNodes();
     void RenderNodeShadow(zdb::CNode *node);
@@ -367,6 +369,23 @@ int InterruptFromVIF1(int cause)
     return 0;
 }
 
+/* the texture commands' FIFO packet: a tag whose marker word the interrupt handler's trace reads, the FLUSH and the
+ * rest (ours, inline: with it written out FIFO_Load and FIFO_Signal are over MW's 15 statements, and RenderWorld inlines
+ * both in the target) */
+static inline void FifoPacket(unsigned int *p, unsigned int mark)
+{
+    p[0] = 0x10000002;
+    p[1] = mark;
+    p[2] = 0x11000000;
+    p[3] = 0x50000001;
+    ((u_long *)p)[2] = 0x0000400000008000;
+    ((u_long *)p)[3] = 0;
+    p[8] = 0x13000000;
+    p[9] = 0;
+    p[10] = 0;
+    p[11] = 0x80000000;
+}
+
 /* a buffer uploaded, then a command queued and a FIFO packet kicked that interrupts when the
  * GS reaches it (its marker word 0x44444444). SOCOM 1's FIFO_Signal(CGSTexBuffer *, unsigned int *)
  * (0x2460A0: the same Load, the command's buffer to load set, the one to signal cleared) less its
@@ -386,16 +405,7 @@ void CPipe::FIFO_Load(zdb::CGSTexBuffer *buf)
     c.m_signal = 0;
     unsigned int *p = (unsigned int *)zSysSprGetPacket(0);
 
-    p[0] = 0x10000002;
-    p[1] = 0x44444444;
-    p[2] = 0x11000000;
-    p[3] = 0x50000001;
-    ((u_long *)p)[2] = 0x0000400000008000;
-    ((u_long *)p)[3] = 0;
-    p[8] = 0x13000000;
-    p[9] = 0;
-    p[10] = 0;
-    p[11] = 0x80000000;
+    FifoPacket(p, 0x44444444);
     zSysFifoKick((u_long128 *)p, 3);
 }
 
@@ -412,16 +422,7 @@ void CPipe::FIFO_Signal(zdb::CGSTexBuffer *buf)
     c.m_signal = buf;
     unsigned int *p = (unsigned int *)zSysSprGetPacket(0);
 
-    p[0] = 0x10000002;
-    p[1] = 0x55555555;
-    p[2] = 0x11000000;
-    p[3] = 0x50000001;
-    ((u_long *)p)[2] = 0x0000400000008000;
-    ((u_long *)p)[3] = 0;
-    p[8] = 0x13000000;
-    p[9] = 0;
-    p[10] = 0;
-    p[11] = 0x80000000;
+    FifoPacket(p, 0x55555555);
     zSysFifoKick((u_long128 *)p, 3);
 }
 
@@ -601,6 +602,314 @@ void CPipe::RenderAtom(zdb::CNode *node)
         else
             RenderNode(node, (zdb::tag_ZVIS_FOV)0);
     }
+}
+
+/* the view ids' pop, below (RenderWorld calls it ahead of its definition) */
+static inline void PopVid();
+/* SOCOM II's frame time (fts_patch.cpp's); the shadow pass's flag and the particles' texture list, not named; the fog's
+ * colour through the frame's tint (vis_vu.cpp's, 0x3B5A10, not named) */
+extern float data_004A449C;
+extern "C" unsigned char data_004B4A60, data_004B4A80;
+extern unsigned int data_004887A0;
+extern "C" void func_003B5A10(const CPnt4D *in, CPnt4D *out);
+extern "C" zdb::CTexList *func_00324A60();
+void SetGSReg(short reg, unsigned long data);
+void zVid_ClearColor(unsigned int *rgb);
+void zVid_FrameRestore();
+namespace Particle {
+void Render();
+}
+
+/* a dynamic texture listed in a buffer, its chain dropped (ours, inline) */
+static inline void AddDynTex(zdb::CGSTexBuffer *b, zdb::CTexHandle *tex)
+{
+    b->m_dyntex_list.Add(tex, true);
+    b->m_chainp = 0;
+}
+
+/* a view id pushed (ours, inline: its temporary takes a slot a pass later) */
+static inline void PushVid(unsigned int vid)
+{
+    zdb::CVisual::m_stack_vid.push((void *)vid);
+}
+
+/* whether a node moves and is lit as it moves (ours, inline: the `&&` materialised, each stage's bool in v0) */
+static inline bool NodeDynamic(zdb::CNode *n)
+{
+    return n->m_dynamic_motion && n->m_dynamic_light;
+}
+
+/* the walk's end (ours, inline: the target materialises the test, sltu then xori, and branches on it) */
+static inline bool AtomDone(zdb::CGridAtom *a)
+{
+    return !(a != 0);
+}
+
+/* a count of none, as AtomDone (ours, inline) */
+static inline bool IsNone(int n)
+{
+    return !(n != 0);
+}
+
+/* a character node marked in view and active (ours, inline, as NodeDynamic) */
+static inline bool NodeInView(zdb::CNode *n)
+{
+    return n->m_socom2_a1_bits.bit4 && n->m_active;
+}
+
+/* SOCOM 1's (0x244780): the frame -- no delayed nodes or texture commands yet; the fog's colour set in the GS and as the
+ * clear colour; deferred visuals deleted, decals recycled, empty character sets dropped; the unit matrix and view id 0
+ * pushed; the world updated and the camera's matrices kicked. The shadows drawn (SOCOM II's: each map updated, each
+ * node a mesh or a node), the ordered grid walk in two stretches -- the three nearest rings with shadows on or off by the
+ * node, then the rest, tested against the mid plane when the world has nodes beyond it -- its cells kept and drawn again;
+ * the landmarks; the particles; each visible character set in its own texture buffers, the alpha buffer's textures, the
+ * common set and the delayed nodes, the alpha pass, and everything popped. Returns which of the two buffer sets is in use.
+ * Unwritten before round 34, byte-exact as written from the target through the unit's own idioms: FIFO_Load and FIFO_Signal
+ * inline here (with their packet in FifoPacket they are under MW's 15 statements), the walk's `set = *it` read ahead of the
+ * end test (the load fills the branch's slot from before it: set is live at the exit), the `&&`s as bool inlines, the
+ * materialised `!(x != 0)` tests as inlines (sltu; xori; bnez), the phase and the buffer read into locals ahead of their
+ * test, the frame slots by the iterator ahead of `common` and the view id's temporary a pass deeper (PushVid). The draw list
+ * held through an unsigned enum at its clear is A MARKED DEVICE (a1 = the list, v1 = a1 + 4, where a reference, a pointer or
+ * the list in place folds v1 to the pipe's own offset) */
+int CPipe::RenderWorld(zdb::CWorld *world)
+{
+    int frame = 0;
+
+    m_delayedNodeNum = 0;
+    m_texLoadIdx = 0;
+    m_texIntIdx = 0;
+    CPnt4D fog = m_camera->GetFogColor();
+
+    fog.x *= 255.0f;
+    fog.y *= 255.0f;
+    fog.z *= 255.0f;
+    func_003B5A10(&fog, &fog);
+    unsigned int rgb[3];
+
+    rgb[0] = (int)fog.x;
+    rgb[1] = (int)fog.y;
+    rgb[2] = (int)fog.z;
+    SetGSReg(61, (unsigned long)rgb[2] << 16 | ((unsigned long)rgb[0] | (unsigned long)rgb[1] << 8));
+    zVid_ClearColor(rgb);
+    zdb::CNode::DeleteDeferredVisuals();
+    zdb::CDecal::m_tempPool.RecycleTick();
+    zdb::CMeshDecal::m_tempPool.RecycleTick();
+    world->RemoveEmptyTextureAssetCharacters();
+    FlushCache(0);
+    m_polys = 0;
+    m_world = world;
+    zdb::CGrid *grid = &world->m_grid;
+
+    s_stack.Push(&CMatrix::identity);
+    PushVid(0);
+    world->Update();
+    zSysFifoKick((u_long128 *)m_camera->GetVuMtxSet(), 25);
+    zdb::CVisual::AlphaEnable(false);
+    zdb::CVisual::UpdateLightTints(data_004A449C);
+    m_drawCharacters = true;
+    FIFO_Signal(zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[0][0]]);
+    if (world->m_shadows.size()) {
+        zdb::CVisual::m_applyShadow = false;
+        data_004B4A60 = 1;
+        zdb::CVisual::m_lightingEnable = false;
+        zdb::CVisual::m_fogEnable = false;
+        zdb::CVisual::AlphaEnable(true);
+        const zdb::CTexture *last = 0;
+        zdb::CRenderMapVector &shadows = world->m_shadows;
+
+        for (zdb::CRenderMapVector::iterator i = shadows.begin(); i != shadows.end(); ++i) {
+            zdb::CRenderMap *map = *i;
+            zdb::CNode *node = map->m_node;
+
+            if (node) {
+                m_node = node;
+                map->Update(map->m_texture != last);
+                last = map->m_texture;
+                if (node->m_hasMesh)
+                    RenderMeshShadow(node, 0, 0);
+                else
+                    RenderNodeShadow(node);
+            }
+        }
+        data_004B4A60 = 0;
+        zVid_FrameRestore();
+        zSysFifoKick((u_long128 *)m_camera->GetVuMtxSet(), 25);
+    }
+    m_alpha.m_camera = m_camera;
+    m_drawCharacters = false;
+    grid->SetTraversalBoundaryOrdered((const CPnt3D *)m_camera->m_matrix.m_matrix[3], m_camera->m_fullfrustum,
+                                      m_camera->m_fullfrustum_points, false);
+    zdb::CGridAtom *atom = grid->StartTraversalOrdered();
+
+    if (data_00488790.capacity() < data_004887A0)
+        data_00488790.reserve(data_004887A0 + 5);
+    data_004887A0 = 0;
+    while (!AtomDone(atom) && grid->m_ring < 3) {
+        zdb::CCell *cell = atom->GetCell();
+
+        if (cell) {
+            m_cell = cell;
+            cell->SetClutterFlag(true);
+            RenderCell(m_cell);
+            data_00488790.push_back(cell);
+            data_004887A0++;
+        } else {
+            m_node = atom->Ent;
+            data_004B4A80 = m_node->m_socom2_a1_bits.bit6 == 1;
+            unsigned char lit = 0;
+
+            if (NodeDynamic(m_node))
+                if (m_node->m_socom2_a1_bits.bit5 == 1)
+                    lit = 1;
+            zdb::CVisual::m_applyShadow = !lit;
+            RenderAtom(m_node);
+        }
+        atom = grid->GetNextAtomOrdered();
+    }
+    zdb::CTextureAssetCharacterList &sets = m_world->m_TextureAssetCharacters;
+    zdb::CTextureAssetCharacterList::iterator it;
+    zdb::CTextureAssetCharacters *common;
+
+    m_assetCommon = 0;
+    it = sets.TestFOV(m_camera, &common);
+    zdb::CTextureAssetCharacters *set;
+
+    if (it != sets.end()) {
+        set = *it;
+        zdb::_RenderPhase phase = set->m_lib->GetRenderPhase();
+        zdb::CGSTexBuffer *b = set->m_buffer;
+
+        if (b) {
+            m_assetCharacter[0] = b;
+            m_assetCharacter[0]->Setup(0.0f, zdb::CTexManager::TexBufParams[0]);
+        } else
+            m_assetCharacter[0] = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[(unsigned char)phase][2]];
+        FIFO_Load(m_assetCharacter[0]);
+    } else
+        set = 0;
+    zdb::CVisual::m_applyShadow = false;
+    bool midplane = m_world->m_numNoFarClipNodes && m_camera->m_far_plane != m_camera->m_mid_plane;
+
+    while (atom) {
+        zdb::CCell *cell = atom->GetCell();
+
+        if (cell) {
+            m_cell = cell;
+            if (!midplane || m_camera->InsideMidPlane(cell)) {
+                m_cell->SetClutterFlag(true);
+                RenderCell(m_cell);
+                data_00488790.push_back(m_cell);
+                data_004887A0++;
+            }
+        } else {
+            m_node = atom->Ent;
+            if (!midplane || m_camera->InsideMidPlane(m_node) || !m_node->m_apply_clip)
+                RenderAtom(m_node);
+        }
+        atom = grid->GetNextAtomOrdered();
+    }
+    for (std::vector<zdb::CCell *>::iterator c = data_00488790.begin(), ce = data_00488790.end(); c != ce; ++c) {
+        m_cell = *c;
+        RenderCell(m_cell);
+        m_cell->SetClutterFlag(false);
+    }
+    data_00488790.clear();
+    zdb::CNodeVector &marks = world->m_landmarks;
+
+    if (marks.size()) {
+        data_004B4DE4 = 0;
+        data_004B4E34 = 0;
+        data_004B4E0C = 0;
+        data_004B4DAC = 0;
+        m_camera->m_fovMask = 16175;
+        for (zdb::CNodeVector::iterator l = marks.begin(); l != marks.end(); ++l) {
+            m_node = *l;
+            zdb::CNode *n = m_node;
+
+            m_doFog = n->m_fog ? m_camera->TestLandmarkFOG((const CPnt3D *)n->m_matrix.m_matrix[3], n->GetRadius()) : false;
+            zdb::CVisual::LandmarkEnable(!n->m_socom2_5a_bit2);
+            RenderNode(m_node, (zdb::tag_ZVIS_FOV)0);
+        }
+        m_camera->m_fovMask = 16191;
+        zdb::CVisual::LandmarkEnable(false);
+    }
+    Particle::Render();
+    m_drawCharacters = true;
+    if (set) {
+        while (it != sets.end()) {
+            zdb::CNodeVector &nodes = set->m_nodes;
+
+            do {
+                ++it;
+                set = *it;
+                if (it == sets.end())
+                    break;
+            } while (IsNone(set->m_visible));
+            if (it != sets.end()) {
+                zdb::_RenderPhase phase = set->m_lib->GetRenderPhase();
+                zdb::CGSTexBuffer *b = set->m_buffer;
+
+                if (b) {
+                    m_assetCharacter[1] = b;
+                    m_assetCharacter[1]->Setup(frame ? zdb::CTexManager::TexBufParams[1] : zdb::CTexManager::TexBufParams[0],
+                                               frame ? 1.0f : zdb::CTexManager::TexBufParams[1]);
+                } else
+                    m_assetCharacter[1] = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[(unsigned char)phase][frame]];
+                FIFO_Load(m_assetCharacter[1]);
+            } else {
+                m_assetCommon = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[2][frame]];
+                FIFO_Load(m_assetCommon);
+            }
+            FIFO_Signal(m_assetCharacter[0]);
+            for (zdb::CNodeVector::iterator n = nodes.begin(); n != nodes.end(); ++n) {
+                zdb::CNode *node = *n;
+
+                if (NodeInView(node))
+                    RenderAtom(node);
+            }
+            m_assetCharacter[0] = m_assetCharacter[1];
+            frame ^= 1;
+        }
+        zdb::CVisual::m_GlobalLightScale = 1.0f;
+    } else {
+        m_assetCommon = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[2][0]];
+        FIFO_Load(m_assetCommon);
+        frame ^= 1;
+    }
+    m_assetAlpha = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[11][frame]];
+    m_assetAlpha->SetDynTexList(&m_alpha.m_dyntexlist);
+    if (zdb::CVisual::m_lightMapTexture)
+        AddDynTex(m_assetAlpha, zdb::CVisual::m_lightMapTexture);
+    if (m_overlay)
+        AddDynTex(m_assetAlpha, m_overlay);
+    m_assetAlpha->Add(&m_world->m_TextureDecals, true);
+    m_assetAlpha->Add(func_00324A60(), true);
+    FIFO_Load(m_assetAlpha);
+    if (m_assetCommon && (common || m_delayedNodeNum)) {
+        FIFO_Signal(m_assetCommon);
+        if (common) {
+            zdb::CNodeVector &nodes = common->m_nodes;
+
+            for (zdb::CNodeVector::iterator n = nodes.begin(); n != nodes.end(); ++n)
+                RenderAtom(*n);
+        }
+        zdb::CVisual::m_applyLocalLights = true;
+        RenderDelayedNodes();
+        zdb::CVisual::m_applyLocalLights = false;
+        zdb::CVisual::m_GlobalLightScale = 1.0f;
+    }
+    m_assetHUD1 = zdb::CTexManager::m_texmanager[zdb::CTexManager::TexPhase[12][frame ^ 1]];
+    FIFO_Load(m_assetHUD1);
+    FIFO_Signal(m_assetAlpha);
+    m_alpha.Render();
+    m_alpha.m_next = m_alpha.m_visualList;
+    enum DrawListHolder { kDrawListMax = 0xffffffffu } dl = (DrawListHolder)(unsigned int)&m_alpha.m_drawList;
+
+    ((std::list<void *> *)dl)->clear();
+    m_alpha.m_dyntexlist.Clear();
+    s_stack.Pop();
+    PopVid();
+    return frame;
 }
 
 /* SOCOM II's (the name ours; RenderWorld's three cell passes call it): a cell's fog flag from its
