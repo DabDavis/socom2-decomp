@@ -1,6 +1,8 @@
 /* seal_aifollow.cpp -- the follow state, CAiSFollow (SOCOM 1's unit, __sinit_seal_aifollow.cpp).
  * OVL2 0x5FADF0-0x5FE1EF: the destructor first, as SOCOM 1's. So far only the destructor and the
- * new slot +0x3C. Defined in reverse of their image order (-inline deferred). */
+ * new slot +0x3C. Defined in reverse of their image order (-inline deferred). The kit's round 53 adds
+ * the wedge test 0x5FE1F0 (OPEN) and its edge test 0x5FE4C0 (declared) here, between the follow and
+ * seal_squirm.cpp's CSealCtrlSquirm (0x5FE830 on): their unit is unproven. */
 
 #include "../gamez/zseal/zseal.h"
 
@@ -48,6 +50,49 @@ void func_005628F0(CSealCtrlAi *ai);
 void AbortPathPlan__2aiFP7CAiPath(FOLLOW_PATH *path);
 void SetTemplatePath__7CAiPathFP7CAiPath(FOLLOW_PATH *path, FOLLOW_PATH *t);
 bool InStance__11CSealCtrlAiF11SEAL_STANCEb(CSealCtrlAi *ai, SEAL_STANCE stance, bool b);
+}
+
+extern "C" {
+/* a segment against a triangle's edge, in the XZ plane (OVL2 0x5FE4C0, unwritten: the edge's two
+ * ends, then the segment's -- what it adds to 0x5FE1F0's count) */
+int func_005FE4C0(const CPnt3D *e0, const CPnt3D *e1, const CPnt3D *s0, const CPnt3D *s1);
+}
+
+/* whether a segment crosses a wedge laid along a direction from a point: the wedge's apex `back`
+ * behind, its far edge `len` ahead and `len * spread` to either side, the segment's ends taken
+ * relative to the point; the edge tests summed until three agree (OVL2 0x5FE1F0, new in SOCOM II:
+ * 0x5FD150 asks it with the follower's view; the name and the unit ours -- after the follow state,
+ * before seal_squirm.cpp).
+ * OPEN, 0x2BC against 0x2C8: every call, temporary and frame slot is the target's but one saved
+ * register short -- the target keeps &tri[1], &tri[2] and &seg[1] in s1, s0 and s2 from the copy
+ * into each (its x stored through the register, y and z sp-relative) to the edge tests, where MW
+ * here recomputes each address at its call (`addiu`), saving s0-s3 only (frame 0x1E0 against
+ * 0x1F0). Tried: pointer locals (declared at the top they sink to the calls, 0x2D8; declared at
+ * each copy 0x2CC), reference locals (every store through the register, 0x2CC / 0x2D8), `tri + 1`
+ * arguments (as it is), the edge tests as a loop (0x2C4) */
+extern "C" bool func_005FE1F0(const CPnt3D *origin, const CPnt3D *dir, const CPnt3D *a, const CPnt3D *b,
+                               float len, float back, float spread)
+{
+    CPnt3D side(-dir->z, 0.0f, dir->x);
+    CPnt3D tri[3];
+    CPnt3D seg[2];
+
+    tri[0] = *dir * -back;
+    float w = len * spread;
+
+    tri[1] = *dir * len + side * w;
+    tri[2] = *dir * len - side * w;
+    seg[0] = *a - *origin;
+    seg[1] = *b - *origin;
+
+    int n = func_005FE4C0(&tri[0], &tri[1], &seg[0], &seg[1]);
+
+    if (n < 3) {
+        n += func_005FE4C0(&tri[1], &tri[2], &seg[0], &seg[1]);
+        if (n < 3)
+            n += func_005FE4C0(&tri[2], &tri[0], &seg[0], &seg[1]);
+    }
+    return n >= 3;
 }
 
 /* a follow's events: on entry mode 6, the goals dropped, the route marked and the AI-map collision

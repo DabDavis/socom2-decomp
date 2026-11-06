@@ -303,7 +303,13 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
  * round 25 the mask computed first (`(1 << (i & 31)) & m_vec[i >> 5]`, the mask or both in locals),
  * the seen test as an if/else in the body (nested, flagged, either sense), and before the bit test:
  * 0x19C, 0x194 or 0x1AC. MW's pre-colouring code evaluates m_vec[i >> 5] first (srl, andi, sll, lw)
- * where the target's colouring reads as the mask's first */
+ * where the target's colouring reads as the mask's first.
+ * The AI core round 34 (build/scratch/ai/v_gne34.py): the target's fill -- the fall-through's
+ * `move v0,zero` in the branch's slot -- is the UI's round-31 "if (c) p = k" behaviour, and SOCOM 1's
+ * code has it too; the seen test as an inline with `if (type != AIE_ENTITY) seen = Test(bit)` on its
+ * own parameter or on a local (0x19C, 33 off), the ternary in an inline local (as it is), and an
+ * unrelated if-on-a-parameter inline (the scale: the prologue rescheduled, 0x1A4 and 26 off) leave
+ * the seen test's fill as it is */
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;

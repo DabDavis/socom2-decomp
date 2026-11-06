@@ -423,14 +423,21 @@ public:
 class CAiSSuspended : public CAiState {
 public:
     CAiSSuspended() : CAiState(AI_STATE_SUSPENDED) {}
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanAttack() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual ~CAiSSuspended();
 
     unsigned char _58[0x60 - 0x58];
-    CMatrix m_matrix;   // 0x60 (built by OVL2's CMatrix() copy, 0x5F6ED0; never read so far)
-    unsigned char _a0[0xb0 - 0xa0];   // 0xb0 bytes, Create's new
+    CMatrix m_matrix;   // 0x60 (built by OVL2's CMatrix() copy, 0x5F6ED0): the SEAL's place on entry
+    /* what OnSignal keeps of the SEAL on entry and gives back on leaving (0x5F1E40; the names
+     * ours): its node on, its target list updated, itself in the target lists, its anim set */
+    unsigned int m_nodeActive : 1;   // 0xa0 bit 0
+    unsigned int m_updateTargets : 1;   // bit 1
+    unsigned int m_includeInTargets : 1;   // bit 2
+    class AnimSet *m_animset;   // 0xa4
+    unsigned char _a8[0xb0 - 0xa8];   // 0xb0 bytes, Create's new
 };
 
 class CAiSBreach : public CAiState {

@@ -248,7 +248,8 @@ CQuat *CZSIObject::GetRotFast(int f0, int f1, float t, CQuat *rot)
  * test), which then pins the schedule; read before the name's store it does take t5, but the
  * store and both right-hand sides move ahead of the stores (25 off). Also tried: an inline taking
  * the flags by value, a const local, bool locals for both tests, a nested block, `== bit`, `!!`,
- * `> 0`, shifts -- all 13 */
+ * `> 0`, shifts -- all 13. Round 21: the flags through an inline read, the bits through an inline test (13, or 0xF0
+ * read twice); the replay finds no placement of the flags node alone (a schedule, not a numbering) */
 int CZSIObject::Read(unsigned char *data, unsigned int nFrames, const char *name)
 {
     int size = 0;

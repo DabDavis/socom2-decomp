@@ -426,7 +426,12 @@ inline C2DLine *CZLineMap::NewLine()
  * true arm ends `b join` over a lone nop while the false arm adds nothing -- NewLine with an early
  * return gives the b but a `move s0,zero; nop` false arm, a result variable (or the test written
  * here) drops both (0x220); a ternary, an if/else with `line = line`, a switch, the inverted early
- * return, an else-arm zero and the ternary of the visibility all miss (round 35) */
+ * return, an else-arm zero and the ternary of the visibility all miss (round 35). Round 58: NewLine
+ * as `return m_lastline < 500 ? &m_linelist[++m_lastline - 1] : 0;` with the line initialised
+ * `IsLineVisible(...) ? NewLine() : 0` gives the target's size and its this / line registers, 18
+ * off: the zero then leaves the visibility test's delay slot and the count is not reloaded after
+ * its store (the target's m_lastline - 1 reads it again: the if form's); the ternary alone 0x210,
+ * a result variable in NewLine 0x220 (0x260 with the ternary), the comma form 0x230 / 0x240 */
 C2DLine *CZLineMap::LineTo(const CPnt3D *p)
 {
     m_pointB = WorldToDraw(p);

@@ -138,6 +138,152 @@ void CMesh::SetLOD(unsigned int view, unsigned int lod)
     m_lodMesh[view] = m_lods[lod].m_mesh;
 }
 
+/* the mesh decals' batch (vis_decal.cpp's, new in SOCOM II, not named): begun, flushed, ended; a
+ * vertex index entered at its slot, a new vertex added (its strip's shorts, its matrix, its
+ * projected point, its index and slot, the strip's walk) */
+extern "C" void func_003BEBD0();
+extern "C" void func_003BEBB0();
+extern "C" void func_003BEA60();
+extern "C" void func_003BEA20(int slot);
+extern "C" void func_003BE5F0(short *s, unsigned int mtx, CPnt3D *p, unsigned short id, short slot,
+                              CVisData *v);
+
+/* the frame count (a 64-bit word: a mesh's palette is rebuilt when it was built before it), the
+ * decal's depth test and its limit, the batch's vertex indices (new in SOCOM II, not named) */
+extern "C" unsigned long data_004A4490;
+extern "C" unsigned char data_003E14B8;
+extern "C" float data_003E14B0;
+extern "C" unsigned int *data_004B5018;
+
+/* the UV test (vis_decal.cpp's) */
+bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
+
+/* a decal applied to one of the mesh's strips (a sub-mesh's index): the palette rebuilt when stale,
+ * the strip's triangles walked -- the batch flushed into a decal at each strip's end or past 85
+ * vertices -- each triangle's points (its shorts, ten times scaled) kept with their vertices and
+ * indices; on a new matrix the UV projection composed with it and the normal brought into its
+ * frame; a triangle facing against the normal (below -0.1) projected and, inside the texture (and
+ * near its plane when the depth test is on), its vertices entered in the batch, new ones added; the
+ * triangles taken (new in SOCOM II: CNode::ApplyDecal's sub-mesh arm, the name ours -- its call
+ * there, node_main.cpp's 0x313B2C, loads the index before the mesh: the mesh is this, the node's
+ * matrix the unused first argument).
+ * OPEN (written in the weapons' round 33), 4 instructions long (364 against 360), the frame 16 bytes
+ * short (832 against 848: every local 16 lower, the spilled normal / texture / UV at 204 / 200 / 196
+ * where the target has 220 / 216 / 192 and the dead counter at 176 -- the target spills one node
+ * more or keeps a 16-byte slot this does not); the target also keeps &vd in v's register from the
+ * top (`addiu s4,sp,656` before the matrices' constructors: `v = &vd` then SelectIndexedStrip, as
+ * CVisual::ApplyDecal's) and builds the outer product's operands as temporaries below the matrices
+ * (c at 256, the two w-1 points at 240 / 224 -- a cross-product inline holding c gives that order but
+ * 358 instructions); the flush's func_003BEBB0 is called before nidx is cleared there */
+int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *normal, CTexHandle *tex,
+                      CMatrix *uv)
+{
+    bool more = false;
+    short *vp[3];
+    CPnt3D e1;
+    CPnt3D e2;
+    CPnt3D nn;
+    int ids[3];
+    CPnt3D n;
+    CVisData vd;
+    CPnt3D pts[3];
+    CPnt3D proj[3];
+    CMatrix m0;
+    CMatrix m2;
+    unsigned int nt = 0;
+    unsigned int nverts = 0;
+    int dead = 0;
+    int count = 0;
+
+    func_003BEBD0();
+    if (m_74 < data_004A4490)
+        m_owner->BuildMatrixPalette(0);
+
+    CVisData *v = vd.SelectIndexedStrip(this, index);
+    unsigned int nidx = 0;
+    unsigned int cur = 99999999;
+
+    while (v) {
+        if (more || nverts >= 85) {
+            if (nt) {
+                AddDecal((void *)nt, tex, size);
+                nt = 0;
+            }
+            nverts = 0;
+            func_003BEBB0();
+            nidx = 0;
+        }
+        for (unsigned int j = 0; j < 3; j++) {
+            dead++;
+            pts[j].x = 10.0f * (((short *)v->m_strip)[0] / 32768.0f);
+            pts[j].y = 10.0f * (((short *)v->m_strip)[1] / 32768.0f);
+            pts[j].z = 10.0f * (((short *)v->m_strip)[2] / 32768.0f);
+            vp[j] = (short *)v->m_strip;
+            ids[j] = *v->m_indices / 3;
+            if (j < 2)
+                v = v->NextIndex(&more);
+        }
+
+        unsigned int mtx = v->m_mark->u32[2];
+
+        if (cur != mtx) {
+            cur = mtx;
+
+            CMatrix pm;
+
+            sceVu0MulMatrix(pm.m_matrix, m_owner->m_matrix.m_matrix, m_palette[cur]->m_matrix);
+            sceVu0MulMatrix(m2.m_matrix, uv->m_matrix, pm.m_matrix);
+
+            CMatrix inv;
+
+            Vu0MatrixInverseWithUniformScale(&inv, &pm);
+            TransformVectors(&inv, normal, &n, 1);
+        }
+        pts[0].Sub(&pts[1], &e1);
+        pts[2].Sub(&pts[1], &e2);
+
+        CPnt4D c;
+
+        sceVu0OuterProduct((float *)&c, (float *)&CPnt4D(e2.x, e2.y, e2.z, 1.0f),
+                           (float *)&CPnt4D(e1.x, e1.y, e1.z, 1.0f));
+        nn = CPnt3D(c.x, c.y, c.z);
+        nn.Normalize();
+        if (Dot(nn, n) < -0.1f) {
+            m2.Transform(&pts[0], &proj[0], 3);
+            if (UVCompare(&proj[0], &proj[1], &proj[2]) &&
+                (!data_003E14B8 || fabsf(proj[0].z) <= data_003E14B0 || fabsf(proj[1].z) <= data_003E14B0 ||
+                 fabsf(proj[2].z) <= data_003E14B0)) {
+                for (unsigned int k = 0; k < 3; k++) {
+                    int slot = -1;
+                    unsigned int id = ids[k];
+
+                    for (unsigned int m = 0; m < nidx; m++) {
+                        if (id == data_004B5018[m]) {
+                            slot = m;
+                            break;
+                        }
+                    }
+                    if (slot < 0) {
+                        slot = nidx;
+                        data_004B5018[nidx] = id;
+                        nidx++;
+                        func_003BE5F0(vp[k], cur, &proj[k], id, slot, v);
+                    }
+                    func_003BEA20(slot);
+                    nverts++;
+                }
+                nt++;
+                count++;
+            }
+        }
+        v = v->NextIndex(&more);
+    }
+    if (nt)
+        AddDecal((void *)nt, tex, size);
+    func_003BEA60();
+    return count;
+}
+
 /* a decal added over a strip of the mesh, last in its list: taken from the permanent pool for a
  * life below zero, else from the temporary one, cleared and built (SOCOM II's; the name ours).
  * Each arm takes its decal into a local of its own: with it MW pads the function's labels to 8

@@ -41,7 +41,10 @@ const T &_max(const T &a, const T &b)
  * and the count walk's cursor and end (v76/v77, code-generation temporaries: v1/v0 against a0/v1).
  * --movers finds each pair alone (v41 past @7498 at 50.5 with v42 anywhere from 40.5; v76 at 31.5
  * or 32.5 -- ahead of `k`, even of `this`), never the four together: the count walk's pair wants no
- * numbering a source gives, so its interference differs -- the walk's shape, not its order */
+ * numbering a source gives, so its interference differs -- the walk's shape, not its order. The AI
+ * core round 34 (build/scratch/ai/v_unt34.py): the count walk as an inline over a map's names --
+ * returning its own count (43 off), adding into the caller's by reference (34: as it is), over a
+ * const table (62), through a map pointer local (38) -- does not give it either */
 void CAiMaps::UpdateNameTables()
 {
     for (int k = 1; k < 6; k++) {
