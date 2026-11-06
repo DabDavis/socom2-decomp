@@ -152,9 +152,29 @@ public:
     float m_threatangle[8];   // 0xf20
 };
 
+/* the asset manager's library list (node_world.h's) */
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
+
+/* the HUD's lower block's top (hud_main.cpp's layout float, 364) and a texture's palette (0x354A90, ztex's) */
+extern float g_fHudBottomBlockY;
+extern "C" void func_00354A90(zdb::CTexture *tex, int r, int g, int b);
+extern "C" int rand();
+extern "C" void FlushCache(int op);
+extern "C" int sprintf(char *buf, const char *fmt, ...);
+
 /* the HUD (hud_main.cpp's, theHUD 0x408E58): whether it shows */
 class CHUD {
 public:
+    static CPnt4D m_hud_textcolor;
     bool IsOn();
     static CZSealBody *GetHUDOwner();
     void SetRangeText(const char *text);
@@ -202,6 +222,7 @@ public:
     void UpdateAccuracy();
     void UpdateColor();
     void ChangeReticule(int type);
+    void Init(zdb::CWorld *world, C2DFont *font);
 
     /* SOCOM 1's DWARF names at SOCOM II's offsets (read off the constructor 0x218DE0 and the
      * destructor 0x219090); SOCOM II's own members named by offset */
@@ -611,6 +632,180 @@ void BitmapReticule::UnInit()
     m_lase_update.ClearAndWipe();
     m_detonation_update.ClearAndWipe();
     m_enemy_name.ClearAndWipe();
+}
+
+/* the reticle's pieces made (SOCOM 1's Init, on SOCOM II's groups, scope lenses, noise and second bar): the three
+ * groups under the reticle, the texts; the textures; each poly placed and listed under its group; the first kind */
+void BitmapReticule::Init(zdb::CWorld *world, C2DFont *font)
+{
+    push_back(&m_group0);
+    push_back(&m_group1);
+    push_back(&m_group2);
+    if (font) {
+        sprintf(m_lase_str, "NA");
+        m_lase_update.Load(1.0f, m_lase_str, font, 10.0f, 52.0f + g_fHudBottomBlockY, true);
+        m_lase_update.Off();
+        m_group0.push_back(&m_lase_update);
+        sprintf(m_detonation_str, "NA");
+        m_detonation_update.Load(1.0f, m_detonation_str, font, 466.0f, g_fHudBottomBlockY - 8.0f, true);
+        m_detonation_update.Off();
+        m_group0.push_back(&m_detonation_update);
+        m_enemy_name.Load(0.7f, " ", font, 0.0f, 0.0f, true);
+        m_enemy_name.Off();
+        m_group0.push_back(&m_enemy_name);
+        m_healthbar.SetSize(60.0f, 5.0f);
+        m_healthbar.SetPos(-100.0f, -100.0f);
+        m_group0.push_back(&m_healthbar);
+    }
+    m_reticuleTex[0] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_sidearm_01.tif");
+    m_reticuleTex[1] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_rifle_01.tif");
+    m_reticuleTex[2] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_shotgun_01.tif");
+    m_reticuleTex[3] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_rocket_01.tif");
+    m_reticuleTex[4] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_grenade_02.tif");
+    m_reticuleTex[5] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_scope_02.tif");
+    m_reticuleTex[6] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_scope_01.tif");
+    m_reticuleTex[7] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_binocs.tif");
+    m_reticuleTex[8] = zdb::CAssetMgr::m_assets.GetTexHandle("nvg_part.tif");
+    m_reticuleTex[9] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_sidearm_01.tif");
+    m_floatingreticuleTex[0] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_sidearm_02.tif");
+    m_floatingreticuleTex[1] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_rifle_02.tif");
+    m_floatingreticuleTex[2] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_shotgun_02.tif");
+    m_floatingreticuleTex[3] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_rocket_02.tif");
+    m_floatingreticuleTex[4] = 0;
+    m_floatingreticuleTex[5] = 0;
+    m_floatingreticuleTex[6] = 0;
+    m_floatingreticuleTex[7] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_binocs2.tif");
+    m_floatingreticuleTex[8] = 0;
+    m_floatingreticuleTex[9] = zdb::CAssetMgr::m_assets.GetTexHandle("ret_laser_designator.tif");
+    binocs_tex = zdb::CAssetMgr::m_assets.GetTexHandle("ret_binocs2.tif");
+    m_threatdirTex = zdb::CAssetMgr::m_assets.GetTexHandle("ret_threat.tif");
+    m_grenadebartex_full = zdb::CAssetMgr::m_assets.GetTexHandle("ret_grenade_01.tif");
+    m_accuracyxtex = zdb::CAssetMgr::m_assets.GetTexHandle("ret_accuracy.tif");
+    m_miss_x.Load(50.0f, 50.0f, m_accuracyxtex);
+    m_miss_x.Off();
+    m_miss_x.SetTrans(0.0f);
+    m_scopepoly[0].Load(0.0f, -96.0f, 0.0f, 224.0f, 320.0f, 224.0f, 320.0f, -96.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+    m_scopepoly[0].SetTrans(128.0f);
+    m_scopepoly[1].Load(320.0f, -96.0f, 320.0f, 224.0f, 640.0f, 224.0f, 640.0f, -96.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+    m_scopepoly[1].SetTrans(128.0f);
+    m_scopepoly[2].Load(0.0f, 224.0f, 0.0f, 544.0f, 320.0f, 544.0f, 320.0f, 224.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+    m_scopepoly[2].SetTrans(128.0f);
+    m_scopepoly[3].SetTrans(128.0f);
+    m_scopepoly[3].Load(320.0f, 224.0f, 320.0f, 544.0f, 640.0f, 544.0f, 640.0f, 224.0f, m_reticuleTex[5] ? m_reticuleTex[5]->m_texture : 0);
+    m_scopepoly[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+    m_scopepoly[1].SetUV(0.99f, 0.01f, 0.99f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+    m_scopepoly[2].SetUV(0.01f, 0.99f, 0.01f, 0.01f, 0.99f, 0.01f, 0.99f, 0.99f);
+    m_scopepoly[3].SetUV(0.99f, 0.99f, 0.99f, 0.01f, 0.01f, 0.01f, 0.01f, 0.99f);
+    m_socom2_11f0[0].Load(0.0f, -96.0f, 0.0f, 224.0f, 320.0f, 224.0f, 320.0f, -96.0f, m_reticuleTex[6] ? m_reticuleTex[6]->m_texture : 0);
+    m_socom2_11f0[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+    m_socom2_11f0[0].SetTrans(128.0f);
+    m_socom2_11f0[1].Load(320.0f, -96.0f, 320.0f, 224.0f, 640.0f, 224.0f, 640.0f, -96.0f, m_reticuleTex[6] ? m_reticuleTex[6]->m_texture : 0);
+    m_socom2_11f0[1].SetTrans(128.0f);
+    m_socom2_11f0[2].Load(0.0f, 224.0f, 0.0f, 544.0f, 320.0f, 544.0f, 320.0f, 224.0f, m_reticuleTex[6] ? m_reticuleTex[6]->m_texture : 0);
+    m_socom2_11f0[2].SetTrans(128.0f);
+    m_socom2_11f0[3].SetTrans(128.0f);
+    m_socom2_11f0[3].Load(320.0f, 224.0f, 320.0f, 544.0f, 640.0f, 544.0f, 640.0f, 224.0f, m_reticuleTex[6] ? m_reticuleTex[6]->m_texture : 0);
+    m_socom2_11f0[0].SetUV(0.01f, 0.01f, 0.01f, 0.99f, 0.99f, 0.99f, 0.99f, 0.01f);
+    m_socom2_11f0[1].SetUV(0.99f, 0.01f, 0.99f, 0.99f, 0.01f, 0.99f, 0.01f, 0.01f);
+    m_socom2_11f0[2].SetUV(0.01f, 0.99f, 0.01f, 0.01f, 0.99f, 0.01f, 0.99f, 0.99f);
+    m_socom2_11f0[3].SetUV(0.99f, 0.99f, 0.99f, 0.01f, 0.01f, 0.01f, 0.01f, 0.99f);
+    m_group0.push_back(&m_bitmap);
+    m_group0.push_back(&m_grenadebitmap);
+    m_group0.push_back(&m_grenadebitmap2);
+    m_group0.push_back(&m_grenadeactive[0]);
+    m_group0.push_back(&m_grenadeactive[1]);
+    m_group0.push_back(&m_grenadeback[0]);
+    m_group0.push_back(&m_grenadeback[1]);
+    m_group0.push_back(&m_miss_x);
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        m_group1.push_back(&m_scopepoly[i]);
+        m_group1.push_back(&m_socom2_11f0[i]);
+        m_floatingreticule[i].SetTrans(100.0f);
+        m_floatingreticule[i].SetUV(0.03f, 0.03f, 1.0f, 1.0f);
+        m_group2.push_back(&m_floatingreticule[i]);
+        m_floatingreticule[i].Off();
+    }
+    for (int j = 0; j < 8; j++) {
+        m_threatdirpoly[j].SetTrans(0.0f);
+        m_threatdirpoly[j].SetUV(0.03f, 0.03f, 1.0f, 1.0f);
+        m_group2.push_back(&m_threatdirpoly[j]);
+        m_threatdirpoly[j].On();
+        if (m_threatdirTex) {
+            zdb::CTexture *pic = m_threatdirTex->m_texture;
+
+            if (pic)
+                m_threatdirpoly[j].Load(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, pic);
+        }
+    }
+    if (m_threatdirTex->m_texture) {
+        m_threattexsizex = (int)m_threatdirTex->m_texture->m_width;
+        m_threattexsizey = (int)m_threatdirTex->m_texture->m_height;
+    }
+    for (unsigned int k = 0; k < 4; k++)
+        m_group1.push_back(&m_nvglens[k]);
+    for (i = 0; i < 4; i++)
+        m_nvglens[i].On();
+    m_nvglens[0].Load(0.0f, 0.0f, 0.0f, 224.0f, 320.0f, 224.0f, 320.0f, 0.0f, m_reticuleTex[8] ? m_reticuleTex[8]->m_texture : 0);
+    m_nvglens[1].Load(320.0f, 0.0f, 320.0f, 224.0f, 640.0f, 224.0f, 640.0f, 0.0f, m_reticuleTex[8] ? m_reticuleTex[8]->m_texture : 0);
+    m_nvglens[2].Load(0.0f, 224.0f, 0.0f, 448.0f, 320.0f, 448.0f, 320.0f, 224.0f, m_reticuleTex[8] ? m_reticuleTex[8]->m_texture : 0);
+    m_nvglens[3].Load(320.0f, 224.0f, 320.0f, 448.0f, 640.0f, 448.0f, 640.0f, 224.0f, m_reticuleTex[8] ? m_reticuleTex[8]->m_texture : 0);
+    m_nvglens[0].SetUV(0.01f, 0.01f, 0.01f, 0.995f, 0.995f, 0.995f, 0.995f, 0.01f);
+    m_nvglens[1].SetUV(0.995f, 0.01f, 0.995f, 0.995f, 0.01f, 0.995f, 0.01f, 0.01f);
+    m_nvglens[2].SetUV(0.01f, 0.995f, 0.01f, 0.01f, 0.995f, 0.01f, 0.995f, 0.995f);
+    m_nvglens[3].SetUV(0.995f, 0.995f, 0.995f, 0.01f, 0.01f, 0.01f, 0.01f, 0.995f);
+    zdb::CTexHandle *noise = zdb::CAssetMgr::m_assets.GetTexHandle("noise50.tif");
+
+    m_noisetex = noise ? noise->m_texture : 0;
+    if (m_noisetex) {
+        for (unsigned int k = 0; k < 4; k++)
+            m_group1.push_back(&m_socom2_3940[k]);
+        for (unsigned int l = 0; l < 4; l++) {
+            m_socom2_3940[l].On();
+            m_socom2_3940[l].SetTrans(64.0f);
+        }
+        m_socom2_3940[0].Load(5.0f, 75.0f, 5.0f, 224.0f, 320.0f, 224.0f, 320.0f, 75.0f, m_noisetex);
+        m_socom2_3940[1].Load(320.0f, 75.0f, 320.0f, 224.0f, 635.0f, 224.0f, 635.0f, 75.0f, m_noisetex);
+        m_socom2_3940[2].Load(5.0f, 224.0f, 5.0f, 373.0f, 320.0f, 373.0f, 320.0f, 224.0f, m_noisetex);
+        m_socom2_3940[3].Load(320.0f, 224.0f, 320.0f, 373.0f, 635.0f, 373.0f, 635.0f, 224.0f, m_noisetex);
+        m_socom2_3940[0].SetUV(0.01f, 0.01f, 0.01f, 0.995f, 0.995f, 0.995f, 0.995f, 0.01f);
+        m_socom2_3940[1].SetUV(0.995f, 0.01f, 0.995f, 0.995f, 0.01f, 0.995f, 0.01f, 0.01f);
+        m_socom2_3940[2].SetUV(0.01f, 0.995f, 0.01f, 0.01f, 0.995f, 0.01f, 0.995f, 0.995f);
+        m_socom2_3940[3].SetUV(0.995f, 0.995f, 0.995f, 0.01f, 0.01f, 0.01f, 0.01f, 0.995f);
+        func_00354A90(m_noisetex, 0x42, 0x49, 0x7F);
+        if (m_noisetex) {
+            unsigned int count = m_noisetex->m_width * m_noisetex->m_height;
+            unsigned char *pixels = m_noisetex->m_pixels;
+
+            for (unsigned int n = 0; n < count; n++)
+                pixels[n] = (int)(255.0f * (4.656613e-10f * (float)rand()));
+            FlushCache(0);
+        }
+    }
+    ChangeReticule(0);
+    m_posx = 320.0f;
+    m_posy = 224.0f;
+    m_timer_BKGRD.SetHasTexture(false);
+    m_timer_BKGRD.SetColor(0.0f, 0.0f, 0.0f);
+    m_timer_BKGRD.SetPos(0x214, 0xB9, 0x24A, 0xC9);
+    m_timer_BKGRD.SetTrans(0.0f);
+    m_group2.push_back(&m_timer_BKGRD);
+    m_timer_IMAGE.SetHasTexture(false);
+    m_timer_IMAGE.SetColor(CHUD::m_hud_textcolor.x, CHUD::m_hud_textcolor.y, CHUD::m_hud_textcolor.z);
+    m_timer_IMAGE.SetPos(0x216, 0xBB, 0x216, 0xC7);
+    m_timer_IMAGE.SetTrans(0.0f);
+    m_group2.push_back(&m_timer_IMAGE);
+    m_socom2_4420.SetHasTexture(false);
+    m_socom2_4420.SetColor(0.0f, 0.0f, 0.0f);
+    m_socom2_4420.SetPos(0x214, 0xCE, 0x24A, 0xDE);
+    m_socom2_4420.SetTrans(0.0f);
+    m_group2.push_back(&m_socom2_4420);
+    m_socom2_43a0.SetHasTexture(false);
+    m_socom2_43a0.SetColor(CHUD::m_hud_textcolor.x, CHUD::m_hud_textcolor.y, CHUD::m_hud_textcolor.z);
+    m_socom2_43a0.SetPos(0x216, 0xD0, 0x216, 0xDC);
+    m_socom2_43a0.SetTrans(0.0f);
+    m_group2.push_back(&m_socom2_43a0);
 }
 
 /* a bar's quad from its right and left, its far end and its base (the name ours): the inline's
