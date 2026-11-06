@@ -894,7 +894,20 @@ inline void ReplaceGrenade(const CSelectedCharsItr &it, EQUIP_ITEM what, EQUIP_I
  * saved picks read field by field with the second into a local ahead of the first NextPick (a
  * struct copy goes through the frame); each loop a while with its FindItemSlot before the flag's
  * update (`first = true` / `used = ...` in the back branch's delay slot); a `return` closing the
- * single-slot cases (the target runs the two destructors at each exit) */
+ * single-slot cases (the target runs the two destructors at each exit).
+ * Round 37 (build/scratch/ui/rsi_permute.txt, v_rsi37*.py): THE NUMBERING THAT GIVES THE TARGET is
+ * `used` then s141 numbered AFTER the first two grenade copies' locals and BEFORE the third's --
+ * `igreplay --move 45=56.5 --move 44=56.6` is 0 off, and so is the same with the six accessory copies
+ * moved first or the third grenade copy moved after them (their place is free; v46-v50 too); used after
+ * s141 is 5 off. `--permute` over s141, used and the copies' s / first (8!) finds 60 orders, all with
+ * s141 in place and used second to last, none keeping each copy's s ahead of its first. Named locals
+ * take their numbers before every inline copy, so used and s141 would have to be made by an expansion
+ * between the second copy and the third -- tried, none gives it: ReplaceGrenade taking the flag by
+ * value and returning it (all three calls or two assigned), the third through a by-value wrapper, the
+ * first two through a by-reference helper, the case whole as an inline with s141 / used its locals or
+ * its by-value parameters (too tall: ReplaceGrenade called out of line). One flag for both (`used =
+ * !used; ... used = used ? keepSlot == 3 : false`, no `first`: SplitLifetimes webs) is 40 off; its
+ * graph gives the target only with the third copy's s numbered after a web of used (3,660 of 8!) */
 void ReleaseSlotItem(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item)
 {
     CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
