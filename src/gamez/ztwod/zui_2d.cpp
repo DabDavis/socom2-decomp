@@ -3037,6 +3037,8 @@ class CUIListBox : public CPlainBmp {
 public:
     /* slot 0 (0x375710: its items, columns and font freed) */
     virtual ~CUIListBox();
+    /* slot 2: the box, its rows and arrows (0x373850) */
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     /* slot 22: the box's commands parsed (SOCOM 1's; SOCOM II's eleven) */
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
@@ -3924,6 +3926,110 @@ void CUIListBox::AddItem(ListItem *item, int where)
         for (; i < m_highlighted && it != m_items.end(); i++)
             ++it;
         m_items.__insert_deep(it, item);
+    }
+}
+
+/* the scissor's top against the first row's line (a variable: read with lw; .data 0x3E0378, -3; the
+ * name ours) */
+static int s_listClipDY = -3;
+
+/* drawn (SOCOM 1's CUIListBox::Draw, SOCOM II's rows of several lines): with rows, the highlight's
+ * and the bar's rectangles found -- the rows before the highlighted one each push it down by their
+ * extra lines -- and the bar drawn; the box itself; then, scissored, the highlight and each row on
+ * the screen, the highlighted row's opacity kept for the two scroll arrows, each drawn while there is
+ * scroll to go that way. The walk's item and height are MODELLING DEVICES, one-member structs (the
+ * kit's round 60: scalarised, so numbered after the iterator -- the replay wants the iterator between
+ * rowy and them, and no plain local can follow a scalarised member) */
+void CUIListBox::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+
+    int hy = (int)(m_offset + (m_190 + (p.y + m_a8)) - 0.75f * m_lineHeight);
+    int hx = (int)p.x;
+    int x = (int)(p.x + m_a4);
+    int y = (int)(p.y + m_a8);
+    int barx = (int)(p.x + m_rect100.l);
+    int bary = (int)(p.y + m_rect100.t);
+    float trans;
+    CMatrix unit;
+
+    unit.m_matrix[3][0] = 0.0f;
+    unit.m_matrix[3][1] = 0.0f;
+    unit.m_matrix[3][2] = p.z;
+    if (m_items.size()) {
+        int height = 0;
+        int i = 0;
+        std::list<ListItem *>::iterator it = m_items.begin();
+        std::list<ListItem *>::iterator e = m_items.end();
+
+        for (; it != e; ++it) {
+            if (i == m_highlighted) {
+                height = m_lineHeight * (*it)->GetNumLines();
+                break;
+            }
+            hy += m_lineHeight * ((*it)->GetNumLines() - 1);
+            i++;
+        }
+        m_highlight.Load(hx, hy, hx + m_iWidth, hy + height, m_texF8);
+        m_bar.Load(barx, bary, barx + m_rect100.r, bary + m_rect100.b, m_texFC);
+        m_bar.Draw(unit, mgr);
+    }
+    CPlainBmp::Draw(m, mgr);
+
+    int row = 0;
+
+    zVid_Scissor(0, s_listClipDY + (y - m_lineHeight), zVid.renderWidth, (int)(p.y + m_iHeight));
+    if (!m_noHighlight)
+        m_highlight.Draw(unit, mgr);
+
+    int offset = 0;
+    std::list<ListItem *>::iterator it = m_items.begin();
+    std::list<ListItem *>::iterator e = m_items.end();
+
+    for (; it != e; ++it) {
+        int rowy = (int)(offset + (y + m_scrollY));
+        struct { ListItem *p; } row_item;
+        row_item.p = *it;
+
+        if (row == m_highlighted)
+            trans = row_item.p->GetTrans();
+
+        struct { int v; } row_lh;
+        row_lh.v = m_lineHeight;
+        int bottom = (int)(10.0f + (row_lh.v + (p.y + m_iHeight)));
+
+        offset += m_lineHeight * row_item.p->GetNumLines();
+        if (rowy >= y - row_lh.v + 1 && rowy <= bottom) {
+            row_item.p->DrawPrep(*this, x, rowy, row);
+            row_item.p->VisualGratification(mgr, p.z);
+        }
+        row++;
+    }
+    zVid_Scissor(0, 0, 640, 448);
+    if (m_tex18c) {
+        float y0 = p.y + m_rect120.t;
+        float x0 = p.x + m_rect120.l;
+
+        m_2e0.Load(x0, y0, m_rect120.r + x0, m_rect120.b + y0, m_tex18c);
+        if (m_scrollY < 0.0f && m_items.size())
+            m_2e0.SetTrans(trans);
+        else
+            m_2e0.SetTrans(0.0f);
+        m_2e0.Draw(unit, mgr);
+    }
+    if (m_tex188) {
+        float y0 = p.y + m_rect110.t;
+        float x0 = p.x + m_rect110.l;
+
+        m_380.Load(x0, y0, m_rect110.r + x0, m_rect110.b + y0, m_tex188);
+        if (m_iHeight - m_lineHeight >= (int)(m_scrollY + m_lineHeight * (m_items.size() - 1)) ||
+            !m_items.size())
+            m_380.SetTrans(0.0f);
+        else
+            m_380.SetTrans(trans);
+        m_380.Draw(unit, mgr);
     }
 }
 
