@@ -2556,7 +2556,7 @@ typedef struct DmeUpdateMsg {
 
 extern DmeUpdateMsg data_0066C4F8;      /* the update being sent */
 extern int data_00686A20;               /* the object update's message type */
-extern int func_0061A328(DmeTargetMask *pMask, unsigned int nIndex);
+extern void func_0061A328(DmeTargetMask *pMask, unsigned int nIndex);
 extern unsigned char func_0061A488(DmeObject *pObject, unsigned int nIndex, char *pnMsgClass, void *pData,
                                    int *pnLength);
 
@@ -2601,4 +2601,45 @@ int func_0061A6D8(unsigned int nIndex)
     else
         func_00615DE0(nMsgClass, data_00651178, -1, data_00686A20, nLength, pMsg);
     return DME_OK;
+}
+
+extern int (*data_0067E848[])(int nClient, unsigned int nIndex);   /* each object filter (dme.c registers them) */
+
+/* SOCOM 1's NetGetFilteredObjectTargetClients grown (0x61A328): the clients of this client's world the object's
+ * filter accepts, as a target mask; guarded, and the world's client count bounds the walk. The clear loop has its
+ * own counter (round 13b's rule: a2 in the target, the walk's s0 shared otherwise); the filter is read before the
+ * mask's two stores (one order of six). */
+void func_0061A328(DmeTargetMask *pMask, unsigned int nIndex)
+{
+    DmeObject *pObject = 0;
+    DmeWorld *pWorld = 0;
+    void *pClient;
+    int (*pfnFilter)(int nClient, unsigned int nIndex);
+    int i;
+    int j;
+
+    if (pMask == 0)
+        return;
+    if (nIndex >= DME_MAX_OBJECTS)
+        return;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(data_00651178, &pWorld) != DME_OK)
+        return;
+    if (pWorld == 0)
+        return;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return;
+    pfnFilter = data_0067E848[pObject->field_01];
+    pMask->nFirst = pWorld->field_444;
+    pMask->nLast = -1;
+    for (j = 0; j < 33; j++)
+        pMask->abTarget[j] = 0;
+    for (i = 0; i < pWorld->field_444; i++) {
+        pClient = 0;
+        func_006126E8(&pClient, data_00651178, i);
+        if (pClient != 0 && i != pWorld->nMyClient && pfnFilter(i, nIndex))
+            func_00615330(pMask, i);
+    }
 }
