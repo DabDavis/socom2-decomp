@@ -1,8 +1,8 @@
-/* zNetMediusChat.cpp -- the lobby's state machine and its chat: the state handlers the table at
- * 0x2ED460 registers (SOCOM 1's Open registered the same ones, by state) and their Medius
- * callbacks, the player-info pages, the chat queues, the censor, the messages' byte-order
- * converters (SOCOM 1's zNetMedius.cpp's code; the unit and its name are ours: OVL1 from about
- * 0x2ED460, after the ladder unit, to 0x2F6CFF, its static initialiser 0x4020E0 building the two
+/* zNetMediusChat.cpp -- the lobby's chat: the messages' byte-order converters, the network
+ * error's recovery and the bailout, the Medius result checks and the callback status's names, the
+ * chat's sends, censor and callbacks, the chat queues (SOCOM 1's zNetMedius.cpp's code; the unit
+ * and its name are ours: OVL1 0x2F3EE0, after zNetMediusStates.cpp's template tail (the state
+ * machine, its own unit since round 26), to 0x2F6CFF, its static initialiser 0x4020E0 building the two
  * queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50 and deque instances close it -- the
  * instances run on past 0x2F62B0 to 0x2F6CF7: 0x2F6340, 0x2F6600, 0x2F6A70 and 0x2F6BC0 are
  * called only from this unit's deque copy constructor 0x2F5F80, its 0x2F6090 and ~__deque_buf
