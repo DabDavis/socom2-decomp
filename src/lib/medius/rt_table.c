@@ -10,10 +10,12 @@
  * accessors are guard clauses, one return per test: the target's single `li v0,3` at the entry,
  * kept through the chain, is each `return 3` hoisted above its branch by 2.96's if-conversion and
  * the copies after the first deleted by the post-reload CSE (round 11b read it as a constant held
- * from the entry and wrote result variables). OPEN: func_0063CBD0 (1 word: memset's row address
- * is `addu a0,a3,a0` in the target, base first -- six spellings of the sum give the offset
- * first), func_0063C8A0 (32: registers -- the target keeps nRow in a1 and moves pnCol to t3, here
- * both move; five spellings of the count update), func_0063C700 (the init, 67s). 0x63C950 (0x1F4)
+ * from the entry and wrote result variables). Round 21b: func_0063CBD0's row address is a
+ * pointer local (`p = gpTable2 + nRow * gnTableCols; memset(p, ...)`) -- the sum passed straight to
+ * memset puts the offset first in every one of thirteen spellings. OPEN: func_0063C8A0 (32: registers -- the target keeps nRow in a1 and moves pnCol to t3, here
+ * both move: n (pseudo 88, 5 refs over 11 insns) takes a1 before nRow (4 over 37) is allocated, where
+ * the target's n is a copy in a3 of the count loaded into a0; thirteen spellings of the count update
+ * -- an assignment in the test, the index form, post-increments -- compile alike), func_0063C700 (the init, 67s). 0x63C950 (0x1F4)
  * and the thread-status functions after it (0x63CD18-0x63CF20) are not written. */
 
 extern void *memset(void *p, int c, unsigned int n);
@@ -119,6 +121,7 @@ int func_0063CB48(unsigned int nRow, unsigned int nCol, int *pnValue)
 
 int func_0063CBD0(unsigned int nRow)
 {
+    int *p;
     if (gbInitialized != 1)
         return 3;
     if (gpTable == 0)
@@ -129,7 +132,8 @@ int func_0063CBD0(unsigned int nRow)
         return 3;
     if (nRow >= gnTableRows)
         return 2;
-    memset(gpTable2 + nRow * gnTableCols, 0, gnTableCols * 4);
+    p = gpTable2 + nRow * gnTableCols;
+    memset(p, 0, gnTableCols * 4);
     return 0;
 }
 

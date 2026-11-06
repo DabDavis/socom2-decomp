@@ -291,7 +291,7 @@ CZNewHudMap::CZNewHudMap()
     m_screencentery = 0.0f;
     m_screencenterx = 0.0f;
     m_scale = 1.0f;
-    m_circleclipper = new CCircleClip;
+    m_circleclipper = new zdb::CCircleClip;
     m_centerx = 0.0f;
     m_centerz = 0.0f;
     m_isFullScreen = false;

@@ -2065,6 +2065,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 60** (hud_linemap.cpp's CZLineMap::Clip 0x20D5F0, TickWayPoints 0x20DAC0 and SetupPolygon
+  0x20F5C0, all unwritten before, byte-exact from SOCOM 1's bodies and its debug info's local names; TickAnchors 0x20E750
+  written, OPEN at 0x46C of 0x474; 0x360260 named C2DLine::SetClipInfo):
+  - a local assigned once from an inline helper's result is folded into the helper's temporary, numbered after the
+    caller's named locals; the same code written in place with the local declared first keeps the earlier number
+    (`igreplay --want` showed the place it needed: 33.5, before `names`);
+  - an unsigned counter indexing a vector is strength-reduced, an `int` counter indexes each pass as the target does;
+    `*it++` in two successive call arguments folds both steps into the second call's delay slot;
+  - a restart (`j = -1`) after an if/else whose else arm breaks lands in the join block, as the target's; inside the then
+    arm it lands in the branch's delay slot; `a > b` with two complex operands evaluates the right operand first;
+  - a table read by two functions is a file static, not a function-local static (c_arrTypes, read by TickLine and
+    SetupPolygon); a pointer loaded once and reused after an intervening call needs a named local (Clip's clipper, as
+    SOCOM 1 keeps it in a saved register); a class the target calls by a namespaced name must sit in that namespace
+    (zdb::CCircleClip).
 - **Tells from completing the MSL headers, round 35** (the pod's resize 0x53AA50 byte-exact; WHAT DECIDES A WALKED
   MEMBER'S PLACE, read out of MW's front end -- doldecomp/mweppc CScope.c, CInline.c, CTemplateNew.c, in
   build/scratch/msl-r35/mweppc/ -- and proven on probes; build/p35/, untracked: pod/pr*.cpp, mkv*.py and the
@@ -2118,6 +2132,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     over four-word walkers held in memory and stepped by -- with start_ = (start_ + n) % capacity_, else
     copy(last, end(), first) over register walkers wrapping to the storage; size_ -= n; `return begin() +
     pos`.
+- **Tells from the online lobby, round 28** (the zdb node rows of its second range, the integrator's until now: a new
+  node_io.cpp -- OVL1 0x310980-0x311CBF, SOCOM 1's unit name by the press beta's CreateInstance(CSaveLoad &) assert, 23 of
+  24 -- with eleven rows never matched byte-exact (CLight::Read, CNode::CreateInstance / Read / ReadChildren /
+  ReadDataBegin / Read(CSaveLoad &, CNode *), CModel::Read / Create, the model vector's erase / remove / remove_copy) and
+  the copies only drafts held; CFRect's two constructors in a new zmath_frect.cpp, 0x306620-0x30666F, ours, sorting
+  before zmath_main.cpp as the zmath units link alphabetically; 17 rows named; the node rows pass to the zdb world from
+  its round 29):
+  - a bitfield set in a constructor's MEM-INITIALIZER LIST is a word access even when that constructor is inlined into
+    another function; set in the body MW narrows it to a byte (znode.h's NODE_PARAMS facade); a 16-bit field next to 16
+    bits of bitfields, all declared `unsigned int`, is copied as one word by the implicit operator= while reads and
+    stores still narrow (lhu / sh / sb);
+  - an inline whose tree is taller than the level has only its body inlined: every call in it goes out of line, the
+    copies follow the caller last call first, and remove_copy comes at the unit's end (0x311AD0-0x311C50);
+  - a by-value parameter's stack copy is made before the inline's own null test, in that test's delay slot
+    (CModel::Create); with a key reused across two loops the second loop's key and iterator swap registers -- declaring
+    the key in each `if (T *k = f())` keeps them; `bool b = !f(); if (b)` gives sltu / xori / andi, `if (!f())` branches
+    on v0 directly; a local declared uninitialised ahead of the one computed first is numbered first;
+  - `bool result = true; ... return result;` across calls folds to `li` in every spelling tried: the target's daddiu plus
+    a saved register matches only under `#pragma opt_propagation off` placed INSIDE the function body -- placed before
+    the definition, the template members instantiated there compile under it too; an inline setter taking the value by
+    value keeps it in a register for two stores, a stack local whose address was taken is reloaded.
 - **Tells from the game states, round 49** (C2DMessage_Q::Tick 0x2B5DB0 -- 38 off since round 48 -- and C2DMessage_Q::Draw
   0x2B5830, unwritten before and named by its vtable slot 0xC, byte-exact; CMission::UpdateLocalGame 0x2A9EE0 and
   DestroyNetGame 0x2A9EF0 hand-written over their drafts; fts_net_persona.cpp's four lobby / clan placeholders respelled):
@@ -11384,6 +11419,81 @@ showed:
   libnetb_udp_init_buffer, libquan.c's 0x24B2F8/0x24B028. `_copyRefImage` stays open on its object's layout
   (the four functions before the interpolators unwritten: `.align 4` pads two nops only at their offset).
 
+**The tools, round 40a** (the AI core's round 35 and the kit's round 55): (1) **`tools/igdump.py --pcode`**
+(the AI core's build/scratch/aicore-r35/ai/pcode.py, folded in): a record's PCode instruction by instruction,
+numbered as igreplay --target counts them, every operand as the colouring left it -- `v45<@6305>=s3` is the
+virtual register (its interference-graph node: MW renames the PCode as it coalesces, so over 713 records no
+coalesced node is ever an operand), its variable and the register it took; a GPR record's float operands
+(not yet coloured) as `fv32<p>=f21` from the function's FPR record; a memory operand's Object and a label's
+block named from a new `syms` field (`jal ig_h`, `B7`: a PCodeLabel's +4 is its block); an immediate shown
+as recorded (its value is not in the eight bytes `code` keeps: 0.5f's lui holds 0x3F000000 at the operand's
++12, `addiu 1` all eight zero); then the record's variables with their makers. mwccps2's own registrations
+name 1112/1113 `.start`/`.end`. (2) **Which expansion made each `@N`** (`origins`, and `--origins` to list
+them; the node list `-f` shows each too): every `@N` is CParser_GetUniqueName's (0x42F620: '@' and the unit's
+running id 0x5841AA, which labels share -- newlabel 0x47713B -- so a unit's temporaries skip numbers); an
+inline expansion's are CInline_NewLocalObject's (0x466D00, mweppc's CInline.c shape exactly), called from
+CInline_SetupArgsExpression 0x466E90 (both the expression-level CInline_InlineFunctionExpression 0x4672F0
+and the statement-level CInline_ExpandStatements 0x4687F0 set their copy up there: the function's Object,
+its CI_FuncData -- +0 the variables, +2 the arguments, +4 the CI_Vars, 0x14 bytes each, arguments first,
+each named at +0 -- the CI_Var in ebp at each call) for an argument the copy needs an object for and each
+local it uses, and from CInline_ExtractInlineFunction 0x468D20 for a statement-level copy's result (ebp the
+function); the call site is the statement CInline_ExpandStatement 0x468E20 is expanding (its line at +0x16:
+the copied statements keep the call's), the level cinline_level 0x584E06. Recorded per node: the inline,
+its role (`argument`, `local`, `result`), the inline's own name for it, the line, the level and, a level
+down, `within` (the copies expanded at that line a level up); any other `@N` by its maker and the call into
+it (create_temp_object 0x477270 and its caller). **Proved** (`build/scratch/gcc/r40/igproof.py`: master
+110c10e5's igdump and this one over grid_main.cpp, zmath_pnt3d.cpp, zmath_main.cpp, infblock.c, inflate.c,
+zwep_weapon.cpp, seal_tasks.cpp, c2dfont.cpp, grid_clutter.cpp, ai_target.cpp and a fixture, 713 records):
+every record identical field for field but `syms` and `origins`; every one of the 2,306 nodes named `@N`
+has a maker -- 663 an inline's (403 locals, 206 arguments, 54 results), the rest create_temp_object's (724
+from 0x5327F8, 348 from 0x4FF304 and 173 from 0x4FF499 -- IroLinearForm.c's by their asserts -- ...); the
+`@no_name@`/`@temp_ptr@` hidden parameters are not `@N`s; the dumps take 53 s for 37. The canary's
+`test_igdump_pcode_view_names_each_temporarys_inline` (12 assertions): a fixture inlining Blend three times
+-- at lines 17 and 19 of its own text, once inside Twice's copy (line 18, level 1) -- gives Blend's argument
+t at 17 and 19 (level 0) and its argument b at 18 within Twice (a trivial argument is substituted and makes
+none), every `@N` a maker; the view lists every instruction, each virtual operand its node's register, the
+object's own (`mov.s $f21,$f12`), the callee named; two negatives (the inliner's breakpoints off,
+`IGDUMP_NO_ORIGINS=1`; Blend never inlined, `#pragma dont_inline on`, and the view calls it by name); under
+master's igdump it fails at its first assertion. The nine register-tool tests: 80 assertions, all pass. No
+tool that scores changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/` are master's.
+**For 0x60AA20** (the kit's question): @6305 is SealLight's local sl (line 588), @6311/@6323 EntityLight's
+pos/p (line 590), @6342/@6354 EntityLight's pos/p inside SealLight's copy (line 588, level 1); @6319/@6321
+and @6350/@6352 the FPR twins (spot, ambient), @6332 SetFactor's argument v (line 592: a call's result,
+non-trivial); s0/s1's @6434/@6436/@6442 are create_temp_object's from 0x5327F8 -- not an inline's: the
+optimiser's, inside 0x532770 (each record of a list given a new temporary and IRO_FindVar 0x509F20; the
+pass driver 0x532920, before IroLifetime.c's asserts -- a lifetime split, by its shape: a prediction). **automatch**
+over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private
+`src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses), OVL1 `1E7F58 1E8FD4` 0
+tried, `243000 256FD0` 31 tried, 0 hits (2 build failures, 5 refusals, 24 misses): 42 tried, none
+byte-exact (round 39a: 44, 0).
+
+**Round 40a** (2026-11-06, the tools first, then the unwritten small rows): 1 row newly byte-exact (408
+bytes) -- **libnetb's sceBInetOpen 0x2472C8** (`ovl1/libnetb.c`, unwritten before: the demo's 0x423F80
+grown -- a passive open for a type-1 socket with no timeout, the rings' state 1/2, the libnet open, the
+state 0/3 after it, both headers back to the IOP) -- and the codec's fast exp2 0x251850 written, OPEN
+(`ovl1/nelly.c`, d=33 of 38). The lane's `src/lib` 2,828 -> 2,829 of 2,968 -> 2,970 scored, no regression.
+No rows named (both are named already or the codec's). What they showed:
+
+- **An arm's position decides what the jump optimiser hoists and what reorg steals**: sceBInetOpen's passive
+  path is `bnezl s2; move s1,zero` -- `ret = 0` from the branch's TARGET in an annulled slot. Written ahead
+  of the test, or as the first arm (`if (passive) ret = 0; else ...`, a `goto`), the jump optimiser hoists
+  the set above the branch (ret is dead on the open's path) and reorg fills the slot from above (`bnez`);
+  as the LAST arm (`if (!passive) {...} else ret = 0;`) it stays at the target. Four more shapes
+  (try.py's distance, d=64 -> 0): `passive == 1` (the target's `xor` with 1 and movn; `passive ? 2 : 1` is
+  movz), the second ring through a pointer of its own, each ring's last store (its call's delay slot).
+- **The exp2's measured halves** (round 39a's log2 rules, carried over): the .lit4 constant is 0.9999F
+  (0x1D530C); the input's `mfc1; and 0xFFFFFFFF` is the cleared float/long union; a union result reaches
+  mtc1 untruncated where a pointer-read long is truncated first; `i` set in both arms keeps the target's
+  `(i + 1) + 126` unfolded (one assignment after the test lets CSE fold i + 127). Open: the target's one
+  conversion after the merge (each arm keeps its own here), its 16-byte frame no instruction touches (an
+  address-taken local's slot -- `*(u_int *)&x` makes it but keeps x in memory) and its zero as `li at,0;
+  mtc1` (not CONST0_RTX: `mtc1 zero` for 0.0F, (float)0, 0 and the cleared union's float alike).
+- **Open, unchanged**: libnetb_udp_init_buffer (14 new shapes: `size -= 64`, volatile, byte-offset stores,
+  the success path first -- the right size, d=28 --, an if-else chain; tools/ccdump.py: hdr's parameter
+  pseudo keeps a0 in every one, the target's needs a second pseudo born in the last block); round 39a's and
+  older opens (no new idea; not reached: the log2, inet_network, 0x251A98, 0x1C46D0, libtran.c's FFT
+  passes, the network clients' register misses).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -13852,6 +13962,62 @@ part whole but the Montgomery exponentiation), `medius/rt_msg_client.c` (+1, 0x6
 DmeFree, 0x615068, NetFreeRemoteObject, 0x619138, 0x6192A0, and 0x61C9E8 closed) -- 15 functions byte-exact
 (`src/lib/medius` 934 -> 949 of 1,002), 12 rows new to the map's byte-exact rows, 3 superseding matched drafts
 (NetResetTime, DmeFree, 0x615068); 2 rows named, 7 data rows. No tool changed.
+
+**Round 21b: arms SCEA wrote twice, guards the target branches past, three enums, the message registry named.**
+
+- **A two-way choice can carry its whole tail in each arm**: rt_p2p's address query 0x639940 tests the
+  chosen connection inside both arms of its `nWhich` choice (call or copy in each); cross-jumping merges
+  the two tails after reload, so each arm keeps its own copy of the entry's offset (s1, live across the
+  copy's strncpy) and of the -1 -- the target's duplicated `li a0,-1; sll s1,v0,3`. One test after the
+  arms is right in everything but those copies and 8 bytes long. The send 0x63C078 is the same idea:
+  `if (A && a) send(A); else if (B && b) send(B); else return 6;`, its two calls cross-jumped.
+- **A range test the target branches past is `||`'s two predecessors**: `if (n >= 0 && n < count)
+  {...} else return 8;` (0x639940) and `if (n < 0 || n >= count) return 8;` (0x63C078) leave the
+  `return 8` block with two incoming edges, which if-conversion never hoists -- the target's `li v0,8`
+  in a delay slot, v0 free for the count's compare. 0x6398C0's connection test is positive (`!= -1`
+  first, the second connection in the else).
+- **Guards where the target's v0 is a return value early** (round 14b's rule, the other way):
+  func_0061D108 ends in guards (`if (pClient == 0) return DME_OK;` -- the call's zero known in v0, the
+  target's beqzl to the epilogue), func_0061D320's table test is a guard (the hoisted `return 0` takes
+  v0, so the table's address takes a0 and the branch's slot the zero; the loop inside a positive test
+  was 8 bytes short).
+- **An enum is its own alias class, three times more**: DmeWorld's state at 0x438 (`DmeWorldState`,
+  dmelocal.h) closes func_0061D530 (open since round 13b: an `int` field's load stays behind the int
+  report's stores written before it -- the report's address is taken and the world pointer has no
+  known base -- an enum's moves ahead, as the target's do), and STREAM_INFO's two kind words close
+  func_00644610 (each port loaded before the kind's store). Where a target loads a field ahead of
+  stores this compile keeps it behind, try the field (or the stored word) as an enum.
+- **A call argument's base comes first from a pointer local**: rt_table's row clear 0x63CBD0 (open
+  since round 14b, 1 word) is `p = gpTable2 + nRow * gnTableCols; memset(p, 0, ...)` -- the sum passed
+  straight to memset gives `addu a0,a0,a3` in all thirteen spellings tried (`&a[i]`, char casts,
+  locals for the offset, operand orders).
+- **One statement's position**: func_00617610's port store is the third of nine (after `pParams[2]`),
+  the only placement that lets sched1 issue its load where the target does.
+- **Names**: 0x620BD8 `NetRegisterMessageStart` and 0x620C60 `NetMessageField` (`s1:calls+order`: the
+  game's registration 0x2B8660 calls the first before each message and the second as (message,
+  &message.field, size, count) per field, as SOCOM 1's DMERegister__Fv calls those two; Dme.c's
+  wrappers in SOCOM 1's object order, over 0x623EF8/0x623F00, both `return 0` stubs in SOCOM II).
+  0x6209B0/0x620A88 (NetGetBufferStatus's and NetSetSendAggregationInterval's wrappers by their bodies)
+  stay placeholders: nothing in the image calls them (no jal, no stored address). The game states'
+  fts_remote.cpp and the online lane's zNetDme.cpp/zNetVoice.cpp spell the two by placeholder (resolved
+  by address; theirs to respell).
+- **Open, diagnosed in place**: rt_p2p's searches 0x639A90/0x63B410 (the loop is the target's as `for
+  (i = 0; ; i++) { if (i >= n) break; ... }`; the second guard `if (pP2p == 0) return 2;` is its own
+  `jr ra` in the target -- not if-converted, the -2 stored through v0 -- where ce converts it here:
+  IF-CASE-1, six spellings), 0x639FB8 (2: sched1 issues the three entry stores by register weight --
+  the base's and the 7's deaths put nState first; all six orders and a chained -1 tried; the `return 9`
+  positive closed the other two words), func_00617560 (7: the enum puts the loads first in sched1's
+  order, but the report's 1 issues beside the memset call and lives across them in a1), rt_list's init
+  (one word: `return 3` tests the call's own v0, so the target branches to it with `li v0,3` in the
+  slot), 0x63C8A0 (registers: n's pseudo, 5 refs over 11 insns, takes a1 before nRow), and the earlier
+  opens.
+
+Hand-written in round 21b: `medius/rt_p2p.c` (+3: 0x6398C0, 0x639940, 0x63C078; 25 of 29), `medius/dmelocal.c`
+(+4: 0x61D108, 0x61D320, 0x617610, 0x61D530; 89 of 94), `medius/rt_table.c` (+1, 0x63CBD0: 4 of 6),
+`medius/streammedia.c` (+1, 0x644610: 34 of 39), `medius/dme.c` (two wrappers renamed: 90 of 90), and three
+opens nearer (0x639FB8, 0x639A90, 0x63B410: d 4/37/34 -> 2/6/6; rt_list's init d 27 -> 14) -- 9 rows new to
+the map's byte-exact rows (`src/lib/medius` 949 -> 958 of 1,002), none superseding a draft; 2 rows named.
+No tool changed.
 
 ## Open, and next
 

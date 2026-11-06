@@ -9,12 +9,20 @@
  * endpoint, 5 the public address, 6 no connection to send on, 7 rt_udp failed, 8 an index out of
  * range, 9 no free peer.
  *
- * OPEN: the peer searches 0x639A90, 0x63B410, 0x63B480 (and func_0063C328's kin): the target's
- * loop is neither rotated nor strength-reduced (the exit test at the top, i * 40 recomputed, the
- * count hoisted) -- `for (i = 0; ; i++) { if (i >= n) break; ... }` gives that loop (27s left: the
- * second guard's `return 2` is its own `jr ra` in the target, the -2 stored through v0);
- * 0x6398C0 (14s), 0x639940 (61s), 0x639FB8 (2: `li v0,9` hoisted above the test, stores in every
- * order tried), 0x63C078 (44s: the two connections' tests). Not written: the create 0x6395B8 (its
+ * Round 21b: a two-way choice's arms each hold the whole tail SCEA wrote twice -- 0x639940's
+ * address query tests the connection in both arms (cross-jumping merges the call and the copy
+ * after reload, so each arm keeps its own offset in s1 and its -1) and the send 0x63C078 is an
+ * if / else if / else of two sends and `return 6`; a range test whose `return 8` the target
+ * branches past is `if (n >= 0 && n < count) {...} else return 8;`; 0x6398C0's tests are positive
+ * on the connection (`!= -1` first, the else arm second).
+ * OPEN: the peer searches 0x639A90 and 0x63B410: the loop is the target's as `for (i = 0; ; i++)
+ * { if (i >= n) break; ... }` (bound hoisted, i * 40 recomputed, unrotated) -- what is left is the
+ * second guard: the target keeps `if (pP2p == 0) return 2;` as its own `jr ra` (not if-converted,
+ * the -2 stored through v0), ours if-converts it (ce: IF-CASE-1) and shares the first guard's
+ * v0 = 2; posnest/else/goto/dup-store/result spellings all convert or move the loop;
+ * 0x63B480 (rotated and strength-reduced with its first step peeled); 0x639FB8 (2: the stores'
+ * order -- sched1 issues the three entry stores by register weight, the base's and the 7's deaths
+ * putting nState first; every source order and a chained -1 tried). Not written: the create 0x6395B8 (its
  * record reloaded from the stack after every store, as the target does, but the defaults' order),
  * 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63A618, 0x63AAC0, 0x63ACA0, 0x63B0B8, 0x63B2F0,
  * 0x63B5D0, 0x63B708, 0x63B9A0, 0x63BED0, 0x63C170, 0x63C3D0, 0x63C4F0. */
@@ -138,37 +146,38 @@ int func_006398C0(RT_P2P *pP2p, int nIndex, int *pnWhich)
         return 2;
     if (nIndex < 0 || nIndex >= pP2p->nEntries)
         return 8;
-    if (pP2p->pEntries[nIndex].nConn == -1) {
-        if (pP2p->pEntries[nIndex].nConn2 != -1)
-            *pnWhich = 1;
-    } else
+    if (pP2p->pEntries[nIndex].nConn != -1)
         *pnWhich = 0;
+    else if (pP2p->pEntries[nIndex].nConn2 != -1)
+        *pnWhich = 1;
     return 0;
 }
 
 int func_00639940(RT_P2P *pP2p, int nIndex, int nWhich, char *szAddress, unsigned short *pnPort)
 {
-    int nConn;
-
     if (pP2p == 0)
         return 2;
-    if (nIndex < 0)
+    if (nIndex >= 0 && nIndex < pP2p->nEntries) {
+        if (nWhich == 0) {
+            if (pP2p->pEntries[nIndex].nConn != -1) {
+                if (func_0063E4A0(pP2p->pUdp, pP2p->pEntries[nIndex].nConn, szAddress, pnPort) != 0)
+                    return 7;
+            } else {
+                strncpy(szAddress, pP2p->pEntries[nIndex].szAddress, 16);
+                *pnPort = pP2p->pEntries[nIndex].nPort;
+            }
+        } else if (nWhich == 1) {
+            if (pP2p->pEntries[nIndex].nConn2 != -1) {
+                if (func_0063E4A0(pP2p->pUdp, pP2p->pEntries[nIndex].nConn2, szAddress, pnPort) != 0)
+                    return 7;
+            } else {
+                strncpy(szAddress, pP2p->pEntries[nIndex].szAddress, 16);
+                *pnPort = pP2p->pEntries[nIndex].nPort;
+            }
+        } else
+            return 2;
+    } else
         return 8;
-    if (nIndex >= pP2p->nEntries)
-        return 8;
-    if (nWhich == 0)
-        nConn = pP2p->pEntries[nIndex].nConn;
-    else if (nWhich == 1)
-        nConn = pP2p->pEntries[nIndex].nConn2;
-    else
-        return 2;
-    if (nConn != -1) {
-        if (func_0063E4A0(pP2p->pUdp, nConn, szAddress, pnPort) != 0)
-            return 7;
-    } else {
-        strncpy(szAddress, pP2p->pEntries[nIndex].szAddress, 16);
-        *pnPort = pP2p->pEntries[nIndex].nPort;
-    }
     return 0;
 }
 
@@ -196,10 +205,12 @@ int func_00639A90(RT_P2P *pP2p, int *pnIndex)
     *pnIndex = -2;
     if (pP2p == 0)
         return 2;
-    for (i = 0; i < pP2p->nEntries; i++) {
+    for (i = 0; ; i++) {
+        if (i >= pP2p->nEntries)
+            break;
         if (pP2p->pEntries[i].nState == 4 || pP2p->pEntries[i].nState == 7) {
             *pnIndex = i;
-            return 0;
+            break;
         }
     }
     return 0;
@@ -225,13 +236,14 @@ int func_00639FB8(RT_P2P *pP2p, int *pnIndex)
     if (pP2p == 0)
         return 2;
     func_0063B480(pP2p, &nState, &nIndex);
-    if (nState != 0)
-        return 9;
-    pP2p->pEntries[0].nConn2 = -1;
-    pP2p->pEntries[0].nConn = -1;
-    pP2p->pEntries[0].nState = 7;
-    *pnIndex = 0;
-    return 0;
+    if (nState == 0) {
+        pP2p->pEntries[0].nConn2 = -1;
+        pP2p->pEntries[0].nConn = -1;
+        pP2p->pEntries[0].nState = 7;
+        *pnIndex = 0;
+        return 0;
+    }
+    return 9;
 }
 
 int func_0063A4A0(RT_P2P *pP2p)
@@ -447,10 +459,12 @@ int func_0063B410(RT_P2P *pP2p, int nConn, int *pnIndex)
     *pnIndex = -2;
     if (pP2p == 0)
         return 2;
-    for (i = 0; i < pP2p->nEntries; i++) {
+    for (i = 0; ; i++) {
+        if (i >= pP2p->nEntries)
+            break;
         if (nConn == pP2p->pEntries[i].nConn || nConn == pP2p->pEntries[i].nConn2) {
             *pnIndex = i;
-            return 0;
+            break;
         }
     }
     return 0;
@@ -499,20 +513,16 @@ int func_0063B520(RT_P2P *pP2p, int *pnIndex)
 
 int func_0063C078(RT_P2P *pP2p, int nIndex, unsigned char nType, void *pData, unsigned short nLength)
 {
-    int nConn;
-
     if (nIndex < 0 || nIndex >= pP2p->nEntries)
         return 8;
-    nConn = pP2p->pEntries[nIndex].nConn;
-    if (nConn == -1 || pP2p->pEntries[nIndex].bSend == 0) {
-        nConn = pP2p->pEntries[nIndex].nConn2;
-        if (nConn == -1)
-            return 6;
-        if (pP2p->pEntries[nIndex].bSend2 == 0)
-            return 6;
-    }
-    if (func_0063E928(pP2p->pUdp, nConn, nType, pData, nLength) != 0)
-        return 7;
+    if (pP2p->pEntries[nIndex].nConn != -1 && pP2p->pEntries[nIndex].bSend != 0) {
+        if (func_0063E928(pP2p->pUdp, pP2p->pEntries[nIndex].nConn, nType, pData, nLength) != 0)
+            return 7;
+    } else if (pP2p->pEntries[nIndex].nConn2 != -1 && pP2p->pEntries[nIndex].bSend2 != 0) {
+        if (func_0063E928(pP2p->pUdp, pP2p->pEntries[nIndex].nConn2, nType, pData, nLength) != 0)
+            return 7;
+    } else
+        return 6;
     return 0;
 }
 
