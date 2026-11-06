@@ -138,8 +138,8 @@ bool func_005629B0(CSealCtrlAi *ai);
  * (CSealUnit::InitalizeSealUnit, OVL2 0x5EC9F0: seal_unit.cpp's, which zseal.h's CSealUnit does not
  * declare) */
 void InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(CZSealBody *seal, CSealUnit *unit);
-/* the goto's move set up (OVL2 0x5DB8F0, this unit's: the AI, the command, a flag; whether it
- * began -- not written yet) */
+/* the goto's move set up (OVL2 0x5DB8F0, this unit's: the AI, the command, a flag -- unread; whether it
+ * began) */
 bool func_005DB8F0(CSealCtrlAi *ai, void *cmd, int x);
 /* CAiMaps::GetRegion(const CAiMapLoc &), Tile(const CAiMap::region *, unsigned int, unsigned int)
  * and SetRegionType(const CAiMap::region *, CAiMap::region::TYPE) (OVL2 0x52D950, 0x52A6B0,
@@ -2500,6 +2500,109 @@ bool CTFireWeapon::Tick(_zanim_cmd_hdr *hdr, float *dT)
     }
     *dT = 0.0f;
     return true;
+}
+
+/* a cell out of its packed word (the constructor's masks on the masked arguments: the target's two andi; the name ours) */
+struct TaskCell : CAiMapLoc {
+    TaskCell(unsigned int v)
+    {
+        m_mapid = v >> 26;
+        x = v >> 13 & 0x1fff;
+        y = v & 0x1fff;
+    }
+};
+#define TASK_CELL(w) TaskCell(w)
+
+/* a random number up to a limit (inline; the limit an unsigned 4-byte enum, not propagated: the target's `n - 1` and `+ 1` both
+ * kept -- a marked device; the name ours) */
+enum TASK_WORD { TASK_WORD_LAST = 0xffffffff };
+static inline int TaskRand(TASK_WORD max)
+{
+    if (max == 0)
+        return 0;
+    int r = rand() % ((int)max + 1);
+
+    return r;
+}
+
+/* (OVL2 0x52D8C0's neighbour: a random cell of a region) */
+extern "C" bool GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(CAiMaps *maps, const CAiMapRegion *r, CAiMapLoc &loc);
+/* the SEAL sent to a cell (OVL2 0x5623B0: seal_ai.cpp's draft) and its speed set (OVL2 0x570F90, as CTParam::Tick calls it) */
+extern "C" bool func_005623B0(CSealCtrlAi *ai, const CAiMapLoc *loc);
+extern "C" void func_00570F90(CSealCtrlAi *ai, float t);
+extern "C" bool func_00562A10(CSealCtrlAi *ai, const CAiMapLoc &loc, int dir);
+
+/* the goto's move set up: one cell (a region's random one, a random one of the list) walked to or teleported to, or the
+ * route through the cells; the speed, mode 3, the stance by the alert, the look cleared (OVL2 0x5DB8F0, SOCOM 1's
+ * CTGoto::Begin's body: Begin and Tick call it) */
+bool func_005DB8F0(CSealCtrlAi *ai, void *c, int x)
+{
+    CTGoto *cmd = (CTGoto *)c;
+    bool ok = false;
+
+    cmd->SetBit1(true);
+    int n = (unsigned short)cmd->m_count;
+    unsigned char waypts = cmd->m_waypts;
+
+    if (!waypts || n == 1) {
+        int i = 0;
+        CAiMapLoc loc = CAiMapLoc::invalid;
+
+        if (n > 1)
+            i = TaskRand((TASK_WORD)(n - 1));
+        if (cmd->m_region) {
+            unsigned int w = cmd->m_cells[i];
+            const CAiMapRegion *r = GetRegion__7CAiMapsFRC9CAiMapLoc(&AiMaps, TASK_CELL(w));
+
+            if (r)
+                GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(&AiMaps, r, loc);
+        } else {
+            unsigned int w = cmd->m_cells[i];
+
+            loc = TASK_CELL(w);
+        }
+        if (loc != CAiMapLoc::invalid) {
+            if (cmd->m_done)
+                ok = func_00562A10(ai, loc, 8);
+            else
+                ok = func_005623B0(ai, &loc);
+        }
+    } else if (waypts && n > 1) {
+        if (cmd->m_done) {
+            unsigned int w = cmd->m_cells[n - 1];
+
+            ok = func_00562A10(ai, TASK_CELL(w), 8);
+        } else {
+            CAiMapLoc rloc;
+            std::vector<CAiMapLoc> route;
+
+            route.reserve(cmd->m_count);
+            if (cmd->m_region) {
+                for (int i = 0; i < n; i++) {
+                    unsigned int w = cmd->m_cells[i];
+                    const CAiMapRegion *r = GetRegion__7CAiMapsFRC9CAiMapLoc(&AiMaps, TASK_CELL(w));
+
+                    if (r && GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(&AiMaps, r, rloc))
+                        route.push_back(rloc);
+                }
+            } else {
+                for (int i = 0; i < n; i++) {
+                    unsigned int w = cmd->m_cells[i];
+
+                    route.push_back(TASK_CELL(w));
+                }
+            }
+            ok = ai->SetRoute(&*route.begin(), route.size());
+        }
+    }
+    func_00570F90(ai, cmd->m_speed);
+    ai->SetAiMode((AI_MODE)3);
+    if (ai->m_26c == 4 || ai->GetAiAware() < 2)
+        ai->SetStanceDelayed((SEAL_STANCE)0, -1.0f);
+    else
+        ai->ChangeStanceDelayed((SEAL_STANCE)2, (SEAL_STANCE)0, -1.0f);
+    ClearLook__9CSealCtrlF7AI_LOOK((CSealCtrl *)ai, 3);
+    return ok;
 }
 
 /* (OVL2 0x5DB730: the find written out, TASK_SEAL; the AI's ternary through SealAi keeps the call's

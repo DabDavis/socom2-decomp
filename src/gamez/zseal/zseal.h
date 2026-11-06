@@ -469,6 +469,8 @@ public:
     CPnt3D *GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     /* a named location's cell (ai_maps.h's, OVL2 0x52DB70) */
     bool GetLocation(const char *name, CAiMapLoc &loc);
+    /* the grid steps between two cells (ai_maps.h's; OVL2 0x52C320) */
+    unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
     /* a cell's map (ai_maps.h's, OVL2 0x52E6B0), and a location's (OVL2 0x52A180) */
@@ -1590,6 +1592,8 @@ public:
      * tests (0x5F5CD0) -- popped to a state or a kind, popped, and found */
     bool SetAiState(AI_STATE state, unsigned int flags);
     bool PushAiState(AI_STATE state, unsigned int flags);
+    /* the stack's frame (SOCOM 1's; OVL2 0x5F55E0, seal_aistate.cpp's) */
+    void StateTick(float dT);
     bool PopToAiState(CAiState *state, bool inclusive);
     bool PopToAiState(AI_STATE state, bool inclusive);
     AI_STATE PopAiState();
@@ -2238,6 +2242,9 @@ public:
     /* the aim at a point, with its surface normal, or none (SOCOM 1's; OVL2 0x5DF4E0, seal_weapon.cpp
      * -- the kit lane) */
     bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);
+    /* the aim's direction brought up to date from the aim's or fire point, in the body's frame, and the goal set; a
+     * player's still prone aim outside its limits puts the points back (SOCOM 1's; OVL2 0x5DEEC0) */
+    bool UpdateAimDir(bool keep);
     bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
@@ -2897,7 +2904,7 @@ public:
     float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
                     // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
     /* the ground's normal the SEAL stands on (0x57E1B0 asks its y of a jump, TickAimPitch lays the prone aim
-     * along it; the name ours) */
+     * along it, UpdateAimDir's prone limits measure the camera against it; the name ours) */
     CPnt3D m_1344;   // 0x1344
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     float m_135c;   // 0x135c: the wait before another jump (0x57E1B0 sets 0.4; the name ours)

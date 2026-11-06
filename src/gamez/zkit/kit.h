@@ -98,12 +98,21 @@ struct CKitBody {
     /* 0x3c0: the hit under the reticule (zseal.h's m_last_reticule: 0x5BE6F0 copies it whole and
      * reads its node) */
     zdb::IntersectStruct m_last_reticule;
-    unsigned char _3e0[0xeb8 - 0x3e0];
+    unsigned char _3e0[0x5d4 - 0x3e0];
+    /* 0x5d4: CAccuracy (SOCOM 1's 0x514: FactorX, FactorY, Factor) -- SetCurAccuracy's */
+    struct CKitAccuracy {
+        float m_factorX;
+        float m_factorY;
+        float m_factor;
+    } m_accuracy;
+    unsigned char _5e0[0xeb8 - 0x5e0];
     /* 0xeb8: the entity the SEAL works -- a turret (zseal.h's m_eb8) */
     struct CKitMover *m_eb8;
     unsigned char _ebc[0xf79 - 0xebc];
     unsigned char m_f79;   // 0xf79: the item kind the body is asked for (ChangeItemModel's test; the name ours)
-    unsigned char _f7a[0x105e - 0xf7a];
+    unsigned char _f7a[0xfd3 - 0xf7a];
+    unsigned char m_fd3;   // 0xfd3: zseal.h's: the SEAL respawned (FirstFrame keeps the hand's fire mode across it)
+    unsigned char _fd4[0x105e - 0xfd4];
     unsigned char _105e : 5;   // 0x105e: zseal.h's flag word at 0x105c, its bits 16-23
     unsigned char m_airborne : 1;   // bit 21: off the ground
     unsigned char _105e_6 : 2;
@@ -145,7 +154,10 @@ public:
  * parallel lists out of line in OVL1: only the append the kit calls, 0x3CFEF0) */
 class CZItemStash {
 public:
+    int Count();
     void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);
+    void Set(int i, CZWeapon *weapon, CZAmmo *ammo, int rounds);
+    bool Get(int i, int *a, int *b, int *c);
 };
 
 extern "C" int IsLauncherWeapon__11CZFTSWeaponFv(CZFTSWeapon *w);
@@ -190,6 +202,9 @@ public:
     /* a grenade thrown from a point at a velocity, an explosive placed instead (OVL2 0x5BD030;
      * SOCOM 1's) */
     CZProjectile *FireGrenade(const CPnt3D *pos, const CPnt3D *vel);
+    /* the reticle's offsets and size turned into the body's accuracy factors, in the world at the
+     * player's aim (OVL2 0x5BD100; SOCOM 1's SetCurAccuracy, whose burst term SOCOM II dropped) */
+    void SetCurAccuracy();
     /* whether an item is in its launcher's fire mode, by the launcher's kind (OVL2 0x5BD6E0,
      * 0x5BD7F0, 0x5BD8F0: SOCOM 1's WeaponIsGrenadeLauncherMode and, on an index, its
      * CurWeaponIsM203Mode; the middle one new -- its name ours) */
@@ -306,6 +321,35 @@ public:
             h = HAND_FIRST;
         return h;
     }
+    /* the kit's first frame: the first usable of the first two items taken in hand, the scope, the primary's silencer
+     * shown by its kind, the fire modes -- the hand's kept across a respawn, else each weapon's mode 2, a player's
+     * saved ones online -- and the hand's noted (OVL2 0x5C0250, new in SOCOM II: PreTick calls it on m_first; the name
+     * ours) */
+    void FirstFrame(float dT);
+    /* the kit's frame: the reticle, the laser, the waits; the fire delay run out -- a reload or the launcher's next
+     * round at its end --, the explosives' tick; the trigger answered: a shot, an empty magazine's click and reload, an
+     * online refill; the fire modes put right and the launcher's flash faded in (OVL2 0x5C0FD0; SOCOM 1's Tick,
+     * CZSealBody::Tick calls it) */
+    void Tick(float dT);
+    /* the fire delay's turn of the frame (inline: Tick's; the name ours) */
+    bool TickFireDelay(float dT)
+    {
+        if (m_fire_delay == 0.0f)
+            return true;
+        m_fire_delay -= dT;
+        if (m_fire_delay < 0.0f) {
+            if (m_alt_firedelay)
+                ChamberLauncherRound();
+            else
+                Reload();
+            m_fire_delay = 0.0f;
+        }
+        return false;
+    }
+    /* the explosives' tick (OVL2 0x5C1970; SOCOM 1's TickExplosives: false while one is being placed) and a pull of the
+     * trigger (OVL2 0x5BE9A0; SOCOM 1's HandleFireWeapon) */
+    bool TickExplosives(float dT);
+    void HandleFireWeapon(int index, float a, float b);
     /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
      * II: the name ours) */
     void StartSniperKick();
@@ -470,6 +514,21 @@ public:
         return -1;
     }
     bool HasPickupSlot();
+    /* a weapon's or ammunition's rounds taken into the kit, what will not fit left in *rounds, a new weapon in the slot
+     * it finds, the reload sound, the player's message, the bomb's gear (OVL2 0x5BB000; SOCOM 1's) and a pickup's stash
+     * taken -- or, in an online game, asked for from the console that owns it (OVL2 0x5BB990; SOCOM 1's) */
+    void PickupAmmo(CZFTSWeapon *w, CZAmmo *ammo, int *rounds);
+    void PickupAmmo(class CPickup *pickup);
+    /* the wait for a pickup's answer run out, the request finished, whether one is pending (inline: PickupAmmo's two
+     * tests; the name ours) */
+    bool PickupPending()
+    {
+        if (m_pickupRequestWait <= 0.0f) {
+            m_current_requested_ammo = false;
+            m_pickupRequestWait = 0.0f;
+        }
+        return m_current_requested_ammo;
+    }
     /* whether a pickup can be taken (OVL2 0x5BA770; the name ours) */
     bool CanPickup(CZFTSWeapon *w, void *ammo, int count);
     /* the fire point's "projectile" child shown, for items 186 and 146 (OVL2 0x5B85A0; the name ours) */
@@ -637,7 +696,7 @@ public:
     unsigned int m_unused : 13;
     bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
     unsigned char _5[0x8 - 0x5];
-    int m_8;   // 0x8: zeroed by Init (new in SOCOM II; the name ours)
+    float m_8;   // 0x8: zeroed by Init, run down by Tick (new in SOCOM II; the name ours)
     unsigned char _c[0x18 - 0xc];
     float m_18;   // 0x18: zeroed by the constructor (new in SOCOM II; the names ours)
     float m_1c;   // 0x1c
