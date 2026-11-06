@@ -1701,29 +1701,40 @@ extern "C" void func_005F3100(CAiSBreach *b, CAiMapLoc *out)
 }
 
 /* what a breach lets be pushed: no avoiding in its steps 4-9, no grenade in steps 6 and 7 -- a
- * grenade allowed opens its valve (3) -- and no targeting (OVL2 0x5F3520; SOCOM 1's).
- * OPEN, 0x104 against 0xFC: the target keeps `ok`'s 1 in s0 and selects it, unfolded, as the true
- * arm of both cases (`move a1,s0`; case 3 narrows s0 at its join, case 27 copies one result into
- * `open` and `ok`), and tests steps 6 and 7 with two beqs; here MW folds `ok` to its constant --
- * `!(...)` and `c ? false : ok` both materialise with sltu/xori -- and folds 6/7 into a range test
- * (a nested switch on the step gives a compare chain, 0x10C). The valve's SetValue(3) inline and
- * the outer switch are the target's. Round 56: `#pragma opt_propagation off` in the body keeps `ok`'s
- * 1 in s0 and selects it as the target does (`daddiu s0,zero,1`, `move a1,s0`; d 43 -> 32, still
- * 0x104); over it the avoid arm as `c ? false : ok` or an if, the grenade arm as `c ? false : ok`,
- * an if, or `!= && != ? ok : false`: 0xEC-0x114, the step test still a range (build/scratch/kit/
- * v_cpas.py) */
+ * grenade allowed opens its valve (3) -- and no targeting (OVL2 0x5F3520; SOCOM 1's):
+ * `ok` passed through two inline selections taking the step as an int (andi at the call, `s > 3` branching on `slti at`
+ * where `s >= 4` computes into v0): the avoid arm's `if (c) ok = false; return ok;` narrows at its join; the grenade arm's
+ * `r = false; if (s != 6 && s != 7) r = ok;` keeps two beqs where `s == 6 || s == 7` folds into a range test, and
+ * MW materialises every `c ? false : ok` (sltu / xori). Propagation off in the body keeps `ok`'s 1 in s0 (round 56) */
+inline bool BreachAvoidOk(bool ok, int s)
+{
+    if (s > 3 && s < 10)
+        ok = false;
+    return ok;
+}
+
+inline bool BreachGrenadeOk(bool ok, int s)
+{
+    bool r = false;
+
+    if (s != 6 && s != 7)
+        r = ok;
+    return r;
+}
+
 bool CAiSBreach::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 {
+#pragma opt_propagation off
     bool open = false;
     STEP step = (STEP)m_phase;
     bool ok = true;
 
     switch (state) {
     case AI_STATE_AVOID:
-        ok = !(step >= STEP_4 && step < 10);
+        ok = BreachAvoidOk(ok, step);
         break;
     case AI_STATE_GRENADE:
-        ok = open = !(step == STEP_6 || step == STEP_7);
+        ok = open = BreachGrenadeOk(ok, step);
         break;
     case AI_STATE_TARGET:
         ok = false;
@@ -1732,6 +1743,7 @@ bool CAiSBreach::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
     if (open && m_valve)
         m_valve->SetValue(3);
     return ok;
+#pragma opt_propagation reset
 }
 
 /* +0x34: a breach takes up only a sighting or a shot (OVL2 0x5F34D0) */

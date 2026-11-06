@@ -1074,19 +1074,9 @@ FIREMODE CZKit::GetCurFireMode()
 /* the rounds an item's magazine holds: under a launcher's mode, the capacity of the item its
  * ammunition is -- the first of that kind with rounds, else the last -- none without one (OVL2
  * 0x5C3CF0; SOCOM 1's, whose grenade launcher indexed its ammunition by the mode).
- * OPEN, 4 instructions, the last arm's block order only: the target lays out the return-0 block
- * (`bnez a0,call; move v0,zero; b end`) before the call, which falls into the epilogue -- as SOCOM 1's
- * two arms both do; MW folds the zero into a `beqz` to the end here (the launcher arm's `||` keeps
- * its block, being shared). Tried: the ternary either way round, `== 0`, the weapon in a local, an
- * if/else, a result local (0x1DC), a static inline capacity helper (three bodies, either arm), a
- * shared `return 0` at the end, a goto, `== 0` and `!(bool)` in the if, the item through
- * GetItemByIndex (9); round 30, the launcher arm as one ternary over `i != -1 && m_item[i]` (the shape
- * that closed GetFiremodeGraphic: 0x1F4). Round 43: the six matched functions with the target's
- * `bnez; move v0,zero; b end; nop; pad; jal` (Logout, ScanForVehicleByName, UIJoinGameServer,
- * ChooseSlotForCharacter, PlaySound3D, ActivateSequence) all have code after the call -- here the call
- * is the function's tail, which MW lays out first. Round 56: peephole, opt_propagation, opt_dead_code,
- * opt_common_subs, opt_dead_assignments or opt_lifetimes off inside the body, and a result local
- * under propagation or dead-code off: 4-89 off, none the target's layout */
+ * The last arm's call through a named local: `int r = call; return r;` keeps the target's layout (the return-0 block,
+ * then the call falling into the epilogue) where `return call;` -- every if / ternary spelling of rounds 30-56 --
+ * lays out the call first */
 int CZKit::GetMaxAmmoCount(int index)
 {
     index = wrap(index, m_num_items);
@@ -1099,7 +1089,8 @@ int CZKit::GetMaxAmmoCount(int index)
     }
     if (!m_item[index])
         return 0;
-    return m_item[index]->GetAmmoCapacity();
+    int r = m_item[index]->GetAmmoCapacity();
+    return r;
 }
 
 /* (OVL2 0x5C3CE0; SOCOM 1's, a tail call here) */
