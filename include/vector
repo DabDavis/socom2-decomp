@@ -1748,7 +1748,32 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  *    its earliest definition and splits each later web into a new temporary (the definitions are
  *    walked in reverse IR order, the entry definition first); copy propagation never carries a copy
  *    into a deeper loop once IRO_FindLoops has set the depths. None of the three turns on whether
- *    construct() is cut, so the source that numbers the two populations apart is still not found */
+ *    construct() is cut, so the source that numbers the two populations apart is still not found.
+ *    The MSL headers round 38 (the weapons' round-38 request and the online lane's; build/p38/,
+ *    untracked: permall.py runs tools/igreplay.py --permute keeping every hit, gen38.py / vrun.py the
+ *    variants): CTurretDef 0x3ABD90 AND AcctRecord 0x2FE3E0 ARE ONE LEVER -- over m, both i's, both
+ *    j's, k and the end (720 orders), each takes the target's registers in exactly the 120 orders with
+ *    THE END BEFORE m BEFORE THE ELSE BRANCH'S j (i, the first j and k free); zrdr_sym 0x3325E0 the
+ *    same 120. The inlined population's witnesses that use saved registers want the converse:
+ *    CUIVariable 0x2B1BD0 and ActionItem 0x383F20 take theirs in the 120 orders with THE ELSE
+ *    BRANCH'S j BEFORE k BEFORE THE END (m, i and the first j free), and CUIVariable keeps them with
+ *    m, i, both j's and k all moved past the reallocating branch's i and j (an inline's level-0
+ *    temporaries' place). The pass labels: the cut five's end is IRO_ScalarizeClassDataMembers' pass-0
+ *    temporary (the turret, its copy_backward called) or __copy_backward's `result` argument at level 1
+ *    (AcctRecord, merged into it); m and the j's are declared locals -- so no numbering the inliner
+ *    and IRO give can put that end before a declared m. A cut element's construct() is DEFERRED, not
+ *    shortened: an inline holding it is admitted only at the last pass (level 4) once its tree fits --
+ *    the else branch's loop as a member helper __construct_range(first, last, result) shows its three
+ *    argument temporaries made at level 4 in the turret and at level 0 in CUIVariable, the end merged
+ *    into `last` (-21: the end then sits between the two cursors; the whole in-place branch as such a
+ *    helper is deferred for every element, -43, its callees called out of line). Measured, none kept
+ *    (+gains / -losses over the board's 67 inserts): every pointer end before m (`T *ep =
+ *    this->end().m_p`, `= e.m_p` from the object, a function-scope one with a dead first definition)
+ *    +5 / -28 -- the pointer survives in both populations because its loop tests are deeper than its
+ *    definition (`node->loopdepth <= def->loopdepth`); m never a variable (CSE's) -39; one j for both
+ *    sub-branches, or i and j shared with the reallocating branch (SOCOM 1's DWARF lists i, j first)
+ *    -43; the else loop as a helper taking (last, first, result) -21; the end object or m declared
+ *    first, m's cast: +0 / -0 */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
