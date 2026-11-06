@@ -3180,11 +3180,11 @@ bool UIVagStreaming(C2DAnimCmdHdr *hdr, float *dT)
     const char *text = ArgText(ArgName(hdr));
 
     if (!strcmp(text, "ON")) {
-        data_0048DDA0 = 1;
+        CSnd::m_vagEnabled = 1;
         CSnd::UIOpen();
     } else if (!strcmp(text, "OFF")) {
         CSnd::Close();
-        data_0048DDA0 = 0;
+        CSnd::m_vagEnabled = 0;
     }
     return true;
 }
