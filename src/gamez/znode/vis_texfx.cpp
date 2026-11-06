@@ -64,8 +64,10 @@ void CTextureFXManager::Uninit()
 
 /* a visual's effect started, or restarted: a new one takes the group asked for (a new group when
  * id is negative), an old one keeps its own; the group is given back (SOCOM 1's
- * InitScrollTexture's arguments, the speed through SetSpeed) */
-int CTextureFXManager::Add(bool tick, CVisual *visual, CNode *node, int id, float u, float v)
+ * InitScrollTexture's arguments in its order -- the speed, the tick switch, the visual, the node --
+ * with the group id new last: the order CNode::ScrollTexture's argument set-up reproduces, the world
+ * lane's round 27; the speed set through SetSpeed) */
+int CTextureFXManager::Add(float u, float v, bool tick, CVisual *visual, CNode *node, int id)
 {
     CTextureFX *fx = Find(visual);
 

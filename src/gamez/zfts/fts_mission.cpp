@@ -553,6 +553,8 @@ public:
     bool LoadVehicles();   /* 0x2B2E50 (fts_player.cpp's) */
     void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
+    void DestroyNetGame();   /* 0x2A9EF0 */
+    void UpdateLocalGame(CZNetGame *game);   /* 0x2A9EE0 */
     bool ReOpen_Unload2();
     bool ReOpen_Load();
     void FadeToEndMission(float time, int counter);
@@ -3795,6 +3797,23 @@ CZNetGame *CMission::CreateNetGame()
 {
     m_pNetGame->Initialize();
     return m_pNetGame;
+}
+
+/* the online game torn down (SOCOM 1's DestroyNetGame, the same 8 bytes: the net game's UnInitialize
+ * as a tail call; OVL1 0x2A9EF0) */
+void CMission::DestroyNetGame()
+{
+    m_pNetGame->UnInitialize();
+}
+
+/* the local game's state reported (SOCOM II's, between OnMissionComplete and DestroyNetGame where
+ * SOCOM 1 has nothing: its one caller, CZOnlineLobby::ForceStatusReport 0x2F8350, calls it on
+ * theMission with theMission's own net game (0x1808) once the network's two flags UpdateLocalGame
+ * tests are set -- a CMission member taking the CZNetGame, handing it on to CZGameState's static
+ * UpdateLocalGame as a tail call; OVL1 0x2A9EE0, the name ours) */
+void CMission::UpdateLocalGame(CZNetGame *game)
+{
+    CZGameState::UpdateLocalGame(game);
 }
 
 /* the mission under way (SOCOM 1's CMission::OnMissionStart, grown; OVL1 0x2A7D40 -- st_core.cpp's

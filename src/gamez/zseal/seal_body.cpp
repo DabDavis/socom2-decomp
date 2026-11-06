@@ -67,7 +67,7 @@ CPnt3D running_pistol_throw(3.056369f, 11.494563f, -3.000149f);
 
 /* whether an anim type is anywhere on the blend stack, the top first (OVL2 0x58A470; new in
  * SOCOM II, its name unknown -- seal_env.cpp's 0x5A7AB0 asks it).
- * OPEN, 5 instructions: the accessor's index unsigned against the int counter stops MW
+ * Was OPEN, 5 instructions: the accessor's index unsigned against the int counter stops MW
  * strength-reducing the walk (the target's `sll; addu` each pass -- 0x57DBB0 matches so); left, the
  * registers: the target narrows the type into a0 first and loads the array into v1, MW the other
  * way round. Tried: the compare reversed, a short parameter, the type cast or copied first, the
@@ -76,21 +76,26 @@ CPnt3D running_pistol_throw(3.056369f, 11.494563f, -3.000149f);
  * sign extension @8334, so the extension colours first (v1) and the array takes a0 -- the target
  * needs the extension numbered first. Still 5: the element a local, an int local for its type, a
  * (short) or (AnimType) cast, a BlendIs inline, a result flag with break (18); an InStack(stack,
- * type) inline taking an int, short or AnimType type: 6-7. */
+ * type) inline taking an int, short or AnimType type: 6-7. Byte-exact (round 53): the walk written plainly
+ * under `#pragma opt_strength_reduction off` -- the engine core's round-21 pragma keeps the `sll; addu`
+ * AND numbers the type's extension before the array's load (either compare order, with or without
+ * BlendAt) */
 static inline CZBodyAnimBlend *BlendAt(CBodyAnimBlendStack *stack, unsigned int i)
 {
     return stack->m_stack[i];
 }
 
+#pragma opt_strength_reduction off
 extern "C" bool func_0058A470(CZSealBody *seal, AnimType type)
 {
     CBodyAnimBlendStack *stack = &seal->m_blends;
 
     for (int i = stack->m_top; i >= 0; i--)
-        if (type == BlendAt(stack, i)->m_animType)
+        if (type == stack->m_stack[i]->m_animType)
             return true;
     return false;
 }
+#pragma opt_strength_reduction reset
 
 extern "C" {
 void *func_00555170(void *v);
@@ -148,7 +153,9 @@ AnimType func_0058C820(CZSealBody *seal, AnimType type, SEAL_ITEM_BYTE item);
  * coloured highest index first; the target wants the stack's index above the counter's -- a web made
  * late, as the split rule's). Tried: the counter defined or declared first (a dead `i = 0` too), the
  * prefix step, a while loop, the stack and counter both in the for's init, an inline accessor
- * returning the stack's address (22: its temporary s3), the member indexed straight (0x10C) */
+ * returning the stack's address (22: its temporary s3), the member indexed straight (0x10C). Round 53:
+ * `#pragma opt_strength_reduction off` (0x58A470's fix) changes nothing here (9, or 0x10C plain); the
+ * stack a block-local of the loop, or declared bare and set in it, loses the entry (0x108) */
 extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item)
 {
     if (seal->IsCurrentBlend((AnimType)AnimTypes::SwapRifle))
@@ -331,9 +338,8 @@ bool CZSealBody::CanPitch()
 }
 
 extern "C" {
-/* SOCOM II's overlaid anims (OVL1 data: the weapon change's, 0x3DEC68 -- SOCOM 1's MovingRifle2Pistol
- * by position, unproven -- and four new ones the grenade and launcher code pushes) */
-extern short data_003DEC68;
+/* SOCOM II's overlaid anims (OVL1 data: four new ones the grenade and launcher code pushes; the weapon
+ * change's, 0x3DEC68, is AnimTypes::MovingRifle2Pistol) */
 extern short data_003DF0B0;
 extern short data_003DF0D0;
 extern short data_003DF0F0;
@@ -374,7 +380,7 @@ CZBodyAnimBlend *CZSealBody::AddBlendOverlay(AnimType type)
         SetMovingRifleReload(a);
     else if (type == AnimTypes::MovingPistolReload)
         SetMovingPistolReload(a);
-    else if (type == data_003DEC68) {
+    else if (type == AnimTypes::MovingRifle2Pistol) {
         if (m_item == 1)
             SetMovingChangeToPistol(a);
         else if (m_item == 2)
@@ -1868,7 +1874,10 @@ extern "C" bool func_0057F7D0(CZSealBody *seal)
  * OPEN, 7 instructions: the target lays the anim test's false return right after it (`bnez v0` to
  * the call's block, which follows); MW puts the call first and the false block last. Tried: the
  * test positive with the call inside, an else, a ternary, `== false`, `||` and `&&` joins of both
- * tests, a result local. */
+ * tests, a result local. Round 53 (build/scratch/seal-r53/v_f530*.py): the test through an inline
+ * `return IsCurrentBlend(45) ? true : false;` gives the target's LAYOUT (bnez to the call, the false
+ * block after it) but adds the bool's `andi` and drops the label's pad (5); an if-form IsRemote, an
+ * if-set inline, nested ifs, a goto and `bool r` returns are worse (7-0x94). */
 extern "C" bool func_0057F530(CZSealBody *seal)
 {
     if (seal->IsRemote())
@@ -2124,7 +2133,9 @@ extern short data_003DF130;
  * OPEN, 6 instructions (the size right): in both AnimSet calls the target loads the kind (a2) and the
  * set (a0) before the type's global (a1), ours the type first -- the same as member calls on a
  * declared AnimSet, with the global volatile, const or typed AnimType, the arguments cast to int, or
- * the set assigned in the call; rep declared ahead of b fixed their saved registers */
+ * the set assigned in the call; rep declared ahead of b fixed their saved registers. Round 53: the two
+ * calls through inline wrappers reading the type inside (VariantIndex / VariantScript, int or short
+ * weapon) keep the type's lui and lh together, as before (6) */
 extern "C" CZBodyAnimBlend *func_0057DCC0(CZSealBody *seal, int variant)
 {
     ACTIVE_ANIM *rep;
