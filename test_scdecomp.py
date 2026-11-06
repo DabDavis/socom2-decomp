@@ -2616,6 +2616,137 @@ def test_try_sub_all_replaces_every_occurrence():
         T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
 
 
+def test_try_decodes_escapes_in_new_when_asked():
+    """tools/try.py takes OLD and NEW as typed -- the HUD's round 63 read `--sub OLD 'x;\\n'` writing a
+    backslash and an n as a bug -- and -e/--escapes (GCC round 43a) decodes the usual escapes in each
+    NEW alone: tty.c's sceTtyRead with a line break and a comment after its `return i + 1;` MATCHes
+    under -e, and as typed is a BUILD-FAIL that says on stderr what -e and -n do (the behaviour kept,
+    and named); under -e OLD stays as typed (the C escape `'\\n'` in OLD is found) and `\\\\t` in NEW is a
+    literal backslash-t, the existing d=1 variant's text; -n is unchanged; decode_escapes leaves an
+    unknown escape as written and literal_escape tells `\\n` from `\\\\n`."""
+    import contextlib
+    import importlib
+    import io
+    T = importlib.import_module("try")
+    unit = HERE / "src" / "lib" / "sdk" / "tty.c"
+    old = os.environ.get("SC_TRY_WORK")
+    T.WORK = BUILD / "trywork"
+
+    def run(*args):
+        buf, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+            rc = T.main([str(unit), "sceTtyRead", "--no-dist", *args])
+        return rc, [l for l in buf.getvalue().splitlines() if l.strip()], err.getvalue()
+    try:
+        brk = ("return i + 1;", "return i + 1;\\n\\t/* x */")
+        rc, lines, err = run("--sub", *brk)
+        ck(rc == 0 and lines[0].startswith("BUILD-FAIL") and "-e decodes" in err,
+           f"as typed: a backslash and an n, the build fails and stderr says so ({lines}, {err!r})")
+        rc, lines, err = run("-e", "--sub", *brk, "--sub", "buf[i] == '\\n'", "buf[i] == '\\\\t'")
+        ck(rc == 0 and lines[0].startswith("MATCH") and lines[1].startswith("FAIL (1 differing") and not err,
+           f"-e: NEW's escapes decoded, OLD as typed, \\\\t a literal backslash-t ({lines}, {err!r})")
+        rc, lines, _ = run("-n", "--sub", *brk)
+        ck(rc == 0 and lines[0].startswith("MATCH"), f"-n unchanged ({lines})")
+        ck(T.decode_escapes("a\\nb\\tc\\\\n\\\"\\'\\x41\\0") == "a\nb\tc\\n\"'\\x41\\0",
+           "decode_escapes: the usual six, any other backslash kept")
+        ck(T.literal_escape("x;\\n") and T.literal_escape("\\t") and not T.literal_escape("a\\\\n")
+           and not T.literal_escape("x\n"), "literal_escape: a typed \\n or \\t, not an escaped backslash")
+    finally:
+        T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
+
+
+def test_ccdump_takes_a_dump_flag_as_its_own_argument():
+    """tools/ccdump.py --dump -dL (GCC round 43a, the GCC c lane's round 38c): argparse reads a lone
+    value that starts with `-` as an option of its own, so `--dump -dL` was refused and only
+    `--dump=-dL` worked. Now the argument after --dump (or --flags, or an abbreviation naming one of
+    them alone) is its value: the separate form, the `=` form, a quoted list and the default each
+    parse as before or as the `=` form does, `-fsched-verbose=4` is the dump's value and not `-f`'s,
+    and `-f` after it is still a function; argparse alone refuses `--dump -dL` (the negative: the join
+    is what takes it); end to end, tty.c's loop dump from both forms is the same file set, byte for byte."""
+    import contextlib
+    import importlib
+    import io
+    C = importlib.import_module("ccdump")
+    p = C.parse_args
+    ck(p(["u.c", "--dump", "-dL"]).dump == "-dL" == p(["u.c", "--dump=-dL"]).dump,
+       "--dump -dL is --dump=-dL")
+    ck(p(["u.c", "--dump", "-dc -dl"]).dump == "-dc -dl" and p(["u.c"]).dump == C.DEFAULT_DUMPS,
+       "a quoted list and the default keep their meaning")
+    a = p(["u.c", "--du", "-fsched-verbose=4", "-f", "foo", "--flags", "-O1", "--", "-fno-gcse"])
+    ck(a.dump == "-fsched-verbose=4" and a.function == ["foo"] and a.flags == "-O1" and a.extra == ["-fno-gcse"],
+       f"an abbreviation, --flags, -f and the extra flags after `--` ({a})")
+    with contextlib.redirect_stderr(io.StringIO()):
+        try:
+            C.parser().parse_args(["u.c", "--dump", "-dL"])
+            refused = False
+        except SystemExit:
+            refused = True
+    ck(refused, "argparse alone refuses --dump -dL")
+    unit = HERE / "src" / "lib" / "sdk" / "tty.c"
+    got = []
+    for i, args in enumerate((["--dump", "-dL"], ["--dump=-dL"])):
+        out = BUILD / f"ccdump_sep{i}"
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = C.main([str(unit), *args, "--out", str(out)])
+        loop = out / "tty.c.loop"
+        got.append((rc, sorted(x.name for x in out.iterdir()), loop.read_bytes() if loop.exists() else b""))
+    ck(got[0][0] == 0 and got[0] == got[1] and "tty.c.loop" in got[0][1] and b";; Function" in got[0][2],
+       f"both forms write the same loop dump ({got[0][:2]}, {got[1][:2]})")
+
+
+def test_pragmascan_finds_the_kits_cse_off():
+    """tools/pragmascan.py (GCC round 43a): FaceXZ 0x60CAD0 as the kit's round 58 wrote it, its two
+    pragma lines taken out (master's ai_group.cpp, in a scratch copy -- a3785ee6's body, the round's
+    base, is 0x104 against 0xF4 under CSE off: the kit respelled it as well), is open; the scan finds
+    its body by name and confirms it by its probe, wraps it into master's text byte for byte, and
+    reports a HIT under opt_common_subs with nothing else in the unit lost -- and none under
+    opt_propagation, the negative; a re-run builds nothing (resumed from the results file); a pragma
+    Metrowerks does not know is refused (`illegal #pragma` under -w all), the seven it scans are not;
+    the mangled names' scopes and the text's bodies read as the matcher needs them."""
+    import importlib
+    P = importlib.import_module("pragmascan")
+    rel = "ai/ai_group.cpp"
+    name = "FaceXZ__FPC6CPnt3DPC6CPnt3DP7CMatrix"
+    real = (HERE / "src" / rel).read_text()
+    sig = "static void FaceXZ(const CPnt3D *from, const CPnt3D *to, CMatrix *m)\n{\n"
+    on, reset = "#pragma opt_common_subs off\n", "\n}\n#pragma opt_common_subs reset\n"
+    ck(real.count(sig + on) == 1 and reset in real[real.index(sig):], "the fixture's premise: FaceXZ's pair in master's text")
+    i = real.index(sig + on)
+    j = real.index(reset, i)
+    bare = real[:i] + sig + real[i + len(sig + on):j] + "\n}\n" + real[j + len(reset):]
+    ck(len(bare) == len(real) - len(on) - len(reset) + 3, "the pair taken out, nothing else")
+    work = BUILD / "pragmascan"
+    tree = P.Tree(work, 0)
+    res = P.Results(work / "results.jsonl", fresh=True)
+    pragmas = ["opt_common_subs", "opt_propagation"]
+    P.scan_unit(rel, tree, res, "hdr", pragmas, only="^FaceXZ__", text=bare, log=lambda m: None)
+    base = res.base[(rel, P.digest(bare), "hdr")]
+    ck(name in base["open"] and not base["scores"][name]["match"] and base["scores"][name]["d"] > 0,
+       f"FaceXZ open without the pragma ({base['scores'].get(name)})")
+    ck(base["probe_ok"] and name in base["sites"] and not base["unconfirmed"], "its body found and confirmed by its probe")
+    site = P.Site(name, (), 0, *base["sites"][name][:2])
+    ck(P.wrap(bare, site, "opt_common_subs") == real, "wrapped, it is master's text byte for byte")
+    v = {r["pragma"]: r for r in res.variants.values() if r["func"] == name}
+    ck(P.classify(v["opt_common_subs"]) == "HIT" and v["opt_common_subs"]["lost"] == [] and v["opt_common_subs"]["d1"] == 0,
+       f"a HIT under opt_common_subs, nothing lost ({v['opt_common_subs']})")
+    ck(not v["opt_propagation"]["match"] and P.classify(v["opt_propagation"]) != "HIT",
+       f"no hit under opt_propagation ({v['opt_propagation']['verdict']})")
+    again = P.Results(work / "results.jsonl")
+    s = P.scan_unit(rel, tree, again, "hdr", pragmas, only="^FaceXZ__", text=bare, log=lambda m: None)
+    ck(s["built"] == 0 and s["done"] == 2, f"resumed: nothing rebuilt ({s})")
+    ck(P.illegal_pragmas(["opt_bogus_thing"] + list(P.PRAGMAS), {D.COMPILER}, work / "fixture")
+       == [f"opt_bogus_thing ({D.COMPILER})"], "an unknown pragma refused, the seven legal")
+    ck(P.demangle_scope("Tick__Q28CAiGroup10act_cameraFP11CSealCtrlAif") == ("Tick", ("CAiGroup", "act_camera"))
+       and P.demangle_scope("__dt__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv")
+       == ("~vector", ("std", "vector")) and P.demangle_scope("func_0060AA20") == ("func_0060AA20", ()),
+       "mangled scopes")
+    text = ("namespace { struct S { int f(int a) const { return a; } }; }\n"
+            "#define M(x) int x(void) { return 0; }\nM(g)\n"
+            "S::S() : m(f(1)) { }\nint operator==(const S &, const S &) { return 1; }\n")
+    got = [(s.name, s.scope) for s in P.sites(text)]
+    ck(got == [("f", ("S",)), ("S", ("S",)), ("operator==", ())], f"the text's bodies ({got})")
+
+
 def test_everything_baselined_still_matches():
     rc = C.main([])
     ck(rc == 0, "sccheck: no regressions against MATCHED.txt, every TU builds")

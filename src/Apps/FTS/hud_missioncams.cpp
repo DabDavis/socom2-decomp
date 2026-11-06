@@ -36,6 +36,9 @@ public:
     MENU_STATE GetMenuState() const { return m_menustate; }
     /* the input flushed and the heartbeat stopped (OVL2 0x592AC0, SOCOM 1's) */
     void StopRumbler();
+    /* the controllers switched on or off (OVL2 0x598840, a byte flag set when it changes: the SEALs'
+     * round 55 named the row, seal_control.cpp's first definition) */
+    static void SetEnabled(bool on);
 
     unsigned char _0[0x170];
     unsigned int m_flags0 : 11;
@@ -180,9 +183,7 @@ public:
     static bool m_weaponTickDisabled;
 };
 
-/* OVL2 0x598840 (a byte flag set when it changes) and 0x592CA0 (on the player's controller): their
- * names not known */
-extern "C" void func_00598840(bool on);
+/* OVL2 0x592CA0 (on the player's controller): its name not known */
 extern "C" void func_00592CA0(CSealCtrl *ctrl);
 
 /* the lens effects (thezoom.cpp's CameraZoom, SOCOM II's) */
@@ -382,7 +383,7 @@ void CZHudMissionCams::CleanupCamera(CPad *pad)
     CSndInstance::ResumeAllSounds(SND_MODE_DIALOG);
     CZWeapon::m_weaponTickDisabled = false;
     CSealCtrlAi::SetAiEnabled(true, true);
-    func_00598840(true);
+    CSealCtrl::SetEnabled(true);
 
     CZSealBody *owner = CHUD::GetHUDOwner();
 
@@ -512,7 +513,7 @@ void CZHudMissionCams::PlayCamera(CMissionCam *missioncam, bool bSwapLens)
     theHUD->Off();
     CZWeapon::m_weaponTickDisabled = true;
     CSealCtrlAi::SetAiEnabled(false, false);
-    func_00598840(false);
+    CSealCtrl::SetEnabled(false);
 
     m_letterboxobjectivename.Off();
     m_letterboxobjectivename.Load(1.2f, missioncam->m_name, theHUD->m_myfont, 0.0f, 0.0f, true);
