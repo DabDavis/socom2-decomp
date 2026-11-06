@@ -635,7 +635,20 @@ unsigned char GetClanTeamSide();
  * first/index/max, terrs/side, state, game, client (igreplay: no renumbering of state, terrs and first,
  * nor of client and game, gives the target's -- the graph differs, likely by those six temporaries);
  * side = 1 / 2 ahead of the slot finders' calls goes into the call's delay slot here, the branch's
- * in the target (assigning it after the call is 16 bytes long) */
+ * in the target (assigning it after the call is 16 bytes long).
+ * Round 52 (mweppc's CInline.c and IroPropagate.c, `igdump --iro`): CInline_SetupArgsExpression
+ * substitutes an argument CInline_IsTrivialExpression calls trivial -- a constant, or a local read
+ * WITHOUT OBJECT_REFERENCED -- and makes a temporary for any other (a global, a side effect, an
+ * indirect through anything but an object, a local flagged OBJECT_REFERENCED: every used local of an
+ * expanded inline gets that flag). `(void)&side;` does flag it: the temporary `@b = side` is made
+ * before the session-master test, the target's place for the li -- but IRO_CopyAndConstantPropagation
+ * copy-propagates it into the store in its first pass ("Found propagation at 140 from 124"), so the
+ * literal is back at the store (184 off unchanged; int side 217). A constant or copy into a regable
+ * temporary is always propagated unless a call kills it (only globals and address-taken locals) or a
+ * copy's source is a global or not regable (then it is loaded from memory, not li): the target's
+ * surviving `li a0,4` before the loop needs a value IRO does not see as 4 -- not found. Also tried:
+ * a wrapper inline with the side as its local (round 51's w_uc_local: 4 still at the store, the
+ * frame 32 bytes deeper), a pointer to side, a volatile side (0xA14) */
 extern "C" void func_002BC620(ClientConnectArgs *args)
 {
     if (args->m_index == theLobby.MediusConnectionIndex()) {

@@ -549,7 +549,8 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
  * next but one) that are not traversable each push it back by how far within half a cell of them
  * (less the range) it is, along their direction -- the pushes summed into `dir`, its length into
  * `len`, the first pushing cell handed back (SOCOM 1's, the demo's 0x1853A0; the cell new).
- * OPEN, 0x570 against 0x558 (written in the AI core's round 30): the code is the target's in shape --
+ * OPEN, at the target's size since round 36, 41 instructions (0x570 before; written in the AI core's round
+ * 30 -- the frame and the float registers, see round 36 below): the code is the target's in shape --
  * GetCell inlined one level, GetCellCenter one level (its pieces the calls 0x5168E0-0x516940), the
  * quadrant, the two neighbours through GetNeighbor (one level), the pushes -- but the frame and the
  * float registers differ: the target's slots run the neighbour's cell 300, the centre 288, the zero
@@ -590,7 +591,18 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
  * 272, above n) and its address lives in s7, so temporaries do not sink below the named locals; a
  * cast block copy (`*(blk *)&n = ...` over float[3] or int[3]) is three lwc1/swc1 (0x568) and a
  * long long + float one moves the frame (0x570, 70 off); memcpy stays a call (0x558, 53 off); the
- * quadrant and loop as an inline taking v by value is not inlined (0x418) */
+ * quadrant and loop as an inline taking v by value is not inlined (0x418)
+ * The AI core round 36 (build/scratch/ai/v_gcrp36a-c.py, igdump --origins): AT THE TARGET'S SIZE (0x558,
+ * 41 instructions, difflib distance 42 -> 38) with v.y and v.z read once into named floats right after
+ * v's copy, the dot product written out over them (`n.x * v.x + n.y * vy + n.z * vz`: the target's
+ * mul, mul, adda, madd, v.x reloaded each pass) and n declared in the loop with its initialiser (the
+ * block copy). In the shape before, v.y / v.z were IRO_LoopInvariants temporaries loaded through
+ * hoisted address temporaries (&v + 4, &v + 8) and the quadrant's v.z a separate load; read directly
+ * in the quadrant, only the ADDRESS &v + 8 is shared with the loop (0x580), never the load. Left: the
+ * frame -- n declared in the loop lays it below v (n 256, v 272: declaration order) where the target
+ * has n 272 above v 256 -- and the FPRs (vz f22 / vy f20 / the half-cell f21 against f20 / f21 / f22);
+ * with n at the top and vy / vz named (0x568) the reset stays memberwise, through a {long long; float}
+ * cast as well (0x568, 69 off) */
 bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
                                 CAiMapLoc &cell)
 {
@@ -601,10 +613,10 @@ bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float r
     if (c->HasLink())
         return false;
     CPnt3D center;
-    CPnt3D n;
 
     GetCellCenter(loc, &center);
     CPnt3D v = *pos - center;
+    float vy = v.y;
     float vz = v.z;
     DIR d;
 
@@ -616,14 +628,14 @@ bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float r
     float half = 0.5f * m_dx;
 
     for (int i = 0; i < 3; i += 2) {
-        n = CPnt3D::zero;
+        CPnt3D n = CPnt3D::zero;
         DIR nd = (DIR)((d + i + 8) % 8);
         CAiMapLoc nloc;
         CAiCell *ncell = 0;
 
         if (GetNeighbor(loc, nd, nloc, ncell) && !ncell->IsTraversable()) {
             GetDirVec(nd, n);
-            float dot = Dot(n, v);
+            float dot = n.x * v.x + n.y * vy + n.z * vz;
 
             if (dot > 0.0f) {
                 float k = half - (dot + range);

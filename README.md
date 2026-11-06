@@ -2065,6 +2065,59 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 36** (resize<reader> 0x51C3F0 -- open since round 22 at 6 off -- byte-exact through a
+  marked device, ai_mapio.cpp's explicit specialisation; UpdateNameTables 0x52B820 from 34 to 12 instructions off;
+  GetCellRepelParams 0x5169B0 to the target's size, 0x570 -> 0x558):
+  - MW'S CLASS SCALARISER RUNS FIRST IN EACH OPTIMISER PASS (igdump's pass labels): a named iterator initialised from a call
+    is scalarised in pass 0, an iterator temporary read as `end().m_p` only in pass 1, so its member is numbered after pass
+    0's common-subexpression and loop temporaries -- resize<reader>'s target needs the end numbered first (`igreplay
+    --permute`), which a named end iterator declared inside the insert arm gives;
+  - that body in include/vector is +1 / -16 (measured over the 20 units that emit class resizes, reverted): every class
+    resize whose element constructor inlines loses, its end then computed before the element's stores -- so the difference
+    is the element (reader() is a call into ai_maptable.cpp); why the original scalarised it in pass 0 is not found, and the
+    device stands in for that;
+  - taking a local object's address in pass 0 -- a reference or pointer local that pass 0's propagation folds away -- defers
+    its scalarisation to pass 1 at no code cost (UpdateNameTables: `iterator &rn = n`, marked as a modelling shape); an
+    inline taking the object by reference does not, the plain object is substituted;
+  - reading a CPnt3D member directly in two places shares only its address temporary (`&v + 8`) with a loop invariant, never
+    the load; a named float read once gives the target's single load (GetCellRepelParams).
+- **Tells from the game states, round 52** (CameraZoom::HandleNewZoom 0x1F0750 -- 0xD1C, unwritten before: SOCOM 1's body
+  with SetLensFx inlined per zoom state, SOCOM II's thermal state and starlight scope --, SetRoundStatUiVars 0x1F21B0 -- 6
+  off since round 50 -- and the teamwork rating 0x1F27C0 -- 0x678 of 0x680 since round 47 -- byte-exact; st_exit.cpp's
+  CSealStats::Reset respelled, SAME-BY-ADDRESS):
+  - FRAME SLOTS FOLLOW THE BREADTH-FIRST INLINE EXPANSION (the MSL's round 37): to put one chain's temporaries after the
+    others, write the others in the function's own text rather than wrapping the late one in another inline -- the walk's
+    begin (a CEntityItr constructor taking the list's `begin()`) and its end test (`it._it != end()`) written in the
+    function sit a pass shallower than Next()'s end(), the target's slot order (round 50 found that wrapping lets MW share
+    the end node in s7);
+  - `bool b = (a < c) != 0;` compiles to slt then sltu, as SOCOM 1 has it; `b = a < c;` gives the slt alone; two bool locals
+    declared in the wrong order take each other's saved registers (7 off in HandleNewZoom);
+  - a struct view cast at an offset, `*(T *)((char *)p + K)`, makes MW hold `p + K` in a register; a view padded from `p`
+    itself folds every field into `p`'s offsets;
+  - MW substitutes an inline's argument unless it is a global, has a side effect, is an indirection off something other than
+    an object, or is an address-taken local (mweppc's CInline.c; every expanded inline's locals count, and `(void)&x` sets
+    the flag) -- and even when the temporary is made, the first copy-propagation pass may forward it away
+    (zRemoteClientConnectsCallback 0x2BC620, still 184 off).
+- **Tells from the kit and AI states, round 58** (FaceXZ 0x60CAD0 -- 36 off since round 16 -- and CAiDodge::Destroy 0x5FAD50
+  -- open since round 13 -- byte-exact by `#pragma opt_common_subs off` in the body; CAiSSurrender::Tick 0x6078A0 (0x464)
+  and CAiSHostage::Tick 0x601910 (0x538), both unwritten before, byte-exact; LookAt 0x60DCF0 from 0x154 to 0x140 of 0x138 by
+  FaceXZ's shape; the SEALs' SetEnabled and the states' Add_Message respelled, SAME-BY-ADDRESS):
+  - `#pragma opt_common_subs off` in a function body, reset after it, reproduces a target that re-reads a struct local's
+    fields or a global in each block and keeps frame addresses out of registers; what the target does share must then be
+    shared by hand -- a local, a chained assignment, an iterator local. A scan of every written open function in the lane's
+    units with CSE off matched only these two (build/scratch/kit-r58/kit/csescan.out): it is a lever for that shape, not a
+    general one;
+  - with CSE off a copy of a struct local's offset-0 field is still propagated into each use; a `(float)` cast on the read
+    stops it;
+  - `CPnt3D(x, y, z)` loads z, y, x then stores x, y, z -- an inline's arguments are bound right to left -- which is the
+    target's matrix-translation copy;
+  - when the left operand of a float sum is an inline containing a call, MW emits the operands the other way round however
+    the sum is written; assigning the inline's result to a float local first (`float t = r; m_time = t + timer;`) restores
+    the order;
+  - a local initialised through an inline accessor is numbered as a temporary at the inline's expansion, not after the
+    parameters -- a lever when a named local's saved register is too low (CAiSHostage::Tick's SEAL: `igreplay --want` placed
+    it past @6324);
+  - `mask &= ~m; return mask | bit;` puts the AND in the mask's register, `return (mask & ~m) | bit;` in `~m`'s.
 - **Tells from the engine core, round 25** (CEntity::PurgeEntities 0x29FCB0 -- 24 off since round 24 -- byte-exact;
   CGrid::NodeGetIntersect 0x2D2890, 0x560 and unwritten before, written at the target's size and OPEN at one instruction;
   0x2D3030 named NodeGetIntersectBatch from SOCOM 1's call sites; zAnimMessageTick's Add_Message and GetIntersect /
@@ -14315,6 +14368,59 @@ open37.py lists the range's open rows and their units, rank.py ranks unwritten r
 mnemonic ratio, vsplit.py writes a `//==` probe's variants as units, sdiff.py side by side, p_xj.c the
 cross-jump probe).
 
+**Round 38c: four of the casr object's unwritten rows by SOCOM 1's bodies -- the data activation, the
+confusion callback (both byte-exact), the iso-word result and the confusion check (written, open).**
+
+- **A variable reused for a second value takes both uses' preferences** (casrActivateData, 0x620): the
+  session send's argument `arg` (a2 for `_tosControl`) reused for the version pointer gives the memcmp's
+  `addiu a2; move a0,a2`; a fresh pointer variable is coalesced straight into a0. **An unsigned switch
+  over 0, 1 and an empty case 2** is the target's tree for a two-arm check -- `beql` on 1, then `bnez`
+  into case 0's body (the test for 2 vanishes: it and the default both reach the end); cases 0 and 1
+  alone test 0 first, signed or not. Every mismatch one `goto` to a single error call written after the
+  send (cross-jumping otherwise pairs only the arms' own calls). A deactivation's `if (...) return 1;
+  return 0;` is a store-flag cross-jumped into the final send's `sltu`; the `return 0` shared with the
+  no-data test stays two branches.
+- **The genders' base a pointer of its own** for the read after the loop: `g[3]` is the unrolled loop's
+  register plus 12; `sd->gender[3]` in two arms is PRE-hoisted into a register of its own.
+- **Splitting `||` into two `if ... return 37;` adds two RTL insns** (each return is a set and a jump
+  inside the body) and so moves loop.c's unroll factor (cbCheckConfusion's first loop: 23 insns in the
+  second pass, by four; 25, by two -- as the target); and only a region that small is scheduled across
+  its blocks. Reads above a test in the unroller's odd-count copy, which is in no region, are the
+  source's statements there: the word and the score read into locals before the checks.
+- **One variable across two loops is one pseudo**: the second loop's word, live across its calls, took
+  an s-register in the first loop too (and shifted every temporary of the first loop one register up);
+  a variable per loop, while the score's variable shared by both loops reaches the priority tie
+  (4 refs over 8 insns, 10000) that the lower pseudo wins -- declared before the word, score a0, word a1,
+  the walker a2, as the target. The same rule placed casrCheckUserWordConfusion's s-registers: the handle
+  check's result and every later result one variable, each loop its own counter.
+- **c-typeck rebuilds every pointer sum pointer first**: `&cc->conf[word]`, `cc->conf + word`, `&word[...]`
+  all give `addu s0,base,index`; the target's `addu s0,index,base` is an integer sum written index first
+  (`(CONFREC *)(word * sizeof(CONFREC) + (unsigned int)cc->conf)`; written base first it misses).
+- **A float result narrowed only at its test** (`move a0,v0`, `andi` into a temporary, `sh` of the whole
+  word) is an unsigned int compared through an `(unsigned short)` cast, not an unsigned short variable.
+- **Two inits of a list walk spelled `-word - 1`** (cbIsoWordRecognised): with `word = -word` once,
+  GCSE's PRE copies the first `word - 1` into the second loop, the negation has one use and combine makes
+  it `nor`; spelled twice the negation is CSE's common value and combine's three-insn split folds each
+  pre-test into `beqz` on it. A second logistic arm written `+ -4.467109f` lets cross-jumping share both
+  arms' `add.s; jal expf`; reload's stack slots go by pseudo number (declaration order).
+- **Open, diagnosed in place**: cbIsoWordRecognised (written, 31 words, the right size: registers in the
+  head block only -- sched1 issues the garbage list's argument-based load beside len, before the vt store
+  and the index shift, so local-alloc and reload pick other registers); casrCheckUserWordConfusion
+  (written, 584 of 591 words, every variable's s-register the target's: the target keeps &c->cb, the lab
+  arrays' and the two stack arrays' addresses in s-registers throughout, spilling the saved host pointer,
+  where ours addresses them by offset); the Calculate_NbrOfItemNodes twins (three variables, one per use,
+  32-33: worse than the shared 19). Not reached: casrDoSpelling, casrCreateResult, the Chinese builders,
+  CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust, the distance passes, InitCalculateDistances.
+
+Hand-written in round 38c: `asr/casr.c` (casrActivateData and cbCheckConfusion new, byte-exact;
+cbIsoWordRecognised and casrCheckUserWordConfusion written OPEN; the result records RESREC/RESWORD/RESITEM
+typed and RESULT's reason, ISONBEST from isowdp.c's command 4, TREEWORD, CONFCHECK/CONFREC, CTXVT slots
+16-17: 63 of 65), `asr/casr.h` (LANGVT slots 18 GetAnySpeechGarbagePhenome and 62 GetpSmoothMatrix,
+language.c's table; CASR +616 `anyspeech`) -- 2 rows new to the map's byte-exact rows (2,636 bytes), no
+draft superseded; `src/lib/asr` 590 of 622 (588 of 618 before). No rows renamed (all four had SOCOM 1's
+names). No tool changed (scratch: build/scratch/gcc/r38/ -- dscore.py counts a function's differing
+instructions after alignment, vt.py and the iso/v*.py variant sets, fbits.py, rd.py).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -14777,6 +14883,54 @@ update 0x642E70: 4 of 4, whole), `medius/rt_mt_platform.c` (setNewSeed_platform:
 12 rows new to the map's byte-exact rows (`src/lib/medius` 966 -> 978 of 1,013 -> 1,021: five new rows, three
 written for the first time), none superseding a draft; 5 rows given (the platform code), 1 resized
 (0x642E70), no names. No tool changed.
+
+**Round 24b: DmeLocal.c's unwritten rows by SOCOM 1's bodies -- the object update path, NetLeave, the stream packet.**
+
+- **A one-byte message is a one-byte struct**: 0x618F70 (SOCOM 1's NetLeave grown) and 0x61B538 (open since round
+  13b on "the byte message takes slot 0") give the target's frame only so. An `unsigned char` or `unsigned short`
+  local is a PROMOTED mode on MIPS, so put_var_into_stack cannot use an ADDRESSOF for it and taking its address
+  gives it a stack slot at once, during expansion; a pointer's ADDRESSOF gets its slot only when purge_addressof
+  meets it, in insn order, after expansion -- so the byte took slot 0 ahead of pointers whose addresses were taken
+  first. A struct is never promoted: `struct { unsigned char nClient; } msg;` takes its slot in insn order, after
+  them. (0x61A118's unsigned short ask is the same: slot 16 against the target's 24.)
+- **Haifa's region limit decides interblock motion**: 0x61A6D8 (SOCOM 1's NetSendObjectFullUpdate's head; the body
+  is 0x61A488 now) had its first call's arguments moved above the range test by sched1's interblock scheduling --
+  the function was exactly 10 blocks at sched1, MAX_RGN_BLOCKS. Its sends written as an if/else before one `return
+  DME_OK` (a `return` in each arm before) make the join an eleventh block: no region, no motion, the same code
+  after reorg (the join's `move v0,zero` stolen into the first arm's `b`). -fno-sched-interblock reproduces it; not
+  the vendor's flag.
+- **A field's type orders its load against stores**: 0x61B2A0 (SOCOM 1's GlobalFieldErrorExceedsThreshold grown: a
+  kind-5 field compared by its own function) loads the comparison after filling the argument struct, so its null
+  test's `return 0` is an annulled slot; that holds only with the field an `int` cast at the call -- its load then
+  shares the int stores' alias set (strict aliasing on). As a function pointer or `void *` sched1 hoists the load
+  above the stores and the `return 0` is if-converted (8 bytes short). The update path's records are typed apart
+  from dme.c's (DmeField, DmeStructure, DmeObjectData: NetField's bytes from 0x10 are a structure field's interval,
+  kind, comparison and flag byte; DmeObject stays the 12-byte head round 13b proved).
+- **A 4-byte header copied with lw/sw is a memcpy into a word-aligned buffer**: 0x61A6D8's header (two bytes and a
+  halfword) is 2-aligned, so a struct assignment is lwl/lwr/swl/swr; memcpy gives lw/sw when both pointers are
+  known word-aligned -- a BLKmode local's DECL_ALIGN is BIGGEST_ALIGNMENT after expand_decl, the buffer's type is
+  word-aligned (`__attribute__((aligned(4)))` stands for whatever made SCEA's so). Its address is a local (one
+  register for the fill's +4 and both sends).
+- **The getter's result and its pointer tested together** (round 5b's shape) closed 0x61B3E0 (NetGetDataStreamPacket
+  over the ring): the `return 0` block then has two predecessors, is not if-converted, and jump2 cross-jumps the
+  last guard's into it -- the target's in-line `b; move v0,zero`.
+- **A function's position in the unit moves other functions**: written at its address, 0x618F70 sent func_0061C510's
+  element high part into s3 across DMEmalloc (unused declarations or small functions there do not; its seven
+  closing stores do, in that body only); and a changed 0x61A118 body moved 0x618F70, compiled after it, by 8
+  bytes (its stores through pClient stopped reloading the slot). New functions go at the unit's END (each new row
+  then moves only itself); a later change above them is re-checked against them.
+- **Shapes, measured**: SOCOM 1's closing stores rotated (0x618F70: the scheduler issued the first last); the length
+  set before the class byte (0x61A6D8, 8 of 24 orders); the clear loop its own counter (0x61A328, round 13b's rule:
+  a2 where the walk's s0 was shared) and the filter read before the mask's two stores (1 of 6); the data pointer
+  advanced before the length's store so one product serves both (0x61A488, 3 of 24).
+- **Open, diagnosed in place**: 0x61A118 (registers only with the shapes above, not kept -- it moves 0x618F70; the
+  creator's pseudo takes a2 for the target's a0), and the earlier opens (not reached: rounds 21b-23b's list).
+
+Hand-written in round 24b: `medius/dmelocal.c` (+7: 0x618F70, 0x61A6D8, 0x61A328, 0x61B2A0, 0x61A488, 0x61B3E0 written,
+0x61B538 closed; 96 of 100) -- 7 rows new to the map's byte-exact rows (`src/lib/medius` 978 -> 985 of 1,021 -> 1,027),
+none superseding a draft; no rows named (the bodies keep placeholders: DME's API names belong to Dme.c's locked
+wrappers, round 7b), data names used (CurrentNetTime, NetStructureList, MyClientIsJoined, ActiveNetObjectCount). No
+tool changed.
 
 ## Open, and next
 

@@ -52,7 +52,9 @@ struct CTXVT {
     int (*GetNbrWord)(CTXVT *vt);                   /* +36, slot 9 */
     void *s10[5];
     int (*IsSpellingContext)(CTXVT *vt);            /* +60, slot 15 */
-    void *s16[4];
+    unsigned short *(*GetpLex)(CTXVT *vt);          /* +64, slot 16 */
+    int *(*GetpBeginOfWords)(CTXVT *vt);            /* +68, slot 17: read as words here */
+    void *s18[2];
     int (*IsIsoWordContext)(CTXVT *vt);             /* +80, slot 20 */
 };
 
@@ -106,24 +108,52 @@ typedef struct SESSIONDATA {
 } SESSIONDATA;
 
 /* a recognition result: its items (a word sequence each), each with its words */
+typedef struct RESREC {
+    int f0;                             /* +0 */
+    int score;                          /* +4: -1 when not scored */
+    int word;                           /* +8 */
+} RESREC;
+
 typedef struct RESWORD {
-    int pad[3];
-    void *p;                            /* +12: heap */
+    int n;                              /* +0: 1 */
+    int start;                          /* +4: ms, -1 when not timed */
+    int end;                            /* +8 */
+    RESREC *p;                          /* +12: heap */
 } RESWORD;
 
 typedef struct RESITEM {
     int n;                              /* +0: words */
-    int pad[4];
+    int conf;                           /* +4: the confidence, 0-10000 */
+    int score;                          /* +8 */
+    int start;                          /* +12: ms */
+    int end;                            /* +16 */
     RESWORD *words;                     /* +20: heap */
 } RESITEM;
 
 typedef struct RESULT {
     int n;                              /* +0: items */
     RESITEM *items;                     /* +4: heap */
+    int reason;                         /* +8: 2 the timeout, 4 rejected, else 0 */
 } RESULT;
 
+/* the iso-word block's N best as its command 4 sends them (isowdp.c: its record from +176): a
+ * word and its score per entry, the best first, and the garbage paths' scores per frame */
+typedef struct ISONBEST {
+    int *best;                          /* +0: word, score pairs; a negative word is -(k + 1),
+                                         * k the first of a list of the context tree's words */
+    unsigned int ngarbage;              /* +4 */
+    unsigned int *garbage1;             /* +8: the single-word garbage's */
+    unsigned int *garbage2;             /* +12: the sentence garbage's */
+} ISONBEST;
+
+/* the context tree's word lists (+1080): a word and the next entry, -1 at the end */
+typedef struct TREEWORD {
+    int word;
+    int next;
+} TREEWORD;
+
 extern void casrCreateResult(CASR *c, RESULT **r, int frame, int how);
-extern int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, int arg1, int arg2);
+int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *nb, int n);
 int casrGetParam(CASR *c, int id, unsigned int *value);
 int casrSetParam(CASR *c, int id, unsigned int value);
 extern int CreateSecondPassContext(CASR *c);
@@ -183,6 +213,118 @@ static __inline__ void casrFreeResult(CASR *c, RESULT *r)
     heap_Free(c->heap, r);
 }
 
+/* the iso-word block's result: an item per entry of the N best, its confidence from the score
+ * over the sentence garbage's per frame (a logistic curve at the ends, a line between), its words
+ * from the context tree's list when the entry names one; reason 2 when the utterance outran the
+ * timeout, 4 when the best is above the engine's rejection (_tosControl 99). SOCOM 1's body
+ * (round 38c), as SOCOM 1 has it but for expf: the spilled locals' slots in declaration order (i,
+ * then base, garbage, frames, len: reload's stack slots go by pseudo number); x and the confidence
+ * one variable (the division and both arms land in $f12); the second logistic's constant added as a
+ * negative (`+ -4.467109f`: both arms' `add.s; jal expf` tail is then one, cross-jumped); a list's
+ * first entry spelled `-word - 1` in both loops (with `word = -word` GCSE's PRE copies the first
+ * `word - 1` into the second and combine folds the lone negation into a `nor`; spelled so, the
+ * negation is CSE's common value and combine folds each pre-test into `beqz` on it); vt.data before
+ * frames (sched1's order of the head). OPEN, 31 words, the right size: registers in the head block
+ * only -- sched1 issues the garbage list's load (`nb->garbage2`, an argument-based address, which
+ * alias.c separates from the vt store on the frame) at t=4 beside len, before the vt store and the
+ * index shift, so local-alloc gives it a0 and reload takes v0 for nb; the target's registers (the
+ * list's pointer in v1, nb reloaded into a0, n into a1, base reloaded in the preheader) are those
+ * of the load issued after the store and the shift. Every order of the head's four statements,
+ * `*(p + len)`, a temporary, a volatile read: no change. */
+int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *nb, int n)
+{
+    int i;
+    unsigned int base, garbage, frames, len;
+    RESULT *r;
+    CTXVT vt;
+    int *p;
+    TREEWORD *list;
+    unsigned int score, thr, best;
+    int j, k, cnt, word, err;
+    float x, conf;
+
+    base = *c->frame_base;
+    p = nb->best;
+    r = heap_Alloc(c->heap, sizeof(RESULT));
+    if (r == 0)
+        return 1;
+    r->n = n;
+    if (n != 0)
+        r->items = heap_Alloc(c->heap, n * sizeof(RESITEM));
+    else
+        r->items = 0;
+    FillContextV2VirtualTable(&vt);
+    vt.data = c->ctx->data;
+    frames = c->frames;
+    len = frames - base;
+    garbage = nb->garbage2[len];
+    for (i = 0; i < n; i++) {
+        word = *p++;
+        score = *p++;
+        conf = ((float)(score - c->wtp) - (float)garbage) / (float)len;
+        if (conf < -26.0f)
+            conf = 10000.0f / (1.0f + expf(conf * 0.085444444f + 0.027330978f));
+        else if (conf <= 78.0f)
+            conf = (91.0f - conf) * 76.9f;
+        else
+            conf = 10000.0f / (1.0f + expf(conf * 0.085444444f + -4.467109f));
+        r->items[i].conf = conf;
+        r->items[i].score = score;
+        r->items[i].start = base * 110;
+        r->items[i].end = frames * 110;
+        if (word < 0) {
+            cnt = 0;
+            list = c->tree_words;
+            for (k = -word - 1; k != -1; k = list[k].next)
+                cnt++;
+            r->items[i].words = heap_Alloc(c->heap, cnt * sizeof(RESWORD));
+            r->items[i].n = cnt;
+            j = cnt - 1;
+            for (k = -word - 1; k != -1; k = list[k].next) {
+                r->items[i].words[j].p = heap_Alloc(c->heap, sizeof(RESREC));
+                r->items[i].words[j].n = 1;
+                r->items[i].words[j].start = -1;
+                r->items[i].words[j].end = -1;
+                r->items[i].words[j].p->word = list[k].word;
+                r->items[i].words[j].p->f0 = 0;
+                r->items[i].words[j].p->score = -1;
+                j--;
+            }
+        } else {
+            r->items[i].words = heap_Alloc(c->heap, sizeof(RESWORD));
+            r->items[i].n = 1;
+            r->items[i].words->p = heap_Alloc(c->heap, sizeof(RESREC));
+            r->items[i].words->n = 1;
+            r->items[i].words->start = base * 110;
+            r->items[i].words->end = (base + c->frames) * 110;
+            r->items[i].words->p->word = word;
+            r->items[i].words->p->f0 = 0;
+            r->items[i].words->p->score = score;
+        }
+    }
+    if (c->p420 != 0 && c->p420 < c->frames)
+        r->reason = 2;
+    else {
+        thr = -1;
+        best = -1;
+        if (nb->best != 0)
+            best = nb->best[1];
+        if (_tosControl(c->event, 99, (int)&thr, 0) != 0)
+            return 1;
+        if (thr < best)
+            r->reason = 4;
+        else
+            r->reason = 0;
+    }
+    err = c->cb.result_cb(r, c->info);
+    casrFreeResult(c, r);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    return 0;
+}
+
 /* the end of an utterance: a second pass when parameter 15 asks for one, else the result now.
  * Round 24c, byte-exact: the second pass's two arguments stored before its flag (8 of the 24
  * orders of the arm's four statements match, build/scratch/gcc/r24c/v_dsp.py; round 9c's order --
@@ -209,7 +351,7 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         if (_tosControl(c->event, 7, 0, 0) != 0)
             return 1;
         if (c->iso_word)
-            err = cbIsoWordRecognised(c, a1, a2, arg1, arg2);
+            err = cbIsoWordRecognised(c, a1, a2, (ISONBEST *)arg1, arg2);
         else {
             casrCreateResult(c, &r, arg1, 1);
             ret = c->cb.result_cb(r, c->info);
@@ -949,6 +1091,137 @@ int casrSetParam(CASR *c, int id, unsigned int value)
     return (unsigned char)c->last_error;
 }
 
+extern void FillLanguageVirtualTable(LANGVT *vt);
+
+/* the data activated: a language (4099) -- its table allocated, a context let go, the language sent
+ * (37), the feature blocks by the codebooks' count (93 below five, else 94: the sample format's
+ * second form follows), parameter 15's second pass refused for a language that has none (bit 16),
+ * the engine's record 85 kept over the change (86), each codebook's smoothing matrix and the
+ * any-speech garbage phoneme read -- or a session's data (4): the genders it names enabled by their
+ * warp masks, then its genders, sample format and language version checked against the engine's
+ * and its engine data sent (38); none deactivates the data. SOCOM 1's body, the genders' warp masks
+ * SOCOM II's. Round 38c, byte-exact: the deactivation's `return 0` shared with the no-data test (a
+ * `return 0` of its own after `if (... != 0) return 1;` is a store-flag, cross-jumped into the final
+ * send's); the send's argument one variable set on both paths, and that variable reused for the
+ * version pointer (its a2 preference from _tosControl: the memcmp's `addiu a2; move a0,a2`); the
+ * genders' base a pointer of its own for the sample format's read (`g[3]` is the loop's register
+ * plus 12, `sd->gender[3]` a PRE-hoisted register); the engine state's check an unsigned switch with
+ * an empty case 2 (the tree tests 1, then 0 by `bnez` into case 0's body; with cases 0 and 1 alone it
+ * tests 0 first); every mismatch one `goto` to a single error call after the send. */
+int casrActivateData(CASR *c, IMPORT *data)
+{
+    int err;
+    int rec[8];
+    unsigned int second;
+    int lres;
+    int sres;
+    SESSIONDATA *sd;
+    CASRLOG *ev;
+    unsigned int i, n, mask;
+    WARP *warp;
+    void *arg;
+    int *g;
+
+    c->last_error = 0;
+    err = casrCheckHandle(c);
+    if (err)
+        return err;
+    if (c->state != 0 && c->state != 1 && c->state != 20 && c->state != 2)
+        return _tosErrorLog(c->event, 7);
+    if (data == 0) {
+        if (c->data != 0) {
+            c->data = 0;
+            heap_Free(c->heap, c->lng);
+            c->lng = 0;
+            if (c->ctx != 0 && casrActivateContext(c, 0, 0) != 0)
+                return 1;
+            if (_tosControl(c->event, 95, 0, 0) != 0)
+                return 1;
+        }
+        return 0;
+    }
+    sd = data->data;
+    switch (sd->kind) {
+    case 4099:
+        lres = 0;
+        if (c->data == 0) {
+            c->lng = heap_Alloc(c->heap, 316);
+            if (c->lng == 0)
+                return 1;
+            FillLanguageVirtualTable(c->lng);
+        }
+        c->lng->data = data->data;
+        if (c->ctx != 0 && casrActivateContext(c, 0, 0) != 0)
+            return 1;
+        ev = c->event;
+        if (_tosControl(ev, 37, (int)c->lng, 0) != 0)
+            return 1;
+        if ((unsigned short)c->lng->GetNbrCodeBook(c->lng) < 5) {
+            if (_tosControl(ev, 93, 0, 0) != 0)
+                return 1;
+            if (c->uw_state == 2 && c->f624 == 5)
+                c->f624 = 4;
+        } else {
+            if (_tosControl(ev, 94, 0, 0) != 0)
+                return 1;
+            if (c->uw_state == 2)
+                c->f624 = 5;
+        }
+        if (casrGetParam(c, 15, &second) != 0)
+            return 1;
+        if (second != 0 && c->lng->CheckBitField(c->lng, 16) != 0)
+            return _tosErrorLog(ev, 28);
+        if (_tosControl(ev, 85, (int)rec, 0) != 0)
+            return 1;
+        if (_tosControl(ev, 86, (int)rec, 0) != 0)
+            return 1;
+        c->gender = 0x7FFFFFFF;
+        n = (unsigned short)c->lng->GetNbrCodeBook(c->lng);
+        for (i = 0; i < n; i++)
+            c->smooth[i] = c->lng->GetpSmoothMatrix(c->lng, c->lng->GetpCodeBook(c->lng, i));
+        c->anyspeech = c->lng->GetAnySpeechGarbagePhenome(c->lng);
+        c->data = data;
+        return _tosControl(ev, 38, 0, (int)&lres) != 0;
+    case 4:
+        sres = 0;
+        arg = 0;
+        if (sd->size != 8) {
+            g = sd->gender;
+            mask = 0;
+            warp = c->lng->GetpWarpFactors(c->lng);
+            for (i = 0; i < 3; i++)
+                if (sd->gender[i] != 0)
+                    mask |= warp[i].mask;
+            c->gender = mask;
+            if (casrEnableGenders(c, mask) != 0)
+                return _tosErrorLog(c->event, 20);
+            if (sd->gender[0] != c->gender_on[0] || sd->gender[1] != c->gender_on[1]
+                || sd->gender[2] != c->gender_on[2])
+                goto mismatch;
+            switch ((unsigned int)c->uw_state) {
+            case 0:
+                if ((unsigned int)(g[3] - 1) < 3)
+                    goto mismatch;
+                break;
+            case 1:
+                if ((unsigned int)(g[3] - 2) < 2)
+                    goto mismatch;
+                break;
+            case 2:
+                break;
+            }
+            arg = sd->lng.w;
+            if (c->data == 0 || memcmp(arg, (*(LNGFILE **)c->data)->hdr.w, 128) != 0)
+                return _tosErrorLog(c->event, 19);
+            arg = sd + 1;
+        }
+        return _tosControl(c->event, 38, (int)arg, (int)&sres) != 0;
+    mismatch:
+        return _tosErrorLog(c->event, 34);
+    }
+    return _tosErrorLog(c->event, 12);
+}
+
 /* the second pass over the labelled utterance: its own context (the Chinese one when the language
  * says so), the labels sent again with the timeout (parameter 1) off, then the context back */
 /* the user words' tables as the scheduler's command 36 takes them with the iso-word tree */
@@ -1335,6 +1608,238 @@ int casrStartUserWordTraining(CASR *c, void *a, void *b)
     c->lab_pos[2] = c->lab_buf[2];
     c->train_state = 4;
     return userwordStartUserWordTraining(c, 3, a, b);
+}
+
+/* the user-word confusion check's record (casrCheckUserWordConfusion's, the host data of its
+ * result callback): the word trained, and per word of the context its worst confusion so far */
+typedef struct CONFREC {
+    unsigned short conf;                /* +0: 0-100 */
+    short pad2;
+    int word;                           /* +4 */
+} CONFREC;
+
+typedef struct CONFCHECK {
+    int word;                           /* +0 */
+    CONFREC *conf;                      /* +4: by word */
+} CONFCHECK;
+
+/* the result callback of the confusion check: every item must be a three-word sequence whose
+ * second word is one word (else 37); the score of the item naming the trained word, then each
+ * item's confusion with it, 2e / (1 + e) of e = exp(-0.0006 x the score difference), capped at 1,
+ * kept per word as a percentage when worse than the one kept. SOCOM 1's body, exp become expf.
+ * Round 38c, byte-exact: the two `return 37` checks apart (one `||` leaves the first loop 23 RTL
+ * insns in loop.c's second pass, unrolled by four; apart, 25 and by two, as the target -- and only a
+ * region of that size is scheduled across its blocks); the word and the score read into locals
+ * before the checks (the target loads them above the first test even in the unroller's odd-count
+ * copy, which is no region), the score's variable shared by both loops and declared before the first
+ * loop's word (refs 4 over 8 insns: 10000, the tie to the lower pseudo -- score a0, word a1, the
+ * walker a2) and the second loop's word a variable of its own (one variable lives across the second
+ * loop's calls and takes an s-register in the first); the percentage an unsigned int narrowed at the
+ * test (`move a0,v0`, the store of the whole word); the record's address an integer sum written
+ * index first (`addu s0,v0,v1`: c-typeck rebuilds every pointer sum pointer first, and the integer
+ * sum written base first is the miss). */
+int cbCheckConfusion(RESULT *r, CASRINFO *info)
+{
+    RESITEM item;
+    RESWORD w;
+    RESREC rec;
+    RESREC rec2;
+    CONFCHECK *cc;
+    CONFREC *p;
+    int i, best, score, id, word;
+    double e, ratio;
+    unsigned int v;
+
+    best = 0x7FFFFFFF;
+    cc = info->user;
+    for (i = 0; i < r->n; i++) {
+        item = r->items[i];
+        w = item.words[1];
+        rec = *w.p;
+        id = rec.word;
+        score = item.score;
+        if (item.n != 3)
+            return 37;
+        if (w.n != 1)
+            return 37;
+        if (id == cc->word) {
+            best = score;
+            break;
+        }
+    }
+    for (i = 0; i < r->n; i++) {
+        item = r->items[i];
+        w = item.words[1];
+        rec2 = *w.p;
+        word = rec2.word;
+        if (item.n != 3)
+            return 37;
+        if (w.n != 1)
+            return 37;
+        score = item.score;
+        e = expf((score - best) * -0.0006);
+        ratio = (e + e) / (e + 1.0);
+        if (ratio > 1.0)
+            ratio = 1.0;
+        p = (CONFREC *)(word * sizeof(CONFREC) + (unsigned int)cc->conf);
+        v = ratio * 100.0;
+        if (p->conf < (unsigned short)v)
+            p->conf = v;
+    }
+    return 0;
+}
+
+/* the trained word's confusion with a context's words: the context's lexicon searched for the
+ * trained transcription (a pronunciation of type 2 of its length, phoneme for phoneme), each word's
+ * record cleared, then the three training utterances recognised again under the context with
+ * cbCheckConfusion as the only callback (timeouts off, the N best 20, no second pass) and every
+ * callback and parameter put back. SOCOM 1's body (round 38c): the handle check's result and every
+ * later result one variable (the target's s3 throughout), each loop its own counter (one counter
+ * over the four loops crosses the calls and takes s1: round 25c's rule). OPEN, 584 words of 591:
+ * every s-register of c, the result, found, conf, size, ctx and the lexicon's walker and base is the
+ * target's; the target keeps &c->cb, &c->lab_buf[0], &c->lab_pos[0], &bufs[0] and &sizes[0] in
+ * s7, s5, s6, s4 and s1 for the whole function (index 0 through them too), so the saved host pointer
+ * spills to 196(sp), where ours addresses them by offset and keeps &saved in s7 (the missing words
+ * are those address set-ups, the spill and its reload); tlen and trans also land in a0/a1 swapped
+ * (both statement orders and both declaration orders tried). */
+int casrCheckUserWordConfusion(CASR *c, IMPORT *ctx, CONFREC *conf, unsigned int size)
+{
+    CTXVT vt;
+    CASRCBTABLE saved;
+    unsigned char *bufs[3];
+    int sizes[3];
+    CONFCHECK cc;
+    unsigned int params[5];
+    int err = casrCheckHandle(c);
+    int found = -1;
+    unsigned short *lex, *lp, *next, *q, *trans;
+    int *bow, *p, *end;
+    unsigned int nword, tlen, i, k, j, n;
+    int r2, ret;
+    void *user;
+
+    if (err)
+        return err;
+    if (c->state != 20)
+        return _tosErrorLog(c->event, 7);
+    if (conf == 0)
+        return _tosErrorLog(c->event, 18);
+    if (ctx == 0)
+        return _tosErrorLog(c->event, 6);
+    if (memcmp(((CTXDATA *)ctx->data)->version, (*(LNGFILE **)c->data)->hdr.w, 128) != 0)
+        return _tosErrorLog(c->event, 19);
+    FillContextV2VirtualTable(&vt);
+    vt.data = ctx->data;
+    lex = vt.GetpLex(&vt);
+    lp = lex;
+    bow = vt.GetpBeginOfWords(&vt);
+    nword = vt.GetNbrWord(&vt);
+    tlen = (unsigned int)*c->trans_size >> 1;
+    trans = *c->trans;
+    if (size < nword * sizeof(CONFREC))
+        return _tosErrorLog(c->event, 38);
+    p = &bow[nword + 2];
+    for (i = 0; i < nword; i++) {
+        for (end = &bow[bow[i + 1]]; p <= end; p++) {
+            next = &lex[*p];
+            if (*lp++ == 2) {
+                if (next - lp == tlen) {
+                    for (q = trans; lp < next && *lp == *q; lp++, q++)
+                        ;
+                    if (lp == next) {
+                        found = i;
+                        break;
+                    }
+                }
+                lp = next;
+            }
+        }
+        if (found != -1)
+            break;
+    }
+    if (found == -1)
+        return _tosErrorLog(c->event, 37);
+    for (k = 0; k < nword; k++) {
+        conf[k].word = k;
+        conf[k].conf = 0;
+    }
+    cc.word = found;
+    cc.conf = conf;
+    saved = c->cb;
+    user = c->info->user;
+    err = casrGetParamNoClearErrorLog(c, 1, &params[0]);
+    err |= casrGetParamNoClearErrorLog(c, 2, &params[1]);
+    err |= casrGetParamNoClearErrorLog(c, 13, &params[2]);
+    err |= casrGetParamNoClearErrorLog(c, 15, &params[3]);
+    err |= casrGetParamNoClearErrorLog(c, 16, &params[4]);
+    if (err)
+        return err;
+    c->cb.ts_cb = 0;
+    c->cb.start_cb = 0;
+    c->cb.result_cb = (int (*)(void *, void *))cbCheckConfusion;
+    c->cb.state_cb = 0;
+    c->cb.train_cb = 0;
+    c->cb.abnorm_cb = 0;
+    c->cb.gain_cb = 0;
+    c->cb.askgain_cb = 0;
+    c->info->user = &cc;
+    err = casrSetParamNoClearErrorLog(c, 1, 0);
+    err |= casrSetParamNoClearErrorLog(c, 2, 0);
+    err |= casrSetParamNoClearErrorLog(c, 13, 20);
+    err |= casrSetParamNoClearErrorLog(c, 15, 1);
+    err |= casrSetParamNoClearErrorLog(c, 16, 0);
+    if (err == 0) {
+        sizes[0] = c->lab_pos[0] - c->lab_buf[0];
+        err = 1;
+        bufs[0] = heap_Alloc(c->heap, sizes[0]);
+        if (bufs[0] != 0) {
+            memcpy(bufs[0], c->lab_buf[0], sizes[0]);
+            for (j = 1; j < c->uw_recs_needed; j++) {
+                bufs[j] = c->lab_buf[j];
+                sizes[j] = c->lab_pos[j] - c->lab_buf[j];
+            }
+            err = casrActivateContext(c, ctx, 1);
+            if (err == 0) {
+                for (n = 0; n < c->uw_recs_needed; n++) {
+                    err = casrStart(c);
+                    if (err != 0)
+                        break;
+                    err = casrAcquisition(c, 3, bufs[n], sizes[n]);
+                    if (err != 0)
+                        break;
+                    err = casrStop(c);
+                    if (err != 0)
+                        break;
+                }
+                r2 = casrActivateContext(c, 0, 1);
+                if (err == 0)
+                    err = r2;
+                if (c->state != 20) {
+                    c->state = 20;
+                    if (c->cb.state_cb != 0) {
+                        ret = c->cb.state_cb(c->state, 0, c->info);
+                        if (c->last_state == 0 && ret != 0) {
+                            c->last_state = ret;
+                            _tosErrorLog(c->event, 27);
+                        }
+                    }
+                }
+            }
+            memcpy(c->lab_buf[0], bufs[0], sizes[0]);
+            c->lab_pos[0] = c->lab_buf[0] + sizes[0];
+            heap_Free(c->heap, bufs[0]);
+        }
+    }
+    c->cb = saved;
+    c->info->user = user;
+    r2 = casrSetParamNoClearErrorLog(c, 1, params[0]);
+    r2 |= casrSetParamNoClearErrorLog(c, 2, params[1]);
+    r2 |= casrSetParamNoClearErrorLog(c, 13, params[2]);
+    r2 |= casrSetParamNoClearErrorLog(c, 15, params[3]);
+    r2 |= casrSetParamNoClearErrorLog(c, 16, params[4]);
+    if (err == 0)
+        err = r2;
+    return err;
 }
 
 /* the segmentation's table: one block of 3 x (each utterance's length + 2) shorts per gender, and

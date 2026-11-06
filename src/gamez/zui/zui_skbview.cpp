@@ -320,7 +320,9 @@ void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector
  * address, a function-scope `CSkbBmpRows &` to the rows, a row pointer stepped by the outer loop
  * (`row++`, through `(*row)[j]` too), the nested accessors inside a hand-written guard around a
  * do-while (the guard rotates them back to 0x25C) -- MW folds the row into the key's induction in
- * every form; the target's s1 = j*176 from 0 */
+ * every form; the target's s1 = j*176 from 0. Round 37: the row through `&...m_bmps[0]` (the engine
+ * core's offset-0 rule: never a common subexpression) -- indexed, plus j, or a row pointer before the
+ * loop -- and a byte offset `j * sizeof(CBmpWithNode)` off the row: all 0x25C */
 static inline float SkbLerp(float a, float b, float t)
 {
     return a + t * (b - a);
