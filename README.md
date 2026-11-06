@@ -13874,6 +13874,62 @@ DmeFree, 0x615068, NetFreeRemoteObject, 0x619138, 0x6192A0, and 0x61C9E8 closed)
 (`src/lib/medius` 934 -> 949 of 1,002), 12 rows new to the map's byte-exact rows, 3 superseding matched drafts
 (NetResetTime, DmeFree, 0x615068); 2 rows named, 7 data rows. No tool changed.
 
+**Round 21b: arms SCEA wrote twice, guards the target branches past, three enums, the message registry named.**
+
+- **A two-way choice can carry its whole tail in each arm**: rt_p2p's address query 0x639940 tests the
+  chosen connection inside both arms of its `nWhich` choice (call or copy in each); cross-jumping merges
+  the two tails after reload, so each arm keeps its own copy of the entry's offset (s1, live across the
+  copy's strncpy) and of the -1 -- the target's duplicated `li a0,-1; sll s1,v0,3`. One test after the
+  arms is right in everything but those copies and 8 bytes long. The send 0x63C078 is the same idea:
+  `if (A && a) send(A); else if (B && b) send(B); else return 6;`, its two calls cross-jumped.
+- **A range test the target branches past is `||`'s two predecessors**: `if (n >= 0 && n < count)
+  {...} else return 8;` (0x639940) and `if (n < 0 || n >= count) return 8;` (0x63C078) leave the
+  `return 8` block with two incoming edges, which if-conversion never hoists -- the target's `li v0,8`
+  in a delay slot, v0 free for the count's compare. 0x6398C0's connection test is positive (`!= -1`
+  first, the second connection in the else).
+- **Guards where the target's v0 is a return value early** (round 14b's rule, the other way):
+  func_0061D108 ends in guards (`if (pClient == 0) return DME_OK;` -- the call's zero known in v0, the
+  target's beqzl to the epilogue), func_0061D320's table test is a guard (the hoisted `return 0` takes
+  v0, so the table's address takes a0 and the branch's slot the zero; the loop inside a positive test
+  was 8 bytes short).
+- **An enum is its own alias class, three times more**: DmeWorld's state at 0x438 (`DmeWorldState`,
+  dmelocal.h) closes func_0061D530 (open since round 13b: an `int` field's load stays behind the int
+  report's stores written before it -- the report's address is taken and the world pointer has no
+  known base -- an enum's moves ahead, as the target's do), and STREAM_INFO's two kind words close
+  func_00644610 (each port loaded before the kind's store). Where a target loads a field ahead of
+  stores this compile keeps it behind, try the field (or the stored word) as an enum.
+- **A call argument's base comes first from a pointer local**: rt_table's row clear 0x63CBD0 (open
+  since round 14b, 1 word) is `p = gpTable2 + nRow * gnTableCols; memset(p, 0, ...)` -- the sum passed
+  straight to memset gives `addu a0,a0,a3` in all thirteen spellings tried (`&a[i]`, char casts,
+  locals for the offset, operand orders).
+- **One statement's position**: func_00617610's port store is the third of nine (after `pParams[2]`),
+  the only placement that lets sched1 issue its load where the target does.
+- **Names**: 0x620BD8 `NetRegisterMessageStart` and 0x620C60 `NetMessageField` (`s1:calls+order`: the
+  game's registration 0x2B8660 calls the first before each message and the second as (message,
+  &message.field, size, count) per field, as SOCOM 1's DMERegister__Fv calls those two; Dme.c's
+  wrappers in SOCOM 1's object order, over 0x623EF8/0x623F00, both `return 0` stubs in SOCOM II).
+  0x6209B0/0x620A88 (NetGetBufferStatus's and NetSetSendAggregationInterval's wrappers by their bodies)
+  stay placeholders: nothing in the image calls them (no jal, no stored address). The game states'
+  fts_remote.cpp and the online lane's zNetDme.cpp/zNetVoice.cpp spell the two by placeholder (resolved
+  by address; theirs to respell).
+- **Open, diagnosed in place**: rt_p2p's searches 0x639A90/0x63B410 (the loop is the target's as `for
+  (i = 0; ; i++) { if (i >= n) break; ... }`; the second guard `if (pP2p == 0) return 2;` is its own
+  `jr ra` in the target -- not if-converted, the -2 stored through v0 -- where ce converts it here:
+  IF-CASE-1, six spellings), 0x639FB8 (2: sched1 issues the three entry stores by register weight --
+  the base's and the 7's deaths put nState first; all six orders and a chained -1 tried; the `return 9`
+  positive closed the other two words), func_00617560 (7: the enum puts the loads first in sched1's
+  order, but the report's 1 issues beside the memset call and lives across them in a1), rt_list's init
+  (one word: `return 3` tests the call's own v0, so the target branches to it with `li v0,3` in the
+  slot), 0x63C8A0 (registers: n's pseudo, 5 refs over 11 insns, takes a1 before nRow), and the earlier
+  opens.
+
+Hand-written in round 21b: `medius/rt_p2p.c` (+3: 0x6398C0, 0x639940, 0x63C078; 25 of 29), `medius/dmelocal.c`
+(+4: 0x61D108, 0x61D320, 0x617610, 0x61D530; 89 of 94), `medius/rt_table.c` (+1, 0x63CBD0: 4 of 6),
+`medius/streammedia.c` (+1, 0x644610: 34 of 39), `medius/dme.c` (two wrappers renamed: 90 of 90), and three
+opens nearer (0x639FB8, 0x639A90, 0x63B410: d 4/37/34 -> 2/6/6; rt_list's init d 27 -> 14) -- 9 rows new to
+the map's byte-exact rows (`src/lib/medius` 949 -> 958 of 1,002), none superseding a draft; 2 rows named.
+No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
