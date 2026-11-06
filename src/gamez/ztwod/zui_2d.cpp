@@ -917,7 +917,11 @@ void CTeleType::SetString(const char *s, bool translate)
  * is the target's. Tried: the cells assigned straight (interleaved stores), a CPnt3D built by its
  * constructor (y and z swapped: arguments right to left), the parts as an array of 0x450-byte
  * {object, offset} walked by a loop (not unrolled, two registers more), an inline setter taking the
- * three floats (23) */
+ * three floats (23). Round 61's replay (igdump, igreplay --target): the GPRs differ only in the five
+ * address temporaries' order -- &p.z's (@10258) moved to 42.5, right after &p.y's, gives every
+ * register; here pos.z's plain copy of p.z is propagated into the third cell's store, so p.z's
+ * address is first seen after the cells' (the target loads p.z with the other loads, before any
+ * store); pos copied whole from p (`pos = p;` then the two offsets added) keeps that order (25) */
 void CPopUpDialog::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
 {
     CPnt3D p = CPnt3D::zero;
@@ -3640,7 +3644,15 @@ bool CUIListBox::HighlightPrev()
  * result assigned or kept, insert(end(), item) for the push_back (6 each); round 56: braces round
  * the push_back, the iterator at function scope (6), the push_back through a one-level-deeper
  * inline wrapper, by reference or by value (7, 0xF4: its temporaries then sink below the position
- * copy) -- the target's order reads like SOCOM 1's two-level push_back (include/list's "vc") */
+ * copy) -- the target's order reads like SOCOM 1's two-level push_back (include/list's "vc").
+ * The MSL headers round 36 (build/p36/additem.py, untracked): with list<T *>::insert returning the
+ * BASE iterator directly (`typename base::iterator insert(...) { return base::insert(...); }`) the
+ * insert's return slot is the caller's, 68 -- the slots right -- and with `int i = 0;` declared after
+ * the iterator (or the walk a while) AddItem is BYTE-EXACT; but the header costs 0x510B90 (the
+ * wrapper's out-of-line insert, which wraps the base's result through a temporary), CGraph::
+ * BuildRoute 0x2D14A0 and CSched_Manager::AddTask 0x34E6B0 (their insert slots below the other
+ * temporaries): +1 / -3, not applied (include/list's note). Under today's header that spelling is
+ * 4 off */
 void CUIListBox::AddItem(ListItem *item, int where)
 {
     item->SetFont(m_font);

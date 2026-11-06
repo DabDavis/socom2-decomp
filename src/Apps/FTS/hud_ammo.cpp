@@ -250,7 +250,9 @@ void CAmmoDisplay::SetTrans(float trans)
  * (v38) after it (40.5-42.5); a named unsigned char local before or after `own` (initialised,
  * assigned, dead-zeroed first, an int of the cast) and an inline narrowing it (by parameter, cast or
  * local) all fold back to the same temporary: 7. Round 56: the parameter itself reassigned narrowed
- * (`mags = (unsigned char)mags;` before the switch, 11; inside the switch's expression, 7). */
+ * (`mags = (unsigned char)mags;` before the switch, 11; inside the switch's expression, 7). Round
+ * 61: the switch as an if / else chain on a byte local or on the narrowed parameter (0x1B8; in case
+ * order 1-2-3, 67 off). */
 void CAmmoDisplay::SetMags(int mags, zdb::CTexHandle *tex)
 {
     bool own = true;

@@ -160,7 +160,12 @@ public:
         erase(iterator(t.next_), iterator(&end_));
     }
     /* the elements of a range appended one by one, out of line (0x317720 for the pointer lists'
-     * const iterators: the iterators by value, homed, end() and insert called) */
+     * const iterators: the iterators by value, homed, end() and insert called). THROUGH push_back
+     * (the MSL headers round 36), as the sized init(n, x) is: where the unit generated insert first
+     * (node_main.cpp, seal_unit.cpp, ai_group.cpp: an own push_back's tail copy), push_back inlined
+     * here expands past inline_max_size and is cut to one level -- end() and insert called on every
+     * element, the target's 0x317720 and OVL2's 0x5EF8D0 byte-exact, and the out-of-line end() they
+     * call (0x2A00A0, 0x50FED0) emitted; `insert(end(), *first)` written here inlined end() whole */
     template <class InputIterator>
     void init(InputIterator first, InputIterator last);
     /* the first node read through a reference to the sentinel (the list<T *> wrapper's begin() and
@@ -299,7 +304,7 @@ template <class InputIterator>
 void __list_deleter<T, Allocator>::init(InputIterator first, InputIterator last)
 {
     for (; first != last; ++first)
-        insert(end(), *first);
+        push_back(*first);
 }
 
 /* the nodes [first, last) unlinked around the last one's links, then freed one by one
@@ -309,7 +314,14 @@ void __list_deleter<T, Allocator>::init(InputIterator first, InputIterator last)
  * Each element is destroyed through the node allocator before its node is read and freed (the MSL
  * headers round 13: the kit lane's step list, OVL2 0x60EA90 -- ~step called with -1, first.node_
  * re-read after it -- byte-exact from ai_group.cpp's tail; nothing for the pointer lists, nothing
- * lost over every hand-written unit) */
+ * lost over every hand-written unit). The walker STEPPED BY ITS OWN operator++ (the MSL headers round
+ * 36, build/p36/erasev.py, untracked), not `first.node_ = n->next_`: the out-of-line copies and
+ * remove_if's inlined erase are the same code, but the step re-reads first's node, so an inlined
+ * erase's loop test reloads it apart from the node freed (vis_texfx.cpp's resize 0x3C0AC0), and the
+ * erase is a level taller in tail code: a temporary list's ~__list_imp, the erase inlinable there, is
+ * inlined one level and calls the deleter's destructor with 0 (the sized insert 0x3C0B90; node_wave.cpp's
+ * ~list<CRipple *> 0x322370, held by its draft until now) -- +3 over every hand-written unit, nothing
+ * lost */
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::erase(iterator first, iterator last)
@@ -326,7 +338,7 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
         node_alloc().destroy(&((node *)first.node_)->data_);
         node_base *n = first.node_;
 
-        first.node_ = (node *)n->next_;
+        ++first;
         node_alloc().deallocate(n);
         --size_;
     }
@@ -576,6 +588,16 @@ void __list_imp<T, Allocator>::resize(unsigned int n, const T &x)
         this->erase(advance_to(n), this->end());
 }
 
+/* BYTE-EXACT since the MSL headers round 36 (the weapons' round 35 request; build/p36/, untracked):
+ * vis_texfx.cpp's copies of the sized pair, insert 0x3C0B90 and resize 0x3C0AC0, by the range erase's
+ * walker stepped through its operator++ (above). The insert's tmp is destroyed by a call of the
+ * DELETER's destructor 0x1EA2D0 with 0 -- ~__list_imp inlined one level, as ~list<CVisual *> 0x3177C0
+ * and ~list<CRipple *> 0x322370 do -- once the erase inlined in tail code is that level taller. Not a
+ * size cut (inline_max_size 150-400 changes nothing: build/p36/imsprobe.py). Tried on the way:
+ * `~__list_deleter() { erase(begin(), end()); }` (the insert byte-exact, but fifteen user-code
+ * destructors cut: ~CAiGroup, ~CMission, ~CGNode, ~CGraph, ~CGRoute, BuildTree, ~CCell, ~CHUD, ~CModel,
+ * ~CSealUnit, ~CValve, ~CPreLight_band, ~C2D, LoadFromDesign, ~CDiPool: +4 / -15) and end_first() a
+ * level deeper (remove_if's inlined erase cut in every unit: +2 / -17) */
 template <class T, class Allocator>
 void __list_imp<T, Allocator>::insert(typename __list_deleter<T, Allocator>::iterator position,
                                       unsigned int n, const T &x)
@@ -906,7 +928,18 @@ public:
     /* the value linked in before position through the base's insert, the base's iterator it gives
      * back wrapped (SOCOM II's 0x510B90 for list<CAiPath *>: position converted to a base iterator
      * on the stack, the reference passed on as it is). After the wrapper's iterator: declared
-     * before it, `iterator` would still name the base's */
+     * before it, `iterator` would still name the base's.
+     * MEASURED, NOT APPLIED (the MSL headers round 36, the HUD's round 60 hypothesis; build/p36/
+     * additem.py, untracked): returning the BASE iterator directly -- `typename base::iterator
+     * insert(iterator position, T *const &x) { return base::insert(position, x); }` -- hands the
+     * caller's result slot to the base insert, at the caller's depth: CUIListBox::AddItem 0x373F20's
+     * insert return slot moves above push_back's two temporaries (the target's 68 over 64 / 60) and,
+     * with zui_2d.cpp's `int i = 0` declared after the iterator, AddItem is byte-exact. But over every
+     * hand-written unit +1 / -3: this copy 0x510B90 (the target wraps the base's result through a
+     * temporary, sp+44, then copies it out), CGraph::BuildRoute 0x2D14A0 and CSched_Manager::AddTask
+     * 0x34E6B0 (their insert slots below the other temporaries, as now) -- the frame-by-depth model
+     * holds, the two call shapes want different depths. `return base::insert(...)` converting to the
+     * wrapper's iterator is the same code as now (AddItem 6 off) */
     iterator insert(iterator position, T *const &x)
     {
         return iterator(base::insert(position, (const void *const &)x));
