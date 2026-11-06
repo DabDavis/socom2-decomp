@@ -148,8 +148,12 @@ public:
     void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);
 };
 
+extern "C" int IsLauncherWeapon__11CZFTSWeaponFv(CZFTSWeapon *w);
+
 class CZKit {
 public:
+    /* (OVL2 0x5C8190; SOCOM 1's, by its place after ~CZKit and its caller, CZSealBody's constructor) */
+    CZKit();
     /* (OVL2 0x5C8110; SOCOM 1's, the item pointers' vector freed -- the kit's round 52) */
     ~CZKit();
     void ResetScreenOffsetXY();
@@ -219,6 +223,8 @@ public:
     /* the rounds a pull of the trigger fires, and the wait after (OVL2 0x5C0940 -- new in SOCOM II,
      * SOCOM 1's WillFireWeapon did it inline: the name ours -- and 0x5C09F0, SOCOM 1's) */
     int GetShotCount();
+    /* whether the current item fires this frame (OVL2 0x5C0AE0; SOCOM 1's) */
+    bool WillFireWeapon();
     float GetFireDelay();
     /* the wait before the next shot set, -1 for the item in hand's own: its second wait when asked,
      * else its first -- the weapons' shared record told (OVL2 0x5C32B0, new in SOCOM II: CSealCtrl's
@@ -400,15 +406,33 @@ public:
             c = FIRE_CLASS_THROWN;
         return c;
     }
+    /* the same over the kind, read ahead of the body (inline: SetCurItemByIndex's; the name ours) */
+    static FIRE_CLASS FireClassOfId(EQUIP_ITEM id)
+    {
+        EQUIP_ITEM t = CZWeapon::GetIDType(id);
+        FIRE_CLASS c = FIRE_CLASS_NONE;
+
+        if (CZWeapon::IsPrimaryType(t))
+            c = FIRE_CLASS_RIFLE;
+        else if (CZWeapon::IsSecondaryType(t))
+            c = FIRE_CLASS_PISTOL;
+        else if (CZWeapon::IsLauncherType(t))
+            c = FIRE_CLASS_145;
+        else if (t == IDTYPE_GRENADE || t == IDTYPE_EXPLOSIVE)
+            c = FIRE_CLASS_THROWN;
+        return c;
+    }
     int GetFireClassIndex(FIRE_CLASS c);
     /* whether a slot's item uses ammunition: held, and none of the ten kinds without (inline:
      * GetPickupSlot's; the name ours) and the slot a picked-up item takes (OVL2 0x5BAE60, new in
      * SOCOM II: the name ours) */
     bool UsesAmmo(int i)
     {
-        if (!m_item[i])
+        CZWeapon *w = m_item[i];
+
+        if (!w)
             return false;
-        switch (m_item[i]->m_ID) {
+        switch (w->m_ID) {
         case 190:
         case 193:
         case 11:
@@ -433,7 +457,21 @@ public:
                 return i;
         return -1;
     }
+    /* the launcher among the items, or -1 (inline: SetCurItemEnum's, its test materialised -- sltu, xori, a branch -- through
+     * an inline over the call as an int, which a bool-returning declaration narrows; the names ours) */
+    static bool NotLauncher(CZFTSWeapon *w) { return !(IsLauncherWeapon__11CZFTSWeaponFv(w) != 0); }
+    int GetLauncherSlot()
+    {
+        for (int i = 0; i < m_num_items; i++)
+            if (NotLauncher(m_item[i]))
+                continue;
+            else
+                return i;
+        return -1;
+    }
     bool HasPickupSlot();
+    /* whether a pickup can be taken (OVL2 0x5BA770; the name ours) */
+    bool CanPickup(CZFTSWeapon *w, void *ammo, int count);
     /* the fire point's "projectile" child shown, for items 186 and 146 (OVL2 0x5B85A0; the name ours) */
     void ShowProjectile();
     /* the sniper rifle's scope or thermal scope node shown, by item 195 (OVL2 0x5B82E0, new in SOCOM
@@ -465,6 +503,8 @@ public:
     /* the explosive's damage taken from the first explosive's ammunition (OVL2 0x5C77B0, new in
      * SOCOM II: PostSetupItems calls it; the name ours) */
     void SetupExplosiveDamage();
+    /* the items in place (OVL2 0x5C7840; SOCOM 1's) */
+    void PostSetupItems();
     /* with item 194 held, each rifle's magazines doubled (SOCOM 1's; OVL2 0x5C75F0) */
     void Setup2XAmmo();
     /* the sounds found, the flashlight's light map made and the aim, kick, heartbeat and lase state
@@ -598,7 +638,9 @@ public:
     bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
     unsigned char _5[0x8 - 0x5];
     int m_8;   // 0x8: zeroed by Init (new in SOCOM II; the name ours)
-    unsigned char _c[0x20 - 0xc];
+    unsigned char _c[0x18 - 0xc];
+    float m_18;   // 0x18: zeroed by the constructor (new in SOCOM II; the names ours)
+    float m_1c;   // 0x1c
     float m_retoffsetx;   // 0x20 (SOCOM 1's 0xc: its TickReticule's)
     float m_retoffsety;   // 0x24 (SOCOM 1's 0x10)
     float m_sniper_posx;   // 0x28 (SOCOM 1's 0x14)
@@ -643,14 +685,23 @@ public:
      * environment's pickup code (OVL2 0x59F0C0, 0x59F730) sets, reads and clears it through the
      * three accessors below 0x5B9020 (the names ours) */
     std::vector<void *> m_itemptr;
-    unsigned char _840[0x84c - 0x840];
+    void *m_detonator_model;   // 0x840 (SOCOM 1's CNode *, 0x824)
+    void *m_flashlight_model;   // 0x844 (SOCOM 1's CNode *, 0x828)
+    void *m_detonator_icon;   // 0x848 (SOCOM 1's CTexture *, 0x82c)
     float m_retsize;   // 0x84c (SOCOM 1's 0x830): the reticle's size
     float m_prev_retsize;   // 0x850 (SOCOM 1's 0x834)
-    unsigned char _854[0x86c - 0x854];
+    float m_prev_factor;   // 0x854 (SOCOM 1's 0x838)
+    float m_prev_axis_a;   // 0x858 (SOCOM 1's 0x83c)
+    float m_prev_axis_b;   // 0x85c (SOCOM 1's 0x840)
+    float m_retblockedsize;   // 0x860 (SOCOM 1's 0x844)
+    float m_retblockedX;   // 0x864 (SOCOM 1's 0x848)
+    float m_retblockedY;   // 0x868 (SOCOM 1's 0x84c)
     float m_retsizegoal;   // 0x86c (SOCOM 1's 0x850)
     float m_retmax;   // 0x870 (SOCOM 1's 0x854)
     float m_retmin;   // 0x874 (SOCOM 1's 0x858)
-    unsigned char _878[0x884 - 0x878];
+    int m_tracercount;   // 0x878 (SOCOM 1's 0x85c)
+    float m_firetime;   // 0x87c (SOCOM 1's 0x860)
+    unsigned char _880[0x884 - 0x880];
     zdb::CLightMap *m_lightMap;   // 0x884 (SOCOM 1's 0x864)
     CSnd *m_rldsnd;   // 0x888 (SOCOM 1's 0x868)
     CSnd *m_clicksnd;   // 0x88c (SOCOM 1's 0x86c)

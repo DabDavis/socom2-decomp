@@ -836,15 +836,8 @@ bool CAiGroup::AddMember(CSealCtrlAi *ai)
 }
 
 /* (OVL2 0x60C220: the first member found running is kept, and never read; begin() taken once
- * before the switch, the result zeroed first so the empty list branches straight to the end).
- * OPEN, 11 instructions, registers only: the walk's iterator comes out in s2 and the end in s1 in
- * both loops, the target has them the other way round (the end numbered below the iterator). Tried:
- * the end declared before the switch and assigned per case (75 lines off: the assigned iterator
- * goes through memory), `done` as a bool (`daddiu` for the target's `li`: an int). Round 43
- * (tools/igreplay.py --target --movers): the iterator numbered after both ends, or both ends before
- * it (the first just above the step's reference), gives the target; the ends declared before the
- * iterator with begin() in each case is 0x1AC (begin() loaded twice), one end before the switch 44,
- * the iterator assigned in each case 0x1F8 */
+ * before the switch, the result zeroed first so the empty list branches straight to the end)
+ * The iterator numbered after both ends (igreplay, round 43): the address-taken device below */
 CAiGroup::step::STATE CAiGroup::TickStep()
 {
     step::STATE r = (step::STATE)0;
@@ -852,6 +845,9 @@ CAiGroup::step::STATE CAiGroup::TickStep()
     if (m_steps.size() != 0) {
         step &s = FirstStep();
         step::iterator i = s.begin();
+        /* (a modelling device: the iterator's address taken defers its scalarisation to the optimiser's second
+         * pass, so its member is numbered after both ends -- the AI core's round-36 rule) */
+        step::iterator &ir = i;
         CSealCtrlAi *first = 0;
 
         switch (s.m_state) {
@@ -893,22 +889,18 @@ CAiGroup::step::STATE CAiGroup::TickStep()
 
 /* (OVL2 0x60CBD0: the state a byte-enum local (`li`); the members walked with the vector's class
  * iterators, the end re-read each pass, the test materialised).
- * OPEN, 5 instructions: the camera flag's negation. The target computes CamerasOn() into a0 in the
- * loop test's delay slot and then, in the preheader, normalises it again before flipping it (`sltu
- * v0,zero,a0; xori; andi s0,v0,0xff`); every form here flips the first normalisation directly
- * (`sltu; xori` before the test, `andi 0xff` twice after). Tried: `!CamerasOn()` into a bool local
- * before the loop, `CamerasOn() == false` (xor/sltiu), the accessor as `? true : false`, the
- * negation inside the loop (not hoisted: recomputed each pass, one saved register fewer) */
+ * The camera flag read into a bool before the loop (sltu, in the guard's delay slot) and negated in the
+ * loop, whose invariant hoist normalises it again in the preheader */
 void CAiGroup::Start()
 {
     if (m_state == NEW) {
         STATE state = DONE;
-        bool cams = !CamerasOn();
+        bool cams = CamerasOn();
 
         for (memberlist::iterator i = m_members.begin(); i != m_members.end(); ++i) {
             CSealCtrlAi *ai = *i;
 
-            ai->m_aibit19 = cams;
+            ai->m_aibit19 = !cams;
             ai->m_aibit21 = true;
             func_005F7470(&ai->m_stateStack, ai, 1);
         }

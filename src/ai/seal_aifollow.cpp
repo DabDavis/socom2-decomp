@@ -247,7 +247,10 @@ struct CFollowParamsView {
  * and dir declared before vel give every other word (a struct copy loads all three first); tried
  * without effect: the negation, the copy or the flattening through inline helpers taking a
  * reference or a pointer, a reference or a pointer local for dir, the row as a CPnt3D pointer.
- * SOCOM 1's build keeps all four addresses (vel's too) from the top */
+ * SOCOM 1's build keeps all four addresses (vel's too) from the top. The kit's round 60, a lead: dir's y and z read everywhere
+ * through named `float *` locals gives the target's s3 / s2 (build/scratch/kit/v_ufp.py), but vel's own addresses then
+ * survive the first call too (0x2E0: its first block's CSE no longer dies there); vel's read through two more named
+ * pointers taken after the call has the target's 0x2C8 at 101 off, their definitions drawn up into the first block */
 void CZSealBody::UpdateFollowParams(float dT)
 {
     static float VelThreshSquared = 800.0f;
@@ -698,35 +701,25 @@ extern "C" bool func_005FD150(CSealCtrlAi *ai, CEntity *e, bool b, float dist)
     return r;
 }
 
-/* a SEAL's AI closing in on its goal: its bit 13 and its state's +0x3C, a bool through a local
- * (inline in CheckMaster; the name ours) */
+/* an AI's bit 13 as a bool (inline: the `? true : false` keeps the target's sltu; the name ours) and a
+ * SEAL's AI closing in on its goal: that bit and its state's +0x3C, the `&&` selected by a ternary, whose
+ * `r = true` the target keeps as daddiu and narrows at the join (inline in CheckMaster; the name ours) */
+static inline bool AiBit13(CSealCtrlAi *ai)
+{
+    return ai->m_aibit13 ? true : false;
+}
+
 static inline bool ClosingIn(CZSealBody *seal)
 {
-    bool r = false;
     CSealCtrlAi *ai = seal->GetSealCtrlAi();
 
-    if (ai->m_aibit13 && ai->GetAiState()->Virtual3C(ai))
-        r = true;
-    return r;
+    return AiBit13(ai) && ai->GetAiState()->Virtual3C(ai) ? true : false;
 }
 
 /* (OVL2 0x5FDD40; CAiSFollow::Tick's first call -- the master tested alive, IsAi through the local, the
  * AI through m_master again after that call).
- * OPEN, 0x178 against 0x180: the shape is the target's (the result one variable, zeroed in the early
- * arm's delay slot; UpdatePhase(0) inlined; the inline's `r = false ... r = true` kept as daddiu and
- * narrowed into `close` with andi), but (1) the target materialises both bit tests before branching
- * (`sltu v0,zero,v0` after the navy SEAL bit and after bit 13 -- accessors, bool locals, `!= 0` and
- * casts all fold away here) and (2) numbers the master's AI between the result and `close` (s1; this
- * s3, the result s2, close s0) where ours gives it s3. Tried (build/scratch/kit/v_cm*.py, the kit
- * lane's round 29): the bit-13 test in the caller (the if-conversion makes it sltu/andi), an inline
- * on the AI or on the SEAL, `return a && b`, `if (...) return true; return false;`, nested ifs, the
- * inline's locals in both orders, the result preset or assigned in an else; round 30 (the shape that
- * closed GetFiremodeGraphic), the `&&`s as ternary conditions, in the caller, the inline or both:
- * 0x164-0x190. Round 35: the navy SEAL bit through zseal.h's IsNavySeal (`? true : false`) gives the
- * target's size, 0x180, the bit materialised (sltu) before its branch as the target's; 31
- * instructions left, the registers of (2) and the bit-13 test's materialisation (through a `? true :
- * false` accessor too it overshoots to 0x188; a plain inline returning the bit or its negation, 0x178
- * or 0x188) */
+ * The result one variable, zeroed in the early arm's delay slot; UpdatePhase(0) inlined; the navy SEAL bit
+ * through zseal.h's IsNavySeal (`? true : false`, materialised); IsAi the ternary DrivenByAi, narrowed at the join */
 bool CAiSFollow::CheckMaster(CSealCtrlAi *ai)
 {
     bool alive;
@@ -742,7 +735,7 @@ bool CAiSFollow::CheckMaster(CSealCtrlAi *ai)
         if (alive) {
             bool close = false;
 
-            if (ai->IsNavySeal() && master->IsAi())
+            if (ai->IsNavySeal() && DrivenByAi(master))
                 close = ClosingIn(m_master);
             SetFlag(8, close);
         } else

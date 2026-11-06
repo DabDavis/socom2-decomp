@@ -9,7 +9,7 @@
  * assigns first and re-forms the address from it, 2 words long). GCC round 27a: the
  * autocorrelation of the resampled power spectrum 0x24A438 (its Q15 accumulator set before the
  * spectrum's pointer: two words the other way; the host's memcpy, data_001D55B4, copies the lags
- * out). The other analysis functions (0x249FA8, 0x24A210, 0x24A5A8) are not written.
+ * out). GCC round 44a: the peaks' filter 0x24A210 and the LPC envelope 0x24A5A8 (OPEN, below). The detector itself, 0x249FA8.
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0
@@ -164,4 +164,142 @@ int func_0024A9F0(const float *pfPv, int iLength, int iIndex)
 	} else if (pfPv[iLast] >= afPvThres[2] * pfPv[0])
 		iRet = iLast;
 	return iRet;
+}
+
+extern float ceilf(float);
+extern void func_0024D370(const float *pfMag, int iStart, int iEnd, int iMaxPeaks, int *piPeakFreq, int *piNPeaks);
+extern void func_0024C8E8(const float *pAutoCorr, int iLpcOrder, float *pfLPCoef, float *pfPARCOR, float *pfResidEnrg);
+extern void func_0024D330(const float *pfIn, float *pfOut, int n, float fGamma);
+extern void func_0024A5A8(const float *pfLpc, int iOrder, float *pfEnv, int iBins);
+
+/* the power spectrum's peaks, those above its LPC envelope's fifth of the residual and above the frame's floor kept;
+ * four sentinels after them */
+void func_0024A210(const float *pfPower, int iBins, int *piPeakFreq, int *piNPeaks, float fEnergy)
+{
+	float afLpc[8];
+	float afRs[8];
+	float afParcor[8];
+	float afEnv[100];
+	float fResid, fFloor, fMag;
+	int iOrder, i, n, k;
+
+#line 574 "../../SaseEncVad/source/LDPDA.c"
+	assert(pfPower != NellyNull);
+	assert(piPeakFreq != NellyNull);
+	func_0024D370(pfPower, 0, 97, 48, piPeakFreq, piNPeaks);
+	iOrder = (int)ceilf((float)iBins * 5.0F / 96.0F);
+	if (iOrder > 7)
+		iOrder = 7;
+	func_0024A438(pfPower, iBins, afRs, iOrder);
+	afRs[0] *= 0x1.00001p+0F;
+	func_0024C8E8(afRs, iOrder, afLpc, afParcor, &fResid);
+	func_0024D330(afLpc, afLpc, iOrder, 0x1.f5c28ep-1F);
+	func_0024A5A8(afLpc, iOrder, afEnv, iBins);
+	fResid *= 0x1.999998p-3F;
+	fFloor = fEnergy * 0x1.5798eep-11F;
+	n = 0;
+	for (i = 0; i < *piNPeaks; i++) {
+		k = piPeakFreq[i];
+		if (k < iBins) {
+			fMag = pfPower[k];
+			if (fResid <= fMag * afEnv[k] && fFloor < fMag) {
+				piPeakFreq[n] = k;
+				n++;
+			}
+		}
+	}
+	piPeakFreq[n] = 0x7FFF;
+	piPeakFreq[n + 1] = 0x7FFF;
+	piPeakFreq[n + 2] = 0x7FFF;
+	piPeakFreq[n + 3] = 0x7FFF;
+	*piNPeaks = n;
+}
+
+extern void (*data_001D55B0)(void *p, int c, int n);	/* the host's memset */
+extern void func_00251B78(float *pfRe, float *pfIm, int n);
+
+/* the LPC envelope: the predictor's power spectrum at iBins points (Q15 steps through the 128-point transform of the
+ * coefficients, zero-padded), its last point the one before when it falls off the end. The step's product is the
+ * expression in the loop, not an accumulator (loop.c's giv: `li a2,16384` after the test), j++ in the arm keeps (j + 1) << 2
+ * from folding. OPEN (GCC round 44a; 12 words at 8 bytes short, everything but the loop's first lines): the target holds k * 8
+ * in two registers (`sll a0,v0,3; move v0,a0; addu a0,a0,sp; addu v1,sp,v0`) and loads the imaginary part first; 26 spellings
+ * of the two terms (locals, a pointer, the terms swapped, k doubled in place: build/scratch/gcc/r44/v_a5a8*.py) share one. */
+void func_0024A5A8(const float *pfLpc, int iOrder, float *pfEnv, int iBins)
+{
+	float afSpec[130];
+	float afRe[65], afIm[65];
+	float fStep;
+	int i, k, j, iStep;
+
+#line 811 "../../SaseEncVad/source/LDPDA.c"
+	assert(pfLpc != NellyNull);
+	assert(pfEnv != NellyNull);
+	data_001D55B4(afSpec, pfLpc, (iOrder + 1) * 4);
+	i = iOrder + 1;
+	data_001D55B0(&afSpec[i], 0, (130 - i) * 4);
+	func_00251AF8(afSpec, 128, afRe, afIm);
+	func_00251B78(afRe, afIm, 128);
+	func_00251B38(afRe, afIm, 128, afSpec);
+	fStep = 64.0F / (float)iBins * 32768.0F;
+	iStep = (int)((fStep > 0.0F) ? fStep + 0.5F : fStep - 0.5F);
+	for (i = 0; i < iBins - 1; i++) {
+		k = (iStep * i + 0x4000) >> 15;
+		pfEnv[i] = afSpec[2 * k] * afSpec[2 * k] + afSpec[2 * k + 1] * afSpec[2 * k + 1];
+	}
+	k = (iStep * i + 0x4000) >> 15;
+	j = 2 * k;
+	if (j >= 128)
+		pfEnv[i] = pfEnv[i - 1];
+	else {
+		j++;
+		pfEnv[i] = afSpec[2 * k] * afSpec[2 * k] + afSpec[j] * afSpec[j];
+	}
+}
+
+extern void func_0024EE38(const float *pfIn, int iLength, float *pfOut);
+extern void func_0024ECF8(const float *pfX, int iLength, int *piMaxIndex, float *pfXmax);
+extern float func_0024AD48(float fXval);
+extern int func_0024FFF8(const float *pfSpec, int iBins, const int *piPeak, int iNPeaks, float *pfPitch, float *pfVoicing,
+			 int *piBest, float fPrevPitch, float fPrevVoicing);
+extern int func_00251638(int iBins, float fPitch);
+extern float func_002513F0(const float *pfSW, int iHarm, float fPitch);
+
+/* the pitch detector: the power spectrum and its peaks, the spectrum normalised to its maximum and compressed, the candidates
+ * over the peaks scored against the magnitudes and the best one kept in the block */
+float func_00249FA8(const float *pfSW, LdPdaMblk *hLD_PDA_mblk)
+{
+	float afSpec[102];
+	float afVoicing[4];
+	float afPitch[4];
+	float afScore[4];
+	int aiPeak[52];
+	int i;
+	float fMaxPower;
+	int iNPeaks, iBest;
+	int iBins, n;
+	float fPitch;
+
+#line 144 "../../SaseEncVad/source/LDPDA.c"
+	assert(pfSW != NellyNull);
+	assert(hLD_PDA_mblk != NellyNull);
+	func_0024EE38(pfSW, 102, afSpec);
+	func_0024ECF8(afSpec, 102, &i, &fMaxPower);
+#line 154 "../../SaseEncVad/source/LDPDA.c"
+	assert(fMaxPower >= 0.0F);
+	iBins = func_0024A908(afSpec, 96);
+	func_0024A210(afSpec, iBins, aiPeak, &iNPeaks, fMaxPower);
+	if (fMaxPower > 0.0F)
+		fMaxPower = 1.0F / fMaxPower;
+	for (i = iBins - 1; i >= 0; i--) {
+		afSpec[i] *= fMaxPower;
+		afSpec[i] = func_0024AD48(afSpec[i]);
+	}
+	n = func_0024FFF8(afSpec, iBins, aiPeak, iNPeaks, afPitch, afVoicing, &iBest, hLD_PDA_mblk->f0, hLD_PDA_mblk->f4);
+	iBins = func_00251638(iBins, afPitch[n - 1]);
+	for (i = n - 1; i >= 0; i--)
+		afScore[i] = func_002513F0(pfSW, iBins, afPitch[i]);
+	iBest = func_0024A9F0(afScore, n, iBest);
+	fPitch = afPitch[iBest];
+	func_0024AAE8(hLD_PDA_mblk, fPitch, afVoicing[iBest]);
+	return fPitch;
 }
