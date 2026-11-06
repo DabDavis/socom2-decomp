@@ -42,25 +42,33 @@ extern int data_00441470;
 extern char data_00437E30[];               /* the career stats */
 }
 
-/* the online armory (an object at 0x45B718; only the flag VCButton tests, and the selected
- * player CheckForcedLaunch names) */
-struct COnlineArmoryView {
+/* the radio -- zNetVoice.cpp's CZNetVoice, the voice object CMission::Init makes and keeps at
+ * data_0045B718 (the online lobby's round 29 named its two talk tests by every caller -- the HUD's radio
+ * icon, who's-talking line, teammate names and compass, and UICheckForcedLaunch here -- so this unit's
+ * old COnlineArmoryView was a misreading of it): only what the menu's handlers read, with
+ * zNetVoice.cpp's names */
+class CZNetVoice {
+public:
+    bool IsTalking();     /* 0x30E710: we are talking (the state 3), the talk valve told so */
+    bool IsReceiving();   /* 0x30E790: the current slot held by another client */
+
     unsigned char _0[0x24];
-    int m_24;   // 0x24: the selected entry
+    int m_slot;   // 0x24: the channel's current slot
     unsigned char _28[0x4a - 0x28];
-    unsigned char m_4a;   // 0x4a
+    unsigned char m_quiet;   // 0x4a: set, the talk key served (VCButton turns the radio on only when clear)
     unsigned char _4b[0x4f - 0x4b];
-    unsigned char m_4f;   // 0x4f: the scale defaulted
-    unsigned char m_50;   // 0x50: the range defaulted
+    unsigned char m_noagc;   // 0x4f: set when the gain's level was defaulted
+    unsigned char m_nonoise;   // 0x50: set when the noise stage's two were defaulted
     unsigned char _51[0x70 - 0x51];
     struct {
-        int m_id;   // a persona's id
-        int m_4;
-    } m_entries[1];   // 0x70
+        int m_client;   // the client holding the slot (256, none)
+        unsigned int m_4;
+    } m_slots[12];   // 0x70
 };
 
-/* a character type's figures the armory is told (six floats: the last three a range and a scale,
- * defaulted when negative; ours) */
+/* a character type's voice figures the radio is told (six floats -- zNetVoice.cpp's m_settings, the
+ * encoder's preprocessing: the last three the noise stage's two and the gain's level, defaulted when
+ * negative; ours) */
 struct CharTypeFigures {
     float m_0;
     float m_4;
@@ -82,10 +90,10 @@ public:
 };
 
 extern "C" {
-extern COnlineArmoryView *data_0045B718;
-void func_0030E6E0(COnlineArmoryView *p, int arg);
-void func_0030E490(COnlineArmoryView *p);
-void func_0030E6A0(COnlineArmoryView *p, CharTypeFigures *figures);
+extern CZNetVoice *data_0045B718;
+void func_0030E6E0(CZNetVoice *p, int arg);
+void func_0030E490(CZNetVoice *p);
+void func_0030E6A0(CZNetVoice *p, CharTypeFigures *figures);
 }
 
 class CZGameState {
@@ -2189,7 +2197,7 @@ bool UIVCButton(C2DAnimCmdHdr *hdr, float *dT)
     if (theMission.m_pNetGame && !theMission.m_pNetGame->m_late_joiner) {
         const char *text = ArgText(ArgName(hdr));
 
-        if (*text == '1' && !data_0045B718->m_4a)
+        if (*text == '1' && !data_0045B718->m_quiet)
             func_0030E6E0(data_0045B718, 1);
         else if (*text == '0')
             func_0030E6E0(data_0045B718, 0);
@@ -2473,27 +2481,21 @@ bool UISwitchSides(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-/* the armory's view brought up to date and whether it has an entry selected (not named yet) */
-extern "C" {
-void func_0030E710(COnlineArmoryView *p);
-bool func_0030E790(COnlineArmoryView *p);
-}
-
 /* the milliseconds from the network's clock to a time (ours) */
 inline int TimeLeft(unsigned int when) { return when - theNetwork.zNetGetTime(); }
 
-/* the multiplayer game's launch clocks shown, in whole seconds, in their valves, and the player the
- * armory has selected named in PLAYERTACOVAR (with the clan's tag), unless a late joiner; the
- * session master's persona updated once the ten-second launch has run out */
+/* the multiplayer game's launch clocks shown, in whole seconds, in their valves, and the player on the
+ * radio named in PLAYERTACOVAR (with the clan's tag; the talk test first, which sets the talk valve),
+ * unless a late joiner; the session master's persona updated once the ten-second launch has run out */
 bool UICheckForcedLaunch(C2DAnimCmdHdr *hdr, float *dT)
 {
     CZNetGame *game = theMission.m_pNetGame;
 
     if (!game || game->m_late_joiner)
         return true;
-    func_0030E710(data_0045B718);
-    if (func_0030E790(data_0045B718)) {
-        int id = data_0045B718->m_entries[data_0045B718->m_24].m_id;
+    data_0045B718->IsTalking();
+    if (data_0045B718->IsReceiving()) {
+        int id = data_0045B718->m_slots[data_0045B718->m_slot].m_client;
         const char *name = CZPersonaState::GetPersonaName(id);
         const char *tag = CZPersonaState::GetPersonaClanTag(id);
 
@@ -3446,8 +3448,8 @@ bool UIGetUsagePolicy(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-/* the player's character type changed to the custom one the argument numbers (from 1), the armory
- * told its figures */
+/* the player's character type changed to the custom one the argument numbers (from 1), the radio
+ * told its voice figures */
 bool UIChangeCharacterType(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *type = GetCustomCharTypeName(atoi(ArgText(ArgName(hdr))) - 1);
@@ -3470,11 +3472,11 @@ bool UIChangeCharacterType(C2DAnimCmdHdr *hdr, float *dT)
         if (figures.m_min < 0.0f || figures.m_max < 0.0f) {
             figures.m_min = 0.0f;
             figures.m_max = 0.0f;
-            data_0045B718->m_50 = 1;
+            data_0045B718->m_nonoise = 1;
         }
         if (figures.m_scale < 0.0f) {
             figures.m_scale = 0.5f;
-            data_0045B718->m_4f = 1;
+            data_0045B718->m_noagc = 1;
         }
         func_0030E6A0(data_0045B718, &figures);
     }
