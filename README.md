@@ -2066,6 +2066,40 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 28** (ten byte-exact, 26,568 bytes; body.cpp and zanim_cmd_parse.cpp whole: CPad::Tick
+  0x2DA930, zAnimObjectMotionTick 0x261370 with GetBBox's copy 0x262550, zAnimObjectMotionBegin 0x262690,
+  zAnimParticleSourceTick 0x266830, camera mode 6 0x2964F0, CAppCamera::UpdateDeathCamState 0x2980D0, CBody::Destroy
+  0x28B6D0, zar::CKey::DeleteChildren 0x25B580, zAnimFireWeaponTick 0x25CCB0; the first three rules read from the 3.0b52
+  executable, the first confirmed by a gdb trace of the matched function -- 87 of 87 blocks with empty predecessor lists, 0
+  of 27 fall-through tries hoisting):
+  - BLOCK OPTIMIZATION (0x4C6D60) CLEARS EVERY BLOCK'S PREDECESSOR LIST ON ANY CHANGE, so the delay-slot pass (0x4C7690)
+    hoists nothing from any fall-through in the whole function, and target steals become copies that leave the stolen
+    instruction behind a `b; nop` -- it closed all of zAnimFireWeaponTick's 0x40 bytes. It fires on a conditional branch to
+    a lone `b` (`e = e && e->t == K ? e : 0`, the then-arm coalesced), a `b` to the next block, or a block merged into its
+    only predecessor (build/scratch/core-r28/core/hoistlist.py scans for the signature, no argument set-up in any branch
+    slot; dsdump.py traces the pass under gdb);
+  - A LOOP IS ROTATED unless the function has an asm barrier (byte 0x5B7F7D: why camera mode 6's whiles keep their `b`), its
+    test isn't its header, or the header's one outside predecessor doesn't end in a goto with the body's first block next;
+    optimize_for_size also requires a known trip count; `#pragma opt_rotateloops off` exists, acts only through its state at
+    the unit's end, and a `?:` in a loop test also stops rotation (CKey::Write: d=0 under the pragma, which regresses three
+    others);
+  - label pads (`.p2alignl`) come only from statement labels (0x436230) and switches, and a block opening with one can't be
+    hoisted or stolen from; `m = e && e->t == K ? (T *)e : 0` branches straight to the join with no pad, `if (!e || ...) e =
+    0` pads;
+  - an object expression through an inline with a body (`CZAnim *r = a; return r;`) is evaluated ahead of plain args, so a0
+    is set first; an accessor as a product's right operand is read first while the mul keeps its operand order; `CPnt3D
+    d(cmd->dir)` right before a call stores through a0's address (x, y, z), `d(a->x, a->y, a->z)` loads z, y, x, `d =
+    cmd->dir` interleaves; reads through a reference lower an address temporary's spill cost, so it is rematerialised per
+    use;
+  - `for (int i = 0; i < 4; i++) a[i]->m = !flag;` fully unrolled reads frame-direct with `!flag` hoisted, an aggregate
+    initialiser of addresses copies from a pool with lq / sq; a constant store written after bit-field stores is numbered
+    later, coloured first, and chains every field through v0 (196 instructions off the other way round); `x = a == b ? 0.0f
+    : expr` stores at the join, an if/else gives sw zero; `float d = f(); d -= K;` keeps d in f0 and mov.s f12,f0, `float d
+    = f() - K` coalesces with f12; written-out inlines with CPnt3D copies field by field drop about 50 units under
+    inline_max_size, closing a size cut with no pragma (CBody::Destroy);
+  - zar_key.cpp carries a marked per-unit opt-in, include/vector's __MSL_VECTOR_POD_PAIR, with `#pragma inline_depth(8)` at
+    its end for DeleteChildren, a "Level 6, or 8?" witness; the class name in __vector_pod_pair is ours, modelled on SOCOM
+    1's compressed pair.
 - **Tells from the SEALs, round 59** (20 byte-exact, 18 unwritten before: seal_control.cpp's PostTick 0x5970B0,
   ThrottlesPreTick 0x5966A0, PerformProximityActions 0x5937C0; seal_ai.cpp's CSealCtrl::CreepTick 0x566DC0,
   CSealCtrlAi::OnDeath 0x5714B0; seal.cpp's CZSealBody::OnDeath 0x547AF0, 0x54D620, 0x552EC0; seal_body.cpp's ProneControl
