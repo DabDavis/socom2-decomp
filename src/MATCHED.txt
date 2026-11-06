@@ -8494,6 +8494,7 @@
 0x004FA440 VadGetSession
 0x004FA620 VadPutSession
 0x004FB1C0 ControlVad
+0x004FB520 InitVad
 0x004FB998 ConstructVad
 0x004FBA38 LoadCodeBooks
 0x004FC008 ConstructVq
@@ -8508,13 +8509,17 @@
 0x004FCB30 InitWindow
 0x004FCDA8 ConstructWindow
 0x004FCDE8 ControlWindow
+0x004FCEA8 CombinerProcess
 0x004FD2A8 ConstructCombiner
 0x004FD2E8 CombinerInit
 0x004FD3E8 CombinerControl
 0x004FD4E8 ResizeQueues
+0x004FD5C8 func_004FD5C8
+0x004FD7F8 LoadLanguage
 0x004FF158 FreeLanguage
 0x004FF380 FreeDistCalc
 0x004FFAC0 NormCorrection
+0x004FFCE8 DistSilProcess
 0x00500DF8 ConstructDistCalc
 0x00500EB8 GetpCachedDistances
 0x00500EC0 GetDistanceOffset
