@@ -236,7 +236,7 @@ void C2DLine::FillClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4])
     }
 }
 
-void C2DLine::SetClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4])
+void C2DLine::SetClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4], int count)
 {
     for (int i = 0; i < 2; i++) {
         m_vertex[i][0] = vertex[i][0];

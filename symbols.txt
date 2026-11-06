@@ -3829,7 +3829,7 @@
 0x002A98B0 0x1B8 FadeToEndMissionTick__8CMissionFf  # OVL1; s1:align
 0x002A9A70 0xC0 EndMission__8CMissionFv  # OVL1; by hand (the states lane, round 14; the name ours): the mission ended unless m_DelayEndMission -- _OnMissionComplete, CVideo::Clear, the HUD's flashes reset, the delay and fading bits cleared, ResetDeathCam and the exit state pushed, the tail of SOCOM 1's FadeToEndMissionTick; CCoreState::Tick calls it
 0x002A9B30 0x3AC OnMissionComplete__8CMissionF13MISSION_STATE  # OVL1; s1:calls by hand (the states lane, round 39): SOCOM 1's CMission::OnMissionComplete(MISSION_STATE) (0x1F6200) -- the same blocks in the same order: the state kept, then in a network game UninitBomb, the abort's three-second wait, strncpy of the abort dialog and CGame::Switch, else the master's GetByName of the two scores and the winner, the round counted, the major state 6 or 4, UpdateLocalGame and the Push; alone, nofade's EndMission; Tick calls it for each outcome; fts_mission.cpp (byte-exact since the states' round 40)
-0x002A9EE0 0x8 func_002A9EE0  # OVL1
+0x002A9EE0 0x8 UpdateLocalGame__8CMissionFP9CZNetGame  # OVL1; by hand (the states lane, round 49; the name ours): a CMission member -- its one caller, CZOnlineLobby::ForceStatusReport 0x2F8350, passes a0 = &theMission and a1 = theMission's net game (0x1808, m_pNetGame) once the two network flags CZGameState::UpdateLocalGame itself tests are set -- whose body is CZGameState's static UpdateLocalGame(game) as a tail call (j 0x2C00F0; move a0,a1); SOCOM II's, between OnMissionComplete and DestroyNetGame where SOCOM 1 has nothing; fts_mission.cpp
 0x002A9EF0 0x8 DestroyNetGame__8CMissionFv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DestroyNetGame__8CMissionFv from the same place; SOCOM II's is SOCOM 1's 8 bytes, the online game at 0x1808 (fts_state.h's m_netGame) handed to 0x2A75F0 as a tail call)
 0x002A9F00 0x2C CreateNetGame__8CMissionFv  # OVL1; s1:align
 0x002A9F30 0x558 TickObjectives__8CMissionFf  # OVL1; s1:calls by hand (the HUD lane's lead, vetted by the states lane: SOCOM 1's CZObjectiveList::SelectPreviousObjective calls TickObjectives(theMission, 1000.0f) at each step as SOCOM II's 0x206BA0/0x206DB0/0x207570 call this with (0x4364E0, 1000.0f); SOCOM 1's CMission::Tick calls it as Tick__8CMissionFf (0x2AA490) calls this; the same head: the timer at +0x138 summed with dT, nothing below 1.0, then the current objective and IsAvailable); byte-exact in fts_mission.cpp since the states lane, round 42
@@ -3991,7 +3991,7 @@
 0x002B5750 0x8 func_002B5750  # OVL1
 0x002B5760 0x70 _actionValveCallback__FP6CValvePv  # OVL1; s1:align
 0x002B57D0 0x60 __dt__Q211CNodeAction9ContainerFv  # OVL1; s1:align
-0x002B5830 0x580 func_002B5830  # OVL1
+0x002B5830 0x580 Draw__12C2DMessage_QFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the states lane, round 49): slot 0xC of C2DMessage_Q's vtable 0x4063B0 (after the destructor 0x2B6EE0, before C2D's inline Draw(matrix) copy), SOCOM 1's Draw__12C2DMessage_QFPQ23zdb7CCamera in the same slot (0x1FF9A0); IsOn, the lines placed and faded, the two backgrounds SetPos'd and drawn, C2D::Draw last as SOCOM 1's; fts_message.cpp, byte-exact
 0x002B5DB0 0x5FC Tick__12C2DMessage_QFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B63B0 0x78 __dt__16C2DMessageStringFv  # OVL1; s1:calls
 0x002B6430 0xF4 func_002B6430  # OVL1
@@ -5384,26 +5384,26 @@
 0x00310980 0x6C TransformToWorld__Q23zdb5CNodeCFR6CPnt3D  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimObjectAddChildTick calls it; the same arguments)
 0x003109F0 0x234 BuildMTW__Q23zdb5CNodeFR7CMatrix  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimObjectAddChildTick calls it)
 0x00310C30 0x10 Multiply__7CMatrixCFPC7CMatrixP7CMatrix  # OVL1; s1:exact
-0x00310C40 0x8 func_00310C40  # OVL1
-0x00310C50 0x8 func_00310C50  # OVL1
-0x00310C60 0x8 func_00310C60  # OVL1
-0x00310C70 0x8 func_00310C70  # OVL1
+0x00310C40 0x8 SetIdentity__7CMatrixFv  # OVL1; the online lane r28 (node_io.cpp): BuildMTW's innermost copy calls it where it sets the unit matrix (j sceVu0UnitMatrix); CMatrix::SetIdentity's out-of-line copy, node_io.cpp's object emits it after Multiply
+0x00310C50 0x8 __opRA4_A4_f__7CMatrixFv  # OVL1; the online lane r28 (node_io.cpp): BuildMTW's third copy converts Multiply's non-const out argument through it (the call after the two const ones); CMatrix's operator Rows &, out of line
+0x00310C60 0x8 __opRA4_A4_Cf__7CMatrixCFv  # OVL1; the online lane r28 (node_io.cpp): BuildMTW's third copy converts Multiply's two const operands (this, b) through it; CMatrix's const operator CRows &, out of line (SOCOM 1 links this one, at 0x223170 ahead of TransformToWorld)
+0x00310C70 0x8 GetMatrix__Q23zdb5CNodeFv  # OVL1; the online lane r28 (node_io.cpp): BuildMTW's two inner copies call it for the node's matrix ahead of Multiply (jr ra; move v0,a0: the matrix at 0)
 0x00310C80 0x114 Read__Q23zdb6CLightFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00310DA0 0x17C func_00310DA0  # OVL1
+0x00310DA0 0x17C CreateInstance__Q23zdb5CNodeFRQ23zdb9CSaveLoad  # OVL1; s1:order by hand (the online lane r28, node_io.cpp: SOCOM 1's static CreateInstance(CSaveLoad &), 0x2234C0, between CLight::Read and CNode::Read as here; Read(CSaveLoad &, CNode *) calls it for a type-2 node as SOCOM 1's does -- the model by its model_name key, instanced, the key's nparams and regionmask copied in; the press beta's copy asserts node_io.cpp)
 0x00310F20 0x2FC Read__Q23zdb5CNodeFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00311220 0x104 func_00311220  # OVL1
-0x00311330 0x1EC func_00311330  # OVL1
+0x00311220 0x104 ReadChildren__Q23zdb5CNodeFRQ23zdb9CSaveLoad  # OVL1; the online lane r28 (node_io.cpp): CNode::Read's version-1 path calls it after ReadDataBegin -- the children key, ReserveChildren, each child read through Read(io, this) -- the loop SOCOM 1's Read wrote out itself; the name ours
+0x00311330 0x1EC ReadDataBegin__Q23zdb5CNodeFRQ23zdb9CSaveLoad  # OVL1; s1:calls by hand (the online lane r28, node_io.cpp: called where SOCOM 1's CLight::Read and CNode::Read call ReadDataBegin, 0x223A30; the same name, visuals and DI reads, returning 0)
 0x00311520 0x35C Read__Q23zdb5CNodeFRQ23zdb9CSaveLoadPQ23zdb5CNode  # OVL1; s1:calls by hand (the zdb-world lane: CWorld::Read calls it where SOCOM 1's calls the static Read(CSaveLoad&, CNode*); 0x35C against 0x34C)
 0x00311880 0x120 Read__Q23zdb6CModelFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003119A0 0x124 Create__Q23zdb6CModelFRQ23zdb9CSaveLoadPQ23zdb9CAssetLib  # OVL1; s1:calls by hand (the zdb-world lane: the model loader, at SOCOM 1's call site; 0x124 against 0x128)
-0x00311AD0 0x8 func_00311AD0  # OVL1
-0x00311AE0 0x8 func_00311AE0  # OVL1
-0x00311AF0 0xC func_00311AF0  # OVL1
-0x00311B00 0x3C func_00311B00  # OVL1
-0x00311B40 0xD8 func_00311B40  # OVL1
-0x00311C20 0xC func_00311C20  # OVL1
-0x00311C30 0x18 func_00311C30  # OVL1
-0x00311C50 0x6C func_00311C50  # OVL1
+0x00311AD0 0x8 SetAssetLib__Q23zdb6CModelFPQ23zdb9CAssetLib  # OVL1; the online lane r28 (node_io.cpp): CModel::Create's failure path calls it on the model with 0 (sw a1,0xd8(a0): m_AssetLib), an inline setter out of line; the name ours
+0x00311AE0 0x8 ClearCache__Q23zdb10CAssetListFv  # OVL1; the online lane r28 (node_io.cpp): CModel::Create's failure path calls it on the asset list (sw zero,0xc(a0): m_cache_model), where SOCOM 1's Create stored the zero to CAssetMgr::m_assets+0xc itself; an inline out of line, the name ours
+0x00311AF0 0xC GetAssets__Q23zdb9CAssetMgrFv  # OVL1; the online lane r28 (node_io.cpp): CModel::Create's failure path takes the asset list through it (&CAssetMgr::m_assets: CWorld::GetAssetList's three words, 0x321660, under another name -- the linker keeps both); an inline out of line, the name ours
+0x00311B00 0x3C erase__Q23std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>FQ33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iteratorQ33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iterator  # OVL1; the online lane r28 (node_io.cpp): CModel::Create's failure path erases the library's model vector's tail through it (the pod erase it calls, 0x28B150, as SOCOM 1's Create called it); the model vector's erase(first, last), out of line
+0x00311B40 0xD8 remove<Q33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iterator,PQ23zdb6CModel>__3stdFQ33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iteratorQ33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iteratorRCPQ23zdb6CModel_Q33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iterator  # OVL1; the online lane r28 (node_io.cpp): CModel::Create's failure path calls it on the model vector (find inlined, remove_copy 0x311C50 called: SOCOM 1's Create inlined the find and called remove_copy); std::remove's instance, out of line
+0x00311C20 0xC begin__Q23std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>Fv  # OVL1; the online lane r28 (node_io.cpp): CModel::Create's failure path calls it on the library's model vector (the data at 8); the vector's begin(), out of line
+0x00311C30 0x18 end__Q23std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>Fv  # OVL1; the online lane r28 (node_io.cpp): CModel::Create's failure path calls it on the library's model vector, once, for both the remove and the erase; the vector's end(), out of line
+0x00311C50 0x6C remove_copy<Q33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iterator,Q33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iterator,PQ23zdb6CModel>__3stdFQ33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iteratorQ33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iteratorQ33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iteratorRCPQ23zdb6CModel_Q33std64__vector_imp<PQ23zdb6CModel,Q23std25allocator<PQ23zdb6CModel>,1>8iterator  # OVL1; s1:order by hand (the online lane r28, node_io.cpp: std::remove's instance 0x311B40 calls it, as SOCOM 1's Create calls remove_copy<CModel **> at the same unit's end; the instance closes node_io.cpp)
 0x00311CC0 0x14C Remove__Q23zdb11CNodeVectorFPCQ23zdb5CNode  # OVL1; s1:order (CNodeVector's Remove, Exists, GetNode as SOCOM 1's; DeleteChild removes a child with it, as SOCOM 1's); std::remove inlined
 0x00311E10 0x90 Exists__Q23zdb11CNodeVectorFPCQ23zdb5CNode  # OVL1; s1:order (CNodeVector's Remove, Exists, GetNode as SOCOM 1's; DeleteChild tests a child with it before removing it, as SOCOM 1's)
 0x00311EA0 0x4C GetNode__Q23zdb11CNodeVectorFi  # OVL1; the integrator 2026-11-04, by the weapons lane round 15: CNodeVector's element at an index, or none (its callers, the ripple group's GetNode and CWaterRippleManager::Tick, call it on CNodeVector members; the class has GetNode(const char *) beside it); node_vector.cpp defines it as the member
@@ -5519,8 +5519,8 @@
 0x003186B0 0x214 func_003186B0  # OVL1
 0x003188D0 0x60 Release__Q23zdb6CModelFPQ23zdb5CNode  # OVL1; s1:exact (SOCOM 1's CModel::Release(CNode *): the instance taken off the list, the model's 0x64 cleared if it was it; ~CNode calls it)
 0x00318930 0x1AC __dt__Q23zdb6CModelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00318AE0 0x150 func_00318AE0  # OVL1
-0x00318C30 0x8 func_00318C30  # OVL1
+0x00318AE0 0x150 RemoveModel__Q23zdb9CAssetLibFPQ23zdb6CModel  # OVL1; the online lane r28 (node_model.cpp): ~CModel calls it with the library's own copy of the model, found by name (0x318C30) -- std::remove's find inlined, remove_copy called, the pod erase, CAssetMgr::m_assets' model cache cleared, the model's library cleared -- the code SOCOM 1's ~CModel wrote out; CModel::Create (node_io.cpp) inlines its body; an inline's out-of-line copy, the name ours
+0x00318C30 0x8 GetModel__Q23zdb9CAssetLibFPCc  # OVL1; the online lane r28 (node_model.cpp): ~CModel calls it on its library with its name (j CModelVector::GetModel on the library's models at 8), where SOCOM 1's ~CModel called the model vector's GetModel itself; an inline's out-of-line copy, the name ours
 0x00318C40 0x6C __ct__Q23zdb6CModelFPCc  # OVL1; s1:calls
 0x00318CB0 0xEC Read__Q23zdb6CWorldFRQ23zdb9CSaveLoad  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00318DA0 0x7D8 Load__Q23zdb9CSaveLoadFPCc  # OVL1; s1:order by hand (SOCOM 1's CSaveLoad::Load: after CWorld::Read as there; the version open, new CWorld (0x6BE0 bytes) through 0x320310, Initalize, the world's fetches, the cameras, CGrid::Read, the asset libs, the world tree; FilterMissionFolder inlined)
@@ -6625,7 +6625,7 @@
 0x0035FAC0 0x21C clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's second clip3DLine, after the three-argument one as there (0x240 there); the three-argument one calls it five times with a plane pair; VU0 differences, inner products, the behind end moved onto the plane)
 0x0035FCE0 0x344 Draw2DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:calls
 0x00360030 0x22C Draw3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; the integrator 2026-11-04, by the world lane round 7: CPipe::RenderLineWorld calls it where SOCOM 1 calls Draw3DLine (s1:calls); byte-exact (the HUD lane, round 40: c2dline.cpp -- SOCOM II's own body: the colours scaled by its static s_scale through sceVu0MulVector, the ends through sceVu0RotTransPers, their depths offset by zOffset 0x3E0330)
-0x00360260 0x8C SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's SetClipInfo before FillClipInfo, the two rows of vertex, colour and UV copied in; SOCOM II dropped its int parameter)
+0x00360260 0x8C SetClipInfo__7C2DLineFPA4_fPA4_fPA4_fi  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's SetClipInfo before FillClipInfo, the two rows of vertex, colour and UV copied in; the body ignores the count); the HUD lane, round 60: SOCOM 1's int count kept -- its one caller, CZLineMap::Clip 0x20D5F0, passes 2 in t0 (li t0,2 in the jal's delay slot), as SOCOM 1's Clip calls SetClipInfo__7C2DLineFPA4_fPA4_fPA4_fi; the body ignores it (the loop's 2 fixed)
 0x003602F0 0x8C FillClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's FillClipInfo, 0x9C there: the rows copied out)
 0x00360380 0x118 MakePacket__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:callee
 0x003604A0 0x5C Draw__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:exact
@@ -9063,7 +9063,7 @@
 0x004FFAC0 0x224 NormCorrection  # OVL2; s1:order -- the gcc lane, round 21c: SOCOM 1's distance object holds its LOCAL NormCorrection (0x180) after InitDistSilProcess, as this row follows it; the same body (the codeword bytes' table sum, its log scaled by 255 over +296 - +300 and rounded, added to every byte and clamped), logf for SOCOM 1's log
 0x004FFCE8 0x22C DistSilProcess  # OVL2 unaligned; s1:order -- the gcc lane, round 34c: SOCOM 1's distsil object holds DistSilProcess between NormCorrection and ControlDistSilProcess as ours holds this row, the same body (its input reads, the f308 period, the codebooks' fold, the NormCorrection call and the +104 callback; SOCOM 1's 0x280)
 0x004FFF18 0x7CC ControlDistSilProcess  # OVL2 unaligned; s1:slot (ConstructDistCalc's control function, as SOCOM 1's ConstructDistCalc hands ControlDistSilProcess, 0x36B368) -- the gcc lane, round 16c
-0x005006E8 0x710 func_005006E8  # OVL2 unaligned
+0x005006E8 0x710 InitCalculateDistances  # OVL2 unaligned; s1:ref, s1:order -- the gcc lane, round 35c: SOCOM 1's ControlDistSilProcess stores InitCalculateDistances (0x36BD28) at the distance interface's +8 where ours stores this row (command 27), and SOCOM 1's distsil object ends with it after ControlDistSilProcess as ours does
 0x00500DF8 0xC0 ConstructDistCalc  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: ConstructDistCalc after InitCalculateDistances, as this row; the same body -- profile 35 for no queues, profile 34 for a third input, 316 bytes, the same three slots) -- the gcc lane, round 16c
 0x00500EB8 0x8 GetpCachedDistances  # OVL2 unaligned; s1:order (SOCOM 1's distsil object, after ConstructDistCalc as this row; the same body, `return d->f108`) -- the gcc lane, round 16c
 0x00500EC0 0x8 GetDistanceOffset  # OVL2; s1:order (SOCOM 1's distsil object, next; the same body, `return d->f96`) -- the gcc lane, round 16c
@@ -9803,7 +9803,7 @@
 0x0053A920 0x3C FreeCells__11CAiMapLayerFv  # OVL2; ours (~CAiMap's first call, on m_layer0: the cells freed with _free, the pointer zeroed -- ai_maplayer.cpp)
 0x0053A960 0x60 __dt__11CAiMapLayerFv  # OVL2; ours (~CAiMap destroys m_layer0 through it with -1: FreeCells inlined -- ai_maplayer.cpp)
 0x0053A9C0 0x8C __ct__11CAiMapLayerFPCc  # OVL2; ours (new in SOCOM II: a map layer's constructor -- its name copied in (16 bytes, the last kept zero) or emptied, its words cleared, flag 1 set; CAiMap(int) builds its first layer with it, a name of 0)
-0x0053AA50 0x6C func_0053AA50  # OVL2; OVL2's copy of the pod vector's resize (MAIN's 0x18B050 and OVL1's 0x28B0E0, the same 0x6C bytes: its erase called out of line, 0x53AAC0; after ai_maplayer.cpp's code, the SEAL body's constructor calls it -- the AI core round 24); ovl-copy: resize__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUiRCUi
+0x0053AA50 0x6C func_0053AA50  # OVL2; OVL2's copy of the pod vector's resize (MAIN's 0x18B050 and OVL1's 0x28B0E0, the same 0x6C bytes: its erase called out of line, 0x53AAC0; after ai_maplayer.cpp's code, the SEAL body's constructor calls it -- the AI core round 24; ai_maplayer.cpp's dead-stripped ResizeLayers emits it, byte-exact since the MSL headers round 35: resize declared ahead of erase, its in-class callees end() and data() alone); ovl-copy: resize__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUiRCUi
 0x0053AAC0 0x120 func_0053AAC0  # OVL2; OVL2's copy of the pod vector's erase (OVL1 0x28B150, the same 0x120 bytes; CCharacterType::CleanupTemporary's erase calls it, as SOCOM 1's calls erase__Q23std38__vector_pod<Ui,...>FPUiPUi); ovl-copy: erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi
 0x0053ABE0 0x238 Compute__13CAiPerceptionFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the target scan 0x60AA20 builds the object on its stack, sets the range and five factors, then calls it for the score -- each valid factor's response per range band (the 6x4 curve table 0x64FA80) weighted by the band's row of 0x64FBA0, the sum scaled by the row's seventh; ai_perception.cpp)
 0x0053AE20 0xC8 SetRange__13CAiPerceptionFf  # OVL2; ours, the AI core round 13 (new in SOCOM II: the target scan's call with the range -- the band from 100.0, 0.7, 0.3 at 0x64FC10, the fraction left of the maximum range (0x64FA70, its inverse 0x64FA78) as factor 0, its valid bit set; ai_perception.cpp)
@@ -12110,8 +12110,8 @@
 0x006209B0 0xD8 func_006209B0  # OVL2
 0x00620A88 0xB8 func_00620A88  # OVL2 unaligned
 0x00620B40 0x98 func_00620B40  # OVL2
-0x00620BD8 0x88 func_00620BD8  # OVL2 unaligned
-0x00620C60 0xC4 func_00620C60  # OVL2
+0x00620BD8 0x88 NetRegisterMessageStart  # OVL2 unaligned; s1:calls+order (gcc r21b: the game's message registration 0x2B8660 calls it before each run of 0x620C60 calls, as SOCOM 1's DMERegister__Fv calls NetRegisterMessageStart before its NetMessageField calls; Dme.c's locked wrapper of 0x623EF8, the first of SOCOM 1's object NetRegisterMessageStart .. NetRegisterDataStream, wrapped in that order -- the API name on the wrapper, round 7b)
+0x00620C60 0xC4 NetMessageField  # OVL2; s1:calls+order (gcc r21b: called (message, &message.field, size, count) per field after 0x620BD8 in the game's registration 0x2B8660, as SOCOM 1's DMERegister__Fv calls NetMessageField(base, field, size, count) after NetRegisterMessageStart; Dme.c's locked wrapper of 0x623F00, the object's second function, its four parameters SOCOM 1's)
 0x00620D28 0x88 NetRegisterObjectStart  # OVL2 unaligned; s1:calls (the DME's; every registration opens with it, as SOCOM 1's) -- the states lane
 0x00620DB0 0xE4 NetObjectField  # OVL2; s1:calls (the DME's; once per field between start and structure, as SOCOM 1's) -- the states lane
 0x00620E98 0xB8 NetRegisterStructure  # OVL2 unaligned; s1:calls (the DME's; closes each registration before the callbacks, as SOCOM 1's) -- the states lane

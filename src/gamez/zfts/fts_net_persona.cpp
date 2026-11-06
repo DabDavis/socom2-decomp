@@ -183,6 +183,8 @@ extern CMission theMission;
 class CZOnlineLobby {
 public:
     unsigned char GetRankLevel(int rank);   /* 0x2EAEE0 */
+    bool JoinAsSpectator();   /* 0x2F6D00 */
+    int GetAccountID();   /* 0x2F96E0 */
     bool IsIgnored(const char *name);   /* 0x3008E0 */
 };
 
@@ -284,7 +286,6 @@ extern int data_00441460;             /* (the personas on neither side, unflagge
 extern int data_00441468;
 extern unsigned int data_00441470;    /* (the local player's team) */
 
-bool func_002F6D00(CZOnlineLobby *lobby);   /* (a CZOnlineLobby flag: a valve's, or a byte) */
 
 /* the twelve fields' ids */
 extern int data_004413E8;
@@ -492,10 +493,10 @@ void CZPersonaState::RemotePersonaDeletionCallback(int client, int index)
 extern "C" int data_00441480[8];
 extern "C" int data_004414A0[8];
 
+bool IsOnClanTeam();               /* we are on a clan's team (the clan unit's, 0x2E9B30) */
+unsigned char GetClanTeamSide();   /* our clan game's side (the clan unit's, 0x2E99E0: read unsigned) */
+
 extern "C" {
-int func_002F96E0(CZOnlineLobby *lobby);   /* (a word of the lobby's: the persona's 0x4) */
-bool func_002E9B30();                      /* (the lobby unit's: a word at 0x44F778 set) */
-bool func_002E99E0();
 int func_002C2C20(int mode);               /* the voice chat's mode (below) */
 int func_002C2800();                       /* the blather object made (fts_net_blather.cpp's) */
 void *memset(void *p, int c, unsigned int n);
@@ -524,11 +525,11 @@ int CZPersonaState::CreateLocalPersona()
 
     memset(data, 0, sizeof(PersonaData));
     if (theNetwork.m_bSessionMaster) {
-        if (func_002F6D00(&theLobby) != false) {
+        if (theLobby.JoinAsSpectator() != false) {
             data_00441458 = 1;
             func_002C3330(0x10000);
             data_00441468 = 0;
-        } else if (func_002E9B30() && func_002E99E0() == true) {
+        } else if (IsOnClanTeam() && GetClanTeamSide() == 1) {
             data_00441450 = 1;
             func_002C3330(func_002C32C0());
             data_00441468 = 0;
@@ -538,7 +539,7 @@ int CZPersonaState::CreateLocalPersona()
             data_00441468 = 0;
         }
     }
-    data->m_4 = func_002F96E0(&theLobby);
+    data->m_4 = theLobby.GetAccountID();
     CUIVariable *var = theUIVarManager.Find("PLAYERNAMEVAR");
 
     if (var)
@@ -976,10 +977,8 @@ extern "C" int func_002C4810()
     return -1;
 }
 
-/* the menu's event handler (the lobby's: an event's name and its argument) and whether the eighty
- * per cent warning was given (a byte of the lobby's; OVL1 0x2E99E0) */
+/* the menu's event handler (the lobby's: an event's name and its argument) */
 extern "C" bool (*data_0044F3C8)(const char *event, const char *arg);
-extern "C" bool func_002E99E0();
 
 /* a persona flagged 0x10000, a null one not (ours) */
 inline bool IsPersonaFlagged(PersonaData *p)
@@ -1024,7 +1023,7 @@ bool CZPersonaState::AllReadyToLoad()
     }
     SetValveValue(game->m_pPlayerReadyCountValve, count);
     if (!game->m_ten_second_launch && !ready && data_00441448 && data_00441450 &&
-        !(count < 0.8f * (data_00441448 + data_00441450)) && func_002E99E0() == false && data_0044F3C8)
+        !(count < 0.8f * (data_00441448 + data_00441450)) && GetClanTeamSide() == 0 && data_0044F3C8)
         data_0044F3C8("MP_EIGHTY_READY", 0);
     return ready;
 }
@@ -1117,7 +1116,7 @@ void CZPersonaState::CheckStateSwitch()
         break;
     case CZNetGame::MP_MAJOR_LOADING:
         if (game->m_my_major_game_state == CZNetGame::MP_MAJOR_MENUS &&
-            (game->m_my_minor_game_state == CZNetGame::MP_MINOR_READY || func_002F6D00(&theLobby) != false ||
+            (game->m_my_minor_game_state == CZNetGame::MP_MINOR_READY || theLobby.JoinAsSpectator() != false ||
              game->m_ten_second_launch))
             game->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
         break;
@@ -1409,7 +1408,7 @@ extern "C" bool func_002C2FD0(CZSealBody *body)
  * after the call -- returned straight, MW tail-calls) */
 extern "C" bool func_002C2FA0()
 {
-    bool on = func_002F6D00(&theLobby);
+    bool on = theLobby.JoinAsSpectator();
 
     return on;
 }
@@ -1486,7 +1485,7 @@ extern "C" int func_002C2C20(int mode)
 
     if (ftsGetPlayer() && !ftsGetPlayer()->m_e1_4)
         mode = 3;
-    if (func_002F6D00(&theLobby) != false)
+    if (theLobby.JoinAsSpectator() != false)
         mode = 10;
     PersonaData *p = CZPersonaState::GetPersona(theNetwork.zNetGetMyGameClientIndex());
 
