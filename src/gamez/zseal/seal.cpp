@@ -1956,19 +1956,16 @@ static inline void PushOut(float &cur, float v)
 /* the push off a wall: a step of r from the point into the hit's plane, against its normal and at the
  * point's height; what of it the plane cuts off, 0.7 of it along the normal, taken into m_f44's x and z
  * -- false with no node hit (OVL2 0x54A6D0, new in SOCOM II: ComputeNextPosition 0x54D9A0 calls it
- * twice, the hit its ground's when that has a node; the name unknown). OPEN, 2 instructions: the body
- * is the target's word for word, but MW copies r into $f20 in the null test's delay slot where the
- * target copies the hit there and moves r just before its first use (`neg.s`) -- the float declared
- * first, second or third, a local copy after the test, the body an inline taking r by value, the test
- * as an if around the body or through a node local all compile the same; so does the HUD's round-57
- * second variable (round 52: a copy of the hit, of r, or both, defined before the null test and used
- * by the test or the body -- build/scratch/seal-r52/v_6d0.py). Round 55: 0x54A3D0's lever -- a (float)
- * cast making one operand of the step's product the heavier -- changes nothing here, on any operand or on
- * the `-r` (build/scratch/seal-r55/v_6d0.py) */
-extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit, float r)
+ * twice, the hit its ground's when that has a node; the name unknown). The step is copied after the
+ * null test through a no-op `(float)` cast (the round 56, open since round 51): a plain copy (`float r
+ * = step;`) is coalesced into the parameter and made at entry, MW then scheduling it into the test's
+ * delay slot; the cast makes the copy an expression, kept where it is written -- the target's `mov.s`
+ * just before the `neg.s`, the hit's copy in the delay slot, both alignment pads following */
+extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit, float step)
 {
     if (!hit->m_node)
         return false;
+    float r = (float)step;
     CPnt3D p = *pos;
     CPnt3D n = hit->m_norm;
 
