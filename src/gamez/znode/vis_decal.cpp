@@ -131,9 +131,10 @@ public:
     CMesh *m_mesh;   // 0x8
     unsigned char _c[0x10 - 0xc];
     void *m_verts;   // 0x10: allocated, through the uncached mirror
-    unsigned char _14[0x30 - 0x14];
-    unsigned int m_30;   // 0x30
-    unsigned int m_34;   // 0x34
+    unsigned char _14[0x20 - 0x14];
+    u_long128 m_tex;   // 0x20: the texture's VU select reference
+    unsigned int m_30;   // 0x30: the DMA chain's quadwords
+    unsigned int *m_34;   // 0x34: the DMA chain, after the packet in the block
     unsigned char _38[0x40 - 0x38];   // (0x40 bytes: RTArray<CMeshDecal>()'s array stride)
 
     static CMeshDecalPool m_tempPool;
@@ -503,6 +504,221 @@ extern "C" void func_003BE5F0(unsigned int a, unsigned int b, const CPnt3D *pos,
             item->m_1c.push_back(sid);
         }
     }
+}
+
+
+/* the VIF packet's write position in words, in the block of the decal being built (0x4B50B8; not
+ * named) */
+extern "C" unsigned int data_004B50B8;
+
+#define MD_PUT(x)                                           \
+    do {                                                    \
+        ((unsigned int *)d->m_verts)[data_004B50B8] = (x);  \
+        data_004B50B8++;                                    \
+    } while (0)
+
+/* a mesh decal built from the VU0 decal builder's batch (0x3B8680's items): its life, mesh and
+ * texture, its block sized and allocated -- the VIF packet first, then a DMA chain of two references
+ * per vertex group and the last one -- and filled: for each of the first item's strips taken by any
+ * item, the group's matrix reference and its unpack, with each item's strip vertex and index; then
+ * the index list's triangles, the GIF tags and the items' UVs (new in SOCOM II, not named; the
+ * strip count n is CMesh::AddDecal's first parameter). Written in the weapons' round 34 (109 off
+ * when first whole). The shapes: each walk's count a local read in the outer loop's body (hoisted:
+ * the first walk's preheader laid after the return, its count shared with the size's), the second
+ * walk's counter declared ahead of its count; mat and start declared ahead of the chain pointer
+ * (numbered before it); the vertex copy's id and index read ahead of its stores; `groups > 1` (the
+ * fused sltiu at); the unpack word built ahead of the STCYCL and its 0x4000 or'd apart; the zero
+ * vector four address-taken floats zeroed `f0 = 0; f1 = f2 = f3 = 0;` (the target's store order);
+ * the UV pair a four-short array (its 8-byte slot), the clamps `> 0x7FFF` (the li at in place).
+ * OPEN, 23 instructions at the target's size: the group block's colouring -- the kind ternary's
+ * result (a code-generation temporary) takes a1 where the target's takes t4, the chain word built
+ * from the unpack t3 for a1, mat t4 for t3, and the scheduler then orders the block's head
+ * differently; `tools/igreplay.py --movers` places the ternary's node anywhere before mat (31.5 to
+ * 47.5) or after every node (533.5) for the target's three -- a named `kind` declared before mat
+ * (ternary, if/else, != / > / !, short or int) is copy-propagated away, the movn's node unchanged
+ * (build/scratch/wep/v_d9*.py) */
+extern "C" void func_003BD9E0(CMeshDecal *d, float life, unsigned int n, CTexHandle *tex, CMesh *mesh,
+                              std::vector<CMatrix *> *palette)
+{
+    d->m_life = life;
+    d->m_mesh = mesh;
+    d->m_next = 0;
+    d->m_tex = tex->m_texture->m_dmaRefVu;
+
+    unsigned int size = n + 23 + data_004B5078->m_count;
+    short *hdr = 0;
+
+    while (size & 3)
+        size++;
+
+    unsigned int groups = 0;
+    unsigned int nverts = data_004B5078->m_items[0].m_10.size();
+    unsigned int qw = size >> 2;
+    unsigned int j;
+
+    for (j = 0; j < nverts; j++) {
+        int k = 0;
+        unsigned int c = data_004B5078->m_count;
+
+        for (unsigned int i = 0; i < c; i++)
+            if (data_004B5078->m_items[i].m_10[j])
+                k++;
+
+        if (k > 0) {
+            unsigned int sz = k * 4 + 5;
+
+            while (sz & 3)
+                sz++;
+            qw += sz >> 2;
+            groups++;
+        }
+    }
+    d->m_30 = groups * 2 + 1;
+    void *mem = _malloc((qw + d->m_30) * 16, 0, 0);
+
+    d->m_verts = mem;
+    d->m_34 = (unsigned int *)((char *)mem + qw * 16);
+    data_004B50B8 = 0;
+
+    unsigned int mat;
+    unsigned int start;
+    unsigned int *tag = d->m_34;
+
+    for (j = 0; j < nverts; j++) {
+        int k = 0;
+        unsigned int i;
+        unsigned int c = data_004B5078->m_count;
+
+        for (i = 0; i < c; i++)
+            if (data_004B5078->m_items[i].m_10[j])
+                k++;
+
+        if (k > 0) {
+            mat = data_004B5078->m_items[0].m_1c[j];
+
+            unsigned short *qwc = (unsigned short *)&tag[4];
+
+            tag[0] = 0x30090004;
+            tag[1] = (unsigned int)(*palette)[mat];
+            tag[2] = 0x01000101;
+            tag[3] = 0x6C048000;
+            start = data_004B50B8;
+            tag[4] = 0x300A0000;
+            tag[5] = (unsigned int)&((unsigned int *)d->m_verts)[data_004B50B8] & 0x0FFFFFFF;
+            tag[6] = mat;
+            tag[7] = k;
+            MD_PUT(0x01000101);
+            MD_PUT(((k * 2 + 1) << 16) | 0x6D008004);
+            hdr = (short *)&((unsigned int *)d->m_verts)[data_004B50B8];
+            hdr[0] = j == 0 ? 2 : 1;
+            hdr[1] = n;
+            hdr[2] = mat;
+            hdr[3] = k;
+            data_004B50B8 += 2;
+            tag += 8;
+            for (unsigned int i = 0; i < data_004B5078->m_count; i++) {
+                CDecalBatchItem *item = &data_004B5078->m_items[i];
+                unsigned int *src = (unsigned int *)item->m_10[j];
+
+                if (src) {
+                    short e = item->m_e * 2;
+                    unsigned int idx = data_004B50B8;
+                    unsigned int *dst = &((unsigned int *)d->m_verts)[idx];
+
+                    dst[0] = src[0];
+                    ((unsigned short *)dst)[2] = ((unsigned short *)src)[2];
+                    ((short *)dst)[3] = e;
+                    ((u_long *)dst)[1] = ((u_long *)src)[1];
+                    data_004B50B8 = idx + 4;
+                }
+            }
+            MD_PUT(0x17000000);
+            while (data_004B50B8 & 3)
+                MD_PUT(0);
+            *qwc = (data_004B50B8 - start) >> 2;
+        }
+    }
+    if (groups > 1)
+        *hdr = 5;
+    else
+        *hdr = 6;
+
+    unsigned int last = data_004B50B8;
+
+    tag[0] = 0x300B0000;
+    tag[1] = (unsigned int)&((unsigned int *)d->m_verts)[data_004B50B8] & 0x0FFFFFFF;
+    tag[2] = j * 2;
+    tag[3] = 0;
+
+    unsigned int unpack = (data_004B5078->m_count * 3 + 4) | 0x8000 | (n << 16) | 0x6E000000;
+
+    MD_PUT(0x01000102);
+    MD_PUT(unpack | 0x4000);
+    for (std::vector<unsigned int>::iterator it = data_004B5078->m_list.begin();
+         it != data_004B5078->m_list.end();) {
+        unsigned char c[4];
+
+        c[0] = *it++ * 3;
+        c[1] = *it++ * 3;
+        c[2] = *it++ * 3;
+        c[3] = 1;
+        MD_PUT(*(unsigned int *)c);
+    }
+    MD_PUT(0x01000101);
+    MD_PUT(0x6C048000);
+    MD_PUT(0x8000);
+    MD_PUT(0x303EC000);
+    MD_PUT(0x412);
+    MD_PUT(0);
+    MD_PUT(data_004B5078->m_count | 0x8000);
+    MD_PUT(0x303DC000);
+    MD_PUT(0x412);
+    MD_PUT(0);
+
+    unsigned int cnt = data_004B5078->m_count;
+
+    MD_PUT(cnt * 3 + 4);
+    MD_PUT(0);
+    MD_PUT(cnt);
+    MD_PUT(n);
+
+    float f0 = 0.0f;
+    float f1;
+    float f2;
+    float f3;
+
+    f1 = f2 = f3 = 0.0f;
+
+    MD_PUT(*(unsigned int *)&f0);
+    MD_PUT(*(unsigned int *)&f1);
+    MD_PUT(*(unsigned int *)&f2);
+    MD_PUT(*(unsigned int *)&f3);
+    MD_PUT(0x01000103);
+    MD_PUT((data_004B5078->m_count << 16) | 0x65008005);
+    for (unsigned int i = 0; i < data_004B5078->m_count; i++) {
+        CDecalBatchItem *item = &data_004B5078->m_items[i];
+        short uv[4];
+        int v;
+
+        v = (int)(4096.0f * item->m_pos.x);
+        if (v > 0x7FFF)
+            v = 0x7FFF;
+        else if (v < -0x7FFF)
+            v = -0x7FFF;
+        uv[0] = v;
+        v = (int)(4096.0f * item->m_pos.y);
+        if (v > 0x7FFF)
+            v = 0x7FFF;
+        else if (v < -0x7FFF)
+            v = -0x7FFF;
+        uv[1] = v;
+        ((unsigned int *)d->m_verts)[data_004B50B8 + item->m_e] = *(unsigned int *)uv;
+    }
+    data_004B50B8 += data_004B5078->m_count;
+    MD_PUT(0x17000000);
+    while (data_004B50B8 & 3)
+        MD_PUT(0);
+    *(unsigned short *)tag = (data_004B50B8 - last) >> 2;
 }
 
 void CMeshDecalPool::Uninit()

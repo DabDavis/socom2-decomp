@@ -419,45 +419,10 @@ extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
     return 0;
 }
 
-/* the last sixteen frames' times, a ring, and the newest's place in it (new in SOCOM II, not
- * named) */
+/* the last sixteen brightness samples, a ring the video thread (func_003B1DD0) fills, and the
+ * newest's place in it (new in SOCOM II, not named) */
 extern float data_004A4560[16];
 extern int data_004A45A0;
-
-/* the mean of the last n frames' times: all sixteen in order, or n back from the newest (new in
- * SOCOM II, not named). OPEN, 17 instructions, the same size: the unrolled walk's index and its
- * bound (n - 8) trade v1 and a1; the single exit gave the sum $f0 and declaring i first its a2 (the
- * index declared before i, at the top, unsigned, a while loop: no better). Round 29, by
- * `tools/igreplay.py --target`: those two are the only differing nodes, idx (v35) and the unroller's
- * bound, a front-end temporary (v36, `n - 8`, defined right after idx's load) -- every placement
- * numbering the bound BEFORE idx gives the target's registers (91 of 3,481). Not found in source:
- * the step in the for, two statements, the for-init, idx unsigned, a named count, `last - i` (0x1F0),
- * a pointer walk (0x188), a while (no unrolling). Round 30: the bound is a temporary the loop pass
- * makes, so idx would have to be one too -- made after it (the remainder loop's induction pointer
- * @671 is): an inline's local or parameter, a copy of a named start, a reference or pointer to the
- * global, a dead first definition then the same load again (CSE), casts -- all still numbered ahead
- * of the bound (17); the CSE rule that closed CMaterial_Object::Read does not reach here. Round 31:
- * the kit's round-49 device -- idx through a leaf template inline returning its argument or a cast
- * (Ident<int>, Cast<int>, Cast<unsigned>, Ref<int>), the element through a template accessor, a
- * pointer through AtPtr<float> -- still 17 (the pointer forms 0x188, the accessor 0x1D0) */
-extern "C" float func_003B1BF0(unsigned int n)
-{
-    float sum = 0.0f;
-
-    if (n == 16) {
-        for (unsigned int i = 0; i < 16; i++)
-            sum += data_004A4560[i];
-        sum /= 16.0f;
-    } else {
-        unsigned int i;
-        int idx = data_004A45A0;
-
-        for (i = 0; i < n; i++)
-            sum += data_004A4560[idx--];
-        sum /= n;
-    }
-    return sum;
-}
 
 /* the EE kernel's (eekernel.h) */
 struct ThreadParam {
@@ -501,6 +466,168 @@ extern "C" void func_003B2450()
     StartThread(data_003E1418, 0);
 }
 #pragma auto_inline reset
+
+/* the screen's size (the 2D library's and the HUD's), the brightness sampler's mode (0 a grid, else
+ * a cone; zrndr_postfx.cpp sets it), its window and the grid's phase (new in SOCOM II, not named) */
+extern "C" unsigned int data_004A44C4;
+extern "C" unsigned int data_004A44C8;
+extern "C" int data_004A4550;
+extern "C" int data_004A44CC;
+extern "C" int data_004A44D0;
+extern "C" int data_004A44D4;
+extern "C" int data_004A44D8;
+extern "C" int data_004B45D0;
+extern "C" int data_004B45D8;
+/* the brightness measured last (new in SOCOM II, not named) */
+extern "C" float data_003E1420;
+extern sceGsStoreImage data_004A43E0;
+/* libgraph's sceGsGetIMR and sceGsPutIMR (MAIN's GCC-built rows, not named) */
+extern "C" u_long func_001A3098();
+extern "C" u_long func_001A3058(u_long imr);
+extern "C" int SleepThread(void);
+extern "C" float cosf(float);
+
+#define ZV_ANGLE 1.4922565f
+
+/* a point in floats (SOCOM 1's PNT2D, zmath.h's) */
+struct PNT2D {
+    float x, y;
+};
+
+/* the video thread's body (new in SOCOM II, not named): woken once a frame, it holds the
+ * interrupts and the FIFO, stops VIF1 and reads single pixels back from the GS through the unit's
+ * store image -- on a grid stepped 40 pixels over the window, its phase moved on each pass, or along
+ * a cone of rows and columns (85.5 degrees each way) -- and keeps their weighted mean as the
+ * brightness, also in the ring func_003B1BF0 averages. BYTE-EXACT in the weapons' round 34 (unwritten
+ * before): the grid arm's two emptied if-bodies (`srl; bltz +1; nop`, the AI core's round 34) are the
+ * cone arm's half-size locals declared there too and never read -- an unsigned-to-float conversion
+ * assigned to a dead local keeps its sign test and loses both arms; the pixel position and the two
+ * angles are IPNT2D / PNT2D locals, which MW keeps in the frame (each read once per use, the angle
+ * shared by the compare and cosf's argument -- volatile scalars give the frame but re-read it); the
+ * two steps' divisions named locals (hoisted ahead of the loops; in the steps they stay in them) */
+extern "C" void func_003B1DD0(void *arg)
+{
+    for (;;) {
+        SleepThread();
+
+        unsigned int sum[3] = {0};
+        IPNT2D pos;
+        PNT2D ang;
+        u_long128 pix;
+        float weight = 0.0f;
+#define si ((GS_STOREIMAGE_REGS *)&data_004A43E0)
+
+        DIntr();
+        zSysFifoPause();
+        *ZV_VIF1_FBRST = 8;
+        asm volatile { sync }
+        while (*ZV_VIF1_STAT & 0xC00)
+            ;
+        u_long imr = func_001A3058(func_001A3098() | 0x200);
+
+        *ZV_GS_CSR = 2;
+        func_003B28D0(si);
+        if (!data_004A4550) {
+            float hw = (float)(data_004A44C4 >> 1);
+            float hh = (float)(data_004A44C8 >> 1);
+
+            for (pos.y = data_004A44D0 + data_004B45D8; pos.y < data_004A44D8; pos.y += 40) {
+                for (pos.x = data_004A44CC + data_004B45D0; pos.x < data_004A44D4; pos.x += 40) {
+                    *(u_long *)UNCACHED(&si->trxpos) = (u_long)pos.x | ((u_long)pos.y << 16);
+                    func_003B24C0(si, &pix);
+                    weight += 256.0f;
+                    sum[0] += ((unsigned char *)&pix)[0];
+                    sum[1] += ((unsigned char *)&pix)[1];
+                    sum[2] += ((unsigned char *)&pix)[2];
+                }
+            }
+            data_004B45D0 += 10;
+            if (data_004B45D0 == 40) {
+                data_004B45D0 = 0;
+                data_004B45D8 += 7;
+                if (data_004B45D8 == 28)
+                    data_004B45D8 = 0;
+            }
+        } else {
+            float hw = (float)(data_004A44C4 >> 1);
+            float hh = (float)(data_004A44C8 >> 1);
+            float sx = 59.69026f / hw;
+            float sy = 41.783184f / hh;
+
+            for (ang.y = -ZV_ANGLE; ang.y < ZV_ANGLE; ang.y += sy) {
+                if (ang.y < 0.0f)
+                    pos.y = (int)(hh * cosf(ang.y));
+                else
+                    pos.y = (int)((float)data_004A44C8 - hh * cosf(ang.y));
+
+                float lim = ZV_ANGLE * cosf(ang.y);
+
+                for (ang.x = -lim; ang.x < lim; ang.x += sx) {
+                    if (ang.x < 0.0f)
+                        pos.x = (int)(hw * cosf(ang.x));
+                    else
+                        pos.x = (int)((float)data_004A44C4 - hw * cosf(ang.x));
+                    *(u_long *)UNCACHED(&si->trxpos) = (u_long)pos.x | ((u_long)pos.y << 16);
+                    func_003B24C0(si, &pix);
+                    weight += 256.0f;
+                    sum[0] += ((unsigned char *)&pix)[0];
+                    sum[1] += ((unsigned char *)&pix)[1];
+                    sum[2] += ((unsigned char *)&pix)[2];
+                }
+            }
+        }
+
+        float br = (0.4901f * sum[0] + 0.4657f * sum[1] + 0.0441f * sum[2]) / weight;
+
+        data_003E1420 = br;
+        data_004A4560[data_004A45A0] = br;
+        data_004A45A0++;
+        if ((unsigned int)data_004A45A0 >= 16)
+            data_004A45A0 = 0;
+        *ZV_VIF1_FIFO = data_003E1430;
+        func_001A3058(imr);
+        *ZV_GS_CSR = 2;
+        zSysFifoResume(true);
+        EIntr();
+    }
+#undef si
+}
+
+/* the mean of the last n brightness samples: all sixteen in order, or n back from the newest (new in
+ * SOCOM II, not named). OPEN, 17 instructions, the same size: the unrolled walk's index and its
+ * bound (n - 8) trade v1 and a1; the single exit gave the sum $f0 and declaring i first its a2 (the
+ * index declared before i, at the top, unsigned, a while loop: no better). Round 29, by
+ * `tools/igreplay.py --target`: those two are the only differing nodes, idx (v35) and the unroller's
+ * bound, a front-end temporary (v36, `n - 8`, defined right after idx's load) -- every placement
+ * numbering the bound BEFORE idx gives the target's registers (91 of 3,481). Not found in source:
+ * the step in the for, two statements, the for-init, idx unsigned, a named count, `last - i` (0x1F0),
+ * a pointer walk (0x188), a while (no unrolling). Round 30: the bound is a temporary the loop pass
+ * makes, so idx would have to be one too -- made after it (the remainder loop's induction pointer
+ * @671 is): an inline's local or parameter, a copy of a named start, a reference or pointer to the
+ * global, a dead first definition then the same load again (CSE), casts -- all still numbered ahead
+ * of the bound (17); the CSE rule that closed CMaterial_Object::Read does not reach here. Round 31:
+ * the kit's round-49 device -- idx through a leaf template inline returning its argument or a cast
+ * (Ident<int>, Cast<int>, Cast<unsigned>, Ref<int>), the element through a template accessor, a
+ * pointer through AtPtr<float> -- still 17 (the pointer forms 0x188, the accessor 0x1D0) */
+extern "C" float func_003B1BF0(unsigned int n)
+{
+    float sum = 0.0f;
+
+    if (n == 16) {
+        for (unsigned int i = 0; i < 16; i++)
+            sum += data_004A4560[i];
+        sum /= 16.0f;
+    } else {
+        unsigned int i;
+        int idx = data_004A45A0;
+
+        for (i = 0; i < n; i++)
+            sum += data_004A4560[idx--];
+        sum /= n;
+    }
+    return sum;
+}
+
 
 /* a saved screen image read back into the render buffer, a band of 64 rows at a time (SOCOM 1's
  * RestoreImage read the file whole and sent it in four fixed blocks) */
