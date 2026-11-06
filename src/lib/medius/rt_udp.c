@@ -29,8 +29,8 @@
  * 0x63ECC8 (round 12b, 93s: the receive -- the reliable test reads the header's first word, `lw;
  * andi 6`, as a word-wide `& 6` gives; the loop's message pointer lives in a0 where the target's is
  * v0, and the endpoint path's free does not cross-jump with the connection's). Round 12b: 0x63E928
- * (the connection send) is byte-exact with RT_UDP_BARRIER below, a stand-in. Not written: the
- * datagram handlers 0x63EF38, 0x63F4C8, 0x6400A8, 0x6404D8, 0x640940, 0x640EA0, 0x641490. */
+ * (the connection send) is byte-exact with RT_UDP_BARRIER below, a stand-in. Round 26b wrote the
+ * datagram handlers: 0x63F4C8, 0x6400A8, 0x640940, 0x640EA0 and 0x641490 byte-exact, 0x63EF38 and 0x6404D8 open. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern void *memcpy(void *d, const void *s, unsigned int n);
@@ -872,6 +872,8 @@ int func_0063ECC8(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nL
 }
 
 /* the receive's peek (0x63EF38): 0x63ECC8 without taking the message off its ring */
+/* OPEN (round 26b): 0x23C against 0x20C: written with the two reliable arms apart they do not cross-jump; the single
+ * `if` form hoists `li 6`, which the target does not. */
 int func_0063EF38(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nLength, unsigned int *pnReceived)
 {
     RT_UDP_HEADER header;
@@ -1502,6 +1504,8 @@ int func_00640408(RT_UDP *pUdp)
 
 /* a received datagram (0x6404D8): the header out of the receive buffer, the trailer of an encrypted one, the shared
  * endpoint it names, its connection by address; then by its flags to the handlers -- a connection found or not */
+/* OPEN (round 26b): registers: the target has pData s2, pConn s3, szAddress s4, nPort s5, bEncrypted s6, and nShared in
+ * v0 with `bltz v0,..; move a1,sp`. */
 int func_006404D8(RT_UDP *pUdp, char *szAddress, unsigned short nPort, unsigned short nLength)
 {
     RT_UDP_HEADER header;

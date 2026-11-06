@@ -22,9 +22,9 @@
  * v0 = 2; posnest/else/goto/dup-store/result spellings all convert or move the loop;
  * 0x639FB8 (2: the stores'
  * order -- sched1 issues the three entry stores by register weight, the base's and the 7's deaths
- * putting nState first; every source order and a chained -1 tried). Not written: the create 0x6395B8 (its
- * record reloaded from the stack after every store, as the target does, but the defaults' order),
- * 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63ACA0, 0x63B708, 0x63B9A0, 0x63C4F0.
+ * putting nState first; every source order and a chained -1 tried). The rows this note once listed as not written
+ * (0x6395B8, 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63ACA0, 0x63B708, 0x63B9A0, 0x63C4F0) are written since: all
+ * byte-exact but 0x63ACA0, whose OPEN note stands above it.
  * Round 22b: 0x63A618 (a send to one peer or every one in use), 0x63B2F0 (a peer found by its second
  * address: the first comparison's verdict is a variable of its own, never read -- assigned to the one
  * verdict variable twice, the registers move) and 0x63C3D0 (the leave message: its first loop's state
@@ -983,6 +983,8 @@ void func_0063AC98(RT_P2P *pP2p, int nConn, int nError)
 
 /* a connection is up (0x63ACA0): marked on its peer; while the table joins (state 7) the new peer is told of this one and
  * of every live peer, its own description sent back marked, and every live peer told of it */
+/* OPEN (round 26b): d=3: the target's `move s0,zero` stands before `lw a1,120(sp)`; `i = 0` above the `if` gives d=7.
+ * Commit d1d7fb79 calls this row byte-exact: it is not. */
 void func_0063ACA0(RT_P2P *pP2p, int nConn, int nError)
 {
     RT_P2P_INFO info;

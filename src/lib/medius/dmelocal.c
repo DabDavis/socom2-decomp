@@ -3528,6 +3528,9 @@ extern int func_0063A5C0(int nP2p);
  * status record (its size, four worlds' codes, the peer layer's), then the peer layer's own update. The three failure
  * arms are one block in the target by cross-jumping: written as one (a goto), the loop is short enough for loop.c to
  * hoist the constants 1 and 12 (scan_loop's threshold x savings x lifetime against the insn count). */
+/* OPEN (round 26b): one word short: the target has a no-op `movz v0,s0,s0` after `move v0,s0` before the pWorld test;
+ * the source of it is not found. The rest is exact with the three fail arms written apart (loop.c's hoist threshold
+ * counts the loop's length, jump.c cross-jumps them later) and the `aStatus[0] = nP2p = 12` chain. */
 int func_0061BC68(unsigned char bBlock)
 {
     DmeWorld *pWorld = 0;
@@ -3884,6 +3887,8 @@ typedef struct DmeHostPeerParams {
 
 /* SOCOM 1's RemoteClientDisconnectEvent grown (0x6164E0): a client gone from a world -- its objects freed, the world's
  * client callback told, and when this client was the one closing the world, the world closed */
+/* OPEN (round 26b): d=10: the first arm's `beqzl v1,..; b tail; lw v1,20(v1)` where this gives bnezl, and the report's
+ * store order (pClient last; not permuted). */
 int func_006164E0(int nWorld, int nClient)
 {
     struct {
@@ -3962,6 +3967,8 @@ tail:
 
 /* SOCOM 1's NetOpenDataStream grown (0x619DD8): a free stream slot of this client's block made open, its ring buffer
  * allocated; 21 for a client without a block, 20 for no free slot */
+/* OPEN (round 26b): d=14 with the stream in a one-member struct (a real alias set; a plain pointer's alias word did not
+ * flip under pert.py): the constant -1 takes a1 in the target and a2 here, and pStream loads before pWorld. */
 int func_00619DD8(int *pnStream, int nSize, int nRate, int nType, int a4, int nTarget, int a6, unsigned short a7,
                   unsigned short a8)
 {
@@ -4043,6 +4050,8 @@ int func_00619DD8(int *pnStream, int nSize, int nRate, int nType, int a4, int nT
 
 /* SOCOM 1's NetHostPeerToPeer grown (0x6181B8): world 0 made this client's, its first client, the transport and the
  * peer layer's host started, the join reported at once through 0x617060 */
+/* OPEN (round 26b): d=9 when the alias state above it is stale, d=119 as this file stands (pStatus's field_08 written
+ * as `((int *)pStatus)[2]` because declaring it flips 0x617060): the stores' order and a1/a2 for the constant 2. */
 int func_006181B8(DmeHostPeerParams *pParams, DmeConnectStatus *pStatus)
 {
     struct {
@@ -4138,6 +4147,8 @@ extern unsigned char data_0066C8F8[512];
 
 /* SOCOM 1's RemoteClientConnects grown (0x614B18): the client's record filled, its streams, the client callback for a
  * client-server world; a peer's world answers with this client's address and public key and its state report */
+/* OPEN (round 26b): d=137 here, 97 at its image place, flipped at K>=14 dummy declarations: the target reloads pClient
+ * after each store, here the stale alias set (purge_addressof's half-written MEM) stops that. */
 void func_00614B18(unsigned int nWorld, unsigned int nClient, char *szIp, unsigned short nPort)
 {
     struct {
@@ -4264,6 +4275,9 @@ typedef struct DmeStreamView {          /* a data stream's slot as the send read
 
 /* SOCOM 1's SendClientDataStreams grown (0x61B6E8): each of this client's open streams sends what it holds as far as its
  * rate allows; one that is closing and empty is freed and its close sent */
+/* OPEN (round 26b): d=112, one word long: the `move v0,s3` copy before the *1000 shifts is missing, and the registers
+ * shift from there. tools/retsweep.py: rt_circ_buf_destroy declared void brings it nearer (difflib 70 to 64), not home.
+ * */
 void func_0061B6E8(void)
 {
     int nHost = 256;

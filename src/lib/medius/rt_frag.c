@@ -8,9 +8,9 @@
  * Byte-exact: the create (every slot cleared again after the zeroed allocation, the buffer pointer
  * reloaded from its stack slot after each store) and the destroy. OPEN: func_00645290 (13 words: the
  * slot index taken first gives the target's order of the parameter copies; the sequence's 29 bits
- * land in a0 where the target reuses a3, nLength's register once copied to s2). Not written:
- * func_00645380 (the next complete message's length: a walk from the oldest slot over the 0x20000000
- * start and 0x40000000 end flags) and func_00645528 (the reassembly into the caller's buffer). */
+ * land in a0 where the target reuses a3, nLength's register once copied to s2). Round 26b:
+ * func_00645528 (the reassembly into the caller's buffer) byte-exact; func_00645380 (the next complete message's
+ * length: a walk from the oldest slot over the 0x20000000 start and 0x40000000 end flags) written, open. */
 
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
@@ -86,6 +86,7 @@ void func_00645290(RT_FRAG_BUF *pBuf, unsigned int nSeq, void *pData, unsigned i
 }
 /* the next complete message's length (0x645380): from the oldest sequence's slot -- or, when that does not start a message,
  * the next slot flagged 0x20000000 past it -- over consecutive fragments to one flagged 0x40000000 */
+/* OPEN (round 26b): d=62, registers only: i takes a2 for the target's a1 and everything shifts from there. */
 unsigned int func_00645380(RT_FRAG_BUF *pBuf)
 {
     unsigned int nFirst = 0;

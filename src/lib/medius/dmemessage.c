@@ -344,6 +344,118 @@ int func_0061F410(int nConnection, int nUnused, int nClient, unsigned char *pMsg
     return 4;
 }
 
+/* a client's state message (0x61F518): its state and values kept, the callback told once, and what the session master's own
+ * state says next -- a joining master answers, a joined one takes the client in */
+typedef struct DmeClientStateMsg {
+    unsigned char nState;               /* 0x00 */
+    unsigned char nClient;              /* 0x01 */
+    unsigned char nValue1;              /* 0x02 */
+    unsigned char nValue2;              /* 0x03 */
+    unsigned short nValue3;             /* 0x04 */
+    int nValue;                         /* 0x08 */
+    int nData;                          /* 0x0C */
+} DmeClientStateMsg;
+
+typedef struct DmeClientStateReport {   /* what the client callback is told */
+    int nWorld;                         /* 0x00 */
+    int nClient;                        /* 0x04 */
+    DmeClientInfo *pClient;             /* 0x08 */
+    int nState;                         /* 0x0C */
+    int nData;                          /* 0x10 */
+    int nUser;                          /* 0x14 */
+} DmeClientStateReport;
+
+typedef struct DmeClientStateReply {    /* 4 bytes */
+    unsigned char nState;
+    unsigned char nClient;
+    unsigned char nValue1;
+    unsigned char nValue2;
+} DmeClientStateReply;
+
+extern int data_00686A14;               /* the reply's message type */
+extern int func_0061C998(unsigned int nWorld, int nValue);
+void func_0061F920(unsigned int nWorld, int nClient, int nValue1, int nValue2);
+
+/* OPEN (round 26b): d=9, only the report's block: the target loads pClient (t0) before pWorld (a2) and stores 12, 20,
+ * 16, then the callback's load, 4, 0, 8. All 720 orders of the six stores leave those two loads swapped (this one is
+ * the best of them, with nUser int or pointer alike), and declaring the callback with the extra registers as arguments
+ * adds moves (d=97 and more), so it takes one. Everything else is exact: the master pointer in a one-member struct
+ * gives its PRE load on the false edge (d=30 to 14), nState a local for the `sb a1`. */
+int func_0061F518(unsigned int nConnection, int nUnused, unsigned int nClient, DmeClientStateMsg *pMsg)
+{
+    DmeClientStateReport report;
+    DmeClientStateReply reply;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    struct { DmeClientInfo *p; } master;
+    unsigned char bConnected;
+    int nState;
+
+    master.p = 0;
+    if (pMsg == 0)
+        return -1;
+    if (nConnection >= DME_MAX_WORLDS)
+        return 16;
+    if (nClient >= DME_MAX_CLIENTS)
+        return 16;
+    if (func_0061C600(nConnection, &pWorld) != 0 || pWorld == 0
+        || func_0061C720(nConnection, pMsg->nClient, (char **)&pClient) != 0 || pClient == 0)
+        return -1;
+    bConnected = pClient->bConnected;
+    if (bConnected != 1)
+        return 16;
+    if (pWorld->nMyClient >= DME_MAX_CLIENTS)
+        return 16;
+    if (func_0061C720(nConnection, pWorld->nMyClient, (char **)&master.p) != 0)
+        return 16;
+    if (pClient == 0)
+        return 16;
+    pClient->nState = pMsg->nState;
+    pClient->field_18 = pMsg->nValue1;
+    pClient->field_1C = pMsg->nValue2;
+    *(unsigned short *)&pClient->field_20 = pMsg->nValue3;
+    if (pClient->nState == 5)
+        func_0061C998(nConnection, pMsg->nClient);
+    if (pWorld->pfnClientCallback != 0 && pClient->field_2A == 0) {
+        memset(&report, 0, sizeof(report));
+        report.nUser = pWorld->field_42C;
+        report.nWorld = nConnection;
+        report.nClient = pMsg->nClient;
+        report.pClient = pClient;
+        report.nState = pClient->nState;
+        report.nData = pMsg->nData;
+        ((void (*)(DmeClientStateReport *))pWorld->pfnClientCallback)(&report);
+        pClient->field_2A = bConnected;
+        nState = master.p->nState;
+        if (nState == 3) {
+            pClient->nState = 0;
+            reply.nState = nState;
+            reply.nClient = func_0061D448(pWorld->nMyClient);
+            reply.nValue1 = master.p->field_18;
+            reply.nValue2 = master.p->field_1C;
+            func_00615DE0(80, nConnection, pMsg->nClient, data_00686A14, 4, &reply);
+            return 16;
+        }
+    }
+    if (pMsg->nValue != 0)
+        pClient->nValue = pMsg->nValue;
+    switch (master.p->nState) {
+    case 0:
+    case 1:
+    case 2:
+    case 4:
+        break;
+    case 3:
+        func_0061F920(nConnection, pMsg->nClient, pMsg->nValue1, pMsg->nValue2);
+        break;
+    case 5:
+        if (pMsg->nState == 3)
+            func_0061FE18(nConnection, pMsg->nClient, pMsg->nValue1, pMsg->nValue2);
+        break;
+    }
+    return 16;
+}
+
 /* OPEN (3 words, round 25b's reading of sched1's dump): the two loads that feed the store tie on priority and
  * *pMsg wins on register weight (pMsg dies there: 0 against the pLocal reload's 1), so the target's first
  * fall-through insn -- the reload, in the `beq`'s slot -- comes third here. Seven spellings of the store, five of its
@@ -770,7 +882,8 @@ int func_0061E300(int nConnection, int nUnused, int nClient, DmePingMsg *pMsg)
 
 /* every client of a joining world has answered (0x61F920): the first client ready becomes the session master -- this one,
  * when it is that client, marks itself joined, runs the joins and greets the rest */
-void func_0061F920(unsigned int nWorld)
+/* OPEN (round 26b): first draft, 0x18 long (d=125), shape incomplete. 0x61F518 calls it with three more arguments; its prologue keeps only the first. */
+void func_0061F920(unsigned int nWorld, int nClient, int nValue1, int nValue2)
 {
     DmeJoinFailure report;
     DmeWorld *pWorld = 0;
@@ -858,6 +971,7 @@ extern DmeUpdateStructure NetStructureList[16];
 
 /* an object's update (SOCOM 1's RemoteObjectUpdate's caller, 0x61ED48): for an object not live here the message's length is
  * walked; otherwise each field in it is copied to both copies of the data, its time stamped, the class told */
+/* OPEN (round 26b): first draft, 8 long (d=137), shape incomplete. */
 int func_0061ED48(int nConnection, int nUnused, unsigned int nClient, unsigned char *pMsg)
 {
     char *pObject = 0;
