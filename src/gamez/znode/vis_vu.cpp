@@ -139,6 +139,12 @@ CPnt4D zdb::CVisual::m_projectedColor(128.0f, 128.0f, 128.0f, 240.0f);
  * symbol is: 0x4B4EF0) */
 static zdb::AddonPoint decaldata[6];
 
+/* the builder's add-on points by pointer, three at a time handed to AttachDecal (SOCOM 1's file static
+ * decalps, 24 bytes, outside zdb as decaldata: 0x3E1490) */
+static zdb::AddonPoint *decalps[6] = {
+    &decaldata[0], &decaldata[1], &decaldata[2], &decaldata[3], &decaldata[4], &decaldata[5]
+};
+
 namespace zdb {
 
 /* the view id in use, the stack's top -- a `break` if the stack is empty (the wep lane, round 13:
@@ -1541,12 +1547,6 @@ _word128 *CVisual::VuBatchProgram_Decals(_word128 *p)
     data_004B4AD8->u32[2] = p - start;
     return VuExecuteState0(p);
 }
-
-/* the builder's add-on points by pointer, three at a time handed to AttachDecal (SOCOM 1's decalps,
- * 24 bytes) */
-static AddonPoint *decalps[6] = {
-    &decaldata[0], &decaldata[1], &decaldata[2], &decaldata[3], &decaldata[4], &decaldata[5]
-};
 
 /* a zone-local UV test (vis_decal.cpp's zdb::UVCompare) */
 bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
