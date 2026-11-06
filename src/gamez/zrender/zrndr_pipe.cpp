@@ -867,11 +867,10 @@ static inline void BoxCorners4(PNT4D *c, const CBBox *b)
     c[7].w = 1.0f;
 }
 
-/* vis_vu.cpp's: the model-to-world matrix NodeSetup leaves (not named) */
-extern "C" CMatrix *data_004B4E60;
 /* the light walk's stamp: a light already taken for the node this walk carries it (OVL1 data
- * 0x3DFF78, SOCOM 1's gp-relative word; not named) */
-extern "C" unsigned int data_003DFF78;
+ * 0x3DFF78, initialised 1: SOCOM 1's file static AppliedToNodeNum, gp-relative there -- data.txt's;
+ * the model-to-world matrix is CVisual::m_ModelToWorld, NodeSetup's, SOCOM 1's static) */
+extern unsigned int AppliedToNodeNum;
 
 /* a point set from three values (ours; int_shapes.cpp's PntSet) */
 static inline void CornerSet(CPnt3D &p, float x, float y, float z)
@@ -919,8 +918,8 @@ static inline float MaxOf(const float &a, const float &b) { return a >= b ? a : 
 /* whether the walk has taken the light already: stamped with the walk's stamp the first time (ours) */
 static inline bool LightTaken(zdb::CLight *light)
 {
-    if (data_003DFF78 != light->m_appliedToNode) {
-        light->m_appliedToNode = data_003DFF78;
+    if (AppliedToNodeNum != light->m_appliedToNode) {
+        light->m_appliedToNode = AppliedToNodeNum;
         return false;
     }
     return true;
@@ -947,16 +946,16 @@ static inline bool LightTaken(zdb::CLight *light)
 void BuildNodeLocalLightList(zdb::CNode *node)
 {
     zdb::CVisual::m_local_light_cnt = 0;
-    data_003DFF78++;
+    AppliedToNodeNum++;
     CBBox box;
 
-    if (!Scales(data_004B4E60)) {
-        data_004B4E60->Transform(&NodeBBox(node)->m_min, &box.m_min, 2);
+    if (!Scales(zdb::CVisual::m_ModelToWorld)) {
+        zdb::CVisual::m_ModelToWorld->Transform(&NodeBBox(node)->m_min, &box.m_min, 2);
         func_002A94E0(&box);
     } else {
         CBBox8 c(node->GetBBox());
 
-        data_004B4E60->Transform(c.m_pts, 8);
+        zdb::CVisual::m_ModelToWorld->Transform(c.m_pts, 8);
         CPnt3D p = c.m_pts[0];
 
         PointBox(&box, p, p);
