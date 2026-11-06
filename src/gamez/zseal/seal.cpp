@@ -52,14 +52,19 @@ extern "C" void *func_00555170(CIndexedArray *a)
 }
 #pragma auto_inline reset
 
-/* the application's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0: its first two virtuals, its
- * zdb camera and the SEAL it shows) */
+/* the application's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0: its first two virtuals, the
+ * two flags and the word 0x545EE0 resets, its zdb camera and the SEAL it shows) */
 class CAppCamera {
 public:
     virtual void Tick(float dT);
     virtual bool AttachTo(CZSealBody *prey);
 
-    unsigned char _4[0xb4 - 0x4];
+    unsigned char _4[0x45 - 0x4];
+    unsigned char m_45;   // 0x45 (camera.h's names)
+    unsigned char m_46;   // 0x46
+    unsigned char _47;
+    int m_48;   // 0x48
+    unsigned char _4c[0xb4 - 0x4c];
     zdb::CCamera *m_camera;   // 0xb4
     zdb::CNode *m_camera_effects;   // 0xb8
     CZSealBody *m_bc;   // 0xbc: the SEAL the camera shows
@@ -1150,6 +1155,8 @@ public:
 
     unsigned char _170[0x298 - 0x170];
     bool m_thermal;   // 0x298
+    unsigned char _299[0x2a8 - 0x299];
+    int m_ammo;   // 0x2a8 (zveh.h's: the rounds 0x545EE0 hands back from the gunner's kit)
 };
 
 
@@ -2283,7 +2290,15 @@ static inline void PushOut(float &cur, float v, bool &moved)
  * the depth then takes $f1 and the sub.s cannot go in the delay slot (0x308). igreplay --movers on that
  * dump: the step's node must sit at 93.5-96.5, among the code generator's temporaries, after the
  * depth's -- a 10.0 materialised late, as the propagated `r` of the current shape is; `lim` a variable
- * too, `-(t - 1.3f)`, `/ (1.0f / 0.6f)` and `(r * 0.6f)` are worse (build/scratch/seal-r52/v_3d*.py) */
+ * too, `-(t - 1.3f)`, `/ (1.0f / 0.6f)` and `(r * 0.6f)` are worse (build/scratch/seal-r52/v_3d*.py).
+ * Round 53, the code generator's order read in the PCode (build/scratch/seal-r53/v_3d*.py, igshow.py):
+ * MW numbers a product's operands in evaluation order and evaluates the HEAVIER subtree first, a tie
+ * left first, and emits a commutative product light operand first -- `heavy * r` and `r * heavy` give
+ * the same PCode, the 10.0 numbered after the heavy side and emitted first; a literal is put on the left
+ * before that (so `depth * 10.0f`, `10.0f * depth`, `r * depth` all number the 10.0 first: a tie). The
+ * target -- 10.0 numbered after the depth and emitted first -- is that order with the depth HEAVIER than
+ * the step: some shape where `1.3 - t` weighs more than a lone constant (the CSE'd 1.3 and a register t
+ * weigh as one); the inlines `r * Under(1.3f, t)` / `UnderT(t)` / by-reference keep the tie (0x308) */
 extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)
@@ -2501,6 +2516,8 @@ extern short data_003DF110;
 class CZPlatformState {
 public:
     static void SendPlatform(CTurret *t);
+    /* (OVL1 0x2C7A60, fts_net_platform.cpp's) */
+    static void UpdateLocalPlatform(CTurret *t, bool b);
 };
 
 /* whether an entity has a controller (an inline bool written `? true : false`: the target
@@ -2551,6 +2568,71 @@ extern "C" bool func_00546210(CZSealBody *seal, CEntity *e)
             func_005463C0(seal, e);
     }
     return ok;
+}
+
+extern "C" {
+/* the camera given a SEAL to follow (OVL1 0x295AF0, a jump to 0x2956E0 -- camera.cpp's AttachTo
+ * calls that with (this, prey, 0); unowned, the name unknown) */
+void func_00295AF0(CAppCamera *cam, CZSealBody *seal, int n);
+/* the SEAL's rifle or pistol drawn again by the item kept (OVL2 0x5A6EB0, seal_env.cpp's range,
+ * unwritten: it pushes 0x3DF108 or 0x3DF110 and sets m_item; the name unknown -- the item a plain
+ * char: the caller loads m_item with lb, an unsigned char or int parameter gives lbu) */
+void func_005A6EB0(CZSealBody *seal, char item, int n);
+}
+
+/* the SEAL off the turret it works: refused while one of the two weapon changes plays on a live SEAL
+ * of this console, unless forced (or 0x588030's anims play) -- the release sound played, the turret
+ * let go and, if the SEAL was its gunner, its controller cleared, the camera given back the SEAL
+ * (faded back in, priority 1), the turret's rounds handed back from the gunner's kit and the old item
+ * selected, online the platform sent, the thermal view left, the turret shown and its scope's look
+ * reset, the weapon drawn again (OVL2 0x545EE0, new in SOCOM II: seal_body.cpp's Stand / the carry and
+ * seal_env.cpp's carry release call it with 1; the name unknown). Byte-exact (round 53, unwritten
+ * before): 0x552780's fade inlined; the camera's three stores through a local read after the call (as
+ * `appCamera->` each store reloads the global) */
+extern "C" void func_00545EE0(CZSealBody *seal, int force)
+{
+    bool ok = true;
+
+    if ((seal->IsCurrentBlend((AnimType)data_003DF108) || seal->IsCurrentBlend((AnimType)data_003DF110)) &&
+        seal->m_isAlive && !func_00588030(seal) && !seal->IsRemote() && !force)
+        ok = false;
+    if (ok && seal->m_eb8) {
+        CSnd *snd = CSnd::GetSoundByName(".RELEASE_TURRET");
+
+        if (snd)
+            snd->PlaySound3D(&seal->m_posW, 1.0f, 0, 0, 255);
+        CEntity *e = seal->m_eb8;
+
+        seal->m_eb8 = 0;
+        if (e->m_control == seal->m_control) {
+            e->m_control = 0;
+            if (appCamera->m_bc == seal) {
+                func_00295AF0(appCamera, seal, 0);
+                CAppCamera *cam = appCamera;
+
+                cam->m_45 = 1;
+                cam->m_46 = 1;
+                cam->m_48 = 0;
+                func_00552780(seal, 1, 1.0f, 1.0f);
+            }
+            CTurret *t = AsTurret(e);
+
+            if (t) {
+                int item = seal->m_kit.GetSelectedItemNum();
+
+                t->m_ammo = seal->m_kit.GetAmmoTotal(item);
+                seal->m_kit.SetCurItemByIndex(seal->m_ebc);
+                seal->m_kit.RemoveItemAndAmmo(item);
+                if (theNetwork.m_9 && !seal->IsRemote())
+                    CZPlatformState::UpdateLocalPlatform(t, true);
+                if (seal->m_zoomstate == ZOOMSTATE_THERMAL)
+                    seal->SetCurZoomState(ZOOMSTATE_1STPERSON);
+                t->SetVisible(true);
+                t->SetThermal(0, false);
+            }
+            func_005A6EB0(seal, seal->m_item, 0);
+        }
+    }
 }
 
 /* whether the SEAL sees thermally: with nothing worked, by the goggles (item 195); with a turret, by

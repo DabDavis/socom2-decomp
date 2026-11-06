@@ -331,9 +331,8 @@ bool CZSealBody::CanPitch()
 }
 
 extern "C" {
-/* SOCOM II's overlaid anims (OVL1 data: the weapon change's, 0x3DEC68 -- SOCOM 1's MovingRifle2Pistol
- * by position, unproven -- and four new ones the grenade and launcher code pushes) */
-extern short data_003DEC68;
+/* SOCOM II's overlaid anims (OVL1 data: four new ones the grenade and launcher code pushes; the weapon
+ * change's, 0x3DEC68, is AnimTypes::MovingRifle2Pistol) */
 extern short data_003DF0B0;
 extern short data_003DF0D0;
 extern short data_003DF0F0;
@@ -374,7 +373,7 @@ CZBodyAnimBlend *CZSealBody::AddBlendOverlay(AnimType type)
         SetMovingRifleReload(a);
     else if (type == AnimTypes::MovingPistolReload)
         SetMovingPistolReload(a);
-    else if (type == data_003DEC68) {
+    else if (type == AnimTypes::MovingRifle2Pistol) {
         if (m_item == 1)
             SetMovingChangeToPistol(a);
         else if (m_item == 2)
