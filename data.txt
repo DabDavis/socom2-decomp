@@ -1968,6 +1968,8 @@
 0x00658CF8 0x4 global_log_p_average  # OVL2 rodata; s1:data (SOCOM 1's LOCAL 0x45E548: &log_p_average_[255], 0x658AF6 here as 0x45E346 there) -- the gcc lane, round 15c
 0x00658D00 0x400 p_Log_p  # OVL2 rodata; s1:data (SOCOM 1's LOCAL 0x45E550, 0x400 bytes, byte-identical: 256 words; CalcEntropy and its three siblings index it as SOCOM 1's do) -- the gcc lane, round 15c
 0x00659118 0x5 LabelBlockIDs  # OVL2; s1:data-seq (size SOCOM 1's; via ScoreTranscriptions)
+0x00659140 0x40 costab  # OVL2; s1:data (SOCOM 1's GLOBAL 0x45E990, 64 bytes: fht's twiddle cosines, cos(pi / 2^k) for k 0..15 -- Ron Mayer's table cut to 16 -- read by fht's TRIG_INIT at the same instruction in both builds; defined in fht.c) -- the gcc lane, round 33c
+0x00659180 0x40 sintab  # OVL2; s1:data (SOCOM 1's GLOBAL 0x45E9D0, 64 bytes right after costab in both: sin(pi / 2^k); read by fht beside costab; defined in fht.c) -- the gcc lane, round 33c
 0x00659230 0x54 g_SpeechMeanInit11kHz  # OVL2; s1:data (SOCOM 1's LOCAL 0x45EA88, 84 bytes, in the acne object's .rodata after the same 200.0f and 50 words: 21 floats, SOCOM 1's to the ulp -- 11 an ulp low, 2.96's parser on the same decimals; InitAcne stores its address as the speech mean's seed, as SOCOM 1's does) -- the gcc lane, round 12c
 0x00659288 0x54 g_NoiseFloors11kHz  # OVL2; s1:data (SOCOM 1's LOCAL 0x45EAE0, 84 bytes, right after g_SpeechMeanInit11kHz in both: 21 floats, SOCOM 1's to the ulp (the first an ulp low); InitAcne stores its address as the noise floors) -- the gcc lane, round 12c
 0x00659300 0x584 fLogOnePlusExp_lut  # OVL2; s1:data-seq (size SOCOM 1's; via HLnOnePlusExpHFloat)
