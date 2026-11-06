@@ -3104,6 +3104,106 @@ void CZSealBody::HandleDamage(CZProjectile *proj)
     }
 }
 
+/* a remote hit taken: the stats told, a first head shot counted; a shotgun's pellets each at a random
+ * location by its own ammunition, the location's health then updated; else the location's damage; for this
+ * SEAL's own a shotgun's blowback; the health updated -- a death's kill credited, its kind 255 when it lives
+ * (OVL2 0x5A1B80: SOCOM 1's RemoteWeaponDamageVictim, the shotgun new, its Damage calls one) */
+/* (CZWeapon::GetIDType by its mangled name, through a byte: the argument's read of the spilled parameter
+ * is an lbu then -- the enum's a lb, and a cast in the call a common subexpression of its own in a slot of
+ * its own; a device, the original's parameter not told apart from the DWARF's unsigned char) */
+extern "C" EQUIP_ITEM GetIDType__8CZWeaponF10EQUIP_ITEM(unsigned char id);
+static inline EQUIP_ITEM GetIDTypeU(unsigned char id) { return GetIDType__8CZWeaponF10EQUIP_ITEM(id); }
+void CZSealBody::RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float pierce, CZSealBody *victim,
+                                          CZSealBody *shooter, unsigned char weapon, bool hit)
+{
+    EQUIP_ITEM type = GetIDTypeU(weapon);
+
+    if (!shooter || !victim)
+        return;
+
+    CSealStats *vs = &victim->m_stats;
+    CSealStats *ss = &shooter->m_stats;
+    CZAmmo *ammo = 0;
+
+    if (type == 81)
+        ammo = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)weapon)->GetDefaultAmmo();
+    if (hit) {
+        ss->Hit(*shooter, *victim);
+        vs->WasHit(*victim);
+    }
+
+    bool alive = m_isAlive ? true : false;
+    bool grenade = false;
+    bool shotgun = false;
+
+    switch (type) {
+    case 171:
+    case 121:
+        grenade = true;
+        break;
+    case 81:
+        shotgun = true;
+        break;
+    }
+    if (where == 0 && victim->m_isAlive && !grenade && !shotgun) {
+        vs->m_count[1]++;
+        func_005A5830(this, where, damage, pierce);
+        ss->HeadShot(*shooter);
+    } else if (shotgun) {
+        if (damage > 0.0f) {
+            static const DAMAGE_LOCATION locs[6] = {
+                (DAMAGE_LOCATION)0, (DAMAGE_LOCATION)3, (DAMAGE_LOCATION)2,
+                (DAMAGE_LOCATION)1, (DAMAGE_LOCATION)5, (DAMAGE_LOCATION)4
+            };
+            static const float odds[6] = { 0.3f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
+            DAMAGE_LOCATION loc = (DAMAGE_LOCATION)6;
+            int n = func_005A1620(this, &shooter->m_posW);
+
+            for (int i = 0; i < n; i++) {
+                float d = ammo->GetImpactDamage();
+                float a = ammo->GetArmorPierce();
+                float r = Rand01();
+
+                loc = (DAMAGE_LOCATION)3;
+                for (int k = 0; k < 6; k++) {
+                    if (r < odds[k]) {
+                        loc = locs[k];
+                        break;
+                    }
+                }
+                func_005A5830(this, loc, d, a);
+            }
+            if (loc != 6)
+                UpdateHealth(loc, DEATH_BULLET);
+        }
+    } else
+        func_005A5830(this, where, damage, pierce);
+    if (victim == this && type == 81) {
+        CPnt3D d = shooter->m_posW - m_posW;
+
+        func_0057ED10(this, &shooter->m_posW, damage * ammo->GetBlowbackScale(d.x * d.x + d.y * d.y + d.z * d.z), 100.0f);
+    }
+    if (victim == this) {
+        UpdateHealth(where, DEATH_BULLET);
+        if (alive && !m_isAlive) {
+            func_00547A90(this, weapon);
+            if (!IsRemote()) {
+                bool b = false;
+
+                if (func_003C5AC0((EQUIP_ITEM)weapon))
+                    b = true;
+                func_00547AA0(this, shooter->m_id, b);
+            }
+        }
+        if (m_isAlive) {
+            func_00547A90(this, -1);
+            func_00547AA0(this, 255, false);
+        }
+        func_0057E770(this);
+    } else
+        UpdateHealth(where, DEATH_BULLET);
+}
+
 /* the SEAL the aim's assist takes: among the targets flagged 0x200 the nearest to the screen's centre
  * (its height halved) of the living, awake enemies the AI drives -- not bit 17's -- within the assist's
  * circle, wider inside 85, past 40 and short of the fog's last fifth, not behind a point given or out

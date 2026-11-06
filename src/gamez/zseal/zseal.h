@@ -2257,6 +2257,9 @@ public:
     void DropAllItems();
     /* online, a hit on the SEAL reported to the network and the stats (SOCOM 1's, a projectile
      * first; OVL2 0x5A1FF0) */
+    /* a remote hit taken (SOCOM 1's; OVL2 0x5A1B80) */
+    void RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float pierce, CZSealBody *victim,
+                                  CZSealBody *shooter, unsigned char weapon, bool hit);
     void ReportWeaponHitDamage(CZProjectile *proj, int shooter_id, int victim_id, DAMAGE_LOCATION where,
                                float damage, float pierce, bool hit, unsigned char weapon);
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
