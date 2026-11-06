@@ -604,6 +604,7 @@
 0x003E4190 0x8 __RTTI__11CZNewHudMap  # RTTI of CZNewHudMap: found by its RTTI's name
 0x003E4290 0x8 __RTTI__7C2DLine  # RTTI of C2DLine: found by its RTTI's name
 0x003E42D0 0xB4 _linedata  # OVL1 .data; SOCOM 1's file static (its symbol table: hud_linemap.cpp's _linedata, 180 bytes in both): the nine default LINE_DATA looks (colour, opacity, width), stored by __sinit_hud_linemap.cpp (the HUD lane, round 31) -- 48 references in 4 functions: the initialiser x45, func_0020DF70, func_0020E470, func_0020F5C0
+0x003E4388 0x7 c_arrTypes  # OVL1 .data; ours (the HUD lane, round 60: hud_linemap.cpp's file static, the name TickLine's old local's): a line or polygon kind (0-6) to its default look, seven LINE_TYPES bytes -- 2 references in 2 functions: CZLineMap::TickLine 0x20E470, CZLineMap::SetupPolygon 0x20F5C0 (both index it after the kind's 0-7 test)
 0x003E43F0 0x8 __RTTI__9CZLineMap  # RTTI of CZLineMap: found by its RTTI's name
 0x003E47D0 0xC color_base  # OVL1 data; SOCOM 1's global (its symbol table, 12 bytes: hud_bitmapreticule.cpp's CPnt3D, 86, 63, 27): the HUD lane, round 17 -- 3 references in 1 function (the unit's initialiser 0x3FE490 builds it; no code reads it in SOCOM II)
 0x003E4830 0x8 __RTTI__14BitmapReticule  # RTTI of BitmapReticule: found by its RTTI's name

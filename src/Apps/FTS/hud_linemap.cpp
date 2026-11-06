@@ -12,8 +12,9 @@
  * Tick (0x20EBD0, SOCOM 1's: its two map ticks one inline each, TickLines pinned out of line) and
  * TickRegions (0x20DF70, SOCOM 1's); (round 60) Clip (0x20D5F0, SOCOM 1's: the clipper held in a local --
  * SOCOM 1's s5 too --, zdb's CCircleClip, SetClipInfo's count passed) and TickWayPoints (0x20DAC0, SOCOM
- * II's labels with SOCOM 1's names). Not yet: TickAnchors, SetupPolygon. Defined in reverse of their image
- * order (-inline deferred). */
+ * II's labels with SOCOM 1's names) and SetupPolygon (0x20F5C0, SOCOM 1's; the kind-to-look table made the
+ * file's, TickLine reading the same one). Not yet: TickAnchors. Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
 #include "../../ai/ai.h"
@@ -250,6 +251,13 @@ public:
     std::vector<int> m_lines;   // 0x44
 };
 
+/* a line's or polygon's kind (0-6) to its default look (OVL1 .data 0x3E4388, seven bytes: TickLine
+ * and SetupPolygon read the one table, so it is the file's, not a function's) */
+static const LINE_TYPES c_arrTypes[7] = {
+    LINETYPE_NORMAL_WHITE, LINETYPE_NAVLINE, LINETYPE_NORMAL_GREY, LINETYPE_NORMAL_YELLOW,
+    LINETYPE_NORMAL_BLUE, LINETYPE_NORMAL_RED, LINETYPE_NORMAL_GREEN,
+};
+
 static LINE_DATA _linedata[9] = {
     LINE_DATA(200.0f, 200.0f, 200.0f, 100.0f, 1.0f),
     LINE_DATA(200.0f, 0.0f, 200.0f, 100.0f, 1.0f),
@@ -461,6 +469,76 @@ void CZLineMap::MoveTo(const CAiMapLoc &loc)
         m_pointA = WorldToDraw(&pt);
 }
 
+/* a polygon filled: a fan of triangles from its first cell's point over each later pair, in its type's
+ * look -- the type's own, or a default one -- pulsing when the current objective lights it, dimmed on
+ * request; the triangles are the map's pool, grown one at a time (SOCOM 1's SetupPolygon, its DWARF:
+ * poly, pt3, pLineData, pt2, ptAnchor, itSegment; the look found as TickLine finds it). The first two
+ * cells taken with a postfix step in the calls (the target folds both steps into the second call's
+ * delay slot), the new triangle through a pointer local declared first (its frame slot above the
+ * type's and the find's: at the push_back the slot order was 8 off), the dimming a ternary */
+void CZLineMap::SetupPolygon(const CAiMap::line &line, float fPulseTrans, bool bDim)
+{
+    C2DPoly *pNew;
+
+    if (line.size() < 3)
+        return;
+
+    CAiMapLocVec::const_iterator itSegment = line.begin();
+    CPnt3D ptAnchor;
+
+    if (!GetLocPoint(m_map, *itSegment++, &ptAnchor))
+        return;
+    ptAnchor = WorldToDraw(&ptAnchor);
+
+    CPnt3D pt2;
+
+    if (!GetLocPoint(m_map, *itSegment++, &pt2))
+        return;
+    pt2 = WorldToDraw(&pt2);
+
+    LINE_DATA *pLineData;
+    int type = line.m_type;
+    std::map<int, LINE_DATA>::iterator it = g_mapPolyProps.find(type);
+
+    if (it != g_mapPolyProps.end())
+        pLineData = &(*it).second;
+    else if (type >= 0 && type < 7)
+        pLineData = &_linedata[c_arrTypes[type]];
+    else
+        pLineData = 0;
+
+    bool bObjective = line.m_id && IsObjectiveLine(line);
+    float trans = pLineData ? pLineData->opacity : 0.0f;
+
+    fPulseTrans = bObjective ? fPulseTrans : trans;
+    fPulseTrans = bDim ? 0.3f * fPulseTrans : fPulseTrans;
+
+    CPnt3D pt3;
+
+    while (true) {
+        if (!GetLocPoint(m_map, *itSegment, &pt3))
+            return;
+        pt3 = WorldToDraw(&pt3);
+        if (m_iNumActiveTriangles == m_vecTriangles.size())
+        {
+            pNew = new C2DPoly;
+            m_vecTriangles.push_back(pNew);
+        }
+
+        C2DPoly &poly = *m_vecTriangles[m_iNumActiveTriangles++];
+
+        poly.Load(ptAnchor.x, ptAnchor.y, pt2.x, pt2.y, pt3.x, pt3.y, m_texture);
+        poly.SetUV(0.5f, 0.9375f, 0.5f, 0.9375f, 0.5f, 0.9375f);
+        if (pLineData) {
+            poly.SetColor(pLineData->color.x, pLineData->color.y, pLineData->color.z);
+            poly.SetTrans(fPulseTrans);
+        }
+        if (++itSegment == line.end())
+            return;
+        pt2 = pt3;
+    }
+}
+
 namespace {
 
 /* whether the walk is still on the line (SOCOM 1's line 38, an inline there; SOCOM II's vtable
@@ -567,11 +645,6 @@ inline bool CZLineMap::IsObjectiveLine(const CAiMap::line &line) const
  * objective's highlight and the wide line SOCOM II's) */
 void CZLineMap::TickLine(const CAiMap::line &line, float fPulseTrans, bool bDim)
 {
-    static const LINE_TYPES c_arrTypes[7] = {
-        LINETYPE_NORMAL_WHITE, LINETYPE_NAVLINE, LINETYPE_NORMAL_GREY, LINETYPE_NORMAL_YELLOW,
-        LINETYPE_NORMAL_BLUE, LINETYPE_NORMAL_RED, LINETYPE_NORMAL_GREEN,
-    };
-
     if (line.empty())
         return;
 
