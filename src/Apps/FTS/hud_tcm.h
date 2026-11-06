@@ -188,6 +188,8 @@ public:
     bool SlideRoot(CTCMNode *cur, bool out, float dt);
     void PlaceCursor(CTCMNode *cur);
     void Layout(float t);
+    /* the per-frame display (0x236430; hud_tcm.cpp's) */
+    void Update(float dt);
     /* the tree unit's (hud_tcmtree.cpp; the names ours) */
     void Tick(CPad *pad, float dt);
     /* the open menu's input (0x235D40, Tick's mode 1) */
@@ -220,7 +222,7 @@ public:
     float m_da0;   // 0xda0 (a float: the cursor's text fades by it)
     float m_da4;   // 0xda4
     int m_da8;   // 0xda8
-    int m_dac;   // 0xdac
+    float m_dac;   // 0xdac (a float: the pulse)
     float m_db0;   // 0xdb0
     float m_hold;   // 0xdb4
     CTCMSounds m_sounds;   // 0xdb8
@@ -234,7 +236,7 @@ public:
     C2DBitmapPoly m_items;   // 0xde0: the item list's bitmap (ClearItems empties its list)
     C2DBitmapPoly m_fd0;   // 0xfd0
     C2DBitmapPoly m_11c0;   // 0x11c0
-    int m_13b0;   // 0x13b0
+    float m_13b0;   // 0x13b0 (a float: the microphone's flash)
 
     /* the menu's depth and its path (reco.cpp's: a push through the reference loads the vector's
      * words off its address, the target's tcmOpenNode) */
