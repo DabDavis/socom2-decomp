@@ -76,7 +76,7 @@ typedef struct RT_P2P_ENTRY {           /* a peer */
     unsigned char x11;
     char szAddress[16];                 /* 0x12 */
     unsigned short nPort;               /* 0x22 */
-    int x24;
+    void *pKeyChain;                    /* 0x24 */
 } RT_P2P_ENTRY;                         /* 0x28 */
 
 typedef struct RT_P2P_SLOT {
@@ -102,7 +102,7 @@ typedef struct RT_P2P {
     void (*pfnData)(int nIndex, char *pData, unsigned short nLength);   /* 0x1A8: a peer's message that is not the layer's */
     void (*pfnDatagram)(char *szAddress, unsigned short nPort, char *pData, unsigned short nLength); /* 0x1AC */
     void (*pfnAddress)(char *szAddress, unsigned short nPort, int nError); /* 0x1B0 */
-    void (*pfn1B4)(void);                               /* 0x1B4 */
+    void (*pfn1B4)(int nIndex, unsigned char bFlag);    /* 0x1B4 */
 } RT_P2P;                               /* 0x1B8 */
 
 typedef struct RT_P2P_MSG {             /* the broadcast (8 bytes) */
@@ -137,7 +137,7 @@ extern int func_0063F2D8(RT_UDP *pUdp, RT_P2P_CONNECT *pConnect, int *pnConn);
 extern int func_0063E5E8(RT_UDP *pUdp, RT_P2P_CONNECT *pConnect, int *pnConn);
 extern int KM_SetPublicKey(int nKMID, int nClientID, void *pKey);
 extern void *GetKeyMaster(int nKMID);
-extern int GetKeyChain(void *pMaster, int nClientID);
+extern void *GetKeyChain(void *pMaster, int nClientID);
 
 extern int rt_time_start(void *pTime);
 extern int rt_time_elapsed(void *pTime, unsigned int *pnMsecs);
@@ -379,7 +379,7 @@ int func_0063A038(RT_P2P *pP2p, RT_P2P_PEER_ADDR *pAddr)
                 return 10;
             pEntry = &pP2p->pEntries[nIndex];
             KM_SetPublicKey(-1, nIndex, pAddr);
-            pEntry->x24 = GetKeyChain(GetKeyMaster(-1), nIndex);
+            pEntry->pKeyChain = GetKeyChain(GetKeyMaster(-1), nIndex);
             KM_CreateRandomRCKey(abKey);
             KM_AddSymmetricKey(-1, nIndex, abKey);
             connect.nIndex = nIndex;
@@ -439,7 +439,7 @@ int func_0063A250(RT_P2P *pP2p, RT_P2P_PEER_ADDR *pAddr, void (*pfnReset)(int nI
     pEntry->nConn = -1;
     pEntry->nConn2 = -1;
     KM_SetPublicKey(-1, 0, pAddr);
-    pEntry->x24 = GetKeyChain(GetKeyMaster(-1), 0);
+    pEntry->pKeyChain = GetKeyChain(GetKeyMaster(-1), 0);
     KM_CreateRandomRCKey(abKey);
     KM_AddSymmetricKey(-1, 0, abKey);
     if (strncmp(pAddr->szAddress, pAddr->szAddress2, 16) == 0 && pAddr->nPort == pAddr->nPort2) {
@@ -864,7 +864,8 @@ typedef struct RT_P2P_INFO {            /* a peer described (0x70 bytes) */
     unsigned short nPort2;              /* 0x26 */
     int nIndex;                         /* 0x28 */
     unsigned char bLocal;               /* 0x2C: the peer is this one */
-    char x2D[3];
+    unsigned char bJoined;              /* 0x2D: the table's answer to a joiner */
+    char x2E[2];
     char abKey[64];                     /* 0x30: its public key */
 } RT_P2P_INFO;
 
@@ -1249,7 +1250,8 @@ int func_0063C4F0(RT_P2P *pP2p, RT_P2P_INFO *pInfo, RT_P2P_ENTRY *pEntry)
 
 extern void *memcpy(void *d, const void *s, unsigned int n);
 extern int func_0063ECC8(RT_UDP *pUdp, int nConn, char *pBuf, unsigned int nSize, unsigned int *pnLength);
-extern int func_0063B9A0(RT_P2P *pP2p, int nIndex, char *pData, unsigned int nLength);
+int func_0063B9A0(RT_P2P *pP2p, int nIndex, char *pData, unsigned int nLength);
+extern void KM_SetLocalClientID(int nKMID, int nClientID);
 
 /* the layer's receive poll (0x63B708): each peer with data waiting has both connections read until neither yields; a
  * message with the magic is the layer's own (func_0063B9A0), the rest the application's; then the unconnected socket's
@@ -1326,7 +1328,7 @@ typedef struct RT_P2P_PARAMS {          /* the create's parameters */
     void (*pfnLeave)(int nIndex, unsigned int n);   /* 0x28 */
     void (*pfnData)(int nIndex, char *pData, unsigned short nLength);   /* 0x2C */
     void (*pfnDatagram)(char *szAddress, unsigned short nPort, char *pData, unsigned short nLength);    /* 0x30 */
-    void (*pfn1B4)(void);                       /* 0x34 */
+    void (*pfn1B4)(int nIndex, unsigned char bFlag);    /* 0x34 */
 } RT_P2P_PARAMS;
 
 typedef struct RT_UDP_PARAMS {          /* func_0063DD18's parameters (40 bytes) */
@@ -1412,5 +1414,208 @@ int func_006395B8(RT_P2P_PARAMS *pParams, RT_P2P **ppP2p)
         return 4;
     KM_Initialize(-1, pParams->x1C);
     KM_Create(-1, 0, 0);
+    return 0;
+}
+
+extern void func_0063C138(RT_P2P *pP2p, int nIndex);
+
+#define RT_P2P_MARK(p, i, c) \
+    if ((p)->pEntries[i].nConn == (c)) \
+        (p)->pEntries[i].bSend = 1; \
+    else if ((p)->pEntries[i].nConn2 == (c)) \
+        (p)->pEntries[i].bSend2 = 1;
+
+/* a connection is up (0x63ACA0): marked on its peer; while the table joins (state 7) the new peer is told of this one and
+ * of every live peer, its own description sent back marked, and every live peer told of it */
+void func_0063ACA0(RT_P2P *pP2p, int nConn, int nError)
+{
+    RT_P2P_INFO info;
+    int nState = 0;
+    int nLocal = -2;
+    int nIndex = -2;
+    int i;
+    int result;
+
+    if (func_0063B480(pP2p, &nState, &nLocal) != 0)
+        return;
+    if (func_0063B410(pP2p, nConn, &nIndex) != 0 || nIndex == -2) {
+        func_0063E830(pP2p->pUdp, nConn);
+        return;
+    }
+    if (nState == 7) {
+        if (pP2p->pEntries[nIndex].nState == 2) {
+            pP2p->pEntries[nIndex].nState = 3;
+            RT_P2P_MARK(pP2p, nIndex, nConn)
+            if (nLocal != 0) {
+                if (func_0063B5D0(pP2p, nLocal, &info) != 0)
+                    return;
+                if (func_0063C078(pP2p, nIndex, 7, &info, sizeof(info)) != 0)
+                    return;
+            }
+            for (i = 0; i < pP2p->nEntries; i++) {
+                if (pP2p->pEntries[i].nState == 3 && i != nIndex) {
+                    func_0063B5D0(pP2p, i, &info);
+                    if (func_0063C078(pP2p, nIndex, 7, &info, sizeof(info)) != 0)
+                        return;
+                }
+            }
+            if (func_0063B5D0(pP2p, nIndex, &info) != 0)
+                return;
+            info.bJoined = 1;
+            if (func_0063C078(pP2p, nIndex, 7, &info, sizeof(info)) != 0)
+                return;
+            result = func_0063B5D0(pP2p, nIndex, &info);
+            if (result != 0)
+                return;
+            for (i = 0; i < pP2p->nEntries; i++) {
+                if (pP2p->pEntries[i].nState == 3 && i != nIndex) {
+                    if (func_0063C078(pP2p, i, 7, &info, sizeof(info)) != 0)
+                        return;
+                }
+            }
+            func_0063C138(pP2p, nIndex);
+            return;
+        }
+        RT_P2P_MARK(pP2p, nIndex, nConn)
+    } else if (pP2p->pEntries[nIndex].nState == 2) {
+        pP2p->pEntries[nIndex].nState = 3;
+        RT_P2P_MARK(pP2p, nIndex, nConn)
+        func_0063C138(pP2p, nIndex);
+    } else if (pP2p->pEntries[nIndex].nState == 1) {
+        pP2p->pEntries[nIndex].nState = 4;
+        RT_P2P_MARK(pP2p, nIndex, nConn)
+        func_0063C138(pP2p, nIndex);
+    } else {
+        RT_P2P_MARK(pP2p, nIndex, nConn)
+    }
+}
+
+extern int KM_CopyKeys(int nKMID, int nFrom, int nKMID2, int nTo);
+extern int KM_DeleteKeys(int nKMID, int nClientID);
+
+/* a message of the layer's own (0x63B9A0), told by its length: 112 a peer's description; 4 a peer leaves; 8 its flag;
+ * 12 a peer's connection to drop */
+int func_0063B9A0(RT_P2P *pP2p, int nIndex, char *pData, unsigned int nLength)
+{
+    RT_P2P_CONNECT connect;
+    char abKey[64];
+    int result;
+    RT_P2P_ENTRY *pEntry;
+    RT_P2P_INFO *pInfo = (RT_P2P_INFO *)pData;
+
+    if (nLength == sizeof(RT_P2P_INFO)) {
+        int nState = 0;
+        int nLocal = -2;
+
+        if (pInfo->nIndex < 0 || pInfo->nIndex >= pP2p->nEntries)
+            return 14;
+        pEntry = &pP2p->pEntries[pInfo->nIndex];
+        result = func_0063B480(pP2p, &nState, &nLocal);
+        if (result != 0)
+            return result;
+        if (nState == 0 || nState == 5) {
+            if (pInfo->bLocal != 0 && pInfo->nIndex != 0) {
+                RT_P2P_ENTRY *pFirst = pP2p->pEntries;
+
+                *pEntry = *pFirst;
+                memset(pFirst, 0, sizeof(RT_P2P_ENTRY));
+                pFirst->nConn = -1;
+                pFirst->nConn2 = -1;
+                KM_CopyKeys(-1, 0, -1, pInfo->nIndex);
+                KM_DeleteKeys(-1, 0);
+                pEntry->pKeyChain = GetKeyChain(GetKeyMaster(-1), pInfo->nIndex);
+                func_0063E8E8(pP2p->pUdp, pEntry->nConn, pInfo->nIndex);
+                func_0063E8E8(pP2p->pUdp, pEntry->nConn2, pInfo->nIndex);
+                return 0;
+            }
+            if (nState == 0 && pInfo->bJoined != 0) {
+                KM_SetLocalClientID(-1, pInfo->nIndex);
+                pEntry->nState = 5;
+                return 0;
+            }
+            KM_SetPublicKey(-1, pInfo->nIndex, pInfo->abKey);
+            pEntry->pKeyChain = GetKeyChain(GetKeyMaster(-1), pInfo->nIndex);
+            KM_CreateRandomRCKey(abKey);
+            KM_AddSymmetricKey(-1, pInfo->nIndex, abKey);
+            if (func_0063C4F0(pP2p, pInfo, pEntry) != 0)
+                return 0;
+            if (pInfo->szAddress[0] != 0 && pInfo->nPort != 0) {
+                strncpy(connect.szAddress, pInfo->szAddress, 16);
+                connect.nPort = pInfo->nPort;
+                connect.nIndex = pInfo->nIndex;
+                if (nState == 0)
+                    result = func_0063E5E8(pP2p->pUdp, &connect, &pEntry->nConn);
+                else
+                    result = func_0063F2D8(pP2p->pUdp, &connect, &pEntry->nConn);
+                if (result != 21) {
+                    if (result != 0)
+                        return 7;
+                    pEntry->nState = 2;
+                }
+            }
+            if (pInfo->szAddress2[0] != 0 && pInfo->nPort2 != 0) {
+                strncpy(connect.szAddress, pInfo->szAddress2, 16);
+                connect.nPort = pInfo->nPort2;
+                connect.nIndex = pInfo->nIndex;
+                if (nState == 0)
+                    result = func_0063E5E8(pP2p->pUdp, &connect, &pEntry->nConn2);
+                else
+                    result = func_0063F2D8(pP2p->pUdp, &connect, &pEntry->nConn2);
+                if (result != 21) {
+                    if (result != 0)
+                        return 7;
+                    pEntry->nState = 2;
+                }
+            }
+        } else if (nState == 6) {
+            KM_SetPublicKey(-1, pInfo->nIndex, pInfo->abKey);
+            pEntry->pKeyChain = GetKeyChain(GetKeyMaster(-1), pInfo->nIndex);
+            KM_CreateRandomRCKey(abKey);
+            KM_AddSymmetricKey(-1, pInfo->nIndex, abKey);
+            connect.nIndex = pInfo->nIndex;
+            if (func_0063C4F0(pP2p, pInfo, pEntry) != 0)
+                return 0;
+            if (pInfo->szAddress[0] != 0 && pInfo->nPort != 0) {
+                strncpy(connect.szAddress, pInfo->szAddress, 16);
+                connect.nPort = pInfo->nPort;
+                result = func_0063F2D8(pP2p->pUdp, &connect, &pEntry->nConn);
+                if (result != 21) {
+                    if (result != 0)
+                        return 7;
+                    pEntry->nState = 2;
+                }
+            }
+            if (pInfo->szAddress2[0] != 0 && pInfo->nPort2 != 0) {
+                strncpy(connect.szAddress, pInfo->szAddress2, 16);
+                connect.nPort = pInfo->nPort2;
+                result = func_0063F2D8(pP2p->pUdp, &connect, &pEntry->nConn2);
+                if (result != 21) {
+                    if (result != 0)
+                        return 7;
+                    pEntry->nState = 2;
+                }
+            }
+        }
+        return 0;
+    } else if (nLength == 4) {
+        int nState2 = 0;
+        int nLocal2 = -2;
+
+        result = func_0063B480(pP2p, &nState2, &nLocal2);
+        if (result != 0)
+            return result;
+        if ((unsigned int)(nState2 - 6) < 2)
+            pP2p->pfnLeave(nIndex, 0);
+        else
+            pP2p->pEntries[nIndex].x11 = 1;
+    } else if (nLength == 8) {
+        pP2p->pEntries[nIndex].bUsed = ((RT_P2P_MSG *)pData)->nTag;
+        pP2p->pfn1B4(nIndex, ((RT_P2P_MSG *)pData)->nTag);
+    } else if (nLength == 12) {
+        if (pP2p->pEntries[((RT_P2P_MSG2 *)pData)->nFirst].nConn != -1)
+            func_0063C170(pP2p, pP2p->pEntries[((RT_P2P_MSG2 *)pData)->nFirst].nConn, 16);
+        else if (pP2p->pEntries[((RT_P2P_MSG2 *)pData)->nFirst].nConn2 != -1)
+            func_0063C170(pP2p, pP2p->pEntries[((RT_P2P_MSG2 *)pData)->nFirst].nConn2, 16);
+    }
     return 0;
 }
