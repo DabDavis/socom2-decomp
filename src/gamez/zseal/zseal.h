@@ -310,6 +310,8 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* the reticule's settling, 0 when settled (kit.h's; OVL2 0x5BE990) */
+    float GetReticuleSettle();
     /* the zoom in hand and the bob's screen offset (kit.h's; OVL2 0x5BE660, 0x5B90C0 -- the throttles' tick
      * asks them) */
     float GetCurZoom();
@@ -560,9 +562,17 @@ public:
 
 extern CZNetwork theNetwork;
 
+/* the game's rules (a view: the mode a defusal asks, CSealCtrl::PerformProximityActions; the name ours) */
+struct CNetGameMode {
+    unsigned char _0[4];
+    unsigned short m_4;   // 0x4
+};
+
 class CNetGameState {
 public:
-    unsigned char _0[0x38];
+    unsigned char _0[0x1c];
+    CNetGameMode *m_1c;   // 0x1c
+    unsigned char _20[0x38 - 0x20];
     /* the valves a hostage's death steps, by the killer's side (HandleKiller; the names ours) */
     CValve *m_38;   // 0x38
     CValve *m_3c;   // 0x3c
@@ -2494,7 +2504,7 @@ public:
     unsigned char m_zoomstate_echo;   // 0x202
     unsigned char _203;
     float m_zoom_range;   // 0x204
-    unsigned char _208[0x20c - 0x208];
+    float m_208;   // 0x208: under 396 the satchel may be offered (PerformProximityActions; the name ours)
     /* the material underfoot and the feet's step flags (SOCOM 1's 0x168-0x16D; HandleSealStep and
      * HandleFootfallSound read them) */
     int m_onMaterial;   // 0x20c

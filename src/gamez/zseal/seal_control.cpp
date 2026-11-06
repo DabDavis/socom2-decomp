@@ -1327,6 +1327,150 @@ void CSealCtrl::SetMenuState(MENU_STATE state, bool keep)
     }
 }
 
+extern "C" {
+/* whether the SEAL is held by a rope or so (OVL2 0x5A8850, seal_env.cpp's), a corpse it may take in a
+ * network game (0x57DDF0, seal_body.cpp's), the kit's thrown item's something (0x5B82D0, the kit lane's),
+ * the action 19's test (0x5A88C0, seal_env.cpp's) */
+bool func_005A8850(CZSealBody *seal);
+bool func_0057DDF0(CZSealBody *seal, CZSealBody *corpse);
+float func_005B82D0(CZKit *kit);
+bool func_005A88C0(CZSealBody *seal);
+bool func_00588080(CZSealBody *seal);
+}
+
+/* the bomb's defusal open to the SEAL: planted, and the side the game's mode asks (an inline) */
+static inline bool CanDefuseBomb(CSealCtrl *ctrl)
+{
+    CNetGameState *game = data_00437CE8;
+    CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
+    const CZBombState::STATUS &st = CZBombState::m_BombStatus;
+
+    if (seal && st.m_state == 3) {
+        bool side = func_002C30B0(seal);
+
+        if (!game->m_1c)
+            return false;
+        unsigned short mode = game->m_1c->m_4;
+
+        if (mode == 1 && side)
+            return true;
+        if (mode == 2 && !side)
+            return true;
+    }
+    return false;
+}
+
+/* a victim the SEAL can take: the reticule's SEAL, one of its team, or a target it holds with bit 9 set
+ * (an inline; else none) */
+static inline bool TargetBit9(CZSealBody *seal, CZSealBody *victim)
+{
+    CTarget *t = seal->m_targets.FindTarget(victim);
+
+    return t ? (t->m_flags & 0x200) != 0 : false;
+}
+
+static inline bool VictimInReach(CZSealBody *seal, CZSealBody *reticule, CZSealBody *victim)
+{
+    bool ok = false;
+
+    if (victim) {
+        if (victim == reticule)
+            ok = true;
+        else if (victim->m_team & seal->m_team)
+            ok = true;
+        else
+            ok = TargetBit9(seal, victim);
+    }
+    return ok;
+}
+
+/* the actions in reach marked: the rope's alone; the reticule's action, the victims' knife, restraint and
+ * CQB and the corpse (online only the corpse's own), the satchel, the action's kind, the pickups, the
+ * bomb's defusal, the charge at the feet and the entity (OVL2 0x5937C0, slot 0x80; SOCOM 1's, the online arm
+ * and the last two new) */
+void CSealCtrl::PerformProximityActions()
+{
+    CNodeAction *action;
+    CZSealBody *victim;
+    CZSealBody *corpse;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CZSealBody *reticule;
+    bool charge;
+    bool fire;
+    zdb::CNode *node;
+    CZKit *kit;
+    CZSealBody *self;
+
+    if (func_005A8850(seal)) {
+        seal->ActionAvailableMask(20, true);
+        return;
+    }
+    action = seal->GetReticuleAction(true);
+    victim = m_victimbody;
+    corpse = m_corpsebody;
+
+    if (!theNetwork.m_9) {
+        reticule = seal->GetReticuleSeal();
+
+        if (!VictimInReach(seal, reticule, victim))
+            victim = 0;
+        if (victim) {
+            if (seal->CanUseCQB(victim))
+                seal->ActionAvailableMask(12, true);
+            if (seal->CanUseRestraint(victim))
+                seal->ActionAvailableMask(11, true);
+            if (seal->CanUseKnife(victim))
+                seal->ActionAvailableMask(10, true);
+        }
+        if (corpse && seal->CanUseBodyCarry(corpse))
+            seal->ActionAvailableMask(8, true);
+    } else if (corpse && func_0057DDF0(seal, corpse))
+        seal->ActionAvailableMask(21, true);
+
+    kit = &seal->m_kit;
+    if (kit)
+        kit->GetCurItem();
+    fire = seal->CanFire(true, true);
+
+    if (kit && fire && kit->HasItemWithAmmo((EQUIP_ITEM)151)) {
+        bool near = seal->m_208 < 396.0f && seal->m_kit.GetReticuleSettle() == 0.0f;
+
+        if (near) {
+            node = seal->m_last_reticule.m_node;
+            zdb::CNodeEx *ex = node ? node->m_nodeEx : 0;
+
+            if (ex && ex->Slot10(kit ? func_005B82D0(kit) : 0.0f))
+                seal->ActionAvailableMask(18, true);
+        }
+    }
+    if (action && CanPerformAction(action)) {
+        if (action->m_type == 4)
+            seal->ActionAvailableMask(7, true);
+        else if (action->m_type == 6)
+            seal->ActionAvailableMask(17, true);
+        else
+            seal->ActionAvailableMask(13, true);
+        m_action = false;
+    }
+    if (seal->CurrentPickup())
+        seal->ActionAvailableMask(4, true);
+    if (seal->CurrentPickupSecondary())
+        seal->ActionAvailableMask(5, true);
+    if (m_bomb_defusal_node && CanDefuseBomb(this))
+        seal->ActionAvailableMask(7, true);
+
+    self = (CZSealBody *)m_entity;
+    charge = false;
+    if (self && self->m_kit.HasItem((EQUIP_ITEM)154) && m_244 <= 0.0f && !func_00588080(self) &&
+        m_throttle[0] == 0.0f && m_throttle[1] == 0.0f && self->CanFire(true, false) &&
+        func_005C0AD0(&self->m_kit) <= 0.0f && self->m_aim_goal.y < -0.25f)
+        charge = true;
+    if (charge)
+        seal->ActionAvailableMask(6, true);
+    if (func_005A88C0(seal))
+        seal->ActionAvailableMask(19, true);
+}
+
 /* the reticle's actions: the squad asked whether orders 4 and 5 are allowed now, actions 14 and
  * 15 offered if so (OVL2 0x593D00; SOCOM 1's without its flag and the reticle seal's tail). The
  * squad declared first: the SEAL takes s0, the squad s1, as the target's. */
