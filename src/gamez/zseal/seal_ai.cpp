@@ -3505,6 +3505,95 @@ static inline void ModifyFireFlags(AI_FIREPARAMS *p, unsigned int set, unsigned 
     p->m_flags |= set;
 }
 
+/* the weapon a launcher (items 121-128: a switch, its jump table), a rocket (151, 153, 152) or an
+ * automatic (171-179, 143, 142, a switch written ascending: its compare chain descends) -- the rocket
+ * none for no weapon (inlines, the names ours) */
+static inline bool LauncherId(EQUIP_ITEM id)
+{
+    switch ((unsigned char)id) {
+    case 121:
+    case 122:
+    case 123:
+    case 124:
+    case 125:
+    case 126:
+    case 127:
+    case 128:
+        return true;
+    }
+    return false;
+}
+
+static inline bool RocketId(unsigned char id)
+{
+    switch (id) {
+    case 152:
+    case 153:
+    case 151:
+        return true;
+    }
+    return false;
+}
+
+static inline bool IsRocket(const CZWeapon *w)
+{
+    return w ? RocketId((unsigned char)w->m_ID) : false;
+}
+
+static inline bool IsAutomatic(EQUIP_ITEM id)
+{
+    switch ((unsigned char)id) {
+    case 142:
+    case 143:
+    case 171:
+    case 172:
+    case 173:
+    case 174:
+    case 175:
+    case 176:
+    case 177:
+    case 178:
+    case 179:
+        return true;
+    }
+    return false;
+}
+
+/* the fire parameters set up from the kit for a target -- its spot and its velocity (none: still) --
+ * unless flag 0x4000000 holds them: reset, the kit's item and ammunition taken, the flags given with
+ * 0x10000; a launcher thrown (0x60000) and a rocket aimed straight (0x80000), an automatic on a fire
+ * mode from 4 up sprayed (0x20000), the throw and the spray after half a second (flag 0x40) (OVL2
+ * 0x55F3B0, new in SOCOM II: CAiSDeploy::Tick and 0x563E10 call it; the name unknown) */
+extern "C" bool func_0055F3B0(AI_FIREPARAMS *p, CZKit *kit, const CPnt3D *pos, const CPnt3D *vel,
+                              unsigned int flags)
+{
+    if (p->m_flags & 0x4000000)
+        return false;
+    p->reset();
+    p->m_weapon = kit->GetCurItem();
+    p->m_ammo = kit->GetCurAmmo();
+    p->m_targetPos = *pos;
+    p->m_targetVel = vel ? *vel : CPnt3D::zero;
+    p->m_flags = flags | 0x10000;
+    p->m_weapon->GetIDType();
+    /* (the id read once, signed, kept for the last test: lb, then each test narrows it; a test of a
+     * mode `> 3` -- `>= 4` materialises the compare) */
+    EQUIP_ITEM id = p->m_weapon->m_ID;
+
+    if (p->m_weapon ? LauncherId(id) : false) {
+        ModifyFireFlags(p, 0x60000, 0);
+        p->m_delay = 0.5f;
+        ModifyFireFlags(p, 0x40, 0);
+    } else if (IsRocket(p->m_weapon))
+        ModifyFireFlags(p, 0x80000, 0);
+    else if (IsAutomatic(id) && kit->GetCurFireMode() > 3) {
+        ModifyFireFlags(p, 0x20000, 0);
+        p->m_delay = 0.5f;
+        ModifyFireFlags(p, 0x40, 0);
+    }
+    return true;
+}
+
 /* the fire parameters worked out, unless flag 0x4000000 holds them: thrown by 0x55E670 (flag 0x40000)
  * or aimed straight by 0x55EBE0 (flag 0x80000) -- the trigger let go twice -- else shot by 0x55ECC0;
  * once worked out, under flag 0x2000000 the look flattened onto the ground, flag 0x200000 set and the
@@ -3549,7 +3638,7 @@ extern "C" bool func_0055F0A0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
             ModifyFireFlags(p, 0x200000, 0);
             p->m_timeout = 0.0f;
 
-            CZWeapon *w = *(CZWeapon **)p->_0;
+            CZWeapon *w = (CZWeapon *)p->m_weapon;
 
             if (w) {
                 float dist = p->m_dist;

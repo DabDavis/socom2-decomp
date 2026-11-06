@@ -234,6 +234,10 @@ public:
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
     void SetCurItemByIndex(int index);
+    /* the item in hand's ammunition and its fire mode (kit.h's; OVL2 0x5C6970, 0x5C3790 -- a FIREMODE,
+     * zweapon.h's byte enum, read here as its byte: the AI's fire set-up 0x55F3B0 asks both) */
+    void *GetCurAmmo();
+    unsigned char GetCurFireMode();
     /* the weapons parented to the hand for the rifle or the pistol (kit.h's; OVL2 0x5C6A40, 0x5C6DA0:
      * the two takes start with them) */
     void ReParentToRifle();
@@ -1042,7 +1046,11 @@ public:
  * the members SOCOM II's code shows at SOCOM 1's offsets are named */
 class AI_FIREPARAMS {
 public:
-    unsigned char _0[8];   // SOCOM 1: m_weapon, m_ammo
+    /* every field to rest (OVL2 0x55F6F0; SOCOM 1's) */
+    void reset();
+
+    class CZFTSWeapon *m_weapon;   // 0x0: the kit's item when set up (0x55F3B0; SOCOM 1's m_weapon)
+    void *m_ammo;   // 0x4: its ammunition (SOCOM 1's m_ammo)
     CPnt3D m_targetPos;   // 0x8
     CPnt3D m_targetVel;   // 0x14
     CPnt3D m_lookDirW;   // 0x20
