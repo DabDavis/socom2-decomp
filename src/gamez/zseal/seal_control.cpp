@@ -380,6 +380,149 @@ extern "C" bool func_00596D60(CSealCtrl *ctrl, signed char side, float d)
     return true;
 }
 
+extern "C" {
+/* the pad's sticks (OVL1 0x2C6230, 0x2C6110, 0x2C6280: SOCOM 1's GetRotateStickPosDilated,
+ * GetStrafeStickPos and GetPitchStickPosDilated; GetFwdBackStickPos named: CCtrlrConfigs') */
+float func_002C6230(CPad *pad);
+float func_002C6110(CPad *pad);
+float func_002C6280(CPad *pad);
+float GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad(CPad *pad);
+/* (OVL2 0x594600: SOCOM 1's TickAimPitch) */
+void func_00594600(CSealCtrl *ctrl, float dT, float pitch);
+/* SOCOM 1's globals (hackPitchFactor, m_bobbing1stperson_enabled, the bob's two pairs by the stance) */
+extern float hackPitchFactor;
+extern float data_0044D4E8[2];
+extern float data_0044D4F0[2];
+/* the bob's phase (OVL2 bss; a function static) */
+extern float data_0066B3F0;
+}
+
+/* a stick's dead band: within the band a line to the dilation, past it the rest, the sign kept (an inline:
+ * SOCOM 1's two copies; the turn throttle's and the pitch's pairs in theCharacterDynamics) */
+static inline float Dilated(float v, float dead, float dilate)
+{
+    float sign = 1.0f;
+
+    if (v < 0.0f) {
+        sign = -1.0f;
+        v = -v;
+    }
+    if (v <= dead)
+        v *= dilate / dead;
+    else
+        v = dilate + (1.0f - dilate) * ((v - dead) / (1.0f - dead));
+    return sign * v;
+}
+
+/* the throttles read off the pad: with the input off or a menu up, all zero, the trigger let go, the
+ * weapon's state 2, the rumble and pickups ticked -- and true; else the sticks scaled, slowed by the zoom
+ * and in scope or binoculars, the first-person bob run for a player's stances, the throttles kept and the
+ * aim's pitch ticked (OVL2 0x5966A0: SOCOM 1's ThrottlesPreTick; hackPitchFactor stays, the pad's first
+ * byte asked) */
+bool CSealCtrl::ThrottlesPreTick(CPad *pad, float dT0)
+{
+    float speed;
+    float bob;
+    float dT = (float)dT0;
+    float pitch;
+    float turn;
+    float side;
+    float fwd;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CZKit *kit = &seal->m_kit;
+
+    if ((m_menustate > 1 && m_menustate < 6) || !m_input_enabled) {
+        SetThrottle(0, 0.0f);
+        SetThrottle(2, 0.0f);
+        SetThrottle(1, 0.0f);
+        SetTrigger(false);
+        seal->SetWeaponState((WEAPON_STATE)2);
+        TickRumbler(dT);
+        TickPickups(dT);
+        TickVictims();
+        return true;
+    }
+    pitch = 0.0f;
+
+    if (pad->m_0) {
+        turn = -func_002C6230(pad);
+        side = func_002C6110(pad);
+        fwd = GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad(pad);
+        static float k_pitch = 1.72f;
+        static float k_turn = 1.72f;
+        static unsigned char first = 0;
+        static bool dilate = false;
+
+        float raw = func_002C6280(pad);
+
+        m_138 = raw;
+        pitch = hackPitchFactor * raw;
+        pitch *= k_pitch;
+        turn *= k_turn;
+        if (first == 1 && fwd)
+            first = 2;
+        if (dilate) {
+            turn = Dilated(turn, theCharacterDynamics.m_turnThrottleA, theCharacterDynamics.m_turnThrottleB);
+            pitch = Dilated(pitch, theCharacterDynamics.m_pitchThrottleA, theCharacterDynamics.m_pitchThrottleB);
+        }
+
+        float zoom = kit->GetCurZoom();
+
+        if (zoom)
+            zoom = 1.0f / zoom;
+        turn *= zoom;
+        pitch *= zoom;
+        if (kit->IsUsingBinocs()) {
+            static float k_binocs = 0.2f;
+
+            turn *= k_binocs;
+            pitch *= k_binocs;
+        }
+        if (kit->IsUsingScope() || kit->IsUsingBinocs()) {
+            fwd *= 0.2f;
+            side *= 0.2f;
+        }
+        if (m_bobbing1stperson_enabled && seal->IsPlayer() && !seal->m_eb8) {
+            int mode = seal->m_zoomstate;
+
+            if (mode == 1 || mode == 2 || mode == 3) {
+                int stance = seal->GetStance(false);
+
+                if (stance < 3 && !(fwd == 0.0f && side == 0.0f)) {
+                    bob = cosf(data_0066B3F0);
+                    int i = stance == 2;
+
+                    if (fwd != 0.0f && side != 0.0f)
+                        speed = 0.5f * (fabsf(fwd) + fabsf(side));
+                    else if (fwd != 0.0f)
+                        speed = fwd;
+                    else
+                        speed = side;
+                    kit->IncrScreenOffsetY(bob * data_0044D4E8[i]);
+                    data_0066B3F0 += speed * (dT * data_0044D4F0[i]);
+                    if (data_0066B3F0 > 6.2831855f)
+                        data_0066B3F0 -= 6.2831855f;
+                }
+            }
+        }
+        float &t0 = m_throttle[0];
+        float &t2 = m_throttle[2];
+        float &t1 = m_throttle[1];
+
+        if (fwd == 0.0f)
+            t0 = 0.0f;
+        else
+            t0 = fwd;
+        t2 = turn;
+        if (side == 0.0f)
+            t1 = 0.0f;
+        else
+            t1 = side;
+    }
+    func_00594600(this, dT, pitch);
+    return false;
+}
+
 /* the reload button: double-clicked, or held past the limit, reloads the SEAL's kit; while held its
  * time runs, else it is cleared (OVL2 0x594B70, new in SOCOM II: PreTick calls it; the name unknown).
  * The double-click's result taken into a byte local first (the flag's zero after the call) and the

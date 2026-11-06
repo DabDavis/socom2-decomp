@@ -310,6 +310,10 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* the zoom in hand and the bob's screen offset (kit.h's; OVL2 0x5BE660, 0x5B90C0 -- the throttles' tick
+     * asks them) */
+    float GetCurZoom();
+    void IncrScreenOffsetY(float dy);
     /* whether the night vision is on (OVL2 0x5C80F0, kit.h's) */
     bool NVG_Enabled() const;
     /* whether the weapon in hand waits out a fire delay (kit.h's; OVL2 0x5C2400 -- IsReloading asks
@@ -839,6 +843,8 @@ enum AI_LOOK {
 class CSealCtrl : public CEntityCtrl {
 public:
     CSealCtrl();
+    /* the first-person bob's switch (SOCOM 1's static member, OVL1 data 0x3DF190) */
+    static bool m_bobbing1stperson_enabled;
     /* the controllers switched on or off (OVL2 0x598840, new in SOCOM II, seal_control.cpp's: CTStopAll::Tick
      * calls it beside CSealCtrlAi::SetAiEnabled, the mission cameras with false while one plays; the name
      * ours) */
@@ -983,7 +989,7 @@ public:
     void SetLookRate(float rate);
     /* the throttles read off the pad (SOCOM 1's ThrottlesPreTick, after PreTick: OVL2 0x5966A0 --
      * PostMortemPreTick calls it first) */
-    void ThrottlesPreTick(class CPad *pad, float dT);
+    bool ThrottlesPreTick(class CPad *pad, float dT);
     /* the speed a throttle gives along an axis (SOCOM 1's sealctrl.cpp; OVL2 0x592880: the body's
      * GetMaxZMotion/GetMaxXMotion) */
     float GetSpeedFromThrottle(float throttle, int axis);
