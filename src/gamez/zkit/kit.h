@@ -43,7 +43,9 @@ struct CKitCtrl {
     /* (inlined with false: the target keeps `andi v0,zero,1`, the mask unfolded) */
     void SetThrowing(bool b) { m_throwing = b; }
 
-    unsigned char _0[0x130];
+    unsigned char _0[0x11c];
+    float m_11c;   // 0x11c: the throw's power (TickExplosives)
+    unsigned char _120[0x130 - 0x120];
     float m_130;   // 0x130
     unsigned char _134[0x170 - 0x134];
     unsigned char m_170 : 4;   // 0x170
@@ -254,6 +256,9 @@ public:
      * alive -- the slot's item kind noted (OVL2 0x5C48B0, new in SOCOM II: CZSealBody::ReCreate
      * calls it; the name ours) */
     void SetHandFireMode(int mode);
+    /* the kit told of the SEAL's death (OVL2 0x5B8920, new in SOCOM II: CZSealBody::OnDeath calls it; the
+     * name ours) */
+    void OnDeath();
     /* the item in hand's node hung under a part of the body -- hidden, made the part's child, kept in
      * the body's attachment of a kind (OVL2 0x5C6980, new in SOCOM II: 0x5C50B0 hangs it on
      * "aimnodes"; the name ours) */
