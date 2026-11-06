@@ -148,6 +148,8 @@ public:
     void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);
 };
 
+extern "C" int IsLauncherWeapon__11CZFTSWeaponFv(CZFTSWeapon *w);
+
 class CZKit {
 public:
     /* (OVL2 0x5C8190; SOCOM 1's, by its place after ~CZKit and its caller, CZSealBody's constructor) */
@@ -450,6 +452,18 @@ public:
     {
         for (int i = 0; i < m_num_items; i++)
             if (m_item[i] && m_item[i]->IsLauncherWeapon())
+                return i;
+        return -1;
+    }
+    /* the launcher among the items, or -1 (inline: SetCurItemEnum's, its test materialised -- sltu, xori, a branch -- through
+     * an inline over the call as an int, which a bool-returning declaration narrows; the names ours) */
+    static bool NotLauncher(CZFTSWeapon *w) { return !(IsLauncherWeapon__11CZFTSWeaponFv(w) != 0); }
+    int GetLauncherSlot()
+    {
+        for (int i = 0; i < m_num_items; i++)
+            if (NotLauncher(m_item[i]))
+                continue;
+            else
                 return i;
         return -1;
     }

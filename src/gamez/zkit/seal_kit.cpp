@@ -57,6 +57,8 @@ float func_003D2C40(CZFTSWeapon *w);
  * (SOCOM 1's CCharacterGearList::FindGear, the same call; OVL2 0x53EFF0, unclaimed) on
  * CCharacterType's gear list (OVL1 bss 0x44CD68) */
 void SetCameraZoom__9CSealCtrlFff(CKitCtrl *ctrl, float level, float increment);
+void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
+void WepWaitOff__10CZSealBodyFv(CZSealBody *body);
 const char *GetAssociatedGearName__8CZWeaponFv(CZWeapon *w);
 void *FindGear__18CCharacterGearListFPCc(void *list, const char *name);
 extern unsigned char m_gear_list__14CCharacterType[12];
@@ -328,6 +330,68 @@ bool CZKit::HasItemWithAmmo(EQUIP_ITEM item)
         }
     }
     return false;
+}
+
+/* an item of a kind made the current one: a launcher's ammunition selects the launcher, in that ammunition's fire mode; the
+ * models changed, the wait for the weapon on unless it is thrown; a primary (or, with the second hand, a sidearm) noted for
+ * the hand; the reticle and weapon information updated, the throw flag cleared, the camera's zoom eased back from a scope.
+ * Whether it had one (OVL2 0x5C8A20; SOCOM 1's by its place after ~CZKit's neighbours) */
+bool CZKit::SetCurItemEnum(EQUIP_ITEM item)
+{
+    int i = FindItemWithAmmo(item);
+
+    if (i == -1)
+        return false;
+    int prev = m_selected_item;
+
+    ((CKitBody *)m_body)->m_control->SetBombPlaced(true);
+    if (i == -1)
+        return false;
+    if (m_item[i]->IsGrenadeLauncherAmmo()) {
+        m_selected_item = GetLauncherSlot();
+        if (m_selected_item == -1) {
+            m_selected_item = prev;
+            return false;
+        }
+        EQUIP_ITEM ammo = m_item[i]->m_ID;
+        EQUIP_ITEM id = m_item[m_selected_item]->m_ID;
+
+        ChangeItemModel(FireClassOfId(m_item[prev]->m_ID), FireClassOfId(id), prev, false);
+        if (FireClassOfId(m_item[m_selected_item]->m_ID) == FIRE_CLASS_THROWN)
+            WepWaitOff__10CZSealBodyFv(m_body);
+        else
+            WepWaitOn__10CZSealBodyFv(m_body);
+        m_firemode[m_selected_item] = (unsigned char)ammo;
+    } else {
+        m_selected_item = i;
+        if (m_item[prev]) {
+            EQUIP_ITEM id = m_item[i]->m_ID;
+
+            ChangeItemModel(FireClassOfId(m_item[prev]->m_ID), FireClassOfId(id), prev, false);
+            if (FireClassOfId(m_item[i]->m_ID) == FIRE_CLASS_THROWN)
+                WepWaitOff__10CZSealBodyFv(m_body);
+            else
+                WepWaitOn__10CZSealBodyFv(m_body);
+        }
+        if (m_firemode[m_selected_item] == 0)
+            CycleFireMode();
+    }
+    if (CZWeapon::IsPrimary(item) || (m_second_hand && CZWeapon::IsSecondary(item))) {
+        m_hand_firemode = m_firemode[m_selected_item];
+        if (((CKitBody *)m_body)->m_alive)
+            m_hand_item = m_item[m_selected_item] ? m_item[m_selected_item]->m_ID : m_hand_item;
+    }
+    CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
+
+    ctrl->SetBombPlaced(true);
+    SetCurReticule(false);
+    m_weaponinfoChanged = true;
+    ctrl->SetThrowing(false);
+    func_00592D40(ctrl);
+    if (GetCurZoom() > 1.01f)
+        SetCameraZoom__9CSealCtrlFff(ctrl, 1.0f, 0.5f);
+    m_cur_zoom = 0;
+    return true;
 }
 
 /* a valve by name, its state read (zanim.h's CValve, which this unit cannot include: its _zrdr rivals node_world.h's --
