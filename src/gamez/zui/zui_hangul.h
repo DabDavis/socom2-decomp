@@ -53,6 +53,17 @@ template <class T>
 class CSkbVec : public std::vector<T> {
 };
 
+/* (the split's parts: its resize(n) 0x391D90, a forwarder called out of line by the matcher's
+ * one-level cut of CSkbSplit(n, k)) */
+template <>
+class CSkbVec<unsigned int> : public std::vector<unsigned int> {
+public:
+    using std::vector<unsigned int>::resize;
+    void resize(unsigned int n) { resize(n, 0); }
+    std::vector<unsigned int> &Vec() { return *this; }
+    unsigned int &operator[](unsigned int n) { return Vec()[n]; }
+};
+
 /* a syllable's jamo (ours: five tests in its destructor 0x3912A0, its constructor 0x391280) */
 class CJamoStr : public CSkbVec<char> {
 };
@@ -75,6 +86,14 @@ struct SKBSEQ {
     std::vector<char> m_jamo;   // 0x0
     CInit<int, 0> m_val;   // 0xc
     CInit<int, 0> m_val2;   // 0x10
+};
+
+/* (AddPiece's count: read through a struct at the count's address, by the original's accessor over
+ * the vector's size word; MW then hoists the word's address out of the matcher's loops) */
+struct CSkbCount {
+    unsigned int Get() const { return m_n; }
+
+    unsigned int m_n;
 };
 
 /* the pieces composed so far (a vector of SKBPIECE; the members ours) */

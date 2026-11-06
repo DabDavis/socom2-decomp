@@ -83,6 +83,8 @@ static const char *s_jamoNames[JAMO_COUNT] = {
 /* a production: its name and its sequences (24 bytes, new'd by the rules' parser) */
 struct SKBRULE {
     SKBSEQ *Seq(int i);
+    /* (0x391F40: the composer's out-of-line copy) */
+    int SeqCount() { return m_seqs.size(); }
     /* a sequence added and returned (an inline: the address-taken `rule` it is called on is not
      * substituted for `this`, so the parser keeps the rule in a saved register here, s0) */
     SKBSEQ &AddSeq()
@@ -107,6 +109,11 @@ struct SKBCOMPLETE {
 /* the complete characters (ours: its destructor 0x394170 calls ~vector<SKBCOMPLETE> 0x394090 out of
  * line after two this-tests, a level above CSkbVec's) */
 class CSkbCompleteVec : public CSkbVec<SKBCOMPLETE> {
+public:
+    /* (0x392110, 0x391F60, 0x391E00: the composer's out-of-line copies) */
+    int RuleCount(int i) { return (*this)[i].m_rules.size(); }
+    unsigned int Rule(int i, int r) { return (*this)[i].m_rules[r]; }
+    bool Val2(int i) { return (*this)[i].m_val2; }
 };
 
 
@@ -232,17 +239,17 @@ void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
 class CSkbSplit {
 public:
     CSkbSplit() : m_n(0) {}
-    CSkbSplit(int n, int k);
+    inline CSkbSplit(int n, int k);
     unsigned int Sum(int n);
     unsigned int Part(int i);
     void Next();
     /* the parts through a reference: the walks' vector address hoisted (ours) */
-    std::vector<unsigned int> &Parts() { return m_parts; }
+    CSkbVec<unsigned int> &Parts() { return m_parts; }
     /* a split is left (0x391DF0, the composer's out-of-line copy; the stepper inlines it) */
     bool Left() { return m_parts.size() != 0; }
 
-    int m_n;   // 0x0
-    std::vector<unsigned int> m_parts;   // 0x4
+    CInit<int, 0> m_n;   // 0x0
+    CSkbVec<unsigned int> m_parts;   // 0x4
 };
 
 /* the first split of n into k parts: k - 1 of one and the rest last, none when k is out of 1..n
@@ -251,13 +258,13 @@ public:
  * rbegin() over std::reverse_iterator since the MSL headers' round 23, retiring the unit's stand-in:
  * two stack temporaries and an FPR copy, as the scalar vector's class end() and __iter give; the
  * matcher 0x3919D0 calls that end() 0x391D40 and the reverse * 0x391D30 out of line) */
-CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
+inline CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
 {
     if (k > n || k <= 0)
         return;
-    Parts().resize(k, 0);
+    m_parts.resize(k);
     for (int i = 0; i < k - 1; i++)
-        Parts()[i] = 1;
+        m_parts[i] = 1;
     *m_parts.rbegin() = n - k + 1;
 }
 
@@ -286,20 +293,149 @@ unsigned int CSkbSplit::Sum(int n)
     unsigned int s = 0;
 
     for (int i = 0; i < n; i++)
-        s += Parts()[i];
+        s += m_parts[i];
     return s;
 }
 
 /* a split's part i (0x391E50; the composer calls it out of line; ours) */
 unsigned int CSkbSplit::Part(int i)
 {
-    return m_parts[i];
+    CSkbVec<unsigned int> &p = m_parts;
+
+    return p[i];
 }
 
 /* a sequence's jamo i, sign-extended (0x391E20; the composer calls it out of line; ours) */
 char SkbSeqJamo(SKBSEQ *seq, int i)
 {
     return seq->m_jamo[i];
+}
+
+/* the jamo of [start, end) composed into one complete character's pieces (0x3919D0; the name ours) */
+inline bool SkbMatchComplete(CSkbPieces *pieces, std::vector<char> *jamo, int start, int end)
+{
+    int n = end - start;
+    CSkbCompleteVec *complete = &s_complete;
+
+    for (int i = 0; i < (int)complete->size(); i++) {
+        int k = complete->RuleCount(i);
+        CSkbSplit split(n, k);
+
+        while (split.Left()) {
+            pieces->AddPiece();
+            int r;
+
+            for (r = 0; r < k; r++) {
+                SKBRULE *rule = s_rules[complete->Rule(i, r)];
+                int nseq = rule->SeqCount();
+                split.Sum(r);
+                int q;
+
+                for (q = 0; q < nseq; q++) {
+                    SKBSEQ *seq = rule->Seq(q);
+
+                    if (split.Part(r) == seq->m_jamo.size()) {
+                        int j;
+
+                        for (j = 0; j < (int)seq->m_jamo.size(); j++) {
+                            if ((unsigned char)(*jamo)[start + j] != (unsigned char)SkbSeqJamo(seq, j))
+                                break;
+                        }
+                        if (j >= (int)seq->m_jamo.size()) {
+                            bool v2 = complete->Val2(i);
+
+                            pieces->Append(*seq, v2);
+                            break;
+                        }
+                    }
+                }
+                if (q >= nseq)
+                    break;
+            }
+            if (r >= k)
+                return true;
+            pieces->RemovePiece();
+            split.Next();
+        }
+    }
+    return false;
+}
+
+/* all the jamo composed into one complete character's pieces (0x391670's first half; the name ours) */
+inline bool SkbMatchWhole(CSkbPieces *pieces, std::vector<char> *jamo, int n)
+{
+    CSkbCompleteVec *complete = &s_complete;
+
+    for (int i = 0; i < (int)complete->size(); i++) {
+        int k = complete->RuleCount(i);
+        CSkbSplit split(n, k);
+
+        while (split.Left()) {
+            pieces->AddPiece();
+            int r;
+
+            for (r = 0; r < k; r++) {
+                SKBRULE *rule = s_rules[complete->Rule(i, r)];
+                int nseq = rule->SeqCount();
+                int sum = split.Sum(r);
+                int q;
+
+                for (q = 0; q < nseq; q++) {
+                    SKBSEQ *seq = rule->Seq(q);
+
+                    if (split.Part(r) == seq->m_jamo.size()) {
+                        int j;
+
+                        for (j = 0; j < (int)seq->m_jamo.size(); j++) {
+                            if ((unsigned char)(*jamo)[sum + j] != (unsigned char)SkbSeqJamo(seq, j))
+                                break;
+                        }
+                        if (j >= (int)seq->m_jamo.size()) {
+                            bool v2 = complete->Val2(i);
+
+                            pieces->Append(*seq, v2);
+                            break;
+                        }
+                    }
+                }
+                if (q >= nseq)
+                    break;
+            }
+            if (r >= k)
+                return true;
+            pieces->RemovePiece();
+            split.Next();
+        }
+    }
+    return false;
+}
+
+/* the jamo split in two, each part one complete character */
+inline bool SkbMatchSplit(CSkbPieces *pieces, std::vector<char> *jamo)
+{
+    int n = jamo->size();
+    CSkbSplit split(n, 2);
+
+    while (split.Left()) {
+        int mid = split.Sum(1);
+
+        if (SkbMatchComplete(pieces, jamo, 0, mid)) {
+            if (SkbMatchComplete(pieces, jamo, mid, n))
+                return true;
+            pieces->RemovePiece();
+        }
+        split.Next();
+    }
+    return false;
+}
+
+/* the jamo composed into pieces by the rules: as one complete character, else split in two
+ * (0x391670; the name ours) */
+bool SkbHangulCompose(CSkbPieces *pieces, std::vector<char> *jamo)
+{
+    if (SkbMatchWhole(pieces, jamo, jamo->size()))
+        return true;
+    return SkbMatchSplit(pieces, jamo);
 }
 
 /* the jamo being composed set again from the last piece's (0x3914A0, after a composition; the name
@@ -522,7 +658,7 @@ void CSkbPieces::RemovePiece()
 /* an empty piece added (0x390720) */
 void CSkbPieces::AddPiece()
 {
-    resize(size() + 1);
+    resize(((CSkbCount &)size_).Get() + 1);
 }
 
 /* the next split of the same total into as many parts, none (the parts cleared) after the last
@@ -555,22 +691,24 @@ void CSkbSplit::Next()
         return;
     }
     CSkbSplit sub;
-    std::vector<unsigned int> &parts = sub.m_parts;
+    CSkbVec<unsigned int> &parts = sub.m_parts;
 
-    sub.m_n = m_n - m_parts[0];
-    parts.resize(k - 1, 0);
+    sub.m_n = (int)m_n - m_parts[0];
+    parts.resize(k - 1);
     for (int i = 0; i < parts.size(); i++)
         parts[i] = Parts()[i + 1];
     sub.Next();
     if (sub.Left()) {
         for (int i = 0; i < parts.size(); i++)
             Parts()[i + 1] = parts[i];
-    } else if ((int)m_parts[0] <= m_n - k) {
+    } else if ((int)m_parts[0] <= (int)m_n - k) {
         m_parts[0]++;
         for (int i = 1; i < k - 1; i++)
             Parts()[i] = 1;
-        *m_parts.rbegin() = m_n - m_parts[0] - (k - 2);
+        *m_parts.rbegin() = (int)m_n - m_parts[0] - (k - 2);
     } else {
         m_parts.clear();
     }
 }
+
+#pragma inline_depth(6)
