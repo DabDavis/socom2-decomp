@@ -914,14 +914,14 @@ static inline bool LightTaken(zdb::CLight *light)
  * light walk's iterator ASSIGNED from begin() with the end in a local (the target keeps it in its
  * stack slot, copied in through $f0), the stamp test `stamp != field` taking its then-arm as the
  * store, the light's position a pointer local (the target's a1 ahead of the sphere test).
- * OPEN, 6 instructions at the target's size (round 33; d=48 and 0x4D8 before): the box a class with
- * SOCOM II's two-point constructor (CornerBox, below: zmath.h's CBBox has none), assigned from a
- * temporary -- member-wise, so ld / sd at the aligned first corner and three FPRs at +12, as
- * CRenderMap::Update's -- and widened through AddPoint (the first field's minimum a ternary in place,
- * so it is read after the corner's x). Left: &box.m_max (s1) is hoisted to the walk's preheader,
- * after SetCellBoundary's call, where the target sets it ahead and passes it (`move a2,s1`) -- not
- * moved by a pointer or reference local, an accessor, a by-reference or pointer wrapper around the
- * call, a char * offset or an index off the first corner (the by-value argument stays frame-relative).
+ * The box a class with SOCOM II's two-point constructor (CornerBox, below: zmath.h's CBBox has none),
+ * assigned from a temporary -- member-wise, so ld / sd at the aligned first corner and three FPRs at +12,
+ * as CRenderMap::Update's -- and widened through AddPoint (the first field's minimum a ternary in place, so
+ * it is read after the corner's x). Byte-exact since round 34 (6 off since round 31): &box.m_max (s1) is
+ * SetCellBoundary's argument and the sphere test's x bound through ONE common subexpression, `move a2,s1`,
+ * only when the read's address is typed as the argument's -- IRO_ExprsSame compares the pointer's type, so
+ * `b->m_max.x` (a float *) never shared with `box.m_max` (a CPnt3D *) under any spelling of the argument,
+ * and a reference to the corner (`const CPnt3D &mx = b->m_max; mx.x`) does.
  * The world pointer and the light took s4 / s3 (the target's s3 / s4) until the round-32
  * `igreplay --permute` (movers world, light: the light numbered first) -- the light declared at
  * the top, its first definition still in the walk */
@@ -943,6 +943,22 @@ static inline void AddPoint(CornerBox &b, const CPnt3D &p)
     b.m_max.x = MaxOf(p.x, b.m_max.x);
     b.m_max.y = MaxOf(p.y, b.m_max.y);
     b.m_max.z = MaxOf(p.z, b.m_max.z);
+}
+
+/* the sphere test over this box (SphereMeetsBox's), its upper corner a reference: see above */
+static inline bool SphereMeetsBox(const CPnt3D *p, float r, CornerBox *b)
+{
+    bool xyz = false;
+    bool xy = false;
+    const CPnt3D &mx = b->m_max;
+
+    if (SpanMeets(p->x, r, b->m_min.x, mx.x))
+        if (SpanMeets(p->y, r, b->m_min.y, b->m_max.y))
+            xy = true;
+    if (xy)
+        if (SpanMeets(p->z, r, b->m_min.z, b->m_max.z))
+            xyz = true;
+    return xyz;
 }
 
 void BuildNodeLocalLightList(zdb::CNode *node)
@@ -982,7 +998,7 @@ void BuildNodeLocalLightList(zdb::CNode *node)
                     if (light->m_active && !LightTaken(light) && !(light->m_region_mask & node->m_region_mask)) {
                         const CPnt3D *pos = &light->m_WorldPosition;
 
-                        if (SphereMeetsBox(pos, light->m_maxRange, (CBBox *)&box)) {
+                        if (SphereMeetsBox(pos, light->m_maxRange, &box)) {
                             CPnt3D local;
 
                             zdb::CVisual::m_WorldToModel.Transform(pos, &local, 1);
