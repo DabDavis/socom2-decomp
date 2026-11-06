@@ -11255,7 +11255,7 @@
 0x005DED70 0x100 test<f>__2aiFRCfQ22ai7TEST_OPRCf_b  # OVL2; by hand (the kit lane, round 11): the float instance of ai::test (0x5DECB0's int one), called from the same 0x5D4770
 0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); proven by its caller (the kit lane, round 12): ai::PARAM's tick (0x5D4770) passes it a byte it computed and the controller's byte at 0x5D0 and reads the result with lbu -- seal_tasks.cpp's explicit instance byte-exact; ovl-copy: _max<Uc>__2aiFRCUcRCUc_RCUc
 0x005DEE90 0x2C func_005DEE90  # OVL2
-0x005DEEC0 0x4A8 func_005DEEC0  # OVL2
+0x005DEEC0 0x4A8 UpdateAimDir__10CZSealBodyFb  # OVL2; s1:calls by hand (the kit lane, round 61): SetAimPointW tail-calls it where SOCOM 1's calls UpdateAimDir__10CZSealBodyFb, the same order of GetFirepointPos, CurWeaponIsM203Mode, Sub, Apply, Normalize and CalcAimGoal
 0x005DF370 0x64 GetFP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
 0x005DF3E0 0x64 GetAP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
 0x005DF450 0x90 UpdateAimParams__10CZSealBodyFv  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's UpdateAimParams in the same place (after GetFP/GetAP, before SetAimPointW): the same fields 0x3A0 on (m_curr_aimpt 0x110C -> 0x14AC, m_curr_firept 0x111C -> 0x14BC, their positions 0x1100/0x1110 -> 0x14A0/0x14B0), the same names "aimpoint"/"firepoint" looked up (SOCOM II through CZSealBody's slot 0x64, 0x5DFAD0, SOCOM 1's GetFirepointNode) and both handed to GetNodePos (0x5DF930); PrePostTick and the constructor call it

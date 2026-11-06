@@ -127,12 +127,6 @@ bool CZSealBody::SetAimDirR(const CPnt3D *dir, bool reset)
     return ok;
 }
 
-extern "C" {
-/* the aim's direction brought up to date (SOCOM 1's UpdateAimDir__10CZSealBodyFb; OVL2 0x5DEEC0,
- * unwritten) */
-bool func_005DEEC0(CZSealBody *seal, bool keep);
-}
-
 /* the aim at a point: the point kept, and the reticle's too unless asked to keep it, the normal
  * when there is one; with none the aim falls back on the unit -z from the aim's origin (OVL2
  * 0x5DF4E0; SOCOM 1's SetAimPointW, the fields 0x3A0 on) */
@@ -156,7 +150,7 @@ bool CZSealBody::SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool k
         CalcAimGoal(&v->m_aim_from, &CPnt3D::unit_nz, &v->m_aim_goal);
         return false;
     }
-    return func_005DEEC0(this, keep);
+    return UpdateAimDir(keep);
 }
 
 /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
@@ -287,6 +281,120 @@ bool CZSealBody::GetFirepointPos(CPnt3D &pos, const char *name)
     if (ok)
         m_node->m_matrix.Transform(&p, &pos, 1);
     return ok;
+}
+
+/* the point's place in the world, kept from the frame's UpdateAimParams or looked up by name (inlines: UpdateAimDir's; the
+ * names ours) */
+static inline bool CurAimPos(CZSealBody *s, CPnt3D &pos)
+{
+    CSealAimPoints *a = (CSealAimPoints *)s;
+
+    if (a->m_curr_aimpt) {
+        pos = a->m_curr_aimpos;
+        pos.Add(&((CEntity *)s)->m_posW, &pos);
+        return true;
+    }
+    return s->GetFirepointPos(pos, "aimpoint");
+}
+
+static inline bool PlainFirePos(CZSealBody *s, CPnt3D &pos)
+{
+    CSealAimPoints *a = (CSealAimPoints *)s;
+
+    if (a->m_curr_firept) {
+        pos = a->m_curr_firepos;
+        pos.Add(&((CEntity *)s)->m_posW, &pos);
+        return true;
+    }
+    return s->GetFirepointPos(pos, "firepoint");
+}
+
+static inline bool CurFirePos(CZSealBody *s, CPnt3D &pos)
+{
+    if (s->m_kit.CurWeaponIsM203Mode())
+        return s->GetFirepointPos(pos, "firepoint_203");
+    return PlainFirePos(s, pos);
+}
+
+/* a vector turned about (inline; the name ours) */
+static inline void NegatePoint(CPnt3D &v)
+{
+    v.x = -v.x;
+    v.y = -v.y;
+    v.z = -v.z;
+}
+
+/* whether the aim may stand: any but a player's, a moving one's, or the camera within the prone limits of the body's
+ * direction (inline: SOCOM 1's CanAttainAim, out of line there; the name kept) */
+static inline bool AimAttainable(CZSealBody *s)
+{
+    if (!s->IsPlayer())
+        return true;
+    CEntity *e = (CEntity *)s;
+
+    if (e->m_velM.x * e->m_velM.x + e->m_velM.y * e->m_velM.y + e->m_velM.z * e->m_velM.z < 0.001f) {
+        /* (read through a const reference and written direct: the target keeps &v.y and &v.z for the reads alone, frame
+         * slots for the stores) */
+        CPnt3D v = *(const CPnt3D *)((char *)zdb::CWorld::m_world->m_camera + 0x20);
+        const CPnt3D &p = v;
+
+        v.x = -p.x;
+        v.y = -p.y;
+        v.z = -p.z;
+        float d = p.x * s->m_1344.x + p.y * s->m_1344.y + p.z * s->m_1344.z;
+
+        if (d < theCharacterDynamics.m_cosProneMinAimPitch)
+            return false;
+        if (!(d <= theCharacterDynamics.m_cosProneMaxAimPitch))
+            return false;
+    }
+    return true;
+}
+
+/* (OVL2 0x5DEEC0: zseal.h's; SOCOM 1's UpdateAimDir) */
+bool CZSealBody::UpdateAimDir(bool keep)
+{
+    CPnt3D aimpos;
+    CSealAimView *v = (CSealAimView *)this;
+
+    m_kit.GetCurItemFireClass();
+    if (!m_aim_point_valid)
+        return false;
+    if (!CurAimPos(this, aimpos)) {
+        CPnt3D firepos;
+
+        if (!CurFirePos(this, firepos))
+        {
+            bool g = CalcAimGoal(&v->m_aim_from, &CPnt3D::unit_nz, &v->m_aim_goal);
+
+            return g;
+        }
+        aimpos = firepos;
+    }
+    aimpos.x = m_posW.x;
+    aimpos.z = m_posW.z;
+    CPnt3D pt = m_1464;
+    CPnt3D dir;
+    CQuat q = m_quat;
+
+    NegatePoint(q.vec);
+    dir = pt - aimpos;
+    q.Apply(&dir, &dir, 1);
+    dir.Normalize();
+    if (m_state == 2 || (m_state == 3 && PeekBaseState() == 2)) {
+        if (!AimAttainable(this)) {
+            m_1458 = m_prev_1458;
+            m_1470 = m_prev_1470;
+            m_1464 = m_prev_1464;
+            m_have_aim_norm = m_prev_have_aim_norm;
+        }
+        dir = m_1464 - aimpos;
+        q.Apply(&dir, &dir, 1);
+        dir.Normalize();
+    }
+    bool g = CalcAimGoal(&v->m_aim_from, &dir, &v->m_aim_goal);
+
+    return g;
 }
 
 /* the weapon's timing and its sequence (SOCOM 1's 0xDD0-0xDDF and its m_weapon_seq pointer at 0xF88:
@@ -421,7 +529,7 @@ void CZSealBody::WeaponsTick(float dT)
             break;
         }
     }
-    func_005DEEC0(this, false);
+    UpdateAimDir(false);
     AimWeapon();
     m_kit.PreTick(dT);
 }

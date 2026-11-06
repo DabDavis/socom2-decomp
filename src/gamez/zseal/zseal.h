@@ -2114,6 +2114,9 @@ public:
     /* the aim at a point, with its surface normal, or none (SOCOM 1's; OVL2 0x5DF4E0, seal_weapon.cpp
      * -- the kit lane) */
     bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);
+    /* the aim's direction brought up to date from the aim's or fire point, in the body's frame, and the goal set; a
+     * player's still prone aim outside its limits puts the points back (SOCOM 1's; OVL2 0x5DEEC0) */
+    bool UpdateAimDir(bool keep);
     bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
@@ -2767,7 +2770,7 @@ public:
     float m_133c;   // 0x133c: the rate m_fac falls at (0x59B870; the name ours)
     float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
                     // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
-    unsigned char _1344[0x1350 - 0x1344];
+    CPnt3D m_1344;   // 0x1344: the direction the aim's prone limits measure the camera against (UpdateAimDir; the name ours)
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1360 - 0x135c];
     float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
