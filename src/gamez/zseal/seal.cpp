@@ -1744,6 +1744,113 @@ extern "C" bool func_0054E760(CZSealBody *seal, CPnt3D *pos, CPnt3D *pt)
     return true;
 }
 
+/* a material's extension (int_material.h's CMaterialEx, which zweapon.h's stand-in of the table leaves
+ * incomplete -- seal_env.cpp's view): only its first two flags */
+struct CMaterialEx {
+    unsigned char _0[0x3c];
+    unsigned int m_volumetric : 1;   // 0x3c: VOLUMETRIC
+    unsigned int m_liquid : 1;   // bit 1: LIQUID
+    unsigned int m_flags2 : 30;
+
+    /* (written `? true : false`, as seal_env.cpp's: the bit converted, sltu, before its test) */
+    bool IsVolumetric() { return m_volumetric ? true : false; }
+    bool IsLiquid() { return m_liquid ? true : false; }
+};
+
+/* a material's extension, the first one for an index past the table (seal_env.cpp's) */
+static inline CMaterialEx *MaterialEx(unsigned int i)
+{
+    if (i >= CMaterialExArray::m_materialex_list.size())
+        i = 0;
+    return (CMaterialEx *)CMaterialExArray::m_materialex_list[i];
+}
+
+/* a part's height in the SEAL's body, raised by an offset of none (an inline, the name ours: the
+ * target stores the zero to a stack slot of its own ahead of the call -- not moved into its delay
+ * slot -- and reloads it after: a volatile local; a plain one, a parameter, a const reference or a
+ * type-punned store are rematerialised, pooled or scheduled into the delay slot. The inline's point
+ * is allocated after the caller's operator* temporary, as the target's is) */
+static inline float PartHeight(CZSealBody *seal, CZBodyPart *part)
+{
+    CPnt3D p;
+    volatile float dy = 0.0f;
+
+    seal->PartInSpace(part, 0, &p, 0);
+    p.y += dy;
+    return p.y;
+}
+
+/* whether a wall may be passed through: no steeper than the dynamics' slope limit, or of a volumetric
+ * or liquid material (an inline, the name ours) */
+static inline bool PassThrough(zdb::IntersectStruct *wall)
+{
+    if (!(wall->m_norm.y <= theCharacterDynamics.m_maxSlopeCos))
+        return true;
+    CMaterialEx *m = MaterialEx(wall->GetMaterial());
+
+    /* (an if returning true: `return m && (...)` materialises the bool and masks it) */
+    if (m && (m->IsVolumetric() || m->IsLiquid()))
+        return true;
+    return false;
+}
+
+extern "C" {
+/* a wall's hit taken for the SEAL to hold to, its two side points kept (OVL2 0x5B0D30, a draft) */
+void func_005B0D30(CZSealBody *seal, const zdb::IntersectStruct *hit, CPnt3D *a, CPnt3D *b);
+}
+
+/* the wall's hit the SEAL holds to, checked against what lies between the SEAL and it: the hit's
+ * height -- 0.5 over its upper edge point, when it has its edge points, under 21.1 over the SEAL's
+ * spot; else the SEAL's head, the hit under it by 0.1 -- and when it is, a ray from the SEAL's spot
+ * to 1.1 times the way to the hit at that height, the SEAL's node switched off; a wall it meets that
+ * is steeper than the dynamics' slope limit, not volumetric or liquid and another node's taken in its
+ * place; the hit held then, or none (OVL2 0x54E430, new in SOCOM II: CanTraverse calls it; the name
+ * unknown) */
+extern "C" zdb::IntersectStruct *func_0054E430(CZSealBody *seal)
+{
+    zdb::IntersectStruct *hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+
+    if (hit) {
+        bool blocked = false;
+        const CPnt3D *pos = (const CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+        CPnt3D lo, hi, a, b;
+        float y;
+
+        if (hit->GetIntersectedEdgePoints(&hi, &lo)) {
+            y = hi.y + 0.5f;
+            if (y < pos->y + 19.1f + 2.0f)
+                blocked = true;
+        } else {
+            y = pos->y + PartHeight(seal, seal->m_head);
+            if (hit->m_pos.y < y - 0.1f)
+                blocked = true;
+        }
+        if (blocked) {
+            a = *pos;
+            b = hit->m_pos;
+            b.y = y;
+            a.y = y;
+            b.Sub(&a, &b);
+            b = b * 1.1f;
+            b.Add(&a, &b);
+
+            bool was = seal->GetNode()->m_active;
+
+            seal->GetNode()->SetActive(false);
+            zdb::IntersectStruct *wall = zdb::CWorld::m_world->GetIntersect(&a, &b);
+
+            seal->GetNode()->SetActive(was);
+            if (wall) {
+                if (!PassThrough(wall) && wall->m_node != hit->m_node) {
+                    func_005B0D30(seal, wall, (CPnt3D *)((char *)seal + 0x10b0), (CPnt3D *)((char *)seal + 0x10bc));
+                    hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+                }
+            }
+        }
+    }
+    return hit;
+}
+
 extern "C" {
 /* the SEAL's ground hit kept, its point, normal and node -- or none (OVL2 0x5B0C10, seal_env.cpp's) */
 void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit);

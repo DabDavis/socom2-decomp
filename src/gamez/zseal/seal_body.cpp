@@ -1964,6 +1964,91 @@ extern "C" {
 /* (OVL2 0x5A60D0: a stance change, a kind and a flag; 0x5765F0, seal_anim.cpp's) */
 void func_005A60D0(CZSealBody *seal, int a, int b);
 void func_005765F0(CZSealBody *seal);
+/* the right thigh's gear callback's sibling (OVL2 0x5A7520, seal_env.cpp's) */
+void func_005A7520(void *data, void *arg);
+}
+
+/* the pistol reparented to the right thigh as gear, or to the right hand (seal_env.cpp's, SOCOM 1's) */
+void ParentPistolToRThighAsGearCallback(void *data, void *arg);
+void ParentPistolToRHandCallback(void *data, void *arg);
+
+/* the overlay's trigger time met between two times (backwards when the top blend's flag 0x20 is set):
+ * a dead SEAL's overlay put back and cleared; a live one's, not yet started, triggered by its event --
+ * the pistol put away (5, 6: a hand swap for 6, which says so), the stance change's blend pushed on
+ * when the body interpolates, the 0x10D0 timer set and the event's reparenting callback timed
+ * (OVL2 0x57A010, new in SOCOM II; CZSealBody::Tick calls it; true only for event 6) */
+extern "C" bool func_0057A010(CZSealBody *seal, float t0, float t1)
+{
+    /* the top blend first, then the result declared bare and the overlay taken before it is cleared
+     * -- the overlay's address and the cleared result between the two calls in that order, the
+     * result numbered ahead of the overlay (s1 / s0) */
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    bool r;
+    CBlendOverlay *ov = &seal->m_overlay;
+    r = false;
+    bool back = func_005551A0(top->m_flags, 32);
+
+    if (!ov->m_anim)
+        return false;
+    if (!ov->IsTriggerTime(t0, t1, back))
+        return false;
+    if (ov->m_state == 0) {
+        if (!seal->m_isAlive) {
+            if (ov->m_anim)
+                seal->m_active_anim_pool.PutBack(ov->m_anim);
+            ov->Clear();
+            return false;
+        }
+        switch (ov->m_event) {
+        case 5:
+            seal->ChangeToPistolMode(false);
+            ov->Trigger(true);
+            if (!(seal->m_interp1 <= 0.0f))
+                func_005765F0(seal);
+            seal->m_10d0 = 0.4f;
+            ov->m_callback.m_func = ParentPistolToRThighAsGearCallback;
+            ov->m_callback.m_tfrac = 0.79f;
+            ov->m_callback.m_userdata = 0;
+            break;
+        case 6:
+            seal->ChangeToPistolMode(false);
+            func_0057D5E0(seal, (SEAL_ITEM_BYTE)2);
+            r = true;
+            ov->Trigger(false);
+            if (!(seal->m_interp1 <= 0.0f))
+                func_005765F0(seal);
+            seal->m_10d0 = 0.4f;
+            ov->m_callback.m_func = ParentPistolToRHandCallback;
+            ov->m_callback.m_tfrac = 0.79f;
+            ov->m_callback.m_userdata = 0;
+            break;
+        case 8:
+            ov->Trigger(true);
+            if (!(seal->m_interp1 <= 0.0f))
+                func_005765F0(seal);
+            seal->m_10d0 = 0.4f;
+            ov->m_callback.m_func = func_005A7520;
+            ov->m_callback.m_tfrac = 0.27f;
+            ov->m_callback.m_userdata = 0;
+            break;
+        case 10:
+            ov->Trigger(true);
+            if (!(seal->m_interp1 <= 0.0f))
+                func_005765F0(seal);
+            seal->m_10d0 = 0.4f;
+            ov->m_callback.m_func = ParentPistolToRHandCallback;
+            ov->m_callback.m_tfrac = 0.13f;
+            ov->m_callback.m_userdata = 0;
+            break;
+        default:
+            ov->Trigger(false);
+            if (!(seal->m_interp1 <= 0.0f))
+                func_005765F0(seal);
+            seal->m_10d0 = 0.4f;
+            break;
+        }
+    }
+    return r;
 }
 
 /* the overlay stepped: once it plays out its event's stance change made (5, 6, 8 and 10), the blend
