@@ -2205,7 +2205,7 @@ public:
      * SEALs, round 48) */
     void AlignForClimb(bool done, CPnt3D &intpt, CPnt3D &at, CPnt3D *wall);
     /* the terrain a SEAL can cross: an int, the callers make it a bool (seal_env.cpp) */
-    int CanTraverse(CDIType type);
+    bool CanTraverse(CDIType type);
     bool CanClimbWall();
     /* a ladder's polygons crossed (SOCOM 1's, a tail call: OVL2 0x59DA60) and the bomb's defusal
      * handled (SOCOM 1's, empty in both builds: OVL2 0x59DA70) */

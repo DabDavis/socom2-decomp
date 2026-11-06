@@ -6012,27 +6012,12 @@ bool func_0057F9C0(CZSealBody *seal);
 void func_002B9F60(int obj, int a, int b);
 }
 
-/* whether the SEAL has the climbs' anims (an inline: the `&&` a value; the name ours) */
-static inline bool HasAnim(CZSealBody *seal, AnimType t)
-{
-    return seal->m_animset->GetScript(t) != 0;
-}
-
+/* whether the SEAL has the climbs' anims (an inline: the `&&` of plain `!= 0` tests a value MW builds in v0
+ * with no join label -- an inline per test takes a saved register a step, `if (ok) ok = ...` pads its joins;
+ * the name ours) */
 static inline bool HasClimbs(CZSealBody *seal)
 {
-    bool ok = HasAnim(seal, (AnimType)33);
-
-    if (ok)
-        ok = HasAnim(seal, (AnimType)44);
-    if (ok)
-        ok = HasAnim(seal, (AnimType)46);
-    if (ok)
-        ok = HasAnim(seal, (AnimType)AnimTypes::ClimbMedium);
-    if (ok)
-        ok = HasAnim(seal, (AnimType)42);
-    if (ok)
-        ok = HasAnim(seal, (AnimType)AnimTypes::StepUp);
-    return ok;
+    return seal->m_animset->GetScript((AnimType)33) != 0 && seal->m_animset->GetScript((AnimType)44) != 0 && seal->m_animset->GetScript((AnimType)46) != 0 && seal->m_animset->GetScript((AnimType)AnimTypes::ClimbMedium) != 0 && seal->m_animset->GetScript((AnimType)42) != 0 && seal->m_animset->GetScript((AnimType)AnimTypes::StepUp) != 0;
 }
 
 /* whether an AI may take a ladder at a node (0x5B1350's test by node: holding none, the ladder free, in the
@@ -6063,8 +6048,8 @@ static inline bool LadderNodeFree(CZSealBody *seal, zdb::IntersectStruct *hit)
  * sp+176, between hi and edge, that no instruction touches (frame 256 against 240). No source gives a slot
  * with no code: an unused CPnt3D, a dead copy, `(void)&x`, a dead pointer or reference to it, a class with an
  * empty constructor and destructor, a by-value inline parameter ignored, or unreachable code using it
- * (build/scratch/seal-r58/v_620*.py). Otherwise written to the word: the anims' test a bool chained through
- * `if`, the x of d read twice by Length and Dot where y and z share their address temporaries */
+ * (build/scratch/seal-r58/v_620*.py). Otherwise written to the word: the x of d read twice by Length and Dot
+ * where y and z share their address temporaries */
 bool CZSealBody::ImpactFront(zdb::IntersectStruct *hit, CPnt3D *pos)
 {
     if (!HasClimbs(this))
@@ -6173,6 +6158,104 @@ bool CZSealBody::ImpactFront(zdb::IntersectStruct *hit, CPnt3D *pos)
     }
     AlignForClimb(false, at, hi, (CPnt3D *)n);
     return true;
+}
+
+extern "C" {
+/* the wall ahead's hit (OVL2 0x54E430, seal.cpp's) and the hold dropped (OVL2 0x5B3890, below) */
+zdb::IntersectStruct *func_0054E430(CZSealBody *seal);
+void func_005B3890(CZSealBody *seal, int drop_now);
+}
+
+/* whether one of the climbs' anims is on top (an inline: each test a call, the join one bool; the name ours) */
+static inline bool InClimbAnim(CZSealBody *seal)
+{
+    if (seal->IsCurrentBlend((AnimType)42) || seal->IsCurrentBlend((AnimType)AnimTypes::ClimbMedium) ||
+        seal->IsCurrentBlend((AnimType)33) || seal->IsCurrentBlend((AnimType)AnimTypes::ClimbOver) ||
+        seal->IsCurrentBlend((AnimType)AnimTypes::StepUp) || seal->IsCurrentBlend((AnimType)44))
+        return true;
+    return false;
+}
+
+/* whether the SEAL can take the wall it holds by a kind: the anims there, the action allowed, a ladder free,
+ * no climb playing, facing it -- by a small limit on a ladder, by the edge's drop; the ladder ahead of it --
+ * then by the kind: a step short enough one way, within 10 the impact taken and the hold dropped, one up to
+ * 32 otherwise (OVL2 0x5B3CE0: SOCOM 1's CanTraverse, its faces' kinds grown) */
+bool CZSealBody::CanTraverse(CDIType type)
+{
+    zdb::IntersectStruct *hit = m_1090.m_node ? &m_1090 : 0;
+
+    if (!hit)
+        return false;
+
+    unsigned char kind = (unsigned char)hit->m_poly->m_flags.m_appflags & 7;
+
+    if (kind != (unsigned char)type)
+        return false;
+    if (!HasClimbs(this))
+        return false;
+    if (!func_005B4340(this, 2))
+        return false;
+    if (kind == 2 && !LadderNodeFree(this, hit))
+        return false;
+    func_00555170(&m_blends);
+    if (InClimbAnim(this))
+        return false;
+
+    CPnt3D d = *(const CPnt3D *)m_node->m_matrix.m_matrix[2];
+
+    d.y = 0.0f;
+
+    float len = d.Length();
+    float dot = Dot(d, hit->m_norm) / len;
+
+    if (kind == 2) {
+        CPnt3D lo, hi;
+
+        if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+            return false;
+        if (hi.y - lo.y <= 15.0f) {
+            if (fabsf(dot) < 0.02f)
+                return false;
+        } else if (dot < 0.02f)
+            return false;
+
+        CPnt3D e = m_posW;
+
+        e.Sub(&hit->m_pos, &e);
+        e.y = 0.0f;
+        if (Dot(e, hit->m_norm) <= 0.0f)
+            return false;
+    } else if (dot < 0.3f)
+        return false;
+    hit = func_0054E430(this);
+    switch (kind) {
+    case 4: {
+        CPnt3D lo, hi;
+
+        if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+            return false;
+
+        float h = hi.y + MaterialEx(hit->GetMaterial())->m_foot_step_offset - m_posW.y;
+
+        if (h <= 5.0f)
+            return true;
+        if (h <= 10.0f) {
+            CPnt3D p = m_posW;
+
+            ImpactFront(m_1090.m_node ? &m_1090 : 0, &p);
+            func_005B3890(this, 1);
+            return false;
+        }
+        return h <= 32.0f;
+    }
+    case 5:
+        return true;
+    case 2:
+    case 1:
+    case 3:
+        return true;
+    }
+    return false;
 }
 
 
