@@ -204,6 +204,34 @@ if gdb is not None:     # ------------------------------------------------------
             return z
         return None
 
+    # GCC round 42a: an extern "C" function's records were `.l@0x4` (the game states' round 51 read them by
+    # record index): objname's scan takes the first word that reads as a name, and the word before the
+    # Object's own name (+0x8) -- its namespace, +0x4 -- can read as one when that namespace's bytes at
+    # +0xa happen to be printable (`.l`: a heap pointer's upper half and a NUL), so the link name, which
+    # must spell the name, was refused too. When the scan's name has no link name, the name word +0x8 is
+    # read and kept if the link name (+0x30) spells IT -- an extern "C" function's link name IS its name
+    # -- or, with no link name made yet (an inline never emitted out of line: its origins' `inline`), if
+    # the scan's word lay BEFORE it (+0x0, +0x4: the Object's kind bytes and its namespace, never a name).
+    # IGDUMP_NO_LINKNAME=1 is the canary's negative control (the scan alone, as before).
+    LINK_FALLBACK = not os.environ.get('IGDUMP_NO_LINKNAME')
+
+    def funcname(fobj):
+        """(a function's own name as `name@0xK`, its link name or None)."""
+        proc = objname(fobj)
+        link = linkname(fobj, proc)
+        if link is None and fobj and LINK_FALLBACK:
+            try:
+                p = u32(fobj + 0x8)
+            except Exception:
+                return proc, link
+            own = hashname(p) if 0x400000 <= p < 0xffffffff else None
+            l8 = linkname(fobj, own) if own else None
+            if l8:
+                return f'{own}@0x8', l8
+            if own and (proc is None or proc.endswith(('@0x0', '@0x4'))):
+                return f'{own}@0x8', None
+        return proc, link
+
     def pcode(syms=None):
         """The blocks' PCode: `B<n> w=<weight>` markers and [opcode, operands]. With `syms` (a dict, GCC
         round 40a) each pointer an operand carries is named in it: a k4 (memory) operand's Object (its
@@ -301,9 +329,9 @@ if gdb is not None:     # ------------------------------------------------------
         def stop(self):
             esp = reg32('rsp')
             fobj, data = u32(esp + 4), u32(esp + 8)
-            name = (objname(fobj) or '?').split('@0x')[0]
+            proc, link = funcname(fobj)
+            name = (proc or '?').split('@0x')[0]
             inl = dict(inline=name, **site())
-            link = linkname(fobj, name)
             if link and link != name:
                 inl['link'] = link
             seen = state.setdefault('expanded', {})
@@ -560,8 +588,7 @@ if gdb is not None:     # ------------------------------------------------------
         def stop(self):
             esp = int(gdb.parse_and_eval('$rsp')) & 0xffffffff
             fobj = u32(esp + 4)
-            state['proc'] = objname(fobj)
-            state['link'] = linkname(fobj, state['proc'])
+            state['proc'], state['link'] = funcname(fobj)
             return False
 
     class SimplifyBP(gdb.Breakpoint):

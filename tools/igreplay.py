@@ -85,6 +85,7 @@ import argparse
 import copy
 import itertools
 import json
+import math
 import re
 import struct
 import sys
@@ -345,23 +346,47 @@ class Search:
     elapsed: float = 0.0
 
 
+def mover_slots(movers: list[int], base: dict[int, float] | None = None) -> list[float]:
+    """Each mover's own slot, as a --permute search permutes them: its --move position in `base`, else
+    its index (old indices; a slot is a key _newidx sorts by, so the movers trading slots trade places
+    and every other node keeps its own)."""
+    base = base or {}
+    return [float(base.get(m, m)) for m in movers]
+
+
+def placements(rec: dict, movers: list[int], base: dict[int, float] | None = None,
+               permute: bool = False) -> tuple[int, 'itertools.product | itertools.permutations']:
+    """(how many, the placements) a search tries: every half step between existing indices for each
+    mover (the product), or -- `permute`, the engine core's round 24 -- only the orders of the movers
+    among their own slots (k! of them, the identity first)."""
+    if permute:
+        if len(set(movers)) != len(movers):
+            raise ValueError(f"--permute: a mover named twice ({movers})")
+        return math.factorial(len(movers)), itertools.permutations(mover_slots(movers, base))
+    lo, hi = rec['nreal'], len(rec['nodes'])
+    spots = [x + 0.5 for x in range(lo - 1, hi)]
+    return len(spots) ** len(movers), itertools.product(spots, repeat=len(movers))
+
+
 def search(rec: dict, want: dict[int, str], movers: list[int], limit: int | None = None,
            base: dict[int, float] | None = None, drop=(), max_iters: int | None = None,
-           timeout: float | None = None, progress=None, every: float = 5.0) -> Search:
+           timeout: float | None = None, progress=None, every: float = 5.0, permute: bool = False) -> Search:
     """Every placement of `movers` (each at a half step between existing indices), the nodes `base`
     moves held at their positions and `drop`'s interferences removed, whose replay gives each node of
     `want` its register -- until `limit` hits, `max_iters` placements or `timeout` seconds. progress(
-    tried, total, hits, elapsed) is called every `every` seconds."""
-    lo, hi = rec['nreal'], len(rec['nodes'])
-    spots = [x + 0.5 for x in range(lo - 1, hi)]
-    res = Search(total=len(spots) ** len(movers))
+    tried, total, hits, elapsed) is called every `every` seconds. `permute` (GCC round 42a, the engine
+    core's round 24: SetCDIBBox's eight common subexpressions are ~5e18 placements) tries only the
+    movers' orders among their own slots -- mover_slots(), k! of them -- each hit the slots in the
+    movers' order, a --move for every mover (`--move 41=44 --move 44=41`)."""
+    total, combos = placements(rec, movers, base, permute)
+    res = Search(total=total)
     g0 = Graph(rec)
     cls = rec['cls']
     wanted = list(want.items())
     base = dict(base or {})
     t0 = time.monotonic()
     tick = t0 + every
-    for combo in itertools.product(spots, repeat=len(movers)):
+    for combo in combos:
         if max_iters is not None and res.tried >= max_iters:
             res.stopped = 'max-iters'
             break
@@ -833,6 +858,9 @@ def main(argv=None) -> int:
     ap.add_argument("--drop", action="append", default=[], metavar="A-B", help="remove the interference A-B")
     ap.add_argument("--want", help="wanted registers, V=reg,... (with --movers)")
     ap.add_argument("--movers", help="the nodes --want may renumber, comma-separated")
+    ap.add_argument("--permute", action="store_true",
+                    help="with --movers: try only the movers' orders among their own slots (k! placements; GCC "
+                         "round 42a) instead of every half step for each")
     ap.add_argument("--nb", help="list this node's neighbours")
     ap.add_argument("--target", nargs=2, metavar=("UNIT", "FUNC"),
                     help="read each virtual register's register in the target (FUNC a map name UNIT defines) and "
@@ -851,6 +879,8 @@ def main(argv=None) -> int:
            if (a.cls < 0 or r['cls'] == a.cls) and r['cls'] in VOLATILE
            and (rx is None or rx.search((r.get('proc') or '').split('@0x')[0]))
            and (lrx is None or (r.get('link') and lrx.search(r['link'])))]
+    if a.permute and not (a.movers and (a.want or a.target)):
+        raise SystemExit("--permute needs --movers, and --want or --target")
     single = a.move or a.drop or a.want or a.nb or a.watch or a.target
     if not single:
         bad_recs = nslots = 0
@@ -908,13 +938,17 @@ def main(argv=None) -> int:
         movers = [node_index(rec, x) for x in (a.movers or '').split(',') if x]
         if not movers:
             raise SystemExit("--want needs --movers")
-        nspots = len(rec['nodes']) - rec['nreal'] + 1
+        if a.permute and len(set(movers)) != len(movers):
+            raise SystemExit(f"--permute: a mover named twice ({', '.join(f'v{m}' for m in movers)})")
+        total = placements(rec, movers, moves, a.permute)[0]
         budget = []
         if a.timeout:
             budget.append(f"{a.timeout:g} s")
         if a.max_iters is not None:
             budget.append(f"{a.max_iters:,} placements")
-        print(f"searching {nspots ** len(movers):,} placements of {', '.join(f'v{m}' for m in movers)}"
+        print(f"searching {total:,} placements of {', '.join(f'v{m}' for m in movers)}"
+              + (" -- their orders among their own slots, "
+                 + " ".join(f"{p:g}" for p in mover_slots(movers, moves)) if a.permute else "")
               + (f" from --move/--drop's numbering" if moves or drop else "")
               + f" (budget: {' or '.join(budget) if budget else 'none'})", flush=True)
 
@@ -924,11 +958,12 @@ def main(argv=None) -> int:
                   f"{elapsed:.0f} s, ~{left / 60:.1f} min to go", file=sys.stderr, flush=True)
         res = search(rec, want, movers, base=moves, drop=drop, max_iters=a.max_iters,
                      timeout=a.timeout or None, progress=progress if a.progress > 0 else None,
-                     every=a.progress or 5.0)
+                     every=a.progress or 5.0, permute=a.permute)
         print(f"{len(res.hits)} placements of {', '.join(f'v{m}' for m in movers)} give "
               + ", ".join(f"v{k}={v}" for k, v in want.items()))
         for h in res.hits[:60]:
-            print("  ", "  ".join(f"v{m}->{p}" for m, p in zip(movers, h)))
+            # a permutation's slots are whole indices (or a --move's positions): `v41->44`, a --move each
+            print("  ", "  ".join(f"v{m}->{p:g}" if a.permute else f"v{m}->{p}" for m, p in zip(movers, h)))
         if res.stopped in ('timeout', 'max-iters'):
             print(f"STOPPED by the {'--timeout' if res.stopped == 'timeout' else '--max-iters'} budget after "
                   f"{res.tried:,} of {res.total:,} placements ({res.elapsed:.0f} s): the hits are of the part searched")

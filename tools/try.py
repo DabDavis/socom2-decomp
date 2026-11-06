@@ -20,6 +20,14 @@ and `V = {name: new}` -- each variant's substitutions applied together (the AI c
 tryv.py, folded in by the GCC lane's round 27a: a variant needing two substitutions could not be
 expressed as one --sub).
 
+**--sub and --and replace OLD's FIRST occurrence only** (FILE's first, wherever it lies); --sub-all
+and --and-all replace EVERY occurrence (GCC round 42a: the kit's round 57 read a three-site change
+as one), and the variant's label says how many (`NEW (all 3)`); in --variants a substitution
+`(old, new, 'all')` replaces every one and `(old, new, N)` the first N, a pair the first. A --sub or
+--and whose OLD occurs more than once says so on stderr.
+
+    ./tools/try.py src/lib/sdk/tty.c sceTtyRead --sub-all 'buf[i] ==' 'buf[i] !='              # both sites
+
 src/ (drafts left out) and include/ are copied once to a scratch tree (build/try/, or
 $SC_TRY_WORK -- one per concurrent user), so the tree is never touched, and each variant is built
 there as sccheck builds it: under the unit's own directive (a GCC unit's `sc: compiler=...;
@@ -196,26 +204,60 @@ def score(file: Path, unit: Path, symbol: str, text: str | None, show: bool = Fa
 
 
 class _Ordered(argparse.Action):
-    """--sub and --and in the order given: each --sub starts a variant, each --and joins the last."""
+    """--sub and --and (and their -all forms) in the order given: each --sub starts a variant, each
+    --and joins the last."""
     def __call__(self, parser, ns, values, option_string=None):
         steps = getattr(ns, self.dest, None) or []
         steps.append((option_string, values))
         setattr(ns, self.dest, steps)
 
 
-def variants_from(a, base: str) -> list[tuple[str, list[tuple[str, str]]]]:
-    """[(label, [(old, new), ...])]; an empty list is the file as it is."""
-    common: list[tuple[str, str]] = []
-    out: list[tuple[str, list[tuple[str, str]]]] = []
+def add_sub_options(ap: argparse.ArgumentParser) -> None:
+    """--sub, --and, --sub-all and --and-all on `ap` (try.py's and tools/igvar.py's parsers)."""
+    ap.add_argument("--sub", nargs=2, action=_Ordered, dest="steps", metavar=("OLD", "NEW"),
+                    help="a variant: OLD replaced by NEW (its FIRST occurrence only)")
+    ap.add_argument("--and", nargs=2, action=_Ordered, dest="steps", metavar=("OLD", "NEW"),
+                    help="one more substitution in the last --sub's variant, OLD's first occurrence (before any "
+                         "--sub: in every one)")
+    ap.add_argument("--sub-all", nargs=2, action=_Ordered, dest="steps", metavar=("OLD", "NEW"),
+                    help="a variant: EVERY occurrence of OLD replaced by NEW")
+    ap.add_argument("--and-all", nargs=2, action=_Ordered, dest="steps", metavar=("OLD", "NEW"),
+                    help="as --and, every occurrence of OLD replaced")
+
+
+def apply_subs(text: str, subs) -> tuple[str, str | None, list[tuple[str, int, int]]]:
+    """`text` with each substitution applied in turn: (old, new) replaces OLD's first occurrence (--sub,
+    --and), (old, new, 'all') every one (--sub-all, --and-all, GCC round 42a), (old, new, N) the first
+    N. (the text, the first OLD not in it or None, [(old, its occurrences there, how many replaced)])."""
+    sites = []
+    for sub in subs:
+        old, new = sub[0], sub[1]
+        count = sub[2] if len(sub) > 2 else 1
+        n = text.count(old)
+        if not n:
+            return text, old, sites
+        k = n if count == "all" else min(int(count), n)
+        if k < 1:
+            raise ValueError(f"a substitution's count must be 'all' or at least 1: {sub!r}")
+        text = text.replace(old, new, k)
+        sites.append((old, n, k))
+    return text, None, sites
+
+
+def variants_from(a, base: str) -> list[tuple[str, list[tuple]]]:
+    """[(label, [(old, new) | (old, new, 'all'), ...])]; an empty list is the file as it is."""
+    common: list[tuple] = []
+    out: list[tuple[str, list[tuple]]] = []
     for opt, (old, new) in a.steps or []:
         if a.newlines:
             old, new = (s.replace("\\n", "\n").replace("\\t", "\t") for s in (old, new))
-        if opt == "--sub":
-            out.append((repr(new[:90]) if a.newlines else new[:90], [(old, new)]))
+        sub = (old, new, "all") if opt in ("--sub-all", "--and-all") else (old, new)
+        if opt in ("--sub", "--sub-all"):
+            out.append((repr(new[:90]) if a.newlines else new[:90], [sub]))
         elif out:
-            out[-1][1].append((old, new))
+            out[-1][1].append(sub)
         else:
-            common.append((old, new))
+            common.append(sub)
     # a --sub variant is labelled by its first NEW, and says how many --and joined it
     out = [(label + (f" (+{len(s) - 1} more)" if len(s) > 1 else ""), s) for label, s in out]
     if a.variants:
@@ -232,11 +274,9 @@ def main(argv=None) -> int:
     ap.add_argument("file", type=Path)
     ap.add_argument("symbol")
     ap.add_argument("--unit", type=Path)
-    ap.add_argument("--sub", nargs=2, action=_Ordered, dest="steps", metavar=("OLD", "NEW"),
-                    help="a variant: OLD replaced by NEW (its first occurrence)")
-    ap.add_argument("--and", nargs=2, action=_Ordered, dest="steps", metavar=("OLD", "NEW"),
-                    help="one more substitution in the last --sub's variant (before any --sub: in every one)")
-    ap.add_argument("--variants", type=Path, help="variants in Python: SUBS = {name: [(old, new), ...]} or OLD and V")
+    add_sub_options(ap)
+    ap.add_argument("--variants", type=Path, help="variants in Python: SUBS = {name: [(old, new), ...]} or OLD and V "
+                    "(a pair replaces OLD's first occurrence, (old, new, 'all') every one, (old, new, N) the first N)")
     ap.add_argument("--target", help="score SYMBOL against this row (a map name or an address)")
     ap.add_argument("--all", action="store_true", help="score every function the unit defines; list the misses")
     ap.add_argument("--order", help="print the object's functions (in its order) whose names match this regex")
@@ -248,16 +288,20 @@ def main(argv=None) -> int:
     unit = a.unit or a.file
     base = a.file.read_text()
     prepare()
+    warned = set()
     for label, subs in variants_from(a, base):
-        text, missing = base, None
-        for old, new in subs:
-            if old not in text:
-                missing = old
-                break
-            text = text.replace(old, new, 1)
+        text, missing, sites = apply_subs(base, subs)
         if missing is not None:
             print(f"(not in {a.file.name}: {missing[:60]!r})" + (f" | {label}" if label else ""))
             continue
+        for sub, (old, n, k) in zip(subs, sites):
+            if len(sub) == 2 and n > 1 and old not in warned:
+                warned.add(old)
+                print(f"try.py: {old[:60]!r} occurs {n} times in {a.file.name}: --sub/--and replace the FIRST "
+                      f"(--sub-all/--and-all: every one)", file=sys.stderr)
+        every = [k for sub, (_, _, k) in zip(subs, sites) if len(sub) > 2 and sub[2] == "all"]
+        if every and label:
+            label += f" (all {sum(every)})"
         obj, err = build(a.file, unit, text if subs else None)
         if obj is None:
             verdict = "BUILD-FAIL " + _last_error(err)

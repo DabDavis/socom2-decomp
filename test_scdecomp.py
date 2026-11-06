@@ -1278,14 +1278,22 @@ def test_unit_builds_the_same_bytes_at_any_path():
     shutil.rmtree(work)
 
 
+EXPLICIT_MAX = ("template const unsigned char &ai::_max<unsigned char>(const unsigned char &, "
+                "const unsigned char &);\n")
+
+
 def test_explicit_instance_scores_in_its_units_overlay():
-    """seal_tasks.cpp (OVL2) instantiates `ai::_max<unsigned char>` explicitly: a global, the
-    unit's own, whose name the map gives OVL1's 0x2AFC40 and whose OVL2 copy is 0x5DEE70
-    (`ovl-copy:`). By the unit's lowest address the instance made the unit an OVL1 one, so it was
-    scored -- and credited -- at OVL1's row, OVL2's never (the kit lane's round 24, GCC round 25a).
-    The unit's overlay is now the one its functions' rows lie in, counting the names the map holds
-    once: OVL2, the instance scored at 0x5DEE70 and the span inside OVL2. With the copy's mark gone
-    the named row is all there is again; the old rule's lowest address is OVL1's."""
+    """An OVL2 unit that instantiates `ai::_max<unsigned char>` explicitly: a global, the unit's own,
+    whose name the map gives OVL1's 0x2AFC40 and whose OVL2 copy is 0x5DEE70 (`ovl-copy:`). By the
+    unit's lowest address the instance made the unit an OVL1 one, so it was scored -- and credited --
+    at OVL1's row, OVL2's never (the kit lane's round 24, GCC round 25a). The unit's overlay is now the
+    one its functions' rows lie in, counting the names the map holds once: OVL2, the instance scored
+    at 0x5DEE70 and the span inside OVL2. With the copy's mark gone the named row is all there is
+    again; the old rule's lowest address is OVL1's. Self-contained since GCC round 42a: the kit's round
+    57 dropped seal_tasks.cpp's own explicit instance (scaffolding -- kept anywhere in the unit, MW
+    inlines its caller 0x5D4770's calls), so the fixture is seal_tasks.cpp with the instance appended,
+    in a scratch copy of the hand-written tree (sccheck.main's `root`); its negative, the unit as it
+    stands, holds no global instance and scores none at OVL1's row."""
     import contextlib
     import io
     img, st = E.image(), E.symbols()
@@ -1293,21 +1301,36 @@ def test_explicit_instance_scores_in_its_units_overlay():
     files = r"^gamez/zseal/seal_tasks\.cpp$"
     scored = []
     orig, orig_sym = D.compare, E.symbols
+    tree = HERE / "build" / "tmp" / f"explicit.{os.getpid()}"
+    if tree.exists():
+        shutil.rmtree(tree)
+    shutil.copytree(HERE / "src", tree, ignore=shutil.ignore_patterns("auto", "*.o"))
+    unit = tree / "gamez" / "zseal" / "seal_tasks.cpp"
+    plain = unit.read_text()
 
-    def run(table):
+    def run(table, text=None):
         def compare(obj, fn, sym, *a, **k):
             r = orig(obj, fn, sym, *a, **k)
             scored.append((fn, sym.addr, r.match))
             return r
+        unit.write_text(plain + "\n" + EXPLICIT_MAX if text is None else text)
         D.compare, E.symbols = compare, (lambda: table)
         scored.clear()
         try:
             with contextlib.redirect_stdout(io.StringIO()):
-                C.main(["--files", files, "--build-dir", str(BUILD / "ovlhome"), "-j", "2"])
+                C.main(["--files", files, "--build-dir", str(BUILD / "ovlhome"), "-j", "2"], root=tree)
         finally:
             D.compare, E.symbols = orig, orig_sym
         return [(a, m) for fn, a, m in scored if fn == name]
 
+    try:
+        _explicit_instance(run, st, name, plain)
+    finally:
+        shutil.rmtree(tree, ignore_errors=True)
+
+
+def _explicit_instance(run, st, name: str, plain: str) -> None:
+    ck(EXPLICIT_MAX.strip() not in plain, "seal_tasks.cpp itself instantiates nothing explicitly (the fixture adds it)")
     ck(run(st) == [(0x5DEE70, True)], "the instance scores, and matches, at OVL2's copy")
     obj = BUILD / "ovlhome" / "gamez" / "zseal" / "seal_tasks.o"
     elf = E.Elf.read(obj)
@@ -1326,6 +1349,13 @@ def test_explicit_instance_scores_in_its_units_overlay():
         ck(run(E.SymbolTable(unmarked, E.DATA)) == [(0x2AFC40, True)], "unmarked, the named row is scored")
     finally:
         unmarked.unlink()
+    elf = E.Elf.read(BUILD / "ovlhome" / "gamez" / "zseal" / "seal_tasks.o")
+    ck(any(f.name == name and not C.is_copy(elf, f) for f in elf.functions()), "the fixture's instance is global")
+    got = run(st, plain)
+    elf = E.Elf.read(BUILD / "ovlhome" / "gamez" / "zseal" / "seal_tasks.o")
+    ck(not any(f.name == name and not C.is_copy(elf, f) for f in elf.functions())
+       and all(a != 0x2AFC40 for a, _ in got),
+       f"negative: the unit as it stands defines no global instance and scores none at OVL1's row ({got})")
 
 
 class _PatchedImage:
@@ -1546,6 +1576,109 @@ def test_igdump_names_every_record():
     ck(len(orecs) == len(recs) and not any(r.get("proc") for r in orecs)
        and not igdump.select(orecs, "^buildOrderedCellAtomList$", 0),
        "negative: the old 24-byte reader leaves both unnamed and -f selects nothing")
+
+
+IG_EXTERNC_FIXTURE = """extern "C" int ig_g(int);
+
+namespace ig_ns {
+int ig_scale(int a);
+}
+using namespace ig_ns;
+
+extern "C" inline int ig_c_twice(int t)
+{
+    int u = t + t;
+    return u * ig_g(u);
+}
+
+struct CIgProbe {
+    int Twice(int a);
+};
+
+int CIgProbe::Twice(int a)
+{
+    int first = ig_g(a);
+    return first + ig_g(first);
+}
+
+extern "C" int ig_c_function(int a)
+{
+    int first = ig_g(a);
+    return first + ig_g(first);
+}
+
+extern "C" int ig_c_other(int a, int b)
+{
+    int first = ig_g(a);
+    int second = ig_g(b);
+    return first + ig_c_twice(ig_g(first)) + second;
+}
+"""
+
+
+def test_igdump_names_extern_c_functions():
+    """tools/igdump.py names an extern "C" function by its own name and link name (GCC round 42a: the
+    game states' round 51 found st_exit.cpp's six named `.l@0x4` and read them by record index). The
+    name is read by scanning the function Object's words for one that reads as a name, and an extern "C"
+    function's +0x4 is the GLOBAL namespace, whose +0x8 -- its using-directive list -- is a heap
+    pointer: past 0x6C210000 its upper half reads as two printable bytes and the NULL after it ends the
+    "name" (`.l` in st_exit.cpp, `7l` here), and the link name, which must spell the name, was refused
+    with it. The fixture -- a `using namespace`, behind a 1 MB comment that lifts the heap -- gives
+    ig_c_function and ig_c_other their names (+0x8, the link name spelling it) and links, and the
+    extern "C" inline's origins its name (no link name is made for a copy never emitted); the C++
+    method is named as before; -f and --link select them in igreplay. Negatives: the scan alone
+    (IGDUMP_NO_LINKNAME=1) misnames both functions and the inline, with no link, every other field the
+    same; without the using directive the scan alone names them right (the cause)."""
+    import contextlib
+    import io
+    import json
+    import igdump
+    import igreplay as R
+    pad = "/*\n" + ("x" * 63 + "\n") * 16384 + "*/\n"
+    src = _ig_fixture("ig_externc.cpp", pad + IG_EXTERNC_FIXTURE)
+    recs, out = igdump.dump(src, BUILD / "ig_externc.jsonl")
+    named = {igdump.proc_name(r): r.get("link") for r in recs if r["cls"] == 0}
+    ck(named == {"ig_c_function": "ig_c_function", "ig_c_other": "ig_c_other", "Twice": "Twice__8CIgProbeFi"},
+       f"each record named and linked ({named})")
+    inl = {(o.get("inline"), o.get("role"), o.get("var")) for r in recs for o in (r.get("origins") or {}).values()
+           if "inline" in o}
+    ck(inl == {("ig_c_twice", "argument", "t"), ("ig_c_twice", "local", "u")}, f"the inline's origins named ({inl})")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc1 = R.main([str(out), "--cls", "0", "-f", "^ig_c_function$"])
+        rc2 = R.main([str(out), "--cls", "0", "--link", "^ig_c_other$"])
+    ck(rc1 == rc2 == 0 and buf.getvalue().count("1 of 1 records replay exactly") == 2,
+       f"igreplay selects them by -f and --link ({buf.getvalue()[-120:]!r})")
+    old = os.environ.get("IGDUMP_NO_LINKNAME")
+    os.environ["IGDUMP_NO_LINKNAME"] = "1"
+    try:
+        orecs, _ = igdump.dump(src, BUILD / "ig_externc_scan.jsonl")
+        nrecs, _ = igdump.dump(_ig_fixture("ig_externc_nousing.cpp", pad + IG_EXTERNC_FIXTURE.replace(
+            "using namespace ig_ns;\n", "")), BUILD / "ig_externc_nousing.jsonl")
+    finally:
+        if old is None:
+            os.environ.pop("IGDUMP_NO_LINKNAME", None)
+        else:
+            os.environ["IGDUMP_NO_LINKNAME"] = old
+    bad = [(r.get("proc"), r.get("link")) for r in orecs if not igdump.proc_name(r).startswith("Twice")]
+    ck(len(bad) == 2 and all(p.endswith("@0x4") and len(p.split("@")[0]) == 2 and lk is None for p, lk in bad),
+       f"negative: the scan alone misnames both extern \"C\" functions, unlinked ({bad})")
+    oinl = {o.get("inline") for r in orecs for o in (r.get("origins") or {}).values() if "inline" in o}
+    ck(oinl and "ig_c_twice" not in oinl, f"negative: and the inline ({oinl})")
+
+    def rest(r):
+        r = json.loads(json.dumps(r))
+        for k in ("proc", "link"):
+            r.pop(k, None)
+        for o in (r.get("origins") or {}).values():
+            o.pop("inline", None)
+        return r
+    ck(len(orecs) == len(recs) and all(rest(a) == rest(b) for a, b in zip(orecs, recs))
+       and [(r.get("proc"), r.get("link")) for r in orecs if igdump.proc_name(r) == "Twice"]
+       == [(r.get("proc"), r.get("link")) for r in recs if igdump.proc_name(r) == "Twice"],
+       "every other field the same; the C++ method named as before")
+    nnamed = {igdump.proc_name(r): r.get("link") for r in nrecs if r["cls"] == 0}
+    ck(nnamed == named, f"without the using directive the scan alone names them ({nnamed})")
 
 
 IG_INLINE_FIXTURE = """extern "C" float ig_h(float);
@@ -2181,6 +2314,96 @@ def test_igreplay_replays_spill_slots():
     ck(R.check_slots(bad) is False, "negative: a recorded alignment changed fails the record's check")
 
 
+def test_igreplay_permutes_the_movers_among_their_slots():
+    """tools/igreplay.py --permute (GCC round 42a, the engine core's round 24: SetCDIBBox 0x2DC7A0's
+    eight common-subexpression temporaries are ~5e18 placements for --want/--movers, every half step
+    for each): a search over only the movers' ORDERS AMONG THEIR OWN SLOTS -- k! placements, 40,320 for
+    eight -- under the same budget and output. It finds the three known numberings no slower: round
+    32a's GPR fixture (first after second: s0/s1), round 35a's FPR fixture (the swapped object's f20/f21,
+    read by --target) and round 33a's zlib move (c renumbered first: z s2, c s3) are each the one hit of
+    its 2 placements, the identity tried first and no hit, where the full search replays 10, 11 and 23
+    placements before its first hit (81, 100, 2,401 in all) -- and each hit's colouring is the known
+    move's, node for node. The CLI says what it searches and prints each hit as a --move per mover;
+    --max-iters stops it (rc 2, STOPPED); a mover named twice and --permute without --movers are
+    refused."""
+    import contextlib
+    import io
+    import igdump
+    import igreplay as R
+
+    def colours(rec, moves):
+        colour, newidx, _ = R.replay_moved(rec, moves)
+        return [colour[newidx[i]] for i in range(len(rec["nodes"]))]
+
+    def known(tag, rec, want, movers, move):
+        a, b = movers
+        full1 = R.search(rec, want, movers, limit=1)
+        perm = R.search(rec, want, movers, permute=True)
+        ck(perm.stopped is None and perm.tried == perm.total == 2 and perm.hits == [(float(b), float(a))],
+           f"{tag}: the swap is the one hit of 2 placements, the identity none ({perm.hits}, {perm.tried})")
+        perm1 = R.search(rec, want, movers, limit=1, permute=True)
+        ck(full1.hits and perm1.hits and perm1.tried <= full1.tried and perm.total <= full1.total,
+           f"{tag}: no slower -- {perm1.tried} placements to the first hit, the full search {full1.tried} "
+           f"(of {full1.total})")
+        ck(colours(rec, dict(zip(movers, perm.hits[0]))) == colours(rec, move),
+           f"{tag}: the hit's colouring is the known move's, node for node")
+
+    # round 32a: the GPR fixture
+    frecs, _ = igdump.dump(_ig_fixture(), BUILD / "ig_fixture.jsonl")
+    rec = igdump.select(frecs, "^ig_pair$", 0)[0][1]
+    first, second = R.node_index(rec, "first"), R.node_index(rec, "second")
+    known("32a GPR", rec, {first: "s0", second: "s1"}, [first, second], {first: second + 0.5})
+    # round 35a: the FPR fixture against its swapped declarations' object, the want read by --target
+    src = _ig_fixture("ig_ffixture.c", IG_FFIXTURE)
+    frec = igdump.select(igdump.dump(src, BUILD / "ig_ffixture.jsonl")[0], "^ig_fpair$", 1)[0][1]
+    swapped = _ig_fixture("ig_fswapped.c", IG_FFIXTURE.replace(*IG_FDECLS))
+
+    def text(obj: Path) -> list[str]:
+        code, rel, _ = E.Elf.read(obj).function("ig_fpair")
+        return [t for _, _, t in E.disasm(D.mask(code, rel), 0)]
+    tcol, conflicts, unmatched = R.tmap(frec, text(build(src, "ig_ffixture")), text(build(swapped, "ig_fswapped")))
+    _, want, _ = R.target_report(frec, tcol, conflicts, unmatched)
+    ffirst, fsecond = R.node_index(frec, "first"), R.node_index(frec, "second")
+    ck((want.get(ffirst), want.get(fsecond)) == ("f20", "f21"), f"35a FPR: --target wants f20/f21 ({want})")
+    known("35a FPR", frec, want, [ffirst, fsecond], {ffirst: fsecond + 0.5})
+    # round 33a: zlib's inflate_blocks_new, c renumbered first
+    zrecs, _ = igdump.dump(HERE / "src" / "zlib" / "infblock.c", BUILD / "ig_infblock.jsonl")
+    zrec = igdump.select(zrecs, "^inflate_blocks_new$", 0)[0][1]
+    z, c = R.node_index(zrec, "z"), R.node_index(zrec, "c")
+    known("33a zlib", zrec, {z: "s2", c: "s3"}, [z, c], {c: zrec["nreal"] - 0.5})
+    # the CLI: what it searches, each hit a --move per mover, the budget, the refusals
+    out = io.StringIO()
+    args = [str(BUILD / "ig_fixture.jsonl"), "-f", "^ig_pair$", "--cls", "0", "--want", "first=s0,second=s1",
+            "--movers", "first,second", "--progress", "0"]
+    with contextlib.redirect_stdout(out):
+        rc = R.main(args + ["--permute"])
+    ck(rc == 0 and f"searching 2 placements of v{first}, v{second} -- their orders among their own slots, "
+       f"{first} {second}" in out.getvalue() and f"v{first}->{second}  v{second}->{first}" in out.getvalue()
+       and "1 placements of" in out.getvalue(), f"the CLI's permutation search ({out.getvalue()!r})")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        rc = R.main(args + ["--permute", "--max-iters", "1"])
+    ck(rc == 2 and "STOPPED by the --max-iters budget after 1 of 2 placements" in out.getvalue(),
+       f"--max-iters stops it, rc 2 ({rc})")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        R.main(args)
+    ck(f"searching {(len(rec['nodes']) - rec['nreal'] + 1) ** 2:,} placements" in out.getvalue(),
+       "without --permute the full search, as before")
+    try:
+        R.search(rec, {first: "s0"}, [first, first], permute=True)
+        ck(False, "a mover named twice was permuted")
+    except ValueError:
+        ck(True, "a mover named twice is refused")
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            R.main([str(BUILD / "ig_fixture.jsonl"), "-f", "^ig_pair$", "--cls", "0", "--want", "first=s0",
+                    "--permute"])
+        ck(False, "--permute without --movers ran")
+    except SystemExit as e:
+        ck("--permute needs --movers" in str(e), f"--permute without --movers is refused ({e})")
+
+
 def test_igvar_compares_variants():
     """tools/igvar.py (GCC round 32a: the AI core's round-28 igvar.py and the game states' round-37
     one): each variant of a unit built under igdump in a scratch tree, the saved registers' holders
@@ -2241,6 +2464,68 @@ def test_try_prints_each_variants_distance():
            "a byte-exact body is distance 0, its sizes the row's")
         ck(T.score_obj(obj, unit, "sceTtyRead") == "MATCH" and T.distance(obj, unit, "no_such_function") is None,
            "score_obj unchanged; a missing symbol has no distance")
+    finally:
+        T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
+
+
+def test_try_sub_all_replaces_every_occurrence():
+    """tools/try.py's --sub replaces OLD's FIRST occurrence -- its meaning since round 1, kept -- and
+    --sub-all EVERY one (GCC round 42a: the kit's round 57 read a three-site change as one). tty.c's
+    sceTtyRead tests `buf[i] ==` at two sites (the newline, the return): --sub makes only the first
+    `!=`, --sub-all both -- two verdicts, two distances (d=8, the body 0xC4; d=46, 0x58), the second
+    labelled `(all 2)` -- and the --sub's second site is said on stderr; --and-all joins a variant as
+    --sub-all starts one; a --variants triple (old, new, 'all') is --sub-all's text and (old, new, 1)
+    a pair's; a missing OLD is still `(not in ...)`; tools/igvar.py's parser takes the -all forms."""
+    import argparse
+    import contextlib
+    import importlib
+    import io
+    T = importlib.import_module("try")
+    unit = HERE / "src" / "lib" / "sdk" / "tty.c"
+    base = unit.read_text()
+    old = os.environ.get("SC_TRY_WORK")
+    T.WORK = BUILD / "trywork"
+    eq, ne = "buf[i] ==", "buf[i] !="
+
+    def run(*args):
+        buf, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+            rc = T.main([str(unit), "sceTtyRead", *args])
+        return rc, [l for l in buf.getvalue().splitlines() if l.strip()], err.getvalue()
+    try:
+        one, miss, sites = T.apply_subs(base, [(eq, ne)])
+        every, _, sites_all = T.apply_subs(base, [(eq, ne, "all")])
+        ck(miss is None and sites == [(eq, 2, 1)] and sites_all == [(eq, 2, 2)] and one.count(ne) == 1
+           and every.count(ne) == 2 and one.index(ne) < one.index(eq),
+           f"apply_subs: a pair the first of 2 sites, 'all' both ({sites}, {sites_all})")
+        ck(T.apply_subs(base, [(eq, ne, 1)])[0] == one and T.apply_subs(base, [(eq, ne, 2)])[0] == every
+           and T.apply_subs(base, [("no such text", "x", "all")])[1] == "no such text",
+           "a count of 1 is a pair, 2 here every one; a missing OLD is reported")
+        rc, lines, err = run("--sub", eq, ne, "--sub-all", eq, ne)
+        ck(rc == 0 and len(lines) == 2 and lines[0].rstrip().endswith(f"| {ne}")
+           and lines[1].rstrip().endswith(f"| {ne} (all 2)") and "d=8 (0xc4 vs 0xd0)" in lines[0]
+           and "d=46 (0x58 vs 0xd0)" in lines[1], f"--sub the first site, --sub-all both ({lines})")
+        ck("occurs 2 times in tty.c" in err and "FIRST" in err, f"the --sub's second site said on stderr ({err!r})")
+        rc, lines2, err2 = run("--sub", "return i + 1;", "return i + 1;", "--and-all", eq, ne,
+                               "--sub-all", "no such text", "x")
+        ck(lines2[0].split("|")[0] == lines[1].split("|")[0] and lines2[0].rstrip().endswith("(+1 more) (all 2)")
+           and lines2[1].startswith("(not in tty.c: 'no such text')") and "occurs" not in err2,
+           f"--and-all joins a variant; a missing OLD is said ({lines2}, {err2!r})")
+        vf = BUILD / "v_suball.py"
+        vf.write_text(f"SUBS = {{'all': [({eq!r}, {ne!r}, 'all')], 'one': [({eq!r}, {ne!r}, 1)],"
+                      f" 'pair': [({eq!r}, {ne!r})]}}\n")
+        rc, lines3, _ = run("--variants", str(vf))
+        verdicts = {l.split("|")[1].strip(): l.split("|")[0] for l in lines3}
+        ck(verdicts.get("all (all 2)") == lines[1].split("|")[0] and verdicts.get("one") == verdicts.get("pair")
+           == lines[0].split("|")[0], f"--variants: 'all' is --sub-all's, 1 and a pair --sub's ({lines3})")
+        ap = argparse.ArgumentParser()
+        ap.add_argument("-n", "--newlines", action="store_true")
+        ap.add_argument("--variants")
+        igvar = importlib.import_module("igvar")
+        ck(igvar.trymod is T, "igvar parses with try.py's helpers")
+        T.add_sub_options(ap)
+        vs = T.variants_from(ap.parse_args(["--sub-all", eq, ne, "--and", "a", "b"]), base)
+        ck(vs == [(f"{ne} (+1 more)", [(eq, ne, "all"), ("a", "b")])], f"the parser's variants: {vs}")
     finally:
         T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
 
