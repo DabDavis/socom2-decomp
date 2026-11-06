@@ -477,7 +477,17 @@ float fabsf(float x);   /* 0x1B3620 */
  * test). The target's [begin-bt, More-bt] [begin-cp, Next-bt] [More-cp, Next-cp] fits no one depth
  * per call: Next() through More() (0x6C0), a Step() wrapper over Next() (0x664) and More() through an
  * inline End() (0x6A4) all change the size. (C2DMessage_Q::Tick's iterator below every temporary,
- * round 48's pointer here, was a second web: fts_message.cpp, round 49 -- not this walk's case) */
+ * round 48's pointer here, was a second web: fts_message.cpp, round 49 -- not this walk's case)
+ * Round 50 (with SetRoundStatUiVars above, the same walk): igdump's syms number the slot objects in
+ * the slots' order (@N ascending = address descending), and each chain's base temporary (bt) is made
+ * one inline level before its copy (cp), level by level, a level's in generation order (a `for`: the
+ * init, the increment, the test). BOTH targets then read as the Next() chain ONE LEVEL DEEPER than
+ * the constructor's begin() and More()'s end(): here [begin-bt More-bt] [begin-cp Next-bt More-cp]
+ * [Next-cp], SetRoundStatUiVars' [begin-bt More-bt] [begin-cp More-cp Next-bt] [Next-cp] -- where
+ * this source gives [begin-bt Next-bt More-bt] [begin-cp Next-cp More-cp]. With Next() (`it.Next()`
+ * for it.Advance() below) this function is at the size, 11 off, the slots alone; every deeper
+ * spelling measured (a Step() wrapper, More() / AtEnd() / an End() inline in Next's test) either
+ * trips the level-5 cut or lets MW share the end node in s7 */
 extern "C" float func_001F27C0(CZSealBody **seals, CSealStats **stats, int n)
 {
     int down1 = 0;
