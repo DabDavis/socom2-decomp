@@ -79,11 +79,15 @@ public:
 
 class CZAnimArgPnt3D : public CZAnimArg {
 public:
+#ifdef ZANIM_ARG_CTORS_CALLED   /* zanim_cmd_tick.cpp calls them, zanim_anim.cpp's copies (another unit) */
+    CZAnimArgPnt3D(TYPE type, const CPnt3D *pnt);
+#else
     CZAnimArgPnt3D(TYPE type, const CPnt3D *pnt)
     {
         m_type = type;
         m_pnt = *pnt;
     }
+#endif
     CZAnimArg *Copy();
 
     CPnt3D m_pnt;   // 0xc
@@ -115,11 +119,15 @@ public:
 
 class CZAnimArgNode : public CZAnimArg {
 public:
+#ifdef ZANIM_ARG_CTORS_CALLED
+    CZAnimArgNode(TYPE type, CNode *node);
+#else
     CZAnimArgNode(TYPE type, CNode *node)
     {
         m_type = type;
         m_node = node;
     }
+#endif
     CZAnimArg *Copy();
 
     CNode *m_node;   // 0xc

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <iostream>   /* (its pair is all __sinit_zanim_cmd_tick.cpp builds, 0x3FFB70) */
 
+#define ZANIM_ARG_CTORS_CALLED
 #include "zanim.h"
 #include "../zcamera/zcamera.h"
 #include "../znode/vis_ripple.h"
@@ -2815,7 +2816,155 @@ struct zanim_cmd_callanim {
     unsigned short flags;           /* 0x200: wait for the call to finish */
     unsigned char local;
     unsigned char index;
+    unsigned char node_arg;         /* 0x8: flag 2 */
+    unsigned char node_arg2;        /* 0x9: flag 4 */
+    unsigned char pos_node;         /* 0xA: flag 8 */
+    unsigned char dir_node;         /* 0xB: flag 0x80 */
+    unsigned short pos;             /* 0xC: the point's offset in the record */
+    unsigned short dir;             /* 0xE: a direction's */
+    unsigned short vel;             /* 0x10: a velocity's: value, then random extent (flag 0x400) */
+    unsigned char vel_node;         /* 0x12 */
 };
+
+/* CALL_ANIMATION's begin: the call's arguments gathered -- the anim's own copied (flag 1), two nodes
+ * (2, 4), a point through a node and an offset (8, 0x10, 0x20), a direction through a node (0x40, 0x80),
+ * a velocity, heading and pitch and speed with a random part (0x400), through a node -- and the
+ * referenced anim started with them (SOCOM II's; unwritten before the engine core's round 27).
+ * OPEN, 24 instructions, the target's size (0x714), frame slots only: the arg-copy walk's iterator
+ * temporaries sit a pass too deep. The target makes the postfix's copy in pass 0 (468), the begin's inner
+ * (464), each insert's pair (460 / 456 ...) and the end's inner (452) in pass 1; include/list's wrapper
+ * iterator makes the postfix's copy in pass 1 and the begin's and end's inner in pass 2, below every
+ * insert (416, 412). The list's base iterators are too shallow (0x6FC). The named element locals keep
+ * the push_backs' slots (504-484); the constructors are called (zanim_anim.cpp's copies: this unit
+ * defines ZANIM_ARG_CTORS_CALLED); r and r2 locals give the pitch's and the speed's float registers. */
+void zAnimCallAnimBegin(_zanim_cmd_hdr *hdr)
+{
+    CZAnim *anim = ZAnim.m_CurAnim;
+    zanim_cmd_callanim *cmd = (zanim_cmd_callanim *)hdr;
+    CZAnimArgList args;
+    _zanim_call_anim_ref *ref;
+    int count = 0;
+
+    ref = anim->GetCallAnimRef(cmd->index, cmd->local);
+    if (ref && ref->base_anim) {
+        if (cmd->flags & 1) {
+            if (anim->m_arg_list) {
+                CZAnimArgList::iterator it;
+
+                for (it = anim->m_arg_list->begin(); it != anim->m_arg_list->end(); it++) {
+                    CZAnimArg *arg = (*it)->Copy();
+
+                    args.push_back(arg);
+                    count++;
+                }
+            }
+        }
+        if (cmd->flags & 2) {
+            CNode *node = anim->GetNode(cmd->node_arg, false);
+
+            if (node) {
+                CZAnimArg *arg = new CZAnimArgNode((CZAnimArg::TYPE)2, node);
+
+                args.push_back(arg);
+                count++;
+            }
+        }
+        if (cmd->flags & 4) {
+            CNode *node = anim->GetNode(cmd->node_arg2, false);
+
+            if (node) {
+                CZAnimArg *arg = new CZAnimArgNode(CZAnimArg::TYPE_NODE, node);
+
+                args.push_back(arg);
+                count++;
+            }
+        }
+        CPnt3D pos(0.0f, 0.0f, 0.0f);
+        bool placed = false;
+
+        if (cmd->flags & 8) {
+            CNode *node = anim->GetNode(cmd->pos_node, false);
+
+            if (node) {
+                if ((cmd->flags & 0x10) && cmd->pos > 0)
+                    pos = *(CPnt3D *)((char *)cmd + cmd->pos);
+                node->TransformToWorld(pos);
+                placed = true;
+            }
+        }
+        if (cmd->flags & 0x20) {
+            if (cmd->pos > 0) {
+                pos.Add((CPnt3D *)((char *)cmd + cmd->pos), &pos);
+                placed = true;
+            }
+        }
+        if (placed) {
+            CZAnimArg *arg = new CZAnimArgPnt3D(CZAnimArg::TYPE_PNT3D, &pos);
+
+            args.push_back(arg);
+            count++;
+        }
+        if (cmd->flags & 0x40) {
+            if (cmd->dir > 0) {
+                CPnt3D dir = *(CPnt3D *)((char *)cmd + cmd->dir);
+
+                if (cmd->flags & 0x80) {
+                    CNode *node = anim->GetNode(cmd->dir_node, false);
+
+                    if (node) {
+                        CMatrix mtw;
+
+                        node->BuildMTW(mtw);
+                        TransformVectors(&mtw, &dir, &dir, 1);
+                    }
+                }
+                CZAnimArg *arg = new CZAnimArgPnt3D((CZAnimArg::TYPE)7, &dir);
+
+                args.push_back(arg);
+                count++;
+            }
+        }
+        if (cmd->vel > 0) {
+            float *v = (float *)((char *)cmd + cmd->vel);
+            CPnt3D vel;
+
+            if (cmd->flags & 0x400) {
+                float heading = v[0] + v[3] * (rand() * 4.656613e-10f);
+                float r = rand() * 4.656613e-10f;
+                float pitch = v[1] + v[4] * r;
+                float r2 = rand() * 4.656613e-10f;
+                float speed = v[2] + v[5] * r2;
+                CPnt3D d;
+
+                zAnimHeadingToDir(&d, heading, pitch);
+                vel = d * speed;
+            } else
+                vel = *(CPnt3D *)v;
+            if (cmd->vel_node > 0) {
+                CNode *node = anim->GetNode(cmd->vel_node, false);
+
+                if (node) {
+                    CMatrix mtw;
+
+                    node->BuildMTW(mtw);
+                    TransformVectors(&mtw, &vel, &vel, 1);
+                }
+            }
+            CZAnimArg *arg = new CZAnimArgPnt3D((CZAnimArg::TYPE)6, &vel);
+
+            args.push_back(arg);
+            count++;
+        }
+        if (count > 0)
+            ref->executing_anim = ref->base_anim->ActivateArg(count, 10, &args, 0);
+        else
+            ref->executing_anim = ref->base_anim->Activate(0);
+        if (cmd->flags & 0x100)
+            ref->stop_on_exit = 1;
+        else
+            ref->stop_on_exit = 0;
+    }
+}
 
 bool zAnimCallAnimTick(_zanim_cmd_hdr *hdr, float *dT)
 {
