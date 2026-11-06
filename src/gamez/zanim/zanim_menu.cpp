@@ -122,6 +122,29 @@ inline C2D *GetCommandC2D(unsigned short node_ref)
     return c2d;
 }
 
+/* the same into the caller's own variable (ours: zAnimUIMenuTick's -- a variable the inline writes
+ * through a reference stays the caller's, numbered where the caller declares it, ahead of anim) */
+inline void GetCommandC2D(unsigned short node_ref, C2D *&c2d)
+{
+    c2d = 0;
+
+    if (node_ref) {
+        ZAnim.m_CurAnim->Refresh(false);
+        CNode *node = ZAnim.m_CurAnim->GetNode(node_ref, false);
+
+        if (node) {
+            zdb::CVisual *visual = node->GetFirstVisual();
+
+            if (visual) {
+                C2DVisual *v2d = visual->Get2DVisual();
+
+                if (v2d)
+                    c2d = v2d->m_c2d;
+            }
+        }
+    }
+}
+
 char database[64];
 zdb::CNode *g_menuRootNode;
 /* the saved game's name the memory card handlers build (0x414E50) */
@@ -4862,9 +4885,11 @@ inline bool RunUICommand(C2DAnimCmdHdr *hdr, float *dT)
  * before the type's lookup, the scan's preheader after the epilogue with a trampoline), the type an
  * if/else (the cached arm's `b` with the byte's `andi` in its slot, round 12: 0x2AC -> the size);
  * node_ref declared ahead of anim (17 -> 9).
- * OPEN, 9 instructions, registers only: node_ref and the C2D trade s3/s5 (the target's colouring
- * wants the C2D -- GetCommandC2D's own local, numbered after the caller's -- pushed ahead of anim and
- * node_ref in the first sweep: numbered below both). Tried in round 12: the declarations permuted
+ * BYTE-EXACT since the UI's round 35: `igreplay --move` read the numbering off the target -- the node
+ * reference no named local (its load a late temporary) and the C2D the caller's own variable,
+ * declared just ahead of anim and written by GetCommandC2D through a reference (the UI's round-18
+ * rule). Before (9 instructions, registers only): node_ref and the C2D traded s3/s5, the C2D --
+ * GetCommandC2D's own local -- numbered after the caller's. Tried in round 12: the declarations permuted
  * with a C2D local among them (tools/perm.py, 1544 steps, no gain), the C2D declared first, last or
  * as a dead first definition, the lookup written out in the tick (13), an early-return inline with
  * no local (0x2BC), the type through an inline of its own, the lookup in the caller, the index by
@@ -4874,14 +4899,13 @@ bool zAnimUIMenuTick(_zanim_cmd_hdr *cmd, float *dT)
     C2DAnimCmdHdr *hdr = (C2DAnimCmdHdr *)cmd;
     bool handled = false;
     bool done = true;
-    unsigned short node_ref;
+    C2D *c2d;
     CZAnim *anim = ZAnim.m_CurAnim;
 
     anim->GetName(hdr->m_command_index);
-    node_ref = hdr->node_ref_index;
 
-    if (node_ref) {
-        C2D *c2d = GetCommandC2D(node_ref);
+    if (hdr->node_ref_index) {
+        GetCommandC2D(hdr->node_ref_index, c2d);
 
         if (c2d) {
             handled = c2d->TickZAnimCmd(cmd, dT, &done);
