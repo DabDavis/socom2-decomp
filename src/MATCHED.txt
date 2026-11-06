@@ -3640,6 +3640,7 @@
 0x002AC410 Open__8CMissionFPCc
 0x002ACA30 func_002ACA30
 0x002ACAD0 CreateCompassNavPoints__8CMissionFv
+0x002ACC10 PreOpen__8CMissionFPCc
 0x002AD290 Init__8CMissionFv
 0x002AD940 __dt__8CMissionFv
 0x002ADBC0 __ct__8CMissionFv
@@ -3807,7 +3808,7 @@
 0x002B85C0 func_002B85C0
 0x002B8660 func_002B8660
 0x002B9150 GameSignalPacketHandler__FiiiPv
-0x002B97F0 SendGameSignalMessage__FiUcUcUcib
+0x002B97F0 SendGameSignalMessage__FiUc8NET_SIDEUcib
 0x002B98B0 func_002B98B0
 0x002B9910 SendBombStateRequest__FiUcPC6CPnt3D
 0x002B9A00 BombStatePacketHandler__FiiiPv
@@ -3852,13 +3853,15 @@
 0x002BB970 NetSendAiOrders__FUiUiUiPv
 0x002BBA80 PushBlendAnimPacketHandler__FiiiPv
 0x002BBAF0 func_002BBAF0
+0x002BBBD0 HitPacketHandler__FiiiPv
 0x002BBDA0 SendHitMessage__FiiiffbUc
 0x002BBF10 SaveFireMessage__FP10CZSealBodyPC6CPnt3D
 0x002BBFA0 zRemoteDelayedAction__FPQ29CZNetwork18TypeRTimeFixStruct
 0x002BC080 zDoClientLeavesCallback__Fi
 0x002BC400 zRemoteClientLeavesCallback__Fii
 0x002BC490 zRemoteClientJoinsCallback__Fii
-0x002BC530 func_002BC530
+0x002BC530 zRemoteClientDisconnectsCallback__FP17ClientConnectArgs
+0x002BC620 zRemoteClientConnectsCallback__FP17ClientConnectArgs
 0x002BD020 func_002BD020
 0x002BD060 func_002BD060
 0x002BD0A0 func_002BD0A0
@@ -3984,11 +3987,13 @@
 0x002C6040 __ct__10CCfgSticksFv
 0x002C6050 __ct__9CCfgStickFv
 0x002C6060 __ct__9CSaferStrFPCc
+0x002C60C0 func_002C60C0
 0x002C6110 func_002C6110
 0x002C61E0 func_002C61E0
 0x002C6220 func_002C6220
 0x002C6230 func_002C6230
 0x002C6280 func_002C6280
+0x002C6290 GetFwdBackStickPos__13CCtrlrConfigsFRC4CPad
 0x002C6350 func_002C6350
 0x002C63D0 IsJumpAndActionShared__13CCtrlrConfigsFv
 0x002C63F0 func_002C63F0
@@ -3999,6 +4004,7 @@
 0x002C6520 func_002C6520
 0x002C65B0 func_002C65B0
 0x002C6670 ReadBtnName__28@unnamed@fts_controller_cpp@FPCc
+0x002C67F0 func_002C67F0
 0x002C6C70 func_002C6C70
 0x002C6ED0 __dt__Q23std58vector<P12CCtrlrConfig,Q23std26allocator<P12CCtrlrConfig>>Fv
 0x002C6F40 Reset__24CMissionObjectiveCamListFv
@@ -8350,6 +8356,8 @@
 0x004CCD98 ASRSPICBTS
 0x004CCDC8 ASRSPICBSTARTDET
 0x004CCDF8 ASRSPICBRESULT
+0x004CCE90 CreateSecondPassInfo
+0x004CD190 CreateExEvCtxInfo
 0x004CE258 FreeCtxInfo
 0x004CE430 CalcAccuracyCtxInfo
 0x004CE4E8 CreateMenuMasks
@@ -8375,6 +8383,7 @@
 0x004D7460 func_004D7460
 0x004D8140 Tone_Of_Final_TreeCtx
 0x004D8168 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx
+0x004D9278 cbIsoWordRecognised
 0x004D98F0 cbDoSecondPassIfEnabled
 0x004D9AC8 casrEnableGenders
 0x004D9EC8 casrOpen
@@ -8396,6 +8405,7 @@
 0x004DCC58 casrAcquisition
 0x004DD070 casrStartUserWordTraining
 0x004DD1D8 cbCheckConfusion
+0x004DD608 casrCheckUserWordConfusion
 0x004DDF48 casrInitSegmentation
 0x004DE048 casrAcknowledge
 0x004DE128 casrCloseContext
@@ -8457,6 +8467,7 @@
 0x004E1B28 userwordAcknowledge
 0x004E1D08 InitUserWordTraining
 0x004E1E30 ExitUserWordTraining
+0x004E1F08 SendLabelsToEngine
 0x004E2008 CalcF2
 0x004E2240 FindBestTranscription
 0x004E25D8 DoDurationModeling
@@ -8465,6 +8476,7 @@
 0x004E37F8 RejectTrainUtters
 0x004E3A28 DoUserWordTraining
 0x004E3CC8 userwordStartUserWordTraining
+0x004E3D20 SendPartOfLabelsToEngine
 0x004E3E08 cbUserWordResultAvailable
 0x004E3ED8 cbScoreUserWordResultAvailable
 0x004E3F28 DoLabelStop

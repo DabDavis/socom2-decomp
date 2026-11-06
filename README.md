@@ -2066,6 +2066,30 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 53** (six byte-exact, fts_mission.cpp, fts_controller.cpp and fts_remote.cpp whole:
+  zRemoteClientConnectsCallback 0x2BC620 -- 0x9F4, 184 off --, CMission::PreOpen 0x2ACC10, the per-layout parser 0x2C67F0,
+  HitPacketHandler 0x2BBBD0, CCtrlrConfigs::GetFwdBackStickPos 0x2C6290, the button test 0x2C60C0; thezoom.cpp respelled
+  through camera.h's members, SAME-BY-ADDRESS; four rows named):
+  - ENUMS ARE NOT PROPAGATED: IRO's constant and expression propagation leave enum-typed variables alone (measured on four
+    functions), which holds a value at its definition with no control flow and gives the old `if (ok)` device's numbers to
+    the instruction -- the packet's side in 0x2BC620, where `(void)&side`, a wrapper inline, a pointer and volatile had
+    failed; an inline's enum-typed by-value parameter stays in a temporary assigned ahead of the body only if its argument
+    is not a plain constant, which is substituted -- an inline's value or a class conversion both work;
+  - `x = c ? K : x;` removes the named local, so the first `?:`'s Linearize temporary holds it, and still compiles to an
+    if's beqz; nop; li with no pad nop at the join; a select inside an enum-returning inline loads with a plain lb, written
+    straight in the compare it becomes lbu; RebuildCondExpressions turns a select into one ECOND, zero in the delay slot and
+    0x10 shorter, and a by-value argument's copy in the arm blocks it (the cause inferred from a few IR dumps, the outcomes
+    measured);
+  - locals declared C-style at a function's top take their numbers in that order at no code cost -- this closed 0x2BC620's
+    saved registers; on code aligned to the target, read which pair orders hold across all `igreplay --permute` hits: that
+    is the order the source must produce; delay slots follow colouring -- `side`'s li moved to the branch's delay slot once
+    the registers were right;
+  - IRO_PullOutInvariantAssignments is what makes a loop's out-of-line guard; with nothing to pull, IRO_RotateLoop keeps it
+    inline (the binders' dead `this` copies probably block the pull: inferred, not isolated); slot order reads inline depth
+    -- DeleteNode's binder slots run first, third, second, so the second is one level deeper;
+  - fitted spellings, not evidence of the original: `(first != 0) ^ 1`, the STICK locals, the CCfgButton cast;
+    SendGameSignalMessage's NET_SIDE parameter and NoSide() are our names, every measured shape needing the enum while SOCOM
+    1's signature was FiUcUcUcib; game_main.cpp's definitions now run in reverse image order, as its header always claimed.
 - **Tells from the UI, round 38** (six byte-exact: SkbParseKoreanRules 0x390C40 -- open since round 10, 205 off --,
   SkbParseComplete 0x392130 -- 140 off --, both from the pragma scan's leads; LoadHddIconFile 0x39D650, util_sonyio.cpp
   whole; CSoftKeyboard::ParseKeyProps 0x38DCB0 -- round 15 --, SkbPressKey 0x38D200 -- the key handler, round 29 -- and
