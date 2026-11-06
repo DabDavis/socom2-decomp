@@ -2065,6 +2065,52 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 62** (four long-open rows byte-exact: CTCMNode::RemoveChild 0x232030 -- since round 27 --,
+  tcmSelectPlayer 0x22F5B0 -- since round 23 --, CPopUpDialog::Draw 0x370690 -- since round 58 -- and SetFinalTeamTotalsUiVar
+  0x225BC0 -- since round 17, through a marked CEntityItr(int) modelling device; MW's IroSubable.c and InterferenceGraph.c
+  read, now in build/scratch/mweppc/):
+  - IRO_IsSubableExpression REFUSES `register local +- constant`, so `n - 1` is hoisted only by the back end, numbered after
+    every IRO temporary; a widening-or-equal int cast is subable -- `(int)(n - 1)`, or an unsigned counter compared with
+    an int -- and IRO_MoveInvariantExpressions hoists it into a front-end temporary right after the loop's
+    strength-reduction temporaries (RemoveChild, tcmSelectPlayer);
+  - IRO_MoveInvarianceInAddressExpr puts a loop's invariant addends first (`data[i]` in an inner loop becomes `i*4 + data`);
+    taking the address through a pointer or reference local keeps the written order;
+  - IRO_ExpressionPropagation moves a scalar's defining expression only into a single use in the same flow node, and only
+    if the variable is used in no other flow node; IRO_CommonSubs creates its temporaries at each expression's first
+    reuse, in linear order;
+  - A COPY INTO A NAMED LOCAL IS NEVER COALESCED (InterferenceGraph.c: only copies where one side is a hard register or
+    both are temporaries) -- a surviving `mov` into a named variable's register is expected (the map-item Ticks' one
+    instruction); include/list's const begin() shares &m_list with end() through a pointer local whose address is hoisted
+    out of an outer loop -- reading `l.tail_ptr()->next_` with no local loads it absolutely.
+- **Tells from the game states, round 51** (C2DMessage_Q::Add_Message 0x2B6530 -- SOCOM 1's word-wrapper grown -- and
+  CZSealState::IncrementalUpdateRemoteSeal 0x2BE150, both unwritten before, and ScrollUp 0x2B6430 by hand byte-exact;
+  fts_message.cpp and fts_net_seal.cpp whole; zRemoteClientConnectsCallback 0x2BC620 written, OPEN at the size):
+  - a conversion written twice (`(EQUIP_ITEM)item` in a test, again as a call's argument with `int item`) becomes one
+    shared temporary made after the call on the comparison's other side -- the target's extra saved register and its
+    `move s0,s1`;
+  - reusing a loop index for a second loop splits it into a temporary numbered after the first loop's invariant hoist,
+    swapping their saved registers; an index of its own declared at the top of its block gives the target's registers;
+    a member field read directly in a test shares its address with a later loop's hoist of the same field, through its
+    inline accessor the first read stays frame-relative;
+  - `if (c < n) i = c; else i = end; break;` with the bound read in the test gives the target's empty then-arm `b`; locals
+    declared at a function's top take frame slots ahead of block-scoped ones; an int `first = (x & 2) != 0` negated in
+    place is not narrowed, a bool adds andi 0xff;
+  - four field stores through a pointer kept in memory re-read the pointer each time -- an inline `SetColor(const CPnt4D
+    &)` member keeps `this` in one register; the two operands of a compare are loaded in reverse of how they are written.
+- **Tells from the kit and AI states, round 57** (four byte-exact, all unwritten before: CTState::Tick 0x5CF930, the
+  parameter test 0x5D4770, CTGoto::Parse 0x5DBF70 and the group step's point reader 0x5DAF50):
+  - a `&&` type test right after a plain call folds into branches in every spelling; the target's materialised form
+    (sltu; beqz; xori; sltiu; movz) is `bool ok = (bool)e; if (ok) ok = e->m_type == k;`; an `&&` chain stays a value
+    only when the inline's result goes through a bool local;
+  - `r = true;` at the end of an if-arm before one common return gives daddiu v0,zero,1, `return true` or an early `return
+    r` give li v0,1; a by-value aggregate parameter whose address the inline takes is copied at the call, before the other
+    arguments; a bool converted to int for a by-reference test takes its temporary after the value's copy (the two stack
+    slots reversed);
+  - `Item((unsigned int)i)` and `p[(unsigned int)(i - 1)]` stop strength reduction where the original has none -- `#pragma
+    opt_strength_reduction off` overshoots, stopping the destination pointer's stepping the target keeps; reusing one
+    variable for a second branch splits its def-use webs to the target's registers;
+  - testing `r->type` in place keeps the load for Count(), through the const Type() accessor MW reloads it; an explicit
+    template instantiation placed before its caller makes MW inline the calls, removed they stay out of line.
 - **Tells from the weapons, round 37** (func_003B1BF0 -- 17 off since round 29 -- and func_003B24C0 -- 15 off since round 30
   -- byte-exact; Flatten, Ripple, zVid_Init and 0x3B0A70 measured with the optimiser's own log, `igdump --iro`):
   - REUSING ONE VARIABLE ACROSS TWO LOOPS gives the later loop's use a temporary numbered after the loop passes'
