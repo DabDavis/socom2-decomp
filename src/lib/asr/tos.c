@@ -35,11 +35,11 @@ struct TOS {
     unsigned short mode;                /* +50 */
     int error;                          /* +52: the first error, block << 16 | code */
     int warning;                        /* +56 */
-    char pad60[4];
+    int again;                          /* +60: a block asks for another pass */
     struct TOSPROC *procs;              /* +64: each block id's constructor, the architecture's */
     unsigned char *writers;             /* +68: {queue, -, block} for each block writing a queue */
     unsigned char *readers;             /* +72: {queue, block} for each block reading one, ended by 255 */
-    void *f76;                          /* +76: freed with the tables */
+    void **f76;                         /* +76: the frames a block's inputs give it; freed with the tables */
     void *heap;                         /* +80 */
     struct FASTALLO { char pad[280]; } fa;   /* +84: the small-block allocator (fastallo.c) */
 };
@@ -58,6 +58,7 @@ typedef struct QREQ {
 } QREQ;
 
 typedef unsigned char (*TOSFUNC)();
+typedef void (*TOSPROCFN)();        /* a block's process function returns nothing */
 
 typedef struct TOSBLOCK {
     TOS *tos;                           /* +0 */
@@ -69,11 +70,11 @@ typedef struct TOSBLOCK {
     QREQ *inputs;                       /* +12 */
     QREQ *outputs;                      /* +16 */
     TOSFUNC init;                       /* +20 */
-    TOSFUNC process;                    /* +24 */
+    TOSPROCFN process;                  /* +24 */
     TOSFUNC control;                    /* +28 */
     unsigned char state;                /* +32: 0 while disabled */
     char pad33[3];
-    TOSFUNC saved;                      /* +36: the process function while disabled */
+    TOSPROCFN saved;                    /* +36: the process function while disabled */
 } TOSBLOCK;
 
 extern unsigned char qQueueControl(void *q, unsigned char cmd, int arg, int n);
@@ -462,7 +463,70 @@ typedef struct TOSCMDS {
     TOSCMD **cmds;                      /* +4 */
 } TOSCMDS;
 
-extern unsigned char tosRun(TOS *t, int n);        /* not yet written */
+extern int qCheckDeQueueOne(QREQ *req, unsigned int n, void **out);
+extern void qFreeUnusedElemements(void *q);
+
+/* a block run once: a frame from each of its input queues (into the scheduler's buffer at +76),
+ * its process function called on them, the elements every reader has taken freed */
+static __inline__ void RunBlock(TOSBLOCK *b)
+{
+    unsigned char n = b->ninputs;
+    void **in = b->tos->f76;
+    QREQ *q;
+    unsigned int i;
+    unsigned char m;
+
+    qCheckDeQueueOne(b->inputs, n, in);
+    b->process(b, in, n);
+    m = b->ninputs;
+    q = b->inputs;
+    for (i = 0; i < m; q++, i++)
+        if (q->q != 0)
+            qFreeUnusedElemements(q->q);
+}
+
+/* the scheduler's pass: every block in turn (ids null) or the blocks a zero-ended id list names,
+ * again while a block asks for another pass (+60). SOCOM 1's body (round 33c). The block's
+ * process returns nothing (through a void function pointer the address takes v1, `jalr v1`; a
+ * value call's takes v0); the
+ * free loop's count and table are locals read after the call (a bound read through b each pass
+ * leaves the loop rolled), the count a variable of its own (one shared with the calls' count
+ * outranks b: s1/s2 swapped), the walker stepped before the count (`q++, i++`: reorg's slot takes
+ * the join's first insn); the id list's step inside the load (`*p++`: an unannulled slot) and its
+ * table a variable apart from the first loop's walker (one pseudo for both: 4 registers off). */
+unsigned char tosRun(TOS *t, unsigned char *ids)
+{
+    unsigned short n;
+    unsigned char i;
+    TOSBLOCK **pb, **blocks;
+    unsigned char *p;
+
+    if (ids == 0) {
+        n = t->nblocks;
+        do {
+            t->again = 0;
+            for (i = 0, pb = t->blocks; i < n; i++) {
+                TOSBLOCK *b = *pb++;
+
+                if (b != 0)
+                    RunBlock(b);
+            }
+        } while (t->again != 0);
+    } else {
+        do {
+            t->again = 0;
+            blocks = t->blocks - t->blockbase;
+            for (p = ids; *p != 0; ) {
+                TOSBLOCK *b = blocks[*p++];
+
+                if (b != 0)
+                    RunBlock(b);
+            }
+        } while (t->again != 0);
+    }
+    return 0;
+}
+
 unsigned char _tosErrorLog(TOSLOG *log, unsigned short code);
 
 /* a block's command (the log record names the block), through the mode's command list */
@@ -521,7 +585,7 @@ int tosBaseBlockControl(TOSBLOCK *b, unsigned char cmd, int arg, int n)
     case 252:
         if (b->state != 0) {
             b->saved = b->process;
-            b->process = (TOSFUNC)DisabledProcess;
+            b->process = (TOSPROCFN)DisabledProcess;
             b->state = 0;
             ret = !tosBaseBlockDisableInputQueues(b);
         } else
@@ -536,7 +600,7 @@ int tosBaseBlockControl(TOSBLOCK *b, unsigned char cmd, int arg, int n)
     case 251:
         b->state = 1;
         arg = 0;
-        if (b->process == (TOSFUNC)DisabledProcess)
+        if (b->process == (TOSPROCFN)DisabledProcess)
             b->process = b->saved;
         /* fall through */
     case 249:
@@ -657,7 +721,7 @@ TOSBLOCK *tosBaseBlockConstruct(TOS *tos, unsigned char id, unsigned char ninput
     b->noutputs = noutputs;
     b->init = init;
     b->control = control;
-    b->process = process;
+    b->process = (TOSPROCFN)process;
     b->inputs = inputs;
     return b;
 }
