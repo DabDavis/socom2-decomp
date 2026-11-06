@@ -941,3 +941,112 @@ int func_0063BED0(RT_P2P *pP2p)
     }
     return 0;
 }
+extern int func_0063E0F0(RT_UDP *pUdp, int nConn, int nWhich, int *pa, int *pb, int *pc);
+
+/* one peer's traffic counts (0x639D70): the sum over its two connections of rt_udp's counters, sent and received */
+int func_00639D70(RT_P2P *pP2p, int nIndex, int *pnBytesSent, int *pnPacketsSent, int *pnBytesRecv, int *pnPacketsRecv)
+{
+    int nPackets = 0;
+    int nBytes = 0;
+    int nOther = 0;
+
+    if (pP2p == 0)
+        return 2;
+    if (nIndex > pP2p->nEntries)
+        return 2;
+    if (pnBytesSent == 0)
+        return 2;
+    if (pnBytesRecv == 0)
+        return 2;
+    if (pnPacketsSent == 0)
+        return 2;
+    if (pnPacketsRecv == 0)
+        return 2;
+    *pnPacketsSent = 0;
+    *pnBytesSent = 0;
+    *pnPacketsRecv = 0;
+    *pnBytesRecv = 0;
+    if (pP2p->pEntries[nIndex].nConn != -1) {
+        if (func_0063E0F0(pP2p->pUdp, pP2p->pEntries[nIndex].nConn, 0, &nPackets, &nBytes, &nOther) != 0)
+            return 0;
+        *pnPacketsSent += nPackets;
+        *pnBytesSent += nBytes;
+        if (func_0063E0F0(pP2p->pUdp, pP2p->pEntries[nIndex].nConn, 1, &nPackets, &nBytes, &nOther) != 0)
+            return 0;
+        *pnPacketsRecv += nPackets;
+        *pnBytesRecv += nBytes;
+    }
+    if (pP2p->pEntries[nIndex].nConn2 != -1) {
+        if (func_0063E0F0(pP2p->pUdp, pP2p->pEntries[nIndex].nConn2, 0, &nPackets, &nBytes, &nOther) != 0)
+            return 0;
+        *pnPacketsSent += nPackets;
+        *pnBytesSent += nBytes;
+        if (func_0063E0F0(pP2p->pUdp, pP2p->pEntries[nIndex].nConn2, 1, &nPackets, &nBytes, &nOther) != 0)
+            return 0;
+        *pnPacketsRecv += nPackets;
+        *pnBytesRecv += nBytes;
+    }
+    return 0;
+}
+
+/* every peer's traffic in one (0x639B08): the bytes, nothing for the second count, and percentages over the packets */
+/* every peer's traffic in one (0x639B08): the bytes, a count SCEA never adds to, and percentages over the packets */
+int func_00639B08(RT_P2P *pP2p, unsigned int *pnBytes, int *pnZero, int *pnPercent, int *pnPercent2)
+{
+    int nA = 0;
+    int nB = 0;
+    int nC = 0;
+    unsigned int nZero = 0;
+    unsigned int nTotal = 0;
+    unsigned int nPackets = 0;
+    unsigned int nBytes = 0;
+    int i;
+
+    if (pP2p == 0)
+        return 2;
+    if (pnBytes == 0)
+        return 2;
+    if (pnZero == 0)
+        return 2;
+    if (pnPercent == 0)
+        return 2;
+    if (pnPercent2 == 0)
+        return 2;
+    *pnZero = 0;
+    *pnBytes = 0;
+    *pnPercent2 = 0;
+    *pnPercent = 0;
+    for (i = 0; i < pP2p->nEntries; i++) {
+        if (pP2p->pEntries[i].nConn != -1) {
+            if (func_0063E0F0(pP2p->pUdp, pP2p->pEntries[i].nConn, 0, &nA, &nB, &nC) != 0)
+                return 0;
+            nPackets += nA;
+            nBytes += nB;
+            if (func_0063E0F0(pP2p->pUdp, pP2p->pEntries[i].nConn, 1, &nA, &nB, &nC) != 0)
+                return 0;
+            nTotal += nA;
+            nTotal += nB;
+        }
+        if (pP2p->pEntries[i].nConn2 != -1) {
+            if (func_0063E0F0(pP2p->pUdp, pP2p->pEntries[i].nConn2, 0, &nA, &nB, &nC) != 0)
+                return 0;
+            nPackets += nA;
+            nBytes += nB;
+            if (func_0063E0F0(pP2p->pUdp, pP2p->pEntries[i].nConn2, 1, &nA, &nB, &nC) != 0)
+                return 0;
+            nTotal += nA;
+            nTotal += nB;
+        }
+    }
+    *pnBytes = nBytes;
+    *pnZero = 0;
+    if (nPackets != 0)
+        *pnPercent = nBytes / nPackets * 100;
+    else
+        *pnPercent = 0;
+    if (nTotal != 0)
+        *pnPercent2 = nZero / nTotal * 100;
+    else
+        *pnPercent2 = 0;
+    return 0;
+}
