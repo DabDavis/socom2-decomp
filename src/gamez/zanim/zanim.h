@@ -51,6 +51,8 @@ public:
         TYPE_NODE = 3,          /* a node (GetNode, FindNode) */
         TYPE_VALVE = 4,
         TYPE_PNT3D = 5,         /* a point (zAnimRangeTestTick) */
+        TYPE_DIR = 6,           /* OBJECT_MOTION's direction and its push (the name ours) */
+        TYPE_VEL = 7,           /* OBJECT_MOTION's velocity and the plane it reflects in (the name ours) */
         TYPE_CHARP = 8,         /* a string (GetCharP) */
         TYPE_INT = 9            /* SOCOM II's network activation adds one */
     };
@@ -296,6 +298,13 @@ public:
     CPnt3D *GetArgPnt3D()
     {
         return m_arg_list ? m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D) : 0;
+    }
+    /* OBJECT_MOTION's typed reads (if / return, not GetArgPnt3D's ternary) */
+    CPnt3D *GetArgOf(CZAnimArg::TYPE type)
+    {
+        if (m_arg_list)
+            return m_arg_list->GetPnt3D(type);
+        return 0;
     }
     /* an argument added, the list made first if there is none (inline: ActivateExV hands it the
      * new argument by value and it pushes it by reference, so the caller's pointer stays in a
