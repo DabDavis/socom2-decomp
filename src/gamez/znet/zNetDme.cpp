@@ -104,7 +104,6 @@ extern unsigned char data_00455F80[];   /* and its buffer */
 
 void func_00621DB8(NetJoinParams *p);   /* NetSetDefaultJoinParams */
 int func_00621E50(NetJoinParams *p, NetJoinResult *r);   /* NetJoin */
-const char *func_002FA7E0(CZOnlineLobby *lobby);   /* the game's session name (the lobby's) */
 }
 
 /* --- the DME's start (SOCOM 1's zNetInitialize, SOCOM II's newer library) ------------------- */
@@ -602,10 +601,10 @@ int NetDisconnect(int conn);
 void func_0030FC70(VoiceRadio *radio, NetVoiceStreamParams *p);   /* the voice's stream (zNetVoice.cpp's) */
 extern VoiceRadio *data_0045B718;   /* the radio (zNetVoice.cpp's) */
 unsigned int func_003A59C0(const char *s);   /* a text's CRC-32 (CRC32String's wrapper) */
-int func_002E9B30();   /* we are on a clan's team (the clan unit's) */
-int func_002E9820();   /* and it is our clan's (the clan unit's) */
-int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (the lobby unit's) */
 }
+
+bool IsOnClanTeam();   /* we are on a clan's team (the clan unit's) */
+bool IsOurClanTeam();   /* and it is our clan's (the clan unit's) */
 
 /* a variable's text when it holds one (zNetMediusClan.cpp's ZString) */
 inline char *VarText(_zrdr *z)
@@ -714,10 +713,10 @@ int CZNetwork::zNetConnect(NetClientConnectCallback connect, NetClientConnectCal
         if (var && var->type == 3)
             m_e8 = func_003A59C0(VarText(var)) & 0x7F0000FE;
         p.m_flags = m_e8;
-    } else if (func_002E9B30() && func_002E9820()) {
+    } else if (IsOnClanTeam() && IsOurClanTeam()) {
         p.m_flags |= 2;
     }
-    if (func_002F6D00(&theLobby))
+    if (theLobby.JoinAsSpectator())
         p.m_flags |= 1;
     NetConnect(&p, &r);
     int err = r.m_err;
@@ -789,7 +788,7 @@ extern "C" int func_0030D1B0(CZNetwork *net, NetClientConnectCallback connect,
     if (var && var->type == 3)
         net->m_e8 = func_003A59C0(VarText(var)) & 0x7F0000FE;
     p.m_flags = net->m_e8;
-    if (func_002F6D00(&theLobby))
+    if (theLobby.JoinAsSpectator())
         p.m_flags |= 1;
     err = func_00621950(&p, &r);
     if (err)
@@ -844,7 +843,7 @@ int CZNetwork::zNetJoin(NetCreateObjectCallback join, NetCreateObjectCallback le
     func_00621DB8(&p);
     m_bJoined = 0;
     p.m_conn = m_GameConnectionIndex;
-    strncpy(p.m_name, func_002FA7E0(&theLobby), 12);
+    strncpy(p.m_name, theLobby.GetAccountName(), 12);
     p.m_name[11] = 0;
     p.m_objects = m_NetObjectCount;
     p.m_streams = m_DataStreamCount;

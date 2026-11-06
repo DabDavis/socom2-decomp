@@ -39,13 +39,22 @@ extern "C" {
 CAiState *GetAiState__11CSealCtrlAiFv(CSealCtrlAi *ai);
 }
 
-/* the controller's current state if it is a breach (kind 17), else 0 (OVL2 0x5EA780, after
- * CAiState's constructor; the name ours) */
-CAiSBreach *GetBreachState(CSealCtrlAi *ai)
+/* the rescued state (seal_ai.cpp's CAiSRescued, kind 17 -- AI_STATE_RESCUED, CAiState::Create's): its
+ * extraction valve's setter only (OVL2 0x559470, SOCOM 1's SetExtractValve: the SEALs' round 52) -- a
+ * view, never built here */
+class CAiSRescued : public CAiState {
+public:
+    void SetExtractValve(CValve *valve);
+};
+
+/* the controller's current state if it is the rescued state (kind 17), else 0 (OVL2 0x5EA780, after
+ * CAiState's constructor; the name ours -- GetBreachState until the kit's round 54: kind 17 is
+ * AI_STATE_RESCUED, and its one caller hands the state to CAiSRescued::SetExtractValve) */
+CAiSRescued *GetRescuedState(CSealCtrlAi *ai)
 {
     CAiState *s = GetAiState__11CSealCtrlAiFv(ai);
 
-    return s && s->m_state == 17 ? (CAiSBreach *)s : 0;
+    return s && s->m_state == 17 ? (CAiSRescued *)s : 0;
 }
 
 /* what a squad is told of its SEALs (SOCOM 1's UNIT_MESSAGE, a byte; the names ours) */
@@ -924,13 +933,11 @@ CSealUnit::~CSealUnit()
 extern "C" {
 /* the squad's anim run with an argument (0x5EF220, below), the order's hand signal (0x5EB190), a
  * squad sound (0x5EAF20), the breach's set-up from the reticule's action (0x5EBF00), the cell an
- * order's target names (seal_orders.cpp's 0x58F230) and a breach given its extraction valve
- * (seal_ai.cpp's 0x559470, SOCOM 1's CAiSRescued::SetExtractValve) */
+ * order's target names (seal_orders.cpp's 0x58F230) */
 void func_005EB190(CSealUnit *unit, CZSealBody *seal, FT_COMMAND cmd, void *data, bool quiet);
 bool func_005EAF20(CSealUnit *unit, int sound, bool pick, float chance);
 bool func_005EBF00(CZSealBody *from, CSealUnit *unit, class CNodeAction *na, CAiSBreach *proto);
 int func_0058F230(CSealUnit *unit, CZSealBody *seal, void *target, CAiMapLoc *out);
-void func_00559470(CAiSBreach *b, CValve *valve);
 }
 bool run_anim(const char *name, void *arg);
 
@@ -989,11 +996,11 @@ inline bool CSealUnit::HandleSupport(CZSealBody *seal, FT_COMMAND cmd, void *dat
                 CAiMapLoc loc(hostage->GetValidMapLoc());
 
                 if (AiMaps.GetRegionTypeContainer((CAiMap::region::TYPE)1, loc)) {
-                    CAiSBreach *br = GetBreachState(hostage->GetSealCtrlAi());
+                    CAiSRescued *rs = GetRescuedState(hostage->GetSealCtrlAi());
 
-                    if (br) {
+                    if (rs) {
                         valve = CValve::Create("hostage_rescue", 0, VALVE_TEMP);
-                        func_00559470(br, valve);
+                        rs->SetExtractValve(valve);
                     }
                 }
                 if (valve)
@@ -1844,7 +1851,7 @@ extern "C" void func_005EB8A0(CSealUnit *unit)
     }
 }
 
-/* the controller's current state if it is a follow (kind 9), else 0 (GetBreachState's twin, inlined
+/* the controller's current state if it is a follow (kind 9), else 0 (GetRescuedState's twin, inlined
  * here; the name ours) */
 static inline CAiSFollow *GetFollowState(CSealCtrlAi *ai)
 {

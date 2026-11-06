@@ -9,7 +9,9 @@
  * the constructor and the three small functions after it (GetpCachedDistances, GetDistanceOffset,
  * IdleDistCalcProcess); round 21c FreeLanguage, FreeDistCalc, NormCorrection -- and the
  * object's -ffast-math, which NormCorrection's sum shows (README "The recogniser and Medius by
- * hand", round 21c); round 22c FreeDistCalc byte-exact over a marked stand-in insn. */
+ * hand", round 21c); round 22c FreeDistCalc byte-exact over a marked stand-in insn; round 34c
+ * DistSilProcess (0x4FFCE8, named by SOCOM 1's object order), func_004FD5C8 and LoadLanguage, with
+ * the fields they read; InitDistSilProcess written (OPEN, 3 words). */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -18,46 +20,74 @@ typedef struct QUEUE {
     unsigned short elemsize;            /* +8 */
 } QUEUE;
 
+/* a codebook of the language's (12 bytes): its codeword table, the codewords' count, and a byte per
+ * codeword counting the frames that picked it */
+typedef struct DSCODEBOOK {
+    unsigned char **data;               /* +0: a byte table per codeword */
+    unsigned short n;                   /* +4 */
+    unsigned short m;                   /* +6: the bytes a codeword's table takes */
+    unsigned char *f8;                  /* +8: n counts */
+} DSCODEBOOK;
+
+/* the language's frames (+128, pointed to by +140): a row of codewords per frame */
+typedef struct DSFRAMES {
+    unsigned short *data;
+    unsigned short n;
+    unsigned short m;
+} DSFRAMES;
+
 typedef struct DISTSIL {
     TOSBLOCK b;
-    char pad40[8];
+    short *f40;                         /* +40: the third input's frame */
+    short *f44;                         /* +44: f158 shorts into it */
     unsigned short ntables;             /* +48: the codebooks' byte tables in use */
     short pad50;
     unsigned char *tables[10];          /* +52 */
     unsigned short *index;              /* +92: ntables codewords per frame */
     int f96;                            /* +96: the distances' offset (GetDistanceOffset) */
     QOUT *dist;                         /* +100: the distances' output */
-    int pad104;
+    void (*f104)(struct DISTSIL *d, void *out, int n, unsigned short sum); /* +104 */
     int *f108;                          /* +108: the cached distances (GetpCachedDistances) */
     void *f112;                         /* +112: cleared at construction */
     void *f116;                         /* +116 */
-    char pad120[16];
-    void *f136;                         /* +136 */
-    void *f140;                         /* +140 */
+    char pad120[8];
+    DSFRAMES frames;                    /* +128: ntables codewords per frame */
+    DSCODEBOOK *f136;                   /* +136: the codebooks in use */
+    DSFRAMES *f140;                     /* +140: &frames */
     unsigned short n112;                /* +144: f112's codebooks */
     unsigned short n116;                /* +146: f116's */
-    char pad148[20];
-    int f168;                           /* +168 */
-    int f172;                           /* +172 */
-    void *f176;                         /* +176 */
-    void *f180;                         /* +180 */
-    int f184;                           /* +184 */
+    unsigned short ncb;                 /* +148: f136's */
+    unsigned short f150;                /* +150 */
+    short f152;                         /* +152: profile 30, added to a value with bit 1 */
+    short f154;                         /* +154: profile 31, added to a value with bit 0 */
+    unsigned short f156;                /* +156 */
+    unsigned short f158;                /* +158 */
+    unsigned short f160;                /* +160 */
+    unsigned short f162;                /* +162 */
+    short f164;                         /* +164: -f160 */
+    short pad166;
+    void *f168;                         /* +168 */
+    unsigned short *f172;               /* +172: f160 + 1 offsets into f184 */
+    short *f176;                        /* +176: f156 shorts */
+    short *f180;                        /* +180: f184's values decoded */
+    short *f184;                        /* +184 */
     char pad188[8];
-    void *f196[10];                     /* +196 */
-    char pad236[56];
+    unsigned char *f196[10];            /* +196: a codeword byte per codebook */
+    unsigned short f236;                /* +236: the frame f128 is read at */
+    char pad238[42];
+    unsigned int f280;                  /* +280: silent frames, modulo f308 */
+    unsigned int f284;                  /* +284: f308-frame periods, up to 20 */
+    unsigned char f288;                 /* +288 */
+    unsigned char f289;                 /* +289: the first input read */
+    unsigned char f290;                 /* +290 */
+    char pad291;
     float *f292;                        /* +292: a float per codeword byte */
     float f296;                         /* +296 */
     float f300;                         /* +300 */
-    char pad304[8];
-    void **f312;                        /* +312: a table whose first word is a table too */
+    float f304;                         /* +304 */
+    unsigned int f308;                  /* +308: the period */
+    unsigned char **f312;               /* +312: a byte table per count */
 } DISTSIL;                              /* 316 bytes (ConstructDistCalc's) */
-
-/* a codebook of the language's (12 bytes): its two tables */
-typedef struct DSCODEBOOK {
-    void *data;                         /* +0 */
-    int f4;
-    void *f8;                           /* +8 */
-} DSCODEBOOK;
 
 /* the profile's reader, as a block: the scheduler and the block's id */
 typedef struct TOSLOG {
@@ -87,6 +117,228 @@ static int ResizeQueues(DISTSIL *d, int n)
         if (d->b.inputs[2].q != 0)
             qDeQueueOne(d->b.inputs[2].q, d->b.inputs[2].reader);
     }
+    return 0;
+}
+
+extern void func_004FE6C8();
+
+/* each codebook's bytes at the frame's codeword (f128's row f236) copied into its row at +196; with
+ * the 4-bit distances (+104 the 4-bit pass, 0x4FE6C8) two codewords share a byte, the odd one in
+ * the low nibble, each nibble scaled by 17 to the byte range. No SOCOM 1 counterpart (its object
+ * goes from ResizeQueues to LoadLanguage); unnamed. LoadLanguage (+0x56C) and ControlDistSilProcess
+ * (+0x3C0) call it. Round 34c, byte-exact as first written. */
+static void func_004FD5C8(DISTSIL *d)
+{
+    DSCODEBOOK *cb;
+    unsigned char **data;
+    unsigned short c, n;
+    unsigned int k, j;
+    int mask, shift, mult;
+
+    for (k = 0; k < d->ntables; k++) {
+        mask = 255;
+        shift = 0;
+        mult = 1;
+        c = d->frames.data[d->f236 * d->ntables + k];
+        cb = d->f116;
+        data = cb[k].data;
+        if (d->f104 == (void *)func_004FE6C8) {
+            if (c & 1)
+                mask = 15;
+            else
+                shift = 4;
+            mult = 17;
+            c >>= 1;
+        }
+        n = cb[k].n;
+        for (j = 0; j < n; j++)
+            d->f196[k][j] = ((data[j][c] & mask) >> shift) * mult;
+    }
+}
+
+/* the language's interface (the engine's language object), as far as LoadLanguage calls it */
+typedef struct DSLANG {
+    char pad0[16];
+    int (*f16)(struct DSLANG *l);                   /* +16: the codebooks */
+    int (*f20)(struct DSLANG *l);                   /* +20 */
+    int (*f24)(struct DSLANG *l);                   /* +24 */
+    int pad28;
+    int (*f32)(struct DSLANG *l);                   /* +32 */
+    int (*f36)(struct DSLANG *l);                   /* +36 */
+    int pad40;
+    int (*f44)(struct DSLANG *l);                   /* +44 */
+    int pad48;
+    int (*f52)(struct DSLANG *l);                   /* +52 */
+    char pad56[16];
+    int (*f72)(struct DSLANG *l);                   /* +72 */
+    char pad76[48];
+    int (*f124)(void *cb);                          /* +124: a codebook's codewords */
+    int pad128;
+    unsigned int (*f132)(void *cb);                 /* +132: a codeword's bytes */
+    int pad136;
+    unsigned short *(*f140)(struct DSLANG *l);      /* +140 */
+    char pad144[8];
+    void *(*f152)(struct DSLANG *l);                /* +152 */
+    unsigned short *(*f156)(struct DSLANG *l);      /* +156 */
+    short *(*f160)(struct DSLANG *l);               /* +160 */
+    void *(*f164)(struct DSLANG *l, int k);         /* +164: codebook k */
+    char pad168[40];
+    int (*f208)(struct DSLANG *l, int what);        /* +208: 1, the 4-bit tables */
+    char pad212[32];
+    unsigned char *(*f244)(void *cb);               /* +244: a codebook's tables */
+} DSLANG;
+
+extern void func_004FDE08();
+
+/* codebook cb's tables at tab, n codewords of m bytes; 2 logged when its allocations failed */
+static __inline__ unsigned char SetCodeBook(DISTSIL *d, DSCODEBOOK *cb, unsigned char *tab,
+                                            unsigned short n, unsigned short m)
+{
+    TOS *tos = d->b.tos;
+    int i;
+
+    if (cb->data != 0) {
+        heap_Free(tos->heap, cb->data);
+        heap_Free(tos->heap, cb->f8);
+    }
+    cb->n = n;
+    cb->m = m;
+    cb->data = heap_Alloc(tos->heap, n * 4);
+    cb->f8 = heap_Calloc(tos->heap, n, 1);
+    if (cb->data == 0 || cb->f8 == 0)
+        return _tosErrorLog(d, 2);
+    for (i = 0; i < n; i++) {
+        cb->data[i] = tab;
+        tab += m;
+    }
+    return 0;
+}
+
+/* the codebook list made n long, every codebook's tables given back first; the list returned */
+static __inline__ DSCODEBOOK *SizeCodeBooks(DISTSIL *d, DSCODEBOOK **list, unsigned short *cnt,
+                                            unsigned short n)
+{
+    TOS *tos = d->b.tos;
+    DSCODEBOOK *c = *list;
+    int i;
+
+    for (i = 0; i < *cnt; i++, c++)
+        if (c->data != 0) {
+            heap_Free(tos->heap, c->data);
+            heap_Free(tos->heap, c->f8);
+            c->data = 0;
+        }
+    if (*cnt != n) {
+        if (*cnt != 0)
+            heap_Free(tos->heap, *list);
+        if (n != 0)
+            *list = heap_Calloc(tos->heap, n, 12);
+        *cnt = n;
+    }
+    return *list;
+}
+
+/* the language loaded into the block (s1:align, SOCOM 1's LOCAL LoadLanguage, 0x65C): its sizes
+ * read through its interface, the packed values at +184 decoded (each value >> 2, plus +154 with
+ * bit 0 and +152 with bit 1), the frames' table at +128, the codebook list sized, each codebook's
+ * codeword tables (two codewords a byte with the 4-bit tables) and its row at +196 allocated, the
+ * queues re-sized, the distance pass chosen (0x4FE6C8 for the 4-bit tables, else 0x4FDE08), the
+ * frame's bytes copied, the index set at frame -f160, the cache at +108 allocated (2 logged when
+ * it fails). Written from SOCOM II's code in round 34c, byte-exact: each count a variable of its
+ * own (one `n` for the frames', the list's and a codebook's counts is one pseudo across thirteen
+ * calls, and it takes the interface's s4); the list's size an inline returning the list (the null
+ * test reads through its pointer, s7); a codebook's tables an inline returning the error log's
+ * byte; the codeword size computed into an unsigned int and narrowed at the inline's call (the
+ * target's single `andi` after the join); the frames' fields stored through a pointer after all
+ * three calls; the f44 value in a variable of its own; the decode's accumulator an int (a short one
+ * re-extends each sum, 0x614; the value read as an int too, 0x71C); the ncb/f136 stores
+ * written f136 first (sched1). */
+static int LoadLanguage(DISTSIL *d, DSLANG *l)
+{
+    int is4bit;
+    TOS *tos = d->b.tos;
+    short *s, *t, *end;
+    short v;
+    int x, w;
+    unsigned short nf, mf, ncb, n;
+    DSFRAMES *f;
+    unsigned short *data;
+    unsigned int mm;
+    unsigned int k;
+    void *cbl;
+    unsigned char *tab;
+
+    is4bit = l->f208(l, 1);
+    d->index = 0;
+    d->f236 = l->f32(l);
+    d->f156 = l->f36(l);
+    d->f158 = l->f24(l);
+    d->f162 = l->f52(l);
+    w = l->f44(l);
+    d->f160 = w;
+    d->f164 = -w;
+    d->f168 = l->f152(l);
+    d->f172 = l->f156(l);
+    d->f184 = l->f160(l);
+    if (d->f176 != 0) {
+        heap_Free(tos->heap, d->f176);
+        heap_Free(tos->heap, d->f180);
+    }
+    d->f176 = heap_Alloc(tos->heap, d->f156 * 2);
+    d->f180 = heap_Alloc(tos->heap, (d->f172[d->f160] - d->f172[0]) * 2);
+    t = d->f180;
+    s = d->f184;
+    end = s + d->f172[d->f160] - d->f172[0];
+    for (; s < end; s++) {
+        v = *s;
+        x = v >> 2;
+        if (v & 1)
+            x += d->f154;
+        if (v & 2)
+            x += d->f152;
+        *t++ = x;
+    }
+    d->f150 = l->f72(l);
+    nf = l->f20(l);
+    mf = l->f16(l);
+    data = l->f140(l);
+    f = &d->frames;
+    f->n = nf;
+    f->m = mf;
+    f->data = data;
+    d->f140 = f;
+    d->ntables = ncb = l->f16(l);
+    if (SizeCodeBooks(d, (DSCODEBOOK **)&d->f116, &d->n116, ncb) == 0)
+        return 1;
+    for (k = 0; k < d->ntables; k++) {
+        cbl = l->f164(l, k);
+        n = l->f124(cbl);
+        if (is4bit)
+            mm = (l->f132(cbl) + 1) >> 1;
+        else
+            mm = l->f132(cbl);
+        tab = l->f244(cbl);
+        if (SetCodeBook(d, (DSCODEBOOK *)d->f116 + k, tab, n, mm))
+            return 1;
+        if (d->f196[k] != 0)
+            heap_Free(tos->heap, d->f196[k]);
+        d->f196[k] = heap_Alloc(tos->heap, l->f124(cbl));
+    }
+    d->f136 = d->f116;
+    d->ncb = d->n116;
+    if (ResizeQueues(d, l->f24(l)) != 0)
+        return 1;
+    if (is4bit)
+        d->f104 = (void *)func_004FE6C8;
+    else
+        d->f104 = (void *)func_004FDE08;
+    func_004FD5C8(d);
+    d->index = d->f140->data + d->f164 * d->ntables;
+    if (d->f108 != 0)
+        heap_Free(tos->heap, d->f108);
+    d->f108 = heap_Alloc(tos->heap, d->f158 * 2);
+    if (d->f108 == 0)
+        return _tosErrorLog(d, 2);
     return 0;
 }
 
@@ -185,8 +437,79 @@ static int FreeDistCalc(DISTSIL *d)
     return 0;
 }
 
-/* (InitDistSilProcess, 0x4FF5A8, is not written) */
 extern float logf(float x);
+extern float expf(float x);
+
+/* the block's init (s1:align: SOCOM 1's LOCAL InitDistSilProcess, 0x524, the same body but its exp):
+ * the queues sized from profiles 32 and 33 (the output's n33 shorts, the third input's n33 triples);
+ * the period (19, as an unsigned short); the level scale from 0 down to -9.22306 in 255 steps, its
+ * linear values (expf) at +292; per count up to the period, a byte per level -- the level after
+ * adding count x profile 18's step to its linear value, rescaled to the 255 steps below the top of
+ * the scale and rounded, clamped to 0..255 -- the rows in one allocation (1 when it fails); the
+ * counters cleared, profile 20 at +288. Written in round 34c from SOCOM II's code. OPEN (3 words,
+ * the right size): the float-to-unsigned conversion's 2^31 constant takes $f3 here, $f12 there
+ * (global-alloc's pass over registers already used: $f3 is call-clobbered, so "used", and first;
+ * the target's choice of $f12 needs $f3..$f11 preferred by a lower-priority neighbour or $f12
+ * preferred by the constant -- neither shows here). The clamp as ?: or upper-first, the store
+ * through a row pointer or an unsigned local, the inner expression split into temporaries: no
+ * closer (build/scratch/gcc/r34/v_ids*.py). */
+static int InitDistSilProcess(DISTSIL *d)
+{
+    TOS *tos = d->b.tos;
+    unsigned short n32, n33;
+    unsigned int i, j;
+    unsigned char *p;
+    float lmax, x, v;
+
+    d->f290 = 1;
+    n32 = _tosGetProfileU32(d, 32, 4);
+    n33 = _tosGetProfileU32(d, 33, 1);
+    d->f150 = 0xFFFF;
+    d->f152 = _tosGetProfileU32(d, 30, 0);
+    d->f154 = _tosGetProfileU32(d, 31, 0);
+    if (d->b.ninputs != 0) {
+        d->dist = d->b.outputs;
+        d->b.inputs[1].size = n32;
+        d->b.inputs[0].size = 1;
+        d->dist->size = n33 * 2;
+        if (d->b.ninputs == 3)
+            d->b.inputs[2].size = n33 * 3;
+    }
+    d->f308 = (unsigned short)_tosGetProfileU32(d, 19, 4);
+    d->f296 = 0;
+    d->f300 = -9.22306f;
+    d->f292 = heap_Alloc(tos->heap, 1024);
+    for (i = 0; i < 256; i++)
+        d->f292[i] = expf(d->f296 - i * (d->f296 - d->f300) * (1.0 / 255));
+    d->f304 = _tosGetProfileFloat(d, 18, 0.002f);
+    d->f312 = heap_Alloc(tos->heap, d->f308 * 4 + 4);
+    p = heap_Alloc(tos->heap, d->f308 * 256 + 256);
+    if (p == 0)
+        return 1;
+    for (i = 0; i <= d->f308; i++) {
+        d->f312[i] = p;
+        p += 256;
+    }
+    lmax = logf(d->f308 * d->f304 + 1.0);
+    for (j = 0; j <= d->f308; j++) {
+        x = j * d->f304;
+        for (i = 0; i < 256; i++) {
+            v = (logf(expf(d->f296 - (d->f296 - d->f300) * i * (1.0 / 255)) + x) - lmax - d->f296)
+                * -255.0 / (d->f296 - d->f300) + 0.5;
+            if (v < 0)
+                v = 0;
+            else if (v > 255)
+                v = 255;
+            d->f312[j][i] = v;
+        }
+    }
+    d->f280 = 0;
+    d->f284 = 0;
+    d->f288 = _tosGetProfileU32(d, 20, 0);
+    d->f289 = 1;
+    d->f108 = 0;
+    return 0;
+}
 
 /* a frame's codeword bytes corrected for the frame's level: the log of the bytes' table sum,
  * scaled to the byte range over the table's span (+296 - +300) and rounded, added to every byte,
@@ -216,9 +539,79 @@ static void NormCorrection(DISTSIL *d, QIN *q, unsigned char *b)
     }
 }
 
-/* (DistSilProcess .. InitCalculateDistances, -0x500DF8, are not written but
+extern void *qEnQueueOne(void *q);
+
+/* a frame (the block's process): the codewords (the second input, a byte per codebook) and the
+ * third input's frame kept; with the first input read, a silent frame (its flag clear) counted
+ * unless +288 is set, every f308th starting a period; per codebook the frame's table taken and,
+ * at a period's start, its codeword counts folded into the codeword bytes and cleared (each byte
+ * renormalised once 20 periods have passed); the bytes at the frame's codewords summed and,
+ * with the third input present, sent through +104 with the output's element. SOCOM 1's LOCAL
+ * (0x280), written from SOCOM II's code (round 34c), byte-exact: the third input read once into a
+ * local (two reads through `in` reload it after the first store: no strict aliasing); the flag
+ * loaded into sil before `1 - sil` (the target's `lbu s6,0(v1)`: sil's own register); the table of
+ * tables read into a local before the fold's loop (SOCOM 1's too). */
+static void DistSilProcess(DISTSIL *d, unsigned char **in)
+{
+    unsigned char *cw;
+    unsigned char sil;
+    unsigned char norm;
+    DSCODEBOOK *cb;
+    unsigned char *b;
+    unsigned char **tbl;
+    unsigned int sum;
+    short *f;
+    int i, j;
+
+    if (in[1] == 0)
+        return;
+    cw = in[1];
+    sil = 0;
+    f = (short *)in[2];
+    d->f40 = f;
+    d->f44 = f + d->f158;
+    if (d->f289) {
+        sil = *in[0];
+        sil = 1 - sil;
+    }
+    if (d->f288)
+        sil = 0;
+    norm = 0;
+    if (sil) {
+        if (++d->f280 % d->f308 == 0) {
+            norm = 1;
+            d->f280 = 0;
+            d->f284++;
+        }
+    }
+    sum = 0;
+    cb = d->f136;
+    for (i = 0; i < d->ncb; i++) {
+        b = d->f196[i];
+        if (sil)
+            cb->f8[*cw]++;
+        d->tables[i] = cb->data[*cw];
+        if (norm) {
+            tbl = d->f312;
+            for (j = 0; j < cb->n; j++) {
+                b[j] = tbl[cb->f8[j]][b[j]];
+                cb->f8[j] = 0;
+            }
+            if (d->f284 >= 20)
+                NormCorrection(d, (QIN *)cb, b);
+        }
+        sum += b[*cw];
+        cw++;
+        cb++;
+    }
+    if (d->f40 != 0)
+        d->f104(d, qEnQueueOne(d->dist->q), i, sum);
+    if (d->f284 >= 20)
+        d->f284 = 0;
+}
+
+/* (ControlDistSilProcess .. InitCalculateDistances, -0x500DF8, are not written but
  * ControlDistSilProcess's prototype) */
-extern int InitDistSilProcess(DISTSIL *d);
 extern int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, void *arg2);
 static void IdleDistCalcProcess(DISTSIL *d, void **in);
 

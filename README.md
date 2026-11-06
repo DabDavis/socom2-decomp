@@ -2065,6 +2065,103 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 27** (54 functions from their drafts to source -- zNetMediusClan.cpp all
+  hand-written, zNetMediusLobby.cpp and zNetMediusFriends.cpp whole --; 22 rows named):
+  - an explicit specialization of a class template member is an own function: MW never inlines an out-of-class template
+    member into it, and the specialized function itself is inlined into every caller, tail or own, wherever it is
+    defined (insert<AcctRecord> measured: 64 of 66, not adopted);
+  - in the game's deferred units definition order does not stop MW auto-inlining one own function into another
+    (GetFriendsList, GetInvitedPlayers, CheckClanInvitations into callbacks before and after them) -- a target's
+    out-of-line call needs `#pragma auto_inline off`; the level-5 cut cannot emulate "inline here, call there": a
+    four-high chain cuts right one caller level up but a level too high two levels up;
+  - an int function with three arms returning calls matches through one `int r` local, `return f();` in each arm is 6
+    off (0x3006D0); `(int)(a.size() + b.size()) < 16` gives slti, without the cast sltiu.
+- **Tells from the weapons, round 34** (the video thread's body 0x3B1DD0 and the vehicle's run-over pass 0x3ACC10, both
+  never written before):
+  - an unsigned-to-float conversion assigned to a dead local keeps its sign test and loses both arms -- 0x3B1DD0's
+    emptied if-body; IPNT2D / PNT2D locals stay in the frame, read once per use, volatile scalars re-read at every use;
+  - a loop-invariant division held in a named local is hoisted ahead of the loop, written in the step it stays in; a
+    count read into a local inside the loop body is hoisted with its preheader after the return, read in the inner loop's
+    condition or inside a member inline only one level;
+  - the kit's round-53 rule holds on 0x3ACC10: a kind test as a ternary inline keeps the dead else copies, in place it is
+    a movz, as an if it collapses them; `v > 0x7FFF` emits `li at,0x8000` in place, `v >= 0x8000` hoists the constant;
+    `(unsigned int)p & 0x0FFFFFFF` gives the bare dsll32 / dsrl32 pair, `(u_long)p` adds a sign-extension pair;
+  - frame slots: single CPnt3D locals in 16-byte slots in declaration order, then inline temporaries, then CPnt3D
+    arrays, then the matrix; a `short uv[4]` takes an 8-byte slot where `short uv[2]` takes 4; two constants OR'd at the
+    end of one expression fold together, built ahead in a local they stay apart.
+- **Tells from completing the MSL headers, round 34** (cdeque<PCv>::resize 0x285660 byte-exact; THE TAIL'S GENERATION
+  ORDER READ OUT OF MW'S FRONT END; probes build/p34/, untracked -- e1-e4.cpp the order probes, olist.py / order.py
+  a unit's functions in object order, dqboard.py the deque units' rows, vend.py / vR*.py the resize variants; the
+  front end's sources in build/scratch/msl-r34/mweppc/):
+  - RESIZE APPLIED: the buffer's own iterator four words (round 33's code-exact probe), ~__deque_buf's six walks through a
+    three-word __ring_iterator of the buffer's own -- the old iterator's code under another name, so every walk is
+    unchanged (through the four-word iterator 35 off; through the four-word const_iterator 18 off, the size's load shared
+    with the test); clear() in class, SOCOM 1's insert / erase declared (rows 0x286160 / 0x285D30 named for them), the
+    static zero given its data row (0x3DE1D0). objcmp: 658 units, 9 differ, each only by the added copy of resize and
+    its static; +1, nothing lost;
+  - THE DEQUE'S MAX SIZE COUNTS WHOLE BLOCKS: `(size_type(-1) / buf_size - 1) * buf_size` -- the state machine's 42
+    twelve-byte member pointers to a block give -46 (its do_assign 0x3A6710's static, `li v1,-46`: byte-exact so, its
+    value and guard given rows 0x3EF758 / 0x415D18); over sizeof(T *) it was 0x7FFFFFAC, the power-of-two blocks (128:
+    -256, 8: -16) the same either way. objcmp: 1 unit differs, by that function alone; +1;
+  - THE ORDER IS MW'S END-OF-UNIT LOOP (doldecomp/mweppc CParser_GlobalCleanup, CInline.c, CTemplateNew.c -- the PowerPC
+    front end; every rule below checked on mwcps2: e1-e4.cpp and round 7's ord4/ord7): under `-inline deferred` every
+    own function is deferred at parse time and code-generated at the end, last defined first. A function is
+    "referenced" only when a caller's code is generated (CInline_ExportCheck), never at parse time. An in-class inline
+    member of a class template instance, or an implicit member, that a function names before it is defined is queued
+    and generated (as inline data) before that function's code, which waits for it; an inline function a caller
+    leaves as a call is exported there and then and code-generated right after that caller, the last call first,
+    depth first (e4: own1's cut l2 and m2 come out m2, l2 straight after it). Out-of-class members of class templates
+    are instantiated ONLY by CTempl_Instantiate's walk, run when nothing is queued: class templates newest-declared
+    first, each instance's members in DECLARATION order (not definition order), every member referenced at the moment
+    the walk reaches it -- the function templates (member templates: init, do_assign) after every class. A walked
+    member with no undefined in-class or implicit callee is code-generated on the spot, its out-of-line callees then
+    referenced for the rest of the walk; one with such a callee is deferred to after the walk, last deferred first (e2:
+    c on the spot, a deferred, b -- declared before c, which names it -- in the next walk). Hence round 7's rule: a
+    member inlines another only when generated after it, the callee's inline data existing only once it is instantiated;
+  - THE IMAGE'S LOBBY TAIL IS THE OTHER MECHANISM (request 1, not applied): 0x2E07B0-0x2E0E0F is the deque's copy
+    constructor, then its callees in reverse call order, depth first -- init, end, begin, __deque_buf(A) and its subtree
+    (~cdeque, the pair's constructor, the buffer's copy constructor and its own init / end / begin / __cdeque_buf(A),
+    the allocator's copy, cdeque(A), the rebinding allocator), alloc() -- then deque() 0x2E0D90 with __deque_buf() and
+    cdeque<P11>() 0x2E0DF0: the order of exported out-of-line copies of inline functions (e4), cut at their callers.
+    This header's out-of-class members come out class by class, a walk a round, so no reordering of it gives that
+    order; and the inlining facts agree: deque() inlines allocator<PCv>() where both copy constructors call 0x2CEE30
+    (deque() code-generated after allocator<PCv>() is instantiated, the copy constructors before -- one phase for the
+    whole copy chain, as exported copies are). Measured: deque's copy constructor, begin() / end() const and init in
+    class make 0x2E0D90 byte-exact and 0x3A6410 its callee's row only, but the queue's constructor then stops inlining
+    into CZOnlineLobby(), CSimpleStateMachine() and the chat's queue (-4 over the deque units, build/p34/vA.py);
+    cdeque<T *>() out of class (the target's per-element 0x2E0DF0 / 0x2F6290 / 0x3A6470 / 0x334150) loses game_main's
+    0x2CEE40, which then calls cdeque<PPCv>() out of line (-1, vC.py). The original's copy chain is inline functions cut
+    by the level -- a refit to that model (README "Level 6, or 8?"), not a reordering;
+  - a lead for the online lane: ReleaseVector<T>'s seven instances sit right after ReleaseUIResources (0x2DFA50-
+    0x2DFDCF) in reverse call order -- an inline function template's out-of-line copies, cut at their caller (e4);
+    ours come at the unit's end (the order only: sccheck does not score it).
+- **Tells from the kit and AI states, round 54** (the wedge test -- open since round 53 --, the edge test, the view-wedge
+  sight test, the follower's creep and the route-cell walk, all unwritten before; GetReticuleSettle from its draft):
+  - a struct element whose address is passed to calls as `(const T *)&a[i].x` shares that address with the copy's x store
+    in a saved register while y and z fold into frame offsets; written `(char *)a + k` all three fields go through the
+    register, `&a[i]` or `a + i` recomputes it at each call (the wedge test 0x5FE1F0's missing saved register);
+  - a member read through an inline returning it by reference keeps its address in a saved register across two calls,
+    read in place it is recomputed (8 bytes shorter); a pointer local assigned from an inline wrapper (`EntityOf(ai)`) is
+    numbered after the inline's own locals and the temporaries (0x5FD150, 0x5FAE70 -- igreplay first, the source after);
+  - in this unit a tiny callee was auto-inlined wherever it was defined, before or after its caller -- `#pragma
+    auto_inline off` kept it out of line (0x5FC550); byte flags the target loads before the first test need unsigned char
+    locals, bool locals add an sltu; floats read before bitfield cell copies are scheduled ahead of the copies' masks, the
+    last declared gets f20;
+  - 40 degrees is `0.6981317f` (0x3F32B8C2) -- `0.69813174f` rounds up to 0x3F32B8C3.
+- **Tells from the UI, round 32** (CollectGarbage, open since round 18, UTF8GetChar, since round 21, and UTF8Append):
+  - a flag bit tested and later set through BY-REFERENCE INLINES OVER A STRUCT AT THE BIT'S BYTE makes MW compute the
+    byte's address once, in the test's delay slot, and hold it in a saved register across calls -- written on the value
+    directly the offset folds into both accesses (CUIVarManager::CollectGarbage 0x385A60's sixth saved register);
+  - a class iterator's register is a temporary numbered after every named local, a named pointer walk declared ahead of a
+    local is numbered before it; in an accumulator a local assigned twice keeps its statement's place, and `x += y` puts
+    the accumulator first in the add (UTF8GetChar 0x39F0C0);
+  - a shift through an inline taking unsigned int gives srl, the in-place shift of a promoted unsigned short sra
+    (UTF8Append 0x39FD80); `#pragma bool off` makes || / && int-valued (no andi 0xff) but gives each chain's last operand
+    a `!= 0`;
+  - an inline's locals declared uninitialised at its top are numbered there, ahead of locals defined earlier in the body;
+    a float `a*b + c*d` in one expression fuses into mula.s / madd.s, built from two locals with a branch between it stays
+    mul.s + add.s; `r = r >= 0.0f ? r : 0.0f` gives bc1t with the next product duplicated into both arms, `if (r < 0.0f)
+    r = 0.0f` gives bc1f; a signed char static compared as `(BYTEENUM)s == ENUM_0` loads lbu, `!s` lb.
 - **Tells from the zdb world, textures, rdr and sound, round 27** (CNode::ApplyDecal; Headset::Flush renamed Flush(bool);
   CPipe::RenderVisual written):
   - A MEMBER CALL LOADS `this` AFTER ITS ARGUMENTS; an extern "C" placeholder taking the object first loads it first --
@@ -8546,7 +8643,7 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `extracted/` and `decomp/toolchains/` linked in from the main tree.
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
-matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
+matches misses there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
 constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- and, since the world's round
 16 named it, 0x3340B0, cdeque<PPCv>'s constructor from an allocator (vis_vu.cpp's inline copy `elsewhere`; its draft
 carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
@@ -8554,9 +8651,14 @@ carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230
 (each draft carries an `sc: as=` line; ~CLobbySaveModule's copy 0x2FD070, once listed with them, matches from source
-since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- TWELVE rows in all -- 0x29FF60 and
-0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
-included before believing one.
+since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all -- 0x29FF60 and
+0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
+sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
+built and scored against its other emitters outside `--files` (its draft, and the hand-written units
+naming the copy's identifiers) and printed `not lost -- an inline copy missed here, another emitter
+outside --files still matches: <row> by <emitter>`, rc 0 -- the thirteen each by its draft. Only a
+`REGRESSIONS` line is a loss; a strong definition's miss is never held ("The GCC front: the prebuilt
+libraries", "The tools, round 38a").
 
 ## The generated tier: `src/auto/`
 
@@ -13037,6 +13139,54 @@ of 4) -- 5 rows new to the map's byte-exact rows (6,756 bytes), no draft superse
 (568 of 596 before). Named (2, data.txt): `costab` 0x659140 and `sintab` 0x659180 (s1:data: SOCOM 1's globals of
 those names, read by fht at the same instructions). No rows renamed (all had SOCOM 1's names). No tool changed.
 
+**Round 34c: the combiner's process closed, the VAD's init, the distance block's process, language load and copy.**
+
+- **A float load through a pointer cannot cross an earlier int store without strict aliasing**
+  (CombinerProcess, 127 words -> 0): the target's x[0] load sits above the state's `sw`, so the source
+  reads it into a local before `c->state++` and stores from the local -- and with the load first sched1
+  issues the head's `h & 7` first and every register falls into place (87 -> 3). The empty loop keeps its
+  own counter (the target's a1) only when the ring's turn is a second `if (src != 0)` after the send: src
+  is stepped in the loops, so the test survives, and jump threading sends the first test's null arm
+  straight to the epilogue. **`(unsigned char)(f + 1) & 7` is the target's `lbu` of a halfword ring
+  index**; `& 7` alone keeps `lhu`.
+- **A spelling per count, not one `n` reused** (LoadLanguage): one variable for three counts read
+  across thirteen calls is one pseudo, set three times, whose priority takes the interface's s-register;
+  each its own and every register is the target's. **An inline's argument narrows at the call**: a
+  value computed into an unsigned int in both arms of an if and passed as the inline's unsigned short
+  is the target's single `andi` after the join (a `?:` assigned to the short converts in each arm). **A
+  null test through an inline's pointer** (`lw v1,0(s7)`) is the inline returning `*list`.
+- **The second loop's bound in a local** (InitVad): a base read through the block inside a loop that
+  stores through a pointer stays inside (0x480); read into a local first it is the target's hoisted
+  `lwc1`. A count-down `for (i = n - 1; i >= 0; i--)` is SOCOM 1's (counting up, 0x3E8).
+- **2.96's folder lands an ulp where the literal does not**: `2.302585f / 1000` gives the target's
+  0x3B16E6F6 (`0.0023025851f` is one high); `5 * 4.3429f` and `21.7145f` both give 0x41ADB74B. The
+  vendor's dB-to-neper factor is a double, `1 / 4.3429` (0.23026088558336597, soft-float calls), and an
+  unrolled loop's copies each get a constant-pool entry of their own (three 1/255 doubles in a row).
+- **Reading a pointer input once** (DistSilProcess): two reads of `in[2]` around a store reload it (no
+  strict aliasing); a flag loaded into the variable before `1 - sil` is the target's `lbu s6`.
+- **Open, diagnosed in place**: InitDistSilProcess (3 words, the right size: the float-to-unsigned
+  conversion's 2^31 constant in $f3 where the target has $f12 -- global-alloc takes the first
+  call-clobbered register no lower-priority neighbour prefers, so the target's choice needs $f3..$f11
+  preferred by a neighbour or $f12 by the constant, and neither shows here);
+  ProcessVad (2: a structured `if (i < n)` flips the two accumulators' priorities, 6,315 against 6,250,
+  sum's live length 160 there against 158 with `if (i == n) goto out` -- but it is 2 words
+  longer; all fifteen orders of the init's statements give the same live lengths, sched1 places them
+  alike); SplitUp_Finals and the
+  older opens (their diagnoses stand). Not reached: CreateSecondPassTreeContext, RePruneToPho,
+  FrameDPacoust, ConstructArchitecture (tos.c: three inlined helpers returning bytes, 358 words),
+  VadFastTrackProcess, ControlDistSilProcess, the 8- and 4-bit distance passes (0x4FDE08, 0x4FE6C8).
+
+Hand-written in round 34c: `asr/combiner.c` (CombinerProcess closed: the object whole, 4 of 4), `asr/vad.c`
+(InitVad new: 8 of 9), `asr/distsil.c` (DistSilProcess, func_004FD5C8 and LoadLanguage new, InitDistSilProcess
+written OPEN: 13 of 14; the record's fields from +40 to +312, the codebook and frames records and the language's
+interface typed by these uses) -- 5 rows new to the map's byte-exact rows (4,824 bytes), no draft superseded;
+`src/lib/asr` 578 of 607 (573 of 602 before). Named (1): DistSilProcess 0x4FFCE8 (s1:order: SOCOM 1's distsil
+object holds it between NormCorrection and ControlDistSilProcess as ours holds this row, the same body).
+func_004FD5C8 has no SOCOM 1 counterpart (LoadLanguage and ControlDistSilProcess call it): unnamed. No tool
+changed (scratch: build/scratch/gcc/r34/ -- vprio.py scores variants with their allocation priorities,
+fbits.py and fexpr.py find a float's 2.96 spellings and folded forms, sdiff.py aligns a function by
+mnemonics to find size misses).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -13423,7 +13573,9 @@ What is open across lanes, and what comes next:
   element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
   at their level-5 shapes, seal_ai.cpp's pragma with them.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
-  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short) and
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short --
+  round 34: the image's chain is the exported out-of-line copies of inline functions cut at their
+  callers, depth first, so it wants the chain refitted as inline functions, not reordered) and
   its iterator classes (every do_assign calls separate source and destination operators out of line,
   std::distance and std::copy by value: the MSL headers' round 18), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
@@ -13439,9 +13591,9 @@ What is open across lanes, and what comes next:
   __const_iterator: the rdr editor's do_assign and its three pieces), and the list's own insert(position,
   x) is measured, not applied (round 29: +0 / -1, LoadVehicles); the circular buffer's begin() and its
   growth recommendation are in since round 32 (the deques' make_iterators, which inline `begin() + n`,
-  stay open at their old sizes); its resize 0x285660 is code-exact as a probe since round 33 (the
-  four-word iterator, `*&data_` reads) and waits on ~__deque_buf's walk under that iterator (0x2CEFB0
-  35 off) -- with it, insert 0x286160 / erase 0x285D30 and the zero word 0x3DE1D0 to name.
+  stay open at their old sizes); its resize 0x285660 is byte-exact since round 34 (the four-word
+  iterator, `*&data_` reads; ~__deque_buf walks a three-word __ring_iterator; insert 0x286160 / erase
+  0x285D30 named, the zero word 0x3DE1D0 given its row) -- insert and erase themselves unwritten.
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
