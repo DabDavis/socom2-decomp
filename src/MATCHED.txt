@@ -2247,6 +2247,7 @@
 0x002455C0 lgAudAEnumHint
 0x00245690 libnetb_is_data_waiting
 0x00245788 libnetb_udp_calc_avail
+0x00245A18 libnetb_get_valid_data_header_ptr
 0x00245AD8 func_00245AD8
 0x00245B58 func_00245B58
 0x00245BB0 func_00245BB0
@@ -2762,6 +2763,7 @@
 0x0026D370 Load__6CZAnimFRQ23zar4CZAR
 0x0026D560 Unload__6CZAnimFv
 0x0026D870 ExecuteSpecialSequence__6CZAnimFi
+0x0026D940 Copy__6CZAnimFv
 0x0026E2D0 func_0026E2D0
 0x0026E2F0 AddNewNodeRef__6CZAnimFiii
 0x0026E4C0 GetCallAnimRef__6CZAnimFi
@@ -2858,6 +2860,7 @@
 0x00274490 __dt__13CZAnimArgNodeFv
 0x002744F0 Advance__Q224@unnamed@zanim_menu_cpp@17CSelectedCharsItrFv
 0x00274590 zAnimUIAppMenuTick__FP14_zanim_cmd_hdrPf
+0x002745A0 zAnimUIMenuTick__FP14_zanim_cmd_hdrPf
 0x00274860 Get2DVisual__Q23zdb7CVisualFv
 0x00274870 GetUICommandType__FPCc
 0x00274930 GetMenuStack__Fv
@@ -3096,7 +3099,8 @@
 0x00281A70 OnCloseAndSwitch__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x00281BC0 func_00281BC0
 0x00281BE0 UIChooseDefaultEquipmentOnly__FP13C2DAnimCmdHdrPf
-0x00282410 func_00282410
+0x00282140 UpdateSelItemValves__Fv
+0x00282410 UIUpdateSelItemValves__FP13C2DAnimCmdHdrPf
 0x00282420 UIChooseEquip3__FP13C2DAnimCmdHdrPf
 0x00282500 UIChooseEquip2__FP13C2DAnimCmdHdrPf
 0x002825E0 UIChooseEquip1__FP13C2DAnimCmdHdrPf
@@ -3366,6 +3370,7 @@
 0x00295F20 func_00295F20
 0x00296F10 APTeatherCam__10CAppCameraFR7CMatrixf
 0x00297410 GetTetherCamPoints__10CAppCameraFP6CPnt3DP6CPnt3DP6CPnt3Df
+0x00297A30 GetDeadCamPoints__10CAppCameraFP6CPnt3DP6CPnt3DP7CMatrixf
 0x00299140 func_00299140
 0x00299150 ResetDeathCam__10CAppCameraFv
 0x002991C0 APLookAt__10CAppCameraFfP7CEntityR7CMatrix
@@ -5219,6 +5224,7 @@
 0x00316E30 __ct__Q23zdb5CNodeFv
 0x00317060 InitNodeParams__3zdbFPQ23zdb15tag_NODE_PARAMSPCQ23zdb15tag_NODE_PARAMS
 0x003176B0 remove_copy<Q33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iterator,Q33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iterator,PQ23zdb7CVisual>__3stdFQ33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iteratorQ33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iteratorQ33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iteratorRCPQ23zdb7CVisual_Q33std66__vector_imp<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>,1>8iterator
+0x00317720 init<Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>>__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<1>_v
 0x003177A0 __ct__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FRCQ23std14allocator<PCv>
 0x003177C0 __dt__Q23std56list<PQ23zdb7CVisual,Q23std26allocator<PQ23zdb7CVisual>>Fv
 0x00317820 __dt__Q23zdb14CTickLightListFv
@@ -5239,6 +5245,7 @@
 0x00318C30 GetModel__Q23zdb9CAssetLibFPCc
 0x00318C40 __ct__Q23zdb6CModelFPCc
 0x00318CB0 Read__Q23zdb6CWorldFRQ23zdb9CSaveLoad
+0x00318DA0 Load__Q23zdb9CSaveLoadFPCc
 0x00319580 LoadAssetLib__Q23zdb9CSaveLoadFPQ23zdb6CWorldPQ23zdb9CAssetLibi
 0x003195A0 LoadModels_PS2__Q23zdb9CSaveLoadFPQ23zdb9CAssetLib
 0x003196A0 LoadPalettes_PS2__Q23zdb9CSaveLoadFPQ23zdb9CAssetLib
@@ -7442,8 +7449,10 @@
 0x003B18D0 WriteGsMemory__6CVideoFUiP1Ui
 0x003B1990 ReadGsMemory__6CVideoFUiP1Ui
 0x003B1A70 RestoreImage__6CVideoFPc
+0x003B1BF0 func_003B1BF0
 0x003B1DD0 func_003B1DD0
 0x003B2450 func_003B2450
+0x003B24C0 func_003B24C0
 0x003B28D0 func_003B28D0
 0x003B2C80 zVid_Assert__FbUiPci
 0x003B2CB0 hookupVisuals__FPQ23zar4CZARPQ23zdb6CModel
@@ -7628,6 +7637,8 @@
 0x003C0830 Clear__26RTPool<Q23zdb10CTextureFX>Fv
 0x003C08E0 GetNext__26RTPool<Q23zdb10CTextureFX>Fb
 0x003C09C0 __ct__26RTPool<Q23zdb10CTextureFX>FUi
+0x003C0AC0 resize__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUiRCPCv
+0x003C0B90 insert__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>UiRCPCv
 0x003C0C20 init__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUiRCPCv
 0x003C0C90 __dt__Q23zdb17CTextureFXManagerFv
 0x003C0F70 GetOffset__Q23zdb12CWaterRippleFPC6CPnt3DP6CPnt3D
@@ -9467,7 +9478,7 @@
 0x005451A0 func_005451A0
 0x005451C0 func_005451C0
 0x005451E0 func_005451E0
-0x00545200 func_00545200
+0x00545200 Reset__10CSealStatsFv
 0x00545290 func_00545290
 0x00545390 func_00545390
 0x00545480 func_00545480
@@ -9512,6 +9523,7 @@
 0x005499D0 func_005499D0
 0x005499E0 func_005499E0
 0x00549C30 func_00549C30
+0x0054A3D0 func_0054A3D0
 0x0054A8B0 func_0054A8B0
 0x0054E430 func_0054E430
 0x0054E760 func_0054E760
@@ -9883,10 +9895,14 @@
 0x00583030 MoveControl__10CZSealBodyFff
 0x00583350 func_00583350
 0x00583960 TurnControl__10CZSealBodyFf
+0x00583AF0 InStateCarried__10CZSealBodyFv
+0x00583E70 InStateCarrying__10CZSealBodyFv
 0x00584240 InStateClimbLadder__10CZSealBodyFv
 0x00584B00 func_00584B00
 0x00584C10 func_00584C10
 0x005857E0 func_005857E0
+0x005858A0 UpdateQuadrant__10CZSealBodyFRfRfb
+0x00585CD0 func_00585CD0
 0x00585FF0 func_00585FF0
 0x00586050 StandTurning__10CZSealBodyFf
 0x00586240 StandStill__10CZSealBodyFff
@@ -10061,7 +10077,7 @@
 0x00597FF0 OnRecycleEntity__9CSealCtrlFP7CEntity
 0x00598000 OnWeaponEvent__9CSealCtrlFP12CZProjectileUiPv
 0x00598220 __dt__9CSealCtrlFv
-0x00598840 func_00598840
+0x00598840 SetEnabled__9CSealCtrlFb
 0x00598860 DrawFunc<11CDynGrenade>__2aiFQ22ai9LINE_TYPEffUi11CDynGrenade_v
 0x005994A0 DoRespawn__10CZSealBodyFv
 0x00599690 CreateRemoteSeal__10CZSealBodyFiiPCciPcUiPUc
@@ -10234,9 +10250,11 @@
 0x005AD870 Blink__6CBlinkFi
 0x005AD920 LookTick__5CLookFf
 0x005AD9D0 SetDir__5CLookFPC6CPnt3Df
+0x005ADC70 SetLookDir__5CLookFP10CZSealBodyPC6CPnt3Df
+0x005AE040 CalcGoalDir__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3Dffff
 0x005AE3B0 __ct__6CBlinkFv
 0x005AE450 __ct__5CLookFv
-0x005AE4B0 SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df
+0x005AE4B0 SetEyeLookDir__10CZSealBodyFfff
 0x005AE640 SetLookDir__10CZSealBodyFPC6CPnt3Df
 0x005AE6A0 InitLookAnims__10CZSealBodyFv
 0x005AE730 GetLookQuat__FP6CPnt3DffP5CQuat
@@ -10740,6 +10758,7 @@
 0x005EF6D0 insert__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>FQ33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>RC10FT_COMMAND
 0x005EF7D0 __ct__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>Fv
 0x005EF7F0 func_005EF7F0
+0x005EF8D0 func_005EF8D0
 0x005EF950 func_005EF950
 0x005EF9B0 func_005EF9B0
 0x005EF9D0 __dt__10CAiSActionFv

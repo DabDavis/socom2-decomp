@@ -68,6 +68,103 @@ extern __inline__ unsigned char Tone_Of_Final_TreeCtx(unsigned short final, unsi
         d->tone = s->tone;                                              \
     }
 
+/* the pronunciation tree Build_Tree_ForChinese_TreeCtx makes (12-byte nodes, 4-byte links), the item
+ * tree it is translated into (DICTITEM / DICTLINK), and the lexicon's tables, as the translation
+ * reads them */
+typedef struct PRNODE {
+    int f0;                             /* +0 */
+    int pron;                           /* +4 */
+    unsigned short child;               /* +8: the first link, 0xFFFF none */
+    unsigned short pad10;
+} PRNODE;
+
+typedef struct PRLINK {
+    unsigned short node;                /* +0 */
+    unsigned short next;                /* +2: 0xFFFF the last */
+} PRLINK;
+
+typedef struct TPCTX {
+    int pad0;
+    PRNODE *nodes;                      /* +4 */
+    PRLINK *links;                      /* +8 */
+    DICTITEM *items;                    /* +12 */
+    DICTLINK *ilinks;                   /* +16 */
+    int pad20[2];
+    unsigned short *lex;                /* +28: each pronunciation's phonemes, its kind first */
+    int *begin;                         /* +32: where each pronunciation starts */
+    int *tones;                         /* +36: an index per phoneme into the table as halfwords */
+} TPCTX;
+
+/* the pronunciation tree's node translated into items, one per phoneme after the first word of
+ * its pronunciation (each linked to the next; the last carries the node's word and pronunciation
+ * and, at a leaf, no link), then its children in turn, linked in order; node 0 is the root item.
+ * SOCOM 1's body (its _TreeCtx copy; chinese.c's row, 0x4F8, is a longer form, unwritten).
+ * OPEN (round 37c, written: 116 words, two short (0x364) -- 161 with the kind read inside the loop;
+ * read once through the walker's first post-increment, the target's lhu-then-addiu): registers --
+ * the end, end - 1 and node * 12 sit one t-register below the target's (its node stays in t1 from
+ * the entry, node * 2 in s1 for the child's reload after the loop), the leaf flag's sltiu is
+ * scheduled before the loop test (the target's sits in that branch's slot), and the leaf arm's
+ * `bnel` for the last phoneme is a `bne` here (the two missing words: the target reloads *nitems in
+ * that arm). Not tried: `t->items[(*nitems)++]` forms. */
+static void Translate_Prons_Into_Items_And_Tones_TreeCtx(unsigned int node, unsigned int *nitems,
+                                                         unsigned int *nlinks, TPCTX *t)
+{
+    unsigned short *first, *p, *end;
+    unsigned int c;
+    unsigned int prev;
+    int leaf;
+    int kind;
+
+    if (node == 0) {
+        c = t->nodes[0].child;
+        t->items[0].kind = 0;
+        t->items[0].tone = 0xFFFF;
+        t->items[0].child = 0;
+        t->ilinks[0].node = 1;
+    } else {
+        p = t->lex + t->begin[t->nodes[node].pron];
+        end = t->lex + t->begin[t->nodes[node].pron + 1];
+        leaf = t->nodes[node].child == 0xFFFF;
+        kind = *p++ == 1;
+        for (; p < end; p++) {
+            t->items[*nitems].kind = kind;
+            if (p == end - 1) {
+                t->items[*nitems].f4 = t->nodes[node].f0;
+                t->items[*nitems].f8 = t->nodes[node].pron;
+            } else {
+                t->items[*nitems].f4 = -4;
+                t->items[*nitems].f8 = -4;
+            }
+            t->items[*nitems].pron = *p;
+            t->items[*nitems].tone = ((unsigned short *)t->tones)[t->tones[*p] + 1];
+            if (leaf && p == end - 1) {
+                t->items[*nitems].child = 0xFFFF;
+                (*nitems)++;
+            } else {
+                t->items[*nitems].child = *nlinks;
+                (*nitems)++;
+                t->ilinks[*nlinks].node = *nitems;
+                t->ilinks[*nlinks].next = 0xFFFF;
+                (*nlinks)++;
+            }
+        }
+        if (!leaf)
+            (*nlinks)--;
+        c = t->nodes[node].child;
+    }
+    while (c != 0xFFFF) {
+        prev = (*nlinks)++;
+        Translate_Prons_Into_Items_And_Tones_TreeCtx(t->links[c].node, nitems, nlinks, t);
+        c = t->links[c].next;
+        if (c == 0xFFFF)
+            t->ilinks[prev].next = c;
+        else {
+            t->ilinks[prev].next = *nlinks;
+            t->ilinks[*nlinks].node = *nitems;
+        }
+    }
+}
+
 /* chinese.c's SplitUp_Finals under this object's name, word for word the same code (round 36c:
  * the two rows' 299 instructions agree but for the recursion's target). OPEN as SplitUp_Finals is
  * (126 words, the right size: PRE reuses the walk's node * 4 for the tone test; chinese.c's note) */
