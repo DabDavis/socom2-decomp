@@ -3080,6 +3080,16 @@ extern "C" AI_WEAPON_KIND func_00560540(CSealCtrlAi *ai)
 #pragma auto_inline reset
 
 /* (OVL2 0x5605A0, not written yet: a weapon of a kind chosen) */
+/* OPEN, unwritten (OVL2 0x5605A0, 0x2F4 bytes; round 59 parked it, nothing here depends on it): `bool F(ai, kind)`:
+ * seal = 0x560950(ai) [ai->m_entity]; dead reads 0x560940(seal) [seal->m_id] and 0x560930(ai) [(signed char)ai->m_26c];
+ * if (!InGroup || kind == 6) { if (kind == 1) F(chance ? 2 : 3) else { w = data_0066AD00[kind]; if (w != 0x5608A0(seal))
+ * { r = 0x58C5D0(seal, w); 0x571000(ai) } } } return r. 0x560920 is a one-float class's constructor and 0x5608B0 its
+ * `operator bool`; Rfloat's true constructor is (min, max). `r = F(ai, c ? 2 : 3)` has the right selects but expands the
+ * second level's operator bool whole (CInline's second walk: 0x344 vs 0x2F4); `kind = c ? 2 : 3; r = F(ai, kind)` has its
+ * Rfloat calls and literal but regenerates the select (0x31C); if/else passes the 15-statement auto limit (`inline`
+ * escapes it, then the constructor is called at level 1 and 0x5604D0 inlines F); the level 0's IsKind is one level too
+ * deep in all three. Written, it lost 0x5604D0, 0x5609F0 and 0x567690, so it stays out: 0x570F90 and 0x571000 are
+ * structurally exact from source, 0x5609F0 as real recursion 1 off. */
 extern "C" bool func_005605A0(CSealCtrlAi *ai, int a);
 
 /* a weapon chosen; the kind held before it kept once it is (OVL2 0x5604D0) */
@@ -4839,6 +4849,127 @@ static inline bool TickGoalTimer(CAiTimer &t, float dT)
     }
     return r;
 }
+
+/* zero a small object's bytes (an inline: the target's byte loop, with the address's null test) */
+
+static inline float LenXZ(const CPnt3D &v)
+{
+    return sqrtf(v.x * v.x + v.z * v.z);
+}
+
+extern "C" {
+extern float data_00650128;
+extern float data_0065012C;
+extern float data_00650130;
+extern float data_00650134;
+extern float data_0064FDA0;
+extern float data_006501D8;
+extern float data_006501E0;
+extern float data_006501E8;
+}
+
+static inline float DotP(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/* the creep toward the goals: the goal's timer run down, an expired goal cleared; the facing laid flat; a
+ * goal position walked at -- the throttles a critically damped pull along and across, held within the speed
+ * (the side's to 1), the point dropped once within its tolerance; a goal direction turned to by the slot
+ * 0x9C's throttle, while at the point or an AI in mode 7, and dropped when reached; the three throttles set
+ * (OVL2 0x566DC0, slot 0x88: SOCOM 1's CreepTick, the flag new) */
+void CSealCtrl::CreepTick(float dT, bool walk)
+{
+    float dot;
+    float hi;
+    float x;
+    float lo;
+    float top;
+    float z;
+    float vz;
+
+    data_0066B100 = 1.0f / dT;
+
+    bool has = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+
+    if (!has)
+        return;
+    if (TickGoalTimer(m_goal_timer, dT)) {
+        ClearGoal(m_goal_type);
+        return;
+    }
+    const CMatrix *m = &m_entity->m_node->m_matrix;
+    CPnt3D dir(-m->m_matrix[2][0], 0.0f, -m->m_matrix[2][2]);
+
+    dir.Normalize();
+
+    CPnt3D right(-dir.z, 0.0f, dir.x);
+    CPnt3D delta(0.0f, 0.0f, 0.0f);
+    float t[3] = { 0.0f };
+    bool arrived = true;
+
+    if (m_goal_pos_valid && walk) {
+        m_goal_pos.SubXZ(&m_entity->m_posW, &delta);
+
+        float dist = LenXZ(delta);
+
+        if (dist != 0.0f) {
+            float inv = 1.0f / dist;
+
+            delta.x *= inv;
+            delta.z *= inv;
+        }
+
+        float along = DotP(dir, delta);
+        float across = DotP(right, delta);
+
+        if (dist < data_006501D8)
+            arrived = false;
+
+        float vx = m_throttle[0];
+        static float rest0 = data_00650130;
+
+        float speed = m_speed;
+        float goal = 0.0f;
+
+        x = rest0 * goal - (data_00650130 * (-dist * along) + data_00650134 * vx);
+        x *= data_0066B0F8;
+        x += vx;
+        hi = speed;
+        lo = -speed;
+        _saturate(&x, lo, hi);
+        t[0] = x;
+
+        vz = m_throttle[1];
+
+        static float rest1 = data_00650128;
+
+        top = ai::_min((float)m_speed, data_0064FDA0);
+        z = rest1 * goal - (data_00650128 * (-dist * across) + data_0065012C * vz);
+        z *= data_0066B0F8;
+        z += vz;
+        _saturate(&z, -top, top);
+        t[1] = z;
+        t[2] = 0.0f;
+        if (dist <= m_goal_tolerance) {
+            m_goal_pos_valid = false;
+            arrived = true;
+        }
+    }
+
+    CSealCtrlAi *ai = GetSealCtrlAi();
+    bool turn = !m_goal_pos_valid || arrived || (ai && ai->m_3f4 == 7);
+    dot = 0.0f;
+    if (m_goal_dir_valid && turn) {
+        t[2] = ComputeTurnThrottle(&dir, &m_goal_dir, &dot);
+        if (_close_enough(t[2], data_006501E0, data_006501E8))
+            m_goal_dir_valid = false;
+    }
+    SetThrottle(0, t[0]);
+    SetThrottle(1, t[1]);
+    SetThrottle(2, t[2]);
+}
+
 
 /* the slide toward the goal stepped: the share of what is left this tick (all of it once the goal's
  * time is up), the place's share as the world fudge velocity, the turn's as the rotation's; the goal
@@ -7024,9 +7155,8 @@ extern "C" void func_00567340(CEntityCtrl *ctrl, unsigned int axis, float value)
     ctrl->m_throttle[axis] = value;
 }
 
-/* the template tail's other two instances, explicit until their callers are written: ai::_min over
- * floats (OVL2 0x575C80: CSealCtrl::CreepTick 0x566DC0 and 0x567900 call it) and _close_enough over
- * ints (OVL2 0x575CB0: 0x567900 calls it twice, as UpdateAiMapLoc does) -- _max<f> (0x575C50), the
- * tail's first, comes with seal_control.cpp's caller */
-template const float &ai::_min<float>(const float &, const float &);
+/* the template tail's other instance, explicit until its callers are written: _close_enough over ints
+ * (OVL2 0x575CB0: 0x567900 calls it twice, as UpdateAiMapLoc does) -- _max<f> (0x575C50), the tail's first,
+ * comes with seal_control.cpp's caller, _min<f> (0x575C80) with CSealCtrl::CreepTick's: an explicit
+ * instantiation in the unit makes it auto-inline at the call */
 template bool _close_enough<int>(const int &, const int &, const int &);
