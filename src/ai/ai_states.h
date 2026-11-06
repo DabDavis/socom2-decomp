@@ -821,7 +821,7 @@ public:
     virtual ~CAiSRush();
     void SetTarget(CZSealBody *seal);
 
-    unsigned char _58[0x5c - 0x58];
+    float m_range2;   // 0x58: the range squared (CTState::Tick sets it from the task's range; the name ours)
     unsigned int m_target;   // 0x5c: the target's id (SetTarget), the invalid id for none
     CAiMapLoc m_60;   // 0x60
     CAiTimer m_timer;   // 0x64 (Create builds it with 0.0; 0x70 bytes)

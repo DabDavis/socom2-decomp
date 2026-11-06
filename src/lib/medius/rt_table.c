@@ -15,7 +15,12 @@
  * memset puts the offset first in every one of thirteen spellings. OPEN: func_0063C8A0 (32: registers -- the target keeps nRow in a1 and moves pnCol to t3, here
  * both move: n (pseudo 88, 5 refs over 11 insns) takes a1 before nRow (4 over 37) is allocated, where
  * the target's n is a copy in a3 of the count loaded into a0; thirteen spellings of the count update
- * -- an assignment in the test, the index form, post-increments -- compile alike), func_0063C700 (the init, 67s). Round 22b:
+ * -- an assignment in the test, the index form, post-increments -- compile alike). The init
+ * func_0063C700 (open since round 14b) is byte-exact since round 23b as guard clauses (round 14b's
+ * rule: each `return 1`/`return 2` hoisted into v0, the bounds tests two guards -- an `||` gives the
+ * second its own block) with the buffer size UNSIGNED: the allocator's `unsigned long` size is a zero
+ * extension of it (`dsll32; dsrl32`), as of the two products; the success path returns the last
+ * allocation's known-zero v0. Round 22b:
  * func_0063C950 (0x1F4), the record dispatcher: the three words it hands each handler are copied into
  * locals only after the guards (their addresses go to pfnNext: as parameters they are stored at the
  * entry), and the handler's count is added to the offset only after its sign test (added first, the
@@ -36,32 +41,30 @@ unsigned int gnTableCols;                   /* 0x676408 */
 unsigned int gnTableRows;                   /* 0x67640C */
 int gnTableBufSize;                         /* 0x676410 */
 
-int func_0063C700(int nBufSize, unsigned int nCols, unsigned int nRows)
+int func_0063C700(unsigned int nBufSize, unsigned int nCols, unsigned int nRows)
 {
-    int result = 1;
     unsigned int nSize;
 
-    if (gbInitialized == 0) {
-        result = 2;
-        if (nCols <= 256 && nRows <= 256) {
-            gnTableCols = nCols;
-            gnTableRows = nRows;
-            gnTableBufSize = nBufSize;
-            result = 6;
-            if (rt_memory_allocate_init_zero((void **)&gpTableCounts, nRows * 4) == 0) {
-                nSize = nRows * nCols * 4;
-                if (rt_memory_allocate_init_zero((void **)&gpTable, nSize) != 0)
-                    return 6;
-                if (rt_memory_allocate_init_zero((void **)&gpTableBuf, nBufSize) != 0)
-                    return 6;
-                result = rt_memory_allocate_init_zero((void **)&gpTable2, nSize);
-                if (result != 0)
-                    return 6;
-                gbInitialized = 1;
-            }
-        }
-    }
-    return result;
+    if (gbInitialized != 0)
+        return 1;
+    if (nCols > 256)
+        return 2;
+    if (nRows > 256)
+        return 2;
+    gnTableCols = nCols;
+    gnTableRows = nRows;
+    gnTableBufSize = nBufSize;
+    if (rt_memory_allocate_init_zero((void **)&gpTableCounts, nRows * 4) != 0)
+        return 6;
+    nSize = nRows * nCols * 4;
+    if (rt_memory_allocate_init_zero((void **)&gpTable, nSize) != 0)
+        return 6;
+    if (rt_memory_allocate_init_zero((void **)&gpTableBuf, nBufSize) != 0)
+        return 6;
+    if (rt_memory_allocate_init_zero((void **)&gpTable2, nSize) != 0)
+        return 6;
+    gbInitialized = 1;
+    return 0;
 }
 
 int func_0063C810(void)
