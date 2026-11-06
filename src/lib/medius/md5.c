@@ -4,8 +4,9 @@
  * update's last copy is a sibling call. The object has no `$Header`: it links after LargeInt.c
  * and before the voice library's peer lists. SCEA counts the input in BYTES (a 64-bit count, the
  * bits made only in MD5Final), and the transform and Encode are md5_platform.c's (rt_crypt/src/ps2,
- * whose $Header heads the .rodata they are called in: 0x6641D0, 0x664F80 -- no map rows), the
- * transform taking the context and reading its own buffer. PADDING is RFC 1321's. */
+ * whose $Header heads the data they sit in: 0x6641D0, 0x664F80 -- R5900 assembly linked into OVL2's
+ * data section, medius/md5_platform.s since round 23b), the transform taking the context and reading
+ * its own buffer. PADDING is RFC 1321's. */
 
 typedef unsigned int UINT4;
 

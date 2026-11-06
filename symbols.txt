@@ -3994,8 +3994,8 @@
 0x002B5830 0x580 Draw__12C2DMessage_QFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the states lane, round 49): slot 0xC of C2DMessage_Q's vtable 0x4063B0 (after the destructor 0x2B6EE0, before C2D's inline Draw(matrix) copy), SOCOM 1's Draw__12C2DMessage_QFPQ23zdb7CCamera in the same slot (0x1FF9A0); IsOn, the lines placed and faded, the two backgrounds SetPos'd and drawn, C2D::Draw last as SOCOM 1's; fts_message.cpp, byte-exact
 0x002B5DB0 0x5FC Tick__12C2DMessage_QFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B63B0 0x78 __dt__16C2DMessageStringFv  # OVL1; s1:calls
-0x002B6430 0xF4 func_002B6430  # OVL1
-0x002B6530 0x7CC func_002B6530  # OVL1
+0x002B6430 0xF4 ScrollUp__12C2DMessage_QFf  # OVL1; s1:name by hand (the states lane, round 51): SOCOM 1's C2DMessage_Q::ScrollUp() (0x200100 there: -m_YMargin to m_target_top, the distance from m_cur_top, the move time cleared) is this function's descending-queue branch; SOCOM II adds the ascending queue's background fade-in by dT and the float; CMission::ReOpen_Load calls it with 0 for each of its three queues, Tick inlines it three times; fts_message.cpp
+0x002B6530 0x7CC Add_Message__12C2DMessage_QFPCc7MSGTYPEbif  # OVL1; s1:calls by hand (the states lane, round 51): SOCOM 1's C2DMessage_Q::Add_Message(text, r, g, b) grown -- the same new C2DMessageString and scratch C2DString, the same measure, strstr(text, " "), walk back to a space, strncpy into a 512-byte buffer and recursive call on the rest; SOCOM II's type indexes the colour table 0x440C70, the bool its m_isCentered, the int its display time, the float its scale (x1.1429); fts_message.cpp
 0x002B6D00 0x60 SetBkgColor__12C2DMessage_QFfff  # OVL1; s1:align
 0x002B6D60 0x78 LastMessage__12C2DMessage_QFv  # OVL1; s1:order by hand (the states lane, round 17): SOCOM 1's LastMessage (0x200890) sits between SetBkgColor and Clear_Messages as this does, and does the same -- the list's last line's text, "" with none; fts_message.cpp (open)
 0x002B6DE0 0xF4 Clear_Messages__12C2DMessage_QFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::ReleaseHUD's three calls on its message queues, as SOCOM 1's)
@@ -12834,7 +12834,7 @@
 0x00642BF8 0x50 func_00642BF8  # OVL2 unaligned
 0x00642C48 0x15C func_00642C48  # OVL2 unaligned
 0x00642DA8 0xC8 func_00642DA8  # OVL2 unaligned
-0x00642E70 0x1A8 func_00642E70  # OVL2
+0x00642E70 0x1A4 func_00642E70  # OVL2; size 0x1A8 -> 0x1A4 (GCC round 23b): the row counted the 8-byte alignment nop at 0x643014 after its sibling call's delay slot
 0x00643018 0x128 func_00643018  # OVL2 unaligned; split at 0x643140 (the gcc lane)
 0x00643140 0x28 func_00643140  # OVL2; split from func_00643018: entered only by a tail call (j from 0x642E68, GCC 2.96's sibcall), unreached by its predecessor's branches
 0x00643168 0xB8 func_00643168  # OVL2 unaligned
@@ -13346,6 +13346,11 @@
 0x0064F5F0 0x8 func_0064F5F0  # OVL2
 0x0064F5F8 0xC KM_GetSoftwareID  # OVL2 unaligned; s1:calls (round 7b): NetSetDefaultInitializeParams calls it where SOCOM 1's calls KM_GetSoftwareID
 0x0064F604 0x118 KM_GetSoftwareKeyPair  # OVL2 unaligned; s1:exact
+0x006641D0 0xDA8 func_006641D0  # OVL2 data area; md5_platform.c's (rt_crypt/src/ps2/md5_platform.c: its $Header and md5_platform.h's, 0x664100/0x664168, head the run, RSA.c's assert path 0x664FE0 follows it): the MD5 transform, R5900 assembly linked into the data section (sq/lq saves, every delay slot a nop); md5.c's update 0x629B78 calls it on the context, twice (GCC round 23b)
+0x00664F80 0x5C func_00664F80  # OVL2 data area; md5_platform.c's: the little-endian Encode as assembly -- ld a doubleword, eight sb, 8 bytes a pass while the count is positive; md5.c's final 0x629CD8 calls it for the bit count and the digest (GCC round 23b)
+0x00665B30 0x1F70 func_00665B30  # OVL2 data area; SHA1_platform.c's (rt_crypt/src/ps2/SHA1_platform.c: its $Header and SHA1_platform.h's, 0x665A60/0x665AC8, head the run, StreamMedia.c's $Header 0x667B50 follows the three): the SHA-1 transform, R5900 assembly in the data section (frame 160, sq/lq saves); SHA1.c's update 0x642E70 and final 0x643018 call it as (state, block), twice each (GCC round 23b)
+0x00667AA0 0x2C func_00667AA0  # OVL2 data area; SHA1_platform.c's: the block's words byte-swapped in place, a doubleword a pass (ld; pextlb; prevh; ppacb; sd) while the count is positive; SHA1.c's update and final call it before each transform as (block, 64 or 56, the context's byte-order flag) (GCC round 23b)
+0x00667AD0 0x74 func_00667AD0  # OVL2 data area; SHA1_platform.c's: the digest out -- each doubleword of the state byte-swapped (pextlb; prevh; ppacb) and stored a byte at a time, 4 bytes a word while the count lasts; SHA1.c's final 0x643018 calls it as (digest, state, n <= 20) (GCC round 23b)
 0x00668480 0xB4 __sinit_ai_events.cpp  # OVL2 data area; a static initialiser; s1:unit ai_events.cpp (exact)
 0x00668540 0xE4 __sinit_ai_astar.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_astar.cpp builds ai::path_queue -- the list AbortPathPlan removes from, 0x49B160 there -- and three words after it; SOCOM II's builds the same at 0x66A180 (the list AbortPathPlan 0x5107B0 removes from) after three new statics)
 0x00668630 0x44 __sinit_ai_map.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_map.cpp builds the dummy cell through CAiCell(); SOCOM II's builds it at 0x66A198 through 0x515720, then 0.5f * sqrtf(2.0f) into 0x65AB38, GetDirCos's static)

@@ -912,7 +912,14 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
      * class, its != materialised. Ten forms of this end() and the iterator's == (a reference or const
      * count, size(), data_ + size_ straight, begin() + n, base() compares, == by value, const
      * references to the fields) hoist the whole end (0x120 of 0x138); a const view's size() re-reads
-     * the size alone (0x140), a const self pointer hoists it (0x128). Not met, nothing changed */
+     * the size alone (0x140), a const self pointer hoists it (0x128). Not met, nothing changed.
+     * Round 37 (build/p37/mkoies.py, untracked): through a const view whose accessors are cast back,
+     * `const __vector_imp *v = this; T *const p = const_cast<__vector_imp *>(v)->data() +
+     * const_cast<__vector_imp *>(v)->size_;`, the latch re-reads BOTH size and data -- the target's loop
+     * -- but through the two field addresses hoisted into registers (0x140; the target loads 4(a2) and
+     * 8(a2) off the list's register); the view's fields read directly keep begin's and end's data loads
+     * apart at the entry and hoist the latch's (0x128); a user-declared iterator copy constructor changes
+     * nothing (0x120). Not met */
     iterator end()
     {
         T *const p = this->data() + this->size_;
@@ -1076,7 +1083,11 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
      * deeper, as begin's raw begin) makes CountKeys byte-exact and keeps NextFile 0x34D740, but costs
      * _countKeys 0x2578F0 (25 off) and fixupKey 0x257CC0 (23 off), whose ends sit in the loop test;
      * a non-const local the same as now, a reference local or an iterator local lose more
-     * (build/p25/vend.py) -- not met: the walks disagree at level 5 */
+     * (build/p25/vend.py) -- not met: the walks disagree at level 5. Round 37 (the engine core's round
+     * 24 request, measured again over every hand-written unit, master 2e5dc150): that symmetric end(),
+     * the raw end a level below __iter as begin()'s raw begin is, is CountKeys' alone and costs 217 --
+     * every walk whose end is a loop test's argument, a level deeper (its 65 "gains" are each unit's
+     * out-of-line copy of the pod's end(), 0x34D920's code, cut and emitted): a level-6 witness */
     iterator end()
     {
         unsigned int *const p = __raw_end();

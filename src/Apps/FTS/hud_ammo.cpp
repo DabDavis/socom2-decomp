@@ -252,7 +252,10 @@ void CAmmoDisplay::SetTrans(float trans)
  * local) all fold back to the same temporary: 7. Round 56: the parameter itself reassigned narrowed
  * (`mags = (unsigned char)mags;` before the switch, 11; inside the switch's expression, 7). Round
  * 61: the switch as an if / else chain on a byte local or on the narrowed parameter (0x1B8; in case
- * order 1-2-3, 67 off). */
+ * order 1-2-3, 67 off). Round 62: igdump's PCode numbers the case-1 constant (v38) BEFORE the
+ * narrowed count (v40): the back end reuses one constant register per value, made at its first
+ * materialisation; a byte local, an int local of the cast (each before own), own assigned apart,
+ * `(bool)1`, a `(unsigned int)` selector: 7 each. */
 void CAmmoDisplay::SetMags(int mags, zdb::CTexHandle *tex)
 {
     bool own = true;
