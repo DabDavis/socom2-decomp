@@ -67,7 +67,7 @@ typedef struct DICTTREE {
 typedef struct FSTREE {
     CASR *c;                            /* +0 */
     struct TREEITEM *tree;              /* +4: the word tree (Build_Tree_ForChinese) */
-    unsigned int *treelinks;            /* +8 */
+    struct TREELINK *treelinks;         /* +8 */
     DICTITEM *items;                    /* +12 */
     DICTLINK *links;                    /* +16 */
     DICTITEM *newitems;                 /* +20 */
@@ -86,6 +86,197 @@ __inline__ unsigned char Tone_Of_Final(unsigned short final, unsigned short n)
     if (final != 0 && final < n)
         return 1;
     return 0;
+}
+
+static __inline__ unsigned short IsStartWord(unsigned short f)
+{
+    return f & 1;
+}
+
+typedef struct TREEITEM {
+    int id;
+    int pron;                           /* +4 */
+    unsigned short link;                /* +8 */
+} TREEITEM;
+
+typedef struct TREEUW {
+    unsigned short *lex;
+    int *begin;
+} TREEUW;
+
+typedef struct NBRWORD {
+    int state;
+    int score;
+    int end;
+    int f12;
+    struct NBRWORD *next;
+} NBRWORD;
+
+typedef struct NBRESULT {
+    int f0;
+    int score;
+    int f8;
+    NBRWORD *words;
+    struct NBRESULT *next;
+} NBRESULT;
+
+typedef struct TREELINK {
+    unsigned short node;
+    unsigned short next;
+} TREELINK;
+
+/* the N best's words as a tree of pronunciations: a word whose state is marked with bit 0 (a boundary of a phrase, f >> 2 its kind) is
+ * skipped when it starts the result or repeats its neighbour's kind, and is otherwise one item of id -2; the prefixes already in
+ * the tree are shared. SOCOM 1's LOCAL (round 41c). */
+static void Build_Tree_ForChinese(CASR *c, TREEITEM *items, TREELINK *links, unsigned short *dict, int *bow,
+                                  int tab0, unsigned int *pnlinks, unsigned int *pnnodes)
+{
+    NBRESULT *r = *(NBRESULT **)c->sp_arg1;
+    unsigned int nlinks = 0;
+    unsigned int nnodes = 1;
+
+    for (; r != 0; r = r->next) {
+        NBRWORD *w = r->words;
+        unsigned int prev = 0;
+        int first = 0;
+        int id = 0;
+        unsigned int lnk, prevnp, np, i, j;
+        int e0, e;
+
+        if (w != 0) {
+            e0 = w->end;
+            do {
+                unsigned short *d = dict + w->state;
+                unsigned int f;
+
+                e = w->end;
+                lnk = items[prev].link;
+                f = *d;
+                if (IsStartWord(f)) {
+                    NBRWORD *nx;
+                    unsigned int f2;
+
+                    if (e == e0) {
+                        w = w->next;
+                        goto next;
+                    }
+                    f2 = f >> 2;
+                    if ((d[-1] >> 2) == f2) {
+                        w = w->next;
+                        goto next;
+                    }
+                    nx = w->next;
+                    if (nx != 0 && f2 == (dict[nx->state] >> 2)) {
+                        w = nx;
+                        goto next;
+                    }
+                    id = -2;
+                    first = -2;
+                } else {
+                    d++;
+                    e0 = e;
+                    id = d[1] + (d[2] << 16);
+                    first = bow[id] - tab0;
+                }
+                for (; lnk != 0xFFFF; lnk = links[lnk].next) {
+                    unsigned int n = links[lnk].node;
+
+                    if (items[n].pron == first) {
+                        w = w->next;
+                        prev = n;
+                        break;
+                    }
+                }
+                if (lnk == 0xFFFF) {
+                    if (prev != 0 && items[prev].id != -2)
+                        prevnp = bow[items[prev].id + 1] - bow[items[prev].id];
+                    else
+                        prevnp = 1;
+                    break;
+                }
+            next:
+                ;
+            } while (w != 0);
+            lnk = items[prev].link;
+            if (w != 0) {
+                for (;;) {
+                    if (id == -2)
+                        np = 1;
+                    else
+                        np = bow[id + 1] - bow[id];
+                    for (i = 0; i < np; i++) {
+                        for (j = 0; j < prevnp; j++) {
+                            links[nlinks + j].node = j * np + nnodes + i;
+                            if (lnk != 0xFFFF)
+                                links[nlinks + j].next = lnk + j;
+                            else
+                                links[nlinks + j].next = -1;
+                        }
+                        lnk = nlinks;
+                        if (i == np - 1) {
+                            for (j = 0; j < prevnp; j++)
+                                items[prev + j].link = nlinks + j;
+                        }
+                        nlinks = (unsigned short)(nlinks + prevnp);
+                        for (j = 0; j < prevnp; j++) {
+                            items[j * np + nnodes + i].pron = first + i;
+                            items[j * np + nnodes + i].id = id;
+                        }
+                    }
+                    prev = nnodes;
+                    w = w->next;
+                    {
+                        unsigned int k = np * prevnp;
+
+                        nnodes = (unsigned short)(nnodes + k);
+                        prevnp = k;
+                    }
+                    if (w == 0)
+                        break;
+                    {
+                        unsigned short *d = dict + w->state;
+                        unsigned int f = *d;
+
+                        if (IsStartWord(f)) {
+                            NBRWORD *nx;
+                            unsigned int f2 = f >> 2;
+
+                            if (w->end != e0 && (d[-1] >> 2) != f2) {
+                                nx = w->next;
+                                if (nx == 0 || f2 != (dict[nx->state] >> 2))
+                                    goto boundary;
+                            } else {
+                                nx = w->next;
+                            }
+                            w = nx;
+                            if (w == 0)
+                                break;
+                            d = dict + w->state;
+                            e0 = w->end;
+                            d++;
+                            id = d[1] + (d[2] << 16);
+                            first = bow[id] - tab0;
+                            goto have;
+                        boundary:
+                            id = -2;
+                            first = -2;
+                        } else {
+                            e0 = w->end;
+                            d++;
+                            id = d[1] + (d[2] << 16);
+                            first = bow[id] - tab0;
+                        }
+                    }
+                have:
+                    lnk = 0xFFFF;
+                }
+            }
+            for (i = 0; i < prevnp; i++)
+                items[prev + i].link = -1;
+        }
+    }
+    *pnlinks = nlinks;
+    *pnnodes = nnodes;
 }
 
 /* item n copied into the split tree's slot i, its child link apart (the pointers the block's own) */
@@ -456,42 +647,8 @@ void FreeSecondPassContext_ForChinese(CASR *c)
     }
 }
 
-extern void Build_Tree_ForChinese(CASR *c, struct TREEITEM *items, unsigned int *links, unsigned short *dict, int *bow,
-                                  int tab0, unsigned int *pnlinks, unsigned int *pnnodes);
 extern void Translate_Prons_Into_Items_And_Tones(unsigned int node, unsigned int *pnitems, unsigned int *pnlinks,
                                                  FSTREE *t);
-
-typedef struct TREEITEM {
-    int id;
-    int pron;                           /* +4 */
-    unsigned short link;                /* +8 */
-} TREEITEM;
-
-typedef struct TREEUW {
-    unsigned short *lex;
-    int *begin;
-} TREEUW;
-
-typedef struct NBRWORD {
-    int state;
-    int score;
-    int end;
-    int f12;
-    struct NBRWORD *next;
-} NBRWORD;
-
-typedef struct NBRESULT {
-    int f0;
-    int score;
-    int f8;
-    NBRWORD *words;
-    struct NBRESULT *next;
-} NBRESULT;
-
-static __inline__ unsigned short IsStartWord(unsigned short f)
-{
-    return f & 1;
-}
 
 /* the context for Mandarin: the word tree, its pronunciations translated into items and tones, the finals split up
  * and swapped; SOCOM 1's body (round 41c). What the code said: one variable holds the table's sum and then the total (`move
@@ -532,7 +689,7 @@ int CreateSecondPassContext_ForChinese(CASR *c)
     unsigned int *pm1, *pm2;
     unsigned int n2, n4;
     TREEITEM *items;
-    unsigned int *links;
+    TREELINK *links;
     DICTITEM *ditems;
     DICTLINK *dlinks;
     unsigned int l;
@@ -620,7 +777,7 @@ int CreateSecondPassContext_ForChinese(CASR *c)
     }
     items[0].link = -1;
     Build_Tree_ForChinese(c, items, links, dict, bow, tab0, &nlinks, &nnodes);
-    for (l = items[0].link; l != 0xFFFF; l = ((unsigned short *)&links[l])[1])
+    for (l = items[0].link; l != 0xFFFF; l = links[l].next)
         nroots++;
     {
         unsigned int nw;
@@ -638,7 +795,7 @@ int CreateSecondPassContext_ForChinese(CASR *c)
         lex = uw->lex;
         begin = uw->begin;
         while (k != 0xFFFF) {
-            k = ((unsigned short *)&links[k])[1];
+            k = links[k].next;
             e++;
         }
         pm2 = &maxn;
@@ -658,7 +815,7 @@ int CreateSecondPassContext_ForChinese(CASR *c)
             e = 0;
             k = items[i].link;
             while (k != 0xFFFF) {
-                k = ((unsigned short *)&links[k])[1];
+                k = links[k].next;
                 e++;
             }
             if (m2 < e)
