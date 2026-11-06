@@ -2154,6 +2154,9 @@ public:
      * checked by a delayed intersection when it hurts here or is weapon 123 (SOCOM 1's took the
      * location by value; SOCOM II's caller, HandleDamage 0x5AB850, passes it by address, and the
      * part and location go unread; OVL2 0x5AC070, seal_env.cpp) */
+    /* the explosive's sight from the head answered: its damage taken, unless behind something solid
+     * (SOCOM 1's; OVL2 0x5A0E70) */
+    void HandleGrenadeExplosion();
     void HandleDamageExplosive(CZProjectile *proj, CZBodyPart *part, DAMAGE_LOCATION *where);
     /* a bullet's damage on a part, the location handed back (SOCOM 1's took it by value; OVL2
      * 0x5ABBC0, after HandleDamageExplosive in both builds -- not written) */

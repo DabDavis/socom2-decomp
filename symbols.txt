@@ -10742,7 +10742,7 @@
 0x005A0C00 0xC8 func_005A0C00  # OVL2
 0x005A0CD0 0xC8 func_005A0CD0  # OVL2
 0x005A0DA0 0xC8 func_005A0DA0  # OVL2
-0x005A0E70 0x7A8 func_005A0E70  # OVL2
+0x005A0E70 0x7A8 HandleGrenadeExplosion__10CZSealBodyFv  # OVL2; s1:calls by hand (the SEALs, round 58): SOCOM 1's HandleGrenadeExplosion__10CZSealBodyFv 0x28F840: ClearIgnoreNodeDelayed, the hits' walk, the material tests, the radius, the ringing ears, UpdateHealth and the killer in order; PrePostTick calls it where SOCOM 1's does
 0x005A1620 0x284 func_005A1620  # OVL2
 0x005A18B0 0x2C0 func_005A18B0  # OVL2
 0x005A1B70 0x10 RemoteWeaponDamageNonVictim__10CZSealBodyF15DAMAGE_LOCATIONP10CZSealBodyP10CZSealBodyUcb  # OVL2; s1:exact

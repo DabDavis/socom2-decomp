@@ -3104,6 +3104,209 @@ void CZSealBody::HandleDamage(CZProjectile *proj)
     }
 }
 
+extern "C" {
+/* the blast's stun by the weapon (OVL2 0x5A5250, below); the blowback a blast's damage gives (OVL1
+ * 0x3C5930, zwep_ftsweapon.cpp's) */
+void func_005A5250(CZSealBody *seal, EQUIP_ITEM item, const CPnt3D *from, const float *scale);
+float func_003C5930(float damage);
+int func_005A18B0(CZSealBody *seal, CZProjectile *proj);
+}
+
+/* (the people's material, SOCOM 1's zwep::personMaterialId: OVL1 data 0x3E14F8) */
+namespace zwep {
+extern int personMaterialId;
+}
+
+static inline float LenSq(const CPnt3D &v)
+{
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+static inline bool NoNode(const zdb::CNode *p)
+{
+    return !(p != 0);
+}
+
+/* the explosive's sight from the head answered, once the delayed ray has run: the hits walked from the
+ * blast outward past the SEAL's own nodes and whatever lets a blast through; something solid stops it unless
+ * the shot has bit 9. The blast's stun by its reach, a player's ringing ears (not for the shotguns' 81-84),
+ * the explosive's hits by the odds at random locations, the blowback, the health, a death credited
+ * (OVL2 0x5A0E70: SOCOM 1's HandleGrenadeExplosion, which took its stuns one by one) */
+void CZSealBody::HandleGrenadeExplosion()
+{
+    if (!m_tempprojectile)
+        return;
+    if (m_tempprojectile->m_state == 7) {
+        m_tempprojectile = 0;
+        m_projectileintersecthandle = -1;
+        return;
+    }
+
+    bool alive = m_isAlive ? true : false;
+
+    zdb::CWorld::m_world->ClearIgnoreNodeDelayed(m_projectiledi);
+
+    bool done = false;
+    int i;
+    zdb::IntersectStruct *best = 0;
+    bool blocked = false;
+    int n = m_projectiledi->m_Cnt;
+
+    do {
+        CPnt3D hd;
+        float bestd = 0.0f;
+        float last;
+
+        if (!best)
+            last = bestd;
+        else {
+            CPnt3D d;
+
+            best->m_pos.Sub(&m_projectiledi->m_Tail, &d);
+            last = d.x * d.x + d.y * d.y + d.z * d.z;
+        }
+        best = 0;
+        for (i = 0; i < n; i++) {
+            bool mine;
+            zdb::CNode *p;
+            zdb::IntersectStruct *h = &m_projectiledi->m_Intersects[i];
+
+            if (h->m_node) {
+                p = h->m_node->m_parent;
+                mine = false;
+                while (!NoNode(p) && !mine) {
+                    if (p == GetNode())
+                        mine = true;
+                    p = p->m_parent;
+                }
+                if (mine)
+                    continue;
+            }
+
+            h->m_pos.Sub(&m_projectiledi->m_Tail, &hd);
+
+            float dd = hd.x * hd.x + hd.y * hd.y + hd.z * hd.z;
+
+            if (dd > last && (!best || dd < bestd)) {
+                best = h;
+                bestd = dd;
+            }
+        }
+        if (best) {
+            CMaterialEx *m = MaterialEx(best->GetMaterial());
+
+            if (m && !(m->m_particle ? true : false) && !(m->m_liquid ? true : false) && !(m->m_pickup ? true : false) &&
+                zwep::personMaterialId != best->GetMaterial()) {
+                blocked = true;
+                done = blocked;
+            }
+        } else
+            done = true;
+    } while (!done);
+    if (!blocked || m_tempprojectile->GetFlag9()) {
+        bool ears;
+        int n;
+        CZProjectile *proj;
+        bool b;
+        const CPnt3D *from;
+        int k;
+        CZAmmo *ammo;
+        unsigned int shooter;
+        EQUIP_ITEM id;
+
+        from = &m_tempprojectile->m_framestartpos;
+        id = m_tempprojectile->m_weapon->m_ID;
+        ears = false;
+        if (IsPlayer()) {
+            switch (id) {
+            case 84:
+            case 83:
+            case 82:
+            case 81:
+                break;
+            default:
+                ears = true;
+                break;
+            }
+        }
+
+        float scale = 1.0f;
+        float radius = m_tempprojectile->m_ammo ? m_tempprojectile->m_ammo->GetExplosionRadius() : 0.0f;
+
+        if (radius > 0.0f) {
+            float r2 = radius * radius;
+            CPnt3D d;
+
+            d = m_posW;
+            d.Sub(from, &d);
+
+            float dd = LenSq(d);
+
+            if (r2 > dd)
+                scale = 1.0f - dd / r2;
+            else
+                scale = 0.0f;
+        }
+        if (scale > 0.0f) {
+            func_005A5250(this, id, from, &scale);
+            if (ears) {
+                CSnd *snd = CSnd::GetSoundByName(".RINGING_EARS");
+
+                if (snd)
+                    snd->PlaySound(true, 0, 255);
+                CSnd::SetGroupVolTemp(5.0f, 0.35f, 0, 2, 1, 3, 5, 6, -1);
+            }
+
+            DAMAGE_LOCATION where;
+
+            n = func_005A18B0(this, m_tempprojectile);
+            for (k = 0; k < n; k++)
+                PelletDamage(this, m_tempprojectile, where);
+            if (n > 0 && !(theNetwork.m_9 && IsRemote())) {
+                proj = m_tempprojectile;
+
+                float damage = proj->GetDamage(&m_posW, 0.0f);
+
+                if (damage > 0.0f) {
+                    ammo = proj->m_ammo;
+
+                    float reach;
+
+                    if (ammo) {
+                        ammo->GetExplosionDamage();
+                        reach = ammo->GetExplosionRadius();
+                    } else
+                        reach = 30.0f;
+                    func_0057ED10(this, &proj->m_framestartpos, func_003C5930(damage), reach);
+                }
+            }
+            UpdateHealth(where, (SEAL_DEATH_TYPE)4);
+
+            shooter = m_tempprojectile->m_shooterID;
+
+            CEntity *e = CEntity::m_list.GetEntityById(shooter);
+            CZSealBody *killer = 0;
+
+            if (e)
+                killer = AsSeal(e);
+            if (alive && !m_isAlive) {
+                if (killer)
+                    ((CSealCtrl *)killer->m_control)->NotifyTargetDown(this);
+
+                b = false;
+                if (func_003C5AC0(m_tempprojectile->m_weapon->m_ID))
+                    b = true;
+                func_00547AA0(this, shooter, b);
+                func_00547A90(this, id);
+            }
+        }
+    }
+    m_tempprojectile = 0;
+    m_projectileintersecthandle = -1;
+    if (!IsRemote())
+        func_0057E770(this);
+}
+
 /* a remote hit taken: the stats told, a first head shot counted; a shotgun's pellets each at a random
  * location by its own ammunition, the location's health then updated; else the location's damage; for this
  * SEAL's own a shotgun's blowback; the health updated -- a death's kill credited, its kind 255 when it lives
