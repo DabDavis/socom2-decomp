@@ -276,6 +276,7 @@ public:
 class CWrappedText : public CRenderableString {
 public:
     virtual ~CWrappedText();
+    virtual void SetString(const char *s, bool translate);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
@@ -628,6 +629,7 @@ public:
 };
 
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 
 extern CZAnimMain ZAnim;
 
@@ -1963,6 +1965,86 @@ void CWrappedText::LoadSpec(const CWrapSpec &spec, zdb::CTextureRelocMgr *mgr)
     m_displayOneLine = spec.m_displayOneLine;
 }
 
+/* the text laid out in lines (SOCOM 1's CWrappedText::SetString, 0x391630 there, with SOCOM II's
+ * flag and colour codes): the old lines deleted, then a new line after a new line in the running
+ * colour and bold state -- leading spaces skipped, characters added until the width is passed with a
+ * space to go back to, or a newline; "#C" and three bytes change the colour and end the line, "#B"
+ * toggles the bold -- backed up to the last space, and kept if anything was added */
+void CWrappedText::SetString(const char *s, bool translate)
+{
+    bool bold = false;
+
+    if (!s || !*s)
+        return;
+
+    const char *str = translate ? TranslateString(s) : s;
+    int len = strlen(str);
+    int pos = 0;
+    iterator i;
+    iterator e = end();
+
+    for (i = begin(); i != e;) {
+        C2D *p = *i;
+        iterator next;
+
+        next = erase(i);
+        delete p;
+        i = next;
+    }
+
+    CPnt3D color = *(const CPnt3D *)m_color;
+
+    while (pos < len) {
+        CRenderableString *line = new CRenderableString;
+        int lastspace = 0;
+        bool any = false;
+
+        line->m_scale = m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f);
+        line->SetFont(m_font);
+        line->SetString("", false);
+        line->m_height = GetSpacing();
+        line->SetColor(color.x, color.y, color.z);
+        line->UpdatePos();
+        line->m_socom2_8c = bold;
+        while ((str[pos] == ' ' || str[pos] == '\n') && pos < len)
+            pos++;
+        while (pos < len && (line->GetLength() < m_width || !lastspace)) {
+            if (str[pos] == ' ')
+                lastspace = pos;
+            if (str[pos] == '#' && str[pos + 1] == 'C' && pos + 4 < len) {
+                color.x = str[pos + 2];
+                color.y = str[pos + 3];
+                color.z = str[pos + 4];
+                pos += 5;
+                break;
+            }
+            if (str[pos] == '#' && str[pos + 1] == 'B')
+                bold = !bold;
+            line->AddCharacter(str[pos]);
+            any = true;
+            line->UpdatePos();
+            pos++;
+            if (str[pos] == '\n')
+                break;
+        }
+        if (!(line->GetLength() < m_width) && lastspace > 0 && lastspace < pos) {
+            do {
+                if (str[pos] == '#' && str[pos + 1] == 'B')
+                    bold = !bold;
+                line->DeleteCharacter();
+                pos--;
+            } while (lastspace < pos);
+        }
+        if (any)
+            push_back(line);
+        else
+            delete line;
+    }
+    m_numLines = -1;
+    if (m_autoScroll)
+        m_offset = 0;
+}
+
 /* the lines deleted, each taken off the list first (SOCOM 1's ~CWrappedText, 0x391480 there: the
  * same walk, ~CUIMapCtrl's shape), then the arrows and the renderable string */
 CWrappedText::~CWrappedText()
@@ -2775,6 +2857,8 @@ public:
  * inlines it) */
 class ListItem {
 public:
+    /* (SOCOM II's: the array look's reader constructor news one and gives it its look) */
+    ListItem() : m_text(0), m_24(true), m_impl(0) {}
     ListItem(const char *s);
     ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols);
     ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font, float scale);
@@ -2788,6 +2872,9 @@ public:
 
     void MakeTimedText();
     void MakeWrappedText();
+    /* the item's look a picture of the size given (ours: an inline, its arguments evaluated and
+     * `this` taken ahead of the allocation -- the array look's reader constructor's s2) */
+    void MakeImage(int w, int h, zdb::CTexHandle *tex);
     void SetString(const char *s);
     void SetFont(C2DFont *font);
     void SetScale(float scale);
@@ -4252,6 +4339,11 @@ public:
     zdb::CTexHandle *m_tex;   // 0xb8
 };
 
+inline void ListItem::MakeImage(int w, int h, zdb::CTexHandle *tex)
+{
+    m_impl = new CListItemImageTypeImpl(w, h, tex);
+}
+
 /* a list item of several columns (SOCOM 1's CListItemArrayTypeImpl, table 0x407B90; 0x14 bytes): an
  * item per column out of the reader's array of strings, each slot walking them -- through the
  * items' own looks where the item would only forward, through the items where they do more */
@@ -4432,20 +4524,20 @@ void CListItemStringTypeImpl::DrawPrep(const CUIListBox &box, int x, int y, int 
 
 /* a reader node as the array look reads it (zrdr.h's _zrdr: its type -- 3 a string, 4 an array --,
  * an array's count at 2 and its 8-byte elements, or a string's text, through the word at 4) */
-struct ZRdrNode {
-    unsigned char type;   // 0x0
-    unsigned short count;   // 0x2
-    union {
-        ZRdrNode *array;   // 0x4
-        const char *str;
-    };
-};
-
-static inline unsigned int RdrCount(const ZRdrNode *r) { return r->type == 4 ? r->count : 0; }
-static inline const char *RdrString(const ZRdrNode *r) { return r->type == 3 ? r->str : 0; }
-static inline ZRdrNode *RdrElem(const ZRdrNode *r, unsigned int i)
+static inline unsigned int RdrCount(_zrdr *r) { return r->m_type == 4 ? r->m_length : 0; }
+static inline const char *RdrString(_zrdr *r) { return r->m_type == 3 ? r->m_str : 0; }
+/* a number's value as an int (zrdr's int reader, inline: 1 an int, 2 a float -- ours) */
+static inline int RdrInt(_zrdr *r)
 {
-    return i < RdrCount(r) ? &r->array[i] : 0;
+    if (r->m_type == 1)
+        return r->m_int;
+    if (r->m_type == 2)
+        return (int)r->m_real;
+    return 0;
+}
+static inline _zrdr *RdrElem(_zrdr *r, unsigned int i)
+{
+    return i < RdrCount(r) ? &r->m_array[i] : 0;
 }
 
 /* the string table's id for a name, 0 if it has none (ztwod's, 0x361B20) */
@@ -4457,7 +4549,7 @@ int GetStringId(const char *name);
 C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
 {
     C2DAnimCmdHdr *cmd;
-    const ZRdrNode *r = (const ZRdrNode *)zrdr_findtag(rdr, "CAPTION");
+    _zrdr *r = zrdr_findtag(rdr, "CAPTION");
     const char *valve = zrdr_findstring(rdr, "VALVE");
 
     if (r) {
@@ -4465,12 +4557,12 @@ C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
         cmd->header.timeless = 1;
         cmd->header.data_size = sizeof(C2DAnimCmdHdr);
         cmd->m_type = GetZAnimCmdType("CAPTION");
-        if (r->type == 4 && RdrCount(r) > 1) {
+        if (r->m_type == 4 && RdrCount(r) > 1) {
             CSaferStr name;
 
             name = "";
             for (int i = 0; i < RdrCount(r); i++) {
-                if (RdrElem(r, i)->type == 3)
+                if (RdrElem(r, i)->m_type == 3)
                     name += RdrString(RdrElem(r, i));
             }
             cmd->m_arg = ZAnim.m_CurAnim->AddName(name.c_str());
@@ -4498,24 +4590,22 @@ C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
 }
 
 /* an item per string of the reader's array, as many as there are columns (SOCOM 1's; ready while
- * every item is).
- * OPEN, 10 instructions, all in the prologue: the target builds CListItemTypeImpl's table address,
- * stores it, then builds this class's and stores it (one register, v0, serialised); here both
- * addresses are built up front in v1/v0 (as the string look's constructor 0x36B330 does in the
- * target too). The rest -- the reader's count clamped to the columns (RdrCount evaluated twice),
- * the walk, the push_back through the pod insert -- is byte-exact. Round 56: an empty user
- * constructor for CListItemTypeImpl, an explicit `: CListItemTypeImpl(), m_items()` -- 10 each (the
- * target's serialised stores read as the two addresses in two blocks, or one register reused) */
-CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols)
+ * every item is). Byte-exact since round 65 (10 off since round 25, all in the prologue): the
+ * parameter read directly, no local copy. The scheduler issues two a cycle, so one instruction more
+ * ahead of the first table address -- the parameter's copy at entry -- is what turns "both addresses
+ * up front" into the target's serialised stores here, and the reverse in the sibling below; its
+ * helpers take `_zrdr *`, not const: an inline's const conversion makes `(const _zrdr *)r + 2` a
+ * subable expression (no longer IRO_IsSubableExpression's `variable + constant`), hoisted out of
+ * the walk */
+CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *r, const std::vector<ColumnData *> &cols)
 {
-    const ZRdrNode *r = (const ZRdrNode *)rdr;
     int n = RdrCount(r) < cols.size() ? RdrCount(r) : cols.size();
 
     m_ready = true;
     for (int i = 0; i < n; i++) {
-        ZRdrNode *e = RdrElem(r, i);
+        _zrdr *e = RdrElem(r, i);
 
-        if (e && e->type == 3) {
+        if (e && e->m_type == 3) {
             ListItem *item = new ListItem(RdrString(e));
 
             if (!item->m_24)
@@ -4523,6 +4613,58 @@ CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<Col
             item->SetString(RdrString(e));
             m_items.push_back(item);
         }
+    }
+}
+
+/* an item per entry of the reader's array in a font and scale, as many as there are columns (SOCOM
+ * II's, the plain constructor's walk grown; ready while every item is): a picture column's look a
+ * bitmap of the column's size, its texture picked by the entry's number; the others' look by the
+ * column's type, then the font, scale and size, and the entry's text -- from an array's VALUE, COLOR
+ * and DISABLED, or formatted from anything else */
+CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *r, const std::vector<ColumnData *> &cols,
+                                               C2DFont *font, float scale)
+{
+    int n = RdrCount(r) < cols.size() ? RdrCount(r) : cols.size();
+
+    m_ready = true;
+    for (int i = 0; i < n; i++) {
+        _zrdr *e = RdrElem(r, i);
+        ListItem *item = new ListItem;
+
+        if (cols[i]->m_type == 0) {
+            item->MakeImage(cols[i]->m_width, cols[i]->m_height,
+                            cols[i]->m_textures[RdrInt(e) % cols[i]->m_textures.size()]);
+        } else {
+            if (cols[i]->m_type == 2)
+                item->MakeTimedText();
+            else if (cols[i]->m_type == 3)
+                item->MakeWrappedText();
+            item->SetFont(font);
+            item->SetScale(scale);
+            item->SetHeight(cols[i]->m_height);
+            item->SetWidth(cols[i]->m_width);
+            if (e->m_type == 4) {
+                const char *value = zrdr_findstring(e, "VALUE");
+
+                if (value)
+                    item->SetString(value);
+                if (zrdr_findtag(e, "COLOR")) {
+                    PNT3D c;
+
+                    zrdr_findPNT3D(e, "COLOR", &c);
+                    item->SetColor((int)c.x, (int)c.y, (int)c.z);
+                }
+                if (zrdr_findtag(e, "DISABLED")) {
+                    item->m_24 = false;
+                    m_ready = false;
+                }
+            } else {
+                char buf[800];
+
+                item->SetString(CUIVariable::Format(e, buf, 800));
+            }
+        }
+        m_items.push_back(item);
     }
 }
 
@@ -4601,7 +4743,7 @@ ListItem::ListItem(const char *s) : m_text(0), m_24(true), m_impl(new CListItemS
 ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols)
     : m_text(0), m_24(true), m_impl(0)
 {
-    const ZRdrNode *r = (const ZRdrNode *)rdr;
+    _zrdr *r = rdr;
 
     if (r && RdrCount(r))
         m_impl = new CListItemArrayTypeImpl(rdr, cols);
@@ -4612,9 +4754,9 @@ ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols)
 ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font, float scale)
     : m_text(0), m_24(true), m_impl(0)
 {
-    const ZRdrNode *r = (const ZRdrNode *)rdr;
+    _zrdr *r = rdr;
 
-    if (r->type == 3)
+    if (r->m_type == 3)
         m_impl = new CListItemStringTypeImpl(RdrString(r));
     else if (RdrCount(r)) {
         m_impl = new CListItemArrayTypeImpl(rdr, cols, font, scale);
@@ -4843,15 +4985,10 @@ unsigned char UiGetDirStickMoved();
  * and the press tested first: every saved register and both spills (this, the count and the item
  * pointer at sp+236/208/160, two stick answers at 192/176) are the target's (tools/perm.py over the
  * six action tests and the four combinations, 1,000 orders).
- * OPEN, 10 instructions: the action's event, state and the pad's state for it take a1, a0, a2 in
- * the target and a2, a1, a0 here -- MW colours the three temporaries highest-index first (igdump:
- * the pad state's load numbered last); named locals for any of them (dead first definitions too)
- * are copy-propagated away and change nothing, the compare's operands swapped reorders the loads
- * (18), the tests in SOCOM 1's order (event tests first) gets the temporaries but not the saved
- * registers (22). Round 53: the pad's state as a two-armed value (`a->State == (a->Event ?
- * pad->m_state[a->Event] : pad->m_state[a->Event])`, CUIListBox::HandlePad's close) gives the
- * state a0, 8 off: the event and the pad's state then swap (a2/a1); the replay wants the pad's
- * load numbered before the event's (v83 -> 78.5) or the event's after it (v79 -> 84.5) */
+ * Byte-exact since round 65: the action's state, event and the pad's state for it held in byte-enum locals, declared pad's
+ * state, event, state (open since round 53 at 8-10): enums are not propagated (the game states' round 53, the kit's round 60),
+ * so each keeps its declared number where every plain or const local was copy-propagated away; the replay had asked for the
+ * pad's load below the event's (v83 -> 78.5). The enum is a modelling device, the original's fields may be such enums */
 bool C2DButton::HandlePad(const CPad *pad, int port)
 {
     if (!CanHandleInput())
@@ -4873,12 +5010,21 @@ bool C2DButton::HandlePad(const CPad *pad, int port)
         const ActionItem *a = &m_actions[i];
 
         if (a->Type != 1) {
-            bool pressed = a->State == pad->m_state[a->Event];
-            bool falling = a->State == 1;
-            bool isUp = a->Event == 4;
-            bool isDown = a->Event == 5;
-            bool isLeft = a->Event == 3;
-            bool isRight = a->Event == 2;
+            enum EActionByte { kB0, kB1, kB2, kB3, kB4, kB5, kB6, kB7 };
+            EActionByte padState;
+            EActionByte event;
+            EActionByte state;
+
+            event = (EActionByte)a->Event;
+            state = (EActionByte)a->State;
+            padState = (EActionByte)pad->m_state[event];
+
+            bool pressed = state == padState;
+            bool falling = state == 1;
+            bool isUp = event == 4;
+            bool isDown = event == 5;
+            bool isLeft = event == 3;
+            bool isRight = event == 2;
             bool stickUp = UiGetDirStickMoved() == 3;
             bool stickDown = UiGetDirStickMoved() == 4;
             bool stickLeft = UiGetDirStickMoved() == 1;
