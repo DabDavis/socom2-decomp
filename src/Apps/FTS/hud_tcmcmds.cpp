@@ -155,8 +155,22 @@ public:
 };
 
 extern CZNetGame *data_00437CE8;
-/* the mission's vocal queue (theMission + 0x1C0) */
-extern unsigned char data_004366A0[];
+/* the message kind a message's colour is indexed by (fts_state.h's MSGTYPE) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+
+/* a queue of messages on screen (SOCOM 1's C2DMessage_Q; fts_remote.cpp's stand-in) */
+class C2DMessage_Q {
+public:
+    /* a message queued (OVL1 0x2B6530, SOCOM 1's word-wrapper grown: the game states' round 51) */
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
+
+/* the mission's first message queue (theMission + 0x1C0, hud_main.cpp's m_messages) */
+extern C2DMessage_Q data_004366A0;
 
 /* the sound system's */
 class CSnd {
@@ -196,7 +210,6 @@ void func_005EAF20(CSealUnit *unit, int msg, int flags, float rate);
 void func_005EAEB0(CSealUnit *unit);
 bool func_0058DFA0(unsigned char member);
 /* the mission's */
-void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
 int func_002B46F0(CNodeAction *action);
 void *func_002B4760(void *data);
 void *func_002B4820(void *data);
@@ -1123,7 +1136,7 @@ int tcmUpdateNodeAction(CZSealBody *player, int arg)
 
 int tcmNiceOne(CZSealBody *player, int arg)
 {
-    func_002B6530(data_004366A0, "COMPLIMENT", 0, 0, 0, 0.0f);
+    data_004366A0.Add_Message("COMPLIMENT", MSGTYPE_PLAYER, false, 0, 0.0f);
     CSealUnit *unit = CSealUnit::GetUnitByTeam(1);
 
     if (unit)

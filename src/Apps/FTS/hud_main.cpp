@@ -364,12 +364,21 @@ public:
     unsigned short m_value;   // 0x4
 };
 
+/* the message kind a message's colour is indexed by (fts_state.h's MSGTYPE) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+
 /* a queue of messages on screen (SOCOM 1's C2DMessage_Q, a C2D: the HUD turns them off and on
  * through C2D's slots): only its font placed */
 class C2DMessage_Q : public C2D {
 public:
     void SetBkgColor(float r, float g, float b);
     void Clear_Messages();
+    /* a message queued (OVL1 0x2B6530, SOCOM 1's word-wrapper grown: the game states' round 51) */
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
 
     C2DFont *m_font;   // 0x18
     unsigned char _1c[0x4e0 - 0x1c];
@@ -830,7 +839,6 @@ public:
 /* not named yet: SOCOM II's own re-inits and resets */
 void hudResetPopupTriggers();
 extern "C" void func_00242B20(CSpectatorInfo *info);
-extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
 
 
 /* the HUD made ready for the next mission: on, the letterbox and the piggyback strings put away,
@@ -880,7 +888,7 @@ void CHUD::ReInit_Init()
             sprintf(text, "STARTING ROUND %d OF %d", round, maxrounds);
         else
             sprintf(text, "PLAYING TIEBREAKER ROUND", round, maxrounds);
-        func_002B6530(&theMission.m_messages, text, 0, 1, 0, 0.9f);
+        theMission.m_messages.Add_Message(text, MSGTYPE_PLAYER, true, 0, 0.9f);
     }
     if (!theNetwork.m_bNetwork) {
         m_newmap->m_viewer = ftsGetPlayer();
