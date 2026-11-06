@@ -2065,6 +2065,16 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 34** (no new row; ValidateRoutes to the target's size; the opens measured):
+  - the dead-assignment pass deletes a dead if-body together with its branch; with that pass off a dead load's branch to
+    the next instruction is still removed, and a branch whose target is a bare `b` is still chained -- plan_legcomplete
+    0x5273C0's emptied bodies were removed later than any dead load would be (the only other MW row with an emptied
+    if-body is OVL1's 0x3B1DD0);
+  - a redundant constant store to a live variable (`v = k; if (c) v = k;`) survives the first optimiser and is dropped
+    later by CSE (`opt_common_subs off` keeps it); a temporary bound to a `const &` takes its stack slot in declaration
+    order like a named local, its address kept in a saved register;
+  - a 12-byte copy cast through a `float[3]` / `int[3]` struct is three word moves, never ld / sd, and a 12-byte memcpy
+    stays a call.
 - **Tells from the engine core, round 21** (gridAddNodeToGrids, open since round 19, and buildOrderedCellAtomList, open since
   round 9):
   - `#pragma opt_strength_reduction off` matches game code as well as MSL -- the target recomputes `&m_Atoms[i]` every pass
