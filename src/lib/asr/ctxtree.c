@@ -18,7 +18,8 @@
  * _GetWordsInTree, CompareIDs, CreateActiveWordsCtxTree after SetIsolatedWordDpActiveWords,
  * CreateCtxTree and CalcAccuracyCtxTree (CompareIDs, qsort's comparator, is deferred as well: its
  * copy follows _GetWordsInTree's). Only the functions written so far are here: AllocateNodeAndFreePrevious
- * (round 22c: the free list tested before it is read, round 6c's shape), FreeTree, _FreeTree,
+ * (round 22c: the free list tested before it is read, round 6c's shape), intCreateCtxTree (round
+ * 36c, with SetUserWordTables, its inline), FreeTree, _FreeTree,
  * CalcNrNodes, CompareIDs and CreateActiveWordsCtxTree as the inlines they are, CalcNrNodes10,
  * SetIsolatedWordDpActiveWords, CreateCtxTree, CalcAccuracyCtxTree, and _CountWordsInTree and
  * _GetWordsInTree as plain statics until GetIsolatedWordDpActiveWords, their inliner, is written (a
@@ -36,7 +37,15 @@ typedef struct WORDREC {
 /* the context's accessors as contextv2.c fills them (21 words: the data pointer, then 20) */
 typedef struct CTXVT {
     void *data;
-    void *fn[20];
+    void *fn[7];                        /* +4 */
+    int (*GetNbrItem)(struct CTXVT *vt);                /* +32 */
+    unsigned int (*GetNbrWord)(struct CTXVT *vt);       /* +36 */
+    void *fn10[6];                      /* +40 */
+    unsigned short *(*GetpLex)(struct CTXVT *vt);       /* +64 */
+    int *(*GetpBeginOfWords)(struct CTXVT *vt);         /* +68 */
+    unsigned short *(*GetpWordProp)(struct CTXVT *vt);  /* +72: a word's flags (0x80 inactive, 1 start, 2 stop) */
+    unsigned short *(*GetpSyntax)(struct CTXVT *vt);    /* +76 */
+    void *fn20;                         /* +80 */
 } CTXVT;
 
 /* the activated context as the engine holds it (casr.h's IMPORT: its data first) */
@@ -50,17 +59,34 @@ typedef struct UWTABLES {
     int *offsets;
 } UWTABLES;
 
+/* AddFollowers' walk: the context's tables, the active words' bit array and the stop word's first
+ * phoneme */
+typedef struct AFREC {
+    int f0;                             /* +0 */
+    unsigned short ph;                  /* +4: the stop word's first phoneme */
+    short pad6;
+    CASR *c;                            /* +8 */
+    unsigned short *syntax;             /* +12 */
+    int *bow;                           /* +16 */
+    unsigned short *lex;                /* +20 */
+    int f24;                            /* +24 */
+    unsigned char *bits;                /* +28 */
+    int f32[28];                        /* +32: AddFollowers' own */
+} AFREC;                                /* 0x90 */
+
+extern int AddFollowers(AFREC *r, TNODE *node, int word, int prev);
+
 extern void heap_Free(void *heap, void *p);
 extern unsigned char _tosErrorLog(CASRLOG *log, unsigned char code);
 extern int _tosControl(CASRLOG *log, int cmd, int arg, void *data);
 extern void FillContextV2VirtualTable(CTXVT *vt);
-extern int intCreateCtxTree(CASR *c, CTXVT *vt, unsigned int *ids, unsigned int n);
 extern void FreeCtxInfo(CASR *c);
 
 int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n);
 extern int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
 extern void *heap_Alloc(void *heap, unsigned int size);
 extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern void *memset(void *dst, int c, unsigned int n);
 
 /* a node's children grown by one: n + 1 records (three words each) from the free list of their size
  * in words -- or a new chunk -- while n is below 8, else from the heap; the n old ones copied in and
@@ -99,6 +125,121 @@ TNODE *AllocateNodeAndFreePrevious(CASR *c, int n, TNODE **children)
     }
     *children = t;
     return t;
+}
+
+/* the user words' tables kept for the tree (the context's lexicon and its pronunciations' offsets),
+ * the old ones given back; 1 when there is no memory */
+static __inline__ unsigned char SetUserWordTables(CASR *c, unsigned short *lex, int *offsets)
+{
+    UWTABLES *uw = heap_Alloc(c->heap, sizeof(UWTABLES));
+
+    if (uw == 0)
+        return 1;
+    uw->states = lex;
+    uw->offsets = offsets;
+    if (c->uw_tables != 0)
+        heap_Free(c->heap, c->uw_tables);
+    c->uw_tables = uw;
+    return 0;
+}
+
+/* the context's tree: a bit per word, set for the words asked for (all without a list) and for
+ * every word the context keeps active (no 0x80 flag); the start word (flag 1) and the stop word
+ * (flag 2) found -- a second either ends the scan -- each pronounced from a 1; the root holds the
+ * start word's first phoneme and AddFollowers grows the tree from it to the stop word's; with the
+ * language's bit 8 the user words' tables kept. 1 on failure. SOCOM 1's body (0x538). Measured
+ * (round 36c): the walk record is 0x90 bytes (the target's frame: its spills at +144); a word's
+ * pronunciation through a pointer of its own (`q = bow + bow[first]; p = lex + *q;`) -- an address
+ * under a dereference is expanded as a sum (EXPAND_SUM: the multiplication first, the target's
+ * inner `sll; addu v1,v1,s5`), a pointer value as a plain add (the base first: the outer `addu
+ * v1,s5,v0`), so `bow[bow[first]]` gives both index-first (6 words); the record's stores in the
+ * order the target has them (reversed, 13 words) */
+int intCreateCtxTree(CASR *c, CTXVT *vt, unsigned int *ids, unsigned int n)
+{
+    unsigned short *syntax, *flags, *lex, *p;
+    unsigned int nwords, size, i;
+    int *bow;
+    unsigned char *bits;
+    int first = -1, last = -1;
+    int *q;
+    TNODE *root;
+    AFREC rec;
+
+    syntax = vt->GetpSyntax(vt);
+    flags = vt->GetpWordProp(vt);
+    nwords = vt->GetNbrWord(vt);
+    lex = vt->GetpLex(vt);
+    bow = vt->GetpBeginOfWords(vt);
+    size = (nwords - 1) / 8 + 1;
+    bits = heap_Alloc(c->heap, size);
+    if (bits == 0)
+        return 1;
+    if (ids == 0)
+        memset(bits, -1, size);
+    else {
+        memset(bits, 0, size);
+        for (i = 0; i < n; i++)
+            bits[ids[i] >> 3] |= 1 << (7 - (ids[i] & 7));
+    }
+    for (i = 0; i < nwords; i++) {
+        if (!(flags[i] & 0x80))
+            bits[i >> 3] |= 1 << (7 - (i & 7));
+        if (flags[i] & 1) {
+            first = i;
+            if (last != -1)
+                break;
+        }
+        if (flags[i] & 2) {
+            last = i;
+            if (first != -1)
+                break;
+        }
+    }
+    q = bow + bow[first];
+    p = lex + *q;
+    if (*p++ != 1) {
+        heap_Free(c->heap, bits);
+        return 1;
+    }
+    {
+        int **list = &c->fa.free[3];
+
+        if (*list != 0) {
+            root = (TNODE *)*list;
+            *list = *(int **)root;
+        } else
+            root = (TNODE *)fastallo_AllocateMemoryFromChunk(&c->fa, 3);
+    }
+    root->nchildren = 0;
+    root->pad4 = 0;
+    c->iso_ctx = root;
+    root->ph = *p;
+    q = bow + bow[last];
+    p = lex + *q;
+    if (*p++ != 1) {
+        heap_Free(c->heap, bits);
+        return 1;
+    }
+    rec.ph = *p;
+    rec.c = c;
+    rec.syntax = syntax;
+    rec.f0 = 0;
+    rec.f24 = 0;
+    rec.bow = bow;
+    rec.lex = lex;
+    rec.bits = bits;
+    if (AddFollowers(&rec, root, first, -1) != 0) {
+        heap_Free(c->heap, bits);
+        return 1;
+    }
+    c->run_ctx = 0;
+    c->pad600 = 0;
+    if (c->lng->CheckBitField(c->lng, 8) && SetUserWordTables(c, lex, bow + bow[0]) != 0) {
+        heap_Free(c->heap, bits);
+        return 1;
+    }
+    heap_Free(c->heap, bits);
+    return 0;
 }
 
 int CalcAccuracyCtxTree(CASR *c);

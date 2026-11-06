@@ -142,10 +142,10 @@ CMultiMission::CMultiMission(const _zrdr *rec)
         m_14 = MISSION_NONE;
 }
 
-/* whether a mission is its name's newest: the list's find by name gives it back (OVL1 0x2C94F0;
+/* whether a mission is its name's newest: the list's find by name gives it back (OVL1 0x2C94F0, the name ours;
  * pinned: the list's own Read, GetRandom and Purge call it out of line, as zanim_menu.cpp does) */
 #pragma auto_inline off
-extern "C" bool func_002C94F0(CMultiMission *m)
+bool IsNewestVersion(CMultiMission *m)
 {
     return m == data_00441650.Find(m->m_name.c_str());
 }
@@ -216,7 +216,7 @@ CMultiMission *CMultiMissionList::Add(const MissionDesc *desc)
             int count = 0;
 
             for (iterator i = begin(); i != end(); ++i)
-                if ((*i)->m_multi && func_002C94F0(*i))
+                if ((*i)->m_multi && IsNewestVersion(*i))
                     count++;
             SetValveValue(CValve::Create("NumMultiMissions", VALVE_PERM), count);
         }
@@ -234,7 +234,7 @@ CMultiMission *CMultiMissionList::GetRandom(bool multi)
         m_18.clear();
         for (unsigned int i = 0; i < size(); i++) {
             if (at(i)->m_multi) {
-                if (func_002C94F0(at(i)))
+                if (IsNewestVersion(at(i)))
                     m_c.push_back(i);
             } else
                 m_18.push_back(i);
@@ -268,7 +268,7 @@ void CMultiMissionList::Read(const _zrdr *rdr)
             CMultiMission *m = new CMultiMission(item);
 
             push_back(m);
-            if (m->m_multi && func_002C94F0(m))
+            if (m->m_multi && IsNewestVersion(m))
                 count++;
         }
     }
@@ -356,19 +356,19 @@ CMultiMission *CMultiMissionList::GetNext(int id, bool multi)
         if (++from == end())
             from = begin();
         for (iterator i = from; i != end(); ++i)
-            if ((*i)->m_multi == multi && func_002C94F0(*i)) {
+            if ((*i)->m_multi == multi && IsNewestVersion(*i)) {
                 next = *i;
                 break;
             }
         if (!next)
             for (iterator i = begin(); i != at; ++i)
-                if ((*i)->m_multi == multi && func_002C94F0(*i)) {
+                if ((*i)->m_multi == multi && IsNewestVersion(*i)) {
                     next = *i;
                     break;
                 }
     } else {
         for (iterator i = begin(); i != end(); ++i)
-            if ((*i)->m_multi == multi && func_002C94F0(*i)) {
+            if ((*i)->m_multi == multi && IsNewestVersion(*i)) {
                 next = *i;
                 break;
             }
@@ -434,7 +434,7 @@ signed char CMultiMissionList::GetMultiValue(int id)
     return v;
 }
 
-/* the newest version of a name, none (OVL1 0x2C8760; pinned: 0x2C94F0, its one caller here, calls
+/* the newest version of a name, none (OVL1 0x2C8760; pinned: IsNewestVersion 0x2C94F0, its one caller here, calls
  * it out of line) */
 #pragma auto_inline off
 CMultiMission *CMultiMissionList::Find(const char *name)

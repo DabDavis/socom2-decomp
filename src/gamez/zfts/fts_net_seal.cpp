@@ -338,6 +338,12 @@ public:
     static BombStatus m_BombStatus;
 };
 
+/* the personas (fts_net_persona.cpp's: only a client's persona's name) */
+class CZPersonaState {
+public:
+    static const char *GetPersonaName(int client);   /* 0x2C3A70 */
+};
+
 /* a game client as the network keeps it (only its object: 0x1000 until its SEAL's is known) */
 struct GameClient {
     unsigned char _0[4];
@@ -358,7 +364,6 @@ int NetGetObject(NetObject **obj, int index);   /* the DME's (prebuilt C) */
 int strcmp(const char *a, const char *b);
 void *memset(void *dst, int c, unsigned int n);
 int func_002C3B10(int client);   /* (fts_net_persona.cpp's: a client's persona's word at 4) */
-const char *func_002C3A70(int client);   /* (fts_net_persona.cpp's: a client's persona's name) */
 int sprintf(char *buf, const char *fmt, ...);
 void func_002F9690(CZOnlineLobby *lobby, int a, int mode);
 bool func_002A72A0(CZNetGame *game);   /* (SOCOM II's: a game type 1 or 2) */
@@ -601,7 +606,7 @@ void CZSealState::RemoteSealCreationCallback(int client, int index)
         data->m_body = 0;
         return;
     }
-    const char *name = func_002C3A70(client);
+    const char *name = CZPersonaState::GetPersonaName(client);
 
     if (!data->m_chartype && !name) {
         data->m_body = 0;
@@ -620,7 +625,7 @@ void CZSealState::RemoteSealCreationCallback(int client, int index)
         if (valve)
             valve->SetValue(1);
     } else
-        name = func_002C3A70(client);
+        name = CZPersonaState::GetPersonaName(client);
     data->m_body = CreateRemoteSeal__10CZSealBodyFiiPCciPcUiPUc(owner, index, name, data->m_chartype, data->m_14,
                                                                 data->m_c, data->m_weapons);
     if (data->m_body) {

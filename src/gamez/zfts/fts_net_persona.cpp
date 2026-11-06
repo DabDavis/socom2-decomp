@@ -253,6 +253,9 @@ public:
     static void RemotePersonaUpdateCallback(int client, int index, int field);
     static void RemotePersonaCreationCallback(int client, int index);
     static void zNetRegisterPersona();
+    static const char *GetPersonaName(int client);
+    static const char *GetPersonaClanTag(int client);
+    static char *GetSOUPString(CZSealBody *body, int i);
 
     static int m_NetStructIndexPersonaObject;
 
@@ -1150,8 +1153,9 @@ inline char *GetBlatherMessage(int index, int i, bool taunt)
     return msg;
 }
 
-/* a SEAL's player's standard-operations message i, and its taunt i (OVL1 0x2C3C30 and 0x2C3B60) */
-extern "C" char *func_002C3C30(CZSealBody *body, int i)
+/* a SEAL's player's standard-operations message i, and its taunt i (OVL1 0x2C3C30 and 0x2C3B60;
+ * the first SOCOM 1's GetSOUPString, which returns the persona's i-th of five SOP strings) */
+char *CZPersonaState::GetSOUPString(CZSealBody *body, int i)
 {
     char *msg = 0;
 
@@ -1177,7 +1181,7 @@ extern "C" char *func_002C3B60(CZSealBody *body, int i)
     return msg;
 }
 
-/* a client's persona's name (OVL1 0x2C3B10 .. 0x2C3A70) */
+/* a client's persona's word at 4 (OVL1 0x2C3B10), its clan tag and its name (0x2C3AC0, 0x2C3A70) */
 extern "C" int func_002C3B10(int client)
 {
     PersonaData *p = CZPersonaState::GetPersona(client);
@@ -1187,7 +1191,8 @@ extern "C" int func_002C3B10(int client)
     return 0;
 }
 
-extern "C" const char *func_002C3AC0(int client)
+/* a client's persona's clan tag, "" without one (OVL1 0x2C3AC0; SOCOM II's, the name ours) */
+const char *CZPersonaState::GetPersonaClanTag(int client)
 {
     PersonaData *p = CZPersonaState::GetPersona(client);
 
@@ -1196,7 +1201,8 @@ extern "C" const char *func_002C3AC0(int client)
     return "";
 }
 
-extern "C" const char *func_002C3A70(int client)
+/* a client's persona's name, none without one (OVL1 0x2C3A70; SOCOM 1's GetPersonaName) */
+const char *CZPersonaState::GetPersonaName(int client)
 {
     PersonaData *p = CZPersonaState::GetPersona(client);
 
