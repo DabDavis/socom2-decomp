@@ -1115,7 +1115,10 @@ public:
     unsigned int m_aibit8 : 1;   // bits 8 and 9: either refuses a state push without flag 4
     unsigned int m_aibit9 : 1;   // (0x5F5CD0) -- SOCOM 1's m_sleeping and m_snoozing (its DWARF)
     unsigned int m_nosnooze : 1;   // bit 10 (SOCOM 1's: SetSnoozing refuses the doze with it set)
-    unsigned int m_bits11 : 2;
+    /* bits 11 and 12: ai::PARAM's "weapon_up" and "docorpse", set and tested by the parameter test
+     * (OVL2 0x5D4770; the names ours -- a 2-bit m_bits11 until the kit's round 57) */
+    unsigned int m_aibit11 : 1;
+    unsigned int m_aibit12 : 1;
     unsigned int m_aibit13 : 1;
     unsigned int m_aibit14 : 1;
     /* bit 15: with bit 8 (SOCOM 1's m_sleeping) set, the alertness is left alone (both SetAiAwares

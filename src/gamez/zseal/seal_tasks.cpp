@@ -17,6 +17,8 @@ namespace ai {
  * -- 0 and anything past 6 true (the names ours: SOCOM 1's DWARF has no such enum) */
 enum TEST_OP {
     TEST_NONE = 0, TEST_NE = 1, TEST_EQ = 2, TEST_GT = 3, TEST_LT = 4, TEST_GE = 5, TEST_LE = 6,
+    /* 11: the parameter set to the value, not tested (the parameter test 0x5D4770's) */
+    TEST_SET = 11,
     TEST_LAST = 255
 };
 
@@ -44,12 +46,10 @@ bool test(const T &a, TEST_OP op, const T &b)
 }
 }
 
-/* the two instances, explicit until their caller (0x5D4770, ai::PARAM's tick) is written */
-template bool ai::test<int>(const int &, ai::TEST_OP, const int &);
-template bool ai::test<float>(const float &, ai::TEST_OP, const float &);
+/* the two instances: no longer explicit, their caller (0x5D4770, ai::PARAM's tick) written */
 /* and ai::_max over bytes (OVL2 0x5DEE70: 0x5D4770 calls it on a byte it computed and the controller's
- * byte at 0x5D0, its result read with lbu -- the copy after the two tests, as their tail) */
-template const unsigned char &ai::_max<unsigned char>(const unsigned char &, const unsigned char &);
+ * byte at 0x5D0, its result read with lbu -- the copy after the two tests, as their tail; no longer
+ * explicit either) */
 
 /* the reader's queries (zrdr.h's, which declares a _zrdr of its own: zanim.h's here) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
@@ -1066,8 +1066,8 @@ struct CTParam : TASK_HDR {
 };
 
 extern "C" {
-/* the parameter's test on a SEAL and its AI (OVL2 0x5D4770, this unit's, unwritten: the int and
- * float ai::test instances' caller; the name a placeholder) */
+/* the parameter's test on a SEAL and its AI (OVL2 0x5D4770, this unit's, below: the int and float
+ * ai::test instances' caller; the name a placeholder) */
 bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd);
 }
 
@@ -4102,6 +4102,250 @@ _zanim_cmd_hdr *CTParam::Parse(_zrdr *rdr)
         }
     }
     return &cmd->hdr;
+}
+
+extern "C" {
+/* the AI's courage, scaled; its courage set (and kept when the flag says so); its speed set (OVL2
+ * 0x570D50, 0x570D60, 0x570F90: seal_ai.cpp's, unnamed); a sleep region and its teams set, none for
+ * the teams' default (OVL2 0x56D450, seal_ai.cpp's) */
+float func_00570D50(CSealCtrlAi *ai, float scale);
+void func_00570D60(CSealCtrlAi *ai, int keep, float f);
+void func_00570F90(CSealCtrlAi *ai, float t);
+bool func_0056D450(CSealCtrlAi *ai, const CAiMapLoc *loc, int n);
+/* a map's cell inside (OVL2 0x5561C0, seal_ai.cpp's: the map's own test) */
+bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
+/* the AI busy talking, and an anim of its sound playing (OVL2 0x572190, 0x5712F0: seal_ai.cpp's) */
+bool func_00572190(CSealCtrlAi *ai);
+bool func_005712F0(CSealCtrlAi *ai, short anim);
+/* an alertness's band (OVL2 0x560AC0, seal_ai.cpp's) */
+unsigned char func_00560AC0(float x);
+}
+
+/* whether a cell's map holds it, none for no map (seal_ai.cpp's CellInside, the cell by pointer) */
+static inline bool TaskCellInside(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? func_005561C0(map, loc) : false;
+}
+
+/* whether the AI may chat: its SEAL alive, not talking and no anim of its sound playing (inline; the
+ * name ours) */
+static inline bool TaskCanChat(CSealCtrlAi *ai)
+{
+    return ((CZSealBody *)ai->m_entity)->m_isAlive && !func_00572190(ai) && !func_005712F0(ai, ai->m_sound);
+}
+
+
+/* a parameter's value tested against the task's (inline: the value taken by value -- copied through
+ * the FPU, the union's float its first member -- each test's two operands in temporaries of their
+ * own; the names ours) */
+static inline bool TaskTestF(float a, ai::TEST_OP op, TASK_VALUE v)
+{
+    return ai::test(a, op, v.f);
+}
+static inline bool TaskTestI(int a, ai::TEST_OP op, TASK_VALUE v)
+{
+    return ai::test(a, op, v.i);
+}
+static inline bool TaskTestB(bool a, ai::TEST_OP op, TASK_VALUE v)
+{
+    return ai::test((int)a, op, v.i);
+}
+
+/* the AI's chat level (inline; the name ours) */
+static inline int TaskChatLevel(CSealCtrlAi *ai)
+{
+    bool ok = TaskCanChat(ai);
+    int n = 5;
+
+    if (ok)
+        n = ::ai::_max(func_00560AC0(ai->m_aware.m_value), (const unsigned char &)ai->m_awarePending);
+    return n;
+}
+
+/* the parameter on a SEAL and its AI set to the block's value (operator 11), or tested against it
+ * with the block's operator -- the AI's parameters first, then the SEAL's; true for a parameter
+ * neither has (OVL2 0x5D4770, new in SOCOM II as a function: SOCOM 1's CTParam::Tick held its test,
+ * over parameters partly other; the name a placeholder). The value copied once, each test copying it
+ * again into its inline's by-value parameter; each AI test `ai ? Test(...) : false` (the re-test of
+ * the AI the target makes in every case); a bool's test through an inline converting it (its int
+ * temporary made after the value's copy: the slots' order); the chat level an inline whose bool local
+ * keeps the && chain a value (andi before the branch, the 5 in its delay slot); the cell held by a
+ * reference local (s0 across GetMap); the set cases' if-else arm ending `r = true` before the one
+ * return -- the target's `daddiu v0,zero,1` at the join (an early `return true` / `return r` loads
+ * it with li; r live across the arm's calls would take s5) */
+bool func_005D4770(CZSealBody *seal, CSealCtrlAi *ai, CTParam *cmd)
+{
+    ::ai::TEST_OP op = (::ai::TEST_OP)cmd->m_op;
+    AI_PARAMS *params = ai ? &ai->m_aiParams : 0;
+    bool r = true;
+    bool done = false;
+    TASK_VALUE value = cmd->m_value;
+
+    if (op == ::ai::TEST_SET) {
+        if (ai) {
+            done = true;
+            switch (cmd->m_which) {
+            case PARAM_COURAGE:
+                func_00570D60(ai, 1, value.f);
+                break;
+            case PARAM_SPEED:
+                func_00570F90(ai, value.f);
+                break;
+            case PARAM_ACCURACY:
+                params->accuracy = value.f;
+                break;
+            case PARAM_STANCE:
+                ai->SetStanceDelayed((SEAL_STANCE)value.i, -1.0f);
+                break;
+            case PARAM_AWARE:
+                ai->SetAiAware((AI_AWARE)value.i, 0, -1.0f);
+                break;
+            case PARAM_SLEEP:
+                ai->SetSleeping(value.i != 0);
+                break;
+            case PARAM_WEAPON_UP:
+                ai->m_aibit11 = value.i != 0;
+                break;
+            case PARAM_SPRAY:
+                ai->SetSprayTimer(value.f);
+                break;
+            case PARAM_DOCORPSE:
+                ai->m_aibit12 = value.i != 0;
+                break;
+            case PARAM_DEEPSLEEPER:
+                ai->m_aibit15 = value.i != 0;
+                break;
+            case PARAM_NOFADE:
+                ai->m_aibit5 = value.i != 0;
+                break;
+            case PARAM_VISRANGE:
+                ai->SetViewRange(value.f);
+                break;
+            case PARAM_THROTTLE:
+                ai->m_throttle[0] = value.f;
+                break;
+            case PARAM_ROLE:
+                ai->m_26e = value.i;
+                break;
+            case PARAM_SLEEP_REGION: {
+                unsigned int v = value.i;
+                CAiMapLoc loc;
+
+                loc.m_mapid = v >> 26;
+                loc.x = v >> 13 & 0x1fff;
+                loc.y = v & 0x1fff;
+
+                func_0056D450(ai, &loc, 0);
+                break;
+            }
+            case PARAM_AWARE_DECAY:
+            case PARAM_INSIDE:
+            case PARAM_OUTSIDE:
+                break;
+            case PARAM_CANCHAT:
+            default:
+                done = false;
+                break;
+            }
+        }
+        if (!done && seal) {
+            switch (cmd->m_which) {
+            case PARAM_HEALTH:
+                func_005A5790(seal, 3, value.f);
+                break;
+            case PARAM_AWARE_COUNT:
+                break;
+            }
+        }
+        r = true;
+    } else {
+        if (ai) {
+            done = true;
+            switch (cmd->m_which) {
+            case PARAM_COURAGE:
+                r = ai ? TaskTestF(func_00570D50(ai, 1.0f), op, value) : false;
+                break;
+            case PARAM_SPEED:
+                r = ai ? TaskTestF(ai->m_speed, op, value) : false;
+                break;
+            case PARAM_AWARE:
+                r = ai ? TaskTestI(ai->GetAiAware(), op, value) : false;
+                break;
+            case PARAM_ACCURACY:
+                r = ai ? TaskTestF(params->accuracy, op, value) : false;
+                break;
+            case PARAM_SLEEP:
+                r = ai ? TaskTestB(ai->m_aibit8 != 0, op, value) : false;
+                break;
+            case PARAM_AWARE_DECAY:
+                r = ai ? TaskTestF(params->aware_decay, op, value) : false;
+                break;
+            case PARAM_STANCE:
+                r = ai ? TaskTestI(ai->m_stance, op, value) : false;
+                break;
+            case PARAM_DOCORPSE:
+                r = ai ? TaskTestB(ai->m_aibit12 != 0, op, value) : false;
+                break;
+            case PARAM_DEEPSLEEPER:
+                r = ai ? TaskTestB(ai->m_aibit15 != 0, op, value) : false;
+                break;
+            case PARAM_WEAPON_UP:
+                r = ai ? TaskTestB(ai->m_aibit11 != 0, op, value) : false;
+                break;
+            case PARAM_SPRAY:
+                r = ai ? TaskTestF(ai->m_spraytimer, op, value) : false;
+                break;
+            case PARAM_NOFADE:
+                r = ai ? TaskTestB(ai->m_aibit5 != 0, op, value) : false;
+                break;
+            case PARAM_VISRANGE:
+                r = ai ? TaskTestF(params->visual_range, op, value) : false;
+                break;
+            case PARAM_ROLE:
+                r = ai ? TaskTestI(ai->m_26e, op, value) : false;
+                break;
+            case PARAM_CANCHAT:
+                r = ai ? TaskTestI(TaskChatLevel(ai), op, value) : false;
+                break;
+            default:
+                done = false;
+                break;
+            }
+        }
+        if (!done && seal) {
+            switch (cmd->m_which) {
+            case PARAM_HEALTH:
+                r = TaskTestF(seal->m_health, op, value);
+                break;
+            case PARAM_AWARE_COUNT:
+                r = TaskTestI(seal->m_aware_counter, op, value);
+                break;
+            case PARAM_INSIDE: {
+                const CAiMapLoc &loc = seal->m_mapLocValid;
+
+                r = TaskTestB(TaskCellInside(loc), op, value);
+                break;
+            }
+            case PARAM_OUTSIDE: {
+                const CAiMapLoc &loc = seal->m_mapLocValid;
+
+                r = TaskTestB(!TaskCellInside(loc), op, value);
+                break;
+            }
+            case PARAM_REDSMOKE: {
+                CZKit *kit = &seal->m_kit;
+                int i = kit->GetItemIndex((EQUIP_ITEM)127);
+                int n = i != -1 ? kit->GetAmmoTotal(i) : 0;
+
+                r = TaskTestI(n, op, value);
+                break;
+            }
+            }
+        }
+    }
+    return r;
 }
 
 /* a state push read: the state by name, and for the follow, the vehicle, the action and the rush the
