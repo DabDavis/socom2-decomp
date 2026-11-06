@@ -285,6 +285,7 @@ int CGrid::GetIntersectBatch(DiIntersect **di, int n)
 {
     CPnt3D ext[2];
     CPnt3D pts[2];
+    int i;
 
     if (n == 0)
         return 0;
@@ -294,7 +295,7 @@ int CGrid::GetIntersectBatch(DiIntersect **di, int n)
     ext[0].z = di[0]->m_Tail.z;
     ext[1].x = di[0]->m_Tail.x;
     ext[1].z = di[0]->m_Tail.z;
-    for (int i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
         di[i]->m_Cnt = 0;
         switch (di[i]->m_Type & ~0x8000) {
         case 2:
@@ -327,26 +328,26 @@ int CGrid::GetIntersectBatch(DiIntersect **di, int n)
     int w = m_ixb - ix;
     int cells = w * (m_izb - iz);
 
-    for (int c = 0; c < cells; c++)
-        CellCheck[c] = 0;
-    for (int k = 0; k < n; k++) {
-        BatchReset(di[k]);
-        switch (di[k]->m_Type & ~0x8000) {
+    for (i = 0; i < cells; i++)
+        CellCheck[i] = 0;
+    for (i = 0; i < n; i++) {
+        BatchReset(di[i]);
+        switch (di[i]->m_Type & ~0x8000) {
         case 2:
-            pts[0] = di[k]->m_Tail;
-            pts[1] = di[k]->m_Tip;
+            pts[0] = di[i]->m_Tail;
+            pts[1] = di[i]->m_Tip;
             SetTraversalBoundary(pts, 2, true);
             break;
         case 4:
-            pts[0].x = di[k]->m_Tail.x - di[k]->m_Tip.x;
-            pts[0].z = di[k]->m_Tail.z - di[k]->m_Tip.x;
-            pts[1].x = di[k]->m_Tail.x + di[k]->m_Tip.x;
-            pts[1].z = di[k]->m_Tail.z + di[k]->m_Tip.x;
+            pts[0].x = di[i]->m_Tail.x - di[i]->m_Tip.x;
+            pts[0].z = di[i]->m_Tail.z - di[i]->m_Tip.x;
+            pts[1].x = di[i]->m_Tail.x + di[i]->m_Tip.x;
+            pts[1].z = di[i]->m_Tail.z + di[i]->m_Tip.x;
             SetTraversalBoundary(pts, 2, false);
             break;
         case 1:
-            pts[0].x = di[k]->m_Tail.x;
-            pts[0].z = di[k]->m_Tail.z;
+            pts[0].x = di[i]->m_Tail.x;
+            pts[0].z = di[i]->m_Tail.z;
             SetTraversalBoundary(pts, 1, false);
             break;
         }
@@ -354,7 +355,7 @@ int CGrid::GetIntersectBatch(DiIntersect **di, int n)
         m_zz = m_iz - 1;
         while (gridGetNextIndex()) {
             if (!gridCellOut(m_xx, m_zz))
-                CellCheck[(m_xx - ix) + w * (m_zz - iz)] |= 1 << (k % 32);
+                CellCheck[(m_xx - ix) + w * (m_zz - iz)] |= 1 << (i % 32);
         }
     }
     SetTraversalExtents(ext, 2, false);
@@ -366,11 +367,9 @@ int CGrid::GetIntersectBatch(DiIntersect **di, int n)
             NodeCheck = CellCheck[row + (m_xx - ix)];
             if (NodeCheck) {
                 for (m_NextAtom = *gridGetAtomBasePtr(m_xx, m_zz); m_NextAtom; m_NextAtom = m_NextAtom->Next) {
-                    CNode *ent = m_NextAtom->Ent;
-
-                    if (ent->m_active && ent->m_TickNum < m_TickNum) {
-                        ent->m_TickNum = m_TickNum;
-                        for (int i = 0; i < n; i++)
+                    if (m_NextAtom->Ent->m_active && m_TickNum > m_NextAtom->Ent->m_TickNum) {
+                        m_NextAtom->Ent->m_TickNum = m_TickNum;
+                        for (i = 0; i < n; i++)
                             BatchReset(di[i]);
                         CCell *cell = m_NextAtom->GetCell();
 
