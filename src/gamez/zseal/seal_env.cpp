@@ -1873,7 +1873,12 @@ bool CZSealBody::CanUseCQB(CZSealBody *victim)
  * CanUseRestraint/CanUseCQB/CanUseKnife share the shape and matched with the Sub's `this` (the victim's
  * position) a pointer local declared before the facing -- here the Sub's `this` is this SEAL's own
  * position, and that local (pointer, reference, node pointer, either order, an inline helper taking
- * the facing by value and both points by reference) still loads after the stores: 10 every time. */
+ * the facing by value and both points by reference) still loads after the stores: 10 every time.
+ * Round 56 (igdump --pcode): the pre-colouring code already has this node's load after the facing's
+ * stores, so its register falls free (v0) -- the target's v1/a3 need the load among the facing's
+ * loads; this SEAL's position first through a pointer, a reference pair, both nodes in locals (either
+ * order) and the facing assigned after the pointer: 10 each (build/scratch/seal-r56/v_cqb.py). SOCOM 1's
+ * own code (0x299900) has the target's order with the facing and the Sub's slots swapped. */
 AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 {
     CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);

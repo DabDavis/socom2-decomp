@@ -2920,7 +2920,8 @@ static inline bool NotNavySeal(const CSealCtrlAi *ai)
  * target lacks (the other 16 are branch offsets it shifts, until the 8-byte pad after `exposed = true`
  * absorbs it). The andi is MW converting the `!` of the bit-17 bool into the && value (igdump: op1087
  * into the temporary, in the bit-17 block) -- a bool, int, unsigned or unsigned char variable, the
- * helper or the caller, `!(x != 0)`, `x ? false : true`, `^ true`, a `!= 0` accessor all keep it;
+ * helper or the caller, `!(x != 0)`, `x ? false : true`, `^ true`, a `!= 0` accessor, `!x ? true :
+ * false`, `(bool)!x` and `x != true` all keep it;
  * `== false` drops it but compiles to xor/sltiu; `(b16 ? !b17 : false) == false` moves it to the merge
  * and drops the first sltu (7); the target's `sltu; xori` reaches the branch clean
  * (build/scratch/seal-r56/v_c80*.py) */
