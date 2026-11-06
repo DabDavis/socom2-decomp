@@ -426,6 +426,8 @@ public:
     CAiMap::region *GetRegion(const CAiMapLoc &loc);
     /* a region by its name, and its cell (ai_maps.h's, OVL2 0x52D9F0) */
     CAiMap::region *GetRegion(const char *name, CAiMapLoc &loc);
+    /* the region of a type a cell lies in (ai_maps.h's, OVL2 0x52A200) */
+    CAiMap::region *GetRegionTypeContainer(CAiMap::region::TYPE type, const CAiMapLoc &loc);
     /* the cells between two points walked over the maps, each handed to a callback (ai_maps.h's,
      * OVL2 0x5352D0) */
     bool WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
@@ -700,7 +702,7 @@ public:
     virtual void OnDeath();                                                 /* +0x18 */
     /* SOCOM II's takes a chance to play it and the AI event the voice makes, and says whether it
      * played */
-    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);   /* +0x24 */
+    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, CAiEvent::EVENT event);   /* +0x24 */
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
     /* whether the orders to hold and to follow may go to the SEAL (SOCOM 1's; OVL2 0x591770 and
      * 0x591AB0, seal_command.cpp's -- not written yet; 0x591520 asks the first) */
@@ -1087,7 +1089,11 @@ public:
     unsigned int m_aibit15 : 1;
     unsigned int m_aibit16 : 1;
     unsigned int m_aibit17 : 1;
-    unsigned int m_bits18 : 14;
+    /* bit 18: set once the alertness first reaches DIRECTION or SPECIFIC long enough (PostTick 0x56F970);
+     * bit 19: the sightings ticked in PostTick (the names ours) */
+    unsigned int m_aibit18 : 1;
+    unsigned int m_aibit19 : 1;
+    unsigned int m_bits20 : 12;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
     unsigned char _26d[0x26e - 0x26d];
@@ -1151,7 +1157,7 @@ public:
      * stores it; HandleKiller tests it under 4; the name ours) */
     unsigned char m_5c4;   // 0x5c4
     unsigned char _5c5[0x5c8 - 0x5c5];
-    unsigned int m_5c8;   // 0x5c8: zeroed when the alertness's band changes (0x5612F0; the name ours)
+    float m_5c8;   // 0x5c8: a time, zeroed when the alertness's band changes (0x5612F0; PostTick compares it with 8 and 5; the name ours)
     /* an alertness asked for with a delay, and the delay (SOCOM 1's m_awareTimer, 0x5cc there too:
      * SetAiAware(AI_AWARE, const CPnt3D *, float) 0x561110 sets both; the second's name ours) */
     float m_awareTimer;   // 0x5cc
@@ -1191,7 +1197,8 @@ public:
     unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
     unsigned char _680[0x6a8 - 0x680];
     unsigned int m_6a8;   // 0x6a8: the target's flags (bit 9 lets a held target interrupt: the kit lane)
-    unsigned char _6ac[0x6f4 - 0x6ac];
+    unsigned char _6ac[0x6f0 - 0x6ac];
+    float m_6f0;   // 0x6f0: the time since death (PostMortemPreTick 0x56EE80 runs it up; the name ours)
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
@@ -1237,6 +1244,12 @@ public:
     /* (0x573E60: the stack emptied, then the bases' destructors) */
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);
+    /* the dead AI's corpse faded and recycled, or its respawns counted down (OVL2 0x56EE80) */
+    virtual bool PostMortemPreTick(float dT);
+    /* the creep's line walk, then the base's (OVL2 0x567350, seal_ai.cpp's) */
+    virtual void CreepTick(float dT, bool b);
+    /* the sightings, the stance, the rescue and the alertness's score (OVL2 0x56F970, seal_ai.cpp's) */
+    virtual bool PostTick(float dT);
     virtual bool SlideTick(float dT);
     /* the turn toward a goal: CSealCtrl's at a rate of 2, slowed by the speed when the alertness is
      * low or the look deploys, unless a Navy SEAL in mode 6 (OVL2 0x56C340) */
@@ -1399,7 +1412,7 @@ public:
      * overridden beside the static (OVL2 0x55FF60, slot 0x24: seal_ai.cpp's) */
     static void StopAiSound(AI_SOUND sound);
     static void PlayAiSound(AI_SOUND sound);
-    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, int event);
+    virtual bool PlayAiSound(CHARACTER_SOUND sound, float chance, CAiEvent::EVENT event);
     static class CSnd *aiSoundHandle[2];
     static class CSndInstance *aiSoundInstance[2];
     /* the aim's error cone, kept as its tangent (SOCOM 1's aiAccuracyAngle; OVL1 data 0x3DF180, the

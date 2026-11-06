@@ -515,7 +515,22 @@ public:
      * game_main.cpp, the lobby's 0x2E19E0, the chat's 0x2F6BC0, the state machine's, vis_vu.cpp's and
      * zrdr_edit.cpp's copies: 0x140 against 0x138 -- the walk wants the end's last slot computed
      * before its position, which this header's three-word (p, first, last) constructor gives by
-     * MW's right-to-left arguments), so it is not applied. NOT the chat's push_back: 0x2F5290 never
+     * MW's right-to-left arguments), so it is not applied. THE MSL HEADERS ROUND 33 (build/p33/rs/,
+     * untracked: rv.py and round 31's iterator on today's header): CODE-EXACT AS A PROBE -- begin()
+     * through round 32's first-slot shape, the start read into a named local and passed by value,
+     * `begin() { unsigned int s = this->start_; return iterator(this->data_, s, this->capacity_); }`,
+     * over a constructor that reads the storage back through the field's own address,
+     * `iterator(value_type *data, unsigned int start, const unsigned int &cap) : p_(data + start),
+     * data_(data), first_(*&data_ + start), last_(*&data_ + cap)` (the data_ store and both reads
+     * through one address register, numbered after the shift's front-end temporary): every word
+     * the target's, its three references alone unresolved -- insert 0x286160 and erase 0x285D30
+     * (placeholders) and the zero word 0x3DE1D0 (no data row). Through `d()` it stays 7 off (the
+     * accessor's reference is the inliner's, numbered before the shift), through `data_` straight 6
+     * (the store folded to a frame offset and scheduled first), t named and returned 0x214. Still not
+     * applied: under the four-word iterator ~__deque_buf's walk 0x2CEFB0 is 35 off. Once both fit,
+     * the callers' units emit it -- game_main.cpp (0x2CF970), the lobby's (0x2E1090, 0x2E1610), the
+     * rdr editor's (0x334440), util_ssm.cpp (0x3A6710), vis_vu.cpp (0x3B8000) and zanim_menu.cpp's
+     * state queue push (0x2852B0) all call it. NOT the chat's push_back: 0x2F5290 never
      * calls resize -- a class element's growth path builds the bigger block buffer in a temporary
      * (`buf_type tmp(2 * size(), 0)`: 0x2F5940 is the n-copies constructor's body; then `tmp.reserve(2);
      * tmp.push_back(0)` for an empty buffer, else `tmp = buf` -- 0x2F5700 the range assign behind the
@@ -1459,6 +1474,15 @@ deque<T, Allocator>::deque()
 {
 }
 
+/* the copy (0x2E07B0 the lobby's, 0x3A5E50 the state machine's: begin() / end() const called; the
+ * chat's 0x2F5F80 inlines both and calls make_iterator 0x2F6A70 for x's end, then its begin -- OPEN).
+ * The MSL headers round 33: begin() / end() DECLARED AHEAD of the copy constructor (so generated
+ * before it in the same pass, round 7's ord7) leave both calls (0x60) as the online lane's round 25
+ * found generating them a round earlier does -- neither generation order nor declaration order is
+ * the lever. The target's make_iterator calls write straight into init's argument slots (sp+48 the
+ * end, sp+80 the begin: no copy out of a named local). (scdiff masks the candidate's relocated
+ * fields on both sides by offset, so where the candidate is shorter a target word shows masked --
+ * 0x2F5FA0's `addiu a0,sp,48` printed as `li zero,0`: read the image's words before believing one) */
 template <class T, class Allocator>
 deque<T, Allocator>::deque(const deque &x) : base(x.alloc())
 {

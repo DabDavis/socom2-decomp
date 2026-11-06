@@ -854,6 +854,29 @@ bool CNode::AddDI(CDI *di)
     return added;
 }
 
+/* one visual let go of (SOCOM 1's, 0x2279D0 there): taken off the list (std::remove inlined, its
+ * remove_copy out of line, as CWorld::DeleteLightMap's), released, and -- when asked and nothing
+ * else holds it -- deleted, the node's mesh flag recomputed from the visuals left; the node marked
+ * changed either way, the release's count returned (SOCOM 1's hookupVisuals calls it where SOCOM
+ * II's vis_load.cpp calls 0x3162B0 with (node, visual, true): the weapons' round 32) */
+int CNode::DeleteVisual(CVisual *visual, bool del)
+{
+    CVisualVector::iterator e = m_visual.end();
+    CVisualVector::iterator i = std::remove(m_visual.begin(), e, visual);
+
+    m_visual.erase(i, e);
+    int refs = visual->Release();
+    if (del && !refs) {
+        delete visual;
+        m_hasMesh = 0;
+        for (CVisualVector::iterator it = m_visual.begin(); it != m_visual.end(); ++it)
+            if ((*it)->m_type == 1)
+                m_hasMesh = 1;
+    }
+    m_socom2_a1 |= 2;
+    return refs;
+}
+
 /* every visual let go of, each deleted that nothing else holds -- unless the node was drawn this
  * frame, when it waits on the deferred list (once) for DeleteDeferredVisuals; then the list
  * emptied, the node marked changed and holding no mesh.

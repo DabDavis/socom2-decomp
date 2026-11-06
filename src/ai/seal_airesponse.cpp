@@ -376,7 +376,7 @@ void CAiSSurrender::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 
         seal->SetTeamMask(ClearTeamMask(mask, player ? player->m_team : 0));
         seal->m_noshoot = false;
-        ai->PlayAiSound((CHARACTER_SOUND)74, 1.0f, -1);
+        ai->PlayAiSound((CHARACTER_SOUND)74, 1.0f, CAiEvent::AIE_NONE);
         SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
         RefreshTeamValves__8CMissionFv(&theMission);
         CAiState *s = ai->FindAiState(AI_STATE_SCRIPT);
@@ -769,7 +769,7 @@ extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
 
     switch (step) {
     case CAiState::STEP_2:
-        ai->PlayAiSound((CHARACTER_SOUND)72, 0.25f, 0);
+        ai->PlayAiSound((CHARACTER_SOUND)72, 0.25f, CAiEvent::AIE_UNKNOWN);
         if (chance < callChance && func_00584B00(seal))
             func_0057E540(seal);
         else if (chance < sprayChance && ai->GetAiAware() > AIA_GENERAL)
@@ -953,7 +953,7 @@ extern "C" void func_00605770(CSealCtrlAi *ai, bool order, CHARACTER_SOUND sound
 {
     CEntity *seal = ai->m_entity;
 
-    ai->PlayAiSound(sound, vol, -1);
+    ai->PlayAiSound(sound, vol, CAiEvent::AIE_NONE);
     if (order) {
         SEAL_STATE r = ((CZSealBody *)seal)->GetStance(true);
 
@@ -980,7 +980,7 @@ extern "C" void func_006055B0(CAiSEvent *s, CSealCtrlAi *ai)
 
     switch ((signed char)s->m_58) {
     case 5: {
-        ai->PlayAiSound((CHARACTER_SOUND)72, 0.75f, -1);
+        ai->PlayAiSound((CHARACTER_SOUND)72, 0.75f, CAiEvent::AIE_NONE);
         SEAL_STATE r = ((CZSealBody *)seal)->GetStance(true);
 
         if (r == stateStand)
@@ -989,13 +989,13 @@ extern "C" void func_006055B0(CAiSEvent *s, CSealCtrlAi *ai)
     }
     default:
         if (s->m_flags & 4) {
-            ai->PlayAiSound((CHARACTER_SOUND)70, 1.0f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)70, 1.0f, CAiEvent::AIE_NONE);
             SEAL_STATE r = ((CZSealBody *)seal)->GetStance(true);
 
             if (r == stateStand)
                 func_00571010(ai, func_00609530(0), 2, (ORDER_KIND)r);
         } else if (s->m_flags & 8) {
-            ai->PlayAiSound((CHARACTER_SOUND)69, 0.25f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)69, 0.25f, CAiEvent::AIE_NONE);
             if (s->m_flags & 2)
                 func_005F6100(s, ai, 4, true);
             func_00571010(ai, func_00609530(1), 258, (ORDER_KIND)11);
@@ -1545,7 +1545,7 @@ int CAiSReload::Virtual14(CSealCtrlAi *ai, CAiState *sub)
     switch (phase) {
     case 1:
         if (m_flags & 1) {
-            ai->PlayAiSound((CHARACTER_SOUND)68, 1.0f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)68, 1.0f, CAiEvent::AIE_NONE);
             SetFlags(0, 1);
         }
         Reload__5CZKitFv((char *)seal + 0x5e0);
@@ -1622,7 +1622,7 @@ int CAiSFlee::Tick(CSealCtrlAi *ai)
         else if (GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(&AiMaps, cell, (unsigned int *)&m_cell)) {
             step = STEP_2;
             func_005F0830(ai, (unsigned int *)&m_cell, 4, 1, 2);
-            ai->PlayAiSound((CHARACTER_SOUND)72, 0.75f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)72, 0.75f, CAiEvent::AIE_NONE);
             SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
             func_00570F90(ai, 1.0f);
             ai->SetTarget(0);

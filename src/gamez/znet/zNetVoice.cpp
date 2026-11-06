@@ -65,7 +65,13 @@ struct VoiceSlot {
  * its constructor) and keeps at data_0045B718. SOCOM 1's zNetVoice.cpp held CZNetVoice, so the
  * class keeps that name (a prediction: SOCOM II's object is new); VoiceRadio is this unit's
  * older spelling, kept as a typedef for the placeholders */
+extern "C" {
+extern unsigned char data_003DF540[];   /* the radio's open and close tone, at rest */
+}
+
 struct CZNetVoice {
+    /* everything zeroed or given its rest value, the twelve channel slots last (0x3102E0) */
+    CZNetVoice();
     /* the radio's two message types registered with the network (0x310210) */
     void zNetRegisterVoice();
 
@@ -81,11 +87,15 @@ struct CZNetVoice {
     unsigned char _3c[0x44 - 0x3c];
     int m_hint;   // 0x44: the headset's enumeration hint (1 a change seen, 2 handled)
     unsigned char m_recording;   // 0x48: the headset recording (VoiceDevice's m_48)
-    unsigned char _49;
+    unsigned char m_playing;   // 0x49 (VoicePlayer's)
     unsigned char m_quiet;   // 0x4a: set, the talk key served; cleared (a channel change), the slot given back
-    unsigned char _4b;
+    unsigned char m_4b;
     unsigned char m_open;   // 0x4c: the set-up done (VoiceChat's)
-    unsigned char _4d[0x54 - 0x4d];
+    unsigned char m_4d;
+    unsigned char m_bypass;   // 0x4e: the headset's processing off (VoiceHeadset's; the constructor leaves it)
+    unsigned char m_noagc;   // 0x4f (VoiceHeadset's)
+    unsigned char m_nonoise;   // 0x50 (VoiceHeadset's)
+    unsigned char _51[0x54 - 0x51];
     unsigned char m_status[8];   // 0x54: our channel's state, as the DME reports it
     int m_5c;   // 0x5c
     /* the two message ids the network hands back at registration, unsigned (the radio tick's sends
@@ -97,9 +107,22 @@ struct CZNetVoice {
     VoiceSlot m_slots[12];   // 0x70
     unsigned char *m_tone;   // 0xd0: the open and close tone's samples (data_003DF540 at rest)
     short m_tonebuf[2000];   // 0xd4: the tone as the headset plays it
-    unsigned char _1074[0x1078 - 0x1074];
+    CValve *m_valve;   // 0x1074: the talk valve (VoiceTalk's)
     int m_usecodec;   // 0x1078 (VoiceChat's)
-};
+    void *m_echo;   // 0x107c: the echo canceller (VoiceHeadset's)
+    int m_1080;   // 0x1080
+    /* the encoder's preprocessing settings, six floats (0x30E6A0 copies them in; VoiceHeadset's):
+     * the canceller's three, the noise stage's two, the gain's level */
+    float m_settings[6];   // 0x1084
+    int m_109c;   // 0x109c: -1 at rest
+    int m_10a0;   // 0x10a0: 180 at rest
+    bool m_muted[24];   // 0x10a4: each client's voice muted (0x30E550 / 0x30E580: a bool table -- an unsigned char one converts on return, 8 bytes longer)
+    /* each stream's format, recording [0] and playback [1] (VoiceDevice's) */
+    int m_channels[2];   // 0x10bc
+    int m_bits[2];   // 0x10c4
+    int m_rate[2];   // 0x10cc
+    int m_ms[2];   // 0x10d4
+};   // 0x10dc: CMission::Init's operator new(4316)
 typedef CZNetVoice VoiceRadio;
 struct VoiceTalk {
     unsigned char m_state;   // 0x0
@@ -151,7 +174,7 @@ struct VoiceHeadset {
 };
 
 extern "C" {
-/* the echo canceller's switches (OVL1 0x3104F0-0x310630, byte-exact drafts) */
+/* the encoder's preprocessing switches (zNetVoiceCodec.cpp's, OVL1 0x3104F0-0x310630) */
 void func_003105D0(void *h);
 void func_00310600(void *h);
 void func_00310630(void *h, void *settings);
@@ -356,30 +379,56 @@ int func_0030F5F0(VoicePlayer *p, const short *in, int len)
     return total;
 }
 
-/* a packet of 8 bytes decoded frame by frame into the caller's samples (OVL1 0x3106A0). The
- * count returned is the original's slip: it doubles itself (`addu s0,s0,s0`) where the frames'
- * counts were surely meant, so it stays 0. The packet handler 0x30F7E0, its one caller, calls it
- * out of line: pinned */
-#pragma auto_inline off
-int func_003106A0(VoiceDecoder *d, const void *packet, short *out)
-{
-    int n = 0;
-    unsigned char done;
-
-    memcpy(d->m_in, packet, 8);
-    d->m_inlen = 8;
-    do {
-        func_00255B68(d->m_handle, &d->m_samples);
-        if (d->m_count > 0) {
-            memcpy(out, d->m_samples, d->m_count * 2);
-            n += n;
-            out += d->m_count;
-        }
-        func_00255CF8(d->m_handle, &done);
-    } while (!(bool)done);
-    return n * 2;
+/* the codec's glue -- the pair made and released, a frame encoded, a packet decoded, the
+ * canceller's and the encoder's switches -- is zNetVoiceCodec.cpp's, OVL1 0x3103D0-0x31097F (a
+ * unit of its own since the online lane's round 26: every call this unit makes into that range is
+ * out of line, the four `#pragma auto_inline off` pins it needed here gone with the split) */
+extern "C" {
+int func_003106A0(VoiceDecoder *d, const void *packet, short *out);   /* (a packet decoded) */
+int func_00310750(VoiceEncoder *e, const void *samples, void *out);   /* (a frame encoded) */
+int func_003103D0(VoiceEcho *e);   /* (the canceller's level) */
+void func_00310480(VoiceEcho *e, int gain);   /* (the canceller set up) */
 }
-#pragma auto_inline reset
+
+/* the radio made (CMission::Init news its 4316 bytes and keeps it at data_0045B718; OVL1 0x3102E0):
+ * idle, no slot, channel or team, no headset, the tone at rest, the headset's streams mono and
+ * stereo 16-bit at 8 kHz -- and the twelve channel slots free (256: no client) last, the loop the
+ * target runs after every other store, unrolled six to a pass */
+CZNetVoice::CZNetVoice()
+{
+    m_state = 1;
+    m_slot = 0;
+    m_channel = 0;
+    m_team = 0;
+    m_handle = -1;
+    m_hint = 2;
+    m_recording = 0;
+    m_playing = 0;
+    m_quiet = 0;
+    m_4b = 0;
+    m_open = 0;
+    m_4d = 0;
+    m_noagc = 0;
+    m_nonoise = 0;
+    m_tone = data_003DF540;
+    m_valve = 0;
+    m_echo = 0;
+    m_1080 = 0;
+    m_109c = -1;
+    m_10a0 = 180;
+    m_channels[0] = 1;
+    m_channels[1] = 2;
+    m_bits[0] = 16;
+    m_bits[1] = 16;
+    m_rate[0] = 8000;
+    m_rate[1] = 8000;
+    m_ms[0] = 2000;
+    m_ms[1] = 2000;
+    for (int i = 0; i < 12; i++) {
+        m_slots[i].m_client = 256;
+        m_slots[i].m_4 = 0;
+    }
+}
 
 /* the radio's two messages registered: "Radio", three bytes, and "Channel Status", the twelve
  * slots' clients as halfwords (OVL1 0x310210) */
@@ -479,6 +528,52 @@ void func_0030E7F0(VoiceRadio *r)
 }
 
 /* our channel set to the all-hands one, 11 (OVL1 0x30E490) */
+void func_0030E490(VoiceRadio *r);
+
+/* the talk key served or not -- never on the all-hands channel (CZNetVoice's, this its first
+ * argument: the HUD's radio menu, the load and mission states and the menu set it; OVL1 0x30E6E0) */
+extern "C" void func_0030E6E0(VoiceRadio *r, int on)
+{
+    if (r->m_slot == 11)
+        r->m_quiet = 0;
+    else
+        r->m_quiet = on;
+}
+
+/* the encoder's preprocessing settings copied in, the canceller's three passed on (the armory
+ * menu's call with a character's figures; OVL1 0x30E6A0) */
+extern "C" void func_0030E6A0(VoiceRadio *r, const float *s)
+{
+    r->m_settings[0] = s[0];
+    r->m_settings[1] = s[1];
+    r->m_settings[2] = s[2];
+    r->m_settings[3] = s[3];
+    r->m_settings[4] = s[4];
+    r->m_settings[5] = s[5];
+    func_00310630(r->m_echo, r->m_settings);
+}
+
+/* a client's voice muted or not, and whether it is -- muted when out of the table's 24 (the
+ * HUD's mute command and the persona's ignore list; OVL1 0x30E580, 0x30E550) */
+extern "C" void func_0030E580(VoiceRadio *r, int client, bool muted)
+{
+    if (client >= 0 && client < 24)
+        r->m_muted[client] = muted;
+}
+
+extern "C" bool func_0030E550(VoiceRadio *r, int client)
+{
+    if (client >= 0 && client < 24)
+        return r->m_muted[client];
+    return true;
+}
+
+/* the radio on: off the all-hands channel, 11 (the HUD's radio menu and info box; OVL1 0x30E540) */
+extern "C" bool func_0030E540(VoiceRadio *r)
+{
+    return r->m_slot != 11;
+}
+
 void func_0030E490(VoiceRadio *r)
 {
     int conn = theNetwork.m_GameConnectionIndex;
@@ -493,22 +588,6 @@ void func_0030E490(VoiceRadio *r)
     r->m_quiet = 0;
 }
 
-/* a frame of samples encoded: the packed bytes handed out and their count returned, a carried
- * byte moved to the front (OVL1 0x310750; pinned: its one caller, 0x30F990, calls it) */
-#pragma auto_inline off
-int func_00310750(VoiceEncoder *e, const void *samples, void *out)
-{
-    memcpy(e->m_frame.m_in, samples, 320);
-    func_0024F888(e->m_handle, &e->m_frame);
-    int n = e->m_frame.m_length;
-
-    memcpy(out, e->m_frame.m_out, n);
-    if (e->m_frame.m_carry > 0)
-        e->m_frame.m_out[0] = e->m_frame.m_out[n];
-    e->m_frame.m_length = 0;
-    return n;
-}
-#pragma auto_inline reset
 
 /* the channel status sent to everyone: the twelve slots' clients as halfwords (inlined in the
  * "Radio" handler's two master cases; the name ours) */
@@ -534,7 +613,6 @@ int lgAudASync(int wait);
 int lgAudClose(int handle);
 int lgAudStartRecording(int handle);
 int lgAudStopRecording(int handle);
-extern unsigned char data_003DF540[];   /* the radio's open and close tone, at rest */
 extern int data_0045C290;   /* the ticks without a headset */
 }
 
@@ -823,33 +901,6 @@ int func_0030E8E0(int, int, int client, void *data)
     return 3;
 }
 
-/* the canceller's level read (OVL1 0x3103D0; pinned: its one caller, 0x30F990, calls it) */
-#pragma auto_inline off
-int func_003103D0(VoiceEcho *e)
-{
-    short a;
-    short b;
-
-    func_002529C0(e->m_handle, &a);
-    func_00252BA0(e->m_handle, &b);
-    return b;
-}
-#pragma auto_inline reset
-
-/* the canceller set up, the gain last (OVL1 0x310480: the voice object's set-up, its one caller,
- * calls it out of line, pinned) */
-#pragma auto_inline off
-void func_00310480(VoiceEcho *e, int gain)
-{
-    if (e && e->m_handle) {
-        func_00252880(e->m_handle, 30);
-        func_00252920(e->m_handle, 150);
-        func_00252B50(e->m_handle, 0);
-        func_00252AB0(e->m_handle, gain);
-    }
-}
-#pragma auto_inline reset
-
 }
 
 /* the speech codec's pair: the encoder's and the decoder's handles, each with its frame -- the
@@ -872,78 +923,9 @@ struct VoiceCodec {
     CodecFrame m_decframe;   // 0x20
 };   // 0x38
 
-/* what the codec says of its frames (only what is read here) */
-struct CodecInfo {
-    unsigned char _0[0x3c];
-    unsigned short m_samples;   // 0x3c: a frame's samples
-    unsigned char _3e[0x60 - 0x3e];
-    unsigned long m_bits;   // 0x60: a packed frame's bits
-    unsigned char _68[0x70 - 0x68];
-};
-
 extern "C" {
-void func_00256F48(void *(*alloc)(unsigned int n, unsigned int size));   /* (the codec's allocator set) */
-void func_00256F68(void (*release)(void *p));   /* (and its release) */
-void func_00255A68(CodecInfo *info);   /* (the codec described) */
-void func_00255BD0(void **dec);   /* (the decoder made) */
-void func_0024F990(void **enc);   /* (the encoder made) */
-void func_00310630(void *h, void *settings);   /* (the canceller's settings) */
+VoiceCodec *func_00310830();   /* (the codec pair made) */
 void func_00310410(VoiceEcho *e, int on);   /* (the canceller on or off) */
-void *calloc(unsigned int n, unsigned int size);
-void free(void *p);
-void *malloc(unsigned int n);
-
-/* the codec's allocator and release: the C library's (OVL1 0x310970, 0x310960) */
-void *func_00310970(unsigned int n, unsigned int size)
-{
-    return calloc(n, size);
-}
-
-void func_00310960(void *p)
-{
-    free(p);
-}
-
-/* the codec pair made: the library given its allocator, the pair cleared, each frame's buffers
- * sized from the codec's description -- the packed bytes rounded up, two over (OVL1 0x310830) */
-VoiceCodec *func_00310830()
-{
-    func_00256F48(func_00310970);
-    func_00256F68(func_00310960);
-    VoiceCodec *c = (VoiceCodec *)malloc(sizeof(VoiceCodec));
-
-    if (c) {
-        CodecInfo info;
-
-        memset(c, 0, sizeof(VoiceCodec));
-        c->m_enc = 0;
-        c->m_dec = 0;
-        func_00255A68(&info);
-        int bytes = info.m_bits >> 3;
-
-        if (info.m_bits & 7)
-            bytes++;
-        c->m_encframe.m_samples = (short *)malloc(info.m_samples * 2);
-        c->m_encframe.m_count = info.m_samples;
-        c->m_encframe.m_bytes = (unsigned char *)malloc(bytes + 2);
-        c->m_encframe.m_size = bytes + 2;
-        c->m_encframe.m_e = 0;
-        c->m_encframe.m_10 = 0;
-        c->m_encframe.m_length = 0;
-        c->m_encframe.m_carry = 0;
-        c->m_decframe.m_samples = (short *)malloc(info.m_samples * 2);
-        c->m_decframe.m_count = info.m_samples;
-        c->m_decframe.m_bytes = (unsigned char *)malloc(bytes + 2);
-        c->m_decframe.m_size = bytes + 2;
-        c->m_decframe.m_e = 0;
-        c->m_decframe.m_10 = 0;
-        c->m_decframe.m_length = 0;
-        c->m_decframe.m_carry = 0;
-        func_00255BD0(&c->m_dec);
-        func_0024F990(&c->m_enc);
-    }
-    return c;
-}
 }
 
 /* the voice object itself (0x45B718's: the radio's slots, the headset's switches and volumes,
@@ -1218,6 +1200,69 @@ bool func_0030E710(VoiceTalk *t)
     if (t->m_valve)
         t->m_valve->SetValue(talking);
     return talking;
+}
+
+/* the voice's stream as the DME carries it: two formats, the recording's then the playback's, and
+ * the record and packet callbacks (0x38 bytes; zNetDme.cpp's connects hand it to the DME) */
+struct NetVoiceFormat {
+    int m_channels;   // 0x0
+    int m_bits;   // 0x4
+    int m_rate;   // 0x8
+};
+struct NetVoiceStreamParams {
+    int m_0;
+    int m_4;   // 0x4: 1
+    int m_8;   // 0x8: 12
+    int m_c;
+    int m_10;   // 0x10: 0
+    NetVoiceFormat m_rec;   // 0x14
+    NetVoiceFormat m_play;   // 0x20
+    void (*m_record)(VoiceRecord *rec);   // 0x2c
+    int m_30;
+    void (*m_packet)(VoicePacket *p);   // 0x34
+};   // 0x38
+
+/* the voice's stream filled from the radio: the record tick and the packet handler as its
+ * callbacks, the headset's two formats (both game-server connects call it; OVL1 0x30FC70) */
+void func_0030FC70(VoiceRadio *r, NetVoiceStreamParams *p)
+{
+    p->m_4 = 1;
+    p->m_8 = 12;
+    p->m_10 = 0;
+    p->m_record = func_0030F990;
+    p->m_packet = func_0030F7E0;
+    p->m_rec.m_channels = r->m_channels[0];
+    p->m_play.m_channels = r->m_channels[1];
+    p->m_rec.m_bits = r->m_bits[0];
+    p->m_play.m_bits = r->m_bits[1];
+    p->m_rec.m_rate = r->m_rate[0];
+    p->m_play.m_rate = r->m_rate[1];
+}
+
+int lgAudStopPlayback(int handle);   /* (lgAud: the playback stopped) */
+void func_003107D0(void *codec);   /* (zNetVoiceCodec.cpp's: the codec pair released) */
+
+/* the headset closed -- its recording and its playback stopped first -- and the codec pair, when
+ * the radio uses one, switched off and released (OVL1 0x30FE40) */
+void func_0030FE40(VoiceRadio *r)
+{
+    if (r->m_handle != -1) {
+        StopRecording(r);
+        if (r->m_playing) {
+            lgAudStopPlayback(r->m_handle);
+            r->m_playing = 0;
+        }
+        lgAudClose(r->m_handle);
+        r->m_handle = -1;
+    }
+    if (r->m_usecodec == 1) {
+        func_003105D0(r->m_echo);
+        if (r->m_echo) {
+            func_003107D0(r->m_echo);
+            r->m_echo = 0;
+        }
+    }
+    r->m_open = 0;
 }
 
 }

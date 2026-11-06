@@ -23,7 +23,7 @@ int func_00620F50(int index, NetCreateObjectCallback create, NetUpdateObjectCall
                   NetDestroyObjectCallback destroy);   /* NetRegisterRemoteObjectCallback */
 int func_00621458(char type, int conn, int to, int msg, int size, unsigned char *data);   /* NetSendApplicationMessage */
 int func_006210D0(int *type, NetMessageCallback cb);   /* an application message type registered */
-int func_00622CC0(int *count, int conn);   /* the connection's object count */
+int func_00622CC0(int *index, int conn);   /* (the DME: our client index in the connection) */
 int func_006220F0(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a, int b,
                   unsigned int c, int d, void *data, char *name, int e);   /* NetCreateObject */
 int NetUpdate();
@@ -203,10 +203,60 @@ int CZNetwork::zNetInitialize()
     return r.m_err;
 }
 
+/* the DME's sub-heap (zsys_heap.cpp's class, 0x18 bytes: the block taken with _malloc, one free
+ * block of the whole size; the instance at 0x45B328, made by the network's start-up and wrapped at
+ * 0x30E300-0x30E3C8) */
+class CHeap {
+public:
+    CHeap(unsigned int size);
+    ~CHeap();
+    void Free(void *p);
+    void *Alloc(unsigned int size);
+
+    unsigned char _0[0x18];
+};
+extern "C" {
+extern CHeap *data_0045B328;
+}
+
+/* the DME's memory from the sub-heap: its allocations (OVL1 0x30E3C0) and frees (0x30E3B0), the
+ * callbacks zNetInit hands the DME */
+extern "C" void *func_0030E3C0(unsigned int size)
+{
+    return data_0045B328->Alloc(size);
+}
+
+extern "C" void func_0030E3B0(void *p)
+{
+    data_0045B328->Free(p);
+}
+
+/* the network flag set (CZNetwork's, this its first argument: the universe's connection sets it,
+ * the chat's and the menu's teardowns clear it; OVL1 0x30E3A0) */
+extern "C" void func_0030E3A0(CZNetwork *net, int on)
+{
+    net->m_bNetwork = on;
+}
+
+/* the sub-heap made, 0x86470 bytes, unless it is there (CZNetwork's, this unused: the menu's
+ * network start-up calls it on theNetwork; OVL1 0x30E340) */
+extern "C" void func_0030E340(CZNetwork *net)
+{
+    if (!data_0045B328)
+        data_0045B328 = new CHeap(0x86470);
+}
+
+/* and deleted, when it is there (OVL1 0x30E300: the menu's teardown calls it) */
+extern "C" void func_0030E300(CZNetwork *net)
+{
+    if (data_0045B328) {
+        delete data_0045B328;
+        data_0045B328 = 0;
+    }
+}
+
 extern "C" {
 void func_006216B8(void *(*alloc)(unsigned int), void (*free)(void *));   /* (the DME's memory callbacks set) */
-void *func_0030E3C0(unsigned int size);   /* (the DME's allocations from the sub-heap, 0x45B328) */
-void func_0030E3B0(void *p);   /* (and its frees) */
 }
 
 /* the DME's memory routed through the sub-heap, then the lobby server's and the universe
@@ -246,8 +296,18 @@ extern "C" {
 int sceSifMInitRpc(unsigned int mode);
 void sceLibnetInitialize(void *cd, int a, int b, int c);   /* the RPC client bound */
 bool func_0030C090();   /* (zNetCnf.cpp's: the network configuration's own start-up) */
-bool func_0030E260(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data);   /* (the inet client closed before a reboot) */
 extern bool data_0045B320;   /* the modules up */
+void sceLibnetTerminate(void *cd);   /* the RPC client unbound */
+int sceSifMExitRpc();
+}
+
+/* the inet RPC client unbound and the RPC layer closed before the IOP reboots -- the reboot
+ * callback zNetLoadIRX registers with smap.irx (OVL1 0x30E260) */
+extern "C" bool func_0030E260(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data)
+{
+    sceLibnetTerminate(data_00456780);
+    sceSifMExitRpc();
+    return false;
 }
 
 /* the network's IOP modules loaded: the sound's CD reads finished and its streams closed, then --
@@ -453,14 +513,7 @@ void CZNetwork::zNetPlayFixList()
 }
 #pragma auto_inline reset
 
-/* the DME's sub-heap (zsys_heap.cpp's class; the instance at 0x45B328, made by the network's start-up
- * and wrapped at 0x30E300-0x30E3C8) */
-class CHeap {
-public:
-    ~CHeap();
-};
 extern "C" {
-extern CHeap *data_0045B328;
 bool func_0030C030();   /* (zNetCnf.cpp's: eznetctl closed) */
 }
 
@@ -558,6 +611,85 @@ int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (the lobby 
 inline char *VarText(_zrdr *z)
 {
     return z->type == 3 ? z->string : 0;
+}
+
+extern "C" {
+int func_00623090(int *count, int conn);   /* (the DME: the connection's valid clients) */
+int func_00622F40(int *index, int conn);   /* (the DME: the session master's client index) */
+int NetGetClient(void **client, int conn, int index);   /* a client of the connection */
+void func_00622578(int index);   /* (the DME: an object's fields sent -- -1, every object's) */
+}
+
+/* SOCOM 1's run of accessors, in its order (its zNetGetClient gone; 0x30D620 new between
+ * zNetGetGameClient and zNetGetObject). An object by index, 0 when the DME has none (SOCOM 1's
+ * 0x321820; OVL1 0x30D630) */
+NetObject *CZNetwork::zNetGetObject(int index)
+{
+    NetObject *obj = 0;
+
+    if (NetGetObject(&obj, index) != 0)
+        return 0;
+    return obj;
+}
+
+/* every object's changed fields sent now, the index not passed on (SOCOM II's: the platform
+ * unit's turret update calls it on theNetwork ahead of 0x30D000; OVL1 0x30D620) */
+extern "C" void func_0030D620(CZNetwork *net, int index)
+{
+    func_00622578(-1);
+}
+
+/* a client's record in the game connection, 0 when the DME has none -- the connection read
+ * through the global, as zNetGetGameSessionMasterClientIndex's (SOCOM 1's 0x3217D0; OVL1 0x30D5E0) */
+GameClient *CZNetwork::zNetGetGameClient(int client)
+{
+    GameClient *c = 0;
+
+    if (NetGetClient((void **)&c, theNetwork.m_GameConnectionIndex, client) != 0)
+        return 0;
+    return c;
+}
+
+/* our client index in the game connection, -1 when the DME has none (SOCOM 1's 0x321750; OVL1
+ * 0x30D5A0; zNetCreateObject's 256 test inlines it) */
+int CZNetwork::zNetGetMyGameClientIndex()
+{
+    int index = -1;
+
+    if (func_00622CC0(&index, theNetwork.m_GameConnectionIndex) == 0)
+        return index;
+    return -1;
+}
+
+/* the game session's master, -1 when the DME has none (SOCOM 1's 0x321710; OVL1 0x30D560) */
+int CZNetwork::zNetGetGameSessionMasterClientIndex()
+{
+    int index = -1;
+
+    if (func_00622F40(&index, theNetwork.m_GameConnectionIndex) == 0)
+        return index;
+    return -1;
+}
+
+/* the network's clock, as the last update had it (SOCOM 1's 0x321700; OVL1 0x30D550) */
+int CZNetwork::zNetGetTime()
+{
+    return m_net_time;
+}
+
+/* the local clock, as the last update had it (SOCOM 1's 0x3216F0; OVL1 0x30D540) */
+unsigned int CZNetwork::zNetGetLocalTime()
+{
+    return m_local_time;
+}
+
+/* the game connection's valid clients counted (SOCOM 1's 0x3216C0; OVL1 0x30D510) */
+int CZNetwork::zNetGetValidGameClientCount()
+{
+    int n = 0;
+
+    func_00623090(&n, m_GameConnectionIndex);
+    return n;
 }
 
 /* the game's server connected, the client events to the two callbacks: the room's connection info,
@@ -742,31 +874,42 @@ void CZNetwork::zNetLeaveAndDisconnect()
     m_monitor_ok = 0;
 }
 
-/* the connection's object count, -1 when it cannot be had (the name ours). The success arm first:
- * MW lays the count's load on the fall-through and retargets the branch past the -1, which goes
- * into its delay slot (`bnez v0,join; li v1,-1; lw v1,n`) -- `f() ? -1 : n` lays the -1 arm first
- * (beqz, b: 8 bytes longer), and `!f() ? n : -1` does too: only `f() == 0` gives the target's (the
- * online lane's round 17) */
-inline int ObjectCount(int conn)
-{
-    int n = -1;
-
-    return func_00622CC0(&n, conn) == 0 ? n : -1;
-}
-
-/* a network object made, unless the game connection holds 256 already (8 then); a failure
- * handed to the lobby's recovery (SOCOM 1's; OVL1 0x30D670) */
+/* a network object made, unless we hold no client in the game connection (our index 256, the
+ * CZNetwork constructor's m_ClientIndex at rest: 8 then); a failure handed to the lobby's recovery
+ * (SOCOM 1's; OVL1 0x30D670). The test is zNetGetMyGameClientIndex (0x30D5A0) auto-inlined -- the
+ * online lane's round 26: until the accessor was written, an inline stand-in (`ObjectCount`, an
+ * "object count") whose only reproducing shape was `return f(&n, conn) == 0 ? n : -1;` (`f() ? -1 :
+ * n` and `!f() ? n : -1` lay the -1 arm first, 8 bytes longer: round 17); inlined here the
+ * accessor's if / return form compiles alike */
 int CZNetwork::zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life,
                                 unsigned int a, int b, unsigned int c, int d, void *data, char *name,
                                 int e)
 {
-    if (ObjectCount(theNetwork.m_GameConnectionIndex) == 256)
+    if (zNetGetMyGameClientIndex() == 256)
         return 8;
     int err = func_006220F0(index, own, life, a, b, c, d, data, name, e);
 
     if (err)
         theLobby.RecoverFromNetError(333);
     return err;
+}
+
+extern "C" {
+void func_00623590(int index);   /* (the DME: an object's fields) */
+void func_00623628(int index);
+}
+
+/* two forwarders to the DME, this unused (SOCOM II's: `j; move a0,a1`, as zNetSetMyClientObject;
+ * the platform unit's turret sends call them on theNetwork with an object's index -- 0x30D010 the
+ * periodic send's, 0x30D000 after 0x30D620; OVL1 0x30D010, 0x30D000) */
+extern "C" void func_0030D010(CZNetwork *net, int index)
+{
+    func_00623590(index);
+}
+
+extern "C" void func_0030D000(CZNetwork *net, int index)
+{
+    func_00623628(index);
 }
 
 /* an application message type registered with the DME: its id handed back through `type`, the

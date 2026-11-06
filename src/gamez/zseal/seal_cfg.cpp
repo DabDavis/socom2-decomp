@@ -326,6 +326,8 @@ public:
     /* a type's base type, and whether it carries bit 1 (anim.cpp's, OVL2 0x5E1A90 and 0x5E3AC0) */
     AnimType BaseAnim(AnimType type);
     bool TypeBit1(AnimType type);
+    /* the set's own speeds read (SOCOM 1's AnimSet::SetMaxMotion; OVL2 0x5E0450, anim.cpp's) */
+    void SetMaxMotion();
 
     /* the set's name (out of line in the SEALs' units, OVL2 0x578940) and a set by its name in the
      * list, or 0 (SOCOM 1's Find, anim.cpp's: inlined one level in 0x58C600, the list's iterator pieces
@@ -358,11 +360,6 @@ public:
     unsigned char _44[0x5c - 0x44];
     CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's at 0x60)
 };
-
-extern "C" {
-/* the set's own speeds read (SOCOM 1's AnimSet::SetMaxMotion; OVL2 0x5E0450, anim.cpp's) */
-void func_005E0450(AnimSet *set);
-}
 
 extern "C" {
 /* a SEAL posed by one anim alone (seal_anim.cpp's, OVL2 0x577DF0) */
@@ -646,7 +643,7 @@ void CZSealBody::SetMaxMotion()
 {
     CZSIScriptCommon *a;
 
-    func_005E0450(m_animset);
+    m_animset->SetMaxMotion();
     AnimSet *set = m_animset;
 
     a = set->GetScript((AnimType)27);

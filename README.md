@@ -2065,6 +2065,84 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 33** (the three requests measured, none applied -- comments only,
+  objcmp 656 units 0 differ; probes build/p33/, untracked: board.py / vgen.py / vrun.py score a shadow
+  include/vector's class insert over all 68 inserts in 4 s, igd.py / igt.py / pc.py dump and replay a shadow
+  build, rs/rv.py the resize probe, sdiff.py scdiff with the shadow FIRST -- scdiff's own `-I` is searched after
+  include/, so it cannot test a shadow header):
+  - THE CLASS INSERT'S END IS AN EXACT DICHOTOMY over 30 spellings: every pointer local (declared, const, from
+    end().m_p, through data(), a named copy of the object's member, an inline returning the pointer, a
+    function-scope T * set in both branches) gives the five cut inserts (AcctRecord, CTurretDef, zrdr_sym,
+    CDlgDesignModel, CVehicleRdrEntry) and loses the same 29 of the 44; every object form gives the 44 and none
+    of the five. `igreplay --move`: the cut five take the target's colouring as well with m and the else
+    branch's j numbered AFTER the end as with the end before m (include/vector's insert comment);
+  - read in doldecomp/mweppc's optimiser (the PowerPC MW's IRO, the same passes): the class scalariser runs at
+    the head of each pass and skips an object whose address is live while any call may touch memory (with no
+    pointer analysis every call does) -- so an iterator object is scalarised only after copy propagation folds
+    its address uses, numbered late; IRO_SplitLifetimes keeps the web holding a variable's EARLIEST definition
+    and splits every later web into a new temporary; copy propagation never carries a copy into a deeper loop
+    once the loop depths are set (`node->loopdepth <= def->loopdepth`);
+  - cdeque<PCv>::resize 0x285660 is CODE-EXACT as a probe: round 31's four-word iterator, begin() through round
+    32's by-value start (`unsigned int s = start_; return iterator(data_, s, capacity_);`) over a constructor
+    reading the storage back through the field's own address (`first_(*&data_ + start), last_(*&data_ + cap)`:
+    the store and both reads through one CSE'd address, numbered after the shift) -- through a `d()` accessor
+    the address is the inliner's and is numbered before the shift (7 off); not applied, the four-word iterator
+    still costs ~__deque_buf's walk (0x2CEFB0, 35 off);
+  - deque::begin() / end() const declared AHEAD of the copy constructor (generated before it in the same pass)
+    are still called by the chat's copy 0x2F5F80 -- declaration order no more the lever than generation order;
+  - scdiff masks the CANDIDATE's relocated fields on both sides by offset: where the candidate is shorter a
+    target word can print masked (0x2F5FA0's `addiu a0,sp,48` shown as `li zero,0`) -- read the image's word.
+- **Tells from the online lobby, round 26** (48 functions from their drafts to source -- zNetDme.cpp whole, the voice
+  object and CZNetVoice's constructor named --; two new units, zNetVoiceCodec.cpp 0x3103D0-0x31097F and
+  zNetMediusStates.cpp 0x2ED460-0x2F3EDF):
+  - A PLACEHOLDER DEFINED WITH C++ LINKAGE (`func_X__F...`) IS no-target TO sccheck, so it is never compared -- define
+    placeholders inside extern "C" (0x2F11F0 hid a miss this way);
+  - out-of-class template members found in the middle of a unit mark that unit's end: the tail closes it (the vector's
+    erase 0x2F2740 and insert 0x2F2D90 split zNetMediusStates.cpp from zNetMediusChat.cpp, the new tail sort, erase,
+    insert, __sort132, __selection_sort in the image's own order); trivial checks called out of line inside their own unit
+    need a pin (a compiled-out debug print is the likely reason);
+  - a bool table returned as bool: an unsigned char table converts on return and is 8 bytes longer (0x30E550); `p = 0; if
+    (x) p = x; f(p);` gives the target's early `move a0,zero`, `f(x ? x : 0)` is 8 bytes longer (0x2F11F0); an inline
+    stand-in whose body is a same-unit draft's is that function auto-inlined (ObjectCount was zNetGetMyGameClientIndex).
+- **Tells from the UI, round 31** (CHandlerButtonSpec, LoadDlgObjects and CRadioStripSpec -- open since rounds 18, 16 and 29,
+  all three closed by one change --, LoadFromDesign and HddMountGame, both unwritten before; zui.cpp whole):
+  - IF VERSUS TERNARY IS FUNCTION-WIDE: an inline's `if (c) p = k;` on its own parameter changes the whole caller -- MW then
+    moves fall-through instructions into branch delay slots, collapses other inlined ternaries into triangles and pads the
+    then-label; written as a ternary the caller gets the target's shapes everywhere (empty slots, ternaries laid out with a
+    branch to the join and a dead copy of the else arm) -- CDesignDlgObj::SetName's empty-name test;
+    build/scratch/ui-r31/ui/orphan_scan.py finds the dead-else-copy shape (17 open rows in five lanes have it);
+  - two erase() tag temporaries at equal inline depth take frame slots in source order, the first higher; one a level
+    deeper takes the lower slot -- an inline setter evens the depth (SetChildOf); a local of exactly 16 bytes goes with the
+    large group (16-byte slots);
+  - `*p++` over a constant base keeps a stepped pointer, unrolled in pairs, where indexing folds the stores into absolute
+    addresses; a `(char)` cast of an int element narrows the load to lb; a callee the target calls with a0 untouched after
+    an earlier call is a static member (CMemCard::Init / Uninit).
+- **Tells from the zdb world, textures, rdr and sound, round 26** (CNode::DeleteVisual and its remove_copy,
+  GetLightIntensity, CPipeEffect::Tick and Particle::Instance::Render -- open since round 22):
+  - a float literal multiplying a value comes out `mul.s d,k,x` whichever side it is written on; the same constant in a
+    named local keeps source order (`mul.s d,x,k`); a sub-product held in a local keeps the target's operand order for
+    `0.5f + c * m_c`;
+  - `0.0f + a + b + c` drops the zero and reassociates; a loop adding into a variable that starts at 0.0f keeps the order,
+    and its zero is the one a later `<= 0.0f` test copies (CPipeEffect::Tick 0x33CD50, 76 -> 0);
+  - an array element's components read through a `const T &` local number the accumulator's load ahead of the element's
+    (CWorld::GetLightIntensity 0x31D940 -- its light walk a marked two-label goto device entered at the bottom test: every
+    for / while tried gets rotated behind a duplicated test);
+  - a byte read through an inline returning an enum by a cast, into a local of the enum type, is numbered ahead of the
+    code-generation temporaries (Particle::Instance::Render 0x327910 with SOCOM 1's tag_ZVIS_FOV: 7 -> 0); an unsigned
+    short field converted to float takes MW's unsigned path, an (int) cast gives cvt.s.w; pushing a local directly makes
+    it address-taken (reloaded at every use) -- push a copy.
+- **Tells from the SEALs, round 51** (CSealCtrlAi::CreepTick and PostTick, both unwritten before; PlayAiSound's event
+  parameter an enum at last):
+  - an enum-typed parameter is passed on raw: PlayAiSound's third parameter is CAiEvent::EVENT (0x55FF60 / 0x5978A0
+    re-mangled; the VoiceEvent device dropped, the kit's int-literal callers pass the enum, 23 units SAME);
+  - in a product MW moves a LITERAL operand to the left when it emits the multiply, but leaves a variable whose value is
+    a known constant where it was written; the first operand's evaluation order is unaffected (0x54A3D0: 16 -> 1, the
+    depth an unnamed temporary evaluated first, `(1.3f - t) * r * 0.6f`);
+  - calling an inline `ClearGoal(m_goal_type)` with the member itself leaves the `type == NONE` compare's dead andi and
+    no branch (CSealCtrlAi::CreepTick 0x567350); a 1-bit field tested through `b ? true : false` gives sltu then beqz --
+    testing the bit in place, a (bool) cast or a bool local each come out 4 instructions off (PostTick 0x56F970);
+  - an extern "C" helper whose callers already hold the second argument in a1 gains that parameter at no cost
+    (func_00545480: a rescue credit, not a kill).
 - **Tells from the AI core, round 33** (FreeEvents, both CAiMap::WalkLine and FindTraversable -- 7,700 bytes, three of them
   never started before):
   - two lockstep cursors deleting each element and zeroing its slot are `std::transform(b, e, b, deleter)` with a functor
@@ -12716,6 +12794,50 @@ SplitUp_Finals_TreeCtx 0x4D6710, Swap_Finals_TreeCtx 0x4D6BC0 and
 FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx 0x4D6FC0 (s1:calls: SOCOM 1's
 CreateSecondPassTreeContext_ForChinese makes the same non-heap calls in the same order). No tool changed.
 
+**Round 33c: the FHT, the FFT block whole, the scheduler's run and queue sizes, the combiner's process.**
+
+- **Ron Mayer's FHT as published** (fht, 0x8BC): the 1988 `fht.c` -- bit reversal by `k2 ^= k`, the 4- or
+  8-point first stage, the radix-4 passes -- with its FAST_TRIG rotation (`t_c = costab[k]`, `t_s =
+  sintab[k]`, the twiddle turned from (1, 0)) is byte-exact as it stands, types `unsigned`, SQRT2 a
+  float (`(REAL)(2 * 0.7071...)`: a double constant would call the soft-float library). Its tables are
+  SOCOM 1's globals `costab` / `sintab` (data.txt, 16 entries each), defined in fht.c.
+- **The FFT block is a -ffast-math object** (fftmod.c, the twelfth): SOCOM 1's magnitude spectrum
+  (CalcAmplitudeSpec there, double sqrt) is an inline of SOCOM II's process, its sqrtf a bare sqrt.s;
+  SOCOM II's CalcAmplitudeSpec row is a power spectrum returning the band's energy. **The output
+  parameter is the walker** with a copy taken for the first-bin test (`move a3,t0`): a walker of its
+  own keeps the parameter in a2 and every register moves (64 words). **An if's arm order is the
+  registers' order**: `if (in[0] != 0) { copy } else x = 0;` gives x s1 and out s2 (the null arm first
+  swaps them and annuls one slot).
+- **A void function pointer's call takes v1 for its address** (tosRun: the block's process returns
+  nothing -- `jalr v1`; called as returning a value, v0). **A loop bound read through a struct in a loop
+  that makes calls keeps the loop rolled** (the read is no invariant); the count and the table read
+  into locals after the call unroll it as the target's. **`q++, i++`**: reorg fills a skip branch's slot
+  with the join's first insn, so the for's increments' order picks which one moves up; **`b =
+  table[*p++]`** keeps the step in an unannulled slot where `p++` in the for annuls it; two loops'
+  tables one variable across an if's arms are one pseudo (4 registers off).
+- **`if (found) { if (x != size) return 1; } else { size = x; found = 1; }`** lays the compare inline
+  with each `return 1` its own `jr ra` (SetAndControlQSizes, a frameless leaf); `if (!found) ... else if
+  (x != size) return 1;` puts the compare out of line and shares the return (13 words short).
+- **2.96 keeps an empty loop** (CombinerProcess: `for (k = 1; k < c->n; k++) ;`, unrolled by four, its
+  counter alone) -- SOCOM II's, not SOCOM 1's.
+- **ProcessVad, a data point**: with `int i;` and `i = 0` in the then-block sum's live length grows to
+  158 (6,329 against cnt's 6,315 -- one insn short of flipping the allocation); the quotient through
+  cnt flips the priority but loses the $f0 preference (24 words); a `do { } while (0)` around the copy
+  changes the size. Still OPEN.
+- **Open, diagnosed in place**: CombinerProcess (127 words, the right size: registers only -- the
+  target gives p3, d, p4, p1 a0-a3 and x, cur, k, q t1-t4); ProcessVad and SplitUp_Finals (their
+  diagnoses stand). Not reached: CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust (m2c's
+  FrameDPacoust draft: 20 spilled locals, two of them the wheel pointers ExtendNodeWheel takes by
+  address), ConstructArchitecture, InitVad, ExtendNodeWheel, ConstructBlock, PitchCombinerReset /
+  InitPitchCombiner, InitViterbi@nbestdp.
+
+Hand-written in round 33c: `asr/fht.c` (fht new: the object whole, 2 of 2), `asr/fftmod.c` (CalcAmplitudeSpec and
+ProcessFFTMod new, -ffast-math: the object whole, 5 of 5), `asr/tos.c` (tosRun and SetAndControlQSizes new: 18 of
+20; the block's process typed `TOSPROCFN`, returning nothing), `asr/combiner.c` (CombinerProcess written, OPEN: 3
+of 4) -- 5 rows new to the map's byte-exact rows (6,756 bytes), no draft superseded; `src/lib/asr` 573 of 602
+(568 of 596 before). Named (2, data.txt): `costab` 0x659140 and `sintab` 0x659180 (s1:data: SOCOM 1's globals of
+those names, read by fht at the same instructions). No rows renamed (all had SOCOM 1's names). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
@@ -13118,7 +13240,9 @@ What is open across lanes, and what comes next:
   __const_iterator: the rdr editor's do_assign and its three pieces), and the list's own insert(position,
   x) is measured, not applied (round 29: +0 / -1, LoadVehicles); the circular buffer's begin() and its
   growth recommendation are in since round 32 (the deques' make_iterators, which inline `begin() + n`,
-  stay open at their old sizes).
+  stay open at their old sizes); its resize 0x285660 is code-exact as a probe since round 33 (the
+  four-word iterator, `*&data_` reads) and waits on ~__deque_buf's walk under that iterator (0x2CEFB0
+  35 off) -- with it, insert 0x286160 / erase 0x285D30 and the zero word 0x3DE1D0 to name.
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
