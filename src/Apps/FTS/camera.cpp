@@ -1090,6 +1090,128 @@ void CAppCamera::ResetDeathCam()
     m_118 = 1.0f;
 }
 
+/* a point eased: from `from` by `delta` scaled (ours: the frame proves an inline -- the scale's and
+ * the sum's results one level below the differences, which are its arguments) */
+inline void EaseBy(CPnt3D &p, const CPnt3D &from, const CPnt3D &delta, float t)
+{
+    p = from + delta * t;
+}
+
+/* what the camera sees, two levels down (ours: UpdateCameraRegions called directly puts its point
+ * above the differences' locals; through this its frame slot is the target's, among the sums') */
+inline void UpdateRegions(CAppCamera *cam)
+{
+    cam->UpdateCameraRegions();
+}
+
+/* the tether's aim point found, whether the camera looks at the watched SEAL instead (SOCOM II's,
+ * not written: it calls the death camera's stick turn) */
+extern "C" unsigned char func_00297410(CAppCamera *cam, CPnt3D *pos, CPnt3D *offset, CPnt3D *aim, float dT);
+
+/* a - b, one level down (ours: written in place the difference's local takes the frame slot above
+ * the ease's temporaries; one wrapper deeper it is the target's, among the other differences') */
+inline CPnt3D DiffOf(const CPnt3D &a, const CPnt3D &b)
+{
+    return a - b;
+}
+
+/* the tether's camera (APTeatherCam's place, SOCOM II's): the third-person point; looking at the
+ * watched SEAL, the chord from just above it clipped -- else the aim put the tether's length out
+ * along the view, lowered for a player's SEAL down on dry ground offline, both eased as first
+ * person's and the chord from the aim clipped -- then looked along and what the camera sees */
+void func_00296F10(CAppCamera *cam, CMatrix &cTw, float dT)
+{
+    CPnt3D CamOffset;
+    float tetherLen;
+    CPnt3D cam_new_pos = cam->GetThirdPersonCamPos(&CamOffset, &tetherLen);
+    CPnt3D cam_aim_point;
+
+    /* a byte the call returns, narrowed again (andi) before the test */
+    unsigned char watching = func_00297410(cam, &cam_new_pos, &CamOffset, &cam_aim_point, dT);
+
+    if (watching && cam->m_bc) {
+        CPnt3D from = cam->m_bc->m_posW;
+
+        from.y += 10.0f;
+        cam->ClipCameraChord(dT, &from, &cam_new_pos, &cam_new_pos);
+    } else {
+        CPnt3D dir = DiffOf(cam_aim_point, cam_new_pos);
+
+        dir.Normalize();
+        EaseBy(cam_aim_point, cam_new_pos, dir, tetherLen);
+        if (cam->m_bc && !theNetwork.m_9 && cam->m_bc->IsPlayer() && !cam->m_bc->m_isAlive &&
+            !cam->m_bc->m_inwater) {
+            cam_aim_point.y -= 5.0f;
+            cam_aim_point.z += 5.0f;
+        }
+        if (cam->m_45) {
+            if (cam->m_46) {
+                cam->m_easeT += dT;
+                if (!(cam->m_easeT < 1.0f))
+                    cam->m_45 = 0;
+            } else
+                cam->m_easeT = 6.0f * dT;
+            if (cam->m_easeT > 1.0f)
+                cam->m_easeT = 1.0f;
+            float t = cam->m_easeT;
+
+            EaseBy(cam_aim_point, cam->m_easeAim, cam_aim_point - cam->m_easeAim, t);
+            cam->m_easeAim = cam_aim_point;
+            EaseBy(cam_new_pos, cam->m_easePos, cam_new_pos - cam->m_easePos, t);
+            cam->m_easePos = cam_new_pos;
+        } else {
+            cam->m_easeAim = cam_aim_point;
+            cam->m_easePos = cam_new_pos;
+        }
+        cam->ClipCameraChord(dT, &cam_aim_point, &cam_new_pos, &cam_new_pos);
+    }
+    cam->LookAt(&cam_new_pos, &cam_aim_point, cTw);
+    UpdateRegions(cam);
+}
+
+/* first person's camera (APFirstPersonCam's place, SOCOM 1's locals): the first-person point and
+ * the forward look -- the watched SEAL's own when it is the one followed -- carried into the SEAL's
+ * space, eased from where they were while the ease runs (over a second, else six times the frame),
+ * looked along, then what the camera sees (UpdateCameraRegions, inlined). The frame's temporaries
+ * go by inline depth, then by callee (README: the engine core's round 22) */
+void func_00295B00(CAppCamera *cam, CMatrix &cTw, float dT)
+{
+    CPnt3D head_point = GetFirstPersonCamPos(cam);
+    CPnt3D pos = head_point;
+
+    cam->m_entity->GetMatrix()->Transform(&pos, 1);
+    CPnt3D cam_aim_point(0.0f, 0.0f, 0.0f);
+    CPnt3D lz(0.0f, 0.0f, -1.0f);
+
+    if (cam->m_bc && cam->m_bc == cam->m_entity)
+        cam->m_bc->m_fwdlook.Apply(&lz, &cam_aim_point, 1);
+    else
+        cam_aim_point = lz;
+    cam_aim_point.Add(&head_point, &cam_aim_point);
+    cam->m_entity->GetMatrix()->Transform(&cam_aim_point, 1);
+    if (cam->m_45) {
+        if (cam->m_46) {
+            cam->m_easeT += dT;
+            if (!(cam->m_easeT < 1.0f))
+                cam->m_45 = 0;
+        } else
+            cam->m_easeT = 6.0f * dT;
+        if (cam->m_easeT > 1.0f)
+            cam->m_easeT = 1.0f;
+        float t = cam->m_easeT;
+
+        EaseBy(cam_aim_point, cam->m_easeAim, cam_aim_point - cam->m_easeAim, t);
+        cam->m_easeAim = cam_aim_point;
+        EaseBy(pos, cam->m_easePos, pos - cam->m_easePos, t);
+        cam->m_easePos = pos;
+    } else {
+        cam->m_easeAim = cam_aim_point;
+        cam->m_easePos = pos;
+    }
+    cam->LookAt(&pos, &cam_aim_point, cTw);
+    UpdateRegions(cam);
+}
+
 /* a value held within [lo, hi] (ours: an inline's own join -- the clamp's arms end on it, then
  * branch to the caller's; written in place they branch to the caller's join directly, 8 off) */
 inline float ClampF(float a, float lo, float hi)
@@ -1136,7 +1258,7 @@ struct CDeathCam {
             a += 6.2831855f;
         while (a > 3.1415927f)
             a -= 6.2831855f;
-        if (m_seal && m_seal->NetLife() != 1)
+        if (m_seal && m_seal->m_netlife != 1)
             a = ClampF(a, -1.0f, -0.2f);
         else
             a = ClampF(a, -1.0f, 1.0f);
