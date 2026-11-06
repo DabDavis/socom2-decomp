@@ -8370,7 +8370,10 @@
 0x004E7120 ConstructExtraEventDp
 0x004E7160 ProcessExtraEventDP
 0x004E71B8 InitExtraEventDP
+0x004E71F8 fht
 0x004E7AB8 realfft
+0x004E7C78 CalcAmplitudeSpec
+0x004E8088 ProcessFFTMod
 0x004E8710 InitFFTMod
 0x004E89C0 ConstructFFTMod
 0x004E8A50 ControlFFTMod
@@ -8667,10 +8670,12 @@
 0x0050AC20 qQueueJumpBackOne
 0x0050ACF0 qQueueNbrElements
 0x0050AD28 qCheckDeQueueOne
+0x0050AED8 SetAndControlQSizes
 0x0050B5C0 ConstructQueue
 0x0050B928 DestructQueue
 0x0050C0E0 DestructArchitecture
 0x0050C200 tosCallControlFunc
+0x0050C3F0 tosRun
 0x0050C720 _tosControl
 0x0050C948 tosBaseBlockControl
 0x0050CB60 tosGetBlockPtr
