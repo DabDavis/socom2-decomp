@@ -187,7 +187,7 @@ int CDIPoly::GetAltitude(DiIntersect *di)
  * a goto label, a do/while(0) or a label alone between the asm and the test merges away (MW keeps
  * one block: the C zero still goes ahead of the load, v_bbt_lbl.py); round 21: p through an
  * identity inline (numbered late, the trick that fixed buildOrderedCellAtomList) -- 16, 20 with n first */
-int CDIPoly::GetIntersect(DiIntersect *di)
+bool CDIPoly::GetIntersect(DiIntersect *di)
 {
     IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
     CPnt3D *norm = &is->m_norm;
@@ -360,7 +360,7 @@ void CDI::SetEdgeVecsAndNorm()
  * delay slot with `move v0,zero` (as the early return's beqz is filled), MW fills the following b's;
  * twelve return spellings (ternaries, a result local, if / else, !, != , a bool) and the 0.0f as a
  * C constant instead of the asm's mtc1 the same or longer (build/scratch/core/v_bbox*.py) */
-int CDIBBox::GetIntersect(DiIntersect *di)
+bool CDIBBox::GetIntersect(DiIntersect *di)
 {
     const CBBox *box = m_bbox;
     const CPnt3D *tail;

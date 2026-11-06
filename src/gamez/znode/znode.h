@@ -177,10 +177,13 @@ public:
     CDI();
     virtual ~CDI();
     /* SOCOM II's table (__vt__Q23zdb3CDI, 0x406650): the destructor, Allocate, Free, two pure
-     * slots (SOCOM 1's GetIntersect and GetAltitude, each shape's own) and Read */
+     * slots (SOCOM 1's GetIntersect and GetAltitude, each shape's own) and Read. GetIntersect
+     * answers a bool in both SOCOMs (the grid's node walk narrows its result with andi 0xff): the
+     * world lane's round 32 measured the bool here, on node_world.h's overrides and fts_main.cpp's
+     * CDIDummy -- objcmp master --by-address, 664 hand-written units, 0 differ */
     virtual void Allocate(int n);
     virtual void Free();
-    virtual int GetIntersect(DiIntersect *di) = 0;
+    virtual bool GetIntersect(DiIntersect *di) = 0;
     virtual int GetAltitude(DiIntersect *di) = 0;
     virtual bool Read(CSaveLoad &io);
     /* one holder fewer, the count left given back (SOCOM 1's, 0x14 bytes in both) */
