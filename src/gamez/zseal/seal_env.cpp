@@ -40,6 +40,145 @@ public:
     zdb::CTexHandle *m_texture;   // 0x8
 };
 
+/* the map's mission-compromised valve (OVL1 data 0x436688), the message queue (0x4366A0) and the
+ * switch for the online game (0x45A0C1) */
+extern "C" {
+extern CValve *data_00436688;
+extern unsigned char data_004366A0[];
+extern unsigned char data_0045A0C1;
+}
+
+enum MSGTYPE { MSGTYPE_PLAYER = 0, MSGTYPE_SYSTEM = 1, MSGTYPE_ALERT = 5 };
+
+class C2DMessage_Q {
+public:
+    void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
+};
+
+/* a graph edge: the teams that have crossed it (graph_tree.cpp's; ai_maps.cpp's view of it) */
+class CGEdge {
+public:
+    /* (an inline, the name ours: `&= ~0` through the parameter stays as a zero extension) */
+    void SetMask(unsigned int set, unsigned int clear)
+    {
+        m_mask &= ~clear;
+        m_mask |= set;
+    }
+
+    unsigned char _0[0x18];
+    unsigned int m_mask;   // 0x18
+};
+
+/* the squad's reaction to a player crossing a boundary (OVL2 0x5EB8A0, seal_unit.cpp's) */
+extern "C" void func_005EB8A0(CSealUnit *unit);
+
+/* the off-the-map bit of the controller (an inline, the name ours: the value through a bool, the zero
+ * then `andi a0,zero,1`) */
+static inline void SetOffMap(CSealCtrl *ctrl, bool off) { ctrl->m_bit16 = off; }
+
+/* where the SEAL is on the AI maps: the cell it stands in, kept when it can be walked (SOCOM II's slot
+ * 0x48 of its table; OVL2 0x5B7BA0, past this unit's template tail: the unit's first definition) */
+void CZSealBody::UpdateAiMapLoc()
+{
+    bool found;
+    bool moved;
+    CAiMapLoc valid(m_mapLocValid);
+    CAiMapLoc prev(m_mapLoc);
+    CAiMapLoc loc;
+    CSealCtrl *ctrl = (CSealCtrl *)m_control;
+
+    moved = false;
+    found = AiMaps.GetLocation(&m_posW, loc);
+
+    if (found) {
+        m_mapLoc = loc;
+        moved = valid.x != loc.x || valid.y != loc.y;
+        CAiMap *map = AiMaps.GetMap(loc);
+
+        if (map ? map->IsTraversable(loc) : false) {
+            if (moved || m_bit14) {
+                if (m_control ? ((CSealCtrl *)m_control)->IsAi() : false)
+                    ((CSealCtrl *)m_control)->GetSealCtrlAi()->m_624 = valid;
+                m_mapLocValid = loc;
+                if (m_snake_path) {
+                    static unsigned int k_search = 5;
+
+                    ((CAiPath *)m_snakePath)->AddSnakePoint(loc, k_search, m_bit14 ? 8 : 0);
+                }
+                if (m_isAlive)
+                    AiMaps.SetOccupied(valid, loc, m_id);
+            }
+            m_504 = m_posW;
+            SetOffMap(ctrl, false);
+        } else {
+            static int k_x = 0;
+            static int k_y = 0;
+            int one = 1;
+            int dx = m_mapLocValid.x - loc.x;
+            int dy = m_mapLocValid.y - loc.y;
+
+            ctrl->m_bit16 = (_close_enough(dx, k_x, one) && _close_enough(dy, k_y, one)) ? 0 : 1;
+        }
+    } else
+        SetOffMap(ctrl, true);
+    if (found && IsPlayer() && !data_0045A0C1) {
+        unsigned int before = AiMaps.GetBoundary(prev);
+        unsigned char now = AiMaps.GetBoundary(loc);
+        bool changed = (unsigned char)before != now;
+        CSealUnit *unit = ((CSealCtrl *)m_control)->m_unit;
+
+        if (unit)
+            func_005EB8A0(unit);
+        if (moved && prev.m_mapid != loc.m_mapid) {
+            CGEdge *edge = AiMaps.FindLinkEdge(prev, loc);
+
+            if (edge)
+                edge->SetMask(m_team, 0);
+        }
+        switch (now) {
+        case 2:
+            if (changed) {
+                const char *line0 = "Mission was compromised.  You have";
+                const char *line1 = "left the designated mission area.";
+
+                CSealCtrlAi::StopAiSound((AI_SOUND)1);
+                CSealCtrlAi::PlayAiSound((AI_SOUND)0);
+                data_00436688->SetValue(1);
+                C2DMessage_Q *q = (C2DMessage_Q *)data_004366A0;
+
+                if (q) {
+                    q->Add_Message(line0, MSGTYPE_PLAYER, true, 0, 0.0f);
+                    q->Add_Message(line1, MSGTYPE_PLAYER, true, 0, 0.0f);
+                }
+            }
+            break;
+        case 1:
+            if (changed) {
+                const char *line0 = "WARNING!";
+                const char *line1 = "Leaving designated mission area!";
+                const char *line2 = "In danger of compromising the mission.";
+
+                CSealCtrlAi::StopAiSound((AI_SOUND)0);
+                CSealCtrlAi::PlayAiSound((AI_SOUND)1);
+                C2DMessage_Q *q = (C2DMessage_Q *)data_004366A0;
+
+                if (q) {
+                    q->Add_Message(line0, MSGTYPE_SYSTEM, true, 0, 0.0f);
+                    q->Add_Message(line1, MSGTYPE_SYSTEM, true, 0, 0.0f);
+                    q->Add_Message(line2, MSGTYPE_SYSTEM, true, 0, 0.0f);
+                }
+            }
+            break;
+        case 0:
+            if (changed) {
+                CSealCtrlAi::StopAiSound((AI_SOUND)0);
+                CSealCtrlAi::StopAiSound((AI_SOUND)1);
+            }
+            break;
+        }
+    }
+}
+
 extern "C" int rand(void);
 zdb::CNode *GetDecalNode(zdb::CNode *node);
 /* (SOCOM 1's GetVisualNode__FPQ23zdb5CNode, called where SOCOM 1's HandleBloodDrip calls it; OVL1

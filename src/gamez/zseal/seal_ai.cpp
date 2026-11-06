@@ -6554,6 +6554,147 @@ extern float data_0064FE18;
 class CPickup *func_0059FAC0(CZSealBody *seal);
 }
 
+extern "C" {
+/* a switch that stuns a Navy SEAL too (OVL2 bss 0x66B190), the eye's flinch rate (OVL2 data 0x64FE30),
+ * the awareness a stun adds (0x64FF68), the stun's near and far distances (0x650008, 0x650010: all
+ * read here and elsewhere) */
+extern unsigned char data_0066B190;
+extern float data_0064FE30;
+extern float data_0064FF68;
+extern float data_00650008;
+extern float data_00650010;
+/* the stun anims (OVL1 data: AnimTypes' shorts, SOCOM 1's FindAnimType lookups by name) */
+extern short data_003DEF88;
+extern short data_003DEF90;
+extern short data_003DEF98;
+extern short data_003DEFA0;
+extern short data_003DEFA8;
+extern short data_003DECE0;
+}
+
+/* whether a SEAL's kind can be stunned, and whether it is not already (inlines, the names ours: both
+ * materialised) */
+static inline int Stunnable(CSealCtrlAi *ai)
+{
+    int r = (ai->IsNavySeal() != 0) ^ 1;
+
+    if (!r)
+        r = data_0066B190 != 0;
+    return r;
+}
+static inline bool NotStun(CSealCtrlAi *ai) { return !ai->AiStateIs((AI_STATE)28); }
+
+/* stunned: unless a Navy SEAL (the switch lets those too) or already in the stun's state, it leaves its
+ * group; then by the kind the senses dim -- how much by the blast's distance and whether it faced it --
+ * and the response state is pushed with its anim, the grenade state told to stop; with no anim a running
+ * response only keeps the longer stun (OVL2 0x571B10, slot 0x50; SOCOM 1's OnStunDamage with the anims
+ * read from AnimTypes) */
+void CSealCtrlAi::OnStunDamage(STUN_TYPE type, float amount, const CPnt3D *from)
+{
+    bool go;
+    int anim;
+    unsigned int flag;
+    CSnd *snd;
+    SEAL_STANCE stance;
+    CZSealBody *seal;
+
+    go = false;
+    seal = (CZSealBody *)m_entity;
+    if (Stunnable(this) && NotStun(this))
+        go = true;
+    if (InGroup())
+        GetGroup()->Abort();
+    if (go) {
+        float facing = 1.0f;
+        float dist = 0.0f;
+
+        if (from) {
+            CPnt3D head;
+            CPnt3D look;
+
+            seal->GetHeadParams(&head, &look);
+            CPnt3D d = head - *from;
+
+            dist = d.Normalize();
+            facing = d.x * look.x + d.y * look.y + d.z * look.z;
+        }
+        flag = 1;
+        snd = 0;
+        anim = -1;
+        func_0060A2D0(m_67c, flag);
+        switch (type) {
+        case 2:
+        case 0:
+            m_visrange.m_value *= 0.1f;
+            m_700 = 0.0f;
+            if (data_0064FE48 != ((const CSealCtrlAi *)this)->m_6f4)
+                m_6f4 *= 0.9f;
+            m_70c *= data_0064FE30;
+            m_404 += data_0064FF68;
+            if (dist < data_00650008 || (dist < data_00650010 && !(facing <= 0.0f))) {
+                stance = m_stance;
+                bool coin = Chance(0.5f);
+
+                if ((signed char)stance == 0)
+                    anim = coin ? (int)data_003DEF90 : (int)data_003DEF98;
+                else if ((signed char)stance == 1)
+                    anim = coin ? (int)data_003DEFA0 : (int)data_003DEFA8;
+                else if ((signed char)stance == 2)
+                    anim = data_003DECE0;
+            }
+            snd = seal->GetCharacter()->GetSound((CHARACTER_SOUND)72);
+            break;
+        case 3:
+        case 1:
+            anim = data_003DEF88;
+            if (anim != -1) {
+                m_visrange.m_value *= 0.5f;
+                snd = CSnd::GetSoundByName(".COUGH");
+                flag = 2;
+                m_70c *= data_0064FE30 * data_0064FE30;
+            }
+            break;
+        case 4:
+            m_700 *= 0.1f;
+            m_visrange.m_value *= 0.1f;
+            if (data_0064FE48 != ((const CSealCtrlAi *)this)->m_6f4)
+                m_6f4 *= 0.9f;
+            snd = seal->GetCharacter()->GetSound((CHARACTER_SOUND)72);
+            m_70c *= data_0064FE30;
+            break;
+        }
+        if ((short)anim != -1) {
+            if (AiStateIs((AI_STATE)27)) {
+                CAiState *s = GetAiState();
+
+                s = s && s->m_state == (AI_STATE)27 ? s : 0;
+                s->SetActive(false);
+            }
+            if (PushAiState((AI_STATE)28, 0)) {
+                CAiState *s = GetAiState();
+
+                s = s && s->m_state == (AI_STATE)28 ? s : 0;
+                CAiSStunResponse *r = (CAiSStunResponse *)s;
+
+                r->m_time = amount;
+                r->m_58 = type;
+                r->m_5c = (short)anim;
+                r->m_timer.m_min = 0.15f;
+                r->m_timer.m_range = 0.25f;
+                r->m_snd = snd;
+                r->SetFlags(flag, 0);
+                r->m_active = true;
+            }
+        } else if (AiStateIs((AI_STATE)28)) {
+            CAiState *s = GetAiState();
+
+            s = s && s->m_state == (AI_STATE)28 ? s : 0;
+            if (s && s->m_active && !(amount <= s->m_time))
+                s->m_time = amount;
+        }
+    }
+}
+
 /* dead: whatever it did stopped -- the alive valve shut, the three others closed, its group aborted, the
  * throttles zeroed, its sounds cut -- its node's bit 22 set (SOCOM 1's m_NOTUSED), the cry by how it died, the killer
  * of its own team's anger raised; the squad told, the AI state cleared, the target and the map's bit let

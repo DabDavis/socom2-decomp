@@ -473,6 +473,9 @@ public:
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
+    /* the cell's boundary bits, and the link between two cells (ai_maps.cpp's) */
+    unsigned int GetBoundary(const CAiMapLoc &loc);
+    class CGEdge *FindLinkEdge(const CAiMapLoc &from, const CAiMapLoc &to);
     /* a cell's map (ai_maps.h's, OVL2 0x52E6B0), and a location's (OVL2 0x52A180) */
     class CAiMap *GetMapByIndex(unsigned int i) const;
     class CAiMap *GetMap(const CAiMapLoc &loc) const;
@@ -1373,7 +1376,7 @@ public:
     CAiMapLoc m_leg_cell;   // 0x618
     CAiMapLoc m_61c;   // 0x61c: the constructor sets both invalid, 0x620 first
     CAiMapLoc m_620;   // 0x620
-    unsigned char _624[0x628 - 0x624];
+    CAiMapLoc m_624;   // 0x624: the cell the SEAL last left (UpdateAiMapLoc; the name ours)
     unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
     unsigned char m_eventQueue[0xc];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8: SOCOM II's lists are 0xc bytes)
     /* the kinds of event the AI hears (SOCOM 1's m_eventMask, 0x4b8: UpdateEventMask, OVL2 0x572D70,
@@ -1470,6 +1473,7 @@ public:
     /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */
     virtual void OnWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
     /* (OVL2 0x5714B0, slot 0x18: seal_ai.cpp's) */
+    virtual void OnStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
     virtual void OnDeath();
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
@@ -1480,6 +1484,7 @@ public:
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
+    virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
     virtual void UpdateViewCone();
     /* the kit's weapon picked for a fire mode's hint, whether one was (SOCOM 1's; OVL2 0x563470, the
      * SEALs' row -- the kit lane's CTFireMode::Begin calls it) */
@@ -1972,6 +1977,7 @@ public:
     virtual ~CZSealBody();
     virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
+    virtual void UpdateAiMapLoc();                                          /* +0x48 */
     virtual void OnMissionStart();                                          /* +0x4C */
     virtual void OnMissionEnd();
     virtual void OnRecycleEntity(CEntity *e);                               /* +0x54 */
@@ -2601,7 +2607,9 @@ public:
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
     unsigned char _42c[0x434 - 0x42c];
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
-    unsigned char _438[0x514 - 0x438];
+    unsigned char _438[0x504 - 0x438];
+    CPnt3D m_504;   // 0x504: where the SEAL last stood on a cell it can walk (UpdateAiMapLoc; the name ours)
+    unsigned char _510[0x514 - 0x510];
     /* (SOCOM 1's m_follow_params_are_current and m_saved_formation_dir_is_valid, 0x458/0x459:
      * InvalidateFollowParams clears them -- the kit lane, round 19) */
     unsigned char m_follow_params_are_current;   // 0x514
