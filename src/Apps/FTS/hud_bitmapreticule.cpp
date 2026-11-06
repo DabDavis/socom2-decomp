@@ -326,23 +326,32 @@ float s_laseTickSize = 4.0f;
  * the kit's point projected through the world camera's world-to-screen matrix onto the screen
  * (whole-screen coordinates less the 2048 offset, from the 640x448 frame's centre) and a red box
  * drawn round it -- its two uprights, then a tick at each corner fading to 0.2 toward the inside.
- * OPEN, 0x36C against 0x364 (round 59, written): the logic, the frame (the point, the 4D input, the
- * output, the matrix, the three colours and the three corners at the target's slots) and the copies
- * (the first corner copy a declaration -- lq / sq --, the later ones assignments, member by member)
- * are the target's; it reads the lased point through the kit's address (`addiu a0,s0,0x5E0` in the
- * lasing test's delay slot, then 0xC(a0)) where MW folds the offsets (0x5EC(s0)) whether the kit is
- * reached through a pointer or a reference local, before or after the test, or the by-value
- * GetLasePoint; and the projection's FPRs differ (the target: x f4, y f2, 2048 f3, 320 f1, 224 f0),
- * with two alignment nops more here -- the colours declared first, 1/w first or `out` scaled in
- * place change nothing (or grow it) */
+ * The first corner copy a declaration (lq / sq), the later ones assignments, member by member.
+ * Round 61 (written in round 59, 0x36C of 0x364): the kit is a pointer an inline returns, taken before
+ * the lasing test -- the test's load folds into the seal's offset in the same block (`lbu 0x5E2(s0)`),
+ * the address goes into the test's delay slot and the lased point is read at offsets from it in the
+ * next (`0xC(a0)`), where a plain pointer or reference local to the kit, before or after the test, or
+ * the inline returning the kit called after it, folds every offset (0x5EC(s0)); and the screen offset
+ * is added in a statement of its own (`x += 320`: the target's add.s keeps the product's register, x
+ * f4 and y f2), one expression puts the constant first (two FPRs and two alignment nops off) */
+/* (the seal's kit through an inline returning its address -- the name ours; zseal.h's accessor
+ * is likely one) */
+static inline CZKit *KitOf(CZSealBody *s)
+{
+    return &s->m_kit;
+}
+
 void BitmapReticule::DrawLaseTarget(CZSealBody *seal)
 {
     if (!theHUD->IsOn())
         return;
-    if (!seal->m_kit.m_lasing)
+
+    CZKit *kit = KitOf(seal);
+
+    if (!kit->m_lasing)
         return;
 
-    CPnt3D pos = seal->m_kit.GetLasePoint();
+    CPnt3D pos = kit->GetLasePoint();
     CPnt4D in(pos.x, pos.y, pos.z, 1.0f);
     CPnt4D out;
     CMatrix m = *(CMatrix *)zdb::CWorld::m_world->m_camera->m_vu->mtxWorldToScreen;
@@ -350,8 +359,11 @@ void BitmapReticule::DrawLaseTarget(CZSealBody *seal)
     m.Transform(&in, &out, 1);
 
     float iw = 1.0f / out.w;
-    float x = out.x * iw - 2048.0f + 320.0f;
-    float y = out.y * iw - 2048.0f + 224.0f;
+    float x = out.x * iw - 2048.0f;
+    float y = out.y * iw - 2048.0f;
+
+    x += 320.0f;
+    y += 224.0f;
     CPnt4D red(1.0f, 0.0f, 0.0f, 1.0f);
     CPnt4D red2(1.0f, 0.0f, 0.0f, 1.0f);
     CPnt4D fade(1.0f, 0.0f, 0.0f, 0.2f);
