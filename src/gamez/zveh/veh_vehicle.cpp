@@ -11,7 +11,7 @@
 using namespace zdb;
 
 extern "C" {
-/* not yet written here (placeholders): the vehicle's half of the tick */
+/* the vehicle's half of the tick (below) */
 void func_003ACC10(CVehicle *vehicle, float dT);
 /* the vehicles made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4120;
@@ -475,6 +475,138 @@ void CVehicle::UpdatePosW()
 
 void CVehicle::ComputeNextPosition(float dT)
 {
+}
+
+/* the push a moving vehicle gives a SEAL (0x3E0868, initialised data; not named) */
+extern "C" float data_003E0868;
+/* the SEAL's own pushes and checks (OVL2, seal_body.cpp's and seal_env.cpp's: not named) */
+extern "C" bool func_00588030(CZSealBody *seal);
+extern "C" bool func_00587FE0(CZSealBody *seal);
+extern "C" bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b);
+extern "C" void func_0057E770(CZSealBody *seal);
+extern "C" void func_005AC620(CZSealBody *seal, float dT);
+
+/* the entity as a SEAL, or none (inline; the name ours) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* the target's entity's position, or none (inline; the name ours) */
+static inline const CPnt3D *TargetPos(CEntity *e) { return e ? &e->m_posW : 0; }
+
+/* a vehicle on the move (or turning) running into the SEALs among its targets (new in SOCOM II,
+ * not named; Tick's half before the footprint): the box round its corners -- grown by 8, or 12
+ * for a SEAL carrying a body -- and the corners themselves carried into the world once, for the
+ * first SEAL close enough; a living SEAL this console drives inside the grown box is run over when
+ * inside the corners too (unless it cannot be stunned or is invincible), pushed off the edge
+ * nearest it, the harder the more the vehicle heads at it, and stunned. BYTE-EXACT in the weapons'
+ * round 34 (unwritten before; 143 off when first whole): the kind test a ternary INLINE (written in
+ * place MW makes it a movz; as an if it collapses the IsRemote / IsPlayer inlines' dead else copies
+ * -- the UI's round-31 rule); the targets walked through a reference local (the bottom test's end()
+ * through the hoisted &m_targets, s4); the position plus the step a discarded operator+ (its
+ * temporary's slot below the named points', its result never read); the grown box a function-scope
+ * array filled field by field (declared ahead of the transformed corners: the arrays' slots in
+ * declaration order); the 1-bit tests through `b ? true : false` (sltu, then the branch) */
+extern "C" void func_003ACC10(CVehicle *v, float dT)
+{
+    CPnt3D dir = v->m_velW;
+    float speed = dir.Normalize();
+
+    if (speed <= 0.01f && v->m_turn >= 0.9999f)
+        return;
+
+    v->m_posW + v->m_step;
+
+    bool done = false;
+    CPnt3D box[4];
+    CPnt3D outer[4];
+    CPnt3D inner[4];
+
+    CTargetList &targets = v->m_targets;
+
+    for (CTargetList::iterator t = targets.begin(); t != targets.end(); t++) {
+        CZSealBody *seal = AsSeal(t->m_ent);
+
+        if (seal && seal->m_isAlive && t->m_distSq < v->m_radiusSq) {
+            if (!seal->IsRemote()) {
+                bool stun = true;
+
+                if (!seal->IsPlayer() && (seal->m_team & 2))
+                    stun = false;
+                if (!done) {
+                    done = true;
+
+                    float pad = (seal->m_state == stateCarrying ? seal->m_carry : 0) ? 12.0f : 8.0f;
+                    CPnt3D *b = v->m_bounds;
+
+                    box[0].x = b[0].x + pad;
+                    box[0].y = b[0].y;
+                    box[0].z = b[0].z + pad;
+                    box[1].x = b[1].x + pad;
+                    box[1].y = b[1].y;
+                    box[1].z = b[1].z - pad;
+                    box[2].x = b[2].x - pad;
+                    box[2].y = b[2].y;
+                    box[2].z = b[2].z - pad;
+                    box[3].x = b[3].x - pad;
+                    box[3].y = b[3].y;
+                    box[3].z = b[3].z + pad;
+
+                    CMatrix m;
+
+                    v->m_root->BuildMTW(m);
+                    m.Transform(box, outer, 4);
+                    m.Transform(v->m_bounds, inner, 4);
+                }
+
+                bool killed = false;
+                CPnt3D nearest;
+
+                if (func_003AD1F0(outer, TargetPos(t->m_ent), &nearest)) {
+                    if (stun && !(seal->m_invincible ? true : false)) {
+                        if (func_003AD1F0(inner, TargetPos(t->m_ent), 0)) {
+                            func_005AC620(seal, 1.0f);
+                            seal->UpdateHealth((DAMAGE_LOCATION)3, (SEAL_DEATH_TYPE)7);
+                            killed = true;
+                        }
+                    }
+
+                    CPnt3D tv = t->m_vec;
+
+                    tv.Normalize();
+
+                    float amount = 4.0f;
+                    float push = 0.0f;
+                    float d = Dot(dir, tv);
+
+                    if (d > 0.0f) {
+                        amount = 4.0f * d;
+                        push = d * (data_003E0868 * speed);
+                    } else if (v->m_turn < 0.9999f) {
+                        push = data_003E0868;
+                    }
+                    if (push > 0.0f || killed) {
+                        if (killed || !(seal->m_am_stunned ? true : false) && !func_00588030(seal) &&
+                            !func_00587FE0(seal)) {
+                            nearest.Sub(&seal->m_posW, &nearest);
+
+                            CPnt3D d2 = seal->m_posW - nearest;
+
+                            nearest = d2;
+                            nearest.y += 0.5f * v->m_height;
+                            func_0057ED10(seal, &nearest, push, 100000.0f);
+                            func_0057E770(seal);
+                            if (seal->m_133c < -50.0f)
+                                seal->m_133c = -50.0f;
+                        }
+                        if (stun)
+                            seal->HandleStunDamage((STUN_TYPE)5, amount, 0);
+                    }
+                }
+            }
+        }
+    }
 }
 
 void CVehicle::OnMissionStart()
