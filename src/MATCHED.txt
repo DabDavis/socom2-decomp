@@ -5102,6 +5102,7 @@
 0x003134C0 ScrollTexture__Q23zdb5CNodeFPQ23zdb5CNodeffbi
 0x00313620 RemoveDecals__Q23zdb5CNodeFUi
 0x00313770 BuildMatrixPalette__Q23zdb5CNodeFPQ23zdb5CMesh
+0x003139E0 ApplyDecal__Q23zdb5CNodeFPQ23zdb5CNodefP6CPnt3DP6CPnt3DP6CPnt3DPQ23zdb10CTexHandlefP6CPnt3D
 0x00313C60 VisualEffectsTick__Q23zdb5CNodeFfPv
 0x00313CA0 DeleteDI__Q23zdb5CNodeFv
 0x00313D60 AddDI__Q23zdb5CNodeFPQ23zdb3CDI
@@ -5905,7 +5906,7 @@
 0x0034A640 func_0034A640
 0x0034A650 Resume__7HeadsetFv
 0x0034A6A0 Pause__7HeadsetFv
-0x0034A6F0 Flush__7HeadsetFv
+0x0034A6F0 Flush__7HeadsetFb
 0x0034A7B0 IsQueued__7HeadsetFP4CSnd
 0x0034A910 StopSound__7HeadsetFiP4CSnd
 0x0034AA70 Interrupt__7HeadsetFv
@@ -6703,6 +6704,7 @@
 0x003857C0 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY
 0x00385900 Find__13CUIVarManagerFPCc
 0x003859D0 FindDormantVar__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY
+0x00385A60 CollectGarbage__13CUIVarManagerFv
 0x00385C30 Reset__13CUIVarManagerFv
 0x00385CE0 __dt__13CUIVarManagerFv
 0x00385D90 DetachUIVar__10UIVarMixinFP11CUIVariable
@@ -7124,6 +7126,7 @@
 0x0039EFD0 __ct__7CFileIOFv
 0x0039F010 SetRootPath__7CFileIOFPCc
 0x0039F0B0 fread__7CFileIOFiPPv
+0x0039F0C0 UTF8GetChar__FRPCc
 0x0039F160 UTF8CharLen__FRPCc
 0x0039F1B0 OnTableFull__7CSTableFPCc
 0x0039F1C0 CreateString__7CSTableFPCc
@@ -7139,6 +7142,7 @@
 0x0039FB30 __dt__7CSTableFv
 0x0039FBD0 __ct__7CSTableFUiUi
 0x0039FC60 UTF8Strncpy__FPcPCci
+0x0039FD80 UTF8Append__FRQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Us
 0x0039FEB0 GetMode__10CMemCardIOCFv
 0x0039FEC0 fsyncAsync__10CMemCardIOFiPi
 0x0039FF40 fwriteAsync__10CMemCardIOFPCvi
@@ -8490,6 +8494,7 @@
 0x004FA440 VadGetSession
 0x004FA620 VadPutSession
 0x004FB1C0 ControlVad
+0x004FB520 InitVad
 0x004FB998 ConstructVad
 0x004FBA38 LoadCodeBooks
 0x004FC008 ConstructVq
@@ -8504,13 +8509,17 @@
 0x004FCB30 InitWindow
 0x004FCDA8 ConstructWindow
 0x004FCDE8 ControlWindow
+0x004FCEA8 CombinerProcess
 0x004FD2A8 ConstructCombiner
 0x004FD2E8 CombinerInit
 0x004FD3E8 CombinerControl
 0x004FD4E8 ResizeQueues
+0x004FD5C8 func_004FD5C8
+0x004FD7F8 LoadLanguage
 0x004FF158 FreeLanguage
 0x004FF380 FreeDistCalc
 0x004FFAC0 NormCorrection
+0x004FFCE8 DistSilProcess
 0x00500DF8 ConstructDistCalc
 0x00500EB8 GetpCachedDistances
 0x00500EC0 GetDistanceOffset
@@ -10260,7 +10269,7 @@
 0x005BE660 GetCurZoom__5CZKitFv
 0x005BE6C0 IsZoomed__5CZKitFv
 0x005BE6F0 func_005BE6F0
-0x005BE990 func_005BE990
+0x005BE990 GetReticuleSettle__5CZKitFv
 0x005BF8A0 LobAim__5CZKitFP10CZSealBodyPC6CPnt3DPC6CPnt3DP6CPnt3Df
 0x005BFAC0 TickLaserDesignator__5CZKitFf
 0x005BFE40 Timer_PlaceC4__FPvPv
@@ -10576,7 +10585,7 @@
 0x005EA4D0 __dt__10CAiSBreachFv
 0x005EA550 __ct__8CAiTimerFf
 0x005EA5D0 __ct__8CAiStateF8AI_STATE
-0x005EA780 GetBreachState__FP11CSealCtrlAi
+0x005EA780 GetRescuedState__FP11CSealCtrlAi
 0x005EA7C0 GetSealCtrlAi__10CZSealBodyFv
 0x005EA7E0 __ct__9CAiMapLocFRC9CAiMapLoc
 0x005EA870 GetValidMapLoc__10CZSealBodyCFv
@@ -10750,6 +10759,7 @@
 0x005FAAE0 EventTick__11CSealCtrlAiFf
 0x005FAD00 SetAiEvent__11CSealCtrlAiFQ28CAiEvent5EVENTfPC6CPnt3D
 0x005FADF0 __dt__10CAiSFollowFv
+0x005FAE70 func_005FAE70
 0x005FC550 func_005FC550
 0x005FC590 StanceCheck__10CAiSFollowFP11CSealCtrlAibb
 0x005FC7D0 HideCheck__10CAiSFollowFP11CSealCtrlAibbPc
@@ -10761,14 +10771,18 @@
 0x005FD010 func_005FD010
 0x005FD050 SetFormation__10CAiSFollowF14UNIT_FORMATIONi
 0x005FD0E0 SetOffset__10CAiSFollowFPCi
+0x005FD150 func_005FD150
 0x005FD3E0 func_005FD3E0
 0x005FD460 func_005FD460
 0x005FD620 func_005FD620
 0x005FD6F0 func_005FD6F0
+0x005FD790 func_005FD790
 0x005FDAD0 SetHideLook__10CAiSFollowFP11CSealCtrlAi
 0x005FDD00 Virtual3C__10CAiSFollowFP11CSealCtrlAi
 0x005FDEC0 GetStatus__10CAiSFollowCFv
 0x005FDF80 OnSignal__10CAiSFollowFQ28CAiState6SIGNALP11CSealCtrlAi
+0x005FE1F0 func_005FE1F0
+0x005FE4C0 func_005FE4C0
 0x005FE830 OnActionButton__15CSealCtrlSquirmFv
 0x005FE840 PostMortemPreTick__15CSealCtrlSquirmFf
 0x005FE850 Tick__15CSealCtrlSquirmFf

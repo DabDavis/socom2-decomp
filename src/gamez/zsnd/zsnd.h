@@ -569,7 +569,9 @@ public:
     static Headset *Create();
     static bool FindDevice(int *device, int *format, unsigned char *channels);
     void InitStream();
-    void Flush();
+    /* the stream stopped and the queue emptied (0x34A6F0): CCinematicState::Init passes true
+     * (li a1,1 in the jal's delay slot) to a flag the body never reads */
+    void Flush(bool);
     bool DeQueue(int **data, unsigned int *id, CSnd **sound, int *vol);
     /* the sound (or a member of its group) waiting in the queue or streaming (SOCOM II's, 0x34A7B0;
      * name ours) */

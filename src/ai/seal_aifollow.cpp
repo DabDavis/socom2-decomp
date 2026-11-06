@@ -1,7 +1,7 @@
 /* seal_aifollow.cpp -- the follow state, CAiSFollow (SOCOM 1's unit, __sinit_seal_aifollow.cpp).
  * OVL2 0x5FADF0-0x5FE1EF: the destructor first, as SOCOM 1's. So far only the destructor and the
  * new slot +0x3C. Defined in reverse of their image order (-inline deferred). The kit's round 53 adds
- * the wedge test 0x5FE1F0 (OPEN) and its edge test 0x5FE4C0 (declared) here, between the follow and
+ * the wedge test 0x5FE1F0 (byte-exact since round 54) and its edge test 0x5FE4C0 (declared) here, between the follow and
  * seal_squirm.cpp's CSealCtrlSquirm (0x5FE830 on): their unit is unproven. */
 
 #include "../gamez/zseal/zseal.h"
@@ -52,24 +52,58 @@ void SetTemplatePath__7CAiPathFP7CAiPath(FOLLOW_PATH *path, FOLLOW_PATH *t);
 bool InStance__11CSealCtrlAiF11SEAL_STANCEb(CSealCtrlAi *ai, SEAL_STANCE stance, bool b);
 }
 
-extern "C" {
-/* a segment against a triangle's edge, in the XZ plane (OVL2 0x5FE4C0, unwritten: the edge's two
- * ends, then the segment's -- what it adds to 0x5FE1F0's count) */
-int func_005FE4C0(const CPnt3D *e0, const CPnt3D *e1, const CPnt3D *s0, const CPnt3D *s1);
+/* a segment against a triangle's edge, in the XZ plane: none when both ends lie off the edge's line
+ * on its outer side, one when both lie on its inner side, else -- the ends straddling the line --
+ * three when the edge's ends straddle the segment's line too, the crossing, none otherwise; each side
+ * the cross product's sign past a zero tolerance (OVL2 0x5FE4C0, new in SOCOM II: 0x5FE1F0 sums it
+ * over the wedge's three edges until three agree -- three insides, or one crossing; the name ours).
+ * The four results and the tolerance are function-local statics (the tolerance an unsigned zero,
+ * negated and converted at each compare; .bss 0x66BA40 / 0x66BA48, .data 0x650C40 / 0x650C48 -- eight
+ * bytes apart in declaration order) */
+extern "C" int func_005FE4C0(const CPnt3D *e0, const CPnt3D *e1, const CPnt3D *s0, const CPnt3D *s1)
+{
+    static unsigned int eps = 0;
+    static int outside = 0;
+    static int inside = 1;
+    static int crossing = 3;
+    float nz = e0->x - e1->x;
+    float nx = e1->z - e0->z;
+    CPnt3D d1 = *s1 - *e1;
+    CPnt3D d0 = *s0 - *e1;
+    float a = nx * d1.x + nz * d1.z;
+    float b = nx * d0.x + nz * d0.z;
+
+    if (a < -eps && b < -eps)
+        return outside;
+    if (!(a <= eps) && !(b <= eps))
+        return inside;
+    nz = s0->x - s1->x;
+    nx = s1->z - s0->z;
+    CPnt3D d2 = *e1 - *s1;
+    CPnt3D d3 = *e0 - *s1;
+
+    a = nx * d2.x + nz * d2.z;
+    b = nx * d3.x + nz * d3.z;
+    if (a < -eps && b < -eps)
+        return outside;
+    if (!(a <= eps) && !(b <= eps))
+        return outside;
+    return crossing;
 }
 
 /* whether a segment crosses a wedge laid along a direction from a point: the wedge's apex `back`
  * behind, its far edge `len` ahead and `len * spread` to either side, the segment's ends taken
  * relative to the point; the edge tests summed until three agree (OVL2 0x5FE1F0, new in SOCOM II:
  * 0x5FD150 asks it with the follower's view; the name and the unit ours -- after the follow state,
- * before seal_squirm.cpp).
- * OPEN, 0x2BC against 0x2C8: every call, temporary and frame slot is the target's but one saved
- * register short -- the target keeps &tri[1], &tri[2] and &seg[1] in s1, s0 and s2 from the copy
- * into each (its x stored through the register, y and z sp-relative) to the edge tests, where MW
- * here recomputes each address at its call (`addiu`), saving s0-s3 only (frame 0x1E0 against
- * 0x1F0). Tried: pointer locals (declared at the top they sink to the calls, 0x2D8; declared at
- * each copy 0x2CC), reference locals (every store through the register, 0x2CC / 0x2D8), `tri + 1`
- * arguments (as it is), the edge tests as a loop (0x2C4) */
+ * before seal_squirm.cpp). Byte-exact (the kit's round 54) with the points after the first handed to
+ * the edge tests by their first field's address, `(const CPnt3D *)&tri[1].x`: that is the address
+ * the copy into each stores its x through, so MW computes it once into a saved register (s1, s0, s2
+ * -- the target's) and folds the y and z stores into frame offsets; written `&tri[1]` it recomputes
+ * each address at its call (0x2BC, one saved register short), as `(char *)tri + 12` it stores all
+ * three fields through the register (12 off), `tri + 1` folds it away (0x2BC) -- the SEALs' round-52
+ * rule (an address written as a pointer expression is CSE'd, as a member's it is recomputed) one
+ * field deep. Tried before: pointer locals (declared at the top they sink to the calls, 0x2D8; at
+ * each copy 0x2CC), reference locals (0x2CC / 0x2D8), the edge tests as a loop (0x2C4) */
 extern "C" bool func_005FE1F0(const CPnt3D *origin, const CPnt3D *dir, const CPnt3D *a, const CPnt3D *b,
                                float len, float back, float spread)
 {
@@ -85,12 +119,12 @@ extern "C" bool func_005FE1F0(const CPnt3D *origin, const CPnt3D *dir, const CPn
     seg[0] = *a - *origin;
     seg[1] = *b - *origin;
 
-    int n = func_005FE4C0(&tri[0], &tri[1], &seg[0], &seg[1]);
+    int n = func_005FE4C0(&tri[0], (const CPnt3D *)&tri[1].x, &seg[0], (const CPnt3D *)&seg[1].x);
 
     if (n < 3) {
-        n += func_005FE4C0(&tri[1], &tri[2], &seg[0], &seg[1]);
+        n += func_005FE4C0((const CPnt3D *)&tri[1].x, (const CPnt3D *)&tri[2].x, &seg[0], (const CPnt3D *)&seg[1].x);
         if (n < 3)
-            n += func_005FE4C0(&tri[2], &tri[0], &seg[0], &seg[1]);
+            n += func_005FE4C0((const CPnt3D *)&tri[2].x, &tri[0], &seg[0], (const CPnt3D *)&seg[1].x);
     }
     return n >= 3;
 }
@@ -457,9 +491,22 @@ void CAiSFollow::SetFormation(UNIT_FORMATION formation, int slot)
 }
 
 extern "C" {
-/* the AI's check of an entity at a distance (OVL2 0x5FD150, this unit's, not written: the AI, the
- * entity, a flag, the distance; a bool) */
+/* the AI's check of an entity at a distance (OVL2 0x5FD150, below) */
 bool func_005FD150(CSealCtrlAi *ai, CEntity *e, bool b, float dist);
+/* (MAIN 0x1B3808: the C library's) */
+float tanf(float);
+/* the AI's SEAL in state 4 (OVL2 0x569530, the SEALs' seal_ai.cpp: its short at 0x174; unnamed) */
+bool func_00569530(CSealCtrlAi *ai);
+/* a map's cell inside (seal_ai.cpp's 0x5561C0, the SEALs': the map's own test) */
+bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
+}
+
+/* whether a cell's map holds it, none for no map (seal_ai.cpp's CellInside) */
+static inline bool CellInside(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? func_005561C0(map, loc) : false;
 }
 
 /* the AI's current state if it is a follow, else 0 (inline; the name ours) */
@@ -584,6 +631,69 @@ extern "C" bool func_005FD3E0(CSealCtrlAi *ai, CEntity *e)
         CPnt3D d = me->m_posW - e->m_posW;
 
         r = func_005FD150(ai, e, true, d.Normalize());
+    }
+    return r;
+}
+
+/* the AI's entity, through an inline (a local assigned from an inline's result is numbered after the
+ * front-end temporaries -- the kit's round 53: read in place the SEAL and the mode trade s0 / s1; the
+ * name ours) */
+static inline CEntity *EntityOf(CSealCtrlAi *ai)
+{
+    return ((CEntityCtrl *)ai)->m_entity;
+}
+
+/* an entity's last valid map cell (the SEAL's GetValidMapLoc, inline: through it the cell's address is
+ * computed once into a saved register for both calls of CellInside; the name ours) */
+static inline const CAiMapLoc &ValidLoc(const CEntity *e)
+{
+    return e->m_mapLocValid;
+}
+
+/* whether an entity sees the SEAL -- false at once without one, or with the AI's SEAL in state 4: true
+ * when the entity stands farther than its view range by a quarter (and the caller allows that), else
+ * the point the AI's mode sends it to asked for, and the segment from the SEAL to it tested against the
+ * entity's view wedge -- 40 deep inside its cell's map, else 100, halved while its weapon state is 2,
+ * reaching 20 behind and tan(40 degrees) to either side (OVL2 0x5FD150, new in SOCOM II: 0x5FD3E0 asks
+ * it of the player at its distance, 0x5FAE70 twice; the name unknown). The ranges are function-local
+ * statics (.data 0x650C50-0x650C68 in declaration order), the spread a guarded one (.bss 0x66BA50,
+ * its guard 0x66BA58; 40 degrees `0.6981317f`, 0x3F32B8C2 -- `0.69813174f` rounds a bit up). Byte-exact
+ * (the kit's round 54) with the entity's cell through an inline returning it by reference (its address
+ * in a saved register for both calls; read in place it is recomputed, 8 bytes short) and the SEAL
+ * through EntityOf */
+extern "C" bool func_005FD150(CSealCtrlAi *ai, CEntity *e, bool b, float dist)
+{
+    static float range_far = 100.0f;
+    static float range_near = 40.0f;
+    static float back = 20.0f;
+    static float slack = 1.25f;
+    bool r = true;
+    CEntity *seal = EntityOf(ai);
+
+    if (e && !func_00569530(ai)) {
+        static float spread = tanf(0.6981317f);
+        float range = CellInside(ValidLoc(e)) ? range_near : range_far;
+
+        if (((CZSealBody *)e)->GetWeaponState() == 2)
+            range *= 0.5f;
+        const float *row = e->m_node->m_matrix.m_matrix[2];
+        CPnt3D dir;
+
+        dir.x = -row[0];
+        dir.y = -row[1];
+        dir.z = -row[2];
+        if (!(dist <= range * slack) && b)
+            return true;
+        CPnt3D pt;
+        CAiMapLoc loc;
+
+        r = func_005FD460(ai, &pt, &loc, FollowMode(ai));
+        if (r) {
+            CPnt3D spos = seal->m_posW;
+            CPnt3D epos = e->m_posW;
+
+            r = !func_005FE1F0(&epos, &dir, &spos, &pt, range, back, spread);
+        }
     }
     return r;
 }
@@ -718,9 +828,82 @@ struct CAiFollowKind {
     unsigned char m_kind : 5;
 };
 
+extern "C" bool func_005FC550(const CAiFollowKind *k);
+
+/* a map's cell (CAiMap::GetCell, ai.h's in-class inline, by its address: a member call inlines it where
+ * the target calls it -- seal_ai.cpp's spelling) */
+extern "C" void *func_00511F80(const CAiMap *map, const CAiMapLoc *loc, int layer);
+
+/* whether a cell's map lets it be walked, none for no map (seal_ai.cpp's CellTraversable) */
+static inline bool CellTraversable(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? map->IsTraversable(loc) : false;
+}
+
+/* whether a cell's own kind is one 0x5FC550 takes (inline; the name ours) */
+static inline bool CellKindOk(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+    const CAiFollowKind *cell = map ? (const CAiFollowKind *)func_00511F80(map, &loc, 0) : 0;
+
+    return cell ? func_005FC550(cell) : false;
+}
+
+/* a cell beside a point of the route: from the route's point `index`, up to `n` cells sideways of the
+ * direction (to its left; to its right for a negative count), each in the route's band, walkable and,
+ * if asked, of a kind 0x5FC550 takes -- the last such cell put out; false without a route, the point
+ * or its map (OVL2 0x5FD790, new in SOCOM II: CAiSFollow::Tick calls it with its own `this`, unread;
+ * the name unknown). Byte-exact (the kit's round 54): the floats read and set before the two copies of
+ * the point's cell (the target loads the direction and builds the 0.5 ahead of the copies' masks; with
+ * the copies first the scheduling and the parameters' saved registers both move -- 46 / 74 off),
+ * declared in the order that numbers them f23 / f22 / f21 / f20, and 0x5FC550 pinned out of line */
+extern "C" bool func_005FD790(CAiSFollow *f, CAiPath *path, unsigned int index, int n, CAiMapLoc *out,
+                              const CPnt3D *dir, bool kinds)
+{
+    if (!path->m_snake_len)
+        return false;
+    const CAiPath::point *pt = index < path->m_points.size() ? &path->m_points[index] : 0;
+
+    if (!pt)
+        return false;
+    if (!AiMaps.GetMapByIndex(pt->m_loc.m_mapid))
+        return false;
+    float dz = -dir->z;
+    float dx = dir->x;
+    float sx = 0.5f;
+    float sz = 0.5f;
+    CAiMapLoc last(pt->m_loc);
+    CAiMapLoc cur(pt->m_loc);
+
+    if (n < 0) {
+        n = -n;
+        dz = -dz;
+        dx = -dx;
+    }
+    while (n--) {
+        sx += dz;
+        sz += dx;
+        cur.x = pt->m_loc.x + (int)sx;
+        cur.y = pt->m_loc.y + (int)sz;
+        if (!path->PointInPath(cur, 0))
+            break;
+        if (!CellTraversable(cur))
+            break;
+        if (kinds && !CellKindOk(cur))
+            break;
+        last = cur;
+    }
+    *out = last;
+    return true;
+}
+
 /* whether the kind is 2, 4, 5 or 12 (OVL2 0x5FC550; the name ours): a bit test written out -- MW
  * lowers a switch over those cases to a compare chain -- true through a bool local (`andi v0,a0,
- * 0xff` from the shift's 1) */
+ * 0xff` from the shift's 1). Pinned (the kit's round 54): 0x5FD790 calls it out of line, which MW's
+ * auto-inlining would not */
+#pragma auto_inline off
 extern "C" bool func_005FC550(const CAiFollowKind *k)
 {
     bool r = false;
@@ -729,6 +912,80 @@ extern "C" bool func_005FC550(const CAiFollowKind *k)
     if (t < 11 && ((1 << t) & 0x40d))
         r = true;
     return r;
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) */
+bool func_005750A0(void);
+/* the AI's move toward its goal (OVL2 0x567900, the SEALs' seal_ai.cpp: unnamed) */
+void func_00567900(CSealCtrlAi *ai, float dT);
+/* a byte of OVL2 bss that keeps the duck off (seal_ai.cpp's: GetDuckStance tests it too) */
+extern unsigned char data_0066B038;
+}
+
+/* whether the follower's master sees it -- true unless the master is the player, offline and the duck
+ * switch off, and (at the team bit 0x20000) holding its weapon in state 1, when 0x5FD150 says, at the
+ * follow's distance, its range test allowed by the flag bit 2 clear -- that bit then set when it does
+ * not, if asked (inline, twice in 0x5FAE70: the master read again for the call; the name ours) */
+static inline bool MasterSees(CAiSFollow *f, CSealCtrlAi *ai, bool mark)
+{
+    bool r = true;
+    CZSealBody *master = f->m_master;
+    CEntity *me = EntityOf(ai);
+
+    if (master && master->IsPlayer() && !func_005750A0() && !data_0066B038) {
+        if (!(me->m_team & 0x20000) || master->GetWeaponState() == 1) {
+            r = func_005FD150(ai, f->m_master, !(f->m_6c & 4), f->m_f4);
+            if (mark)
+                f->SetFlag(4, !r);
+        }
+    }
+    return r;
+}
+
+/* the follower's creep: in the follow's mode 4 the creep, kept at a goal while the master sees it; in
+ * mode 3 the flag bit 2 set while the master does not see it, then the move on while it does, else the
+ * hide look and the creep (the AI-map collision then on) or the throttles stopped; otherwise the plain
+ * creep -- and the collision bit set; with no follow the AI's mode restored (OVL2 0x5FAE70, new in
+ * SOCOM II: CSealCtrlAi::PreTick calls it; the name unknown). Byte-exact (the kit's round 54): the two
+ * flags read into unsigned char locals first (the target loads both ahead of the first test; bool
+ * locals add an sltu), the inline's result declared first and the SEAL through EntityOf (numbered
+ * after the follow -- igreplay: me s2, f s3, master s4, r s5), the flag bit set inside the inline after
+ * the call (the target's early outs skip it), and `hide` set before its creep call (the jalr's delay
+ * slot) */
+extern "C" void func_005FAE70(CSealCtrlAi *ai, float dT)
+{
+    CAiState *s = ai->GetAiState();
+    CAiSFollow *f = s && s->m_state == AI_STATE_FOLLOW ? (CAiSFollow *)s : 0;
+
+    if (f) {
+        unsigned char creep = f->m_7c;
+        unsigned char hold = f->m_7d;
+        bool hide = false;
+
+        if (creep) {
+            bool b = ai->m_goal_pos_valid;
+
+            if (b)
+                b = MasterSees(f, ai, false);
+            ai->CreepTick(dT, b);
+        } else if (hold) {
+            bool r = MasterSees(f, ai, true);
+
+            if (r) {
+                func_00567900(ai, dT);
+                f->m_6c &= ~2;
+            } else if (f->SetHideLook(ai)) {
+                hide = true;
+                ai->CreepTick(dT, false);
+            } else
+                ai->StopThrottles(false);
+        } else
+            ai->CreepTick(dT, false);
+        ai->SetDoAiMapCollide(hide);
+    } else
+        ai->RestoreAiMode();
 }
 
 /* (OVL2 0x5FADF0) */

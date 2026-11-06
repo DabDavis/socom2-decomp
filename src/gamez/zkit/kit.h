@@ -175,6 +175,10 @@ public:
     RETICULE_TYPE GetCurReticule();
     RETICULE_TYPE GetCurItemReticule();
     bool IsZoomed();
+    /* the reticule node's settle countdown, m_8a4 (OVL2 0x5BE990, new in SOCOM II: CSealCtrl's
+     * OnActionButton and PerformProximityActions and the HUD reticule's 0x215C10 let the explosive
+     * (151) be placed only once it reads 0; the name ours) */
+    float GetReticuleSettle();
     bool SetItemAmmo(unsigned int index, void *ammo);
     bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     bool SetItem(unsigned int index, EQUIP_ITEM item);

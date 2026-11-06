@@ -11,7 +11,7 @@
  *
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
- * OPEN, not written yet: the tick 0x3949C0, the display's scaler 0x397950. The cap look reader
+ * OPEN: the tick 0x3949C0 (written round 32, 17 off: its note), the display's scaler 0x397950. The cap look reader
  * 0x397D30 (CSkbLook::ReadCapLook) is byte-exact since round 27, its POSITION pair assigned whole
  * into the cap's m_pos (zui_skb.h's CIntPair over two CInit<int, 0>: an assignment of class-typed
  * members copies each word through $f0 off an address register, plain ints copy with lw/sw).
@@ -1058,6 +1058,88 @@ CIntPair ReadIntPair(_zrdr *rdr, const char *tag)
 static inline void PlaceCaption(CSoftKeyboard *skb, float dy)
 {
     s_captionNode->SetPosition((float)skb->m_caps[1].m_pos.Get1st(), dy + (float)skb->m_caps[1].m_pos.Get2nd(), 0.0f);
+}
+
+/* the key repeats a key event held so long gives (ours: the tick's two copies, before and after
+ * the frame's time): none until the delay, then the distance covered at a speed ramping from the
+ * start to the end speed over the acceleration time and the end speed after it, plus one */
+static inline int SkbRepeats(float held)
+{
+    float frac, rest;
+    float d = s_repeatSpeedEnd - s_repeatSpeedStart;
+    float t = held - s_repeatDelay;
+    bool past = t > 0.0f;
+    float e = past ? t : 0.0f;
+    bool full = e >= s_repeatAccelTime;
+
+    if (full)
+        e = s_repeatAccelTime;
+    frac = e / s_repeatAccelTime;
+
+    if (full)
+        frac = 1.0f;
+    rest = t - s_repeatAccelTime;
+    float a = e * (s_repeatSpeedStart + 0.5f * d * frac);
+
+    rest = rest >= 0.0f ? rest : 0.0f;
+    float b = s_repeatSpeedEnd * rest;
+
+    return past ? (int)(a + b) + 1 : 0;
+}
+
+/* the display ticked by dT (0x3949C0; the name ours: SkbTick calls it): bitmap 4's legend slid in
+ * while bitmap 4 shows, else out and hidden, by its timer (stopped at -1 once done); then, unless
+ * the keyboard is scaling, the cursor's blink stepped (bitmap 1 shown for the first half second)
+ * and, while a key event is held, the number of its repeats the frame adds returned.
+ * Written in the UI lane's round 32 (unwritten before). OPEN, 17 instructions at the target's size
+ * (0x3D4), FPR numbering only: (1) the legend's x and width take $f1/$f0 where the target has
+ * $f0/$f1 (x converted after the width) -- the in-place `x - t * w` with x an int read before the
+ * `if (shown)` (the target's early `lw v1,108(s1)`) is the target's shape otherwise; a float x is
+ * 0x3DC, named float or int widths, `-(t * w) + x`, a product local change nothing; (2) the second
+ * repeat copy's `a` and `rest` take $f1/$f3 where the target has $f2/$f1 (rest in e's register:
+ * `igreplay --movers` finds no numbering of the copy's own nodes giving it, so its graph differs;
+ * computing rest after `a` breaks the first copy, 72). Measured on the way: the repeat statics load
+ * up front and `end - start` is formed first only with the range computed at the inline's top
+ * (start/end locals, parameters: 120); `a + b` from two locals with the clamp between keeps the
+ * target's separate mul.s / add.s (one expression fuses to mula.s / madd.s); the clamp as
+ * `rest >= 0.0f ? rest : 0.0f` gives the target's bc1t with the product duplicated into both arms
+ * (`if (rest < 0.0f)` a bc1f, 6 short); frac and rest declared ahead of e number e after them (the
+ * first copy's $f7/$f9/$f8: 29 -> 17); the held event compared as `(SKBKEY)s_keyEvent ==
+ * SKBKEY_NONE` loads with lbu (the plain signed char lb) */
+int SkbTickDisplay(CSoftKeyboard *skb, float dT)
+{
+    if (s_bmp4Timer >= 0.0f) {
+        s_bmp4Timer += dT;
+        bool shown = SkbShown(s_bmp4);
+        float t = s_bmp4Timer / (shown ? s_slideInSec : s_slideOutSec);
+
+        if (t > 1.0f) {
+            t = 1.0f;
+            s_bmp4Timer = -1.0f;
+            if (!shown && s_bmp3.m_node)
+                s_bmp3.m_node->SetActive(false);
+        }
+        int x = skb->m_6c;
+
+        if (shown)
+            t = 1.0f - t;
+        s_bmp3.m_node->SetPosition((float)x - t * (float)s_rect.m_size[0], 0.0f, 0.0f);
+    }
+    if (s_scaling)
+        return 0;
+    s_blinkTime += dT;
+    if (s_blinkTime > 1.0f)
+        s_blinkTime -= 1.0f;
+    bool on = s_blinkTime < 0.5f;
+
+    if (s_bmp1.m_node)
+        s_bmp1.m_node->SetActive(on);
+    if ((SKBKEY)s_keyEvent == SKBKEY_NONE)
+        return 0;
+    int before = SkbRepeats(s_keyHeld);
+
+    s_keyHeld += dT;
+    return SkbRepeats(s_keyHeld) - before;
 }
 
 /* the caption's mode 2 toggled: its text, then its place (0x394920; the name ours) */

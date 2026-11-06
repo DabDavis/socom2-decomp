@@ -300,25 +300,43 @@ void CUIVarManager::Reset()
     CollectGarbage();
 }
 
+/* the flag byte of a value (_zrdr's second byte: isclone, packed, nofree), read and set through
+ * by-reference inlines (ours) -- MW then forms the byte's address once, as a value: CSE shares it
+ * between the test and the later set, so it is computed ahead of DeleteChildren (in the test's
+ * delay slot) and held in a saved register, the test's own load folding it back to 1(s2) -- the
+ * target's sixth variable (CollectGarbage, below; the UI lane's round 32). The bitfields written
+ * on the value itself fold the offset into both accesses */
+struct ZRDRFLAGS {
+    unsigned char isclone : 1;
+    unsigned char packed : 1;
+    unsigned char nofree : 1;
+    unsigned char unused : 5;
+};
+static inline ZRDRFLAGS &FlagsOf(_zrdr *rdr) { return *(ZRDRFLAGS *)((unsigned char *)rdr + 1); }
+static inline bool IsPacked(const ZRDRFLAGS &f) { return f.packed; }
+static inline void SetPacked(ZRDRFLAGS &f) { f.packed = true; }
+
 /* the live variables' strings made again in the other table, the old table cleared, and their
  * arrays packed into the other table's buffer (SOCOM 1's; zrdr_pack, SOCOM 1's name, is 0x334DB0).
- *
- * OPEN, 3 instructions short (0x1C0 of 0x1CC), registers: the target saves six registers, keeping
- * `this` in s0, the old table in s1, the walk in s2, the packed size in s3, the room left in s4 and
- * the buffer in s5, and computes the packed flag's byte address (s2 + 1) into s1 in the delay slot
- * of the flag's test, reading and writing the flag through it after DeleteChildren; written so
- * (or with the locals declared at the top in that order), MW keeps `this` in s4, saves five and
- * addresses the flag at 1(s2). Round 23: a reference or pointer local on the variable for the
- * whole block, a free inline setting the flag through a reference or a pointer (and one testing
- * it), `packed == false`, the packed buffer through a local: no change (50 lines in all) */
+ * Byte-exact since the UI lane's round 32 (open since round 18): the packed flag tested and set
+ * through the flag byte's inlines above (the target's sixth saved register), and the first walk
+ * through a named pointer declared ahead of `old` -- a marked numbering device: the walk is then
+ * numbered before `old` (`igreplay --movers` gave 37=32.5, or old anywhere after the walk's
+ * temporary), so `old` takes s1 and the walk s2 as in the target; with the class iterator (a
+ * temporary, numbered after every named local) the two swap. `old` from an inline (one to five
+ * high, a swapping inline), a reference to the old table, a dead first iterator definition: no
+ * change (round 23: a reference or pointer local on the variable, a free inline setting the flag
+ * through a reference or a pointer to the variable, `packed == false`, the buffer through a local;
+ * round 31: `|=`, `!= 1`) */
 void CUIVarManager::CollectGarbage()
 {
+    CUIVariable *var;
     int old = m_currtab;
     iterator i;
 
     m_currtab = !old;
-    for (i = begin(); i != end(); ++i)
-        RefreshUIVar(&*i, &m_stab[m_currtab]);
+    for (var = &*begin(); iterator(var) != end(); ++var)
+        RefreshUIVar(var, &m_stab[m_currtab]);
     m_stab[old].Clear();
     char *buf = m_packbuf[m_currtab];
     int left = 0x4000;
@@ -326,14 +344,14 @@ void CUIVarManager::CollectGarbage()
         if ((*i).type == 4) {
             int n = zrdr_pack(&*i, buf, left);
 
-            if (!(*i).packed)
+            if (!IsPacked(FlagsOf(&*i)))
                 (*i).DeleteChildren();
             left -= n;
             (*i).type = ((_zrdr *)buf)->type;
             (*i).length = ((_zrdr *)buf)->length;
             (*i).array = ((_zrdr *)buf)->array;
             buf += n;
-            (*i).packed = true;
+            SetPacked(FlagsOf(&*i));
         }
     }
 }

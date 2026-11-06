@@ -5,7 +5,7 @@
  * -fno-strict-aliasing -funroll-loops (README "The GCC front"). Names are SOCOM 1's (the
  * constructor's slots, s1:align); the block's fields are named by their use. A block of the
  * scheduler's (asr/tosblk.h): one input of 4n + 8 bytes, one output; eight rows of 3n + 3 floats
- * in one allocation. CombinerProcess (0x3FC) written in round 33c, OPEN (registers only). */
+ * in one allocation. CombinerProcess (0x3FC) written in round 33c, byte-exact in round 34c. */
 #include "tosblk.h"
 
 typedef struct COMBINER {
@@ -38,14 +38,20 @@ extern void *qEnQueueOne(void *q);
  * whole from state 7, from state 6 with its accelerations zeroed, at state 4 or 5 with its deltas
  * zeroed too; the ring then turned. SOCOM 1's LOCAL, written from SOCOM II's code (round 33c):
  * SOCOM II adds an empty loop over the row's values after the send (kept: 2.96 leaves an empty
- * loop's counter in place, unrolled by four). The first value read once (its delta from the row
- * it was just stored in) and the first row's pointers walked a value at a time (the target's
- * `addiu a1,v0,4` and `addiu a0,a0,8`: indexing them is 2 words short). OPEN (round 33c, the
- * right size, 127 words): registers only -- the target allocates p3, d, p4, p1 to a0-a3 and x, cur,
- * k, q to t1-t4, here d, p4, p3, p1 a0, a1, a3, t3 and x t4; the head's index sums are scheduled
- * h & 7 first there. Five declaration orders give the same 127. The target's output loops count
- * in a1, apart from the feature loops' t3 (one k here, t1 throughout, ranks above the pointers);
- * a counter of their own for the output loops and the empty one loses the empty loop (0x3C0). */
+ * loop's counter in place, unrolled by four). The first row's pointers walked a value at a time
+ * (the target's `addiu a1,v0,4` and `addiu a0,a0,8`: indexing them is 2 words short).
+ * Byte-exact in round 34c (127 words -> 0), four things at once: (1) the first value read into a
+ * local BEFORE the state's increment and stored from it (`v = *x; c->state++; ... *cur = v;`):
+ * the target's x[0] load sits above `sw t0,40(s0)`, which no alias analysis lets a float load
+ * through a pointer cross without strict aliasing, and with the load first sched1 issues h & 7
+ * first and every register falls into the target's (87 -> 3); (2) the output loops and the empty
+ * one count in a variable of their own, j (the target's a1, apart from the feature loops' t3) --
+ * which keeps the empty loop only together with (3) the ring's turn under an `if (src != 0)` of
+ * its own after the send (the target re-tests s1 after the empty loop: src is stepped in the
+ * loops, so the test survives, and jump threading sends the first test's null arm straight to
+ * the epilogue); (4) `d -= nfeat` written before `p3 += nfeat` (sched1 issues the later of two
+ * independent adds first) and the turn's sum narrowed to unsigned char -- the target's `lbu`
+ * of the halfword ring index (`& 7` alone keeps `lhu`). */
 static void CombinerProcess(COMBINER *c, float **in)
 {
     float *x = in[0];
@@ -53,7 +59,8 @@ static void CombinerProcess(COMBINER *c, float **in)
     void *q = c->b.outputs[0].q;
     float *cur, *p1, *p2, *p3, *p4, *d, *out;
     unsigned short h;
-    int k;
+    int k, j;
+    float v;
 
     if (x != 0) {
         h = c->f44;
@@ -62,11 +69,12 @@ static void CombinerProcess(COMBINER *c, float **in)
         p2 = c->row[(h + 6) & 7];
         p3 = c->row[(h + 5) & 7];
         p4 = c->row[(h + 4) & 7];
+        v = *x;
         c->state++;
         src = p3 + 1;
-        *cur = *x;
+        *cur = v;
         d = p2 + 1;
-        *d = (2 * *cur + *p1 - *p3 - 2 * *p4) * 0.2f;
+        *d = (2 * v + *p1 - *p3 - 2 * *p4) * 0.2f;
         p3 += 2;
         p4++;
         *p3 = *d - *p4;
@@ -80,8 +88,8 @@ static void CombinerProcess(COMBINER *c, float **in)
             *cur++ = *x;
             *d++ = (2 * *x++ + *p1++ - *p3++ - 2 * *p4++) * 0.375f;
         }
-        p3 += c->nfeat;
         d -= c->nfeat;
+        p3 += c->nfeat;
         for (k = 0; k < c->nfeat; k++)
             *p3++ = *d++ - *p4++;
     }
@@ -94,30 +102,31 @@ static void CombinerProcess(COMBINER *c, float **in)
         if (c->state >= 4) {
             out = qEnQueueOne(q);
             if (c->state >= 7) {
-                for (k = 0; k < c->n - 1; k++)
+                for (j = 0; j < c->n - 1; j++)
                     *out++ = *src++;
             } else if (c->state == 6) {
                 *out++ = *src;
                 src += 2;
                 *out++ = 0;
-                for (k = 0; k < c->nfeat * 2; k++)
+                for (j = 0; j < c->nfeat * 2; j++)
                     *out++ = *src++;
-                for (k = 0; k < c->nfeat; k++)
+                for (j = 0; j < c->nfeat; j++)
                     *out++ = 0;
             } else {
                 *out++ = 0;
                 *out++ = 0;
                 src += 2;
-                for (k = 0; k < c->nfeat; k++)
+                for (j = 0; j < c->nfeat; j++)
                     *out++ = *src++;
-                for (k = 0; k < c->nfeat * 2; k++)
+                for (j = 0; j < c->nfeat * 2; j++)
                     *out++ = 0;
             }
-            for (k = 1; k < c->n; k++)
+            for (j = 1; j < c->n; j++)
                 ;
         }
-        c->f44 = (c->f44 + 1) & 7;
     }
+    if (src != 0)
+        c->f44 = (unsigned char)(c->f44 + 1) & 7;
 }
 
 TOSBLOCK *ConstructCombiner(TOS *tos, unsigned char id)

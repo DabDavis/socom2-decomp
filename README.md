@@ -2065,6 +2065,45 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 54** (the wedge test -- open since round 53 --, the edge test, the view-wedge
+  sight test, the follower's creep and the route-cell walk, all unwritten before; GetReticuleSettle from its draft):
+  - a struct element whose address is passed to calls as `(const T *)&a[i].x` shares that address with the copy's x store
+    in a saved register while y and z fold into frame offsets; written `(char *)a + k` all three fields go through the
+    register, `&a[i]` or `a + i` recomputes it at each call (the wedge test 0x5FE1F0's missing saved register);
+  - a member read through an inline returning it by reference keeps its address in a saved register across two calls,
+    read in place it is recomputed (8 bytes shorter); a pointer local assigned from an inline wrapper (`EntityOf(ai)`) is
+    numbered after the inline's own locals and the temporaries (0x5FD150, 0x5FAE70 -- igreplay first, the source after);
+  - in this unit a tiny callee was auto-inlined wherever it was defined, before or after its caller -- `#pragma
+    auto_inline off` kept it out of line (0x5FC550); byte flags the target loads before the first test need unsigned char
+    locals, bool locals add an sltu; floats read before bitfield cell copies are scheduled ahead of the copies' masks, the
+    last declared gets f20;
+  - 40 degrees is `0.6981317f` (0x3F32B8C2) -- `0.69813174f` rounds up to 0x3F32B8C3.
+- **Tells from the UI, round 32** (CollectGarbage, open since round 18, UTF8GetChar, since round 21, and UTF8Append):
+  - a flag bit tested and later set through BY-REFERENCE INLINES OVER A STRUCT AT THE BIT'S BYTE makes MW compute the
+    byte's address once, in the test's delay slot, and hold it in a saved register across calls -- written on the value
+    directly the offset folds into both accesses (CUIVarManager::CollectGarbage 0x385A60's sixth saved register);
+  - a class iterator's register is a temporary numbered after every named local, a named pointer walk declared ahead of a
+    local is numbered before it; in an accumulator a local assigned twice keeps its statement's place, and `x += y` puts
+    the accumulator first in the add (UTF8GetChar 0x39F0C0);
+  - a shift through an inline taking unsigned int gives srl, the in-place shift of a promoted unsigned short sra
+    (UTF8Append 0x39FD80); `#pragma bool off` makes || / && int-valued (no andi 0xff) but gives each chain's last operand
+    a `!= 0`;
+  - an inline's locals declared uninitialised at its top are numbered there, ahead of locals defined earlier in the body;
+    a float `a*b + c*d` in one expression fuses into mula.s / madd.s, built from two locals with a branch between it stays
+    mul.s + add.s; `r = r >= 0.0f ? r : 0.0f` gives bc1t with the next product duplicated into both arms, `if (r < 0.0f)
+    r = 0.0f` gives bc1f; a signed char static compared as `(BYTEENUM)s == ENUM_0` loads lbu, `!s` lb.
+- **Tells from the zdb world, textures, rdr and sound, round 27** (CNode::ApplyDecal; Headset::Flush renamed Flush(bool);
+  CPipe::RenderVisual written):
+  - A MEMBER CALL LOADS `this` AFTER ITS ARGUMENTS; an extern "C" placeholder taking the object first loads it first --
+    calling the mesh's own ApplyDecal as a member closed zdb::CNode::ApplyDecal 0x3139E0 (2 -> 0); a member call's
+    argument set-up follows the parameter order across int and float registers, so it reveals the prototype (0x3C0460's
+    order measured);
+  - a loop-invariant global read through an inline wrapper is numbered after the front-end temporaries (the kit's
+    round-53 rule) -- here it gives the target's s1 / s2; a loop's base pointer held in a local declared after the counter
+    gives the target's counter, base, count and test registers;
+  - MW 3.0 turns an indexed loop with a `break` into a pointer walk in every form tried; only `#pragma
+    opt_strength_reduction off` stops it (CPipe::RenderVisual 0x3374C0, OPEN, as a stand-in); igdump's PCode is already
+    pre-scheduled.
 - **Tells from the SEALs, round 52** (CAiSRescued::SetExtractValve named; 0x5A5A80 and 0x5A5DA0, both unwritten before):
   - call arguments read into locals before the call's other call-bearing arguments stay in saved registers across those
     calls; a signed-byte enum local passed to an `unsigned char` parameter goes in raw (lb, no andi), written inline in the
@@ -13024,6 +13063,54 @@ ProcessFFTMod new, -ffast-math: the object whole, 5 of 5), `asr/tos.c` (tosRun a
 of 4) -- 5 rows new to the map's byte-exact rows (6,756 bytes), no draft superseded; `src/lib/asr` 573 of 602
 (568 of 596 before). Named (2, data.txt): `costab` 0x659140 and `sintab` 0x659180 (s1:data: SOCOM 1's globals of
 those names, read by fht at the same instructions). No rows renamed (all had SOCOM 1's names). No tool changed.
+
+**Round 34c: the combiner's process closed, the VAD's init, the distance block's process, language load and copy.**
+
+- **A float load through a pointer cannot cross an earlier int store without strict aliasing**
+  (CombinerProcess, 127 words -> 0): the target's x[0] load sits above the state's `sw`, so the source
+  reads it into a local before `c->state++` and stores from the local -- and with the load first sched1
+  issues the head's `h & 7` first and every register falls into place (87 -> 3). The empty loop keeps its
+  own counter (the target's a1) only when the ring's turn is a second `if (src != 0)` after the send: src
+  is stepped in the loops, so the test survives, and jump threading sends the first test's null arm
+  straight to the epilogue. **`(unsigned char)(f + 1) & 7` is the target's `lbu` of a halfword ring
+  index**; `& 7` alone keeps `lhu`.
+- **A spelling per count, not one `n` reused** (LoadLanguage): one variable for three counts read
+  across thirteen calls is one pseudo, set three times, whose priority takes the interface's s-register;
+  each its own and every register is the target's. **An inline's argument narrows at the call**: a
+  value computed into an unsigned int in both arms of an if and passed as the inline's unsigned short
+  is the target's single `andi` after the join (a `?:` assigned to the short converts in each arm). **A
+  null test through an inline's pointer** (`lw v1,0(s7)`) is the inline returning `*list`.
+- **The second loop's bound in a local** (InitVad): a base read through the block inside a loop that
+  stores through a pointer stays inside (0x480); read into a local first it is the target's hoisted
+  `lwc1`. A count-down `for (i = n - 1; i >= 0; i--)` is SOCOM 1's (counting up, 0x3E8).
+- **2.96's folder lands an ulp where the literal does not**: `2.302585f / 1000` gives the target's
+  0x3B16E6F6 (`0.0023025851f` is one high); `5 * 4.3429f` and `21.7145f` both give 0x41ADB74B. The
+  vendor's dB-to-neper factor is a double, `1 / 4.3429` (0.23026088558336597, soft-float calls), and an
+  unrolled loop's copies each get a constant-pool entry of their own (three 1/255 doubles in a row).
+- **Reading a pointer input once** (DistSilProcess): two reads of `in[2]` around a store reload it (no
+  strict aliasing); a flag loaded into the variable before `1 - sil` is the target's `lbu s6`.
+- **Open, diagnosed in place**: InitDistSilProcess (3 words, the right size: the float-to-unsigned
+  conversion's 2^31 constant in $f3 where the target has $f12 -- global-alloc takes the first
+  call-clobbered register no lower-priority neighbour prefers, so the target's choice needs $f3..$f11
+  preferred by a neighbour or $f12 by the constant, and neither shows here);
+  ProcessVad (2: a structured `if (i < n)` flips the two accumulators' priorities, 6,315 against 6,250,
+  sum's live length 160 there against 158 with `if (i == n) goto out` -- but it is 2 words
+  longer; all fifteen orders of the init's statements give the same live lengths, sched1 places them
+  alike); SplitUp_Finals and the
+  older opens (their diagnoses stand). Not reached: CreateSecondPassTreeContext, RePruneToPho,
+  FrameDPacoust, ConstructArchitecture (tos.c: three inlined helpers returning bytes, 358 words),
+  VadFastTrackProcess, ControlDistSilProcess, the 8- and 4-bit distance passes (0x4FDE08, 0x4FE6C8).
+
+Hand-written in round 34c: `asr/combiner.c` (CombinerProcess closed: the object whole, 4 of 4), `asr/vad.c`
+(InitVad new: 8 of 9), `asr/distsil.c` (DistSilProcess, func_004FD5C8 and LoadLanguage new, InitDistSilProcess
+written OPEN: 13 of 14; the record's fields from +40 to +312, the codebook and frames records and the language's
+interface typed by these uses) -- 5 rows new to the map's byte-exact rows (4,824 bytes), no draft superseded;
+`src/lib/asr` 578 of 607 (573 of 602 before). Named (1): DistSilProcess 0x4FFCE8 (s1:order: SOCOM 1's distsil
+object holds it between NormCorrection and ControlDistSilProcess as ours holds this row, the same body).
+func_004FD5C8 has no SOCOM 1 counterpart (LoadLanguage and ControlDistSilProcess call it): unnamed. No tool
+changed (scratch: build/scratch/gcc/r34/ -- vprio.py scores variants with their allocation priorities,
+fbits.py and fexpr.py find a float's 2.96 spellings and folded forms, sdiff.py aligns a function by
+mnemonics to find size misses).
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
