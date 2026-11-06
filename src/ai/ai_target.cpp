@@ -553,7 +553,14 @@ static inline float SealLight(CZSealBody *seal)
  * pass's; SealLight without `sl` (the casts in place, 0x588), `sl` declared after the EntityLight
  * arm or the light through a local (14, unchanged), SealLight over a CSealLightView parameter (0x588)
  * -- every SealLight-level variable is numbered before a level-1 one, so the SEAL wants a variable
- * made one level deeper or by that pass */
+ * made one level deeper or by that pass. Round 57, with the GCC front's round-41a igdump (each @N's
+ * pass): the s0 / s1 holders are IRO_CommonSubs' `m_world` (EntityLight's two GetLightIntensity
+ * calls, one temporary per copy) and `&p + 36` -- both already the target's registers; renumbering
+ * either m_world temporary to where a kept `w` local would sit (41.5 / 43.5) breaks five more, so they
+ * stay. Still only sl (v40, wants s2) and SealLight's EntityLight pos (v43, wants s3): --movers puts sl
+ * at 43.5-46.5 (after the level-1 locals and the linearizer's two ternary temporaries, before the CSE
+ * pass) or pos at 34.5-39.5. Re-evaluating SealEntity(te) at each use (three ternaries, or in
+ * SealLight's argument) 0x59C-0x5CC */
 float func_0060AA20(void *viewer, zdb::DiIntersect *di, CTarget *t)
 {
     static float flagged = 2.0f;
