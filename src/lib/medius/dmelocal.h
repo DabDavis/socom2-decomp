@@ -48,6 +48,18 @@ typedef enum DmeWorldState {
     DME_WORLD_STATE_3                   /* 3: func_0061D3C8 closes the world */
 } DmeWorldState;
 
+/* a connection's kind (DmeConnectKind 0x00, DmeWorld 0x44C): an enum (its loads pass the world's int stores) */
+typedef enum DmeConnectType {
+    DME_CONNECT_0,
+    DME_CONNECT_TCP,                    /* 1 */
+    DME_CONNECT_PEER,                   /* 2 */
+    DME_CONNECT_TCP_AUX,                /* 3 */
+    DME_CONNECT_CLIENT_SERVER           /* 4 */
+} DmeConnectType;
+
+struct DmeWorld;
+typedef void (*DmeClientCallback)(void *pInfo, DmeClientInfo *pClient, struct DmeWorld *pWorld);
+
 /* a world (4 of them; func_0061C600 hands one out): its clients' records, then this client's index
  * and the world's state */
 typedef struct DmeWorld {
@@ -56,7 +68,7 @@ typedef struct DmeWorld {
     int nSessionMaster;                 /* 0x404 */
     char szName[16];                    /* 0x408 */
     char szServerVersion[16];           /* 0x418 */
-    void (*pfnClientCallback)(void *pInfo, DmeClientInfo *pClient, struct DmeWorld *pWorld); /* 0x428 */
+    DmeClientCallback pfnClientCallback; /* 0x428 */
     void *field_42C;                    /* 0x42C: pfnClientCallback's user word */
     void (*field_430)(void *pReport);   /* 0x430: a client's leaving told */
     void *field_434;                    /* 0x434: its user word */
@@ -65,7 +77,7 @@ typedef struct DmeWorld {
     int field_440;                      /* 0x440 */
     int field_444;
     int field_448;                      /* 0x448 */
-    int field_44C;                      /* 0x44C: 4 when the world is client-server */
+    DmeConnectType field_44C;           /* 0x44C: 4 when the world is client-server */
 } DmeWorld;
 
 extern int func_0061C600(int nWorld, DmeWorld **ppWorld);
