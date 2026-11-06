@@ -870,7 +870,12 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
  * `swapMode = 1` or `= mode` stays put. `#pragma scheduling off` changes nothing, `#pragma peephole
  * off` scatters the zero stores up instead (the pre-pass scheduler then places them freely) -- the
  * grouping is the peephole's; false, a zero local (char or int), casts, an enum 0 and field types
- * bool / char (swapMode's or the flags') all group the same */
+ * bool / char (swapMode's or the flags') all group the same.
+ * Round 39 (igdump --pcode): the PCode at colouring already has swapMode's and pcrtcDo's zero stores
+ * just ahead of flag90's, with `li 1` (a1) and `li 255` between them -- so 255 is live only there and
+ * takes v0; the target's 255 is live from the top (v1), its zero stores where the source writes them.
+ * SOCOM 1's zVid_Init (the demo's 0x308690) has the same shape: 255 into v1 near the top, its two zero
+ * byte stores in source order among the constants -- a code-generation property of both builds */
 void zVid_Init(_zvid_mode mode)
 {
     zVid.runTime = 0;
