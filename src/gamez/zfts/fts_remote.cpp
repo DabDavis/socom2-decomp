@@ -276,7 +276,14 @@ public:
     unsigned char m_network_log : 1;   // 0x3f, bit 1 (SOCOM 1's m_network_log)
 };
 
-class CZAnimMain;
+/* the anims (zanim.h's CZAnimMain: only the network send's member) */
+class CZAnimMain {
+public:
+    unsigned char _0[0x4c];
+    /* the anims' network send (0x414BFC: CZAnim::Activate calls through it; the engine core's round 20) */
+    void (*m_network_activation_callback)(void *data, int size);   // 0x4c
+};
+
 extern CZAnimMain ZAnim;
 
 const char *GetDatabase();
@@ -2045,7 +2052,6 @@ void func_00620BD8(void);   /* (the DME's: a message type's description begun) *
 void func_00620C60(void *base, void *field, int size, int count);   /* (a field described) */
 void func_002C2B20();   /* (fts_net_persona.cpp's registration's twin: the platform's? -- SOCOM II's) */
 extern unsigned int data_00440EA0;   /* (SOCOM II's: "All Switch") */
-extern void (*data_00414BFC)(void *data, int size);   /* (ZAnim's network send: the anims' packets go out through it) */
 int func_002B9B20(int, int, int, void *);
 int func_002BADC0(int, int, int, void *);
 int func_002B9150(int, int, int, void *);
@@ -2109,7 +2115,7 @@ extern "C" void func_002B8660()
     func_00620C60(&mHit, &mHit.m_6, 1, 1);
     func_00620C60(&mHit, &mHit.m_7, 1, 1);
     theNetwork.zNetRegisterMessage(&data_00440E00, HitPacketHandler, "Hit");
-    data_00414BFC = SendZAnimNetworkPacket;
+    ZAnim.m_network_activation_callback = SendZAnimNetworkPacket;
     func_00620BD8();
     func_00620C60(&mAnim, &mAnim.m_0, 4, 1);
     func_00620C60(&mAnim, &mAnim.m_4, 2, 1);
