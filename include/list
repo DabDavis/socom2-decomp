@@ -314,7 +314,14 @@ void __list_deleter<T, Allocator>::init(InputIterator first, InputIterator last)
  * Each element is destroyed through the node allocator before its node is read and freed (the MSL
  * headers round 13: the kit lane's step list, OVL2 0x60EA90 -- ~step called with -1, first.node_
  * re-read after it -- byte-exact from ai_group.cpp's tail; nothing for the pointer lists, nothing
- * lost over every hand-written unit) */
+ * lost over every hand-written unit). The walker STEPPED BY ITS OWN operator++ (the MSL headers round
+ * 36, build/p36/erasev.py, untracked), not `first.node_ = n->next_`: the out-of-line copies and
+ * remove_if's inlined erase are the same code, but the step re-reads first's node, so an inlined
+ * erase's loop test reloads it apart from the node freed (vis_texfx.cpp's resize 0x3C0AC0), and the
+ * erase is a level taller in tail code: a temporary list's ~__list_imp, the erase inlinable there, is
+ * inlined one level and calls the deleter's destructor with 0 (the sized insert 0x3C0B90; node_wave.cpp's
+ * ~list<CRipple *> 0x322370, held by its draft until now) -- +3 over every hand-written unit, nothing
+ * lost */
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::erase(iterator first, iterator last)
@@ -331,7 +338,7 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
         node_alloc().destroy(&((node *)first.node_)->data_);
         node_base *n = first.node_;
 
-        first.node_ = (node *)n->next_;
+        ++first;
         node_alloc().deallocate(n);
         --size_;
     }
@@ -581,19 +588,16 @@ void __list_imp<T, Allocator>::resize(unsigned int n, const T &x)
         this->erase(advance_to(n), this->end());
 }
 
-/* OPEN (the MSL headers round 36, the weapons' round 35 request; build/p36/, untracked): vis_texfx.cpp's
- * copies of the sized pair. insert 0x3C0B90 (0xDC against 0x84) -- the target destroys tmp by calling
- * the DELETER's destructor 0x1EA2D0 with 0 (~__list_imp inlined one level, as ~list<CVisual *> 0x3177C0
- * and ~list<CRipple *> 0x322370 call it after two this-tests) where this inlines the chain with the
- * range erase. Not a size cut (inline_max_size 150-400 changes nothing: build/p36/imsprobe.py); a
- * height: the destructor chain a level taller in tail code. Measured: `~__list_deleter() { erase(begin(),
- * end()); }` makes insert byte-exact (+ 0x322370, ~list<CNode *>) but cuts fifteen user-code destructors
- * (~CAiGroup, ~CMission, ~CGNode, ~CGraph, ~CGRoute, BuildTree, ~CCell, ~CHUD, ~CModel, ~CSealUnit,
- * ~CValve, ~CPreLight_band, ~C2D, LoadFromDesign, ~CDiPool): +4 / -15; end_first() a level deeper (only
- * the erase's tree, so only tail code) makes it byte-exact too but cuts remove_if's inlined range erase
- * in every unit (0x20CB50 and its OVL2 copy, the graph queue's, RTPool<CRipple>::Clear): +2 / -17 --
- * a "Level 6, or 8?" witness. resize 0x3C0AC0 (11 off) is the inlined range erase's walk: the target
- * reloads first's node for the loop test (v1) apart from the node it frees (a0), this one load */
+/* BYTE-EXACT since the MSL headers round 36 (the weapons' round 35 request; build/p36/, untracked):
+ * vis_texfx.cpp's copies of the sized pair, insert 0x3C0B90 and resize 0x3C0AC0, by the range erase's
+ * walker stepped through its operator++ (above). The insert's tmp is destroyed by a call of the
+ * DELETER's destructor 0x1EA2D0 with 0 -- ~__list_imp inlined one level, as ~list<CVisual *> 0x3177C0
+ * and ~list<CRipple *> 0x322370 do -- once the erase inlined in tail code is that level taller. Not a
+ * size cut (inline_max_size 150-400 changes nothing: build/p36/imsprobe.py). Tried on the way:
+ * `~__list_deleter() { erase(begin(), end()); }` (the insert byte-exact, but fifteen user-code
+ * destructors cut: ~CAiGroup, ~CMission, ~CGNode, ~CGraph, ~CGRoute, BuildTree, ~CCell, ~CHUD, ~CModel,
+ * ~CSealUnit, ~CValve, ~CPreLight_band, ~C2D, LoadFromDesign, ~CDiPool: +4 / -15) and end_first() a
+ * level deeper (remove_if's inlined erase cut in every unit: +2 / -17) */
 template <class T, class Allocator>
 void __list_imp<T, Allocator>::insert(typename __list_deleter<T, Allocator>::iterator position,
                                       unsigned int n, const T &x)

@@ -2068,9 +2068,7 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
 - **Tells from completing the MSL headers, round 36** (every one-byte scalar vector on the byte pod; the list's range init
   through push_back; the HUD's frame-slot hypothesis confirmed and measured; probes build/p36/, untracked: mkbyte.py,
   rmequip.py, oies.py, additem.py, imsprobe.py, runcheck.sh, cmpcheck.py; runs and objcmp output in build/scratch/msl-r36/.
-  Over every hand-written unit against master a3e6a9fe: 11,264 -> 11,266 byte-exact, +6 rows, nothing lost; objcmp
-  master --by-address, 661 units: 4 differ -- ai_group.cpp, seal_unit.cpp, node_main.cpp by the init and the end() copy,
-  zanim_menu.cpp by its no-target EQUIP_ITEM destructors):
+  Over every hand-written unit against master a3e6a9fe: 11,264 -> 11,269 byte-exact, +9 rows, nothing lost):
   - APPLIED (the UI's round 33): include/vector's byte pod is __vector_pod's PRIMARY template and every one-byte scalar
     element runs on it over its own type -- the primary vector's base chosen by __vector_is_byte<T> (sizeof 1, not a
     class by MW's SFINAE test, not bool: MSL's bit vector is hud_objectives.cpp's), the char imp generic over T,
@@ -2092,13 +2090,15 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     CUIListBox::AddItem 0x373F20 byte-exact (with `int i = 0` declared after the iterator), but costs the wrapper's own
     copy 0x510B90 (the target wraps through a temporary), CGraph::BuildRoute 0x2D14A0 and CSched_Manager::AddTask
     0x34E6B0: +1 / -3, not applied (include/list, AddItem's note);
-  - vis_texfx.cpp's sized list insert 0x3C0B90 destroys its temporary list through a call of the deleter's destructor
-    with 0 -- a base subobject's call: ~__list_imp inlined one level, as ~list<CVisual *> 0x3177C0 and ~list<CRipple *>
-    0x322370 do. Not a size cut (inline_max_size 150 to 400 changes nothing there); a height. ~__list_deleter as
-    `erase(begin(), end())`: +4 / -15 (fifteen user-code destructors cut); end_first() a level deeper (the erase's tree
-    alone, so tail code only): +2 / -17 (remove_if's inlined erase in every unit) -- a "Level 6, or 8?" witness. Its
-    resize 0x3C0AC0 (11 off): the target reloads first's node for the inlined erase's loop test apart from the node it
-    frees (two loads, v1 and a0), where this shares one;
+  - APPLIED (the weapons' round 35): THE RANGE ERASE STEPS ITS WALKER BY THE ITERATOR'S operator++, not `first.node_ =
+    n->next_`. The out-of-line erase 0x1EAAF0 and remove_if's inlined copies are the same code, but the step re-reads
+    first's node -- an inlined erase's loop test then reloads it apart from the node it frees (vis_texfx.cpp's resize
+    0x3C0AC0) -- and the erase is a level taller in tail code: a temporary list's ~__list_imp, where the erase is
+    inlinable, is inlined one level and calls the deleter's destructor with 0 (a base subobject's call), the sized insert
+    0x3C0B90's teardown, and node_wave.cpp's ~list<CRipple *> 0x322370 (draft-held until now) matches from hand source:
+    +3, nothing lost. Not a size cut (inline_max_size 150 to 400 changes nothing there). Tried first: ~__list_deleter as
+    `erase(begin(), end())` (+4 / -15, fifteen user-code destructors cut) and end_first() a level deeper (+2 / -17,
+    remove_if's inlined erase cut in every unit) -- the height belongs to the erase's step alone;
   - the UI's round 34: include/vector's class-vector iterator is ALREADY a class (m_p, != as !(==)); OnIsEquipmentSelected
     0x280790's latch re-reads size and data and adds size*12 -- scdiff printed that addu as a masked word (round 33's
     tell: read the image with `scd.py show`), so the "dropped add" was the display. Ten forms of end() and == hoist the
@@ -9070,7 +9070,7 @@ carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230
 (each draft carries an `sc: as=` line; ~CLobbySaveModule's copy 0x2FD070, once listed with them, matches from source
-since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all -- 0x29FF60 and
+since the online lane's round 18), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
 sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
 built and scored against its other emitters outside `--files` (its draft, and the hand-written units
