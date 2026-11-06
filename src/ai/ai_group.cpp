@@ -836,15 +836,8 @@ bool CAiGroup::AddMember(CSealCtrlAi *ai)
 }
 
 /* (OVL2 0x60C220: the first member found running is kept, and never read; begin() taken once
- * before the switch, the result zeroed first so the empty list branches straight to the end).
- * OPEN, 11 instructions, registers only: the walk's iterator comes out in s2 and the end in s1 in
- * both loops, the target has them the other way round (the end numbered below the iterator). Tried:
- * the end declared before the switch and assigned per case (75 lines off: the assigned iterator
- * goes through memory), `done` as a bool (`daddiu` for the target's `li`: an int). Round 43
- * (tools/igreplay.py --target --movers): the iterator numbered after both ends, or both ends before
- * it (the first just above the step's reference), gives the target; the ends declared before the
- * iterator with begin() in each case is 0x1AC (begin() loaded twice), one end before the switch 44,
- * the iterator assigned in each case 0x1F8 */
+ * before the switch, the result zeroed first so the empty list branches straight to the end)
+ * The iterator numbered after both ends (igreplay, round 43): the address-taken device below */
 CAiGroup::step::STATE CAiGroup::TickStep()
 {
     step::STATE r = (step::STATE)0;
@@ -852,6 +845,9 @@ CAiGroup::step::STATE CAiGroup::TickStep()
     if (m_steps.size() != 0) {
         step &s = FirstStep();
         step::iterator i = s.begin();
+        /* (a modelling device: the iterator's address taken defers its scalarisation to the optimiser's second
+         * pass, so its member is numbered after both ends -- the AI core's round-36 rule) */
+        step::iterator &ir = i;
         CSealCtrlAi *first = 0;
 
         switch (s.m_state) {

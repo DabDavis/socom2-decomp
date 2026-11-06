@@ -2779,12 +2779,9 @@ void CZKit::RemoveItemAndAmmo(int index)
  * pointer (one place on, in the vector at 0x834) moved down one, and the slot looked at again
  * (OVL2 0x5B9A00, new in SOCOM II: RemoveItemAndAmmo calls it; the name ours). The slot test is an
  * inline bool's (kit.h's AnyItemFrom: the target materialises `!SlotEmpty(j)`, sltu/xori), non-const
- * (const, it reloads the count the loop holds); the pointer's next slot a local (written in place,
- * MW hoists its shift into the size test's delay slot, eight bytes short).
- * OPEN, 15 instructions, registers only: after the magazines' loop the target holds the moved
- * values in t2, `this + j` in t3 and the next slot in t1 (its shift then into t3); here t1, t2 and
- * t3 -- the slot local's place in the block changes nothing, tools/perm.py over the eight moves
- * (3,284 steps) found no better */
+ * (const, it reloads the count the loop holds). The size test `size > j + 2`: a compare generates its right operand
+ * last, so `j + 2` -- a back-end temporary, IRO refuses `register local +- constant` -- is numbered after the size's load
+ * and coloured ahead of the moved values (igreplay: 15 off with it a named local, which no spelling could place) */
 void CZKit::CompactItems()
 {
     int i = 0;
@@ -2802,11 +2799,9 @@ void CZKit::CompactItems()
                     m_firemode[j] = m_firemode[j + 1];
                     m_associatedgear[j] = m_associatedgear[j + 1];
                     m_iteminuse[j] = m_iteminuse[j + 1];
-                    int k2 = j + 2;
-
-                    if (k2 < m_itemptr.size()) {
-                        m_itemptr[j + 1] = m_itemptr[k2];
-                        m_itemptr[k2] = 0;
+                    if (m_itemptr.size() > j + 2) {
+                        m_itemptr[j + 1] = m_itemptr[j + 2];
+                        m_itemptr[j + 2] = 0;
                     }
                 }
             }
