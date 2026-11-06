@@ -15,6 +15,8 @@ runs it from its own worktree.
     ./tools/igdump.py --read build/ig/graph.jsonl -f Read --cls 1       # an earlier dump, the FPRs
     ./tools/igdump.py --read build/ig/ai_target.jsonl -f '^func_0060AA20$' --pcode   # its PCode, coloured
     ./tools/igdump.py src/ai/ai_target.cpp -f '^func_0060AA20$' --origins --cls -1  # who made each @N
+    ./tools/igdump.py src/ai/ai_target.cpp -f '^func_0060AA20$' --iro --iro-phase 'after IRO_CommonSubs'
+                                                                     # mwccps2's own optimiser log
 
 The allocator (README "Tells from completing the MSL headers, round 10"): mwccps2 3.0b52's colouring
 driver calls buildinterferencegraph 0x4BC7B0, simplifygraph 0x4C4480 and colorgraph 0x4C47F0 (its
@@ -59,7 +61,19 @@ trivial argument is substituted and makes none --, `local`, `result`: a statemen
 statements keep the call's line, so a nested copy has its outer call's), `level` (the inliner's pass:
 0 a call in the function's own text, 1 one inside a copy, `within` naming the copies expanded at that
 line a level up); any other `@N` as `creator` and `caller` (create_temp_object 0x477270 and the call
-into it: the optimiser's and code generation's temporaries) or `at`. The `@no_name@`/`@temp_ptr@`
+into it: the optimiser's and code generation's temporaries) or `at` -- and (GCC round 41a) the `pass`
+that asked: `IRO_CommonSubs` (0x5327F8, the kit's s0/s1 holders: a COMMON SUBEXPRESSION, its `expr`
+as C -- `&p + 36`, `(x * y) + 7` -- and the IRO linears that `computed` it and `reused` it),
+`IRO_SplitLifetimes` (0x533D7E: a reused variable's later def-use web, `var` the variable), the
+linearizer's, the loop passes', CInline's serialisation and code generation's by their caller
+(`what`: TEMP_MAKERS). A temporary is numbered by its Object's place in the locals -- parameters,
+named locals in declaration order, then temporaries in the order made, every pass's after every
+inline's -- so a common subexpression or a split web takes a virtual register after all of them.
+--iro writes mwccps2's OWN optimiser log (its IRO dumper, compiled in, switched on under gdb):
+every phase's flowgraph of -f's functions, each linear by the index `computed`/`reused` cite, the
+passes' own lines ("Replacing common sub at 7", "Splitting range for variable: 2"); --iro-phase
+prints the phases matching (`--iro-phase 'after IRO_CommonSubs|before IRO_Delinearize'`). The
+`@no_name@`/`@temp_ptr@`
 hidden parameters are not `@N`s. --pcode prints a record's PCode instruction by instruction, every
 operand as the colouring left it (`v45<@6305>=s3`: the virtual register -- its node -- its variable
 and the register it took; a GPR record's float operands `fv32<p>=f21`, from its function's FPR
@@ -329,9 +343,208 @@ if gdb is not None:     # ------------------------------------------------------
                 o = dict(creator='0x466d00', caller=f'{caller:#x}')
             elif ret == TEMP_RET:
                 o = dict(creator='0x477270', caller=f'{caller:#x}')
+                # GCC round 41a: the pass that asked, and what it made the temporary for
+                made = state.pop('pass', None)
+                if caller in TEMP_MAKERS:
+                    o['pass'], o['what'] = TEMP_MAKERS[caller]
+                if made and made.get('ret') == caller:
+                    o.update((k, v) for k, v in made.items() if k != 'ret')
             else:                                   # another maker: its call of GetUniqueName
                 o = dict(at=f'{ret - 5:#x}')
             temps[name] = o
+            return False
+
+    # The temporaries no inline made (GCC round 41a; the kit's 0x60AA20, whose s0/s1 holders round 40a
+    # traced to create_temp_object called from 0x5327F8): mwccps2's IRO passes, read under gdb (their
+    # dump-phase names, IRO_DumpAfterPhase 0x51F5B0's argument after each call in IRO_Optimizer
+    # 0x4D4870, and their own IRO_Dump lines).
+    #   0x5327F8 -- IRO_CommonSubs 0x532920 (dumped as "IRO_CommonSubs"; it opens with IRO_FindExpressions
+    #     0x524B40 (NULL, FALSE), and its last step 0x532850 logs "Replacing common sub at %d"): a
+    #     COMMON SUBEXPRESSION. Every linear's expr (+0x18, an IROExpr) of one class shares a member
+    #     list (IROExpr +0x1A: [0] the member, [4] the next); its step 0x532770 merges the members'
+    #     temporaries (IROExpr +0xA) and, for a class with none yet, makes ONE of the type of the class's
+    #     first member's linear (IROExpr +6, its rtype +0x10) -- the break at 0x5327EA, the branch
+    #     only a class without an object takes, reads the class there.
+    #   0x533D7E -- IRO_SplitLifetimes 0x533E30 (copts.lifetimes, -O3 and up; "IRO_SplitLifetimes"),
+    #     its SplitOffRange 0x533D10(VarRecord *var: +4 its Object) logging "Splitting range for
+    #     variable: %d": a variable's LATER def-use web given a new temporary, the web holding its
+    #     earliest definition keeping the variable (mweppc IROUseDef.c's IRO_SplitLifetimes shape).
+    #   every other maker by its caller (TEMP_MAKERS: the linearizer's IroLinearForm.c helpers, the
+    #     loop passes', code generation's).
+    # Numbering (measured, build/scratch/gcc/r41/p3.cpp): a variable's virtual register follows its
+    # Object's place in the function's locals -- the parameters, the named locals in DECLARATION order
+    # (not first use), then every temporary in the order it was made: the inliner's (a level at a
+    # time), the linearizer's, then the optimiser's passes in their order -- so a common subexpression's
+    # temporary comes after every named and inline variable, and a split web's after those too.
+    # The IROLinear is mwccps2's (the dumper 0x501F90's reads): +0 the kind (1 operand, 2 one operand,
+    # 3 two, 4 three, 6 a call), +1 the ENodeType (its name at [0x59EEAC + 4 * type], filled at run
+    # time), +8 the index the IRO log prints, +0x10 rtype, +0x18 expr, +0x24 the operand (an ENode for
+    # kind 1) or the left, +0x28 the right (a call's argument array), +0x2C the third (a call's
+    # function), +0x26 a call's argument count; an ENode's +0 its type and +0x18 its datum (an
+    # EOBJREF's Object, an EINTCONST's value).
+    CSE_CLASS = 0x5327ea
+    CSE_RET = 0x5327f8
+    SPLIT_ENTRY = 0x533d10
+    SPLIT_RET = 0x533d7e
+    ENODE_NAMES = 0x59eeac
+    # every other caller of create_temp_object, by the pass that runs it: `measured` where a probe made
+    # one (build/scratch/gcc/r41/p2-p4.cpp), else by the file its function's asserts name (and, for the
+    # linearizer, its place among IroLinearForm.c's helpers -- mweppc's order)
+    TEMP_MAKERS = {
+        0x467c9f: ('CInline', "an inline copy's value serialised into a temporary (CInline_LoadToTemp 0x467C70, "
+                              "mweppc's shape: a ?:, && / || or forced value inside a statement-level copy)"),
+        0x4feda5: ('IRO_Linearize', "a comma expression's value (AssignCommaRToTemp; measured)"),
+        0x4feea4: ('IRO_Linearize', "an argument evaluated ahead of its call (AssignDangerousArgumentToTemp, by its place)"),
+        0x4fef75: ('IRO_Linearize', "a logical value's temporary, set to 0 (CreateTempAssignmentToZero, by its place)"),
+        0x4ff035: ('IRO_Linearize', "a logical value's temporary, set to 1 (CreateTempAssignmentToOne, by its place)"),
+        0x4ff202: ('IRO_Linearize', "a null check's value (GenerateNullcheckExprTempAssignment, by its place)"),
+        0x4ff304: ('IRO_Linearize', "a conditional expression's value, `c ? a : b` (GenerateExpr1TempAssignment "
+                                    "0x4FF2E0: both its type and the first arm's non-void; measured)"),
+        0x4ff3d9: ('IRO_Linearize', "a conditional expression's value made at its second arm (GenerateExpr2TempAssignment 0x4FF3B0)"),
+        0x4ff499: ('IRO_Linearize', "an expression-level inline's returned value that loads or calls -- CInline's "
+                                    "EFORCELOAD (GenerateForceLoadTempAssignment 0x4FF480; measured: a returned call)"),
+        0x530925: ('IRO_LoopInvariants', "a loop-invariant expression hoisted out of its loop (IroLoopInvariants.c; measured)"),
+        0x539d6c: ('IRO_StrengthReduction', "an induction variable (IroStrengthReduction.c; measured)"),
+        0x53a01d: ('IRO_StrengthReduction', "an induction variable (IroStrengthReduction.c)"),
+        0x51c042: ('IRO_LoopUnroller', "the loop unroller's (IroUnrollLoop.c; measured)"),
+        0x51be2f: ('IRO_LoopUnroller', "the loop unroller's (IroUnrollLoop.c)"),
+        0x51a34e: ('IRO_LoopUnroller', "the loop unroller's (IroUnrollLoop.c)"),
+        0x51a1d2: ('IRO_LoopUnroller', "the loop unroller's (IroUnrollLoop.c)"),
+        0x519fc3: ('IRO_LoopUnroller', "the loop unroller's (IroUnrollLoop.c)"),
+        0x519df5: ('IRO_LoopUnroller', "the loop unroller's (IroUnrollLoop.c)"),
+        0x52c0b6: ('IRO_ScalarizeClassDataMembers', "a member scalarised (IroScalarization.c, by its asserts)"),
+        0x538aa7: ('IRO_NonRegLoopAccesses', "IroNonRegLoopAccesses.c's (by its asserts)"),
+    }
+    for _a in (0x536fa3, 0x537548, 0x53756b, 0x537608, 0x53762b):
+        TEMP_MAKERS[_a] = ('IRO_RegenerateExpressions', "a rebuilt expression's (IroExprRegeneration.c, by its asserts)")
+    for _a in (0x517d6c, 0x517e4b, 0x518165, 0x518180, 0x51868c, 0x518706, 0x51878d, 0x518817, 0x5188db,
+               0x518936, 0x5189a5):
+        TEMP_MAKERS[_a] = ('code generation', "an inline asm's operand or a spill (GCCInlineAsm.c / Spill.c, by their asserts)")
+    for _a in (0x4df541, 0x4dfa68, 0x4dfe4c, 0x4dfe60, 0x4dff80, 0x4e02a3, 0x4e0561, 0x4e0bcf, 0x4e0f78):
+        TEMP_MAKERS[_a] = ('CException', "the exception or construction machinery's (CException.c, by its asserts)")
+    OP2 = {'EADD': '+', 'ESUB': '-', 'EMUL': '*', 'EDIV': '/', 'EMODULO': '%', 'ESHL': '<<', 'ESHR': '>>',
+           'EAND': '&', 'EOR': '|', 'EXOR': '^', 'ELESS': '<', 'EGREATER': '>', 'ELESSEQU': '<=',
+           'EGREATEREQU': '>=', 'EEQU': '==', 'ENOTEQU': '!=', 'ELAND': '&&', 'ELOR': '||', 'EASS': '=',
+           'ECOMMA': ','}
+    OP1 = {'EMONMIN': '-', 'EBINNOT': '~', 'ELOGNOT': '!'}
+
+    def cstr(p, n=48):
+        try:
+            return mem(p, n).split(b'\0')[0].decode('latin1')
+        except Exception:
+            return None
+
+    def ename(t):
+        try:
+            return cstr(u32(ENODE_NAMES + 4 * t)) or f'E{t:#x}'
+        except Exception:
+            return f'E{t:#x}'
+
+    def enode_text(e):
+        """An operand's ENode: an object as its address (`&p`: the IRO's operands are addresses, an
+        EINDIRECT of one its value), a constant as its value."""
+        if not e:
+            return '?'
+        t = ename(u8(e))
+        if t == 'EOBJREF':
+            nm = objname(u32(e + 0x18))
+            return '&' + (nm.split('@0x')[0] if nm else '?')
+        if t == 'EINTCONST':                    # 128 bits, the most significant word first (the
+            w = struct.unpack('<IIII', mem(e + 0x18, 16))   # printer 0x501EF1 passes all four): 7 at +0x24
+            v = (w[0] << 96) | (w[1] << 64) | (w[2] << 32) | w[3]
+            v = v - (1 << 128) if w[0] & 0x80000000 else v
+            return str(v) if -0x10000 < v < 0x10000 else hex(v & 0xffffffffffffffff)
+        if t == 'EFLOATCONST':
+            return repr(struct.unpack('<d', mem(e + 0x18, 8))[0])
+        return t
+
+    def linear_text(lin, depth=0):
+        """An IROLinear tree as C: `p + 36`, `x * y`, `*(&a)` read back as `a`."""
+        if not lin:
+            return '?'
+        if depth > 12:
+            return '...'
+        kind, t = u8(lin), ename(u8(lin + 1))
+        if kind == 1:
+            return enode_text(u32(lin + 0x24))
+        if kind == 2:
+            a = linear_text(u32(lin + 0x24), depth + 1)
+            if t == 'EINDIRECT':
+                if a.startswith('&') and a[1:].replace('_', 'a').replace('@', 'a').isalnum():
+                    return a[1:]
+                return f'*{a}' if a.startswith('(') and a.endswith(')') else f'*({a})'
+            return f'{OP1[t]}{a}' if t in OP1 else f'{t}({a})'
+        if kind == 3:
+            l, r = linear_text(u32(lin + 0x24), depth + 1), linear_text(u32(lin + 0x28), depth + 1)
+            return f'({l} {OP2[t]} {r})' if t in OP2 else f'{t}({l}, {r})'
+        if kind == 4:
+            return f'{t}(' + ', '.join(linear_text(u32(lin + k), depth + 1) for k in (0x24, 0x28, 0x2c)) + ')'
+        if kind == 6:
+            n, argv = s16(lin + 0x26), u32(lin + 0x28)
+            args = [linear_text(u32(argv + 4 * i), depth + 1) for i in range(max(0, min(n, 16)))]
+            f = linear_text(u32(lin + 0x2c), depth + 1)
+            return f'{f[1:] if f.startswith("&") else f}({", ".join(args)})'
+        return f'<{kind}:{t}>'
+
+    def top(text):
+        return text[1:-1] if text.startswith('(') and text.endswith(')') else text
+
+    class CseClassBP(gdb.Breakpoint):           # 0x5327EA: a class of common subexpressions with no object
+        # ebp the linear REUSING the value (its expr's +0x1A lists the occurrences that compute it and
+        # reach it), edi that list: each computing occurrence will store into the new temporary
+        def stop(self):
+            members = reg32('rdi')
+            idx, first, guard = [], None, members
+            while guard and len(idx) < 256:
+                e = u32(guard)
+                lin = u32(e + 6) if e else 0
+                if lin:
+                    first = first or lin
+                    idx.append(u32(lin + 8))
+                guard = u32(guard + 4)
+            state['pass'] = dict(ret=CSE_RET, **{'pass': 'IRO_CommonSubs'},
+                                 expr=top(linear_text(first)) if first else '?', computed=idx,
+                                 reused=[u32(reg32('rbp') + 8)])
+            return False
+
+    class CseReuseBP(gdb.Breakpoint):           # 0x532887, IRO_CommonSubs' replacement step 0x532850:
+        # esi a reuse being replaced by a read of the temporary its class's first member holds
+        # ([[edx] + 0xA]); recorded per temporary, by name (the first reuse is recorded already)
+        def stop(self):
+            lst = reg32('rdx')
+            try:
+                nm = (objname(u32(u32(lst) + 0xa)) or '').split('@0x')[0]
+            except Exception:
+                return False
+            o = temps.get(nm)
+            if o is not None and o.get('pass') == 'IRO_CommonSubs':
+                i = u32(reg32('rsi') + 8)
+                if i not in o.setdefault('reused', []):
+                    o['reused'].append(i)
+            return False
+
+    class LinearBP(gdb.Breakpoint):             # a pass about to make a temporary for one IROLinear:
+        # IRO_LoopInvariants' 0x530919 (ebp the IROExpr hoisted: +6 its linear), IRO_StrengthReduction's
+        # 0x539D5C (eax its first argument: +6 the induction expression's linear)
+        def __init__(self, at, reg, ret, name):
+            super().__init__(f'*{at:#x}')
+            self.reg, self.ret, self.name = reg, ret, name
+
+        def stop(self):
+            try:
+                lin = u32(reg32(self.reg) + 6)
+                state['pass'] = dict(ret=self.ret, **{'pass': self.name}, expr=top(linear_text(lin)),
+                                     computed=[u32(lin + 8)])
+            except Exception:
+                pass
+            return False
+
+    class SplitBP(gdb.Breakpoint):              # 0x533D10 SplitOffRange(VarRecord *var): a later web
+        def stop(self):
+            var = u32(reg32('rsp') + 4)
+            nm = objname(u32(var + 4)) if var else None
+            state['pass'] = dict(ret=SPLIT_RET, **{'pass': 'IRO_SplitLifetimes'},
+                                 var=nm.split('@0x')[0] if nm else '?')
             return False
 
     def origins(names):
@@ -478,11 +691,52 @@ if gdb is not None:     # ------------------------------------------------------
             flush()
             return False
 
+    # The optimiser's own log (GCC round 41a: --iro). mwccps2 keeps the IRO's dumper compiled in:
+    # IRO_Dump 0x51F6C0 vfprintf's to the log [0x5A3818] while IRO_Log (0x5B7FA7) is set, and
+    # IRO_DumpAfterPhase 0x51F5B0 dumps the whole flowgraph -- every linear by its index, kind and
+    # operands, `@N` temporaries by name -- after each phase while 0x5A5D4E is set (its option byte).
+    # IRO_Setup 0x4D5290 clears IRO_Log, then 0x51F600 opens the log when it is set: `<source>.log`
+    # beside the source, its name built in the frame's buffer -- rewritten at 0x51F68F (fopen(buf,
+    # "wt") next) to IGDUMP_IRO's path. Each function's turn starts in IRO_Optimizer 0x4D4870 (ebp its
+    # Object; at 0x4D48A8 both bytes are set when IGDUMP_IRO_FUNC, searched in its bare name, matches).
+    # The code is the same with the log on (the object files compared: README, round 41a).
+    IRO_LOG, IRO_PHASES = 0x5b7fa7, 0x5a5d4e
+
+    def poke(addr, data):
+        gdb.selected_inferior().write_memory(addr, data)
+
+    class IroInitBP(gdb.Breakpoint):            # 0x51F600 (sub esp,0x100): open the log
+        def stop(self):
+            poke(IRO_LOG, b'\1')
+            return False
+
+    class IroOpenBP(gdb.Breakpoint):            # 0x51F68F: the log's name in the frame's buffer at esp
+        def stop(self):
+            path = os.environ['IGDUMP_IRO'].encode() + b'\0'
+            if len(path) <= 0x100:
+                poke(reg32('rsp'), path)
+            return False
+
+    class IroFuncBP(gdb.Breakpoint):            # 0x4D48A8 (test ebp,ebp): a function's turn
+        def stop(self):
+            import re as _re
+            f = reg32('rbp')
+            nm = (hashname(u32(f + 8)) if f else None) or ''
+            rx = os.environ.get('IGDUMP_IRO_FUNC')
+            on = b'\1' if (not rx or _re.search(rx, nm)) else b'\0'
+            poke(IRO_LOG, on)
+            poke(IRO_PHASES, on)
+            return False
+
     gdb.execute('set pagination off')
     gdb.execute('set confirm off')
     gdb.execute('break thunk_kernel32_CreateFileA')
     gdb.execute('run')
     gdb.execute('delete')
+    if os.environ.get('IGDUMP_IRO'):
+        IroInitBP('*0x51f600')
+        IroOpenBP('*0x51f68f')
+        IroFuncBP('*0x4d48a8')
     BuildBP('*0x4bc7b0')
     SimplifyBP('*0x4c4480')
     ColorEntryBP('*0x4c47f0')
@@ -495,6 +749,12 @@ if gdb is not None:     # ------------------------------------------------------
         InlStmtBP('*0x468e20')
         InlSetupBP('*0x466e90')
         UniqBP('*0x42f63c')
+        if not os.environ.get('IGDUMP_NO_PASSES'):  # GCC round 41a's negative control: no pass named
+            CseClassBP(f'*{CSE_CLASS:#x}')
+            CseReuseBP('*0x532887')
+            SplitBP(f'*{SPLIT_ENTRY:#x}')
+            LinearBP(0x530919, 'rbp', 0x530925, 'IRO_LoopInvariants')
+            LinearBP(0x539d5c, 'rax', 0x539d6c, 'IRO_StrengthReduction')
     gdb.execute('continue')
     flush()
     OUT.close()
@@ -535,9 +795,12 @@ else:                   # ------------------------------------------------------
 
     def dump(unit: Path, out: Path | None = None, *, compiler: str | None = None,
              flags: list[str] | None = None, includes: list[Path] | None = None,
-             timeout: int = 600) -> tuple[list[dict], Path]:
+             timeout: int = 600, iro: Path | None = None, iro_func: str | None = None
+             ) -> tuple[list[dict], Path]:
         """Compile `unit` under gdb and return its colourings (and the file they were written to).
-        `compiler`/`flags` default to the unit's directive; `includes` to sccheck's [include/, src/]."""
+        `compiler`/`flags` default to the unit's directive; `includes` to sccheck's [include/, src/].
+        `iro` (GCC round 41a): also write the optimiser's own log there -- every phase's flowgraph of
+        the functions whose bare name `iro_func` (a regex, searched) matches, every function without."""
         unit = Path(unit).resolve()
         if compiler is None:
             compiler, dflags = unit_build(unit)
@@ -553,6 +816,17 @@ else:                   # ------------------------------------------------------
         cmd = (["gdb", "-nx", "-batch", "-x", str(Path(__file__).resolve()), "--args"]
                + D.compile_cmd(unit, obj, compiler, flags, includes or [sccheck.INCLUDE, sccheck.SRC]))
         env = dict(os.environ, IGDUMP=str(out), WINEDEBUG="-all")
+        env.pop("IGDUMP_IRO", None)
+        env.pop("IGDUMP_IRO_FUNC", None)
+        if iro is not None:
+            iro = Path(iro).resolve()
+            iro.parent.mkdir(parents=True, exist_ok=True)
+            iro.unlink(missing_ok=True)
+            if len(str(iro)) >= 0x100:
+                raise RuntimeError(f"igdump: the IRO log's path must be under 256 bytes: {iro}")
+            env["IGDUMP_IRO"] = str(iro)
+            if iro_func:
+                env["IGDUMP_IRO_FUNC"] = iro_func
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -571,6 +845,70 @@ else:                   # ------------------------------------------------------
 
     def read(path: Path) -> list[dict]:
         return [json.loads(ln) for ln in open(path)]
+
+    # --- the optimiser's own log (GCC round 41a) ---------------------------------------------------
+    def iro_read(path: Path) -> list[dict]:
+        """The IRO log as its functions, in the order compiled: per function `name`, `phases` -- a list
+        of (phase, its flowgraph's lines) -- and `events`, the passes' own lines between the dumps
+        ("Replacing common sub at 7", "Splitting range for variable: 2" and its bit sets), each with
+        the phase that follows it."""
+        funcs, cur, phase, buf, events = [], None, None, [], []
+
+        def close():
+            if cur is not None and phase is not None:
+                cur["phases"].append((phase, buf[:]))
+        for ln in open(path, errors="replace"):
+            ln = ln.rstrip("\n")
+            m = re.match(r"Starting function (.*)$", ln)
+            if m:
+                close()
+                cur = dict(name=m.group(1), phases=[], events=[])
+                funcs.append(cur)
+                phase, buf = None, []
+                continue
+            m = re.match(r"Dumping function (.*?) (after|before) (.*?) ?$", ln)
+            if m and cur is not None:
+                close()
+                phase, buf = f"{m.group(2)} {m.group(3)}", []
+                for e in events:
+                    cur["events"].append((e, phase))
+                events = []
+                continue
+            if cur is None:
+                continue
+            if phase is None or re.match(r"(Replacing common sub|Splitting range|Def set|Use set|All defs|All uses)", ln):
+                if ln.strip() and not ln.startswith("---"):
+                    events.append(ln.strip())
+                continue
+            buf.append(ln)
+        close()
+        if cur is not None:
+            for e in events:
+                cur["events"].append((e, None))
+        return funcs
+
+    def iro_summary(funcs: list[dict], rx: str | None = None, phase_rx: str | None = None) -> list[str]:
+        """Per logged function (its bare name matching `rx`): its phases, the passes' events -- each
+        common subexpression replaced, each lifetime split -- and the dumps of the phases matching
+        `phase_rx`."""
+        pat = re.compile(rx) if rx else None
+        ppat = re.compile(phase_rx) if phase_rx else None
+        out = []
+        for f in funcs:
+            if pat and not pat.search(f["name"]):
+                continue
+            cses = [e for e, _ in f["events"] if e.startswith("Replacing common sub")]
+            splits = [e for e, _ in f["events"] if e.startswith("Splitting range")]
+            out.append(f"{f['name']}: {len(f['phases'])} phases dumped; {len(cses)} common subexpression "
+                       f"replacements, {len(splits)} lifetime splits")
+            for e, ph in f["events"]:
+                if e.startswith(("Replacing", "Splitting")):
+                    out.append(f"    {e}  (then {ph})")
+            for ph, lines in f["phases"]:
+                if ppat and ppat.search(ph):
+                    out.append(f"  --- {ph}")
+                    out.extend("  " + l for l in lines if l.strip())
+        return out
 
     def proc_name(rec: dict) -> str:
         """The record's function name without igdump's `@0xK` suffix ('' for none)."""
@@ -631,6 +969,16 @@ else:                   # ------------------------------------------------------
             where = f"line {o.get('line', '?')}" + (f" of {o['file']}" if o.get("file") else "")
             within = f", inside {'/'.join(o['within'])}'s copy" if o.get("within") else ""
             return f"{o['inline']}'s {what}, inlined at {where} (level {o.get('level', '?')}{within})"
+        if o.get("pass") == "IRO_CommonSubs":           # GCC round 41a: the pass, and what for
+            c, r = o.get("computed") or [], o.get("reused") or []
+            return (f"IRO_CommonSubs' common subexpression {o.get('expr', '?')} (computed at linear "
+                    f"{', '.join(map(str, c)) or '?'}, reused at {', '.join(map(str, r)) or '?'})")
+        if o.get("pass") == "IRO_SplitLifetimes":
+            return f"IRO_SplitLifetimes: a later web of {o.get('var', '?')} (the earliest definition's web keeps it)"
+        if o.get("pass"):
+            return (f"{o['pass']}: {o.get('what', '?')}" + (f" -- {o['expr']}" if o.get("expr") else "")
+                    + (f" (linear {', '.join(map(str, o['computed']))})" if o.get("computed") else "")
+                    + f" (create_temp_object, called from {o.get('caller', '?')})")
         if o.get("creator") == "0x477270":
             return f"a temporary: create_temp_object, called from {o.get('caller', '?')}"
         if o.get("creator"):
@@ -780,17 +1128,37 @@ else:                   # ------------------------------------------------------
         ap.add_argument("--origins", action="store_true", help="per record: each `@N` variable's maker -- the "
                         "inline expansion (function, role, call site) or the pass (GCC round 40a)")
         ap.add_argument("--flags", help="compile with these flags, not the unit's")
+        ap.add_argument("--iro", nargs="?", const="", metavar="LOG", help="also write the optimiser's own log "
+                        "(mwccps2's IRO dumps: every phase's flowgraph, each common subexpression replaced, "
+                        "each lifetime split -- GCC round 41a) for -f's functions (every one without -f), "
+                        "default build/ig/<stem>.iro.log, and summarise it; with --read, a log to summarise")
+        ap.add_argument("--iro-phase", metavar="REGEX", help="with --iro: print the dumps of the phases matching "
+                        "(`CommonSubs|Delinearize`: after IRO_CommonSubs, before IRO_Delinearize)")
         a = ap.parse_args(argv)
+        iro = None
+        if a.iro is not None:               # beside the dump: build/ig/<stem>.iro.log, or -o's / --read's
+            beside = a.read or a.out or (OUT_DIR / f"{Path(a.unit).stem}.jsonl" if a.unit else None)
+            iro = Path(a.iro) if a.iro else (beside.with_suffix(".iro.log") if beside else None)
         if a.read:
             recs, out = read(a.read), a.read
         elif a.unit:
             try:
-                recs, out = dump(a.unit, a.out, flags=a.flags.split() if a.flags else None)
+                recs, out = dump(a.unit, a.out, flags=a.flags.split() if a.flags else None,
+                                 iro=iro, iro_func=a.func)
             except RuntimeError as e:
                 print(e, file=sys.stderr)
                 return 1
         else:
             ap.error("a unit, or --read DUMP")
+        if iro is not None:
+            if not iro.is_file():
+                print(f"{iro}: no IRO log written", file=sys.stderr)
+                return 1
+            funcs = iro_read(iro)
+            print(f"{iro}: the optimiser's log, {len(funcs)} functions")
+            print("\n".join(iro_summary(funcs, a.func, a.iro_phase)))
+            if not (a.pcode or a.origins or a.saved or a.all):
+                return 0
         cls = None if a.cls < 0 else a.cls
         sel = select(recs, a.func, cls, a.link)
         print(f"{out}: {len(recs)} colourings, {sum(1 for r in recs if r['cls'] == 0)} GPR; "

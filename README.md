@@ -59,7 +59,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `tools/structdiff.py` | one function against its row with the registers and the link normalised, so only STRUCTURAL differences show (opcodes, unrelocated immediates, order, which function is called); says how many instructions differ in their registers alone -- a register-only miss -- and `--regs` keeps the registers (the game states' round-35 structdiff.py and mydiff.py, promoted in GCC round 31a) |
 | `tools/cdis.py` | the candidate's disassembly before the link, each relocation named as the scorer resolves it (`<R_MIPS_LO16 currentDir = 0x1df400>`), `--at` at its row's addresses, `--list` the object's functions (the game states' round-35 cdis.py, promoted in GCC round 31a) |
-| `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a); the spill slots each spilled node takes and the frame's top (GCC round 34a); every record named, its name read in full, and its mangled name as `link` -- `-f` searches the bare name, `--link` the mangled one, here and in igreplay (GCC round 39a) |
+| `tools/igdump.py` | Metrowerks' own register colouring read out of mwccps2 3.0b52 under gdb: a unit built as sccheck builds it, every colouring one JSON line (each virtual register's variable, degree, neighbours, colour, spill cost; the colouring order; the PCode); `-f` shows a function's, `--saved` who holds each saved register (the lanes' igdump.py, promoted in GCC round 32a); the spill slots each spilled node takes and the frame's top (GCC round 34a); every record named, its name read in full, and its mangled name as `link` -- `-f` searches the bare name, `--link` the mangled one, here and in igreplay (GCC round 39a); `--pcode`, and each `@N`'s maker, `--origins` (GCC round 40a); every temporary's PASS -- a common subexpression's expression, a split web's variable, a loop invariant's -- and `--iro`, mwccps2's own optimiser log (GCC round 41a) |
 | `tools/igreplay.py` | MW's simplify/colour replayed offline on an igdump record (every GPR and FPR record replays exactly); `--move V=POS` renumbers a virtual register to see the registers that numbering gives, `--want`/`--movers` searches the placements, `--nb` a node's neighbours and sweeps (the MSL lane's igreplay.py, the game states' relabel.py and brute.py, the AI core's nbdeg.py: GCC round 32a); `--target` scores the colouring a `--move` gives and lists every node whose target uses disagree, and a search has a budget, `--timeout`/`--max-iters`, with progress (GCC round 33a); the spill slots a numbering gives, checked against the record and with `--target` against the target's (GCC round 34a); `--target` reads FLOAT registers (GCC round 35a) and byte and halfword loads, a memory access aligned by its displacement first (GCC round 36a) |
 | `tools/igvar.py` | source variants (try.py's `--sub`/`--and`/`--variants`) each built under igdump in a scratch tree; per variant the spilled nodes and each saved register's holders by variable, or `--all` every telling node (the AI core's and the game states' igvar.py: GCC round 32a) |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
@@ -11663,6 +11663,93 @@ No rows named (both are named already or the codec's). What they showed:
   pseudo keeps a0 in every one, the target's needs a second pseudo born in the last block); round 39a's and
   older opens (no new idea; not reached: the log2, inet_network, 0x251A98, 0x1C46D0, libtran.c's FFT
   passes, the network clients' register misses).
+
+**The tools, round 41a** (the kit's round-55 question: the temporaries no inline made). (1) **Every `@N`
+names the pass that made it** (`tools/igdump.py`'s `origins`, read under gdb). Round 40a's s0/s1 holders of
+the kit's 0x60AA20 -- create_temp_object called from 0x5327F8 -- are **no lifetime split: that call is
+IRO_CommonSubs'** (0x532920: IRO_Optimizer 0x4D4870 calls it under copts.commonsubs and dumps the flowgraph
+as "IRO_CommonSubs" after it; it opens with IRO_FindExpressions 0x524B40 (NULL, FALSE) and its last step
+0x532850 logs "Replacing common sub at %d"; the IroLifetime.c asserts round 40a saw only follow it in the
+image). A **common subexpression**: one temporary per class of equal expressions -- each occurrence that
+computes it stores into it, every later one it reaches reads it (0x532770: the computing members'
+temporaries merged, one made for a class with none, of its first member's type; the breakpoint is 0x5327EA,
+the branch only such a class takes). In 0x60AA20 s1's @6492 is `&p + 36` -- CAiPerception p's `&p.m_valid`,
+computed once, reused by the four SetFactor copies' SetValid -- and s0's @6494/@6500 are `m_world`
+(zdb::CWorld::m_world, read twice in each EntityLight copy); the FPRs' @6458-@6462 are te->m_velW's three
+components (Length's squares). The lifetime splitter exists too (IRO_SplitLifetimes 0x533E30 under
+copts.lifetimes, -O3 and up; its SplitOffRange 0x533D10 logs "Splitting range for variable: %d"; temporaries
+from 0x533D7E): **a named local reused for a second purpose gives each LATER def-use web a temporary; the
+web of its earliest definition, in code order, keeps the variable; the others are made from the last web
+back; a parameter is never split** (build/scratch/gcc/r41/p2.cpp, p5.cpp: t's second web, the second loop's
+i, two arms' and a tail's webs of one t; `x = g(y)` on a parameter stays x). A label carries `pass`; a common
+subexpression its `expr` as C (an IRO operand is an address: `&p` is p's address, a bare `p` its value --
+`(x * y) + 7`, `&p + 24`, `*(te + 60)`) and the IRO linears that `computed` and `reused` it (the indices the
+log below prints); a split its `var`; IRO_LoopInvariants' (0x530925) and IRO_StrengthReduction's (0x539D6C)
+their expression by the same means -- UpdateBBoxFromDI's s0-s2/s6/s7 (the world's round-29 open) are
+`&box + 4 ... &box + 20` hoisted out of the DI loop, its a2 the induction `i * 16` -- and every other caller
+its pass and `what` (TEMP_MAKERS: the linearizer's `?:` value 0x4FF304, an expression-level inline's
+returned load or call -- CInline's EFORCELOAD -- 0x4FF499, a comma's value 0x4FEDA5, all measured;
+CInline_LoadToTemp 0x467C9F, the unroller's, the scalariser's, code generation's by their files' asserts).
+**The numbering rule** (p3.cpp, measured): a virtual register follows its Object's place in the function's
+locals -- the parameters, the named locals in DECLARATION order (`int a, b; b = g(x); a = g(b);` numbers a
+first: not first use), then every temporary in the order it was made: the inliner's (a level at a time),
+the linearizer's, then each optimiser pass's in pass order -- common subexpressions (pass 0, then pass 1),
+loop invariants, a split web last of all (u, declared after t's reuse, is numbered before t's split web).
+**So writing an expression twice, or reusing a variable, puts a temporary AFTER every named and inline
+variable, where no declaration can** -- the lever 0x60AA20's igreplay --movers (ts wanted after the
+positions) points at, and GetRoundResult's v96 is no Object at all (code generation's own register).
+(2) **`--iro`: mwccps2's own optimiser log.** The compiler keeps its IRO dumper compiled in: IRO_Dump 0x51F6C0
+writes while IRO_Log (0x5B7FA7) is set, IRO_DumpAfterPhase 0x51F5B0 dumps the whole flowgraph after each
+phase while its option byte 0x5A5D4E is; IRO_Setup 0x4D5290 clears IRO_Log, then 0x51F600 opens
+`<source>.log` beside the source if it is set. igdump sets both for -f's functions only (at IRO_Optimizer's
+0x4D48A8) and rewrites the log's name (0x51F68F, before its fopen) to build/ig/<stem>.iro.log (or -o's
+beside it): 76-104 phases a function, every linear by index, kind and operands, every `@N` by name, the
+passes' own lines; the summary lists each common subexpression replaced and each split, `--iro-phase REGEX`
+prints chosen phases (`'after IRO_CommonSubs|before IRO_Delinearize'`). **The objects are byte-identical
+with the log on** (build/scratch/gcc/r41/logsame.py: ai_target.cpp, inflate.c and zmath_main.cpp with every
+function logged, 10-27 MB of log); only the heap moves (the log's FILE), so an operand's pointer differs and
+its name does not. **Proved** (build/scratch/gcc/r41/igproof.py: master 8ab06929's igdump and this one over
+round 40a's ten units and the new fixture, 724 records): every record identical field for field but
+`origins`, every origin's old fields unchanged; the census of their `@N`s: 751 common subexpressions, 592
+the linearizer's, 421 inline locals, 215 inline arguments, 98 loop invariants, 93 CInline_LoadToTemp's, 57
+inline results, 55 split webs, 53 scalarised members, 32 induction variables, 19 the unroller's, 10 code
+generation's, 1 CException's -- 2 unlabelled (another GetUniqueName caller, 0x47A5CF). The canary's
+`test_igdump_names_the_pass_of_each_temporary` (10 assertions): `x * y + 7` written twice gives one
+IRO_CommonSubs temporary, `(x * y) + 7`, computed once and reused, numbered after x, y, a and b; t reused
+gives its later web an IRO_SplitLifetimes temporary (var t) numbered after u; --iro's log holds the
+replacement and the split, each temporary named after its pass and the split one not before; the
+colourings are the same with the log on; negatives: `#pragma opt_common_subs off` and `opt_lifetimes off`
+make neither temporary, IGDUMP_NO_PASSES=1 (the breakpoints off) makes both but names neither; under master's
+igdump it fails at once (no `iro`). The eleven register-tool tests: 97 assertions, all pass. No tool that
+scores changed: scdiff.py, sccheck.py, scdecomp.py, tools/try.py and `include/` are master's. **automatch**
+over the lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private
+`src/lib` build): MAIN `18DB90 1C4CC0` 11 tried, 0 hits (2 m2c refusals, 9 misses), `1C6200 1E7000` 0 tried,
+OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 31 tried, 0 hits (2 build failures, 5 refusals, 24 misses): 42
+tried, none byte-exact (round 40a: 42, 0).
+
+**Round 41a** (2026-11-06, the tools first, then the opens): 1 row newly byte-exact (192 bytes) --
+**libnetb_get_valid_data_header_ptr 0x245A18** (`ovl1/libnetb_udp.c`, open since round 13a, 44 words off then):
+the ring's first unread datagram. The lane's `src/lib` 2,843 byte-exact of 2,973 scored, no
+regression, and after merging master daba75d2 every hand-written unit (`--files '^(?!auto/)'`) 11,278 byte-exact of
+11,665, no regression. No rows named. What the opens showed:
+
+- **A store before a test lands in its branch's delay slot; a loop's entry registers follow the loop's
+  shape** (0x245A18, build/scratch/gcc/r41/v_valid.py: the store moved d=10, then the start d=9, the `do` 0): the target's `beqz a2; sw zero,0(a1)` is `*phdr = 0`
+  written BEFORE the valid pointer's test (reorg fills the slot from above; written after it, the slot takes
+  the constant 1 instead), and its walk is an `if` around a `do`, the start copied from the position inside
+  it (`move t1,a3` after the first test, the ring's buffer moved to t2) -- a while loop, the start first,
+  gives one register fewer and the first test's slot another fill (`bne`, not `bnel`).
+- **The fast exp2's one conversion is a cross-jump** (0x251850, 17 shapes, d=33): the target converts once
+  because the two arms' common tail (`cvt.w.s; mfc1; addiu 1`, both in $f0 with fX copied there ahead of
+  the test) was cross-jumped after reload; here the jump optimiser hoists the then-arm's conversion above
+  the test (every arm order, the ternary, a goto, a float copy feeding both arms), and one conversion after
+  the merge through a float folds `(i + 1) + 126` and makes the test c.le.s (d=37).
+- **Open, unchanged**: libnetb_udp_init_buffer (an inline helper for the stores -- its parameter is
+  coalesced with hdr and the stores are scheduled apart, d=10 at 0x3C), the band function 0x251748 (10
+  shapes, every one 0x70: a nested ternary, an else-if chain, 161 through an int local or another type);
+  the rest as round 40a left them. MAIN's unwritten rows 0x1C6390-0x1C6930 are left to the boot ELF's lane:
+  0x1C6390 saves s0 with `sq` (Metrowerks'), 16-aligned like its two neighbours, which follow the boot's
+  main and loader.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

@@ -76,7 +76,11 @@ int libnetb_is_data_waiting(LIBNETB_RING *n, u_char type, u_char peek, u_char *w
  * v_init*.py, 14 shapes): `size -= 64`, a volatile view, byte-offset stores, a chained read-back, an
  * int subtraction, the success path first (nested or `&&`: the right size, d=28), an if-else chain
  * into a result -- every one keeps hdr's parameter pseudo in a0 (tools/ccdump.py: 84=a0, 85=a1,
- * the difference v1); the target's needs a second pseudo for hdr born in the last block. */
+ * the difference v1); the target's needs a second pseudo for hdr born in the last block. Round 41a
+ * (build/scratch/gcc/r41/v_init.py): that pseudo as an inline helper's parameter (static inline
+ * udp_hdr_init(hdr, size - 64), its size or an int, returned or not) is coalesced with hdr all the same
+ * (a0; size - 64 in v1), and the five stores are scheduled apart (used, end, size, capacity, valid;
+ * 0x3C, d=10). */
 int libnetb_udp_init_buffer(UDP_HDR *hdr, u_int size)
 {
 	if (hdr == 0)
@@ -187,8 +191,12 @@ int libnetb_udp_create_space(LIBNETB_RING *n, u_int size, u_int *alloc_size, u_c
 	return 0;
 }
 
-/* OPEN (44 words, the size differs): the walk is the target's (an unsigned position wrapping at the
- * ring's size, stopping where it began); its loop's invariants and the exits' stores are not. */
+/* the first unread datagram from the read position on, its header in *phdr and *valid 1 once it is
+ * complete; none when the walk wraps back to where it began. Byte-exact in GCC round 41a (open
+ * since round 13a, 44 words off then 9): *phdr cleared BEFORE the valid pointer's test (the target
+ * fills that branch's delay slot with the store), and the walk an `if` around a `do`, the start
+ * taken from the position inside it (the target's `move t1,a3` after the first test) -- a while
+ * loop, the start first, gives one register fewer and the first test's slot another fill. */
 int libnetb_get_valid_data_header_ptr(LIBNETB_RING *n, UDP_HDR **phdr, u_char *valid)
 {
 	UDP_HDR *hdr;
@@ -199,23 +207,25 @@ int libnetb_get_valid_data_header_ptr(LIBNETB_RING *n, UDP_HDR **phdr, u_char *v
 		return 2;
 	if (phdr == 0)
 		return 2;
+	*phdr = 0;
 	if (valid == 0)
 		return 2;
-	*phdr = 0;
 	*valid = 0;
-	start = n->off;
-	hdr = (UDP_HDR *)(n->buf + start);
-	off = start;
-	while (hdr->valid == 1) {
-		off = off + hdr->size + 64;
-		if (off >= n->size)
-			off = 0;
-		if (off == start) {
-			*phdr = 0;
-			*valid = 0;
-			return 0;
-		}
-		hdr = (UDP_HDR *)(n->buf + off);
+	off = n->off;
+	hdr = (UDP_HDR *)(n->buf + off);
+	if (hdr->valid == 1) {
+		start = off;
+		do {
+			off = off + hdr->size + 64;
+			if (off >= n->size)
+				off = 0;
+			if (off == start) {
+				*phdr = 0;
+				*valid = 0;
+				return 0;
+			}
+			hdr = (UDP_HDR *)(n->buf + off);
+		} while (hdr->valid == 1);
 	}
 	if (hdr->used == 1 && hdr->end == 1) {
 		*phdr = hdr;
