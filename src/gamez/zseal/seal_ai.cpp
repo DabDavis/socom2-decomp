@@ -1197,7 +1197,7 @@ void CSealCtrlAi::SetAiAware(float value, unsigned int flags)
     AI_AWARE now = GetAiAware();
 
     if (old != now)
-        m_5c8 = 0;
+        m_5c8 = 0.0f;
     if (now >= AIA_GENERAL && m_aware.m_goal < data_0065C700[AIA_GENERAL])
         m_aware.m_goal = data_0065C6E0[AIA_GENERAL];
 }
@@ -2154,6 +2154,8 @@ class CMission {
 public:
     void RefreshTeamValves();
     void FadeToEndMission(float time, int how);
+    /* an entity put back in the mission's pool (SOCOM 1's; OVL1 0x2B2310) */
+    void RecycleEntity(CEntity *e);
 
     unsigned char _0[0xe0];
     float m_time;   // 0xe0
@@ -2554,9 +2556,9 @@ extern "C" void func_00560340(CSealCtrlAi *ai, CAiState *state, bool b)
         if (ai->SetLookPosW((AI_LOOK)8, leader->GetTargetPosW(&pos)))
             ai->SetLookTimer(Rfloat(0.5f, 1.0f));
         if (!b)
-            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, CAiEvent::AIE_NONE);
         else
-            ai->PlayAiSound((CHARACTER_SOUND)55, 1.0f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)55, 1.0f, CAiEvent::AIE_NONE);
         state->SetBit2(true);
     }
 }
@@ -2592,7 +2594,7 @@ extern "C" void func_00560280(CSealCtrl *ctrl, unsigned char item, CHARACTER_SOU
             break;
         }
     }
-    ctrl->PlayAiSound(sound, 1.0f, -1);
+    ctrl->PlayAiSound(sound, 1.0f, CAiEvent::AIE_NONE);
 }
 
 /* the random part through a local: written as one expression the join loses its pad and an
@@ -2666,32 +2668,13 @@ static inline bool Chance(float chance)
     return Rfloat(0.0f, 1.0f) <= c;
 }
 
-/* 0x55FEE0's body as PlayAiSound expands it (a marked device, the name ours): the target hands the raw
- * int to GetEventRange and sign-extends the raw register for CreateAiEvent's word, while its own tests
- * share PlayAiSound's narrowed copy -- what a CAiEvent::EVENT third parameter does (a byte-enum parameter
- * goes on unconverted, README), the signature PlayAiSound's callers in other lanes' units cannot take yet
- * (they pass int literals). Through 0x55FEE0 itself the cast argument is narrowed at the call (3 off) */
-extern "C" float GetEventRange__8CAiEventFQ28CAiEvent5EVENT(int event);
-static inline CAiEvent *VoiceEvent(CSealCtrl *ctrl, int event)
-{
-    CAiEvent *r = 0;
-
-    if ((CAiEvent::EVENT)event != CAiEvent::AIE_NONE) {
-        float range = GetEventRange__8CAiEventFQ28CAiEvent5EVENT(event);
-
-        r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW,
-            (signed char)event);
-    }
-    return r;
-}
-
 /* a sound of the SEAL's character played (SOCOM 1's PlayAiSound(CHARACTER_SOUND), which always played
  * it; OVL2 0x55FF60, slot 0x24 of CSealCtrlAi's vtable): not again within the sound's gap since it last
  * played, then only if the chance comes up; sound 80 only while the AI runs, out of 0x60A850's pursuit
  * and in state 2 or 9 at least 10 s into its step; a dead SEAL's only for sounds 60 and 61. A Navy
  * SEAL's plays from no point and makes its AI event only for event 1, any other SEAL's from where it
  * stands (CSealCtrl's 0x5978A0); the time kept. Whether it played */
-bool CSealCtrlAi::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
+bool CSealCtrlAi::PlayAiSound(CHARACTER_SOUND sound, float chance, CAiEvent::EVENT event)
 {
     bool played = false;
     CCharacterType *ch;
@@ -2717,15 +2700,15 @@ bool CSealCtrlAi::PlayAiSound(CHARACTER_SOUND sound, float chance, int event)
 
         if (ok && (seal->m_isAlive || dying)) {
             unsigned int id = seal->m_id;
-            bool send = (CAiEvent::EVENT)event != CAiEvent::AIE_NONE;
+            bool send = event != CAiEvent::AIE_NONE;
 
             if (m_navyseal) {
                 played = ch->PlayAt(sound, id, 0);
-                send = (CAiEvent::EVENT)event == 1;
+                send = event == CAiEvent::AIE_GENERIC;
             } else
                 played = ch->PlayAt(sound, id, &seal->m_posW);
             if (send)
-                VoiceEvent(this, event);
+                func_0055FEE0(this, event);
             *last = data_004365C0;
         }
     }
@@ -2998,19 +2981,27 @@ extern "C" void func_00567690(CSealCtrlAi *ai, float dT, bool b)
  * entity met and where, the follow's restraint, a distance, the target cell, the way back and the
  * controller (new in SOCOM II; the layout read off 0x56A130 and the callback, the names ours) */
 struct SEAL_LINEWALK {
+    /* (CreepTick's inline constructor: every member but the met cell, the scale and the way back) */
+    SEAL_LINEWALK()
+        : m_blocked(0), _1(0), m_met(0), m_metid(CEntity::invalidId), m_8(false), m_restrained(false),
+          m_dist(30.0f), m_to(CAiMapLoc::invalid), m_28(0), m_ai(0), m_30(true)
+    {
+    }
+
     unsigned char m_blocked;   // 0x0
     unsigned char _1;
     unsigned char m_met;   // 0x2: an entity in the way
-    unsigned char _3[9 - 3];
+    unsigned int m_metid;   // 0x4: CEntity::invalidId at first
+    bool m_8;   // 0x8
     bool m_restrained;   // 0x9
-    unsigned char _a[0xc - 0xa];
     CAiMapLoc m_metloc;   // 0xc
     float m_dist;   // 0x10
     float m_scale;   // 0x14
     CAiMapLoc m_to;   // 0x18
     CPnt3D m_back;   // 0x1c: the SEAL's facing, reversed
-    unsigned char _28[4];
+    unsigned int m_28;   // 0x28
     CSealCtrlAi *m_ai;   // 0x2c
+    bool m_30;   // 0x30: true at first
 };
 
 extern "C" {
@@ -3050,6 +3041,147 @@ extern "C" bool func_0056A130(CSealCtrlAi *ai, const CAiMapLoc &to, SEAL_LINEWAL
             w->m_met = false;
     }
     return !(w->m_blocked || w->m_met);
+}
+
+/* the AI's creep stepped (OVL2 0x567350, slot 0x88; new in SOCOM II, SOCOM 1's AI used the base's):
+ * with no goal the throttles stopped, the requests too (StopThrottles inlined), and done. Else the
+ * creep's bit 4 at 0x264 set; asked to walk, with a goal point and a goal kind other than 6, the line
+ * to the point's cell walked (0x56A130, a reach of 7.5) -- a cell off the map or a walk refused drops
+ * the walk and the goal point, unless the AI is in mode 7 and met no one. Then the base's creep; the
+ * goal gone after it, the AI out of mode 4 (to 1) and the goal cleared -- ClearGoal(m_goal_type): the
+ * target keeps the GOAL_NONE test's dead andi with no branch. Byte-exact (round 51) */
+void CSealCtrlAi::CreepTick(float dT, bool b)
+{
+    bool has = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+
+    if (!has) {
+        StopThrottles(false);
+        return;
+    }
+    m_aibit4 = true;
+    if (b && m_goal_pos_valid && m_goal_type != GOAL_RECOVER) {
+        SEAL_LINEWALK w;
+        CAiMapLoc loc;
+
+        if (!(AiMaps.GetLocation(&m_goal_pos, loc) ? func_0056A130(this, loc, &w, 7.5f) : false)
+            && (m_3f4 != 7 || w.m_met)) {
+            b = false;
+            m_goal_pos_valid = false;
+        }
+    }
+    CSealCtrl::CreepTick(dT, b);
+    has = (bool)m_goal_dir_valid || (bool)m_goal_pos_valid;
+    if (!has) {
+        if (m_3f4 == 4)
+            SetAiMode((AI_MODE)1);
+        ClearGoal(m_goal_type);
+    }
+}
+
+/* the game's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0) -- only the SEAL it shows */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+
+    unsigned char _4[0xbc - 0x4];
+    CZSealBody *m_bc;   // 0xbc: the SEAL the camera shows
+};
+
+extern CAppCamera *appCamera;
+
+extern "C" {
+/* the dead AI's times: the corpse's wait before it fades (+0xC) and, with respawns left, before it
+ * fades out to respawn (+0x10) (OVL1 data 0x436624, read as a table through a pointer local -- the
+ * target keeps its address in s0, a sixth saved register; the names ours) */
+extern float data_00436624[5];
+/* the dead SEAL's network state sent (OVL1 0x2BD640, seal_control.cpp's caller's) */
+void func_002BD640(CEntity *e, int n);
+}
+
+/* a node's opacity moved toward a value by 0.75 a second, held within -1..1 about it, the node shown
+ * while it is not transparent (an inline, the name ours: the value a by-value parameter whose address
+ * _saturate takes, the opacity a local copy) */
+static inline void FadeToward(zdb::CNode *node, float target, float dT)
+{
+    float op = node->m_Opacity;
+
+    if (op != target) {
+        float step = 0.75f * dT;
+
+        if (op >= target) {
+            op -= step;
+            _saturate(&op, target, 1.0f);
+        } else {
+            op += step;
+            _saturate(&op, -1.0f, target);
+        }
+        node->m_Opacity = op;
+    }
+    node->SetActive(op != 0.0f);
+}
+
+/* the dead AI's tick (OVL2 0x56EE80, slot 0x14; SOCOM 1's slot alike): with the AI running, out of
+ * a group and bit 5 clear -- with no respawn left and the node shown, once the corpse is out of the
+ * camera's sight for the table's +0xC (or already fading) the node faded out, its AI event's kind
+ * cleared, and the faded node hidden and the entity recycled; with respawns left the time run up --
+ * a hidden node asks for the respawn and counts one down, a shown one fades after +0x10. Online the
+ * state sent. OPEN, 77 instructions (round 51, written; the size right with the table's pointer local
+ * -- without it 0x378, one saved register short): the saved registers' assignment (the target: the
+ * entity s5, the node s1, the params s3, the table s0, the shown flag s4, this s2); the pointer
+ * declared first, after the entity, after the node or after the flag is worse (83-98) --
+ * build/scratch/seal-r51/v_pm.py; next: tools/igreplay.py --target with --movers */
+bool CSealCtrlAi::PostMortemPreTick(float dT)
+{
+    CEntity *e = m_entity;
+    zdb::CNode *node = e->GetNode();
+    AI_PARAMS &params = m_aiParams;
+    const float *times = data_00436624;
+    bool active = node->m_active;
+
+    if (!m_aibit5 && aiEnabled && !InGroup()) {
+        int n = params.respawn;
+
+        if (n == 0) {
+            if (active) {
+                bool recycle = false;
+                bool fading = node->m_Opacity < 1.0f;
+
+                if (appCamera->m_bc && !fading) {
+                    m_6f0 += dT;
+                    fading = !(m_6f0 < times[3]);
+                    if (fading)
+                        e->SetIncludeInTargetList(false);
+                }
+                if (fading) {
+                    FadeToward(node, 0.0f, dT);
+                    CAiEvent *ev = ((CZSealBody *)e)->m_aiEvent;
+
+                    recycle = !node->m_active;
+                    if (ev)
+                        ev->m_type = 0;
+                }
+                if (recycle) {
+                    node->SetActive(false);
+                    theMission.RecycleEntity(e);
+                }
+            }
+        } else {
+            m_6f0 += dT;
+            if (!active) {
+                ((CZSealBody *)e)->m_needs_respawn = 1;
+                params.respawn = n - 1;
+            } else if (!(m_6f0 < times[4])) {
+                FadeToward(node, 0.0f, dT);
+                CAiEvent *ev = ((CZSealBody *)e)->m_aiEvent;
+
+                if (ev)
+                    ev->m_type = 0;
+            }
+        }
+    }
+    if (theNetwork.m_9)
+        func_002BD640(e, 0);
+    return true;
 }
 
 /* the box around eight points -- a box's corners (OVL2 0x56ACE0, new in SOCOM II: 0x56A8E0 calls it;
@@ -4048,8 +4180,64 @@ struct REMOTE_NET_STATE {
 };
 
 extern "C" {
-/* a kill credited to a SEAL's stats (OVL2 0x545480, seal.cpp's span) */
-void func_00545480(CSealStats *stats);
+/* a rescue credited to a SEAL's stats -- its counter 14 and three points to its score (OVL2 0x545480,
+ * seal.cpp's span: the SEAL in a1, which both callers hand it) */
+void func_00545480(CSealStats *stats, CZSealBody *seal);
+}
+
+/* the AI's post-tick (OVL2 0x56F970, slot 0x3C: SOCOM 1's AI had no override): the sightings ticked
+ * while bit 19 is set; the stance kept up to the SEAL's state, an asked stance taken once its delay runs
+ * out; the desired-stance timer's expiry asks the SEAL for stance 2; a follower whose team has bit 17,
+ * once it stands in a region of type 1, rescued by its master -- the rescued state pushed with the
+ * region and the master's id, and the rescue credited to the master (0x545480) -- the master forgotten
+ * when it is not a SEAL; the first time the alertness is DIRECTION with 8 s in its band (SPECIFIC with
+ * 5 s) the player's counter 16 goes up by 2 (by 3). Byte-exact (round 51): the bit's test a
+ * branch-built bool (`m_aibit19 ? true : false`: sltu, then beqz -- the bit tested in place, a (bool)
+ * cast or a bool local each 4 off) */
+bool CSealCtrlAi::PostTick(float dT)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (m_aibit19 ? true : false)
+        SensorTick(dT);
+    m_stance = CZSealBody::GetStanceFromState((SEAL_STATE)seal->m_state, m_stance);
+    if (m_stance != m_stance_asked && m_stance_asked != -1) {
+        m_280 -= dT;
+        if (m_280 < 0.0f)
+            DoSetStance(m_stance_asked);
+    }
+    if (TickGoalTimer(m_stance_timer, dT))
+        seal->m_desiredStance = (SEAL_STANCE)2;
+    if (m_follow_master_id != CEntity::invalidId && (seal->m_team & 0x20000)) {
+        CAiMap::region *region = AiMaps.GetRegionTypeContainer((CAiMap::region::TYPE)1, seal->m_mapLoc);
+
+        if (region) {
+            CZSealBody *master = AsSeal(CEntity::m_list.GetEntityById(m_follow_master_id));
+
+            if (master) {
+                if (SetAiState(AI_STATE_RESCUED, 0)) {
+                    CAiState *st = GetAiState();
+                    CAiSRescued *r = st && st->m_state == AI_STATE_RESCUED ? (CAiSRescued *)st : 0;
+
+                    r->m_58 = (unsigned int)region;
+                    r->m_5c = m_follow_master_id;
+                    r->SetActive(true);
+                    func_00545480(&master->m_stats, master);
+                }
+            } else
+                m_follow_master_id = CEntity::invalidId;
+        }
+    }
+    if (!m_aibit18) {
+        if (GetAiAware() == AIA_DIRECTION && !(m_5c8 < 8.0f)) {
+            m_aibit18 = true;
+            ftsGetPlayer()->m_stats.m_count[16] += 2;
+        } else if (GetAiAware() == AIA_SPECIFIC && !(m_5c8 < 5.0f)) {
+            m_aibit18 = true;
+            ftsGetPlayer()->m_stats.m_count[16] += 3;
+        }
+    }
+    return true;
 }
 
 extern "C" float floorf(float);
@@ -4149,7 +4337,7 @@ void CRemoteCtrl::SetAiNetState(unsigned int state)
             CZSealBody *killer = AsSeal(CEntity::m_list.GetEntityById(cur.m_id));
 
             if (killer)
-                func_00545480(&killer->m_stats);
+                func_00545480(&killer->m_stats, killer);
         }
         }
     }
@@ -4675,7 +4863,7 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
                             next = STEP_5;
                     }
                     p->SetLocked(true);
-                    ai->PlayAiSound((CHARACTER_SOUND)52, 1.0f, -1);
+                    ai->PlayAiSound((CHARACTER_SOUND)52, 1.0f, CAiEvent::AIE_NONE);
                     func_0055C870(this, ai);
                     if (ResetPath(ai) && ((CAiPath *)&ai->m_path)->InsertPathLoc(m_7c, 0)) {
                         ai->SetAiMode((AI_MODE)3);
@@ -4758,7 +4946,7 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
         }
         if (!found) {
             step = STEP_6;
-            ai->PlayAiSound((CHARACTER_SOUND)53, 1.0f, -1);
+            ai->PlayAiSound((CHARACTER_SOUND)53, 1.0f, CAiEvent::AIE_NONE);
         }
         break;
     }
@@ -4925,7 +5113,7 @@ void CSealCtrlAi::OnSetHealth(float health, float old)
 
     if (old > health) {
         CSndInstance::Remove(e->m_id, true, true, false);
-        PlayAiSound((CHARACTER_SOUND)59, 2.0f, -1);
+        PlayAiSound((CHARACTER_SOUND)59, 2.0f, CAiEvent::AIE_NONE);
     }
 }
 

@@ -68,7 +68,7 @@ class CUnitSealCtrl : public CEntityCtrl {
 public:
     /* (zseal.h's CSealCtrl::PlayAiSound: SOCOM II's takes a chance and the AI event the voice makes,
      * and says whether it played) */
-    virtual bool PlayAiSound(int sound, float chance, int event);   /* +0x24 */
+    virtual bool PlayAiSound(int sound, float chance, CAiEvent::EVENT event);   /* +0x24 */
     /* whether the SEAL takes an order (zseal.h's CSealCtrl::AllowCommand) */
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0x28 */
     virtual bool IsPlayer() const;   /* +0x2C */
@@ -2103,7 +2103,7 @@ extern "C" bool func_005EAF20(CSealUnit *unit, int sound, bool pick, float chanc
 
             if (seal && seal->IsAi() && seal->m_isAlive)
                 played = ((CUnitSealCtrl *)((CUnitSealCtrl *)seal->m_control)->GetSealCtrlAi())
-                             ->PlayAiSound(sound, 1.0f, -1);
+                             ->PlayAiSound(sound, 1.0f, CAiEvent::AIE_NONE);
         }
         if (!played) {
             for (CSealUnit::slist::iterator i = unit->m_seals.begin(); !played && i != unit->m_seals.end(); ++i) {
@@ -2111,7 +2111,7 @@ extern "C" bool func_005EAF20(CSealUnit *unit, int sound, bool pick, float chanc
 
                 if (seal->IsAi() && seal->m_isAlive)
                     played = ((CUnitSealCtrl *)((CUnitSealCtrl *)seal->m_control)->GetSealCtrlAi())
-                                 ->PlayAiSound(sound, 1.0f, -1);
+                                 ->PlayAiSound(sound, 1.0f, CAiEvent::AIE_NONE);
             }
             if (!played)
                 for (CSealUnit::ulist::iterator u = unit->m_sub_units.begin(); !played && u != unit->m_sub_units.end(); ++u)
