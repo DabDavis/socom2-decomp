@@ -360,6 +360,49 @@ void CZKit::NVG_Enabled(bool on)
         m_nvg_enabled = false;
 }
 
+/* the node under the reticule followed from frame to frame: one that an explosive's damage would
+ * move (its extension's slot 0x10 asked with the kit's explosive damage) and was under the reticule
+ * last frame too has its world place taken -- the countdown held at 0.2 while that place moves, run
+ * down to 0 once it rests; any other node, or none, starts it over at 0.2 from nowhere. Then the node
+ * kept (OVL2 0x5BE6F0, new in SOCOM II: 0x5C0FD0 calls it with the frame's time -- a CZKit member,
+ * unnamed) */
+extern "C" void func_005BE6F0(CZKit *kit, float dT)
+{
+    zdb::IntersectStruct hit = ((CKitBody *)kit->m_body)->m_last_reticule;
+    zdb::CNode *node = hit.m_node;
+    zdb::CNodeEx *ex = node ? node->m_nodeEx : 0;
+
+    if (kit->m_8a8 && !kit->m_8a8->m_active)
+        kit->m_8a8 = 0;
+    if (ex && node == kit->m_8a8 && ex->Slot10(kit->m_explosiveDamage)) {
+        CPnt3D pos = node->GetPosition();
+        CPnt3D last = kit->m_8ac;
+        zdb::CNode *parent = node->m_parent;
+        CMatrix m;
+
+        if (parent) {
+            parent->BuildMTW(m);
+            pos = pos + *(const CPnt3D *)m.m_matrix[3];
+        }
+        last = last - pos;
+        bool moved = Dot(last, last) > 0.0f;
+
+        kit->m_8ac = pos;
+        if (moved)
+            kit->m_8a4 = 0.2f;
+        else {
+            if (kit->m_8a4 > 0.0f)
+                kit->m_8a4 -= dT;
+            if (kit->m_8a4 < 0.0f)
+                kit->m_8a4 = 0.0f;
+        }
+    } else {
+        kit->m_8ac = CPnt3D::zero;
+        kit->m_8a4 = 0.2f;
+    }
+    kit->m_8a8 = node;
+}
+
 /* zoomed: a scope or the binoculars (OVL2 0x5BE6C0; SOCOM 1's) */
 bool CZKit::IsZoomed()
 {

@@ -11,6 +11,7 @@
 #define KIT_H
 
 #include "../znode/znode.h"
+#include "../znode/node_world.h"
 #include "../zweapon/zweapon.h"
 
 class CZSealBody;
@@ -93,7 +94,11 @@ struct CKitBody {
      * is numbered with the temporaries, after the three walks -- as a plain field read into a named
      * local it is numbered with the named locals and the saved registers shift) */
     Attach::Record *AttachPart(int kind) { return m_attach[kind].m_rec; }
-    unsigned char _3b0[0xeb8 - 0x3b0];
+    unsigned char _3b0[0x3c0 - 0x3b0];
+    /* 0x3c0: the hit under the reticule (zseal.h's m_last_reticule: 0x5BE6F0 copies it whole and
+     * reads its node) */
+    zdb::IntersectStruct m_last_reticule;
+    unsigned char _3e0[0xeb8 - 0x3e0];
     /* 0xeb8: the entity the SEAL works -- a turret (zseal.h's m_eb8) */
     struct CKitMover *m_eb8;
     unsigned char _ebc[0xf79 - 0xebc];
@@ -654,9 +659,9 @@ public:
     float m_explosiveDamage;   // 0x8a0: the first explosive's ammunition's damage (new; the name ours)
     /* 0x8a4-0x8b4, 0x8bc: new in SOCOM II, set by Init -- 0.2, zero, CPnt3D::zero, -1 (the names
      * ours) */
-    float m_8a4;   // 0x8a4
-    int m_8a8;   // 0x8a8
-    CPnt3D m_8ac;   // 0x8ac
+    float m_8a4;   // 0x8a4: 0x5BE6F0's countdown -- 0.2 while the aimed-at node moves
+    zdb::CNode *m_8a8;   // 0x8a8: the node under the reticule last frame (0x5BE6F0)
+    CPnt3D m_8ac;   // 0x8ac: its place in the world then
     float m_pickupRequestWait;   // 0x8b8 (SOCOM 1's 0x878)
     float m_8bc;   // 0x8bc
 };

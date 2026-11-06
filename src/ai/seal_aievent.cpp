@@ -143,7 +143,10 @@ public:
  * (0x80, SOCOM 1's shape); the size taken into a local first gives 0x90 too; a reference local
  * to the list gives 0x98 with its address in v1 (11 instructions). Round 41: either test read through a
  * const view of the list (`((const CList &)m_list).size()`), or the guard's size a local ahead of the
- * early return, stays 0x90 -- MW merges the global's two loads anyway */
+ * early return, stays 0x90 -- MW merges the global's two loads anyway. Round 53: empty() (through
+ * the count pair's reference, sz()) for either test with size() for the other, the loop as a for or a
+ * while, and the loop moved into a static inline helper (an inlined while gets the duplicated test):
+ * 0x90 or 0x80; the unit under 3.0b50 changes nothing */
 bool CAiDodge::Destroy()
 {
     if (m_list.size() == 0)
