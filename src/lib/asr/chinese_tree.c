@@ -7,10 +7,10 @@
  * Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree_TreeCtx,
  * FreeSecondPassContext_ForChinese_TreeCtx), ScanSoft's speech recogniser, prebuilt with ee-gcc
  * 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC front"). The file's name is
- * ours. Written: SplitUp_Finals_TreeCtx (round 36c, OPEN as chinese.c's), Tone_Of_Final_TreeCtx
- * and the two counting walks after it, chinese.c's three
- * under this object's names (the same bodies; Tone_Of_Final_TreeCtx inlined into the second walk
- * as there); FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx (round 40c);
+ * ours. All written: SplitUp_Finals_TreeCtx (round 36c, OPEN as chinese.c's), Translate_Prons_Into_Items_And_Tones_TreeCtx
+ * (round 37c, closed in 41c), Tone_Of_Final_TreeCtx and the two counting walks after it, chinese.c's three under this object's
+ * names (the same bodies; Tone_Of_Final_TreeCtx inlined into the second walk as there);
+ * FillOut_Syntax_Statedict_And_Wordprops_ForChinese_TreeCtx (round 40c); Build_Tree_ForChinese_TreeCtx, Swap_Finals_TreeCtx,
  * FreeSecondPassContext_ForChinese_TreeCtx, CreateSecondPassTreeContext_ForChinese (round 41c), with the walks as chinese.c's
  * deferred inlines. */
 

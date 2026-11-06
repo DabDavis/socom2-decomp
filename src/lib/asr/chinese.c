@@ -6,11 +6,11 @@
  * CreateSecondPassContext_ForChinese, Tone_Of_Final, Calculate_NbrOfStatesInDict_ForChinese,
  * Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree; the five before the free and the last
  * two LOCAL there), ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0
- * -fno-strict-aliasing -funroll-loops (README "The GCC front"). The file's name is ours. Written:
- * SplitUp_Finals (round 32c, OPEN), Swap_Finals (round 39c, OPEN), Tone_Of_Final and the two
- * counting walks after it, FillOut_Syntax_Statedict_And_Wordprops_ForChinese (round 40c); the rest
- * of the object is not: Build_Tree_ForChinese and Translate_Prons_Into_Items_And_Tones. Round 41c:
- * FreeSecondPassContext_ForChinese, CreateSecondPassContext_ForChinese. The trees' records are named by use.
+ * -fno-strict-aliasing -funroll-loops (README "The GCC front"). The file's name is ours. All written:
+ * SplitUp_Finals (round 32c, OPEN), Swap_Finals (round 39c, closed in 41c), Tone_Of_Final and the two
+ * counting walks after it, FillOut_Syntax_Statedict_And_Wordprops_ForChinese (round 40c), Build_Tree_ForChinese,
+ * Translate_Prons_Into_Items_And_Tones, FreeSecondPassContext_ForChinese, CreateSecondPassContext_ForChinese (round 41c).
+ * The trees' records are named by use.
  *
  * Tone_Of_Final and the two counting walks are inline functions defined above the builder: both inline into it (the recursion's
  * inner call stays a call) and GCC writes their deferred copies at the end of the object, after the builder -- the image's
@@ -374,13 +374,12 @@ static __inline__ void Copy_Item(DICTITEM *d, DICTITEM *s)
  * code word for word. Each copy's two pointers are the macro's own block locals (one pair shared by
  * the four copies outlives everything and takes t0/t1: 152 words); each count's bump a
  * post-increment inside its store (one load of the count); the chained links rebuilt as last + 1.
- * OPEN (round 32c, the right size, 126 words): PRE reuses the walk's node * 4 (a0) for the tone
- * test, where the target recomputes it there (`sll v0,a1,2` in the post-loop test's slot) while
- * reusing it on the leaf, split and plain paths alike; one word shorter there, the split loop's
- * label then needs GNU as's alignment nop (`.p2align 3`), and the registers follow (the child t1
- * and the items t0 here, t0 and t1 there; each copy's source and destination a0/a1 swapped). The
- * first loop as while/for/for(;;)/do-while, the tone through a temporary, a local, an inline taking
- * the node or the item, a walked copy of the node: none recomputes it (build/scratch/gcc/r32c). */
+ * OPEN (round 41c, the right size, 3 words, the map's 21 by the shift): only the tone test's node * 4. The target recomputes it
+ * (`sll v0,a1,2` in the post-loop test's slot, then `addu v0,v0,a1`) where PRE's reaching register (a0, the walk's) serves this test and
+ * the leaf, split and plain arms alike; one word shorter there, the split loop's label takes GNU as's alignment nop. GCSE's dump has the
+ * occurrence (insn 288, bb 6) redundant by the book, so the target's must not be the same expression at that pass: no operand copy
+ * survives CSE and cprop though (the first loop as while/for/for(;;)/do-while, the tone through a temporary, a local, an inline taking
+ * the node or the item, a walked copy of the node: none recomputes it). */
 static unsigned int SplitUp_Finals(FSTREE *t, unsigned int node, unsigned int *nitems,
                                    unsigned int *nlinks)
 {
