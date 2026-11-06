@@ -2291,6 +2291,7 @@
 0x00247008 func_00247008
 0x00247040 sceBInetGetVersionStringPtr
 0x002471A8 sceBInetCreate
+0x002472C8 sceBInetOpen
 0x00247460 sceBInetClose
 0x00247640 sceBInetRecvFrom
 0x002476D0 func_002476D0
