@@ -2949,3 +2949,127 @@ int func_0061C2F0(void)
     data_00651180 = 0;
     return DME_OK;
 }
+
+extern int func_00644060(int nWorld);
+extern int func_00643E48(int nWorld);
+extern int func_0063A4A0(int nConnection);
+extern int func_0063A590(int nConnection);
+extern int rt_time_start(unsigned int *pStart);
+extern int rt_msg_client_disconnect(int nConnection);
+
+/* SOCOM 1's NetDisconnect grown (0x61C150; the name is Dme.c's locked wrapper's): a media stream closed, the
+ * peer transport (world 0) or the message client's connection dropped, the world's records cleared. World 0
+ * polls the transport's update for half a second as SOCOM 1's polled rt_msg_client_update_all. Round 25b. */
+int func_0061C150(unsigned int nWorld)
+{
+    unsigned int tStart[2];
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    DmeWorld *p;
+    unsigned int nElapsed;
+    unsigned int i;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    if (func_00644060(nWorld) == 1)
+        func_00643E48(nWorld);
+    if ((unsigned int)(pWorld->field_438 - 1) < 3) {
+        if (data_006511D4 != 0 && nWorld == 0) {
+            func_0063A4A0(data_006511D8);
+            rt_time_start(tStart);
+            do {
+                result = NetMapMsgClientError(func_0063A590(data_006511D8), 24);
+                if (result != DME_OK)
+                    return result;
+                rt_time_elapsed(tStart, &nElapsed);
+            } while (nElapsed < 500);
+        }
+        if (nWorld != 0)
+            rt_msg_client_disconnect(DmeToRtMsgConnectionIndex(nWorld));
+    }
+    for (i = 0; i < DME_MAX_CLIENTS; i++) {
+        func_0061C720(nWorld, i, &pClient);
+        if (pClient != 0)
+            memset(pClient, 0, sizeof(DmeClientInfo));
+    }
+    p = pWorld;
+    p->field_43C = -1;
+    p->nMyClient = 256;
+    p->nSessionMaster = 256;
+    p->pfnClientCallback = 0;
+    p->field_42C = 0;
+    p->field_430 = 0;
+    p->field_434 = 0;
+    p->field_440 = 0;
+    p->field_438 = DME_WORLD_STATE_0;
+    memset(data_0067C5B0, 0, sizeof(data_0067C5B0));
+    data_0067B7AC = 0;
+    return DME_OK;
+}
+
+/* a world's record (0x61C600, written here above its caller 0x61D1B0, round 25b: that function's first
+ * `bnez` keeps its plain slot only with this call's nothrow note; the object update path at the unit's end,
+ * above this, is compiled without it as the image has it -- those functions lie before 0x61C600 there) */
+int func_0061C600(int nWorld, DmeWorld **ppWorld)
+{
+    if (ppWorld == 0)
+        return DME_ERR_ARGUMENT;
+    *ppWorld = 0;
+    if ((unsigned int)nWorld >= DME_MAX_WORLDS)
+        return 15;
+    *ppWorld = data_0066CAF8[nWorld];
+    return DME_OK;
+}
+
+typedef struct DmeJoinReport {          /* what the join callback is handed (0x61D1B0) */
+    int nResult;                        /* 0x00: 0 */
+    void *pUser;                        /* 0x04: its user data */
+} DmeJoinReport;
+
+/* the join finished once every other connected client has a state (0x61D1B0, SOCOM 1 has no counterpart):
+ * MyClientIsJoined set and the join callback told, once. Round 25b. */
+int func_0061D1B0(void)
+{
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    int i = 0;
+    int result;
+    DmeJoinReport report;
+
+    if (data_00651178 < 0)
+        return DME_ERR_RANGE;
+    if (data_00651178 < DME_MAX_WORLDS && MyClientIsJoined == 0) {
+        result = func_0061C600(data_00651178, &pWorld);
+        if (result != DME_OK || pWorld == 0)
+            return result;
+        if (pWorld->nMyClient >= DME_MAX_CLIENTS)
+            return DME_ERR_RANGE;
+        result = func_0061C720(data_00651178, pWorld->nMyClient, &pClient);
+        if (result != DME_OK || pClient == 0)
+            return result;
+        if ((unsigned int)(pClient->nState - DME_CLIENT_JOINED) >= 2)
+            return result;
+        for (; i < DME_MAX_CLIENTS; i++) {
+            if (i == pWorld->nMyClient)
+                continue;
+            result = func_0061C720(data_00651178, i, &pClient);
+            if (result != DME_OK)
+                return result;
+            if (pClient != 0 && pClient->bConnected == 1 && pClient->nState == 0)
+                return result;
+        }
+        MyClientIsJoined = 1;
+        if (data_0067C5B8 != 0) {
+            report.nResult = 0;
+            report.pUser = data_006511A0;
+            ((void (*)(DmeJoinReport *))data_0067C5B8)(&report);
+            data_0067C5B8 = 0;
+            data_006511A0 = 0;
+        }
+    }
+    return DME_OK;
+}
