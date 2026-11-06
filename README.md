@@ -11681,12 +11681,12 @@ OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 31 tried, 0 hits (2 build failures
 tried, none byte-exact (round 40a: 42, 0).
 
 **Round 41a** (2026-11-06, the tools first, then the opens): 1 row newly byte-exact (192 bytes) --
-**libnetb_get_valid_data_header_ptr 0x245A18** (`ovl1/libnetb_udp.c`, open since round 13a, 44 words then
-9 off): the ring's first unread datagram. The lane's `src/lib` 2,843 byte-exact of 2,973 scored, no
+**libnetb_get_valid_data_header_ptr 0x245A18** (`ovl1/libnetb_udp.c`, open since round 13a, 44 words off then):
+the ring's first unread datagram. The lane's `src/lib` 2,843 byte-exact of 2,973 scored, no
 regression. No rows named. What the opens showed:
 
 - **A store before a test lands in its branch's delay slot; a loop's entry registers follow the loop's
-  shape** (0x245A18, try.py's distance d=10 -> 0): the target's `beqz a2; sw zero,0(a1)` is `*phdr = 0`
+  shape** (0x245A18, build/scratch/gcc/r41/v_valid.py: the store moved d=10, then the start d=9, the `do` 0): the target's `beqz a2; sw zero,0(a1)` is `*phdr = 0`
   written BEFORE the valid pointer's test (reorg fills the slot from above; written after it, the slot takes
   the constant 1 instead), and its walk is an `if` around a `do`, the start copied from the position inside
   it (`move t1,a3` after the first test, the ring's buffer moved to t2) -- a while loop, the start first,
