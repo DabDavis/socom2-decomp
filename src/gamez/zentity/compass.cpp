@@ -97,14 +97,10 @@ CCompassAnchor *CCompass::CreateAnchor(const CPnt3D &pos, const char *name)
  * t1 as both builds do). `n > 1` branches on `sltiu at` with n - 1 in the delay slot (`n >= 2`
  * materialises the test in v0 and leaves a nop); the delete under its own `if (anchor)` keeps the
  * target's second null test ahead of the inlined destructor's this-test (a bare delete merges them).
- * OPEN, 24 instructions, register fields only: the target gives n t0, i a3, the offset a2, the
- * element a1, n - 1 a0 and the data pointer v0; MW here n a1, i t0, the offset a3, the element a2,
- * the data pointer a0, n - 1 v0. Not the declaration order (the permuter over n, i and t, 1,120
- * steps), not `int i`, a `last` local, size() read in place or a do-while (all longer or alike); round 21, the replay
- * (--want n=t0,i=a3,off=a2,elt=a1 over n, i and the two temporaries): no hit in 38 % of 2.56M placements;
- * round 25, igreplay --permute over the six disagreeing nodes (n, i, the i * 4 induction variable,
- * the element's and the data's CSE temporaries, the n - 1 code temporary; 720 orders): no hit either --
- * not a numbering among them */
+ * Byte-exact since the engine core's round 27 (24 off since round 21): n - 1 taken ahead of the
+ * `n > 1` test. The replay's point: no numbering gives the target (720 and 40,320 orders) because n
+ * in t0 needs n live across n - 1's definition -- written in the test n is dead there (the path
+ * re-reads it after the pop), and n falls into the same register as n - 1. */
 bool CCompass::DeleteAnchor(CCompassAnchor *anchor)
 {
     CCompass &compass = theCompass;
@@ -116,11 +112,13 @@ bool CCompass::DeleteAnchor(CCompassAnchor *anchor)
         if (n) {
             for (unsigned int i = 0; i < n; i++) {
                 if (compass[i] == anchor) {
-                    if (n > 1 && i != n - 1) {
+                    unsigned int last = n - 1;
+
+                    if (n > 1 && i != last) {
                         CCompassAnchor *t = compass[i];
 
-                        compass[i] = compass[n - 1];
-                        compass[n - 1] = t;
+                        compass[i] = compass[last];
+                        compass[last] = t;
                     }
                     compass.pop_back();
                     found = true;

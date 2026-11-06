@@ -3,7 +3,7 @@
  * commands' handlers sit at the unit's end. The unit name is SOCOM 1's (its __sinit_zanim_cmd_parse.cpp
  * is the <iostream> pair alone, linked right before zanim_cmd_tick.cpp's, as SOCOM II's 0x3FFB00 is --
  * the integrator's initialiser research). Defined in reverse of their image order (-inline deferred);
- * not written yet: zAnimFireWeaponTick 0x25CCB0. After InitCommands SOCOM II's
+ * zAnimFireWeaponTick 0x25CCB0 first (round 27). After InitCommands SOCOM II's
  * key-track evaluators (alpha, colour, four bytes) and the heading's direction (core round 8). */
 
 #include <string.h>
@@ -12,11 +12,173 @@
 #include "zanim.h"
 #include "../zsys/zsys.h"
 
-/* the weapons' explosives (zweapon.h's CZWeapon: only the static the satchels' command calls) */
-class CZWeapon {
+#include "../zweapon/zweapon.h"
+#include "../zentity/zentity.h"
+
+/* the network: whether a network game is on (fts_state.h's CZNetwork, what the handler reads) */
+class CZNetwork {
 public:
-    static void RemoveExplosivesInRange(const CPnt3D *pos, float range);   /* 0x3CFFB0 */
+    bool m_bSessionMaster;   // 0x0
+    bool m_bNetwork;   // 0x1
 };
+extern CZNetwork theNetwork;
+
+/* the player (its body; the handler only wants the entity) */
+CEntity *ftsGetPlayer();
+
+/* a direction in a node's frame turned into the world's (anim_main.cpp's) */
+extern "C" void func_00269170(CPnt3D *dir, zdb::CNode *node);
+
+/* FIRE_WEAPON's record (SOCOM II's; the names ours, by the tick): the weapon's and the ammunition's
+ * names and two nodes by index, a point and a direction, and two overrides of the round (-1: none) */
+struct zanim_cmd_fire_weapon {
+    _zanim_cmd_hdr hdr;   // 0x0
+    unsigned char flags;   // 0x4: 1 the offset added, 2 the argument point added
+    unsigned char ammo;   // 0x5
+    unsigned char weapon;   // 0x6
+    unsigned char _7;
+    unsigned char node;   // 0x8
+    unsigned char dir_node;   // 0x9
+    unsigned char flags2;   // 0xa
+    unsigned char _b;
+    float time;   // 0xc
+    float removal;   // 0x10
+    CPnt3D offset;   // 0x14
+    CPnt3D dir;   // 0x20
+};
+
+/* FIRE_WEAPON's tick: a round of the named weapon and ammunition taken from the projectile list and
+ * placed -- at the offset, plus the anim's point argument, through the node -- given its weapon's
+ * model on its instance, and fired along the direction (through the second node, when given) from
+ * the player, or the entity the anim's int argument names (SOCOM II's; unwritten before the engine
+ * core's round 27).
+ * OPEN, 0x53C of 0x57C (every instruction but the delay slots): the target never hoists an argument's
+ * set-up out of the block after a branch into its delay slot here (`beqz s2; nop; jal; move a0,s2`, 8
+ * of them, and the pad nops that follow) where MW fills it (`beqz s2; move a0,s2; jal; nop`). The
+ * neighbours do hoist (build/scratch/core/hoist.py: 14 in zAnimCallAnimBegin, 0 kept) and
+ * zAnimObjectMotionFromToBegin keeps three and hoists four, so it is a shape: no pragma changes it
+ * (scheduling, peephole -- that reaches the size, lifetimes, dead assignments, propagation, CSE), nor an
+ * asm directive, nor the body as an inline (0x4BC). */
+bool zAnimFireWeaponTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZProjectileList *projectiles = CZWeapon::m_pProjectilelist;
+    CZAmmoList *ammos = &CZAmmo::m_ammolist;
+    CZAmmo *ammo = 0;
+    CZWeaponList *weapons = &CZWeapon::m_listWeapons;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    zanim_cmd_fire_weapon *cmd = (zanim_cmd_fire_weapon *)hdr;
+    CZProjectile *proj = 0;
+    CZWeapon *weapon = 0;
+    bool placed = false;
+    CPnt3D pos;
+    CPnt3D vel;
+    CPnt3D dir;
+
+    pos.x = 0.0f;
+    pos.y = 0.0f;
+    pos.z = 0.0f;
+    vel.x = 0.0f;
+    vel.y = 0.0f;
+    vel.z = 0.0f;
+    if (weapons)
+        weapon = weapons->GetWeapon(anim->GetName(cmd->weapon));
+    if (ammos)
+        ammo = ammos->GetAmmo(anim->GetName(cmd->ammo));
+    if (projectiles && weapon && ammo)
+        proj = projectiles->AcquireProjectile(*weapon, *ammo);
+    if (proj) {
+        proj->Reset();
+        if (cmd->flags & 1) {
+            placed = true;
+            pos.Add(&cmd->offset, &pos);
+        }
+        if (cmd->flags & 2) {
+            CPnt3D *arg = anim->GetArgPnt3D();
+
+            if (arg) {
+                placed = true;
+                pos = pos + *arg;
+            }
+        }
+        if (cmd->node != 0) {
+            zdb::CNode *node = anim->GetNode(cmd->node, false);
+
+            if (node) {
+                placed = true;
+                node->TransformToWorld(pos);
+            }
+        }
+        if (placed) {
+            proj->m_framestartpos = pos;
+            proj->m_frameendpos = pos;
+            proj->m_startpos = pos;
+        }
+        zdb::CModel *model = 0;
+        char *name = weapon->GetModelName();
+
+        if (name) {
+            model = (zdb::CModel *)zdb::CWorld::GetModel(name);
+            zdb::CNode *inst = proj->GetInstance();
+
+            inst->SetModel(model);
+            inst->SetActive(false);
+            inst->SetModel(model);
+            inst->SetPosition(&pos);
+            if (!weapon->IsDirectFire()) {
+                inst->m_socom2_a1_bits.bit2 = 1;
+                inst->m_bumpmap = 1;
+                zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, inst);
+            }
+        }
+        proj->m_instance->SetModel(model);
+        if (cmd->dir_node != 0) {
+            zdb::CNode *node = anim->GetNode(cmd->dir_node, false);
+
+            if (node) {
+                CPnt3D d = cmd->dir;
+
+                func_00269170(&d, node);
+                dir = d;
+            }
+        } else
+            dir = cmd->dir;
+        zdb::CNode *shooter_node = 0;
+        int shooter = 0;
+        CEntity *ent = ftsGetPlayer();
+
+        if (anim->m_arg_list && anim->m_arg_list->HasArg(CZAnimArg::TYPE_INT)) {
+            int id = anim->m_arg_list->GetInt(CZAnimArg::TYPE_INT);
+            CEntity *e = CEntity::m_list.GetEntityById(id);
+
+            if (e && e->m_type != 2)
+                e = 0;
+            if (e) {
+                ent = e;
+                shooter = id;
+            }
+        }
+        if (ent) {
+            shooter = ent->m_id;
+            shooter_node = ent->GetNode();
+        }
+        if (theNetwork.m_bNetwork)
+            proj->m_isplayer = false;
+        proj->m_useflyout = false;
+        proj->m_state = (PROJECTILE_STATE)1;
+        if (theNetwork.m_bNetwork)
+            proj->SetLastHitWasPerson(true);
+        weapon->Fire(shooter_node, ammo, &pos, &dir, &vel, proj, shooter, model);
+        if (cmd->time != -1.0f)
+            proj->m_time = cmd->time;
+        if (cmd->removal != -1.0f)
+            proj->m_removaltime = cmd->removal;
+        if (cmd->flags2 & 1)
+            proj->SetFlag9(true);
+        if (theNetwork.m_bNetwork)
+            proj->SetLastHitWasPerson(true);
+    }
+    return true;
+}
 
 /* REMOVE_SATCHELS's record (SOCOM II's; the names ours): a point and a range */
 struct ZAnimRemoveSatchelsCmd {

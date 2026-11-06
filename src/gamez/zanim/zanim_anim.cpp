@@ -1532,26 +1532,26 @@ inline int CZAnim::FindNodeRef(const char *name, int parent, int &search)
     const char *expanded = ZAnimWildcardApply(name);
     int index = m_nameindex_table.AddName(ZAnim.GetAnimSet(m_animset_index), expanded);
 
-    for (int i = 0; i < m_node_ref_count; i++)
-        if (m_node_ref_list[i].name_index == index && m_node_ref_list[i].parent_index == parent)
+    int s = search;
+
+    for (int i = 0; i < m_node_ref_count; i++) {
+        _zanim_node_ref *r = &m_node_ref_list[i];
+
+        if (index == r->name_index && parent == r->parent_index)
             return i;
-    return AddNewNodeRef(index, parent, search);
+    }
+    return AddNewNodeRef(index, parent, s);
 }
 
 /* a node reference's index for a name -- or for a ZRDR path of them (its NAME, or itself), each
  * the child of the one before, a scope keyword among them setting the search -- under a
  * parent; INPUT_NODE and ROOT_NODE are 250 and 249.
- * OPEN: one saved register too many -- MW here strength-reduces the path walk's index (an i*8
- * register beside i), the target shifts i at each Item; an unsigned i, an unsigned Item index,
- * i hoisted and the continue as an else leave it. The array's count is unsigned (the target's
- * sltu) and the search is read late (by reference). Round 21: `#pragma opt_strength_reduction off` gives the target's
- * size (0x430) but un-reduces the inlined FindNodeRef walks the target keeps reduced (40 off): the pragma is
- * per function, so the path walk's shape is something else. Round 26 (the GCC front's round-43a
- * pragma scan named it again, 213 -> 38 its metric): under the pragma, FindNodeRef's walk reduced by
- * hand (a node-ref pointer stepped beside i, four placements) is 0x420, the pointer loaded ahead of
- * the count test where the target's preheader loads it; the weapons' round-37 cast in the index
- * (a local Item with `array[(int)i]`, or `Item((unsigned)i)`, i signed or not) 0x440
- * (build/scratch/core/v_lnn*.py) */
+ * Byte-exact since the engine core's round 27 (open since round 3). The path walk's index an enum: the
+ * target shifts i at each Item, an int index is strength-reduced into a seventh saved register, and an
+ * enum is no induction variable to IRO (`#pragma opt_strength_reduction off` gave the size but
+ * un-reduced FindNodeRef's walks, which the target keeps reduced). FindNodeRef's walk through a pointer
+ * to the element, one reduced pointer for both fields, the compares with the operand first; the
+ * search read ahead of the walk into a local. The tag's test on the call's own value. */
 int CZAnim::LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search)
 {
     if (!rdr && !name)
@@ -1565,13 +1565,15 @@ int CZAnim::LoadNodeNames(_zrdr *rdr, const char *name, int parent, int search)
             return 249;
         return FindNodeRef(name, parent, search);
     }
-    _zrdr *path = zrdr_findtag(rdr, "NAME");
+    _zrdr *path;
 
-    if (!path)
+    if ((path = zrdr_findtag(rdr, "NAME")) == 0)
         path = rdr;
     if (path->type != 4)
         return 0;
-    for (int i = 0; i < path->Count(); i++) {
+    enum PathIndex { PI_0 = 0, PI_MAX = 0x7FFFFFFF };
+
+    for (PathIndex i = PI_0; i < path->Count(); i = (PathIndex)(i + 1)) {
         if (path->Item(i)->type != 3)
             break;
         if (ZAnim.GetNodeSearchScope(path->Item(i)->String(), &search))

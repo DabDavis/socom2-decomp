@@ -249,7 +249,12 @@ CQuat *CZSIObject::GetRotFast(int f0, int f1, float t, CQuat *rot)
  * store and both right-hand sides move ahead of the stores (25 off). Also tried: an inline taking
  * the flags by value, a const local, bool locals for both tests, a nested block, `== bit`, `!!`,
  * `> 0`, shifts -- all 13. Round 21: the flags through an inline read, the bits through an inline test (13, or 0xF0
- * read twice); the replay finds no placement of the flags node alone (a schedule, not a numbering) */
+ * read twice); the replay finds no placement of the flags node alone (a schedule, not a numbering).
+ * Round 27, the colours by hand: flags t5, the 0x20 test t4, the old byte t3, the mask t2 all follow
+ * from one thing -- the target's pre-RA order has the 0x10 test after the first store's `or`, so it
+ * shares the mask's t2, where MW here takes it right after the 0x20 test and it interferes. Enum, const
+ * and int holders, and `asm { .set reorder }` between the stores (which also stops the constants
+ * being hoisted: 20-24) do not move it (build/scratch/core/v_si1.py) */
 int CZSIObject::Read(unsigned char *data, unsigned int nFrames, const char *name)
 {
     int size = 0;
