@@ -351,7 +351,10 @@ int CConsole::Send(CPacket *packet)
  * WantsAck, !handler, both handler tests and the type-3 test), pads the joins after the two
  * Dispatches, and its remove binder's functor sits at sp+132 above the push_back temporaries (ours
  * at sp+124, below them). Not tried yet: the lookups as an inline helper of their own, the reply
- * through a named iterator */
+ * through a named iterator. Round 27: zAnimFireWeaponTick 0x25CCB0 has the same unfilled slots. The
+ * filler hoists an argument's set-up out of the next block unless the register is live at the
+ * branch's target: the three kept in zAnimObjectMotionFromToBegin (byte-exact) are a0 holding the flags
+ * there -- build/scratch/core/hoist.py, hoist2.py -- but in these two nothing visible reads a0 */
 bool CConsole::RecvPacket(CPacket *packet)
 {
     bool handled = true;
