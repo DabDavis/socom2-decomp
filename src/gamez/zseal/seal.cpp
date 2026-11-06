@@ -58,6 +58,10 @@ class CAppCamera {
 public:
     virtual void Tick(float dT);
     virtual bool AttachTo(CZSealBody *prey);
+    /* the camera given an entity, or a SEAL, to follow (OVL1 0x2956E0 and its 8-byte jump 0x295AF0: the
+     * engine core's round 23 named both; camera.cpp's AttachTo calls the first with (this, prey, 0)) */
+    void Follow(CEntity *prey, const char *part);
+    void Follow(CZSealBody *seal, const char *part);
 
     unsigned char _4[0x45 - 0x4];
     unsigned char m_45;   // 0x45 (camera.h's names)
@@ -547,6 +551,48 @@ extern "C" void func_00545750(CSealStats *s, const CZSealBody *seal, bool teamma
         }
     } else
         s->m_count[0x32 / 2]++;
+}
+
+/* the stats zeroed (SOCOM 1's Reset, between IncrTimesSeen and Kill there too; OVL2 0x545200, its
+ * draft's stores in its order: the halfwords by offset, the hit percentage, then the MVP score and the
+ * counters around it) */
+void CSealStats::Reset()
+{
+    m_count[0x0 / 2] = 0;
+    m_count[0x2 / 2] = 0;
+    m_count[0x4 / 2] = 0;
+    m_count[0x6 / 2] = 0;
+    m_count[0x8 / 2] = 0;
+    m_count[0xa / 2] = 0;
+    m_count[0xc / 2] = 0;
+    m_count[0xe / 2] = 0;
+    m_count[0x14 / 2] = 0;
+    m_count[0x10 / 2] = 0;
+    m_count[0x12 / 2] = 0;
+    m_count[0x16 / 2] = 0;
+    m_count[0x18 / 2] = 0;
+    m_count[0x1e / 2] = 0;
+    m_count[0x20 / 2] = 0;
+    m_count[0x22 / 2] = 0;
+    m_count[0x24 / 2] = 0;
+    m_count[0x2c / 2] = 0;
+    m_count[0x26 / 2] = 0;
+    m_count[0x28 / 2] = 0;
+    m_count[0x2a / 2] = 0;
+    m_count[0x2e / 2] = 0;
+    m_count[0x30 / 2] = 0;
+    m_count[0x32 / 2] = 0;
+    m_count[0x34 / 2] = 0;
+    m_count[0x1c / 2] = 0;
+    m_count[0x1a / 2] = 0;
+    m_hit_percent = 0.0f;
+    m_score = 0;
+    m_count2[0] = 0;
+    m_count2[1] = 0;
+    m_count2[2] = 0;
+    m_count[0x36 / 2] = 0;
+    m_count[0x38 / 2] = 0;
+    m_count[0x3a / 2] = 0;
 }
 
 /* eight counters each added to (OVL2 0x5451E0, 0x5451C0, 0x5451A0, 0x545180, 0x545160, 0x545140,
@@ -1912,7 +1958,9 @@ static inline void PushOut(float &cur, float v)
  * first, second or third, a local copy after the test, the body an inline taking r by value, the test
  * as an if around the body or through a node local all compile the same; so does the HUD's round-57
  * second variable (round 52: a copy of the hit, of r, or both, defined before the null test and used
- * by the test or the body -- build/scratch/seal-r52/v_6d0.py) */
+ * by the test or the body -- build/scratch/seal-r52/v_6d0.py). Round 55: 0x54A3D0's lever -- a (float)
+ * cast making one operand of the step's product the heavier -- changes nothing here, on any operand or on
+ * the `-r` (build/scratch/seal-r55/v_6d0.py) */
 extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit, float r)
 {
     if (!hit->m_node)
@@ -2471,37 +2519,13 @@ static inline void PushOut(float &cur, float v, bool &moved)
  * (0x5B3890 asked with 1 when either moved), the weapon put in state 2 and the controller's weapon
  * timer restarted and run out (0x543F70's), the kept wall hit cleared when the push is under 0.1 or
  * none is cut off; false with no node hit (OVL2 0x54A3D0, new in SOCOM II; the name unknown).
- * OPEN, 1 instruction (round 51, from 16): the step's product's operands -- the target multiplies
- * `mul.s $f1,$f1,$f2`, the step (f1) by the depth (f2), ours the depth by the step. igreplay's FPR record
- * (round 51): the target's registers need the depth numbered AFTER the push's three loads and 0.6 after
- * the step -- the depth an unnamed temporary of the scale's expression, evaluated first: `(1.3f - t) * r
- * * 0.6f` (MW swaps the literal 0.6 to the left at the emit, not the step) gives every register and the
- * delay slot's sub.s. Any shape evaluating the step first (`r * (1.3f - t)`, a literal 10.0f, an inline
- * Mul(r, depth) whose arguments go right to left) or the depth named (anywhere, even defined after the
- * push) loses the delay slot (0x308); `0.6f * ((1.3f - t) * r)`, `+r`, `-t + 1.3f`, `1.3f + -t`, a named
- * product and an assigned step all give this one (build/scratch/seal-r51/v_3d*.py). Round 52: `r` is
- * no variable at all in MW's FPR colouring (the front end folds it; `-r` stays a neg.s), so the
- * step-first shapes -- `r * (1.3f - t)`, `(1.3f - t) * 10.0f` (the literal moved left), a const `r` --
- * give the target's operand ORDER but a front-end temporary for the 10.0 numbered before the depth:
- * the depth then takes $f1 and the sub.s cannot go in the delay slot (0x308). igreplay --movers on that
- * dump: the step's node must sit at 93.5-96.5, among the code generator's temporaries, after the
- * depth's -- a 10.0 materialised late, as the propagated `r` of the current shape is; `lim` a variable
- * too, `-(t - 1.3f)`, `/ (1.0f / 0.6f)` and `(r * 0.6f)` are worse (build/scratch/seal-r52/v_3d*.py).
- * Round 53, the code generator's order read in the PCode (build/scratch/seal-r53/v_3d*.py, igshow.py):
- * MW numbers a product's operands in evaluation order and evaluates the HEAVIER subtree first, a tie
- * left first, and emits a commutative product light operand first -- `heavy * r` and `r * heavy` give
- * the same PCode, the 10.0 numbered after the heavy side and emitted first; a literal is put on the left
- * before that (so `depth * 10.0f`, `10.0f * depth`, `r * depth` all number the 10.0 first: a tie). The
- * target -- 10.0 numbered after the depth and emitted first -- is that order with the depth HEAVIER than
- * the step: some shape where `1.3 - t` weighs more than a lone constant (the CSE'd 1.3 and a register t
- * weigh as one); the inlines `r * Under(1.3f, t)` / `UnderT(t)` / by-reference keep the tie (0x308).
- * Round 54 (build/scratch/seal-r54/v_3d*.py): making the depth heavier does flip the EMISSION --
- * `(t, 1.3f - t) * r` (a comma with a dead variable left) and `lim - t` with a variable lim used only
- * there both give the target's `mul.s step, depth` -- but they number the step before the depth too
- * (igreplay --target on the comma's dump: v59 the step, v61 the depth, the target needs v61 below
- * v59), and lose the delay slot (0x308): in every shape the first-emitted operand is the first
- * numbered, where the target emits the step first yet numbers it after; `/ 1.0f`, a copy of t, `+ -t`,
- * `r * 1.0f`, `register`/bare/early-declared r change nothing (1 off) */
+ * Byte-exact (round 55; OPEN at one instruction since round 51): the step's product is `r * (float)(1.3f
+ * - t) * 0.6f` -- the target multiplies the step first (`mul.s $f1,$f1,$f2`) yet numbers the depth
+ * first. MW numbers a binary operator's heavier operand first and emits the lighter first; a (float)
+ * cast of a float is a node of its own that costs no code, so the cast makes the depth the heavier
+ * without the named depth's or the comma's extra copy (`r * (1.3f - (float)t)` matches too). Rounds
+ * 51-54 tried the depth named, `(t, 1.3f - t) * r`, a variable limit, inlines, `-t + 1.3f`, `+r`, `/ 1.0f`
+ * and every operand order (build/scratch/seal-r51..r54/v_3d*.py, seal-r55/v_3d2.py) */
 extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)
@@ -2522,7 +2546,7 @@ extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
         CPnt3D push = hit->m_norm;
         bool moved;
 
-        push.Scale((1.3f - t) * r * 0.6f, &push);
+        push.Scale(r * (float)(1.3f - t) * 0.6f, &push);
         moved = false;
         PushOut(seal->m_f44.x, push.x, moved);
         PushOut(seal->m_f44.z, push.z, moved);
@@ -2774,9 +2798,6 @@ extern "C" bool func_00546210(CZSealBody *seal, CEntity *e)
 }
 
 extern "C" {
-/* the camera given a SEAL to follow (OVL1 0x2956E0: camera.cpp's AttachTo calls it with (this, prey,
- * 0); unowned, the name unknown) */
-void func_002956E0(CAppCamera *cam, CEntity *prey, int n);
 /* the SEAL's weapon put away for the turret's (OVL2 0x5A6FC0, seal_env.cpp's range, its draft's: true
  * when the blends are to be homed onto the turret; the name unknown) */
 bool func_005A6FC0(CZSealBody *seal, char item, int n);
@@ -2828,7 +2849,7 @@ extern "C" bool func_005463C0(CZSealBody *seal, CEntity *e)
     if (ok) {
         e->m_control = seal->m_control;
         if (appCamera->m_bc == seal) {
-            func_002956E0(appCamera, e, 0);
+            appCamera->Follow(e, 0);
             CAppCamera *cam = appCamera;
 
             cam->m_45 = 1;
@@ -2894,9 +2915,6 @@ extern "C" bool func_005463C0(CZSealBody *seal, CEntity *e)
 }
 
 extern "C" {
-/* the camera given a SEAL to follow (OVL1 0x295AF0, a jump to 0x2956E0 -- camera.cpp's AttachTo
- * calls that with (this, prey, 0); unowned, the name unknown) */
-void func_00295AF0(CAppCamera *cam, CZSealBody *seal, int n);
 /* the SEAL's rifle or pistol drawn again by the item kept (OVL2 0x5A6EB0, seal_env.cpp's range,
  * unwritten: it pushes 0x3DF108 or 0x3DF110 and sets m_item; the name unknown -- the item a plain
  * char: the caller loads m_item with lb, an unsigned char or int parameter gives lbu) */
@@ -2930,7 +2948,7 @@ extern "C" void func_00545EE0(CZSealBody *seal, int force)
         if (e->m_control == seal->m_control) {
             e->m_control = 0;
             if (appCamera->m_bc == seal) {
-                func_00295AF0(appCamera, seal, 0);
+                appCamera->Follow(seal, 0);
                 CAppCamera *cam = appCamera;
 
                 cam->m_45 = 1;
