@@ -811,7 +811,13 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
  * ignored) with up at the top gives run-time products but in the strip loop, the 16.0 hoisted too
  * (0x27C). AND THE TARGET'S OUTER LOOP IS ROTATED (its test copied ahead of the body, the products in
  * that preheader), ours is not -- the log rotates only the vertex loop (header 5); Ripple's target
- * rotates its outer loop too */
+ * rotates its outer loop too.
+ * Round 39 (build/scratch/wep/v_flat39*.py): the loop phase runs in pass 0 only (Ripple's note), so
+ * the products want operands that are not constants until after it -- up's scalarisation deferred to
+ * pass 1 (a reference or pointer bound to it, in the vertex body or at the function's top) leaves up
+ * in the frame and the outer loop unrotated (0x2A8); Ripple's vertex loop (an `if (v)` guard around a
+ * do-while, the float pointer inside the guard or at the strip's top, up in the body or at the
+ * function's top) gives 0x234 / 0x260 */
 void CWaterRipple::Flatten(CNode *node)
 {
     for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
