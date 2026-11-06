@@ -2802,7 +2802,8 @@ public:
     unsigned int m_1060_bit11 : 1;
     unsigned int m_1060_bit12 : 1;
     unsigned int m_1060_bit13 : 1;   // bit 13: online, 0x589900 refuses the SEAL with it set (the name ours)
-    unsigned int m_unused_bits2 : 2;
+    unsigned int m_bit14 : 1;   // bit 14: set when the fall of a jump begins (0x57E1B0; the name ours)
+    unsigned int m_unused_bits2 : 1;
     /* the ladder the SEAL is on, an index into the mission's list (new in SOCOM II: read with lhu
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
@@ -2862,9 +2863,11 @@ public:
     float m_133c;   // 0x133c: the rate m_fac falls at (0x59B870; the name ours)
     float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
                     // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
-    unsigned char _1344[0x1350 - 0x1344];
+    unsigned char _1344[0x1348 - 0x1344];
+    float m_1348;   // 0x1348: the ground slope 0x57E1B0 asks of a jump (the name ours)
+    unsigned char _134c[0x1350 - 0x134c];
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
-    unsigned char _135c[0x1360 - 0x135c];
+    float m_135c;   // 0x135c: the wait before another jump (0x57E1B0 sets 0.4; the name ours)
     float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
     float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
     unsigned char _1368[0x136c - 0x1368];

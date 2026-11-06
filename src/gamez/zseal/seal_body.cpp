@@ -101,6 +101,93 @@ extern "C" {
 void *func_00555170(void *v);
 }
 
+extern "C" {
+bool func_005551A0(unsigned short flags, unsigned short bits);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+/* the peek anims (AnimTypes statics, OVL1 data, before SwapRifle's; the names unknown) */
+extern short data_003DEB00;
+extern short data_003DEB08;
+extern short data_003DEAE8;
+}
+
+/* the top blend's peek undone or begun (SOCOM II's stance byte -1 and 1 the sides, 2 none): in state 3,
+ * once the peek's blend is done forward, a side's anims popped when the other side or none is asked; out of
+ * it, a side asked pushes its way in (by the state) and the blend after it, with the state told (OVL2
+ * 0x57D810, new in SOCOM II: PreTick calls it; the name unknown) */
+extern "C" void func_0057D810(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    short anim = top->m_animType;
+
+    if (seal->m_state == 3) {
+        if (func_005551A0(top->m_flags, 16) && !func_005551A0(top->m_flags, 32)) {
+            int stance = seal->m_desiredStance;
+
+            if (stance == 2 ||
+                (stance == -1 && anim != 31 && anim != 29 && anim != data_003DEB00) ||
+                (stance == 1 && anim != 32 && anim != 30 && anim != data_003DEB08)) {
+                switch (anim) {
+                case 31:
+                case 29:
+                case 32:
+                case 30:
+                    top = seal->PopBlend();
+                    seal->BodySetState(3);
+                    break;
+                default:
+                    if (anim == data_003DEB00 || anim == data_003DEB08) {
+                        top = seal->PopBlend();
+                        seal->BodySetState(3);
+                    }
+                    break;
+                }
+                top->m_ctrl = 0;
+            }
+        }
+    } else if (seal->m_desiredStance != 2) {
+        seal->m_last_foot = 2;
+        if (seal->IsCurrentBlend((AnimType)data_003DEAE8))
+            seal->ClearToBase(false);
+        switch (seal->m_desiredStance) {
+        case -1: {
+            CZBodyAnimBlend *b;
+
+            if (seal->m_state == 1) {
+                func_00588BC0(seal, (AnimType)31, 1, 1, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)31, 3, 0, 0);
+            } else if (seal->m_state == 2) {
+                func_00588BC0(seal, (AnimType)data_003DEB00, 2, 1, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEB00, 3, 0, 0);
+            } else {
+                func_00588BC0(seal, (AnimType)29, 0, 1, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)29, 3, 0, 0);
+            }
+            seal->BodySetState(3);
+            b->m_ctrl = 1;
+            break;
+        }
+        case 1: {
+            CZBodyAnimBlend *b;
+
+            if (seal->m_state == 1) {
+                func_00588BC0(seal, (AnimType)32, 1, 1, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)32, 3, 0, 0);
+            } else if (seal->m_state == 2) {
+                func_00588BC0(seal, (AnimType)data_003DEB08, 2, 1, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEB08, 3, 0, 0);
+            } else {
+                func_00588BC0(seal, (AnimType)30, 0, 1, 0);
+                b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)30, 3, 0, 0);
+            }
+            seal->BodySetState(3);
+            b->m_ctrl = 1;
+            break;
+        }
+        }
+        seal->BodySetState(3);
+    }
+}
+
 /* the weapon in hand set and every blend's anim looked up again for it -- the weapon's own, else
  * weapon 0's -- the parts' poses saved, and both interpolations set to the top anim's blend-in time
  * (OVL2 0x57D710, new in SOCOM II: seal_cfg.cpp's 0x58C5D0 calls it; the name unknown).
@@ -756,6 +843,74 @@ extern "C" void *func_0057E050(CZSealBody *seal)
     seal->m_1350 = seal->m_velW;
     func_00588B40(seal, 3);
     return r;
+}
+
+extern "C" {
+bool func_005B4340(CZSealBody *seal, int b);
+bool func_0054F6E0(CZSealBody *seal, int a, int b, int c);
+bool func_0057F150(CSealCtrl *ctrl);
+}
+
+/* the ground under a SEAL, or none: its held hit when it has a node (an inline, the name ours) */
+static inline zdb::IntersectStruct *Held1090(CZSealBody *seal)
+{
+    return seal->m_1090.m_node ? &seal->m_1090 : 0;
+}
+
+/* the jump's anim pushed in the state, the velocity kept, the push told (an inline: its result assigned
+ * keeps the `b` after the told test's join; the name ours) */
+static inline CZBodyAnimBlend *JumpPush(CZSealBody *seal)
+{
+    CZBodyAnimBlend *r = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEAE8, seal->m_state, 0, 13);
+
+    seal->m_1350 = seal->m_velW;
+    func_00588B40(seal, 1);
+    return r;
+}
+
+/* the jump asked: not by a remote SEAL, nor in the air or within the last jump's wait, nor on a slope too
+ * steep, nor where the controller cannot; slow or with a held hit the jump's anim 0x3DEAE8 in the state and
+ * its push told, else anim 8 as a fall with the jump's waits and speed set; bit 14 set by whether a top
+ * blend came back (OVL2 0x57E1B0, new in SOCOM II: the top blend returned; the name unknown) */
+extern "C" CZBodyAnimBlend *func_0057E1B0(CZSealBody *seal)
+{
+    if (seal->IsRemote())
+        return 0;
+    if (seal->m_airborne || !(seal->m_135c <= 0.0f))
+        return 0;
+    if (seal->m_1348 < theCharacterDynamics.m_maxSlopeCos)
+        return 0;
+    if (!func_0057F150((CSealCtrl *)seal->m_control))
+        return 0;
+
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+    if (!func_005B4340(seal, 11))
+        return top;
+    if (seal->m_carry || seal->m_state == 9 || seal->m_state == 10)
+        return top;
+    if (!func_00589900(seal))
+        return top;
+    if (func_0054F6E0(seal, 1, 1, 1))
+        return top;
+    if (func_005551A0(top->m_flags, 64)) {
+        if (seal->m_velM.x * seal->m_velM.x + seal->m_velM.y * seal->m_velM.y + seal->m_velM.z * seal->m_velM.z < 225.0f ||
+            Held1090(seal)) {
+            seal->ClearToBase(false);
+            top = JumpPush(seal);
+        } else {
+            top = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)8, 6, 0, 13);
+            seal->m_1360 = 0.1f;
+            seal->m_135c = 0.4f;
+            seal->m_1364 = theCharacterDynamics.m_jumpFactor * (-0.4f * theCharacterDynamics.m_gravity);
+            seal->SetBit9(true);
+            seal->SetBit10(false);
+            seal->m_1350 = seal->m_velW;
+            func_00588B40(seal, 2);
+            seal->m_bit14 = top != 0;
+        }
+    }
+    return top;
 }
 
 /* whether the jump can be taken: never by a remote SEAL already in anim 9, else as 0x589900 says
