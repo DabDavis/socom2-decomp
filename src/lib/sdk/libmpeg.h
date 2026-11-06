@@ -133,6 +133,17 @@ typedef struct {
 	int _64;		/* 0x64 */
 } MpegRef;
 
+/* a reference fetch's interpolator's argument block (the _rix_ and _ri0_ asm read it so) */
+typedef struct {
+	void *dst;	/* 0x00: halfword pixels out, two rows' stride a row */
+	int shift;	/* 0x04: the byte offset into the source quadwords (mtsab) */
+	int rows;	/* 0x08 */
+	int again;	/* 0x0C: a second pass (the other field) */
+	int stride;	/* 0x10 */
+	void *src0;	/* 0x14 */
+	void *src1;	/* 0x18: the next quadword of each row */
+} MpegRi;
+
 /* a macroblock's record (0x140 bytes, two of them from 0x590): BDEC's output and what the motion
  * compensation reads (GCC round 20a) */
 typedef struct {
@@ -140,9 +151,15 @@ typedef struct {
 	u_int coef;		/* 0x004: BDEC's 384 coefficients, 768 bytes of scratchpad */
 	u_int src[4];		/* 0x008: dmaRefImage's REF tags, two per block (GCC round 30a) */
 	u_int dst[4];		/* 0x018 */
-	char pad028[0x12C - 0x028];
+	void (*rix[4])(MpegRi *);	/* 0x028: luma's interpolator, per reference */
+	void (*ri0[4])(MpegRi *);	/* 0x038: chroma's */
+	MpegRi riY[4];		/* 0x048 */
+	MpegRi riC[4];		/* 0x0B8 */
+	u_int image;		/* 0x128: where the macroblock's pixels go */
 	int nRef;		/* 0x12C: the tag pairs dmaRefImage chains */
-	char pad130[0x13C - 0x130];
+	int intra;		/* 0x130 */
+	int coded;		/* 0x134: macroblock_pattern, in a one-macroblock increment */
+	int hasRef;		/* 0x138: a prediction was fetched */
 	int noCoef;		/* 0x13C: neither intra nor coded: the prediction alone */
 } MpegMB;
 

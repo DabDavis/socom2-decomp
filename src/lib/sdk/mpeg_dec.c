@@ -82,6 +82,275 @@ void _copyrightExtension(MpegDec *d);
 	(d)->dirty = _isDirty[(cmd) >> 28];					\
 }
 
+/* The motion compensation, the object's first four functions: mpeg2decode's recon.c (reconstruct,
+ * form_predictions, form_prediction, form_component_prediction) cut for the IPU and the scratchpad --
+ * form_prediction only reserves a reference: where the DMA tags will fetch from and to, and the
+ * interpolators' argument blocks; _doMC runs them. (GCC round 46a.) */
+extern void (*_rix[8])(MpegRi *);
+extern void (*_ri0[8])(MpegRi *);
+extern void _Error1(MpegDec *d, char *fmt, int arg);
+extern void _Error(MpegDec *d, char *msg);
+extern void _dualPrimeVector(MpegDec *d, int DMV[][2], int *dmvector, int mvx, int mvy);
+extern void dmaRefImage(MpegDec *d);
+extern void _copyRefImage(u_long128 *dst, u_long128 *src);
+extern void _copyAddRefImage(u_long128 *dst, u_long128 *src0, u_long128 *src1);
+void _getAllRefs(MpegDec *d, int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2],
+		 int motion_vertical_field_select[2][2], int dmvector[2]);
+void _getRef0(MpegDec *d, MpegRef *src, int sfield, int dfield, int ofs, int h, int x, int y,
+	      int dx, int dy, int isfield, int average_flag);
+
+int _motionComp0(MpegDec *d, int MBA, int MBAinc, int macroblock_type, int motion_type, int PMV[2][2][2],
+		 int motion_vertical_field_select[2][2], int dmvector[2])
+{
+	int intra = macroblock_type & 1;
+	int row = MBA / d->mb_width;
+	int col = MBA % d->mb_width;
+	int by = row * 16;
+	int bx = col * 16;
+	MpegRef *r;
+
+	if (intra) {
+		while ((*D9_CHCR >> 8) & 1)
+			;
+		d->mb[d->_810].hasRef = 0;
+	} else {
+		if (motion_type != 1 && motion_type != 2 && motion_type != 3) {
+			_Error1(d, "Invalid modion type -- ignored(%d)", motion_type);
+			d->Fault_Flag = 1;
+			return 0;
+		}
+		_getAllRefs(d, bx, by, macroblock_type, motion_type, PMV,
+			    motion_vertical_field_select, dmvector);
+		while ((*D9_CHCR >> 8) & 1)
+			;
+		dmaRefImage(d);
+		d->mb[d->_810].hasRef = 1;
+	}
+	if (MBAinc == 1 && (macroblock_type & 2))
+		d->mb[d->_810].coded = MBAinc;
+	else
+		d->mb[d->_810].coded = 0;
+	d->mb[d->_810].intra = intra;
+	if (d->picture_structure == 3)
+		d->mb[d->_810].image = d->ref[0][2]->buf + (col * d->ref[0][2]->mbh + row) * 384;
+	else {
+		if (d->picture_structure == 2)
+			r = d->ref[2][2];
+		else
+			r = d->ref[1][2];
+		d->mb[d->_810].image = r->buf + (col * r->mbh + row) * 384;
+	}
+	return 1;
+}
+
+void _getAllRefs(MpegDec *d, int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2],
+		 int motion_vertical_field_select[2][2], int dmvector[2])
+{
+	int DMV[2][2];
+	MpegRef *predframe[2][2];
+	int currentfield;
+	int same = 1;
+	int stw = 0;
+	int two;
+
+	d->mb[d->_810].nRef = 0;
+	if ((macroblock_type & 8) || d->picture_coding_type == 2) {
+		if (d->picture_structure == 3) {
+			if (motion_type == 2 || !(macroblock_type & 8)) {
+				_getRef0(d, d->ref[0][0], 0, 0, 0, 16, bx, by,
+					 PMV[0][0][0], PMV[0][0][1], 0, 0);
+			} else if (motion_type == 1) {
+				_getRef0(d, d->ref[0][0], motion_vertical_field_select[0][0], 0, 0, 8, bx, by,
+					 PMV[0][0][0], PMV[0][0][1] >> 1, motion_type, 0);
+				_getRef0(d, d->ref[0][0], motion_vertical_field_select[1][0], 1, 0, 8, bx, by,
+					 PMV[1][0][0], PMV[1][0][1] >> 1, motion_type, 0);
+			} else if (motion_type == 3) {
+				_dualPrimeVector(d, DMV, dmvector, PMV[0][0][0], PMV[0][0][1] >> 1);
+				_getRef0(d, d->ref[0][0], 0, 0, 0, 8, bx, by,
+					 PMV[0][0][0], PMV[0][0][1] >> 1, 1, 0);
+				_getRef0(d, d->ref[0][0], 1, 0, 0, 8, bx, by, DMV[0][0], DMV[0][1], 1, 1);
+				_getRef0(d, d->ref[0][0], 1, 1, 0, 8, bx, by,
+					 PMV[0][0][0], PMV[0][0][1] >> 1, 1, 0);
+				_getRef0(d, d->ref[0][0], 0, 1, 0, 8, bx, by, DMV[1][0], DMV[1][1], 1, 1);
+			} else
+				_Error1(d, "(a) invalid motion_type(%d)-0", motion_type);
+		} else {
+			two = 2;
+			currentfield = d->picture_structure == two;
+			predframe[0][0] = d->ref[1][0];
+			predframe[0][1] = d->ref[2][0];
+			predframe[1][0] = d->ref[1][1];
+			predframe[1][1] = d->ref[2][1];
+			same = 0;
+			if (d->picture_coding_type == two && d->secondField)
+				same = currentfield != motion_vertical_field_select[0][0];
+			if (motion_type == 1 || !(macroblock_type & 8)) {
+				_getRef0(d, predframe[same][motion_vertical_field_select[0][0]],
+					 0, 0, 0, 16, bx, by, PMV[0][0][0], PMV[0][0][1], 0, 0);
+			} else if (motion_type == 2) {
+				_getRef0(d, predframe[same][motion_vertical_field_select[0][0]],
+					 0, 0, 0, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0, 0);
+				same = 0;
+				if (d->picture_coding_type == 2 && d->secondField) {
+					if (currentfield != motion_vertical_field_select[1][0])
+						same = 1;
+					else
+						same = 0;
+				}
+				_getRef0(d, predframe[same][motion_vertical_field_select[1][0]],
+					 0, 0, 8, 8, bx, by, PMV[1][0][0], PMV[1][0][1], 0, 0);
+			} else if (motion_type == 3) {
+				if (d->secondField)
+					same = 1;
+				else
+					same = 0;
+				_dualPrimeVector(d, DMV, dmvector, PMV[0][0][0], PMV[0][0][1]);
+				_getRef0(d, predframe[0][currentfield], 0, 0, 0, 16, bx, by,
+					 PMV[0][0][0], PMV[0][0][1], 0, 0);
+				_getRef0(d, predframe[same][!currentfield], 0, 0, 0, 16, bx, by,
+					 DMV[0][0], DMV[0][1], 0, 1);
+			} else
+				_Error1(d, "(b) invalid motion_type(%d)-1", motion_type);
+		}
+		stw = 1;
+	}
+	if (macroblock_type & 4) {
+		if (d->picture_structure == 3) {
+			same = 1;
+			if (motion_type == 2) {
+				_getRef0(d, d->ref[0][1], 0, 0, 0, 16, bx, by,
+					 PMV[0][1][0], PMV[0][1][1], 0, stw);
+			} else {
+				_getRef0(d, d->ref[0][1], motion_vertical_field_select[0][1], 0, 0, 8, bx, by,
+					 PMV[0][1][0], PMV[0][1][1] >> 1, same, stw);
+				_getRef0(d, d->ref[0][1], motion_vertical_field_select[1][1], 1, 0, 8, bx, by,
+					 PMV[1][1][0], PMV[1][1][1] >> 1, same, stw);
+			}
+		} else {
+			if (motion_type == 1) {
+				_getRef0(d, motion_vertical_field_select[0][1] ? d->ref[2][1] : d->ref[1][1],
+					 0, 0, 0, 16, bx, by, PMV[0][1][0], PMV[0][1][1], 0, stw);
+			} else if (motion_type == 2) {
+				_getRef0(d, motion_vertical_field_select[0][1] ? d->ref[2][1] : d->ref[1][1],
+					 0, 0, 0, 8, bx, by, PMV[0][1][0], PMV[0][1][1], 0, stw);
+				_getRef0(d, motion_vertical_field_select[1][1] ? d->ref[2][1] : d->ref[1][1],
+					 0, 0, 8, 8, bx, by, PMV[1][1][0], PMV[1][1][1], 0, stw);
+			} else
+				_Error1(d, "(c) invalid motion_type(%d)-2", motion_type);
+		}
+	}
+}
+
+void _getRef0(MpegDec *d, MpegRef *src, int sfield, int dfield, int ofs, int h, int x, int y,
+	      int dx, int dy, int isfield, int average_flag)
+{
+	u_int buf = d->_81c;
+	int n = d->mb[d->_810].nRef;
+	MpegRi *rc = &d->mb[d->_810].riC[n];
+	MpegRi *ry = &d->mb[d->_810].riY[n];
+	int xpos, ypos, xint, yint, xh, yh, block, off, ch, avg, idx;
+	u_int mc;
+
+	/* luminance */
+	xpos = (dx >> 1) + x;
+	if (isfield)
+		ypos = ((dy >> 1) << 1) + y + (ofs + sfield);
+	else
+		ypos = (dy >> 1) + y + (ofs + sfield);
+	xint = xpos >> 4;
+	yint = ypos >> 4;
+	block = xint * src->mbh + yint;
+	ry->shift = xpos - (xint << 4);
+	ry->dst = (char *)buf + ((dfield + ofs) << 5);
+	off = ypos - (yint << 4);
+	xh = dx & 1;
+	yh = dy & 1;
+	if (yh) {
+		if (off + (h << isfield) >= 16) {
+			ry->rows = (16 >> isfield) - (off >> isfield) - 1;
+			ry->again = h - ry->rows;
+		} else {
+			ry->rows = h;
+			ry->again = 0;
+		}
+	} else {
+		if (off + (h << isfield) >= 17) {
+			ry->rows = (16 >> isfield) - (off >> isfield);
+			ry->again = h - ry->rows;
+		} else {
+			ry->rows = h;
+			ry->again = 0;
+		}
+	}
+	mc = d->mb[d->_810].mc + n * 1536;
+	avg = average_flag << 2;
+	idx = avg | (xh << 1) | yh;
+	ry->src0 = (char *)mc + (off << 4);
+	ry->stride = 16 << isfield;
+	ry->src1 = (char *)mc + (off << 4) + 768;
+
+	/* chrominance */
+	dx /= 2;
+	dy /= 2;
+	xpos = (dx >> 1) + (x >> 1);
+	ch = h >> 1;
+	if (isfield)
+		ypos = ((dy >> 1) << 1) + (y >> 1) + ((ofs >> 1) + sfield);
+	else
+		ypos = (dy >> 1) + (y >> 1) + ((ofs >> 1) + sfield);
+	rc->dst = (char *)buf + ((dfield + (ofs >> 1)) << 4) + 512;
+	rc->shift = xpos - ((xpos >> 3) << 3);
+	off = ypos - ((ypos >> 3) << 3);
+	xh = dx & 1;
+	yh = dy & 1;
+	if (yh) {
+		if (off + (ch << isfield) >= 8) {
+			rc->rows = (8 >> isfield) - (off >> isfield) - 1;
+			rc->again = ch - rc->rows;
+		} else {
+			rc->rows = ch;
+			rc->again = 0;
+		}
+	} else {
+		if (off + (ch << isfield) >= 9) {
+			rc->rows = (8 >> isfield) - (off >> isfield);
+			rc->again = ch - rc->rows;
+		} else {
+			rc->rows = ch;
+			rc->again = 0;
+		}
+	}
+	rc->stride = 8 << isfield;
+	mc += (((xpos >> 3) - xint) * 2 + ((ypos >> 3) - yint)) * 384;
+	d->mb[d->_810].rix[n] = _rix[idx];
+	rc->src0 = (char *)mc + (off << 3) + 256;
+	rc->src1 = (char *)mc + (off << 3) + 1024;
+	d->mb[d->_810].src[n] = src->buf + block * 384;
+	d->mb[d->_810].ri0[n] = _ri0[avg | (xh << 1) | yh];
+	d->mb[d->_810].dst[n] = src->buf + (block + src->mbh) * 384;
+	d->mb[d->_810].nRef++;
+}
+
+void _doMC(MpegDec *d, int n)
+{
+	int i;
+
+	if (d->mb[n].hasRef) {
+		for (i = 0; i < d->mb[n].nRef; i++) {
+			d->mb[n].rix[i](&d->mb[n].riY[i]);
+			d->mb[n].ri0[i](&d->mb[n].riC[i]);
+		}
+	}
+	if (d->mb[n].intra && d->mb[n].noCoef)
+		_Error(d, "intra && skip MB");
+	if (d->mb[n].intra)
+		_copyRefImage((u_long128 *)d->mb[n].image, (u_long128 *)d->mb[n].coef);
+	else if (d->mb[n].noCoef)
+		_copyRefImage((u_long128 *)d->mb[n].image, (u_long128 *)d->_81c);
+	else
+		_copyAddRefImage((u_long128 *)d->mb[n].image, (u_long128 *)d->_81c, (u_long128 *)d->mb[n].coef);
+}
+
 /* The reference fetch's interpolators, eight _rix_ and eight _ri0_ (the demo's names; _doMC
  * tail-calls them, and the table at 0x1CE378 holds them): MMI over a block of quadword rows, the
  * source realigned by qfsrv. Each is one asm in noreorder mode, its words the target's: written
@@ -89,17 +358,7 @@ void _copyrightExtension(MpegDec *d);
  * this toolchain's as and 2.96's, none under 991111's (10-51 words off: its as fills no slot, as
  * in libvu0) -- but the four _ri0_XY0 clear their outer-loop flag in the slot of the branch that
  * tests it (`bnez t8; move t8,zero`), which reorder mode cannot write. The argument block, as the
- * bodies read it: */
-typedef struct {
-	void *dst;	/* 0x00: halfword pixels out, two rows' stride a row */
-	int shift;	/* 0x04: the byte offset into the source quadwords (mtsab) */
-	int rows;	/* 0x08 */
-	int again;	/* 0x0C: a second pass (the other field) */
-	int stride;	/* 0x10 */
-	void *src0;	/* 0x14 */
-	void *src1;	/* 0x18: the next quadword of each row */
-} MpegRi;
-
+ * bodies read it: libmpeg.h's MpegRi. */
 void _rix_000(MpegRi *ri)
 {
 	asm __volatile__("
