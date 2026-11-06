@@ -95,44 +95,23 @@ inline void SetSensorBit(CBits *bits, unsigned int i)
 }
 
 /* and tested, the mask first (the target builds it before the word's address, as the set does --
- * CBits::Test indexes first; the name ours). The mask a local ANDed in place: MW folds a mask local
- * read once back into the expression and then evaluates the word's index first, whatever the order
- * written (13 spellings, inlined helpers for either side included); `m &= word` (or `m = m & word`)
- * keeps the mask first and every register but the result's (the kit's round 35: 8 -> 2) */
+ * CBits::Test indexes first; the name ours). A mask local of an enum type (a modelling device): MW folds
+ * an integer mask local read once back into the expression and then evaluates the word's index first
+ * (51 spellings over rounds 35-43), but IRO's propagation leaves an enum-typed variable alone (the game
+ * states' round 53), so the mask stays numbered first and the AND takes a fresh temporary */
+enum SensorMask_ { SENSORMASK_MAX = 0x7fffffff };
 inline bool TestSensorBit(const CBits *bits, unsigned int i)
 {
-    unsigned int m = 1 << (i & 31);
+    SensorMask_ m = (SensorMask_)(1 << (i & 31));
 
-    m &= bits->m_vec[i >> 5];
-    return m;
+    return m & bits->m_vec[i >> 5];
 }
 
 /* a weapon pickup seen: unless the AI already goes for a pickup or this SEAL has marked it, a Navy
  * SEAL goes for item 152 when its kit has none of it or none with ammunition (the pickup state
  * pushed and handed it, flag 1); any other item is marked seen by this SEAL. Whether it went
  * (OVL2 0x5CB450: 0x5CB870 asks it; new in SOCOM II -- the name ours). `go` declared first and
- * assigned after the early return: the target numbers it before the SEAL (s2 to its s1).
- * OPEN, 2 instructions, the seen-bit test's AND only: the target's `and v0,a0,v0` puts the result in
- * the word's register, TestSensorBit's `m &= word` in the mask's (`and a0,a0,v0`, the branch on a0).
- * Every other way round MW evaluates the word's index first (8: CBits::Test, the mask first or last,
- * in a local, the word's address in a local, `(w >> s) & 1`, inlined mask or word helpers, a
- * reference to the word); `m = 1; m <<= i & 31; return m & word;` puts the AND in v0 but swaps the 1
- * and the shift amount (4). 0x5CB630 below shares it. Round 39: 23 more shapes (the word or the
- * result a local, a copy of the mask, `!= 0`, a ternary, the shift as its own statement with the
- * amount a local before or after, a dead first definition, the index a local) all stay at 2 or
- * move to 4-10 -- the `m = 1; m <<= s;` forms put the AND in v0 but always trade the 1 and the
- * amount (CAiSPickup::Tick's SetBit has the same pair, its igdump reading in its note). Round 40:
- * the AND inside an inline taking the word and the mask by value (either order, `& `, `!= 0`, a
- * ternary, the word by pointer) gives 8 -- the word's index computed first again. Round 41: `w = m & w`
- * with the word a local (declared first or after the mask, a dead first definition of the mask) gives
- * 10, a copy of `m &= word` returned 2, the shot-at state's mask-parameter inline (TestBits, either
- * argument order) 8. Round 43, MW's colouring replayed (tools/igreplay.py on the `return (1 << (i & 31))
- * & word` variant, `--move` of its andi, 1 and sllv below the word's address chain gives every target
- * register): the target numbers the mask chain first and ANDs into a fresh temporary -- `m &=` keeps the
- * order but writes the mask's own vreg (no numbering splits them), and every fresh-result shape (30
- * more: `% 32` / `/ 32` trees, inline mask helpers, dead, self and `|= 0` definitions, a const or bool
- * local, casts hiding the load, `1UL`) propagates the mask back and computes the word's address first
- * (8); `m = 1; m <<= s` forms keep a fresh result but number the 1 before the amount (4) */
+ * assigned after the early return: the target numbers it before the SEAL (s2 to its s1). */
 extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
 {
     bool go;
@@ -181,8 +160,7 @@ class CPickupAmmo : public CZItemStash {
 /* an ammunition pickup seen: unless the AI already goes for a pickup or this SEAL has marked it, a
  * Navy SEAL goes for it when it holds item 152 and the kit has none of that or none with ammunition
  * (the pickup state pushed and handed it, flag 1); every other entry marks it seen by this SEAL.
- * Whether it went (OVL2 0x5CB630: 0x5CB450's sibling for the stash, new in SOCOM II -- the name ours).
- * OPEN, 2 instructions: the seen-bit test's AND, 0x5CB450's (TestSensorBit's note) */
+ * Whether it went (OVL2 0x5CB630: 0x5CB450's sibling for the stash, new in SOCOM II -- the name ours) */
 extern "C" bool func_005CB630(CSealCtrlAi *ai, CPickup *p, CPickupAmmo *a)
 {
     CZSealBody *seal = (CZSealBody *)ai->m_entity;

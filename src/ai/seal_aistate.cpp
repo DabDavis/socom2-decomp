@@ -1825,25 +1825,15 @@ extern "C" bool func_005F51A0(CSealCtrlAi *ai, int x, unsigned int flags)
 
 /* a pickup: to a cell beside it (the goto pushed, coming back to step 6), the AI's mode 4, the
  * pickup taken (when the flag's bit 0 asks) and marked seen by this SEAL, then three seconds on
- * (OVL2 0x5F52D0; SOCOM 1's).
- * OPEN, 4 instructions, two registers in the bit's set: the target holds the SEAL's index in a1
- * and its low five bits in a2, here the other way round. Tried: the inline's parameters swapped,
- * a CBits member, a nested inline on the pickup, the mask computed first, `/ 32` and `% 32`, an
- * int index, the step assigned before, after or around it. Everything else is the target's.
- * Round 39, MW's colouring read (igdump, build/scratch/kit/ig/): SetBit's index is a variable
- * numbered right after the caller's five locals (v37), so coloured last (a2), while `i & 31` is a
- * temporary coloured earlier (a1) -- the target colours the index first, as if it were the later
- * number; still 4 in 18 more shapes (the word and bit as separate parameters either order, the bit
- * or word or mask a local, a reference or pointer to the word, the index reused, the bare
- * expression in the caller, an index local in the caller). Round 43: SetBit's index by const
- * reference, by pointer, a reference to the word, and the bare expression reading the index twice
- * all stay at 4 (0x5CB450's seen-bit test is the same question). Round 59, replayed on a 3.0b52
- * copy of the unit (igreplay --want 37=a1,79=a2): the target's pair needs `i & 31` (the code
- * generator's temporary v79) numbered before SetBit's index (v37: anywhere from 31.5 to 36.5, among
- * the caller's own locals), or the index after it (79.5) -- a caller's `unsigned int bit` declared
- * at the top in each of the four places, set in the case bare or from a block-local index, or
- * through an inline taking it by reference, all stay at 4 (the single-use local is propagated back
- * into the shift) */
+ * (OVL2 0x5F52D0; SOCOM 1's). The bit's low five bits through an enum-typed
+ * argument (a modelling device, the game states' round-53 rule: IRO's propagation leaves an enum-typed
+ * variable alone, so the argument's temporary stays where the replay of round 59 wanted it, numbered
+ * before SetBit's index -- 40 integer spellings over rounds 39-59 stayed at 4 off) */
+enum PickBit_ { PICKBIT_MAX = 0x7fffffff };
+inline void SetBitE(CBits *bits, unsigned int i, PickBit_ bit)
+{
+    bits->m_vec[i >> 5] |= 1 << bit;
+}
 int CAiSPickup::Tick(CSealCtrlAi *ai)
 {
     STEP step;
@@ -1877,7 +1867,7 @@ int CAiSPickup::Tick(CSealCtrlAi *ai)
         if (m_flags & 1)
             PickupObject__10CZSealBodyFP7CPickup(seal, p);
         step = STEP_4;
-        SetBit((CBits *)p->m_bits, seal->m_index);
+        SetBitE((CBits *)p->m_bits, seal->m_index, (PickBit_)(seal->m_index & 31));
         m_time = StateTimer(ai) + 3.0f;
         break;
     case STEP_4:
