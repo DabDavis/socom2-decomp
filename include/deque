@@ -444,6 +444,15 @@ class cdeque<const void *, Allocator> : public __cdeque_buf<const void *, Alloca
 public:
     typedef const void *value_type;
 
+    /* THE BUFFER'S OWN ITERATOR IS FOUR WORDS (the MSL headers rounds 31 and 33, applied in round 34):
+     * the position, the storage, the start's and the end's slots -- cdeque<T *>::iterator's layout. The
+     * resize 0x285660 builds end() for insert and begin() + n and end() for erase so, passed by value:
+     * begin() through the first slot's constructor (round 32's make_begin() shape: the start read into
+     * a named local, by value, the storage re-read through the field's own address -- `*&data_`: the
+     * store and both reads through one address register, numbered after the shift's front-end
+     * temporary), end() through the reference constructor (the capacity taken into a local before its
+     * modulo, the storage re-read through d()), begin() + n stepping a copy (`return t += n`, t kept in
+     * memory) whose += steps n itself. ~__deque_buf walks a ring iterator of its own (below) */
     class iterator {
     public:
         /* what std::remove_if's dispatch reads (MSL's deque iterators are random access; no instance
@@ -452,30 +461,93 @@ public:
         typedef int difference_type;
         typedef std::random_access_iterator_tag iterator_category;
 
-        iterator(value_type *p, value_type *first, value_type *last) : p_(p), first_(first), last_(last) {}
+        iterator(value_type *p, value_type *const &data, const unsigned int &start, const unsigned int &cap)
+            : p_(p), data_(data), first_(d() + start), last_(d() + cap)
+        {
+        }
+        iterator(value_type *data, unsigned int start, const unsigned int &cap)
+            : p_(data + start), data_(data), first_(*&data_ + start), last_(*&data_ + cap)
+        {
+        }
+        value_type *const &d() const { return data_; }
         value_type &operator*() const { return *p_; }
         iterator &operator++()
         {
             if (++p_ == last_)
-                p_ = first_;
+                p_ = data_;
             return *this;
+        }
+        iterator &operator+=(int n)
+        {
+            int cap = last_ - data_;
+
+            n += p_ - data_;
+            if (n < 0)
+                n += cap;
+            else if (n >= cap)
+                n -= cap;
+            p_ = data_ + n;
+            return *this;
+        }
+        iterator operator+(int n) const
+        {
+            iterator t(*this);
+
+            return t += n;
         }
         bool operator==(const iterator &x) const { return p_ == x.p_; }
         bool operator!=(const iterator &x) const { return p_ != x.p_; }
 
         value_type *p_;
+        value_type *data_;
         value_type *first_;
         value_type *last_;
     };
-    iterator begin() { return iterator(this->data_ + this->start_, this->data_, this->data_ + this->capacity_); }
-    /* the end's index taken first, then the data pointer (the MSL headers round 14: ~__deque_buf's walk
-     * computes the modulo before it loads data_ -- 0x2CEFB0, 0x2E19E0, 0x3A6E60 byte-exact so; the index
-     * written inside the constructor's first argument loads data_ first, 0x140 against 0x138) */
+    iterator begin()
+    {
+        unsigned int s = this->start_;
+
+        return iterator(this->data_, s, this->capacity_);
+    }
     iterator end()
+    {
+        unsigned int c = this->capacity_;
+        unsigned int e = c ? (this->start_ + this->size_) % c : 0;
+
+        return iterator(this->data_ + e, this->data_, this->start_, this->capacity_);
+    }
+    /* THE RING ~__deque_buf WALKS (the MSL headers round 34; the name ours): three words, the position,
+     * the storage the position wraps to and the end's slot -- the iterator this header gave the buffer
+     * until round 34, kept for the walk: under the four-word iterator its begin()'s capacity is read
+     * back through a reference and its start shared, where the six walks (0x2CEFB0 game_main.cpp, the
+     * lobby's 0x2E19E0, the chat's 0x2F6BC0, the state machine's 0x3A6E60, vis_vu.cpp's and
+     * zrdr_edit.cpp's copies) take the end's capacity register for the last slot and reload the start
+     * after the storage (35 off, rounds 31 and 33; through the four-word const_iterator 18 off: the
+     * size's load shared with the test). The end's index taken first, then the data pointer (the MSL
+     * headers round 14: the walk computes the modulo before it loads data_; the index written inside
+     * the constructor's first argument loads data_ first, 0x140 against 0x138) */
+    class __ring_iterator {
+    public:
+        __ring_iterator(value_type *p, value_type *first, value_type *last) : p_(p), first_(first), last_(last) {}
+        value_type &operator*() const { return *p_; }
+        __ring_iterator &operator++()
+        {
+            if (++p_ == last_)
+                p_ = first_;
+            return *this;
+        }
+        bool operator!=(const __ring_iterator &x) const { return p_ != x.p_; }
+
+        value_type *p_;
+        value_type *first_;
+        value_type *last_;
+    };
+    __ring_iterator __ring_begin() { return __ring_iterator(this->data_ + this->start_, this->data_, this->data_ + this->capacity_); }
+    __ring_iterator __ring_end()
     {
         unsigned int e = this->capacity_ ? (this->start_ + this->size_) % this->capacity_ : 0;
 
-        return iterator(this->data_ + e, this->data_, this->data_ + this->capacity_);
+        return __ring_iterator(this->data_ + e, this->data_, this->data_ + this->capacity_);
     }
 
     cdeque() {}
@@ -490,7 +562,7 @@ public:
     void pop_front();
     /* the back dropped: only the count (the deque's pop_back inlines it, 0x3349C0) */
     void pop_back() { --this->size_; }
-    /* out of line in an earlier unit (0x2858B0, 0x285A50, 0x285660).
+    /* out of line in an earlier unit (0x2858B0, 0x285A50); resize (0x285660) defined below since round 34.
      * resize's body MEASURED, NOT APPLIED (the MSL headers round 31, build/p31/dq/: deque.resize.diff,
      * the v_rs*.py variants, untracked). The image's 0x285660 (zanim_menu.cpp's tail) is SOCOM 1's
      * resize without the fill value: `if (size_ < n) insert(end(), n - size_, x); else if (n <
@@ -515,7 +587,7 @@ public:
      * game_main.cpp, the lobby's 0x2E19E0, the chat's 0x2F6BC0, the state machine's, vis_vu.cpp's and
      * zrdr_edit.cpp's copies: 0x140 against 0x138 -- the walk wants the end's last slot computed
      * before its position, which this header's three-word (p, first, last) constructor gives by
-     * MW's right-to-left arguments), so it is not applied. THE MSL HEADERS ROUND 33 (build/p33/rs/,
+     * MW's right-to-left arguments), so it was not applied. THE MSL HEADERS ROUND 33 (build/p33/rs/,
      * untracked: rv.py and round 31's iterator on today's header): CODE-EXACT AS A PROBE -- begin()
      * through round 32's first-slot shape, the start read into a named local and passed by value,
      * `begin() { unsigned int s = this->start_; return iterator(this->data_, s, this->capacity_); }`,
@@ -526,11 +598,16 @@ public:
      * the target's, its three references alone unresolved -- insert 0x286160 and erase 0x285D30
      * (placeholders) and the zero word 0x3DE1D0 (no data row). Through `d()` it stays 7 off (the
      * accessor's reference is the inliner's, numbered before the shift), through `data_` straight 6
-     * (the store folded to a frame offset and scheduled first), t named and returned 0x214. Still not
-     * applied: under the four-word iterator ~__deque_buf's walk 0x2CEFB0 is 35 off. Once both fit,
-     * the callers' units emit it -- game_main.cpp (0x2CF970), the lobby's (0x2E1090, 0x2E1610), the
-     * rdr editor's (0x334440), util_ssm.cpp (0x3A6710), vis_vu.cpp (0x3B8000) and zanim_menu.cpp's
-     * state queue push (0x2852B0) all call it. NOT the chat's push_back: 0x2F5290 never
+     * (the store folded to a frame offset and scheduled first), t named and returned 0x214. Not applied
+     * then: under the four-word iterator ~__deque_buf's walk 0x2CEFB0 is 35 off. APPLIED IN THE MSL
+     * HEADERS ROUND 34 (build/p34/vR2.py, untracked): the four-word iterator above, the walk through
+     * __ring_iterator (its code the old iterator's: all six walks unchanged), resize defined below with
+     * clear() and SOCOM 1's insert / erase signatures -- the rows 0x286160 / 0x285D30 named for them and
+     * the zero word 0x3DE1D0 given its data row (resize's static). The units that call it emit it: the
+     * lobby's (0x2E1090, 0x2E1610), the rdr editor's (0x334440), util_ssm.cpp (0x3A6710), vis_vu.cpp
+     * (0x3B8000) -- and the chat's (its push_back's scalar branch names it, dead: the copy is not
+     * linked); game_main.cpp's push_back 0x2CF970 and zanim_menu.cpp's state queue push (0x2852B0) are
+     * not written there. NOT the chat's push_back: 0x2F5290 never
      * calls resize -- a class element's growth path builds the bigger block buffer in a temporary
      * (`buf_type tmp(2 * size(), 0)`: 0x2F5940 is the n-copies constructor's body; then `tmp.reserve(2);
      * tmp.push_back(0)` for an empty buffer, else `tmp = buf` -- 0x2F5700 the range assign behind the
@@ -542,6 +619,16 @@ public:
     void push_back(const value_type &x);
     void reserve(unsigned int n);
     void resize(unsigned int n);
+    /* emptied: the two stores (resize's shrink to nothing) */
+    void clear()
+    {
+        this->size_ = 0;
+        this->start_ = 0;
+    }
+    /* out of line in an earlier unit (zanim_menu.cpp's tail: erase 0x285D30, insert 0x286160 -- SOCOM 1's
+     * signatures, the four-word iterators by value; resize calls both) */
+    iterator erase(iterator first, iterator last);
+    void insert(iterator position, unsigned int n, const value_type &x);
     unsigned int max_size() const;
     /* THE GROWTH RECOMMENDATION (0x285BB0, out of line in an earlier unit, zanim_menu.cpp's tail; the
      * MSL headers round 32, named for the online lane's round 24): the capacity a buffer that must hold
@@ -704,6 +791,26 @@ void cdeque<const void *, Allocator>::do_assign(ForwardIterator first, ForwardIt
     }
     __deque_copy(first, last, this->data_);
     this->size_ = n;
+}
+
+/* the size changed to n (0x285660, zanim_menu.cpp's tail; SOCOM 1's resize(n, x) without the fill value):
+ * grown by n - size() slots of a zero inserted at the end, shrunk by erasing from begin() + n to the
+ * end, or emptied outright. The value is a static of resize's -- the zero word at 0x3DE1D0 in .data,
+ * after UICommandTable, which only resize addresses (MW puts a zero-initialised static in .bss: the
+ * declaration that puts it in .data is not found; the code is the same) */
+template <class Allocator>
+void cdeque<const void *, Allocator>::resize(unsigned int n)
+{
+    static value_type x;
+
+    if (this->size_ < n)
+        insert(end(), n - this->size_, x);
+    else if (n < this->size_) {
+        if (n != 0)
+            erase(begin() + n, end());
+        else
+            clear();
+    }
 }
 
 template <class Allocator>
@@ -997,15 +1104,16 @@ const Allocator &__deque_buf<T, Allocator>::alloc() const
 /* the blocks freed walking the buffer, then the buffer (0x2CEFB0, out of class): the teardown's tail
  * tests `this` five times as the target's (the pair's two levels and the buffer's three); byte-exact
  * since the MSL headers round 14 (0x2CEFB0, the lobby's 0x2E19E0, the state machine's 0x3A6E60), the
- * buffer's end() taking its index before its data pointer */
+ * buffer's end() taking its index before its data pointer -- walked through cdeque<PCv>'s own
+ * __ring_iterator since the MSL headers round 34 (the buffer's iterator four words for resize) */
 template <class T, class Allocator>
 __deque_buf<T, Allocator>::~__deque_buf()
 {
     if (this->buf_.second_.size() != 0) {
         typedef Metrowerks::cdeque<const void *, allocator<const void *> > B;
-        typename B::iterator e = this->buf_.second_.B::end();
+        typename B::__ring_iterator e = this->buf_.second_.B::__ring_end();
 
-        for (typename B::iterator i = this->buf_.second_.B::begin(); i != e; ++i)
+        for (typename B::__ring_iterator i = this->buf_.second_.B::__ring_begin(); i != e; ++i)
             if (*i)
                 operator delete((void *)*i);
     }
