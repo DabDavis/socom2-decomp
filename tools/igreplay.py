@@ -57,6 +57,10 @@ a deep copy of the record (relabel(), kept for its callers): the same colours, ~
     ./tools/igreplay.py DUMP -f F -r 0 --target UNIT F_MANGLED --movers 41,87 --timeout 60
 
 FPR records (GCC round 35a, the AI core's LeadTargetG and the lanes' `$f20,$f0,$f20` operand misses):
+A dump igdump made with --compiler (a unit's colouring under another build than its directive's: GCC round 44a, the
+kit's round 59) is said to be one on this tool's output, a NOTE line naming both builds, and --target then builds its
+candidate with the dump's own build; --compiler BUILD names another, and says so.
+
 --target reads a float node's register as it reads a GPR's -- the candidate's instructions at the
 node's uses, the target's at the same indices -- and --move/--want/--movers score FPR records as GPR
 ones (the saved registers f20-f31, the volatile f0-f19; `--want len=f21`). igdump records an FPR
@@ -613,16 +617,17 @@ def tmap(rec: dict, ours: list[str], targ: list[str], window: int = 24, disp: bo
     return out, conflicts, unmatched
 
 
-def final_code(unit: Path, func: str, img=None) -> tuple[list[str], list[str]]:
+def final_code(unit: Path, func: str, img=None, compiler: str | None = None) -> tuple[list[str], list[str]]:
     """(the candidate's final code, the target row's), instruction texts: `func` (a map name the unit
-    defines) built as sccheck builds the unit (its directive, include/ and src/)."""
+    defines) built as sccheck builds the unit (its directive, include/ and src/) -- under `compiler`
+    in place of its directive's toolchain when given (--compiler, GCC round 44a)."""
     here = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(here))
     import scdecomp as E
     import scdiff as D
     import sccheck
     st, img = E.symbols(), img or E.image()
-    _, obj, err = sccheck.build_one(Path(unit).resolve(), here / "build" / "ig" / "obj")
+    _, obj, err = sccheck.build_one(Path(unit).resolve(), here / "build" / "ig" / "obj", compiler=compiler)
     if obj is None:
         raise SystemExit(f"{unit}: {err.strip().splitlines()[-1] if err.strip() else 'did not build'}")
     sym = st.get(func)
@@ -819,6 +824,34 @@ def load(path) -> list[dict]:
     return [json.loads(ln) for ln in open(path)]
 
 
+def build_note(recs: list[dict]) -> str | None:
+    """The line that says a dump came from another build than its unit's (igdump --compiler, GCC round
+    44a); None for a dump of the unit's own build."""
+    r = next((r for r in recs if r.get('built_by')), None)
+    if r is None:
+        return None
+    return (f"NOTE: this dump came from {r['built_by']}, not the unit's own {r['unit_compiler']} (igdump "
+            f"--compiler): its colourings are that build's, not the build the unit is scored under")
+
+
+def target_compiler(recs: list[dict], unit: Path, override: str | None) -> tuple[str | None, str | None]:
+    """(the toolchain --target's candidate is built by, in place of the unit's directive -- None: its
+    own -- and the line saying so). --compiler, else the build the dump's records name, since the
+    candidate's code is aligned with the record's PCode: a candidate from another build than the
+    dump's misaligns wherever the two builds' code differs."""
+    here = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(here))
+    import scdiff as D
+    import sccheck
+    own = sccheck.tu_options(Path(unit).resolve()).get('compiler', D.COMPILER)
+    made = next((r['built_by'] for r in recs if r.get('built_by')), None)
+    use = override or made or own
+    other = f" (the dump's own build, {made}, is another: the alignment is approximate)" if made and made != use else ""
+    if use == own:
+        return None, f"NOTE: --target's candidate built by the unit's own {own}{other}" if other else None
+    return use, f"NOTE: --target's candidate built by {use}, not the unit's own {own}{other}"
+
+
 def later_end(recs: list[dict], k: int) -> int | None:
     """The local area's size after the last spill pass of record k's function (its records follow it in
     the dump with the same procedure and frame), for stack_slots' `later_end`; None if k's is the last."""
@@ -866,6 +899,10 @@ def main(argv=None) -> int:
                     help="read each virtual register's register in the target (FUNC a map name UNIT defines) and "
                          "score the colouring --move/--drop give against it; with --movers, the saved registers "
                          "it gives are the --want")
+    ap.add_argument("--compiler", metavar="BUILD",
+                    help="build --target's candidate with this toolchain, not the one the unit's directive names "
+                         "(default: the build the dump's records name, igdump --compiler; GCC round 44a); the "
+                         "output says which build the dump and the candidate came from")
     ap.add_argument("--timeout", type=float, default=300.0,
                     help="a --want/--movers search's budget in seconds (default 300; 0: none)")
     ap.add_argument("--max-iters", type=int, help="a search's budget in placements replayed")
@@ -873,6 +910,9 @@ def main(argv=None) -> int:
                     help="seconds between a search's progress lines on stderr (default 5; 0: none)")
     a = ap.parse_args(argv)
     recs = load(a.dump)
+    note = build_note(recs)
+    if note:
+        print(note)
     rx = re.compile(a.func) if a.func else None
     lrx = re.compile(a.link) if a.link else None
     sel = [(k, r) for k, r in enumerate(recs)
@@ -924,7 +964,10 @@ def main(argv=None) -> int:
         if not any(not isinstance(ins, str) for ins in rec.get('code') or ()):
             raise SystemExit(f"record [{k}] holds no PCode: igdump recorded the GPR class's alone before GCC "
                              "round 35a -- dump the unit again for its FPR records' PCode")
-        code = final_code(Path(a.target[0]), a.target[1])
+        built, note = target_compiler(recs, Path(a.target[0]), a.compiler)
+        if note:
+            print(note)
+        code = final_code(Path(a.target[0]), a.target[1], compiler=built)
         tcol, conflicts, unmatched = target_colours(rec, Path(a.target[0]), a.target[1], code=code)
         lines, want, _ = target_report(rec, tcol, conflicts, unmatched, moves, drop)
         print("\n".join(lines))

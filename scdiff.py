@@ -282,6 +282,16 @@ def table_word_ok(elf: E.Elf, s: E.ElfSymbol, field: int, tw: int, fsym: E.ElfSy
     return None
 
 
+# A literal's run stops at the next relocated word (the recogniser's round 39c, proved by GCC round 44a):
+# an unnamed literal has no size of its own, so its extent was its first NUL -- casrDoSpelling's doubles
+# hold none, and ran on into the next object, casrAcquisition's jump table at 0x6588B0, stopping inside its first
+# entry (the addend's own upper bytes), whose relocated word was then cut short and compared raw against
+# the linked target: WRONG REFERENCE where every instruction matches. A relocated word is never a literal's
+# text, and the object it belongs to is compared by its own references. SC_LITERAL_RUN=nul restores the old
+# rule (the measurement's control).
+LITERAL_STOPS_AT_RELOC = os.environ.get("SC_LITERAL_RUN", "") != "nul"
+
+
 def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.ElfSymbol,
                     taddr: int, st: E.SymbolTable, img: E.Image, size: int = 0,
                     at_least: int = 0, depth: int = 0) -> bool | None:
@@ -292,9 +302,10 @@ def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.E
     (table_word_ok): a jump table's entries, a table of functions, of strings. Everything
     else (string text, float bits, a null slot) compares byte for byte. The extent is the
     object's whole size when a symbol gives one (local_extent); else, for an unnamed literal,
-    the run of relocated words (a table), the string up to its terminator, or 16 bytes --
-    and at least `at_least`, the width the referencing instruction loads (a float literal
-    whose first byte is zero is not a one-byte string)."""
+    the run of relocated words (a table), the string up to its terminator or the next relocated
+    word (LITERAL_STOPS_AT_RELOC), or 16 bytes -- and at least `at_least`, the width the
+    referencing instruction loads (a float literal whose first byte is zero is not a one-byte
+    string)."""
     sec = elf.sections[sec_index]
     data = sec.data
     if sec.type == 8:                           # SHT_NOBITS (.bss): a zeroed static's bytes
@@ -308,6 +319,8 @@ def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.E
                 size += 4
         elif b"\0" in data[start:start + 512]:
             size = data.index(b"\0", start) - start + 1
+            if LITERAL_STOPS_AT_RELOC:
+                size = min([size] + [o - start for o in rels if start < o < start + size])
         else:
             size = min(16, len(data) - start)
         size = max(size, at_least)

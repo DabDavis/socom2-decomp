@@ -2747,6 +2747,347 @@ def test_pragmascan_finds_the_kits_cse_off():
     ck(got == [("f", ("S",)), ("S", ("S",)), ("operator==", ())], f"the text's bodies ({got})")
 
 
+LITERAL_FIXTURE = """/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+double ig_lits(double x)
+{
+	return x * 1.1 + x * 2.2;
+}
+
+int ig_table(int k)
+{
+	switch (k) {
+	case 0: return 11;
+	case 1: return 23;
+	case 2: return 37;
+	case 3: return 41;
+	case 4: return 59;
+	case 5: return 61;
+	case 6: return 67;
+	}
+	return 0;
+}
+
+const char *ig_str(void)
+{
+	return "abc";
+}
+"""
+
+
+class _LiteralImage:
+    """A target section at `base`: the two calls local_object_ok makes of an image."""
+    def __init__(self, base: int, data: bytes):
+        self.base, self.data = base, data
+
+    def covers(self, addr: int, n: int) -> bool:
+        return self.base <= addr and addr + n <= self.base + len(self.data)
+
+    def read(self, addr: int, n: int) -> bytes:
+        return self.data[addr - self.base:addr - self.base + n]
+
+
+def _casr_literal_checks(cobj: Path) -> None:
+    """casrDoSpelling, the row the literal-run rule was written for, in casr.c's object `cobj`."""
+    img, st = E.image(), E.symbols()
+    fn = st.get("casrDoSpelling")
+    r = D.compare(cobj, fn.name, fn, img, st)
+    ck(r.match, f"casrDoSpelling byte-exact ({r.verdict})")
+    D.LITERAL_STOPS_AT_RELOC = False
+    try:
+        old = D.compare(cobj, fn.name, fn, img, st)
+    finally:
+        D.LITERAL_STOPS_AT_RELOC = True
+    bad = [f for f in old.relocs if f.status == "CONTENT-MISMATCH"]
+    ck(not old.match and old.masked_equal and len(bad) == 7,
+       f"under the old rule: every instruction right, 7 references wrong ({old.verdict}, {len(bad)})")
+    lit = bad[0].want
+    r = D.compare(cobj, fn.name, fn, _image_with_word(img, lit, img.word(lit) ^ 0x100), st)
+    ck(not r.match and any(f.status == "CONTENT-MISMATCH" for f in r.relocs),
+       f"NEGATIVE CONTROL, the real row: a double changed in the image fails ({r.verdict})")
+    entry = max(f.want for f in bad) + 8        # the run's last double, then the next object: a switch's table
+    owner = st.containing(img.word(entry))
+    patched = _image_with_word(img, entry, img.word(entry) + 8)
+    ck(owner is not None and owner.name != fn.name and D.compare(cobj, fn.name, fn, patched, st).match,
+       f"a wrong word in the table after the doubles ({owner and owner.name}'s) is not their function's to catch")
+    ck(D.compare(cobj, owner.name, owner, img, st).match and not D.compare(cobj, owner.name, owner, patched, st).match,
+       "and its own function's reference fails on it")
+
+
+def test_literal_run_stops_at_the_next_relocated_word():
+    """An unnamed literal has no size of its own, so scdiff took its extent to its first NUL, and
+    casrDoSpelling's doubles (the recogniser's round 39c, 0x4DC178) hold none: the run went on into the next
+    object, casrAcquisition's jump table at 0x6588B0, and stopped inside its first entry at the addend's own
+    zero byte -- a relocated word cut short, compared raw against the linked target: WRONG REFERENCE on 7
+    relocations where every instruction matches. A literal's run now stops at the next relocated word (GCC
+    round 44a). IT NARROWS WHAT IS COMPARED, so: every unit scored under both rules (15,439 functions) changes
+    one verdict, casrDoSpelling's, and the rule narrows 7 references of the tree, all its own. Here a fixture
+    with the same shape -- two doubles, then a jump table, in one .rodata -- reproduces the bug under the old
+    rule (SC_LITERAL_RUN=nul); the NEGATIVE CONTROLS: a literal whose bytes differ before the next relocated
+    word still fails, under both rules -- the first byte, and the last byte before the word; a string that
+    ends first keeps its run, and a wrong byte in it fails; the table a literal no longer reads is its own
+    reference's to check, and a wrong entry fails from there. On the real row, when the unit holds it: MATCH
+    under the new rule, WRONG REFERENCE under the old, a wrong double fails, and a wrong table word leaves the
+    doubles' function alone and fails the table's."""
+    st = E.symbols()
+    src = BUILD / "ig_literal.c"
+    src.write_text(LITERAL_FIXTURE)
+    _, obj, err = C.build_one(src, BUILD / "literal", root=src.parent)
+    assert obj is not None, f"the fixture did not build: {err[-300:]}"
+    elf = E.Elf.read(obj)
+    ro = next(i for i, s in enumerate(elf.sections) if s.name == ".rodata")
+    data = elf.sections[ro].data
+    rels = elf.relocs_for(ro)
+    table = rels[0].offset
+    fsym = next(f for f in elf.functions() if f.name == "ig_lits")
+    ck(table == 16 and data[6:8] == b"\xf1\x3f" and data[14:16] == b"\x01\x40"
+       and table < data.index(b"\0") < table + 4,
+       f"the premise: two doubles, then the table, the first NUL inside its first entry ({data.hex()})")
+    base, text = 0x700000, 0x710124
+    linked = bytearray(data)
+    for r in rels:      # the linker's work: each entry the address in .text (the object's .text at `text`)
+        struct.pack_into("<I", linked, r.offset, text + struct.unpack_from("<I", data, r.offset)[0])
+
+    def ok(start, image=None, at_least=8, stops=True):
+        D.LITERAL_STOPS_AT_RELOC = stops
+        try:
+            return D.local_object_ok(elf, ro, start, base + start, fsym, text, st,
+                                     _LiteralImage(base, bytes(image if image is not None else linked)),
+                                     at_least=at_least)
+        finally:
+            D.LITERAL_STOPS_AT_RELOC = True
+
+    def changed(off):
+        bad = bytearray(linked)
+        bad[off] ^= 0x10
+        return bad
+
+    ck(ok(0) is True and ok(8) is True, "the doubles against their own bytes: equal under the new rule")
+    ck(ok(0, stops=False) is False and ok(8, stops=False) is False,
+       "under the old rule they fail: the run stops inside the table's first entry, compared raw -- the bug")
+    for off, what in ((0, "the first double's first byte"), (7, "the first double's last byte"),
+                      (table - 1, "the last byte before the relocated word")):
+        ck(ok(0, changed(off)) is False and ok(0, changed(off), stops=False) is False,
+           f"NEGATIVE CONTROL: {what} differs: fails under both rules")
+    ck(ok(8, changed(table - 1)) is False and ok(8, changed(8)) is False,
+       "NEGATIVE CONTROL: the reference to the second double, its own bytes wrong: fails")
+    ck(ok(0, changed(table)) is True, "what the rule gives up: the entry after the literal is not the literal's")
+    ck(ok(table, at_least=4) is True and ok(table, changed(table), at_least=4) is False
+       and ok(table + 4, changed(table + 4), at_least=4) is False,
+       "the table itself, referenced at its own start, resolves entry by entry: a wrong one fails")
+    s0 = data.index(b"abc\0")
+    ck(ok(s0, at_least=1) is True and ok(s0, at_least=1, stops=False) is True
+       and ok(s0, changed(s0 + 1), at_least=1) is False and ok(s0, changed(s0 + 1), at_least=1, stops=False) is False,
+       "a string ends at its NUL under both rules, and a wrong byte in it fails")
+    casr = HERE / "src" / "lib" / "asr" / "casr.c"
+    if "int casrDoSpelling(CASR *c)\n{" not in casr.read_text(errors="surrogateescape"):
+        print("      (the real row skipped: casr.c does not hold casrDoSpelling yet -- the recogniser's round 39c)")
+        return
+    _, cobj, err = C.build_one(casr, BUILD / "literal")
+    assert cobj is not None, err[-300:]
+    _casr_literal_checks(cobj)
+
+
+def test_igdump_compiler_override_says_so():
+    """tools/igdump.py --compiler and tools/igreplay.py --compiler (GCC round 44a, the kit's round 59: igdump
+    refuses seal_aistate.cpp, 3.0b50 by its first line, yet a temporary copy with the directive changed dumps and
+    replays faithfully). A 3.0b50 fixture is refused as before, the refusal naming the override; with
+    `--compiler` 3.0b52 it dumps -- the same colouring as the fixture without the directive -- every record and
+    the output, --read's and igreplay's too, saying the dump came from another build than the unit's. The real
+    unit: seal_aistate.cpp dumps, every record replays exactly, and --target's candidate is built by the dump's
+    own build, said so, or by --compiler's. The negatives: --compiler naming another build than the breakpoints'
+    is refused, a GCC unit stays refused, a dump of the unit's own build carries no field and prints no note."""
+    import contextlib
+    import io
+    import json
+    import re
+    import igdump
+    import igreplay
+    b52, b50 = igdump.MW_BUILD, "mwcps2-3.0b50-030527"
+
+    def run(mod, *args):
+        buf, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+            rc = mod.main([str(a) for a in args])
+        return rc, buf.getvalue(), err.getvalue()
+
+    plain = _ig_fixture()
+    fix50 = _ig_fixture("ig_b50.c", "/* sc: compiler=mwcps2-3.0b50-030527 */\n" + IG_FIXTURE)
+    out = BUILD / "ig_override.jsonl"
+    rc, text, err = run(igdump, fix50, "-o", out)
+    ck(rc == 1 and "breakpoints are" in err and "--compiler" in err, f"refused without it, the refusal naming it ({err[:120]})")
+    rc, text, err = run(igdump, fix50, "-o", out, "--compiler", b52)
+    ck(rc == 0 and "NOTE" in text and b52 in text and b50 in text, f"with it: dumped, the output naming both builds ({text[:200]})")
+    recs = igdump.read(out)
+    ck(recs and all(r.get("built_by") == b52 and r.get("unit_compiler") == b50 for r in recs),
+       "every record says which build made it and which is the unit's")
+    srecs, _ = igdump.dump(plain, BUILD / "ig_override_plain.jsonl")
+    sel, sel0 = igdump.select(recs, "^ig_pair$", 0), igdump.select(srecs, "^ig_pair$", 0)
+    ck(len(sel) == 1 and _ig_regs(sel[0][1]) == _ig_regs(sel0[0][1]),
+       f"the colouring is the fixture's under its own 3.0b52 ({_ig_regs(sel[0][1])})")
+    ck(not any("built_by" in r for r in srecs) and igdump.build_note(srecs) is None, "a plain dump: no field, no note")
+    rc, text, _ = run(igdump, plain, "-o", BUILD / "ig_override_same.jsonl", "--compiler", b52)
+    ck(rc == 0 and "NOTE" not in text and not any("built_by" in r for r in igdump.read(BUILD / "ig_override_same.jsonl")),
+       "--compiler naming the unit's own build is the plain dump")
+    rc, text, _ = run(igdump, "--read", out)
+    ck(rc == 0 and "NOTE: this dump came from" in text, "--read says it too")
+    rc, text, _ = run(igreplay, out)
+    ck(rc == 0 and text.startswith("NOTE: this dump came from") and b50 in text and "replay exactly" in text,
+       f"igreplay says it, and replays it ({text[:120]})")
+    rc, text, _ = run(igreplay, BUILD / "ig_override_plain.jsonl")
+    ck(rc == 0 and "NOTE" not in text, "igreplay on a plain dump: no note, the output as it was")
+    rc, _, err = run(igdump, plain, "-o", BUILD / "ig_refused.jsonl", "--compiler", b50)
+    ck(rc == 1 and "breakpoints are" in err, f"--compiler naming another build than the breakpoints' is refused ({err[:100]})")
+    rc, _, err = run(igdump, HERE / "src" / "lib" / "sdk" / "libmc.c", "-o", BUILD / "ig_refused.jsonl", "--compiler", b52)
+    ck(rc == 1 and "ccdump" in err, f"a GCC unit stays refused, whatever --compiler says ({err[:100]})")
+    unit = HERE / "src" / "ai" / "seal_aistate.cpp"
+    if C.tu_options(unit).get("compiler") != b50:
+        print("      (the real unit skipped: seal_aistate.cpp is no longer 3.0b50)")
+        return
+    real = BUILD / "ig_aistate.jsonl"
+    rc, text, _ = run(igdump, unit, "-o", real, "--compiler", b52)
+    ck(rc == 0 and "NOTE" in text, "the real unit: seal_aistate.cpp dumps under the override")
+    rc, text, _ = run(igreplay, real)
+    m = re.search(r"(\d+) of (\d+) records replay exactly", text)
+    ck(rc == 0 and m and m.group(1) == m.group(2) and int(m.group(2)) > 100, f"every record replays exactly ({m and m.group(0)})")
+    name = next(igdump.proc_name(r) for r in json.loads("[" + ",".join(real.read_text().splitlines()) + "]")
+                if r["cls"] == 0 and igdump.proc_name(r).startswith("func_"))
+    rc, text, _ = run(igreplay, real, "-f", f"^{name}$", "-r", 0, "--target", unit, name)
+    ck(rc == 0 and f"--target's candidate built by {b52}, not the unit's own {b50}" in text,
+       f"--target's candidate is the dump's own build, said so ({text[:300]})")
+    rc, text, _ = run(igreplay, real, "-f", f"^{name}$", "-r", 0, "--target", unit, name, "--compiler", b50)
+    ck(rc == 0 and f"built by the unit's own {b50}" in text and "the alignment is approximate" in text,
+       f"--compiler names another: said so ({text[:300]})")
+
+
+def test_ccperm_takes_help_for_help():
+    """tools/ccperm.py --help (GCC round 44a, the Medius lane's round 25b) read its argument as the probe and
+    died on `--help: no such file`. -h and --help print the usage and exit 0, anywhere on the line; no
+    arguments says the usage and fails, not an IndexError; the forms that were there all work: PROBE FUNCTION,
+    with TOOLCHAIN and FLAGS, and --stem anywhere -- a probe of libscf's converttobcd whose target order of two
+    marked statements is found."""
+    import subprocess
+    tool = HERE / "tools" / "ccperm.py"
+
+    def run(*args):
+        return subprocess.run([sys.executable, str(tool), *[str(a) for a in args]], capture_output=True, text=True, cwd=HERE)
+
+    for form in (["--help"], ["-h"], ["probe.c", "--help"], ["-h", "probe.c", "f"]):
+        r = run(*form)
+        ck(r.returncode == 0 and "PROBE.c FUNCTION" in r.stdout and "--stem" in r.stdout and not r.stderr,
+           f"{form}: the usage, rc 0 ({r.returncode}, {r.stderr[-120:]})")
+    r = run()
+    ck(r.returncode != 0 and "PROBE.c FUNCTION" in r.stderr and "Traceback" not in r.stderr,
+       f"no arguments: the usage, not a traceback ({r.returncode}, {r.stderr[-120:]})")
+    r = run("no_such_probe_file.c", "f")
+    ck(r.returncode != 0 and "no_such_probe_file.c" in r.stderr, "a probe that does not exist is still said to")
+    probe = BUILD / "ig_ccperm.c"
+    probe.write_text("""typedef unsigned char u_char;
+typedef struct { u_char stat, second, minute, hour, pad, day, month, year; } sceCdCLOCK;
+static u_char tobcd(u_char x) { return x + (x / 10) * 6; }
+void converttobcd(sceCdCLOCK *t)
+{
+	t->year = tobcd(t->year);
+	/*P{*/
+	t->month = tobcd(t->month);
+	t->day = tobcd(t->day);
+	/*}P*/
+	t->hour = tobcd(t->hour);
+	t->minute = tobcd(t->minute);
+	t->second = tobcd(t->second);
+}
+""")
+    for form in ([], ["ee-gcc2.9-991111-01-dtls13010"], ["ee-gcc2.9-991111-01-dtls13010", "-O2 -G0"],
+                 ["--stem", "libscf", "ee-gcc2.9-991111-01-dtls13010", "-O2 -G0"]):
+        r = run(probe, "converttobcd", *form)
+        ck(r.returncode == 0 and "2 orders tried" in r.stdout, f"the form {form} still runs ({r.stdout[-200:]}{r.stderr[-200:]})")
+    ck("MATCH order 0" in r.stdout and "t->month = tobcd(t->month);" in r.stdout,
+       f"and finds the target's order ({r.stdout[:200]})")
+
+
+def test_try_hint_for_a_typed_escape_fires_for_every_form():
+    """Round 43a's stderr hint for a typed backslash-n in NEW (GCC round 44a, confirming it for the Medius lane,
+    whose round 25b read a BUILD-FAIL from `--and` as a bug): --and alone, --and-all alone, --sub-all, and an
+    --and or --and-all after a --sub: each a BUILD-FAIL that says on stderr what -e and -n do. -e and -n on the
+    same --and build and MATCH, no hint; a NEW with no typed escape gets no hint."""
+    import contextlib
+    import importlib
+    import io
+    T = importlib.import_module("try")
+    unit = HERE / "src" / "lib" / "sdk" / "tty.c"
+    old = os.environ.get("SC_TRY_WORK")
+    T.WORK = BUILD / "trywork"
+
+    def run(*args):
+        buf, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+            rc = T.main([str(unit), "sceTtyRead", "--no-dist", *args])
+        return rc, [l for l in buf.getvalue().splitlines() if l.strip()], err.getvalue()
+    try:
+        brk = ("return i + 1;", "return i + 1;\\n\\t/* x */")
+        same = ("buf[i]", "buf[i]")
+        for form in (["--and", *brk], ["--and-all", *brk], ["--sub-all", *brk], ["--sub", *same, "--and", *brk],
+                     ["--sub", *same, "--and-all", *brk]):
+            rc, lines, err = run(*form)
+            ck(rc == 0 and lines[0].startswith("BUILD-FAIL") and "-e decodes" in err,
+               f"{form[0]}...: a BUILD-FAIL that says what -e and -n do ({lines}, {err!r})")
+        for flag in ("-e", "-n"):
+            rc, lines, err = run(flag, "--and", *brk)
+            ck(rc == 0 and lines[0].startswith("MATCH") and "-e decodes" not in err, f"{flag} --and: decoded, MATCH ({lines})")
+        rc, lines, err = run("--and", "return i + 1;", "return i + 1 +;")
+        ck(rc == 0 and lines[0].startswith("BUILD-FAIL") and "-e decodes" not in err,
+           f"another BUILD-FAIL from --and: no hint ({err!r})")
+    finally:
+        T.WORK = Path(old).resolve() if old else HERE / "build" / "try"
+
+
+def test_pragmascan_report_lists_rows_at_the_targets_size():
+    """tools/pragmascan.py --report's THE LIKELIEST NEXT HITS (GCC round 44a, the UI's round 38: SkbParseComplete
+    exact only under `opt_loop_invariants` and `opt_strength_reduction` both off, 0x2B0 under either alone): per
+    open row its best variant whose candidate is exactly the target row's size -- `at size` from another size,
+    `closer at size` already there and nearer; nearest first, a loss shown and ranked after; a row some variant
+    made byte-exact is a HIT, not a lead; a variant at another size is no lead however near."""
+    import importlib
+    P = importlib.import_module("pragmascan")
+    work = BUILD / "pragmascan_report"
+    work.mkdir(parents=True, exist_ok=True)
+    res = P.Results(work / "results.jsonl", fresh=True)
+    key = dict(unit="u.cpp", sha="s", hdr="h")
+    scores = {n: dict(match=False, verdict="WRONG", addr=a, d=d, size=z, tsize=t)
+              for n, a, d, z, t in (("near_row", 0x1000, 40, 0x100, 0x120), ("far_row", 0x2000, 90, 0x200, 0x2B0),
+                                    ("sized_row", 0x3000, 12, 0x80, 0x80), ("hit_row", 0x4000, 9, 0x40, 0x48),
+                                    ("miss_row", 0x5000, 30, 0x90, 0x98), ("lossy_row", 0x6000, 8, 0x60, 0x70))}
+    res.add(dict(kind="base", scores=scores, open=list(scores), sites={}, skipped={}, **key))
+
+    def v(func, pragma, d1, size1, **kw):
+        z = scores[func]
+        res.add(dict(kind="variant", func=func, pragma=pragma, d0=z["d"], size0=z["size"], d1=d1, size1=size1,
+                     match=kw.pop("match", False), verdict="WRONG", lost=kw.pop("lost", []), gained=[], **key))
+    v("near_row", "opt_a", 30, 0x110)                       # nearer, another size: no lead
+    v("near_row", "opt_a+opt_b", 35, 0x120)                 # at the size: the lead, though further than opt_a
+    v("far_row", "opt_loop_invariants", 80, 0x2B0)
+    v("far_row", "opt_loop_invariants+opt_strength_reduction", 70, 0x2B0)   # two at size: the nearer is shown
+    v("sized_row", "opt_c", 6, 0x80)                        # already at size, nearer
+    v("sized_row", "opt_d", 12, 0x80)                       # at size, no nearer
+    v("hit_row", "opt_e", 0, 0x48, match=True)              # byte-exact: a HIT
+    v("hit_row", "opt_f", 4, 0x48)
+    v("miss_row", "opt_g", 5, 0x90)                         # nearer, never at size: no lead
+    v("lossy_row", "opt_h", 3, 0x70, lost=["other"])
+    lines = []
+    counts = P.report(res, out=lines.append)
+    ck(counts["at-size"] == 3 and counts["closer-at-size"] == 1, f"three brought to the size, one nearer at it ({counts})")
+    i = next(k for k, l in enumerate(lines) if "THE LIKELIEST NEXT HITS" in l)
+    rows = lines[i + 1:]
+    got = [(l.split()[0], l.split()[2] if l.startswith("  at size") else l.split()[3]) for l in rows]
+    ck([r[1] for r in got] == ["near_row", "far_row", "lossy_row", "sized_row"],
+       f"nearest first, the loss after, `closer at size` last ({got})")
+    ck("opt_a+opt_b" in rows[0] and "0x100 -> 0x120" in rows[0] and "d 40 -> 35" in rows[0],
+       f"the variant at size, not the nearer one that is not ({rows[0]})")
+    ck("opt_loop_invariants+opt_strength_reduction" in rows[1] and "d 90 -> 70" in rows[1],
+       f"of two at size the nearer ({rows[1]})")
+    ck("loses 1" in rows[2], f"a loss is said ({rows[2]})")
+    ck(not any("hit_row" in l or "miss_row" in l for l in rows), "a HIT is not a lead, nor a row never at size")
+
+
 def test_everything_baselined_still_matches():
     rc = C.main([])
     ck(rc == 0, "sccheck: no regressions against MATCHED.txt, every TU builds")
