@@ -2065,6 +2065,52 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 34** (cdeque<PCv>::resize 0x285660 byte-exact; THE TAIL'S GENERATION
+  ORDER READ OUT OF MW'S FRONT END; probes build/p34/, untracked -- e1-e4.cpp the order probes, olist.py / order.py
+  a unit's functions in object order, dqboard.py the deque units' rows, vend.py / vR*.py the resize variants; the
+  front end's sources in build/scratch/msl-r34/mweppc/):
+  - RESIZE APPLIED: the buffer's own iterator four words (round 33's code-exact probe), ~__deque_buf's six walks through a
+    three-word __ring_iterator of the buffer's own -- the old iterator's code under another name, so every walk is
+    unchanged (through the four-word iterator 35 off; through the four-word const_iterator 18 off, the size's load shared
+    with the test); clear() in class, SOCOM 1's insert / erase declared (rows 0x286160 / 0x285D30 named for them), the
+    static zero given its data row (0x3DE1D0). objcmp: 658 units, 9 differ, each only by the added copy of resize and
+    its static; +1, nothing lost;
+  - THE DEQUE'S MAX SIZE COUNTS WHOLE BLOCKS: `(size_type(-1) / buf_size - 1) * buf_size` -- the state machine's 42
+    twelve-byte member pointers to a block give -46 (its do_assign 0x3A6710's static, `li v1,-46`: byte-exact so, its
+    value and guard given rows 0x3EF758 / 0x415D18); over sizeof(T *) it was 0x7FFFFFAC, the power-of-two blocks (128:
+    -256, 8: -16) the same either way. objcmp: 1 unit differs, by that function alone; +1;
+  - THE ORDER IS MW'S END-OF-UNIT LOOP (doldecomp/mweppc CParser_GlobalCleanup, CInline.c, CTemplateNew.c -- the PowerPC
+    front end; every rule below checked on mwcps2: e1-e4.cpp and round 7's ord4/ord7): under `-inline deferred` every
+    own function is deferred at parse time and code-generated at the end, last defined first. A function is
+    "referenced" only when a caller's code is generated (CInline_ExportCheck), never at parse time. An in-class inline
+    member of a class template instance, or an implicit member, that a function names before it is defined is queued
+    and generated (as inline data) before that function's code, which waits for it; an inline function a caller
+    leaves as a call is exported there and then and code-generated right after that caller, the last call first,
+    depth first (e4: own1's cut l2 and m2 come out m2, l2 straight after it). Out-of-class members of class templates
+    are instantiated ONLY by CTempl_Instantiate's walk, run when nothing is queued: class templates newest-declared
+    first, each instance's members in DECLARATION order (not definition order), every member referenced at the moment
+    the walk reaches it -- the function templates (member templates: init, do_assign) after every class. A walked
+    member with no undefined in-class or implicit callee is code-generated on the spot, its out-of-line callees then
+    referenced for the rest of the walk; one with such a callee is deferred to after the walk, last deferred first (e2:
+    c on the spot, a deferred, b -- declared before c, which names it -- in the next walk). Hence round 7's rule: a
+    member inlines another only when generated after it, the callee's inline data existing only once it is instantiated;
+  - THE IMAGE'S LOBBY TAIL IS THE OTHER MECHANISM (request 1, not applied): 0x2E07B0-0x2E0E0F is the deque's copy
+    constructor, then its callees in reverse call order, depth first -- init, end, begin, __deque_buf(A) and its subtree
+    (~cdeque, the pair's constructor, the buffer's copy constructor and its own init / end / begin / __cdeque_buf(A),
+    the allocator's copy, cdeque(A), the rebinding allocator), alloc() -- then deque() 0x2E0D90 with __deque_buf() and
+    cdeque<P11>() 0x2E0DF0: the order of exported out-of-line copies of inline functions (e4), cut at their callers.
+    This header's out-of-class members come out class by class, a walk a round, so no reordering of it gives that
+    order; and the inlining facts agree: deque() inlines allocator<PCv>() where both copy constructors call 0x2CEE30
+    (deque() code-generated after allocator<PCv>() is instantiated, the copy constructors before -- one phase for the
+    whole copy chain, as exported copies are). Measured: deque's copy constructor, begin() / end() const and init in
+    class make 0x2E0D90 byte-exact and 0x3A6410 its callee's row only, but the queue's constructor then stops inlining
+    into CZOnlineLobby(), CSimpleStateMachine() and the chat's queue (-4 over the deque units, build/p34/vA.py);
+    cdeque<T *>() out of class (the target's per-element 0x2E0DF0 / 0x2F6290 / 0x3A6470 / 0x334150) loses game_main's
+    0x2CEE40, which then calls cdeque<PPCv>() out of line (-1, vC.py). The original's copy chain is inline functions cut
+    by the level -- a refit to that model (README "Level 6, or 8?"), not a reordering;
+  - a lead for the online lane: ReleaseVector<T>'s seven instances sit right after ReleaseUIResources (0x2DFA50-
+    0x2DFDCF) in reverse call order -- an inline function template's out-of-line copies, cut at their caller (e4);
+    ours come at the unit's end (the order only: sccheck does not score it).
 - **Tells from the kit and AI states, round 54** (the wedge test -- open since round 53 --, the edge test, the view-wedge
   sight test, the follower's creep and the route-cell walk, all unwritten before; GetReticuleSettle from its draft):
   - a struct element whose address is passed to calls as `(const T *)&a[i].x` shares that address with the copy's x store
@@ -13498,7 +13544,9 @@ What is open across lanes, and what comes next:
   element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
   at their level-5 shapes, seal_ai.cpp's pragma with them.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
-  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short) and
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short --
+  round 34: the image's chain is the exported out-of-line copies of inline functions cut at their
+  callers, depth first, so it wants the chain refitted as inline functions, not reordered) and
   its iterator classes (every do_assign calls separate source and destination operators out of line,
   std::distance and std::copy by value: the MSL headers' round 18), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
@@ -13514,9 +13562,9 @@ What is open across lanes, and what comes next:
   __const_iterator: the rdr editor's do_assign and its three pieces), and the list's own insert(position,
   x) is measured, not applied (round 29: +0 / -1, LoadVehicles); the circular buffer's begin() and its
   growth recommendation are in since round 32 (the deques' make_iterators, which inline `begin() + n`,
-  stay open at their old sizes); its resize 0x285660 is code-exact as a probe since round 33 (the
-  four-word iterator, `*&data_` reads) and waits on ~__deque_buf's walk under that iterator (0x2CEFB0
-  35 off) -- with it, insert 0x286160 / erase 0x285D30 and the zero word 0x3DE1D0 to name.
+  stay open at their old sizes); its resize 0x285660 is byte-exact since round 34 (the four-word
+  iterator, `*&data_` reads; ~__deque_buf walks a three-word __ring_iterator; insert 0x286160 / erase
+  0x285D30 named, the zero word 0x3DE1D0 given its row) -- insert and erase themselves unwritten.
 - **zMath** (0x306670-0x30954C, 47 of 54): CMatrix::SetRotate, CQuat::Align, CBits::Resize,
   CPnt3D::Reflect, CBBox::GetIntersect and the two DistToVectors. **zcamera**: CCamera::Update
   (13 instructions, the near plane's VU0 temporaries' stack offsets). **ZAnim**: the big handlers
