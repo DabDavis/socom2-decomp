@@ -452,7 +452,19 @@ void CAiPath::IncrementPathId()
  * compare (its branch dropped, a nop left) and the second branch aimed at the exit (0xA4),
  * `asm { .set noreorder }` gives the target's size (0xAC) but reorders the block after it (18 off);
  * a label alone in asm, `if (0) ...`, `while (0)`, `for (;0;)`, `do {} while (0)`, `switch (0) {}`,
- * `goto L; L:;`, self-assignments, data()/begin() calls and a dead reference local: deleted whole */
+ * `goto L; L:;`, self-assignments, data()/begin() calls and a dead reference local: deleted whole.
+ * The AI core round 34 (build/scratch/ai/v_plc1-6.py): IRO'S DEAD-ASSIGNMENT PASS is what deletes
+ * them -- under `#pragma opt_dead_assignments off` (a probe only) both compares stay, an if-then
+ * dead load (`if (m_planleg < m_legcount) map = m_maps[m_planleg];`) giving 0xA4: the first
+ * compare left as a bare sltu and nop (its branch to the next block dropped), the second chained
+ * to the exit -- so the target's bodies died AFTER the branch optimiser, later than any dead load
+ * does. A redundant store to a live variable survives IRO and dies in the PCode's CSE (`more =
+ * true; if (c) more = true;`: the second compare's shape, `more = true` in its delay slot, but
+ * the branch chained to the exit, 0x94; `opt_common_subs off` keeps it); in the first compare
+ * `more` is dead (rewritten before any read), so its redundant store goes whole. Dead chains (`n
+ * = m`), empty inlines taking the map, an inline returning `c ? true : true`, an empty asm
+ * elsewhere in the function: deleted whole. The only other MW row in the image with an emptied
+ * if-body is OVL1's func_003B1DD0 (0x3B1EB0, `srl; bltz +1` -- unmatched) */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;
