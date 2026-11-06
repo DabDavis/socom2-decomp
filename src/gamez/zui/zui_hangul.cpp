@@ -41,9 +41,10 @@
  * class end(), out of line: only the matcher's call emits it), the reverse iterator's operator*
  * 0x391D30 and the vector's constructor 0x391DA0 out of line, and keep their counters in stack
  * slots past nine saved registers.
- * OPEN, written: SkbParseKoreanRules (0x4DC against 0x464), SkbParseComplete (0x318 against 0x2A4):
- * the rdr walks' loop counters (the target keeps the productions' in a stack slot) and the inlined
- * Item()s' shapes; SkbHangulBack (0x19C/0x190 -- byte-exact since the GCC front's round-43a pragma
+ * THE TWO RDR PARSERS, byte-exact since round 38 (SkbParseKoreanRules under `opt_loop_invariants off`,
+ * SkbParseComplete with strength reduction off as well: their notes -- the pragma scan named the pass;
+ * the unit's template tail wants the loop optimiser on, measured at the unit's end: 3 lost, 0 gained).
+ * Written: SkbHangulBack (0x19C/0x190 -- byte-exact since the GCC front's round-43a pragma
  * scan under `#pragma opt_common_subs off`: with CSE on, the local pieces' size_ and data_ addresses,
  * stored by the constructor and read by end(), were kept in s0/s1 across the composer's call where
  * the target addresses the stack slots directly); Append (1 instruction, below), PrevCode (0x30/0x2C).
@@ -121,6 +122,13 @@ static const char *s_jamoNames[JAMO_COUNT] = {
 /* a production: its name and its sequences (24 bytes, new'd by the rules' parser) */
 struct SKBRULE {
     SKBSEQ *Seq(int i);
+    /* a sequence added and returned (an inline: the address-taken `rule` it is called on is not
+     * substituted for `this`, so the parser keeps the rule in a saved register here, s0) */
+    SKBSEQ &AddSeq()
+    {
+        m_seqs.resize(m_seqs.size() + 1);
+        return m_seqs.back();
+    }
 
     CSaferStr m_name;   // 0x0
     std::vector<SKBSEQ> m_seqs;   // 0xc
@@ -212,16 +220,29 @@ static inline int SafeStrcasecmp(const char *a, const char *b)
 }
 
 /* the complete characters (CompleteCharacter: each a Seq of production names, by their index in the
- * rules, and a Val2 flag), the vector grown to each index read (0x392130; the name ours) */
+ * rules, and a Val2 flag), the vector grown to each index read (0x392130; the name ours).
+ * BYTE-EXACT WITH THE LOOP OPTIMISER OFF (round 38; the GCC front's round-43a pragma scan named the
+ * pass): with both opt_loop_invariants and opt_strength_reduction off IRO_FindLoops never runs
+ * (IrOptimizer.c), so the rules' s_rules[r] is computed afresh each pass and no count hoisted, as the
+ * target's; the five locals declared bare at the top give its numbering (r s4, seq s3, list s2, i s1,
+ * j s0 -- 40 words of pure register permutation otherwise) */
+#pragma opt_loop_invariants off
+#pragma opt_strength_reduction off
 void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
 {
-    _zrdr *list = zrdr_flat_findtag_startidx(rdr, tag, 0);
+    unsigned int r;
+    _zrdr *seq;
+    _zrdr *list;
+    int i;
+    int j;
 
-    for (int i = 0; i < (int)SkbRdrCount(list); i++) {
-        _zrdr *seq = zrdr_flat_findtag_startidx(list->Item(i), "Seq", 0);
+    list = zrdr_flat_findtag_startidx(rdr, tag, 0);
 
-        for (int j = 0; j < (int)SkbRdrCount(seq); j++) {
-            for (unsigned int r = 0; r < s_rules.size(); r++) {
+    for (i = 0; i < (int)SkbRdrCount(list); i++) {
+        seq = zrdr_flat_findtag_startidx(list->Item(i), "Seq", 0);
+
+        for (j = 0; j < (int)SkbRdrCount(seq); j++) {
+            for (r = 0; r < s_rules.size(); r++) {
                 if (!SafeStrcasecmp(seq->Item(j)->String(), s_rules[r]->m_name.c_str())) {
                     unsigned int index = r;
 
@@ -239,6 +260,8 @@ void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
         }
     }
 }
+#pragma opt_loop_invariants reset
+#pragma opt_strength_reduction reset
 
 /* a split of n jamo into k consecutive parts, the composer's walk over every split (ours, 16
  * bytes: the total, then the parts). The stepper Next 0x3903A0 (recursive) is written at the unit's
@@ -375,9 +398,26 @@ unsigned int SkbRdrCount(_zrdr *rdr)
     return rdr ? rdr->Count() : 0;
 }
 
+/* a sequence's jamo list held in a one-member object (ours, A MODELLING SHAPE: MW's class scalariser
+ * makes the member a temporary numbered after the inlined FindJamo's counter, as the target has it --
+ * names s1 under that counter's s2; a plain pointer local, however declared or defined, is numbered
+ * ahead of every inline's variable) */
+struct CSkbRdrHolder {
+    CSkbRdrHolder(_zrdr *rdr) : m_rdr(rdr) {}
+
+    _zrdr *m_rdr;
+};
+
 /* the Korean input rules (KoreanInputRules in the keyboards' rdr: each production new'd and listed
  * with its name and its sequences -- each sequence's jamo by name, its Val and Val2), then the
- * complete characters (0x390C40; the name ours: the display unit's 0x397070 calls it) */
+ * complete characters (0x390C40; the name ours: the display unit's 0x397070 calls it).
+ * BYTE-EXACT UNDER `opt_loop_invariants off` (round 38; open at 205 off since round 10, the pragma scan
+ * named the pass -- the rdr walks' Item() tests and the counts stay in the loops, the target's stack
+ * slot for i the spill that follows): rule->AddSeq() is an inline over the address-taken `rule`, which
+ * keeps its value in s0; the Val and Val2 records are read into named locals first, so each `= 0` store
+ * lands in zrdr_findint's delay slot and the frame keeps val, val2 above the name's iterator tag; name
+ * and k declared before the jamo list */
+#pragma opt_loop_invariants off
 void SkbParseKoreanRules(_zrdr *rdr)
 {
     _zrdr *rules = zrdr_flat_findtag_startidx(rdr->Item(0), "KoreanInputRules", 0);
@@ -391,24 +431,30 @@ void SkbParseKoreanRules(_zrdr *rdr)
         _zrdr *seqs = zrdr_flat_findtag_startidx(prods->Item(i), "Sequences", 0);
 
         for (int j = 0; j < (int)SkbRdrCount(seqs); j++) {
-            rule->m_seqs.resize(rule->m_seqs.size() + 1);
-            SKBSEQ &seq = rule->m_seqs.back();
-            _zrdr *names = zrdr_flat_findtag_startidx(seqs->Item(j), "Seq", 0);
+            SKBSEQ &seq = rule->AddSeq();
+            const char *name;
+            int k;
+            CSkbRdrHolder names(zrdr_flat_findtag_startidx(seqs->Item(j), "Seq", 0));
 
-            for (int k = 0; k < (int)SkbRdrCount(names); k++)
-                seq.m_jamo.push_back(FindJamo(names->Item(k)->String()));
+            for (k = 0; k < (int)SkbRdrCount(names.m_rdr); k++) {
+                name = names.m_rdr->Item(k)->String();
+                seq.m_jamo.push_back(FindJamo(name));
+            }
+            _zrdr *item = seqs->Item(j);
             int val = 0;
 
-            zrdr_findint(seqs->Item(j), "Val", &val, 1);
+            zrdr_findint(item, "Val", &val, 1);
             seq.m_val = val;
+            _zrdr *item2 = seqs->Item(j);
             int val2 = 0;
 
-            zrdr_findint(seqs->Item(j), "Val2", &val2, 1);
+            zrdr_findint(item2, "Val2", &val2, 1);
             seq.m_val2 = val2;
         }
     }
     SkbParseComplete(&s_complete, rules, "CompleteCharacter");
 }
+#pragma opt_loop_invariants reset
 
 /* a jamo by its name, JAMO_COUNT for none (zui_skb.cpp's key parser 0x38DA70 calls it) */
 JAMO FindJamo(const char *name)
