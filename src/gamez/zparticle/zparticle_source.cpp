@@ -89,7 +89,7 @@ struct FaceCorners {
         memcpy(&s->m_diPolies[0]->m_pnts[2], &m_pts[5], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[0]->m_pnts[3], &m_pts[4], sizeof(CPnt3D));
         s->m_diPolies[0]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[1]->m_pnts[0], &m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[1]->m_pnts[0], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[1]->m_pnts[1], &m_pts[3], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[1]->m_pnts[2], &m_pts[7], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[1]->m_pnts[3], &m_pts[4], sizeof(CPnt3D));
@@ -107,9 +107,9 @@ struct FaceCorners {
         memcpy(&s->m_diPolies[4]->m_pnts[0], &m_pts[4], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[4]->m_pnts[1], &m_pts[5], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[4]->m_pnts[2], &m_pts[1], sizeof(CPnt3D));
-        memcpy(&s->m_diPolies[4]->m_pnts[3], &m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[4]->m_pnts[3], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
         s->m_diPolies[4]->SetEdgeVecsAndNorm();
-        memcpy(&s->m_diPolies[5]->m_pnts[0], &m_pts[0], sizeof(CPnt3D));
+        memcpy(&s->m_diPolies[5]->m_pnts[0], (CPnt3D *)(int)&m_pts[0], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[5]->m_pnts[1], &m_pts[3], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[5]->m_pnts[2], &m_pts[2], sizeof(CPnt3D));
         memcpy(&s->m_diPolies[5]->m_pnts[3], &m_pts[1], sizeof(CPnt3D));
@@ -125,11 +125,14 @@ struct FaceCorners {
  * round 28: the position built from m_oldPosW's three floats (the constructor's arguments read z, y,
  * x), the box's corners through FaceCorners above (the construction loop), the node's position
  * through CNode's point overload (in place, MW keeps &pos.y and &pos.z in saved registers).
- * OPEN, 0x3F8 of 0x404: every statement in the target's order, the frame one saved register short --
- * the target keeps all eight corner addresses in s0-s4/s6/s7 (the first, sp+144, in s2 from face 1 on),
- * where MW rematerialises the first here (`addiu a1,sp,128` at each use); a member ahead of the array
- * (`const CBBox *m_box`) gives the eighth register but stores and reloads it and moves the frame 16
- * bytes (0x40C) */
+ * OPEN, 32 instructions at the target's size (0x404; round 33): the first corner's address through
+ * a no-op conversion in FaceCorners (the engine core's round 24: `&local.member[0]` at offset 0 is
+ * never a common subexpression) gives the eighth saved register; left is a pure permutation of the
+ * eight address temporaries. `igreplay --permute` over them: 8 of the 40,320 orders, all p2, p3, p0,
+ * p6, p7, p5, p4 with p1 anywhere, where IRO_CommonSubs (IroCSE.c: at each expression's first reuse
+ * in linear order) gives p7, p4, p6, p3, p5, p2, p1, p0 -- the bottom ring numbered before the top,
+ * each ring in its order of first use from the third face on (zdb::CDIBBox::SetCDIBBox wants
+ * the same shape, c3, c2, c0, c6, c7, c5, c4). No source shape yet */
 void Source::GetBBox(CBBox *box)
 {
     if (!m_hasbbox || !m_diNode)
