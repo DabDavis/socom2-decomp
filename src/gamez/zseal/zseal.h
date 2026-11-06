@@ -238,6 +238,9 @@ public:
      * (kit.h's; OVL2 0x5BC6A0) */
     bool HasItemWithAmmo(EQUIP_ITEM item);
     void FillWeaponEnum(int index, class CZFTSWeapon **out);
+    /* the item pointer of an index, and cleared (OVL2 0x5B8FF0, 0x5B8FC0: the kit lane's) */
+    void *GetItemPtr(int index);
+    void ClearItemPtr(int index);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) and the item made current by its
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
@@ -2225,6 +2228,9 @@ public:
      * 0x5A0040 call it) */
     void CreateNetAmmoPickup(unsigned short count, unsigned short *items, unsigned short *rounds, int id, CPnt3D *pos);
     void DropAmmo(int rounds);
+    /* a weapon of the kit dropped as a pickup where its part hangs, the anim of the drop run unless asked
+     * not to (SOCOM 1's DropItem; OVL2 0x59F730) */
+    CPickup *DropItem(int index, bool quiet);
     /* a kill credited to the killer, with whether the weapon was one of five (SOCOM 1's, the flag
      * new; OVL2 0x59EE20 -- not written) */
     void HandleKiller(int killer, bool b);

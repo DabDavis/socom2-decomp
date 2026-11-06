@@ -4497,6 +4497,88 @@ void CZSealBody::DropAmmo(int rounds)
 /* the ground under a point within a depth (fts_main.cpp's ftsGetAltitudeApprox, OVL1 0x2A2EB0) */
 zdb::IntersectStruct *ftsGetAltitudeApprox(const CPnt3D *p, float depth, bool chars);
 
+/* a weapon of the kit dropped as a pickup: refused with pickups shut, or online by a SEAL no player drives;
+ * the part of its fire class taken off its parent where it hangs, the item's node let go by the kit and put
+ * in the world there, dynamic and a character node, a pickup of kind 8 the SEAL owns made of it, its flag
+ * the pistols', the drop anim run unless asked not to (OVL2 0x59F730: SOCOM 1's DropItem, the kit's item
+ * pointer calls for its vector's) */
+CPickup *CZSealBody::DropItem(int index, bool quiet)
+{
+    if (!CPickup::m_isOpen || (theNetwork.m_9 && !IsPlayer()))
+        return 0;
+
+    CZFTSWeapon *weapon = 0;
+
+    if (m_kit.GetNumItems() < index)
+        return 0;
+    m_kit.FillWeaponEnum(index, &weapon);
+    if (!weapon) {
+        delete weapon;
+        return 0;
+    }
+
+    CPnt3D off = CPnt3D::zero;
+    CZBodyPart *part;
+
+    switch (CZKit::GetItemFireClass(((const CZWeapon *&)weapon)->m_ID)) {
+    case 1:
+        part = m_item_gear[1].m_part;
+        break;
+    case 2:
+        part = m_item_gear[2].m_part;
+        break;
+    case 4:
+        part = m_item_gear[4].m_part;
+        break;
+    default:
+        return 0;
+    }
+    if (!part || !part->m_node)
+        return 0;
+
+    CQuat rot;
+    CPnt3D at;
+    CQuat q;
+
+    PartInSpace(part, 0, &off, &rot);
+    m_quat.Apply(&off, &at, 1);
+    at.Add(&m_posW, &at);
+
+    zdb::CNode *parent = part->m_node->m_parent;
+
+    if (!parent)
+        return 0;
+    parent->DeleteChild(part->m_node);
+    m_quat.Mul(&rot, &q);
+
+    zdb::CNode *node = (zdb::CNode *)m_kit.GetItemPtr(index);
+
+    m_kit.ClearItemPtr(index);
+
+    CPickup *p = 0;
+
+    if (node) {
+        node->SetPosition((const PNT3D *)&at);
+        node->SetRotation((const CQuat *)&q);
+        if (part && node == part->m_node)
+            part->m_node = 0;
+        zdb::CWorld::m_world->AddChild(node);
+        node->SetDynamic(true, true);
+        node->m_socom2_a1_bits.bit2 = 1;
+        node->m_bumpmap = 1;
+        zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+        node->SetDescendantDI(true);
+        node->SetDescendantVisuals(true);
+        p = CPickup::Create(m_id, CPickup::PU_WEAPON, node, weapon);
+        if (p) {
+            p->m_secondary = CZKit::GetItemFireClass(((CZWeapon *)weapon)->GetId()) == 2;
+            if (data_0044D508 && !quiet)
+                ((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0);
+        }
+    }
+    return p;
+}
+
 /* a dead SEAL's satchel charge dropped: the satchel gear hidden; for a SEAL this console runs, holding
  * the charge (item 152) with rounds as a weapon, a satchel model put on the ground under the SEAL's
  * place (DropAmmo's turned offset, looked for from 1 over it), named, made dynamic and a character
@@ -5535,11 +5617,6 @@ AnimType CZSealBody::FindRandomDamageAnim(DAMAGE_LOCATION where, bool *b)
     return anim;
 }
 
-extern "C" {
-/* a weapon of the kit dropped as a pickup (OVL2 0x59F730, not written yet: the item's index, a flag) */
-void func_0059F730(CZSealBody *seal, int index, int b);
-}
-
 /* the death's end, once its anim has run: unless the SEAL is of team 2 or remote -- or, online, one
  * whose hits go unfelt, a ghost or in a game whose flag 0xDC is set -- its ammunition dropped, then its
  * primary weapon and its pistol (offline only where no such weapon lies within 50), then, online, its
@@ -5572,12 +5649,12 @@ extern "C" void func_005A0040(CZSealBody *seal)
     }
     seal->DropAmmo(-1);
     if (primary != -1 && (theNetwork.m_9 || !CPickup::IsWeaponNear(seal->m_kit.GetPrimaryEnum(), &seal->m_posW, 50.0f)))
-        func_0059F730(seal, primary, 0);
+        seal->DropItem(primary, false);
     if (secondary != -1 &&
         (theNetwork.m_9 || !CPickup::IsWeaponNear(seal->m_kit.GetSecondaryEnum(), &seal->m_posW, 50.0f)))
-        func_0059F730(seal, secondary, 0);
+        seal->DropItem(secondary, false);
     if (ammo)
-        func_0059F730(seal, launcher, 0);
+        seal->DropItem(launcher, false);
 }
 
 extern "C" {

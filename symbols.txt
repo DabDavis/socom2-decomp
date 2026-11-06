@@ -10730,7 +10730,7 @@
 0x0059F0C0 0x548 PickupItem__10CZSealBodyFP7CPickup  # OVL2; s1:calls by hand (the SEALs, round 29): HandlePickupAck's weapon-pickup arm (kind 8, the answer's first bit) calls it with the pickup where SOCOM 1's HandlePickupAck calls PickupItem__10CZSealBodyFP7CPickup; 0x59F610 (a weapon pickup taken offline) calls it too
 0x0059F610 0xDC func_0059F610  # OVL2
 0x0059F6F0 0x34 func_0059F6F0  # OVL2
-0x0059F730 0x388 func_0059F730  # OVL2
+0x0059F730 0x388 DropItem__10CZSealBodyFib  # OVL2; s1:calls by hand (the SEALs, round 58): SOCOM 1's DropItem__10CZSealBodyFib, called where RemotePickupItem and the death's drops call it, the same PartInSpace, Apply, Mul and node calls
 0x0059FAC0 0x284 func_0059FAC0  # OVL2
 0x0059FD50 0x2E8 DropAmmo__10CZSealBodyFi  # OVL2; s1:order by hand (the SEALs, round 35): SOCOM 1's DropAmmo__10CZSealBodyFi -- the same body: the pickups open and online a player only, a stash newed and filled from the kit by FillAmmoPickupInstance (OVL2 0x5BA040, called twice: -1 or the rounds), the offset CPnt3D::zero turned by the SEAL's quat and added to its place, fiftycal_box instanced there, the stash deleted when none, SetDynamic, AddTextureAssetCharacter, CPickup::Create of kind 9 with the SEAL's id and the drop anim kept by the stash; SOCOM II adds the empty-stash test (Count/Get) and the node's name 'Ammobox'. PickupItem and 0x5A0040 call it, as SOCOM 1's PickupItem and DropItem's neighbours do
 0x005A0040 0x228 func_005A0040  # OVL2
