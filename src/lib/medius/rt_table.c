@@ -15,10 +15,15 @@
  * memset puts the offset first in every one of thirteen spellings. OPEN: func_0063C8A0 (32: registers -- the target keeps nRow in a1 and moves pnCol to t3, here
  * both move: n (pseudo 88, 5 refs over 11 insns) takes a1 before nRow (4 over 37) is allocated, where
  * the target's n is a copy in a3 of the count loaded into a0; thirteen spellings of the count update
- * -- an assignment in the test, the index form, post-increments -- compile alike), func_0063C700 (the init, 67s). 0x63C950 (0x1F4)
- * and the thread-status functions after it (0x63CD18-0x63CF20) are not written. */
+ * -- an assignment in the test, the index form, post-increments -- compile alike), func_0063C700 (the init, 67s). Round 22b:
+ * func_0063C950 (0x1F4), the record dispatcher: the three words it hands each handler are copied into
+ * locals only after the guards (their addresses go to pfnNext: as parameters they are stored at the
+ * entry), and the handler's count is added to the offset only after its sign test (added first, the
+ * offset test's sltu is scheduled into the sign test's delay slot). The thread-status functions after it
+ * (0x63CD18-0x63CF20) are matched drafts. */
 
 extern void *memset(void *p, int c, unsigned int n);
+extern void *memcpy(void *d, const void *s, unsigned int n);
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
 
@@ -95,6 +100,65 @@ int func_0063C8A0(unsigned int *pnCol, unsigned int nRow, int nValue)
     *pCount = n + 1;
     *pnCol = n;
     gpTable[nRow * gnTableCols + n] = nValue;
+    return 0;
+}
+
+typedef int (*RT_TABLE_HANDLER)(int a, int b, int c, char *pData);
+
+/* a buffer of records dispatched through the table: each record is a row and a column byte, then the
+ * handler's data, copied whole into gpTableBuf; the handler returns the bytes it used, and pfnNext
+ * (when set) may change the three words handed on between records. 7 a bad record. */
+int func_0063C950(int nA, int nB, int nC, unsigned char *pBuf, unsigned int nLength,
+                  void (*pfnNext)(int *pa, int *pb, int *pc))
+{
+    RT_TABLE_HANDLER pfn;
+    int a, b, c;
+    unsigned int nOffset;
+    unsigned char *p;
+    unsigned int nRow, nCol;
+    int n;
+
+    if (gbInitialized != 1)
+        return 3;
+    if (gpTable == 0)
+        return 3;
+    if (gpTableCounts == 0)
+        return 3;
+    if (gpTableBuf == 0)
+        return 3;
+    if (gpTable2 == 0)
+        return 3;
+    if (pBuf == 0)
+        return 2;
+    if (nLength < 2)
+        return 2;
+    if (nLength > gnTableBufSize)
+        return 2;
+    a = nA;
+    b = nB;
+    c = nC;
+    for (nOffset = 0; nOffset < nLength; ) {
+        p = pBuf + nOffset;
+        nOffset += 2;
+        nRow = p[0];
+        nCol = p[1];
+        if (nRow >= gnTableRows || nCol >= gnTableCols)
+            return 7;
+        if (func_0063CB48(nRow, nCol, (int *)&pfn) != 0)
+            return 7;
+        if (pfn == 0)
+            return 7;
+        gpTable2[nRow * gnTableCols + nCol]++;
+        memcpy(gpTableBuf, pBuf + nOffset, nLength - nOffset);
+        n = pfn(a, b, c, gpTableBuf);
+        if (n < 0)
+            return 7;
+        nOffset += n;
+        if (nOffset > nLength)
+            return 7;
+        if (pfnNext != 0)
+            pfnNext(&a, &b, &c);
+    }
     return 0;
 }
 
