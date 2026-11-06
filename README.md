@@ -2068,7 +2068,9 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
 - **Tells from completing the MSL headers, round 36** (every one-byte scalar vector on the byte pod; the list's range init
   through push_back; the HUD's frame-slot hypothesis confirmed and measured; probes build/p36/, untracked: mkbyte.py,
   rmequip.py, oies.py, additem.py, imsprobe.py, runcheck.sh, cmpcheck.py; runs and objcmp output in build/scratch/msl-r36/.
-  Over every hand-written unit against master a3e6a9fe: 11,264 -> 11,269 byte-exact, +9 rows, nothing lost):
+  Over every hand-written unit against master aa9059d9: 11,274 -> 11,279 byte-exact, +9 rows, nothing lost; objcmp
+  master --by-address, 662 units: 16 differ -- the range init's three (ai_group.cpp, seal_unit.cpp, node_main.cpp),
+  zanim_menu.cpp's no-target EQUIP_ITEM destructors, and the erase step's twelve, tail-code list destructors):
   - APPLIED (the UI's round 33): include/vector's byte pod is __vector_pod's PRIMARY template and every one-byte scalar
     element runs on it over its own type -- the primary vector's base chosen by __vector_is_byte<T> (sizeof 1, not a
     class by MW's SFINAE test, not bool: MSL's bit vector is hud_objectives.cpp's), the char imp generic over T,
