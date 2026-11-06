@@ -84,21 +84,29 @@ inline void GridWorldBBox(CNode *node, const CMatrix &m, CBBox *out)
     func_002A9550(out, (CPnt3D *)pts);
 }
 
+/* the grid itself, through an inline (a stand-in, the name ours, for whatever call the original
+ * made there: its result is a loop invariant MW hoists out of Create's cell loop, which lays the
+ * inner loop's preheader after the function's last block as the target's -- folded back into
+ * `this`, the preheader keeps only its entry test) */
+static inline CGrid *ThisGrid(CGrid *grid)
+{
+    return grid;
+}
+
 /* a node into the grid (not a cell): its box carried through its matrix -- the node itself, at 0 --
  * the cells it overlaps, each side pulled in by a ten-thousandth of the box's size, clamped into the
  * grid, the node's atom table sized, and in each cell an atom off the free list given the node and
  * linked in after the cell's own (SOCOM 1's, 0x216A90: SOCOM 1's carried two corners, took its
  * atoms off an array and tested an empty cell; Insert tail-calls it). The box through an inline
  * (GetBBox then called, the corners in its frame below the box's, as the target's); the first
- * cells' lower clamps MAX's ternary, their upper ones `if` clamps, the last cells' upper ones
- * ternaries (movz) with the end a variable of its own (s4/s3 there).
- * OPEN, 0x2FC of 0x314 (written in round 19): every call, the box, the four clamps and the link
- * are the target's, but (1) the target enters the inner loop by a `b` to a preheader after the
- * function's end (MW's hoisted-invariant shape: the entry test repeated there) where this tests
- * inline; (2) the atom's fetch and the second first-cell clamp join unpadded there, padded here;
- * (3) the inner counter and the ends take s5 / s4 / s3 there, s3 / s5 / s4 here. An inline atom
- * fetch (either return), an inline first-cell helper (0x2F4 / 0x30C), the counter declared
- * outside: no closer (build/scratch/core/v_gan19*.py) */
+ * cells' lower clamps MAX's ternary, the first upper one an `if` clamp, the second a ternary (an
+ * unpadded branch: as an `if` its join is padded), the last cells' upper ones ternaries (movz) with
+ * the end a variable of its own. The core lane's round 21 (open since round 19, 0x2FC of 0x314):
+ * the cell's slot through ThisGrid -- the round-12 preheader rule: the inner loop entered by a `b`
+ * to its preheader after the function's last block, the entry test repeated there -- the atom's
+ * empty-list test `x = c == 0 ? 0 : x;` (the join unpadded: `if (!c) x = 0;` pads it, `c ? x : 0`
+ * is a movz), and the loop counters declared ahead of the ends (`igreplay --move`: the inner
+ * counter numbered between x0 and xn gives the target's s5 / s4 / s3) */
 void CGrid::gridAddNodeToGrids(CNode *node)
 {
     if (!node || node->IsCell())
@@ -118,9 +126,9 @@ void CGrid::gridAddNodeToGrids(CNode *node)
     int z0 = (int)(m_InvCellDim * (tz + (box.m_min.z - m_origin.z)));
 
     z0 = MAX(0, z0);
-    if (z0 > m_CellCount.cy - 1)
-        z0 = m_CellCount.cy - 1;
+    z0 = z0 > m_CellCount.cy - 1 ? m_CellCount.cy - 1 : z0;
     int x1 = (int)(m_InvCellDim * (-tx + (box.m_max.x - m_origin.x)));
+    int x, z;
 
     x1 = MAX(0, x1);
     x1 = x1 > m_CellCount.cx - 1 ? m_CellCount.cx - 1 : x1;
@@ -132,17 +140,16 @@ void CGrid::gridAddNodeToGrids(CNode *node)
     int zn = z1 + 1;
 
     node->AllocateAtomBasePtrs(xn - x0, zn - z0);
-    for (int x = x0; x < xn; x++) {
-        for (int z = z0; z < zn; z++) {
+    for (x = x0; x < xn; x++) {
+        for (z = z0; z < zn; z++) {
             CGridAtom *atom = m_FreeAtoms;
 
             m_FreeAtoms = atom->Next;
-            if (!m_FreeAtoms)
-                atom = 0;
+            atom = m_FreeAtoms == 0 ? 0 : atom;
             atom->Ent = node;
             atom->Ent->InsertAtom(atom);
 
-            CGridAtom **p = gridGetAtomBasePtr(x, z);
+            CGridAtom **p = ThisGrid(this)->gridGetAtomBasePtr(x, z);
 
             if (!(*p)->Next) {
                 atom->Prev = *p;
@@ -160,22 +167,28 @@ void CGrid::gridAddNodeToGrids(CNode *node)
 
 /* the ordered list built from the view point: its cell first, then ring after ring of the
  * neighbours of the last ring's cells, until a ring adds none or the list is full (SOCOM 1's).
- * OPEN (0x1F4 of 0x1E8): the target recomputes &m_Atoms[i] from the index at every step of the
- * inner loop (sll, addu) and tests the loop's bool twice (sltu, xori before the branch); MW
- * strength-reduces the element pointer here (a register stepped by 16) -- not an unsigned or short
- * index, pointer arithmetic, nor an accessor taking another index type; round 18: `&m_Atoms[++i]`
- * (0x1F0), `m_Atoms + i`, an accessor over the array or the grid, the ring read by index (0x1F4-0x1FC,
- * build/scratch/core/v_bocal.py) */
+ * The core lane's round 21 (open since round 9, 0x1F4 of 0x1E8): the target recomputes &m_Atoms[i]
+ * from the index at every step of the inner loop (sll, addu) -- only `#pragma opt_strength_reduction
+ * off` keeps MW from stepping the element pointer by 16 (no loop or index shape did: rounds 9-18,
+ * build/scratch/core/v_bocal*.py); the view cell's raw coordinate through an inline (the name and
+ * the helper ours: its result numbered after the named locals, as `igreplay --want` asked -- vx /
+ * vz in v1, MIN's result in a0); the ring's end declared ahead of the count (n s0, last s1) */
+static inline int GridCoord(float inv, float d)
+{
+    return (int)(inv * (0.0001f + d));
+}
+
+#pragma opt_strength_reduction off
 void CGrid::buildOrderedCellAtomList(const CPnt3D *view)
 {
     m_orderedCells.m_gridCellAtomCnt = 0;
     m_orderedCells.m_rt_gridCellAtomCnt = 0;
-    int vx = (int)(m_InvCellDim * (0.0001f + (view->x - m_origin.x)));
+    int vx = GridCoord(m_InvCellDim, view->x - m_origin.x);
 
     vx = MAX(0, vx);
     vx = MIN(m_CellCount.cx - 1, vx);
     m_orderedCells.m_viewX = vx;
-    int vz = (int)(m_InvCellDim * (0.0001f + (view->z - m_origin.z)));
+    int vz = GridCoord(m_InvCellDim, view->z - m_origin.z);
 
     vz = MAX(0, vz);
     vz = MIN(m_CellCount.cy - 1, vz);
@@ -185,10 +198,11 @@ void CGrid::buildOrderedCellAtomList(const CPnt3D *view)
     int i = 0;
     GRIDCELLATOM *a = &m_orderedCells.m_Atoms[0];
     bool more = true;
+    GRIDCELLATOM *last;
     int n;
 
     while (more && (n = m_orderedCells.m_gridCellAtomCnt) < 1600) {
-        GRIDCELLATOM *last = &m_orderedCells.m_Atoms[n];
+        last = &m_orderedCells.m_Atoms[n];
 
         while (a->ring == ring) {
             int x = a->x;
@@ -207,6 +221,7 @@ void CGrid::buildOrderedCellAtomList(const CPnt3D *view)
         more = n != m_orderedCells.m_gridCellAtomCnt;
     }
 }
+#pragma opt_strength_reduction reset
 
 /* a cell of the walk's box added to the ordered list, with its ring (its distance in cells from
  * the view cell), once per walk and only inside the boundary unless forced (SOCOM 1's) */
@@ -662,15 +677,6 @@ inline int GridAtomIndex(const CGrid *grid, int x, int z)
     z = MAX(0, z);
     z = MIN(grid->m_CellCount.cy - 1, z);
     return x + z * grid->m_CellCount.cx;
-}
-
-/* the grid itself, through an inline (a stand-in, the name ours, for whatever call the original
- * made there: its result is a loop invariant MW hoists out of Create's cell loop, which lays the
- * inner loop's preheader after the function's last block as the target's -- folded back into
- * `this`, the preheader keeps only its entry test) */
-static inline CGrid *ThisGrid(CGrid *grid)
-{
-    return grid;
 }
 
 /* the grid built over the world's box: the parameters and the origin kept, the extents and the
