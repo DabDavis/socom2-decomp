@@ -12,7 +12,7 @@
  * result (0x224D10), and round 21's UnInit, Tick, Init, UpdateCareerRecord (0x225070: the career
  * record, 0x2F98F0/0x2F96F0) and ComputeNewRating (0x2253C0: mp_rating.cpp's Elo match). Open:
  * Init, GetRoundResult, SetMpStatUiVars, SetFinalTeamTotalsUiVar (each says how far;
- * ComputeNewRating byte-exact since round 53). Defined in reverse of their image order (-inline deferred). */
+ * ComputeNewRating byte-exact since round 53, SetFinalTeamTotalsUiVar since round 62). Defined in reverse of their image order (-inline deferred). */
 
 #include "fts_state.h"
 #include "../../gamez/zrdr/zrdr.h"
@@ -202,9 +202,22 @@ inline CZSealBody *AsSeal(CEntity *e)
 }
 
 /* a walk over the world's entities, counting (SOCOM 1's DWARF; hud_scorepopup.cpp's view) */
+/* (round 62: CEntityItr(int) starts the walk at the first node read as the list's begin() reads it
+ * but with no pointer local for the sentinel -- include/list's `const node_base *t = tail_ptr();
+ * t->next_` shares &m_list with end()'s, which MW hoists out of an outer loop, where
+ * SetFinalTeamTotalsUiVar's target loads the first node absolutely. A MODELLING DEVICE: the shared
+ * constructor that way keeps every other walk byte-exact but costs Init's two walks (14 off ->
+ * 0x78C of 0x79C: its target keeps &end_.next_ in a frame slot, the pointer local's address) --
+ * the original's walk there is spelled some other way, not found) */
 class CEntityItr {
 public:
     CEntityItr() : _it(GetEntityList().begin()), _iIdx(0) {}
+    CEntityItr(int) : _it(ListBegin(GetEntityList())), _iIdx(0) {}
+    static std::list<CEntity *>::const_iterator ListBegin(const std::list<CEntity *> &l)
+    {
+        return std::list<CEntity *>::const_iterator(
+            std::__list_imp<const void *, std::allocator<const void *> >::const_iterator(l.tail_ptr()->next_));
+    }
     bool More() const { return _it != GetEntityList().end(); }
 
     CZSealBody &GetSeal() const;
@@ -593,25 +606,16 @@ bool CompareGameSeals(CZSealBody *p1, CZSealBody *p2)
 /* a side's totals of the three stats, as a list of strings in a UI variable: only the living
  * SEALs the stats count, the hit percentage averaged (SOCOM 1's SetFinalTeamTotalsUiVar, six
  * totals of every SEAL's game stats there).
- * OPEN, 1 instruction and a register swap (25 differing, the branch offsets with them): the walk's
- * begin() is `lw a2,4(s6)` off the &CEntity::m_list hoisted out of the
- * outer loop, where the target reloads it absolutely (`lui at,0x43; lw a2,0x62E8(at)`) and keeps
- * &m_list in s7 for end() only, the UI variable's name in s6 (here swapped) -- include/list's
- * const begin() reads the sentinel through tail() into a pointer local, which shares the address
- * with end()'s; SetMvpUiVars' and SetStatLbUiVar's walks, outside any loop, cannot tell. Tried:
- * begin/end through CEntity::m_list (no conversion to const_iterator) or an end local. The side
- * test's `bnez v0,count; b skip` is the `if (bSeals) { if (!A) continue; } else if (!B) continue;`
- * form SetStatLbUiVar matched with (round 18: the goto form inverted it; the ternary joins).
- * Round 62: a second CEntityItr constructor for this walk alone, building the wrapper's iterator
- * from the BASE list's begin() (`end_.next_` read directly: `std::list<CEntity *>::const_iterator(
- * ((const std::__list_imp<const void *, std::allocator<const void *> > &)GetEntityList()).begin())`)
- * gives the target's absolute begin load and &m_list in s7: 5 off, two frame slots swapped (the
- * begin chain's wrapper temporary at sp+280, the end chain's base one at sp+276: the target makes
- * both base temporaries first); changed in the shared constructor it costs four matched walks
- * (ComputeNewRating, SetStatLbUiVar, SetMvpUiVars, UnInit), and a helper returning the wrapper
- * (or the base iterator) a level deeper is 0x288.
- * __ptmf_cmpr (0x1828E0) is the PTMF comparison MW calls by name: the row needs that name for the
- * call to resolve */
+ * Byte-exact since round 62 (open since round 17: 25 differing, one instruction and a register
+ * swap): the walk's begin() was `lw a2,4(s6)` off the &CEntity::m_list hoisted out of the outer loop
+ * (include/list's const begin() reads the sentinel through a pointer local, which shares the address
+ * with end()'s) where the target reloads it absolutely and keeps &m_list in s7 for end() only:
+ * the walk starts through CEntityItr(int), the same read without the local (ListBegin). Through the BASE list's begin()
+ * instead the load was right but two frame slots swapped (5): the base temporaries of both chains
+ * come first only when the begin chain is as deep as end()'s. The side test's `bnez v0,count; b
+ * skip` is the `if (bSeals) { if (!A) continue; } else if (!B) continue;` form SetStatLbUiVar matched
+ * with (round 18: the goto form inverted it; the ternary joins). __ptmf_cmpr (0x1828E0) is the PTMF
+ * comparison MW calls by name: the row needs that name for the call to resolve */
 void SetFinalTeamTotalsUiVar(bool bSeals, const char *szUiVar)
 {
     static int (CSealStats::*pfnHitPct)() const = &CSealStats::GetHitPct;
@@ -624,7 +628,7 @@ void SetFinalTeamTotalsUiVar(bool bSeals, const char *szUiVar)
         int iNum = 0;
         char buf[16];
 
-        for (CEntityItr it; it.More(); it.Advance()) {
+        for (CEntityItr it(0); it.More(); it.Advance()) {
             if (it.IsLiveSeal() && !it.GetSeal().m_fd2) {
                 CZSealBody &seal = it.GetSeal();
 
