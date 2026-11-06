@@ -23,6 +23,9 @@ extern "C" bool func_003084F0(const CMatrix *m);
 /* whether a segment surely misses a node's bounds (node_main.cpp's, new in SOCOM II, not named
  * yet) */
 extern "C" bool func_003124F0(zdb::CNode *node, const CPnt3D *a, const CPnt3D *b);
+/* whether a set's region mask takes a region bit, none counting as the first (int_main.cpp's
+ * neighbourhood, a generated draft: DiIntersect's, new in SOCOM II, not named yet) */
+extern "C" int func_002DC620(zdb::DiIntersect *d, unsigned int bit);
 
 /* the node the walk is in (SOCOM 1's file static m_node) and the matrix stack the props' matrices
  * are pushed on (SOCOM 1's file static stack; SOCOM II's initialiser, 0x401CC0, clears its owner
@@ -484,6 +487,257 @@ static inline bool PolyCollides(const CDI *d)
     } else if (CameraTypeOf(d) & 1)
         return false;
     return true;
+}
+
+/* a set's search ended at a node: the node noted and the type's done bit set (ours, inline) */
+static inline void MarkDone(DiIntersect *d, CNode *node)
+{
+    d->m_TreeDoneNode = node;
+    d->m_Type |= 0x8000;
+}
+
+/* whether the batch walk's cell marks the i-th set: SOCOM II's test as the target has it, the
+ * cell's marks tested for any and the set's bit for itself (a logical and, never the bitwise one;
+ * ours, inline) */
+static inline bool BatchMarked(int i)
+{
+    return NodeCheck && (1 << (i % 32));
+}
+
+/* a coordinate within a radius of a centre's (ours, inline) */
+static inline bool InSpan(float v, float r, float c)
+{
+    return v + r >= c && v - r <= c;
+}
+
+/* a point within a radius of a centre on every axis (ours, inline) */
+static inline bool InCube(const CPnt3D *p, float r, const CPnt3D &c)
+{
+    return InSpan(p->x, r, c.x) && InSpan(p->y, r, c.y) && InSpan(p->z, r, c.z);
+}
+
+/* a node's tree searched for a batch of sets (SOCOM 1's NodeGetIntersectBatch, SOCOM II's per-type
+ * body): a node with collision, unless every set is done with it -- a set is done here when the node
+ * is its own, the cell's marks miss it or its region mask leaves the node out; its matrix pushed
+ * (unless the unit one) and inverted; each set not done taken into the node's space by its type --
+ * a ray (2) and a point's altitude (1, the ray 50000 up and down) as NodeGetIntersect's, skipped when
+ * the segment surely misses the node's bounds (a character's node, the one being searched, against
+ * its box); a sphere (4) recorded as a hit on the node itself when its centre's cube holds the box's
+ * centre, a character's node ending the set, the node's first polygon noted -- then the node's
+ * polygons tested in turn for the rays and points; then the children; then every set this node
+ * ended released */
+void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
+{
+    CDIVector::iterator it;
+    CNodeVector::iterator c;
+
+    if (!node->m_active || !node->m_hasDI)
+        return;
+    CDIVector *dis = &node->m_di;
+    bool skip = true;
+
+    for (int i = 0; i < n; i++) {
+        DiIntersect *d = di[i];
+
+        if (node == d->m_Node || !BatchMarked(i) || !func_002DC620(d, 1 << node->m_region_shift))
+            MarkDone(d, node);
+        if (skip && !(d->m_Type & 0x8000))
+            skip = false;
+    }
+    if (!skip) {
+        bool identity = func_003084F0(&node->m_matrix);
+
+        if (!identity)
+            stack.Multiply(&node->m_matrix, true);
+        CMatrix inv;
+
+        Vu0MatrixInverseWithUniformScale(&inv, CStack::m_top);
+        for (int j = 0; j < n && !skip; j++) {
+            DiIntersect *d = di[j];
+            bool stop;
+
+            if (d->m_Type & 0x8000)
+                continue;
+            switch (d->m_Type & ~0x8000) {
+            case 2:
+                if ((m_node->m_socom2_a1 & 4) && !d->m_IntersectCharacters) {
+                    MarkDone(d, node);
+                    break;
+                }
+                inv.Transform(TailOf(d), MTailOf(d), 2);
+                if (func_003124F0(node, MTipOf(d), MTailOf(d)))
+                    MarkDone(d, node);
+                else if ((m_node->m_socom2_a1 & 4) && node == m_node) {
+                    CPnt4D hit, hit2;
+                    CPnt4D tail(d->m_MTail.x, d->m_MTail.y, d->m_MTail.z, 1.0f);
+                    CPnt4D tip(d->m_MTip.x, d->m_MTip.y, d->m_MTip.z, 1.0f);
+
+                    if (!((CBBox *)node->GetBBox())->GetIntersect(&tip, &tail, &hit, &hit2, true))
+                        MarkDone(d, node);
+                }
+                if (!(d->m_Type & 0x8000)) {
+                    stop = dis->m_bStopAtFirstIntersection;
+                    if (dis->m_bReturnBackFaceIntersections)
+                        CDI::m_backface_mask = 48;
+                    else
+                        CDI::m_backface_mask = 32;
+                    d->LoadTipAndTail();
+                }
+                break;
+            case 4:
+                if ((m_node->m_socom2_a1 & 4) && !d->m_ProximityCharacters || node->m_NOTUSED) {
+                    MarkDone(d, node);
+                    break;
+                }
+                {
+                    inv.Transform(TailOf(d), MTailOf(d), 1);
+                    const CBBox *box = node->GetBBox();
+                    float r = d->m_Tip.x;
+                    CPnt3D *p = &d->m_MTail;
+                    CPnt3D centre = box->m_min + (box->m_max - box->m_min) * 0.5f;
+
+                    if (!InCube(p, r, centre)) {
+                        MarkDone(d, node);
+                        break;
+                    }
+                    int cnt = d->m_Cnt;
+
+                    if (cnt < d->m_BufCnt) {
+                        if (m_node->m_socom2_a1 & 4)
+                            MarkDone(d, node);
+                        if (!d->m_socom2_bit19 || d->m_socom2_bit19 && node->m_nodeEx) {
+                            if (node->m_di.size())
+                                d->m_Intersects[d->m_Cnt].m_poly = *node->m_di.begin();
+                            d->m_Intersects[cnt].m_node = node;
+                            d->m_Cnt++;
+                        }
+                    }
+                }
+                break;
+            case 1:
+                if ((m_node->m_socom2_a1 & 4) && !d->m_AltitudeCharacters) {
+                    MarkDone(d, node);
+                    break;
+                }
+                {
+                    CPnt3D top = d->m_Tail;
+                    top.y = 50000.0f;
+                    CPnt3D bottom = d->m_Tail;
+                    bottom.y = -50000.0f;
+
+                    inv.Transform(&top, MTailOf(d), 1);
+                    inv.Transform(&bottom, MTipOf(d), 1);
+                }
+                if (func_003124F0(node, MTipOf(d), MTailOf(d)))
+                    MarkDone(d, node);
+                else if ((m_node->m_socom2_a1 & 4) && node == m_node) {
+                    CPnt4D hit, hit2;
+                    CPnt4D tail(d->m_MTail.x, d->m_MTail.y, d->m_MTail.z, 1.0f);
+                    CPnt4D tip(d->m_MTip.x, d->m_MTip.y, d->m_MTip.z, 1.0f);
+
+                    if (!((CBBox *)node->GetBBox())->GetIntersect(&tip, &tail, &hit, &hit2, true))
+                        MarkDone(d, node);
+                }
+                if (!(d->m_Type & 0x8000)) {
+                    stop = dis->m_bStopAtFirstIntersection;
+                    if (dis->m_bReturnBackFaceIntersections)
+                        CDI::m_backface_mask = 48;
+                    else
+                        CDI::m_backface_mask = 32;
+                    d->LoadTipAndTail();
+                }
+                break;
+            }
+            if (!(d->m_Type & 0x8000) && !skip) {
+                bool hit = false;
+
+                for (it = dis->begin(); !hit && it != dis->end(); it++) {
+                    CDI *p = *it;
+
+                    if (PolyCollides(p)) {
+                        if (p->m_flags.m_ptcount)
+                            p->LoadPlaneVU0();
+                        switch (d->m_Type & ~0x8000) {
+                        case 2:
+                            if (DiTypeOf(p) & 2) {
+                                int cnt = d->m_Cnt;
+
+                                if (cnt < d->m_BufCnt) {
+                                    hit = ((CDIHit *)p)->GetIntersect(d);
+                                    if (hit) {
+                                        hit = stop;
+                                        CMatrix *m = CStack::m_top;
+                                        IntersectStruct *is = &d->m_Intersects[cnt];
+                                        CPnt3D *norm = &is->m_norm;
+
+                                        asm {
+                                            lqc2 vf4, 0(m)
+                                            lqc2 vf5, 16(m)
+                                            lqc2 vf6, 32(m)
+                                            lqc2 vf7, 48(m)
+                                            lqc2 vf27, 0(is)
+                                            lqc2 vf26, 0(norm)
+                                            vcallms 0x80
+                                            qmtc2.i a0, vf0
+                                            sqc2 vf27, 0(is)
+                                            sqc2 vf26, 0(norm)
+                                        }
+                                        d->m_Intersects[cnt].m_node = node;
+                                        d->m_Intersects[cnt].m_poly = p;
+                                        d->m_Cnt++;
+                                    }
+                                }
+                            }
+                            break;
+                        case 1:
+                            if (DiTypeOf(p) & 1) {
+                                int cnt = d->m_Cnt;
+
+                                if (cnt < d->m_BufCnt) {
+                                    hit = ((CDIHit *)p)->GetIntersect(d);
+                                    if (hit) {
+                                        CMatrix *m = CStack::m_top;
+                                        IntersectStruct *is = &d->m_Intersects[cnt];
+                                        CPnt3D *norm = &is->m_norm;
+
+                                        asm {
+                                            lqc2 vf4, 0(m)
+                                            lqc2 vf5, 16(m)
+                                            lqc2 vf6, 32(m)
+                                            lqc2 vf7, 48(m)
+                                            lqc2 vf27, 0(is)
+                                            lqc2 vf26, 0(norm)
+                                            vcallms 0x80
+                                            qmtc2.i a0, vf0
+                                            sqc2 vf27, 0(is)
+                                            sqc2 vf26, 0(norm)
+                                        }
+                                        d->m_Intersects[cnt].m_node = node;
+                                        d->m_Intersects[cnt].m_poly = p;
+                                        d->m_Cnt++;
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            hit = 1;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        CNodeVector &kids = node->m_child;
+
+        for (c = kids.begin(); c != kids.end(); c++)
+            NodeGetIntersectBatch(*c, di, n);
+        if (!identity)
+            stack.Pop();
+    }
+    for (int k = 0; k < n; k++) {
+        if (di[k]->m_TreeDoneNode == node)
+            BatchReset(di[k]);
+    }
 }
 
 /* a node's tree searched for the hit set: a node with collision, not a character's unless
