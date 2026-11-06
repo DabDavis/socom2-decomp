@@ -2111,6 +2111,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - a lead for the online lane: ReleaseVector<T>'s seven instances sit right after ReleaseUIResources (0x2DFA50-
     0x2DFDCF) in reverse call order -- an inline function template's out-of-line copies, cut at their caller (e4);
     ours come at the unit's end (the order only: sccheck does not score it).
+- **Tells from the UI, round 32** (CollectGarbage, open since round 18, UTF8GetChar, since round 21, and UTF8Append):
+  - a flag bit tested and later set through BY-REFERENCE INLINES OVER A STRUCT AT THE BIT'S BYTE makes MW compute the
+    byte's address once, in the test's delay slot, and hold it in a saved register across calls -- written on the value
+    directly the offset folds into both accesses (CUIVarManager::CollectGarbage 0x385A60's sixth saved register);
+  - a class iterator's register is a temporary numbered after every named local, a named pointer walk declared ahead of a
+    local is numbered before it; in an accumulator a local assigned twice keeps its statement's place, and `x += y` puts
+    the accumulator first in the add (UTF8GetChar 0x39F0C0);
+  - a shift through an inline taking unsigned int gives srl, the in-place shift of a promoted unsigned short sra
+    (UTF8Append 0x39FD80); `#pragma bool off` makes || / && int-valued (no andi 0xff) but gives each chain's last operand
+    a `!= 0`;
+  - an inline's locals declared uninitialised at its top are numbered there, ahead of locals defined earlier in the body;
+    a float `a*b + c*d` in one expression fuses into mula.s / madd.s, built from two locals with a branch between it stays
+    mul.s + add.s; `r = r >= 0.0f ? r : 0.0f` gives bc1t with the next product duplicated into both arms, `if (r < 0.0f)
+    r = 0.0f` gives bc1f; a signed char static compared as `(BYTEENUM)s == ENUM_0` loads lbu, `!s` lb.
 - **Tells from the zdb world, textures, rdr and sound, round 27** (CNode::ApplyDecal; Headset::Flush renamed Flush(bool);
   CPipe::RenderVisual written):
   - A MEMBER CALL LOADS `this` AFTER ITS ARGUMENTS; an extern "C" placeholder taking the object first loads it first --
