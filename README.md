@@ -15449,6 +15449,49 @@ DistCalc4Bit: SOCOM 1's order and bodies). No tool changed in this round (scratc
 score, cdiff.py the normalised alignment, rtllist.py a pass dump's real insns between two uids, probe_fo.py loop.c's decisions under
 filler stores, v_*.py the variants).
 
+**Round 41c: the second-pass builders, the Chinese trees, the N-best control, the voicing measure: 625 of 652 in `lib/asr`.**
+
+- **A statement that leaves no word can still move others** (CreateSecondPassTreeContext_ForChinese, 2 words, every statement order
+  tried first): `pm2 = &maxn` at the head of a block. Its insn lives until reload deletes it (the frame address is its equivalence), and
+  holds sched1's second ALU slot in the cycle after the load; the zero behind it then issues after the sum.
+- **An inline function's arguments expand as sums, the index first** (`expand_inline_function` passes EXPAND_SUM: `addu a1,a1,t1`, where a
+  macro's `&t->items[n]` gives `addu a0,t0,a0`). SplitUp_Finals' item copy as an inline took 126 words to 3, as its twin.
+- **A variable can be born a constant for one test** (Swap_Finals, OPEN since 39c): `unsigned int tone = 0xFFFF;` above `while (c != 0xFFFF)`.
+  CSE reuses it for the entry test (`li t3,0xffff`, early in sched2), it is not live round the loop, and its short range takes t3 ahead of the
+  node's shift. Written `while (c != tone)` it lives 260 insns and takes t6.
+- **A short variable can outrank a long one's register by conflict** (Voicing_GetMaxVoicing): the tail's three logs each a variable of its own
+  (`a`, `b`, `c`): `b` gets f20 first by its short life, the second energy conflicts with it and with `a` and lands in f22, the first energy
+  then shares f20. The energies alone would have them the other way (a 4-ref, 17-insn life beats a 6-ref, 359-insn one).
+- **The increments live in the indexes** (Translate_Prons and its twin, OPEN since 37c): `t->items[(*nitems)++].child = ...`,
+  `t->links[*nlinks].node = ++(*nitems)`: the left side's address is expanded first and the count read once; the parameter `node` reused for
+  the child, and `kind == 1` inside the loop (hoisted after the guard, `xori` in the branch's slot).
+- **`for (;;) { if (lnk == EOL) { arm; break; } ...; if (match) {...; break;} lnk = next; }` shows in three ways**: the roll moves test and arm to
+  the bottom, a label in the region refuses the test's copy (entry `b`), and blocks that end in jumps leave the loop for the last barrier
+  (Build_Tree_ForChinese_TreeCtx: its `prev != 0` arm and both found exits stand together before the else).
+- **A barrier makes a place** (Swap_Finals): with `if (leaf) {...} else { loop }` the arms' `b END` give `return 1` the barrier it moves to;
+  an arm's own table store is what cross-jumps. Two `return f(..) == 0;` arms are one call, cross-jumped with the a0 copy in the branch's slot
+  (the two arms' first insn); one call with its arguments in variables has that copy at the merge (ControlNBestDynProgProcess, case 4).
+- **PRE's `b TOP`**: `e0 = w->end` above a do-while whose body starts `e = w->end` inserts on the critical back edge; the `b` and its barrier are
+  where the find's failure arm goes (Build_Tree_ForChinese). A node index spelled as an expression (`j * np + nnodes + i`) gives nnodes its
+  refs where a walker would not.
+- **`const` inline parameters are read where they stand** (TREE_READONLY in expand_inline_function): a spilled argument is reloaded from its own
+  slot, no copy. **Deferred inlines**: inline functions above their caller inline there and their copies land at the object's end, closing
+  Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree (open since 14c). **Definition order is a nothrow note**: a callee defined earlier lets
+  reorg read through the call (`beqz s8,T; move a0,s8` where an extern leaves a nop).
+- **Register twins of a frame word**: `pm = &maxp; m = *pm; ...; *pm = m;` a pointer per maximum (one pointer set twice defeats cprop, a pure
+  inline's MEM(ADDRESSOF) purges to a register). `n3 = n2`, `n4 = n2` copies stop PRE commoning a shift across the calls. Duplicate failure
+  tails (cross-jumped after reload) raise the context's refs over the tree's (s2/s3): one tail in the Mandarin builder, four in its twin.
+- **Open, with the diagnosis in place**: SplitUp_Finals and its twin (3 words: the target's tone test recomputes node * 4 where GCSE's dump
+  has that occurrence redundant, so it must not be the same expression at that pass); ProcessVad (2: the target loads sum's zero and copies
+  to cnt, with cnt the higher priority; sum as the copy's source has one ref more and takes $f0. Two independent zeros would be right, reload_cse
+  making the copy, but CSE merges them first); InitCalculateDistances (4, unchanged).
+
+Hand-written in round 41c: `asr/spcontext.c` (new: CreateSecondPassContext, FreeSecondPassContext, span 0x4D0BD8-0x4D1C18, SOCOM 1's object at
+0x33F590), `asr/secpass.c` (CreateSecondPassTreeContext), `asr/chinese.c` (Build_Tree_ForChinese, Translate_Prons_Into_Items_And_Tones, Swap_Finals,
+FreeSecondPassContext_ForChinese, CreateSecondPassContext_ForChinese, Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree), `asr/chinese_tree.c`
+(the same six under `_TreeCtx`, CreateSecondPassTreeContext_ForChinese), `asr/nbestdp.c` (ControlNBestDynProgProcess, ConstructNBestDynProg),
+`asr/voicing.c` (Voicing_GetMaxVoicing). The largest unwritten rows left in the recogniser: DynProgAccNBestNoOptSil (1105 words), DynProgAccNBestOptSil (1635).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
