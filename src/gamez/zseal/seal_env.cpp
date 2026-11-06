@@ -1485,7 +1485,7 @@ extern short data_003DF0D0;
 extern short data_003DF0D8;
 void func_005A78C0(void *body, void *data);
 /* (OVL2 0x5B4340: the state test of a kind, below) */
-bool func_005B4340(CZSealBody *seal, int kind);
+bool func_005B4340(CZSealBody *seal, unsigned char kind);
 }
 
 /* a reload's blend pushed: the throwables' set its own; else by the stance the blends rest in -- a
@@ -1994,7 +1994,7 @@ static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
 
 extern "C" {
 /* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind, below) */
-bool func_005B4340(CZSealBody *seal, int kind);
+bool func_005B4340(CZSealBody *seal, unsigned char kind);
 /* the restrained anim set (OVL1 bss, below) */
 extern AnimSet *data_0044D400;
 /* a halfword's bits tested (seal.cpp's tail copy, OVL2 0x5551A0) */
@@ -2149,7 +2149,7 @@ AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 extern "C" {
 /* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind -- CanTraverse and
  * PreTick ask it too; the name unknown) */
-bool func_005B4340(CZSealBody *seal, int kind);
+bool func_005B4340(CZSealBody *seal, unsigned char kind);
 }
 
 extern "C" {
@@ -6253,6 +6253,183 @@ extern "C" bool func_005B4B40(CZSealBody *seal, float *a, float *b)
     seal->m_velM = CPnt3D::zero;
     seal->m_1350 = CPnt3D::zero;
     return false;
+}
+
+extern "C" {
+extern short data_003DEAE0;
+extern short data_003DEAE8;
+extern short data_003DEF08;
+extern AnimSet *data_0044D3F8;
+extern AnimSet *data_0044D410;
+bool func_00588030(CZSealBody *seal);
+bool func_00587FE0(CZSealBody *seal);
+bool func_00587F90(CZSealBody *seal);
+bool func_00587F50(CZSealBody *seal);
+bool func_00587F10(CZSealBody *seal);
+bool func_0057DF10(CZSealBody *seal);
+bool func_0057B510(CZSealBody *seal);
+}
+
+/* the blend on top (an inline over the stack's Top, OVL2 0x555170; the name ours) */
+static inline CZBodyAnimBlend *TopBlend(CZSealBody *seal)
+{
+    return (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+}
+
+/* whether an anim is a throw's or a toss's, CQB's, a stab's or a restraint's (inlines over the anim types'
+ * rows; the names ours) */
+static inline bool IsThrowAnim(short t)
+{
+    if (t == AnimTypes::ThrowGrenade || t == AnimTypes::CrouchThrowGrenade || t == AnimTypes::ProneThrowGrenade ||
+        t == AnimTypes::TossGrenade || t == AnimTypes::PistolTossGrenade || t == AnimTypes::ProneTossGrenade ||
+        t == AnimTypes::PistolProneTossGrenade || t == AnimTypes::CrouchThrowGrenade)
+        return true;
+    return false;
+}
+
+static inline bool IsCQBAnim(short t)
+{
+    if (t == AnimTypes::CQB || t == AnimTypes::PistolCQB)
+        return true;
+    return false;
+}
+
+static inline bool IsStabAnim(short t)
+{
+    if (t == AnimTypes::PistolStab || t == AnimTypes::Stab)
+        return true;
+    return false;
+}
+
+static inline bool IsRestrainAnim(short t)
+{
+    if (t == AnimTypes::ApplyRestraints || t == AnimTypes::PistolApplyRestraints)
+        return true;
+    return false;
+}
+
+static inline bool BlendFlag4(const CZBodyAnimBlend *b)
+{
+    return (b->m_flags & 4) ? true : false;
+}
+
+/* whether the SEAL may start an action of a kind: alive, out of the state 8, the anim tests for each kind
+ * (OVL2 0x5B4340, new in SOCOM II: the reload, the change of an item, the restraint, the CQB and the knife
+ * ask it, with the kit's Reload and the controller's PreTick; the name unknown) */
+extern "C" bool func_005B4340(CZSealBody *seal, unsigned char kind)
+{
+    if (!seal->m_isAlive)
+        return false;
+    if (seal->m_state == 8)
+        return false;
+    if (func_00588030(seal) || func_00587FE0(seal))
+        return false;
+    if (seal->IsCurrentBlend((AnimType)data_003DEAE0))
+        return false;
+    if (seal->m_state == 5 || TopBlend(seal)->m_state == 5)
+        return false;
+    if (seal->IsCurrentBlend((AnimType)data_003DEF08))
+        return false;
+    if (kind == 1) {
+        switch (seal->m_state) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+            break;
+        default:
+            return false;
+        }
+        if (seal->m_carry)
+            return false;
+
+        CZBodyAnimBlend *top = TopBlend(seal);
+
+        if (!top)
+            return false;
+        if (seal->m_state != 3 && !seal->CanInterrupt())
+            return false;
+        if ((seal->m_airborne ? true : false) || func_00587F50(seal) || func_00587F10(seal))
+            return false;
+        if (seal->IsCurrentBlend((AnimType)data_003DEAE8))
+            return false;
+        if (IsThrowAnim(TopBlend(seal)->m_animType))
+            return false;
+        if (func_0057DF10(seal))
+            return false;
+        switch (top->m_state) {
+        case 7:
+        case 5:
+        case 4:
+            return false;
+        }
+        return true;
+    }
+    if (kind == 2 || kind == 3 || kind == 4 || kind == 5 || kind == 6 || kind == 7 || kind == 8) {
+        if (seal->m_state == 8 || TopBlend(seal)->m_state == 8)
+            return false;
+        if (seal->m_state == 9 || seal->m_state == 10 || seal->m_carry)
+            return false;
+        if (seal->IsChangingWeapons(true))
+            return false;
+        if (seal->IsReloading())
+            return false;
+        if (IsCQBAnim(TopBlend(seal)->m_animType))
+            return false;
+        if (IsStabAnim(TopBlend(seal)->m_animType))
+            return false;
+        if (IsRestrainAnim(TopBlend(seal)->m_animType))
+            return false;
+        if (seal->m_am_stunned)
+            return false;
+        if (seal->m_animset == data_0044D3F8)
+            return false;
+    }
+    if (kind == 3 || kind == 4 || kind == 5 || kind == 6 || kind == 7 || kind == 8) {
+        if (seal->m_state == 4 || TopBlend(seal)->m_state == 4)
+            return false;
+    }
+    if (kind == 2 || kind == 6 || kind == 7 || kind == 8 || kind == 11) {
+        if (seal->m_state == 2)
+            return false;
+        if (seal->m_animset == data_0044D408)
+            return false;
+        if (seal->m_animset == data_0044D410)
+            return false;
+    }
+    if (kind == 4) {
+        if (seal->m_state == 3 || TopBlend(seal)->m_state == 3)
+            return false;
+        if (seal->m_airborne || seal->m_state == 6)
+            return false;
+        if (func_00587F50(seal) || func_00587F10(seal))
+            return false;
+        if (!(seal->m_1340 <= 0.001f))
+            return false;
+    }
+    if (kind == 3) {
+        if (seal->IsCurrentBlend((AnimType)46))
+            return false;
+        if (BlendFlag4(TopBlend(seal)) || func_00588030(seal) || func_00587FE0(seal) || func_00587F90(seal))
+            return false;
+        if (!seal->m_kit.CurWeaponIsM203Mode() && (seal->m_airborne || seal->m_state == 6))
+            return false;
+        if ((func_00587F50(seal) || func_00587F10(seal)) && !seal->m_kit.CurWeaponIsM203Mode())
+            return false;
+        if (func_0057B510(seal))
+            return false;
+    }
+    if (kind == 7) {
+        if (func_00587F50(seal) || func_00587F10(seal))
+            return false;
+    }
+    if (kind == 10) {
+        if (seal->m_animset == data_0044D408)
+            return false;
+        if (seal->m_bit9)
+            return false;
+    }
+    return true;
 }
 
 /* the wall's hit the SEAL holds kept or dropped: dropped when asked, or when the SEAL is more than 24
