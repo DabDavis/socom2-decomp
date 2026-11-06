@@ -3,8 +3,8 @@
  * SOCOM 1's (its __sinit_zparticle_buf.cpp; SOCOM II's 0x402BB0 builds <iostream>'s pair and the
  * 5000 32-byte elements at 0x45C4D0 with the constructor 0x326F40). SOCOM 1's demo holds DrawRange to the element's
  * constructor in this order. Defined in reverse of their image order (-inline deferred). Written
- * so far: DrawRange, DrawFlush, the sort's comparison, DrawPrep (its zqsort instance, 0x326C30,
- * declared only), Draw and BufferElement::Draw (the world lane's round 32). */
+ * so far: everything (the world lane's rounds 32 and 33); only the zqsort instance's spill pick is
+ * open. VU0 ASM: a `.set` directive in a block splits the scheduling block there. */
 
 #include <eetypes.h>
 #include <iostream>
