@@ -635,7 +635,9 @@ public:
     int m_tint;   // 0x10
     unsigned char _14[0x19 - 0x14];   // 0x14: SOCOM 1's m_applyGlobalLighting .. m_landmark
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
-    unsigned char _1a[0x2c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_streakFade
+    unsigned char _1a[0x24 - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD ..
+    float m_streakLen;   // 0x24 (SOCOM 1: 0x20)
+    float m_streakFade;   // 0x28 (SOCOM 1: 0x24)
     float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)
     float m_maxRot;   // 0x30
     float m_minRotAcc;   // 0x34

@@ -12,6 +12,7 @@
 
 extern "C" float sinf(float);
 extern "C" float cosf(float);
+extern "C" float sqrtf(float);
 
 /* the renderer's pipe, as much as the buffer reads: its camera (zrndr_pipe.cpp's class; the
  * camera's matrix set's view at 0x3F0 -- SOCOM 1's 0x3C0, in its m_mtxSet -- the names ours) */
@@ -219,6 +220,226 @@ static inline bool OffScreen(const int *v)
  * on VU0 as Draw's; its four corners, the scale either way along x and z, each through the view
  * and the same test; the fog into each corner's w; two textured triangles (0, 2, 3) and (0, 1, 2)
  * at the tinted colour -- the fourth vertex at the element's own colour, the original's -- the
+/* SOCOM 1's, its tests moved in from the screen's edges: one particle drawn as a streak between its
+ * position and its last -- each end through the view to the screen (z kept to 16 bits, nothing
+ * drawn nearer than 1000), nothing when both are one point; the direction between them on the screen
+ * made unit (straight up when too short), the head pushed out by the size and the tail back by the
+ * size times the source's streak length, the half-width the perpendicular's; nothing drawn outside
+ * the range on either axis; z halfway between the ends, the altitude fog on VU0 as Draw's; two
+ * textured triangles with the tail's colour faded by the source's m_streakFade. Byte-exact (the world
+ * lane's round 33, unwritten before; build/scratch/wld/v_st*.py), each by the replay (igreplay --move
+ * before any source): `streak * size` WRITTEN TWICE -- a back-end temporary numbered where it first
+ * occurs, between the head's temporaries and the tail's (f3; a named local or `streak *= size` is
+ * numbered among the locals, 22 off); the sqrt in a statement of its own, one neighbour less for size
+ * (a named product at degree 32 makes size deferred, coloured first in f0, 73 off); the camera through
+ * a one-line accessor (numbered ahead of the z reads: --move 130=122.5 gave all 112 GPRs); `source`
+ * read into a local first (t0), the instance into a local for the equality test (the first
+ * declared takes the highest register there); the fade before q */
+static inline CPipeCamera *Cam() { return thePipe.m_camera; }
+
+void BufferElement::DrawStreaked(float (&m)[4][4])
+{
+    sceVu0FVECTOR in;
+    sceVu0IVECTOR tail;
+    sceVu0IVECTOR head;
+    CPnt4D c;
+    _word128 *tag;
+
+    m_spr = CSPR::m_sprPacket = (_word128 *)zSysSprGetPacket((u_long128 **)&CSPR::m_sprPacketEnd);
+    Instance *inst = m_instance;
+    float *last = inst->m_10;
+    float *pos = inst->m_pos;
+
+    if (pos[0] == last[0] && pos[1] == last[1] && pos[2] == last[2])
+        return;
+    in[0] = m_instance->m_pos[0];
+    in[1] = m_instance->m_pos[1];
+    in[2] = m_instance->m_pos[2];
+    in[3] = 1.0f;
+    sceVu0RotTransPers(head, m, in, 0);
+    head[2] >>= 4;
+    if (head[2] < 1000)
+        return;
+    in[0] = m_instance->m_10[0];
+    in[1] = m_instance->m_10[1];
+    in[2] = m_instance->m_10[2];
+    in[3] = 1.0f;
+    sceVu0RotTransPers(tail, m, in, 0);
+    tail[2] >>= 4;
+    if (tail[2] < 1000)
+        return;
+    Source *src = m_instance->m_source;
+    float scale = m_scale;
+    float size = 256.0f * scale / (float)head[3];
+
+    size *= thePipe.m_camera->m_viewToScreen[0][0];
+    float dx = (float)(head[0] - tail[0]);
+    float dy = (float)(head[1] - tail[1]);
+    float streak = src->m_streakLen;
+    float len = dx * dx + dy * dy;
+
+    if (len < 0.00001f)
+        dy = -1.0f;
+    else {
+        len = sqrtf(len);
+        len = 1.0f / len;
+        dx *= len;
+        dy *= len;
+    }
+    head[0] = (int)((float)head[0] + dx * size);
+    head[1] = (int)((float)head[1] + dy * size);
+    tail[0] = (int)((float)tail[0] - dx * (streak * size));
+    tail[1] = (int)((float)tail[1] - dy * (streak * size));
+    int ex = (int)(dy * size);
+    int ey = (int)(-size * dx);
+
+    if (tail[0] < head[0]) {
+        if (tail[0] - ex <= 16000)
+            return;
+        if (head[0] + ex >= 0xC180)
+            return;
+    } else {
+        if (head[0] - ex <= 16000)
+            return;
+        if (tail[0] + ex >= 0xC180)
+            return;
+    }
+    if (tail[1] < head[1]) {
+        if (tail[1] - ey <= 16000)
+            return;
+        if (head[1] + ey >= 0xC180)
+            return;
+    } else {
+        if (head[1] - ey <= 16000)
+            return;
+        if (tail[1] + ey >= 0xC180)
+            return;
+    }
+    int z = (int)((float)tail[2] + 0.5f * (float)(head[2] - tail[2]));
+    float *pin = in;
+
+    in[3] = *(float *)&head[3];
+    CPnt4D *fogAlt = Cam()->m_vuFogAlt;
+
+    asm {
+        .set noreorder
+        lqc2 vf20, 0(pin)
+        lqc2 vf17, 0(fogAlt)
+        lqc2 vf18, 16(fogAlt)
+        vcallms 0x0
+        vnop
+        .set reorder
+    }
+    _word128 *p = m_spr;
+
+    if (m_texture != m_lastTexture) {
+        m_lastTexture = m_texture;
+        p->u128 = ((CTexDmaRef *)m_texture)->m_dmaRef;
+        p++;
+    }
+    tag = p++;
+
+    p->u64[0] = 0x3039C00000008006;
+    p->u64[1] = 0x412;
+    p++;
+    int fog;
+
+    asm {
+        .set noreorder
+        qmfc2.i fog, vf14
+        .set reorder
+    }
+    CPnt4D tint = func_003B7590(m_instance->m_source->m_tint);
+
+    func_003B59A0((_word128 *)this, (_word128 *)&tint, (_word128 *)&c);
+    CPnt4D c2 = c;
+
+    c2.w *= m_instance->m_source->m_streakFade;
+    float q = 1.0f / (float)z;
+
+    z <<= 4;
+    p->u32[0] = 0;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c2);
+    p++;
+    p->u32[0] = tail[0] - ex;
+    p->u32[1] = tail[1] - ey;
+    p->u32[2] = z;
+    p->u32[3] = fog;
+    p++;
+    p->f32[0] = q;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    p++;
+    p->u32[0] = head[0] + ex;
+    p->u32[1] = head[1] + ey;
+    p->u32[2] = z;
+    p->u32[3] = fog;
+    p++;
+    p->f32[0] = q;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c2);
+    p++;
+    p->u32[0] = tail[0] + ex;
+    p->u32[1] = tail[1] + ey;
+    p->u32[2] = z;
+    p->u32[3] = fog;
+    p++;
+    p->u32[0] = 0;
+    p->u32[1] = 0;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c2);
+    p++;
+    p->u32[0] = tail[0] - ex;
+    p->u32[1] = tail[1] - ey;
+    p->u32[2] = z;
+    p->u32[3] = fog;
+    p++;
+    p->u32[0] = 0;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    p++;
+    p->u32[0] = head[0] - ex;
+    p->u32[1] = head[1] - ey;
+    p->u32[2] = z;
+    p->u32[3] = fog;
+    p++;
+    p->f32[0] = q;
+    p->f32[1] = q;
+    p->f32[2] = q;
+    p->u32[3] = 0;
+    p++;
+    sceVu0FTOI0Vector((int *)p, (float *)&c);
+    p++;
+    p->u32[0] = head[0] + ex;
+    p->u32[1] = head[1] + ey;
+    p->u32[2] = z;
+    p->u32[3] = fog;
+    p++;
+    m_spr = p;
+    int qwc = m_spr - tag - 1;
+
+    tag->u32[0] = qwc | 0x10000000;
+    tag->u32[1] = 0;
+    tag->u32[2] = 0x11000000;
+    tag->u32[3] = qwc | 0x50000000;
+    CSPR::Kick(m_spr, false);
+}
+
 /* the element's instance and scale (ours, inline accessors: a corner's coordinates read through
  * them -- see DrawXZ) */
 static inline Instance *InstOf(const BufferElement *e) { return e->m_instance; }
