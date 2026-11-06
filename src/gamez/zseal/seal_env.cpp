@@ -3019,6 +3019,102 @@ void CZSealBody::HandleDamage(CZProjectile *proj)
     }
 }
 
+/* the SEAL the aim's assist takes: among the targets flagged 0x200 the nearest to the screen's centre
+ * (its height halved) of the living, awake enemies the AI drives -- not bit 17's -- within the assist's
+ * circle, wider inside 85, past 40 and short of the fog's last fifth, not behind a point given or out
+ * of the weapon's range; its target's place handed back, no assist through a scope (OVL2 0x5AB1C0, new in
+ * SOCOM II: CheckDIShoot asks it; the name unknown) */
+static inline CZSealBody *TargetSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+static inline bool TargetIsAi(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+static inline bool TargetAwake(const CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+static inline zdb::CCamera *WorldCamera()
+{
+    return zdb::CWorld::m_world->m_camera;
+}
+
+extern "C" CZSealBody *func_005AB1C0(CZSealBody *seal, CPnt3D *out, CPnt3D *from)
+{
+    CZSealBody *best = 0;
+
+    if (seal->m_kit.IsUsingScope())
+        return 0;
+
+    float bestd = 100000000.0f;
+    CTargetList &targets = seal->m_targets;
+
+    for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+        CZSealBody *s = TargetSeal(i->m_ent);
+
+        if (!s || !(i->m_flags & 0x200) || !TargetIsAi(s) || !s->m_isAlive)
+            continue;
+        if ((s->m_team & seal->m_team) || (s->m_team & 0x20000))
+            continue;
+        if (!TargetAwake(s->GetSealCtrlAi()))
+            continue;
+
+        CPnt3D tp;
+        CPnt3D sp;
+
+        s->GetTargetPosW(&tp);
+        bool on = WorldCamera()->GetScreenPos(&tp, &sp);
+
+        if (!on)
+            continue;
+        sp.y *= 0.5f;
+
+        float d2 = sp.x * sp.x + sp.y * sp.y;
+
+        if (!(d2 < 10000.0f))
+            continue;
+
+        float z = WorldCamera()->GetZ(&tp);
+        zdb::CCamera *cam = WorldCamera();
+        float limit = cam->m_fog_far;
+
+        limit -= 0.2f * (limit - cam->m_fog_near);
+        if (z <= 40.0f || !(z < limit))
+            continue;
+
+        float r2 = 900.0f;
+
+        if (z < 85.0f)
+            r2 += 9100.0f * (0.022222223f * (85.0f - z));
+        if (!(d2 < r2))
+            continue;
+
+        bool blocked;
+
+        if (from)
+            blocked = cam->GetZ(from) < z;
+        else {
+            CZFTSWeapon *w = seal->m_kit.GetCurItem();
+            float range = 100000000.0f;
+
+            if (w)
+                range = ((CZWeapon *)w)->GetMaxRange();
+            blocked = range < z;
+        }
+        if (blocked || !(d2 < bestd))
+            continue;
+        bestd = d2;
+        best = s;
+        *out = tp;
+    }
+    return best;
+}
+
 /* two rays' hits at once, through the unit's two intersection sets (di0, di1) run as one batch on the
  * world from the entity's node: for each ray the first hit that is not volumetric, not liquid, and
  * not fully penetrable unless a pickup -- each later one is weighed against a nearest-so-far that is
