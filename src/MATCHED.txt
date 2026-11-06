@@ -3736,6 +3736,7 @@
 0x002B8580 DMEConnectToGameServer__Fv
 0x002B85C0 func_002B85C0
 0x002B8660 func_002B8660
+0x002B9150 GameSignalPacketHandler__FiiiPv
 0x002B97F0 SendGameSignalMessage__FiUcUcUcib
 0x002B98B0 func_002B98B0
 0x002B9910 SendBombStateRequest__FiUcPC6CPnt3D
