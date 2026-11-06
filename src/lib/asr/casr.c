@@ -42,8 +42,22 @@ struct CTXVT {
     void *data;                                     /* +0 */
     void *s1[8];
     int (*GetNbrWord)(CTXVT *vt);                   /* +36, slot 9 */
-    void *s10[11];
+    void *s10[5];
+    int (*IsSpellingContext)(CTXVT *vt);            /* +60, slot 15 */
+    void *s16[4];
+    int (*IsIsoWordContext)(CTXVT *vt);             /* +80, slot 20 */
 };
+
+/* the context the engine runs (+580), as far as parameter 15 reads it: its state dictionary and
+ * a table whose entry n + 2 starts the end states' list, entry n the index of the list's last */
+typedef struct RUNCTX {
+    int pad0;
+    int n;                              /* +4 */
+    char pad8[8];
+    unsigned short *dict;               /* +16 */
+    char pad20[8];
+    int *tab;                           /* +28 */
+} RUNCTX;
 
 extern void FillContextV2VirtualTable(CTXVT *vt);
 
@@ -733,6 +747,198 @@ error:
         return 1;
     }
     return 0;
+}
+
+/* the object's own Set_EndBackTraceMask_In_StateDict (its row is the end of the object), inlined
+ * into casrSetParam: an extern inline here, the definition at the end its redefinition (the same
+ * body: walking the parameter itself, the inlined copy's walker is set before the set test) */
+extern __inline__ void Set_EndBackTraceMask_In_StateDict(unsigned char set, unsigned short *dict,
+                                                         int *first, int *last)
+{
+    unsigned short *e;
+
+    dict -= 4;
+    if (set) {
+        for (; first <= last; first++) {
+            e = dict + *first;
+            *e |= 2;
+        }
+    } else {
+        for (; first <= last; first++) {
+            e = dict + *first;
+            *e &= ~2;
+        }
+    }
+}
+
+/* a parameter set (casrGetParam's ids, the same case order) and sent to the engine in its group's
+ * record: 81 the timing group at +456, 84 the group at +488, 83 the two levels, 80 the pair at
+ * +444; in the states the engine is idle in (0, 1, 2, 5, 6, 9, 10, 13, 14, 20), else 7. 15 the
+ * end-of-backtrace bit of the running context's end states (the language's bit 16 refuses it on,
+ * bit 8 asks for the bits), 16 a context activated again (put back on failure), 14 the genders.
+ * SOCOM 1's body (0x62C). Round 37c, byte-exact: every case that ends in a call returns the error
+ * itself (`return (unsigned char)c->last_error`, the failure exits too) -- jump2 first moves each
+ * such return onto the one after the switch (code before the return label), so each case's jump
+ * joins that label's chain only as it is processed and the later cases cross-jump into case 1's
+ * send (with `break`, every jump is in the chain from the start and case 14's copy is kept, 281
+ * words); case 4's failure return keeps its own first send (a label stops the cross-jump). The
+ * end states: n a local (GCSE reuses n * 4 for tab[n]), last a statement in the arm (an inline's
+ * argument is expanded as a sum, the shift first), and the inline walks its own `first` (the copy
+ * comes before the set test, so tab cannot share p's a2: dict a2, tab a3) */
+int casrSetParam(CASR *c, int id, unsigned int value)
+{
+    int err;
+    int state;
+    LANGVT *lng;
+    RUNCTX *rc;
+    int *first;
+    int *last;
+    int n;
+    unsigned char on;
+    int old;
+    int r;
+    CTXVT vt;
+
+    err = casrCheckHandle(c);
+    if (err)
+        return err;
+    state = c->state;
+    switch (state) {
+    case 0:
+    case 1:
+    case 2:
+    case 5:
+    case 6:
+    case 9:
+    case 10:
+    case 13:
+    case 14:
+    case 20:
+        break;
+    default:
+        return _tosErrorLog(c->event, 7);
+    }
+    c->last_error = 0;
+    switch (id) {
+    case 1:
+        c->p460 = value;
+        c->p496 = value;
+        if (_tosControl(c->event, 81, (int)&c->f456, 0) != 0)
+            return (unsigned char)c->last_error;
+        _tosControl(c->event, 84, (int)&c->p488, 0);
+        return (unsigned char)c->last_error;
+    case 2:
+        c->f456 = value;
+        _tosControl(c->event, 81, (int)&c->f456, 0);
+        return (unsigned char)c->last_error;
+    case 3:
+        c->p504 = value;
+        _tosControl(c->event, 84, (int)&c->p488, 0);
+        return (unsigned char)c->last_error;
+    case 4:
+        c->p464 = value;
+        c->p500 = value * 2;
+        if (_tosControl(c->event, 81, (int)&c->f456, 0) != 0)
+            return (unsigned char)c->last_error;
+        _tosControl(c->event, 84, (int)&c->p488, 0);
+        return (unsigned char)c->last_error;
+    case 5:
+        c->p420 = value * 100;
+        break;
+    case 15:
+        lng = c->lng;
+        if (lng != 0) {
+            if (value != 0 && lng->CheckBitField(lng, 16) != 0)
+                return _tosErrorLog(c->event, 28);
+            if (lng->CheckBitField(lng, 8) != 0 && (rc = c->run_ctx) != 0) {
+                n = rc->n;
+                first = rc->tab + n + 2;
+                on = rc->dict[*first - 4] & 2;
+                if ((value != 0 && on == 0) || (value == 0 && on != 0)) {
+                    last = rc->tab + rc->tab[n];
+                    Set_EndBackTraceMask_In_StateDict(value, rc->dict, first, last);
+                }
+            }
+        }
+        c->p424 = value;
+        break;
+    case 18:
+        c->exev = value;
+        if (c->ctx != 0)
+            UpdateExevStatus(c);
+        return (unsigned char)c->last_error;
+    case 16:
+        old = c->f1088;
+        c->f1088 = value;
+        if (c->ctx != 0) {
+            FillContextV2VirtualTable(&vt);
+            vt.data = c->ctx->data;
+            if (vt.IsIsoWordContext(&vt) != 0)
+                break;
+            if (vt.IsSpellingContext(&vt) != 0)
+                break;
+            if (c->f1088 != c->iso_word) {
+                err = casrActivateContext(c, c->ctx, c->f1092);
+                if (err != 0) {
+                    c->f1088 = old;
+                    r = casrActivateContext(c, c->ctx, c->f1092);
+                    if (r != 0)
+                        return r;
+                    return err;
+                }
+            }
+        }
+        break;
+    case 6:
+        c->p488 = value;
+        _tosControl(c->event, 84, (int)&c->p488, 0);
+        return (unsigned char)c->last_error;
+    case 7:
+        c->p484[1] = 50 - value;
+        _tosControl(c->event, 83, (int)c->p484, 0);
+        return (unsigned char)c->last_error;
+    case 8:
+        c->p484[0] = 50 - value;
+        _tosControl(c->event, 83, (int)c->p484, 0);
+        return (unsigned char)c->last_error;
+    case 9:
+        c->p468 = value;
+        _tosControl(c->event, 81, (int)&c->f456, 0);
+        return (unsigned char)c->last_error;
+    case 10:
+        c->p472 = value;
+        _tosControl(c->event, 81, (int)&c->f456, 0);
+        return (unsigned char)c->last_error;
+    case 17:
+        c->p476 = value;
+        _tosControl(c->event, 81, (int)&c->f456, 0);
+        return (unsigned char)c->last_error;
+    case 11:
+        c->p444[0] = value;
+        _tosControl(c->event, 80, (int)c->p444, 0);
+        return (unsigned char)c->last_error;
+    case 13:
+        c->p492 = value;
+        _tosControl(c->event, 84, (int)&c->p488, 0);
+        return (unsigned char)c->last_error;
+    case 12:
+        c->p444[1] = value;
+        _tosControl(c->event, 80, (int)c->p444, 0);
+        return (unsigned char)c->last_error;
+    case 14:
+        if (state == 0)
+            return _tosErrorLog(c->event, 33);
+        if (casrEnableGenders(c, value) != 0)
+            return _tosErrorLog(c->event, 20);
+        c->gender = value;
+        if (_tosControl(c->event, 82, (int)&c->gender, 0) != 0)
+            return (unsigned char)c->last_error;
+        _tosControl(c->event, 38, 0, 0);
+        return (unsigned char)c->last_error;
+    default:
+        return _tosErrorLog(c->event, 10);
+    }
+    return (unsigned char)c->last_error;
 }
 
 /* the second pass over the labelled utterance: its own context (the Chinese one when the language
@@ -1477,17 +1683,16 @@ void Set_EndBackTraceMask_In_StateDict(unsigned char set, unsigned short *dict, 
                                        int *last)
 {
     unsigned short *e;
-    int *p;
 
     dict -= 4;
     if (set) {
-        for (p = first; p <= last; p++) {
-            e = dict + *p;
+        for (; first <= last; first++) {
+            e = dict + *first;
             *e |= 2;
         }
     } else {
-        for (p = first; p <= last; p++) {
-            e = dict + *p;
+        for (; first <= last; first++) {
+            e = dict + *first;
             *e &= ~2;
         }
     }

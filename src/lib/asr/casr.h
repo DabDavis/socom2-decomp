@@ -110,7 +110,8 @@ typedef struct CASR {
     short p484[2];                      /* +484: ids 8, 7 (read as 50 - x) */
     int p488;                           /* +488: id 6 */
     int p492;                           /* +492: id 13 */
-    char pad496[8];
+    int p496;                           /* +496: id 1's copy (casrSetParam) */
+    int p500;                           /* +500: id 4 doubled (casrSetParam) */
     int p504;                           /* +504: id 3 */
     CASRCBTABLE cb;                     /* +508 */
     int pad540;
@@ -189,7 +190,7 @@ typedef struct CASR {
     void *tree_words;                   /* +1080: the context tree's word lists (freed with the tree) */
     int tree_nwords;                    /* +1084 */
     int f1088;                          /* +1088: parameter 16 */
-    int pad1092;
+    int f1092;                          /* +1092: casrActivateContext's third argument (casrSetParam) */
     int f1096;                          /* +1096 */
     char pad1100[16];
     void *uw_states;                    /* +1116: the user words' states (freed with the tree) */
