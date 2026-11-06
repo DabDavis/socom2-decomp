@@ -1,10 +1,12 @@
 /* node_vector.cpp -- the scene graph's typed lists: CNodeVector, CDIVector, CVisualVector,
- * CModelVector, CNodeUniverse, CLightMapVector, in SOCOM 1's order -- and the CNode code before
- * them, TransformToWorld (OVL1 0x310980) and BuildMTW: a unit of its own, as DeleteChild and
- * AddVisual show by calling Exists and Remove (with them in node_main.cpp MW inlines both), and
- * AddDI by calling the DI list's. It ends with std::remove_copy's instance (0x312480): function
- * template instances close a unit, so node_main.cpp begins at 0x3124F0 -- as the press beta's
- * file references agree, SetModelname and Create naming node_main.cpp. The unit name is ours.
+ * CModelVector, CNodeUniverse, CLightMapVector, in SOCOM 1's order (OVL1 0x311CC0-0x3124EF): a
+ * unit of its own, as DeleteChild and AddVisual show by calling Exists and Remove (with them in
+ * node_main.cpp MW inlines both), and AddDI by calling the DI list's. It ends with
+ * std::remove_copy's instance (0x312480): function template instances close a unit, so
+ * node_main.cpp begins at 0x3124F0 -- as the press beta's file references agree, SetModelname and
+ * Create naming node_main.cpp. It begins after node_io.cpp's remove_copy<CModel *> (0x311C50):
+ * TransformToWorld and BuildMTW, here until the online lane's round 28, are node_io.cpp's (SOCOM
+ * 1's demo has them ahead of CLight::Read, with no instance between). The unit name is ours.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <algorithm>
@@ -174,33 +176,6 @@ bool CNodeVector::Remove(const CNode *node)
 
     erase(it, e);
     return it != e;
-}
-
-/* the node-to-world matrix: this node's, then each parent's up to the world (type 6, whose own
- * is the unit), multiplied in; none if the chain never reaches it. The recursion inlines itself
- * three times; the innermost copies call CMatrix's pieces out of line.
- * OPEN (right size, 44 differing): the third copy converts Multiply's arguments right to left
- * (this, b, then out: 0x310C60, 0x310C60, 0x310C50), where MW converts call arguments left to
- * right (probe build/scratch/inl/t10.cpp) -- so out first here, in every form tried (explicit
- * casts, implicit conversions to row pointers under a const prototype, a local) */
-CMatrix *CNode::BuildMTW(CMatrix &m)
-{
-    if (m_type == 6) {
-        m.SetIdentity();
-        return &m;
-    }
-    m.Multiply(GetMatrix(), &m);
-    if (m_parent && m_parent->m_type == 6)
-        return &m;
-    return m_parent ? m_parent->BuildMTW(m) : 0;
-}
-
-/* a point in the node's frame into the world's: each matrix up the tree, to the world's node
- * (type 6) */
-void CNode::TransformToWorld(CPnt3D &p) const
-{
-    for (const CNode *n = this; n && n->m_type != 6; n = n->m_parent)
-        n->m_matrix.Transform(&p, 1);
 }
 
 }
