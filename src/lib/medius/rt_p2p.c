@@ -24,8 +24,7 @@
  * order -- sched1 issues the three entry stores by register weight, the base's and the 7's deaths
  * putting nState first; every source order and a chained -1 tried). Not written: the create 0x6395B8 (its
  * record reloaded from the stack after every store, as the target does, but the defaults' order),
- * 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63AAC0, 0x63ACA0, 0x63B0B8, 0x63B708, 0x63B9A0, 0x63BED0,
- * 0x63C4F0.
+ * 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63ACA0, 0x63B708, 0x63B9A0, 0x63C4F0.
  * Round 22b: 0x63A618 (a send to one peer or every one in use), 0x63B2F0 (a peer found by its second
  * address: the first comparison's verdict is a variable of its own, never read -- assigned to the one
  * verdict variable twice, the registers move) and 0x63C3D0 (the leave message: its first loop's state
@@ -74,7 +73,7 @@ typedef struct RT_P2P_ENTRY {           /* a peer */
     unsigned char bClosed;              /* 0x0E */
     unsigned char bClosed2;             /* 0x0F */
     unsigned char bUsed;                /* 0x10: 0x63A618 sends only where it is set */
-    char x11;
+    unsigned char x11;
     char szAddress[16];                 /* 0x12 */
     unsigned short nPort;               /* 0x22 */
     int x24;
@@ -116,6 +115,63 @@ typedef struct RT_P2P_MSG2 {            /* 0x63C3D0's message, type 7 (12 bytes)
     int nFirst;
     int x08;
 } RT_P2P_MSG2;
+
+extern int rt_time_start(void *pTime);
+extern int rt_time_elapsed(void *pTime, unsigned int *pnMsecs);
+extern int KM_CreateRandomRCKey(void *pKey);
+extern int KM_AddSymmetricKey(int nKMID, int nClientID, void *pKey);
+extern int func_0063E8E8(RT_UDP *pUdp, int nConn, int nIndex);
+extern int func_0063F168(RT_UDP *pUdp, int nConn);
+
+/* a connection asks in (RT_P2P_RELAY's event 2, 0x63AAC0): while the table joins (state 7) it takes the next
+ * free peer, with a fresh symmetric key; otherwise it is remembered for 30 seconds in a slot of its own, and
+ * dropped if it asks again after them, or when no slot is free. Round 25b, unwritten before. */
+void func_0063AAC0(RT_P2P *pP2p, int nConn, int nError)
+{
+    char abKey[64];
+    int nState = 0;
+    int nLocal = -2;
+    int nIndex = -2;
+    unsigned int nElapsed;
+    unsigned int nFree;
+    unsigned int i;
+
+    if (func_0063B480(pP2p, &nState, &nLocal) != 0)
+        return;
+    if (nState == 7) {
+        if (func_0063B520(pP2p, &nIndex) != 0)
+            return;
+        if (nIndex != -2) {
+            pP2p->pEntries[nIndex].nState = 2;
+            pP2p->pEntries[nIndex].nConn = nConn;
+            pP2p->pEntries[nIndex].nConn2 = -1;
+            func_0063E8E8(pP2p->pUdp, nConn, nIndex);
+            KM_CreateRandomRCKey(abKey);
+            KM_AddSymmetricKey(-1, nIndex, abKey);
+            func_0063F168(pP2p->pUdp, nConn);
+        } else
+            func_0063F270(pP2p->pUdp, nConn);
+    } else {
+        nFree = 32;
+        for (i = 0; i < 32; i++) {
+            if (pP2p->aSlots[i].nConn == nConn) {
+                rt_time_elapsed(&pP2p->aSlots[i].x04, &nElapsed);
+                if (nElapsed <= 30000)
+                    return;
+                func_0063F270(pP2p->pUdp, nConn);
+                pP2p->aSlots[i].nConn = -1;
+                return;
+            }
+            if (pP2p->aSlots[i].nConn == -1 && nFree == 32)
+                nFree = i;
+        }
+        if (nFree != 32) {
+            pP2p->aSlots[nFree].nConn = nConn;
+            rt_time_start(&pP2p->aSlots[nFree].x04);
+        } else
+            func_0063F270(pP2p->pUdp, nConn);
+    }
+}
 
 int func_0063B410(RT_P2P *pP2p, int nConn, int *pnIndex);
 int func_0063B480(RT_P2P *pP2p, int *pnState, int *pnIndex);
@@ -489,6 +545,41 @@ void func_0063B048(RT_P2P *pP2p, int nConn, int nError)
  * sibling call (README "The recogniser and Medius by hand", round 7b), and these three are jals */
 #define RT_P2P_RELAY(p, c, e)   do { func_0063C170(p, c, e); } while (0)
 
+/* a connection's address learned (RT_P2P_RELAY's event, 0x63B0B8): kept on the peer that holds the connection; with
+ * the peer's other connection up this one is closed, else func_0063C170 is told. A connection no peer holds is
+ * closed. The second arm writes its call first, so the two calls cross-jump. Round 25b, unwritten before. */
+void func_0063B0B8(RT_P2P *pP2p, int nConn, int nError)
+{
+    char szAddress[16];
+    unsigned short nPort;
+    int nIndex = -2;
+
+    if (func_0063E4A0(pP2p->pUdp, nConn, szAddress, &nPort) != 0)
+        return;
+    if (func_0063B410(pP2p, nConn, &nIndex) != 0 || nIndex == -2) {
+        func_0063E830(pP2p->pUdp, nConn);
+        return;
+    }
+    if (nConn == pP2p->pEntries[nIndex].nConn) {
+        strncpy(pP2p->pEntries[nIndex].szAddress, szAddress, 16);
+        pP2p->pEntries[nIndex].nPort = nPort;
+        if (pP2p->pEntries[nIndex].nConn2 != -1) {
+            func_0063E830(pP2p->pUdp, nConn);
+            pP2p->pEntries[nIndex].nConn = -1;
+        } else
+            func_0063C170(pP2p, nConn, nError);
+    } else if (nConn == pP2p->pEntries[nIndex].nConn2) {
+        strncpy(pP2p->pEntries[nIndex].szAddress, szAddress, 16);
+        pP2p->pEntries[nIndex].nPort = nPort;
+        if (pP2p->pEntries[nIndex].nConn == -1)
+            func_0063C170(pP2p, nConn, nError);
+        else {
+            func_0063E830(pP2p->pUdp, nConn);
+            pP2p->pEntries[nIndex].nConn2 = -1;
+        }
+    }
+}
+
 void func_0063B290(RT_P2P *pP2p, int nConn, int nError)
 {
     RT_P2P_RELAY(pP2p, nConn, nError);
@@ -794,6 +885,58 @@ int func_0063C3D0(RT_P2P *pP2p, int nLast, int nFirst)
         for (i = 0; i < pP2p->nEntries; i++) {
             if (pP2p->pEntries[i].nState == 3 || pP2p->pEntries[i].nState == 4)
                 func_0063C078(pP2p, i, 7, &msg, 12);
+        }
+    }
+    return 0;
+}
+
+/* the peers' state counted (0x63BED0): with a peer in state 5, none in 1 or 2 and some in 3 or 4, that peer goes
+ * to state 6, pfnReset is told it and the count plus one, and each peer in 3 or 4 is sent the magic alone (7),
+ * pfnLeave told where its byte at 0x11 was set. Round 25b, unwritten before. */
+int func_0063BED0(RT_P2P *pP2p)
+{
+    unsigned int nMagic;
+    int nState = 0;
+    int nIndex = -2;
+    int nJoined = 0;
+    int nConnecting = 0;
+    int result;
+    int i;
+
+    for (i = 0; i < pP2p->nEntries; i++) {
+        switch (pP2p->pEntries[i].nState) {
+        case 1:
+        case 2:
+            nConnecting++;
+            break;
+        case 3:
+        case 4:
+            nJoined++;
+            break;
+        case 5:
+            nState = 5;
+            nIndex = i;
+            break;
+        case 0:
+        case 6:
+        case 7:
+            break;
+        }
+    }
+    if (nState == 5 && nConnecting == 0 && nJoined != 0) {
+        pP2p->pEntries[nIndex].nState = 6;
+        pP2p->pfnReset(nIndex, (unsigned short)(nJoined + 1), 0);
+        for (i = 0; i < pP2p->nEntries; i++) {
+            if ((unsigned int)(pP2p->pEntries[i].nState - 3) < 2) {
+                nMagic = 0xEFF0CDAB;
+                result = func_0063C078(pP2p, i, 7, &nMagic, 4);
+                if (result != 0)
+                    return result;
+                if (pP2p->pEntries[i].x11 != 0) {
+                    pP2p->pEntries[i].x11 = 0;
+                    pP2p->pfnLeave(i, 0);
+                }
+            }
         }
     }
     return 0;

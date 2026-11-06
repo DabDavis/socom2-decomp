@@ -94,7 +94,8 @@ typedef struct DmeClient {
 
 extern int func_0061C720(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient);
 extern int func_00614EC8(void **ppObject, unsigned int nIndex);
-extern int func_00615DE0(int nClass, int nConnection, int nTarget, int nMsgType, int nLen, void *pMsg);
+extern int func_00615DE0(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType, int nLength,
+                         void *pData);
 extern void (*data_0067A6E8[16])(int nClient, int nIndex);
 
 /* a data stream's slot (0x44 bytes, 2048 of them, made on first use by func_00614F58) */
@@ -959,8 +960,30 @@ int func_00615B48(char nMsgClass, unsigned int nWorld, unsigned int nType, unsig
     return result;
 }
 
+/* SOCOM 1's NetSendApplicationMessage and NetSendDmeMessage grown (0x615D88, 0x615DE0): a message of one of
+ * 256 types through NetSendMessage's body as kind 2 (the application's) or kind 0 (DME's own), now checked
+ * first; Dme.c's locked wrappers carry the names (round 7b). Round 25b wrote them here for func_0061A118:
+ * its first arm's owner test is the target's `bnel` only once the send it falls into is compiled above it
+ * (round 13c's rule, met the other way round). */
+int func_00615D88(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType, int nLength, void *pData)
+{
+    if (nType < 256) {
+        if (nLength > 0 && pData != 0)
+            return func_006158F8(nMsgClass, nWorld, nTarget, 2, nType, nLength, pData);
+        return DME_ERR_ARGUMENT;
+    }
+    return DME_ERR_ARGUMENT;
+}
 
-
+int func_00615DE0(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType, int nLength, void *pData)
+{
+    if (nType < 256) {
+        if (nLength > 0 && pData != 0)
+            return func_006158F8(nMsgClass, nWorld, nTarget, 0, nType, nLength, pData);
+        return DME_ERR_ARGUMENT;
+    }
+    return DME_ERR_ARGUMENT;
+}
 
 void RemoteObjectCreation(unsigned int nClient, unsigned int nIndex)
 {
@@ -1814,20 +1837,22 @@ extern int func_0061D448(int nClient);
 
 /* an object's ownership asked for (0x61A118, SOCOM 1's NetRequestObjectPrivateOwnership's place): taken
  * at once when this client made it, else asked of its creator.
- * OPEN (8 bytes short): the two sends cross-jump into one call here where the target keeps both (each
- * with its own `move v0,zero`), and the creator's message takes its slot before pWorld's; four shapes
- * (the message at the top, an else, a result kept from either call) tried. Round 24b came to registers
- * only (0x124 against 0x128, the gap the else label's alignment nop): the ask a one-member struct (the
- * unsigned short a promoted mode, forced to slot 16 before the pointers' ADDRESSOFs), pObject declared
- * before pWorld, the arms an if/else before one `return DME_OK` (no cross-jump), the creator read once into
- * a local (passed on to RemoteObjectUpdate in a0 with no reload) -- left: the creator's pseudo takes a2
- * for the target's a0 and the shared -1 v1 for v0. Not kept: that body moves func_00618F70, compiled after
- * it, by 8 bytes (its stores through pClient stop reloading the slot); build/scratch/gcc-r24b has it. */
+ * Byte-exact since round 25b (open since it was first written). Round 24b came to registers: the ask a one-member
+ * struct (an unsigned short is a promoted mode, forced to slot 16 before the pointers' ADDRESSOFs), pObject
+ * declared before pWorld, the arms an if/else before one `return DME_OK` (a return in each let jump2
+ * cross-jump the two sends), the creator read once into a local (passed on to RemoteObjectUpdate in a0).
+ * Round 25b: the owner tests POSITIVE with their `return 11` in an else (round 14b's rule) -- as guards
+ * the first if-conversion pass hoisted `li v0,11` above each branch, so v0 was live across the owner's
+ * load and the -1 took v1 and the creator a2; positive, the -1 takes v0 and the creator a0 as the target's,
+ * and func_00618F70 after it keeps its match (round 24b's guarded body moved it by 8 bytes). The last
+ * word, arm 1's `bnel` (`bne` here), came with func_00615DE0 -- the send arm 1 falls into -- compiled above
+ * (round 13c's callee rule; arm 2's RemoteObjectUpdate was already above, its `bne` the target's). */
 int func_0061A118(unsigned int nIndex)
 {
     struct { unsigned char nOwner; unsigned char pad; unsigned short nIndex; } msg;
-    DmeWorld *pWorld = 0;
     DmeObject *pObject = 0;
+    DmeWorld *pWorld = 0;
+    int nCreator;
     int result;
 
     if (nIndex >= DME_MAX_OBJECTS)
@@ -1840,22 +1865,25 @@ int func_0061A118(unsigned int nIndex)
     func_00614EC8((void **)&pObject, nIndex);
     if (pObject == 0)
         return DME_ERR_RANGE;
-    if (pObject->nCreator != pWorld->nMyClient) {
-        unsigned short nMsg;
+    nCreator = pObject->nCreator;
+    if (nCreator != pWorld->nMyClient) {
+        struct { unsigned short nIndex; } ask;
 
-        if (pObject->nOwner != -1)
+        if (pObject->nOwner == -1) {
+            ask.nIndex = nIndex;
+            func_00615DE0(80, data_00651178, nCreator, data_00686A34, sizeof(ask), &ask);
+        } else
             return 11;
-        nMsg = nIndex;
-        func_00615DE0(80, data_00651178, pObject->nCreator, data_00686A34, 2, &nMsg);
-        return DME_OK;
+    } else {
+        if (pObject->nOwner == -1) {
+            pObject->nOwner = nCreator;
+            RemoteObjectUpdate(nCreator, nIndex, -2);
+            msg.nIndex = nIndex;
+            msg.nOwner = func_0061D448(pObject->nOwner);
+            func_00615DE0(80, data_00651178, -1, data_00686A10, 4, &msg);
+        } else
+            return 11;
     }
-    if (pObject->nOwner != -1)
-        return 11;
-    pObject->nOwner = pObject->nCreator;
-    RemoteObjectUpdate(pObject->nCreator, nIndex, -2);
-    msg.nIndex = nIndex;
-    msg.nOwner = func_0061D448(pObject->nOwner);
-    func_00615DE0(80, data_00651178, -1, data_00686A10, 4, &msg);
     return DME_OK;
 }
 
@@ -2867,4 +2895,300 @@ int func_0061B3E0(unsigned char *pPacket, unsigned int nStream, int nLength)
         return 0;
     memcpy(pPacket + sizeof(hdr), pStart, nLength);
     return nLength + sizeof(hdr);
+}
+
+extern int func_0061C5A0(void);
+extern void NetFreeAllClients(void);
+extern void NetFreeClientPointers(void);
+extern int func_0063C810(void);
+extern void func_00639808(int nConnection);
+extern void func_00643790(void);
+extern int rt_msg_client_shutdown(void);
+
+/* SOCOM 1's NetClose grown (0x61C2F0; the name is Dme.c's locked wrapper's, 0x620810): the pending peers
+ * dropped, each world in state 1 closed, the objects, clients, streams and the client tables freed, the
+ * transport and the message client shut. Round 25b, unwritten before. */
+int func_0061C2F0(void)
+{
+    DmeWorld *pWorld = 0;
+    int i;
+    int j;
+    int result;
+
+    if (data_00651180 != 1)
+        return 17;
+    func_0061CFF0();
+    for (i = 0; i < DME_MAX_WORLDS; i++) {
+        result = func_0061C600(i, &pWorld);
+        if (result != DME_OK)
+            return result;
+        if (pWorld != 0 && pWorld->field_438 == DME_WORLD_STATE_1)
+            func_0061C150(i);
+    }
+    NetFreeAllObjects();
+    NetFreeAllClients();
+    NetFreeClientPointers();
+    func_0063C810();
+    if (data_006511D0 != 0) {
+        func_0061D320();
+        func_00614888((void **)&data_006511D0);
+        data_006511D0 = 0;
+    }
+    for (j = 0; j < DME_MAX_WORLDS; j++) {
+        for (i = 0; i < DME_MAX_CLIENTS; i++)
+            func_0061C868(j, i);
+        func_0061C6C8(j);
+    }
+    func_0061C5A0();
+    if (data_006511D4 != 0) {
+        func_00639808(data_006511D8);
+        data_006511D4 = 0;
+    }
+    rt_msg_client_shutdown();
+    func_00643790();
+    data_00651180 = 0;
+    return DME_OK;
+}
+
+extern int func_00644060(int nWorld);
+extern int func_00643E48(int nWorld);
+extern int func_0063A4A0(int nConnection);
+extern int func_0063A590(int nConnection);
+extern int rt_time_start(unsigned int *pStart);
+extern int rt_msg_client_disconnect(int nConnection);
+
+/* SOCOM 1's NetDisconnect grown (0x61C150; NetDisconnect 0x623900, Dme.c's wrapper, calls it): StreamMedia's 0x643E48 run where its
+ * 0x644060 says 1, then in states 1-3 the peer transport (world 0) or the message client's connection dropped, and
+ * the world's records cleared. World 0 polls the transport for half a second, as SOCOM 1's polled
+ * rt_msg_client_update_all. Round 25b, unwritten before. */
+int func_0061C150(unsigned int nWorld)
+{
+    unsigned int tStart[2];
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    DmeWorld *p;
+    unsigned int nElapsed;
+    unsigned int i;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    if (func_00644060(nWorld) == 1)
+        func_00643E48(nWorld);
+    if ((unsigned int)(pWorld->field_438 - 1) < 3) {
+        if (data_006511D4 != 0 && nWorld == 0) {
+            func_0063A4A0(data_006511D8);
+            rt_time_start(tStart);
+            do {
+                result = NetMapMsgClientError(func_0063A590(data_006511D8), 24);
+                if (result != DME_OK)
+                    return result;
+                rt_time_elapsed(tStart, &nElapsed);
+            } while (nElapsed < 500);
+        }
+        if (nWorld != 0)
+            rt_msg_client_disconnect(DmeToRtMsgConnectionIndex(nWorld));
+    }
+    for (i = 0; i < DME_MAX_CLIENTS; i++) {
+        func_0061C720(nWorld, i, &pClient);
+        if (pClient != 0)
+            memset(pClient, 0, sizeof(DmeClientInfo));
+    }
+    p = pWorld;
+    p->field_43C = -1;
+    p->nMyClient = 256;
+    p->nSessionMaster = 256;
+    p->pfnClientCallback = 0;
+    p->field_42C = 0;
+    p->field_430 = 0;
+    p->field_434 = 0;
+    p->field_440 = 0;
+    p->field_438 = DME_WORLD_STATE_0;
+    memset(data_0067C5B0, 0, sizeof(data_0067C5B0));
+    data_0067B7AC = 0;
+    return DME_OK;
+}
+
+/* a world's record (0x61C600, written here above its caller 0x61D1B0, round 25b: that function's first
+ * `bnez` keeps its plain slot only with this call's nothrow note; the object update path at the unit's end,
+ * above this, is compiled without it as the image has it -- those functions lie before 0x61C600 there) */
+int func_0061C600(int nWorld, DmeWorld **ppWorld)
+{
+    if (ppWorld == 0)
+        return DME_ERR_ARGUMENT;
+    *ppWorld = 0;
+    if ((unsigned int)nWorld >= DME_MAX_WORLDS)
+        return 15;
+    *ppWorld = data_0066CAF8[nWorld];
+    return DME_OK;
+}
+
+typedef struct DmeJoinReport {          /* what the join callback is handed (0x61D1B0) */
+    int nResult;                        /* 0x00: 0 */
+    void *pUser;                        /* 0x04: its user data */
+} DmeJoinReport;
+
+/* the join finished once every other connected client has a state (0x61D1B0, SOCOM 1 has no counterpart):
+ * MyClientIsJoined set and the join callback told, once. Round 25b. */
+int func_0061D1B0(void)
+{
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    int i = 0;
+    int result;
+    DmeJoinReport report;
+
+    if (data_00651178 < 0)
+        return DME_ERR_RANGE;
+    if (data_00651178 < DME_MAX_WORLDS && MyClientIsJoined == 0) {
+        result = func_0061C600(data_00651178, &pWorld);
+        if (result != DME_OK || pWorld == 0)
+            return result;
+        if (pWorld->nMyClient >= DME_MAX_CLIENTS)
+            return DME_ERR_RANGE;
+        result = func_0061C720(data_00651178, pWorld->nMyClient, &pClient);
+        if (result != DME_OK || pClient == 0)
+            return result;
+        if ((unsigned int)(pClient->nState - DME_CLIENT_JOINED) >= 2)
+            return result;
+        for (; i < DME_MAX_CLIENTS; i++) {
+            if (i == pWorld->nMyClient)
+                continue;
+            result = func_0061C720(data_00651178, i, &pClient);
+            if (result != DME_OK)
+                return result;
+            if (pClient != 0 && pClient->bConnected == 1 && pClient->nState == 0)
+                return result;
+        }
+        MyClientIsJoined = 1;
+        if (data_0067C5B8 != 0) {
+            report.nResult = 0;
+            report.pUser = data_006511A0;
+            ((void (*)(DmeJoinReport *))data_0067C5B8)(&report);
+            data_0067C5B8 = 0;
+            data_006511A0 = 0;
+        }
+    }
+    return DME_OK;
+}
+
+typedef struct DmeResolveParams {       /* SOCOM 1's NetResolveAddr's */
+    int nVersion;                       /* 0x00: 1 */
+    void (*pfnCallback)(DmeAddressReport *pReport); /* 0x04 */
+    DmeAddress address;                 /* 0x08: its first word 3 when set */
+} DmeResolveParams;
+
+extern int func_00639870(int nConnection, void *pAddress, void *pfnCallback);
+
+/* SOCOM 1's NetResolveAddr grown (0x6184E8, after NetSetDefaultResolveAddrParams as SOCOM 1's follows it;
+ * Dme.c's locked wrapper 0x621B28 calls it): answered at once from the last report when the transport is up and has one, else
+ * the transport brought up and the resolve server asked. Each `status 23` a copy of its own, cross-jumped into
+ * the last. Round 25b, unwritten before. */
+int func_006184E8(DmeResolveParams *pParams, DmeConnectStatus *pStatus)
+{
+    struct { char szIp[16]; unsigned short nPort; } addr;
+    int result;
+
+    if (pStatus == 0)
+        return DME_ERR_ARGUMENT;
+    pStatus->nResult = 30;
+    pStatus->field_00 = 1;
+    if (pParams == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    if (data_00651180 != 1) {
+        pStatus->nResult = 17;
+        return 17;
+    }
+    if (pParams->nVersion != 1) {
+        pStatus->nResult = 38;
+        return 38;
+    }
+    if (pParams->pfnCallback == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    if (data_006511D4 == 1 && data_0066CF20.field_00 == 1 && data_0066CF20.nResult == 0)
+        pParams->pfnCallback(&data_0066CF20);
+    else {
+        if (data_006511D4 == 0) {
+            result = func_00616C98();
+            pStatus->nResult = result;
+            if (result != DME_OK)
+                return result;
+        }
+        if (pParams->address.w[0] == 3)
+            func_00618458(&pParams->address);
+        if (data_0066CF08.w[0] != 3) {
+            pStatus->nResult = DME_ERR_ARGUMENT;
+            return DME_ERR_ARGUMENT;
+        }
+        data_0066CF58 = pParams->pfnCallback;
+        strncpy(addr.szIp, (char *)&data_0066CF08.w[1], 16);
+        addr.nPort = *(unsigned short *)&data_0066CF08.w[5];
+        if (func_00639870(data_006511D8, &addr, func_0061D650) != 0) {
+            pStatus->nResult = 37;
+            return 37;
+        }
+    }
+    pStatus->nResult = DME_OK;
+    return DME_OK;
+}
+
+extern unsigned int strlen(const char *s);
+extern int rt_msg_client_udp_set_default_options(void *pParams);
+extern int rt_msg_client_enable_udp(void *pParams);
+extern int rt_msg_client_send_udp(unsigned char *pbSent, char *szIp, unsigned short nPort);
+
+typedef struct DmeUdpParams {           /* rt_msg_client's UDP options (4 bytes read here) */
+    void (*pfnCallback)(char *szIp, unsigned short nPort);
+} DmeUdpParams;
+
+/* an address asked for its reachability (0x6195E0): the message client's UDP brought up once, a pending-peer slot
+ * taken and the probe sent; a null or empty address ends every pending one instead. Round 25b, unwritten before. */
+int func_006195E0(char *szIp, void (*pfnCallback)(int nEvent, char *szIp, int nValue))
+{
+    unsigned short nPort;
+    unsigned char bSent;
+    DmeUdpParams params;
+    unsigned int nSlot;
+    int result;
+
+    if (szIp == 0 || strlen(szIp) == 0)
+        return func_0061CFF0();
+    if (strlen(szIp) == 0)
+        return DME_ERR_ARGUMENT;
+    if (pfnCallback == 0)
+        return DME_ERR_ARGUMENT;
+    if (data_006511CC != 1) {
+        result = NetMapMsgClientError(rt_msg_client_udp_set_default_options(&params), 24);
+        if (result != DME_OK)
+            return result;
+        params.pfnCallback = func_0061CBB8;
+        result = NetMapMsgClientError(rt_msg_client_enable_udp(&params), 24);
+        if (result != DME_OK)
+            return result;
+        memset(data_0066CF78, 0, sizeof(data_0066CF78));
+        data_006511CC = 1;
+    }
+    result = func_0061CEF0(szIp, &nSlot, &nPort);
+    if (result != DME_OK)
+        return result;
+    data_0066CF78[nSlot].nState = 1;
+    data_0066CF78[nSlot].nPort = nPort;
+    data_0066CF78[nSlot].pfnCallback = pfnCallback;
+    strncpy(data_0066CF78[nSlot].szIp, szIp, 16);
+    result = NetMapMsgClientError(rt_msg_client_send_udp(&bSent, data_0066CF78[nSlot].szIp,
+                                                         data_0066CF78[nSlot].nPort), 24);
+    if (result != DME_OK)
+        return result;
+    if (bSent == 1) {
+        data_0066CF78[nSlot].nState = 2;
+        rt_time_get_time_stamp(data_0066CF78[nSlot].tStart);
+    }
+    return DME_OK;
 }
