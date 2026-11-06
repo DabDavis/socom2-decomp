@@ -76,10 +76,17 @@ typedef struct STREAM_SESSION {
     unsigned char bReady;               /* 0x00A */
     char x0B;
     int nMaxMembers;                    /* 0x00C: 256 */
-    int x10;
+    int x10;                            /* 0x010: the parameters' copy from here, 84 bytes */
     int x14;
     unsigned int nStreams;              /* 0x018 */
-    char x1C[0x20];
+    int x1C;                            /* 0x01C */
+    int x20;                            /* 0x020 */
+    int x24;
+    int x28;
+    int x2C;
+    int x30;
+    int x34;
+    int x38;
     int (*pfnType)(void *pInfo);        /* 0x03C */
     void *pTypeData;                    /* 0x040 */
     int (*pfnData)(void *pInfo);        /* 0x044 */
@@ -90,14 +97,17 @@ typedef struct STREAM_SESSION {
     void *pSendData;                    /* 0x058 */
     int (*pfnRecv)(void *pInfo);        /* 0x05C */
     void *pRecvData;                    /* 0x060 */
-    char x64[0x40];
+    int options[16];                    /* 0x064: the voice library's options */
     void *hAudio;                       /* 0x0A4: the voice library's session */
     unsigned char bA8;                  /* 0x0A8 */
     unsigned char bConnected;           /* 0x0A9 */
     char xAA[2];
     int anInfo[5];                      /* 0x0AC: the voice library's own description */
     int nC0;                            /* 0x0C0 */
-    char xC4[0x24];
+    int nC4;
+    int nC8;
+    int nCC;                            /* 0x0CC: func_00644610 fills it from the description */
+    char xD0[0x18];
     char szAddr[16];                    /* 0x0E8 */
     int nPort;                          /* 0x0F8 */
     int anStreams[64];                  /* 0x0FC */
@@ -443,6 +453,153 @@ int func_00643878(int nWorld, unsigned char bEnabled)
     err = func_0062BF78(pSession->hAudio);
     pSession->bEnabled = 1;
     return func_006451E0(err, 42);
+}
+
+extern int func_00644100(int nWorld, unsigned int nMembers);
+extern int func_00644AE8(int nMode, int *pnMode);
+extern int func_0062BDF0(void **phAudio, void *pOptions);
+extern int func_0062BE58(void *hAudio, int nType, int *pnStream, char *szName);
+extern int func_0061D458(void **ppAddress);
+extern int func_0062BE40(void *hAudio, void *pAddress, int nPort, void *pfn);
+extern int func_00644DE0(void *hAudio, int *pnType, int a2, int a3);
+extern int func_00644EA0(void *hAudio, int nType, int a2, int a3, int t0);
+extern int func_00644F68(void *hAudio, int a1, int a2, int a3);
+extern int func_00645018(void *hAudio, int a1, int a2);
+extern int func_006450B0(void *hAudio, int nAddr, int nPort);
+extern int sprintf(char *buf, const char *fmt, ...);
+extern void *memcpy(void *d, const void *s, unsigned int n);
+extern unsigned short data_0067A6E0;
+extern int data_00651188;
+
+typedef struct STREAM_ADDRESS {         /* the NAT server's address, func_0061D458's */
+    int nKind;                          /* 0x00: 3 */
+    char szIp[16];                      /* 0x04 */
+    int nPort;                          /* 0x14 */
+} STREAM_ADDRESS;
+
+/* a world's media session brought up (0x643900): the parameters copied in, the voice library's options filled from them, a session made
+ * with its streams, the NAT server told when there is one. */
+int func_00643900(int nWorld, unsigned int nMembers, STREAM_PARAMS *pParams)
+{
+    char szName[64];
+    STREAM_SESSION *pSession;
+    int nType;
+    STREAM_ADDRESS *pAddress = 0;
+    int nStream = 0;
+    int nId;
+    unsigned int i;
+    int j;
+    int result;
+    int r2;
+
+    if (gnInitCount <= 0)
+        return 17;
+    if (gbInitialized != 1)
+        return 17;
+    if (pParams == 0)
+        return 23;
+    if ((unsigned int)pParams->an[2] > 64)
+        return 23;
+    result = func_00644100(nWorld, nMembers);
+    if (result != 0)
+        return result;
+    result = func_00644308(nWorld, &pSession);
+    if (result != 0)
+        return result;
+    if (pSession == 0)
+        return 41;
+    if (pSession->bValid != 0)
+        return 41;
+    pSession->hAudio = 0;
+    pSession->nWorld = nWorld;
+    pSession->bReady = 0;
+    pSession->nMaxMembers = 256;
+    memcpy(&pSession->x10, pParams, sizeof(*pParams));
+    pSession->bA8 = 0;
+    pSession->bConnected = 0;
+    pSession->bStreaming = 0;
+    pSession->bEnabled = 0;
+    memset(pSession->options, 0, sizeof(pSession->options));
+    pSession->options[10] = pSession->x1C;
+    pSession->options[0] = data_0067A6E0;
+    pSession->options[1] = pSession->x24;
+    pSession->options[4] = pSession->x30;
+    pSession->options[2] = pSession->x28;
+    pSession->options[5] = pSession->x34;
+    pSession->options[3] = pSession->x2C;
+    pSession->options[6] = pSession->x38;
+    pSession->options[7] = pSession->x4C;
+    pSession->options[8] = pSession->x50;
+    pSession->options[11] = data_00651188;
+    if (*(void **)&pParams->an[13] != 0 || pParams->an[11] != 0) {
+        pSession->options[12] = (int)func_00644DE0;
+        pSession->options[13] = (int)func_00644EA0;
+    } else {
+        pSession->options[12] = 0;
+        pSession->options[13] = 0;
+    }
+    if (pParams->an[17] != 0)
+        pSession->options[14] = (int)func_00644F68;
+    else
+        pSession->options[14] = 0;
+    if (pParams->an[19] != 0)
+        pSession->options[15] = (int)func_00645018;
+    else
+        pSession->options[15] = 0;
+    if (pSession->pMembers == 0)
+        return 41;
+    for (j = 0; j < pSession->nMembers; j++) {
+        pSession->pMembers[j].nId = j;
+        pSession->pMembers[j].bJoined = 0;
+        pSession->pMembers[j].bTalking = 0;
+        pSession->pMembers[j].bAnnounced = 0;
+    }
+    result = func_006451E0(func_0062BDF0(&pSession->hAudio, pSession->options), 42);
+    if (result != 0)
+        return result;
+    result = func_00644AE8(pSession->x20, &nType);
+    if (result != 0)
+        return result;
+    i = 0;
+    if (pSession->nStreams != 0) {
+        do {
+            sprintf(szName, "%d", i);
+            result = func_006451E0(func_0062BE58(pSession->hAudio, nType, &nStream, szName), 42);
+            if (result != 0)
+                return result;
+            pSession->anStreams[i++] = nStream;
+        } while (i < pSession->nStreams);
+    }
+    if (i != 0) {
+        result = func_006451E0(func_0062BF48(pSession->hAudio, nStream), 42);
+        if (result != 0)
+            return result;
+    }
+    pSession->bValid = 1;
+    result = func_0061D458((void **)&pAddress);
+    if (result != 0)
+        return result;
+    if (pAddress == 0)
+        return 10;
+    if (pAddress->nKind == 3) {
+        pSession->bA8 = 0;
+        result = func_006451E0(func_0062BE40(pSession->hAudio, pAddress->szIp, pAddress->nPort, func_006450B0), 42);
+        if (result != 0)
+            return result;
+    } else {
+        pSession->bConnected = 1;
+    }
+    result = func_006451E0(func_0062BEA0(pSession->hAudio, &nId), 42);
+    if (result != 0)
+        return result;
+    result = func_006451E0(func_0062BEC0(pSession->hAudio, nId, pSession->anInfo), 42);
+    if (result != 0)
+        return result;
+    result = func_00644610((STREAM_PEER *)pSession->anInfo, (STREAM_INFO *)&pSession->nCC);
+    if (result != 0)
+        return result;
+    pSession->bEnabled = 1;
+    return result;
 }
 
 int func_00643E48(int nWorld)

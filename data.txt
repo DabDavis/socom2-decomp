@@ -498,6 +498,14 @@
 0x003DE278 0x4 CamRotZ_down  # OVL1 data; SOCOM 1's (camera.cpp's CamRotZ_down, -7 there, -8 here; gp-32312, its GetThirdPersonCamPos reads it in the arm where the look's pitch is not negative, as SOCOM II's GetThirdPersonCamPos 0x29A950 and the mode-1 twin 0x29A660 read this): 2 references in 2 functions
 0x003DE280 0x4 CamRotZ_mounted  # OVL1 data; ours, the core lane round 17 (camera.cpp's file static between CamRotZ_down and CamRotZ_up, new in SOCOM II; -5 in data): GetThirdPersonCamPos's level offset for a mounted or climbing SEAL, and the bound past which its looking-down offset is clipped against the world -- 2 references in 1 function (GetThirdPersonCamPos 0x29A950)
 0x003DE288 0x4 CamRotZ_up  # OVL1 data; SOCOM 1's (camera.cpp's CamRotZ_up, -3 in both; gp-32308, its GetThirdPersonCamPos reads it in the arm where the look's pitch is negative, as SOCOM II's GetThirdPersonCamPos 0x29A950 and the mode-1 twin 0x29A660 read this): 2 references in 2 functions
+0x003DE290 0x4 deathFlashOut1  # OVL1; ours, a camera.cpp static (the engine core round 28): UpdateDeathCamState's state 6, flash 0: its fade-out time (1.0 in data, loaded with lwc1): 1 reference in 1 function
+0x003DE298 0x4 deathFlashHeld1  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 0: its held time (0.1): 1 reference in 1 function
+0x003DE2A0 0x4 deathFlashIn1  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 0: its fade-in time (0.3): 1 reference in 1 function
+0x003DE2A8 0x4 deathFlashOut2  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 2: its fade-out time (1.0): 1 reference in 1 function
+0x003DE2B0 0x4 deathFlashHeld2  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 2: its held time (0.1): 1 reference in 1 function
+0x003DE2B8 0x4 deathFlashIn2  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 2: its fade-in time (0.3): 1 reference in 1 function
+0x003DE2C0 0x4 deathEndFadeTime  # OVL1; ours, a camera.cpp static (the engine core round 28): state 6, flash 4: FadeToEndMission's time (1.0): 1 reference in 1 function
+0x003DE2C8 0x4 flyCamSpeed  # OVL1; ours, a camera.cpp static (the engine core round 28): the free camera's (mode 6's) speed (-300 in data, loaded with lwc1): 4 references in 1 function
 0x003DE2D0 0x4 m_debug__8CConsole  # OVL1; s1:data-seq (size SOCOM 1's; via Debug__8CConsoleFiP7CPacketPCc)
 0x003DE2E0 0x4 recycler_index  # OVL1; s1:data-seq (size SOCOM 1's; via CreateEntity__7CEntityFP7CEntityb)
 0x003DE2E8 0x4 rrTargetListCount__7CEntity  # OVL1; SOCOM 1's CEntity::rrTargetListCount ($gp-32296 there, read by its UpdateTargetList for CRobin::setup): 3, how many entities a tick's target-list slice takes; SOCOM II's UpdateTargetList reads it once (the core lane round 11); ent_target.cpp's
@@ -1483,6 +1491,10 @@
 0x00415FB0 0x4 numSiScript  # OVL1 bss; SOCOM 1's (gp-29440 there, si_script.cpp's): the scripts alive -- CZSIScript's constructor and CreateAndReadIt count it up, its destructor down; 6 references in 3 functions
 0x00415FB8 0x4 numSiCommon  # OVL1 bss; SOCOM 1's (gp-29436 there, si_script.cpp's): the script commons alive -- CZSIScriptCommon's constructor counts it up, its destructor down; 4 references in 2 functions
 0x00415FF0 0x4 appCamera  # OVL1 bss; SOCOM 1's (CHUD::GetHUDOwner reads its owner, as SOCOM 1's read gp-29416): 87 references in 61 functions take 0x415FF0
+0x00415FF8 0x4 heartSlowSnd  # OVL1 bss; ours, a camera.cpp static (the engine core round 28): func_00295660 looks it up (~HEART_SLOW), UpdateDeathCamState plays it: 3 references in 2 functions
+0x00416000 0x4 heartMedSnd  # OVL1 bss; ours, a camera.cpp static (the engine core round 28): func_00295660 looks it up (~HEART_MED), UpdateDeathCamState plays it: 3 references in 2 functions
+0x00416008 0x4 heartFastSnd  # OVL1 bss; ours, a camera.cpp static (the engine core round 28): func_00295660 looks it up (~HEART_FAST), UpdateDeathCamState plays it: 3 references in 2 functions
+0x00416010 0x4 heartInstance  # OVL1 bss; ours, a camera.cpp static (the engine core round 28): the heartbeat playing, stopped and released before the next: func_00295660 clears it, UpdateDeathCamState's three sites
 0x00416018 0x4 data_00416018  # OVL1 bss; SOCOM II's shake: the y ripple's angle in degrees: 9 references in 5 functions
 0x00416020 0x4 data_00416020  # OVL1 bss; SOCOM II's shake: the x amplitude running: 13 references in 6 functions
 0x00416028 0x4 data_00416028  # OVL1 bss; SOCOM II's shake: the y amplitude running: 14 references in 6 functions

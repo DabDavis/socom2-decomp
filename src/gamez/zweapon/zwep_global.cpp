@@ -10,6 +10,8 @@
  * registers, include/algorithm's open remove_if (0x29FE70) again. Defined in reverse of their
  * image order. */
 
+/* the callback list's ~__list_imp 0x3C6880 through begin() 0x3C6910, end() 0x3C6900 and the range erase (include/list, a modelling device) */
+#define __MSL_LIST_DTOR_ERASE
 #include <list>
 #include <algorithm>
 

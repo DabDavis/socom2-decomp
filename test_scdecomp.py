@@ -40,6 +40,17 @@ def ck(cond, msg):
     assert cond, msg
 
 
+class gcc_absolute:
+    """GCC built by the old absolute paths inside the block (scdiff.compile_obj's SC_GCC_ABSOLUTE): what makes
+    a unit's code a function of where the tree lies, for the negatives and for objcmp's padded sides."""
+
+    def __enter__(self):
+        os.environ["SC_GCC_ABSOLUTE"] = "1"
+
+    def __exit__(self, *exc):
+        del os.environ["SC_GCC_ABSOLUTE"]
+
+
 def build(src: Path, name: str, compiler: str = D.COMPILER, flags=None) -> Path:
     obj = BUILD / f"{name}.o"
     D.compile_obj(src, obj, compiler, flags, [HERE / "include", src.parent])
@@ -1268,6 +1279,10 @@ def test_objcmp_verdict_is_independent_of_its_work_directory():
         O.build_side(side, [], root / "obj-stems")
         ck(D.shared_stems(side / "src") == set(), "each side's stems are read again (BASE's set never stands)")
         shutil.rmtree(side)
+        rel = run(base, short)
+        ck(rel[0] == 0 and not any(l.startswith(("PATH-DEPENDENT", "DIFF")) for l in rel[1]),
+           f"built by relative paths the path-length unit has no path to depend on: {rel}")
+        os.environ["SC_GCC_ABSOLUTE"] = "1"     # the machinery below stands for MW, which keeps absolute paths
         rs, rl = run(base, short), run(base, longer)
         ck(rs == rl, f"the same verdict from two work directories: {rs} / {rl}")
         ck(rs[0] == 0 and any(l.startswith("PATH-DEPENDENT fx/pathlen.c: function fx_pathlen at a 160-character")
@@ -1282,7 +1297,43 @@ def test_objcmp_verdict_is_independent_of_its_work_directory():
         ck(r[0] == 1 and any(l.startswith("DIFF fx/pathlen.c") for l in r[1])
            and not any(l.startswith("PATH-DEPENDENT") for l in r[1]), f"a real change differs at both lengths: {r}")
     finally:
+        os.environ.pop("SC_GCC_ABSOLUTE", None)
         shutil.rmtree(root, ignore_errors=True)
+
+
+def test_gcc_code_does_not_depend_on_the_trees_path():
+    """dmelocal.c's 0x617060 and 0x619DD8 matched in a 71-character tree and missed in the main tree's 29: the same
+    source, the compiler given a longer path (integrator, 2026-11-06: found when a lane's row went missing at merge). So
+    GCC gets no absolute path (scdiff.gcc_relative). A unit whose code reads its own path's length builds one object from
+    trees at two lengths and sees its path relative to its tree; by the old absolute paths the same two differ (the negative)."""
+    work = BUILD / "gccpath"
+    if work.exists():
+        shutil.rmtree(work)
+    unit = Path("fx") / "pathlen.c"
+    roots = [work / "a", work / "a_second_tree_at_a_longer_path_by_an_odd_count"]
+    ck((len(str(roots[1])) - len(str(roots[0]))) % 2 == 1, "the two trees' lengths differ by an odd count")
+    for r in roots:
+        (r / "src" / "fx").mkdir(parents=True)
+        (r / "include").mkdir()
+        (r / "src" / unit).write_text("/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */\n"
+                                      "int fx_pathlen(void) { return sizeof(__FILE__); }\n")
+
+    def code(root: Path, tag: str) -> tuple[bytes, bytes]:
+        _, o, err = C.build_one(root / "src" / unit, work / f"obj-{tag}", root=root / "src", include=root / "include")
+        ck(o is not None, f"{unit} builds at {root.name}: {err.strip()[-200:]}")
+        return E.Elf.read(o).function("fx_pathlen")[0], o.read_bytes()
+
+    (a, oa), (b, ob) = code(roots[0], "a"), code(roots[1], "b")
+    ck(a == b and oa == ob, "built by relative paths: one object from either tree, every byte")
+    n = len("src/fx/pathlen.c") + 1
+    ck(struct.pack("<I", 0x24020000 | n) in a, f"and its __FILE__ is the path from its tree ({n} bytes)")
+    cwd, src, inc = D.gcc_relative(roots[0] / "src" / unit, [roots[0] / "include", roots[0] / "src"])
+    ck(cwd == str(roots[0]) and str(src) == "src/fx/pathlen.c" and [str(i) for i in inc] == ["include", "src"],
+       f"cwd the tree, nothing absolute: {cwd} {src} {inc}")
+    with gcc_absolute():
+        c, d = code(roots[0], "abs-a")[0], code(roots[1], "abs-b")[0]
+    ck(c != d, "negative: by absolute paths the two trees' code differs")
+    shutil.rmtree(work)
 
 
 def test_unit_builds_the_same_bytes_at_any_path():
@@ -1308,6 +1359,7 @@ def test_unit_builds_the_same_bytes_at_any_path():
              if p.relative_to(src).parts[0] != "auto" and rx.search(p.read_text(errors="replace"))]
     rfft = Path("lib/ovl1/sase_rfft2g.c")
     ck(rfft in units and len(units) >= 20, f"the units naming __FILE__ are found: {len(units)}")
+    units.append(Path("lib/medius/dmelocal.c"))   # names none of them, and its code followed the path's length
     work = BUILD / "anypath"
     if work.exists():
         shutil.rmtree(work)
@@ -1339,8 +1391,13 @@ def test_unit_builds_the_same_bytes_at_any_path():
         ck(bare != text, "the unit's #line is there to take out")
         f.write_text(bare)
     a, b = O.summary(built(roots[0], rfft, "bare-a")), O.summary(built(roots[1], rfft, "bare-b"))
+    ck(a == b, "without its #line, built by relative paths, the unit is the same at the two paths")
+    ro = next(s for s in E.Elf.read(work / "obj-bare-a" / rfft.with_suffix(".o")).sections if s.name == ".rodata")
+    ck(b"../../shared/rFft2G.c\0" not in ro.data, "but its .rodata is not the target's: the #line gives the vendor's name")
+    with gcc_absolute():
+        a, b = O.summary(built(roots[0], rfft, "abs-a")), O.summary(built(roots[1], rfft, "abs-b"))
     ck([k for k in sorted(set(a) | set(b)) if a.get(k) != b.get(k)] == ["section .rodata#1"],
-       "without its #line, the unit's .rodata differs at the two paths (and nothing else)")
+       "by the old absolute paths, without its #line, the unit's .rodata differs at the two paths (and nothing else)")
     # and objcmp builds both of its sides at ONE path (the online lobby's round 22): the unit without
     # its #line, built where objcmp builds BASE's copy and again in the tree's copy put in its place,
     # compares equal; at another path (the old sides: a scratch copy against the tree) it differs
@@ -1356,11 +1413,12 @@ def test_unit_builds_the_same_bytes_at_any_path():
         return O.summary(o)
 
     side = work / "objcmp" / "tree"
-    first = side_build(side, "base")
-    shutil.rmtree(side)                 # tree_copy() puts the tree's copy in BASE's place
-    ck(side_build(side, "now") == first, "objcmp: an unchanged unit naming __FILE__ bare is the same on both sides")
-    ck(side_build(work / "objcmp" / "another_tree", "other") != first,
-       "negative: the same unit built at another path differs (objcmp's old two sides)")
+    with gcc_absolute():                # what objcmp's one path is still for: MW keeps absolute paths
+        first = side_build(side, "base")
+        shutil.rmtree(side)             # tree_copy() puts the tree's copy in BASE's place
+        ck(side_build(side, "now") == first, "objcmp: an unchanged unit naming __FILE__ bare is the same on both sides")
+        ck(side_build(work / "objcmp" / "another_tree", "other") != first,
+           "negative: the same unit built at another path differs (objcmp's old two sides)")
     shutil.rmtree(work)
 
 

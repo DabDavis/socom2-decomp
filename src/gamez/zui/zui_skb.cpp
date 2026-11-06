@@ -12,6 +12,8 @@
  * at SOCOM II's addresses (data.txt), still in the unit's unnamed namespace: no other unit
  * addresses them. */
 
+/* (this file's end: THE LEVEL) */
+#define __MSL_POD_DTOR_ARGS
 #include <map>
 #include <string.h>
 #include <algorithm>
@@ -1252,8 +1254,17 @@ CSoftKeyboard::~CSoftKeyboard()
         delete (*it).second;
 }
 
+/* FindKeyProps' height, no code: GetCurKeyProps stays too tall for its callers at this file's level (a modelling device: THE LEVEL, this file's end) */
+static inline void SkbLevel1() {}
+static inline void SkbLevel2() { SkbLevel1(); }
+static inline void SkbLevel3() { SkbLevel2(); }
+static inline void SkbLevel4() { SkbLevel3(); }
+static inline void SkbLevel5() { SkbLevel4(); }
+static inline void SkbLevel6() { SkbLevel5(); }
+
 CSkbKeyProps *CSoftKeyboard::FindKeyProps(const CSkbKey &key)
 {
+    SkbLevel6();
     CSkbKeyMap::iterator i = m_keyProps.find(key);
     /* the end taken into a local: tested in the `!=` call's argument list it is checked a level
      * deeper, and inlined here into GetCurKeyProps it calls the tree's tail() out of line */
@@ -1263,3 +1274,8 @@ CSkbKeyProps *CSoftKeyboard::FindKeyProps(const CSkbKey &key)
         return (*i).second;
     return 0;
 }
+
+/* A MODELLING DEVICE, a "Level 6, or 8?" witness, with `__MSL_POD_DTOR_ARGS` at this file's head (include/vector; the MSL headers round 40):
+ * insert<vector<CSkbKey>> 0x38F7D0's temporary's teardown cuts the inner deleter's accessors at its leaves (0x38FDC0, 0x38FDB0), its destructor at pass 5.
+ * FindKeyProps keeps its level-5 cut by a find two levels taller (SkbFind2 above: GetCurKeyProps stays too tall for SkbMoveAlong 0x38C130, whole in its own copy) */
+#pragma inline_depth(7)

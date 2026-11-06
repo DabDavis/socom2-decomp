@@ -20,13 +20,24 @@ extern "C" _word128 *func_003B9480(zdb::CMesh *mesh, unsigned int lod);
 namespace zdb {
 
 /* The template tail: the band vectors' resizes, erases, the deleters' destructors and clears are
- * byte-exact from include/vector; the three class inserts are OPEN -- insert<CMaterial_band>
- * (0x3BC680) is 0x68 bytes long here: the temporary's deleter inlines clear's loop (a _free per
- * band) where the target calls clear (0x3BD870), so clear was generated after the insert there
- * (README, the tail's generation order), and its in-place branch numbers the end pointer and the
- * copy's source against the target's (the class inserts' open register, include/vector);
- * insert<CLOD_band> (0x3BBFE0, 0x5C4 against 0x5CC) and insert<CScrollingTexture_band> (0x3BB7E0,
- * 0x754 against 0x75C) are 8 bytes short each, as insert<CVehicleDef> 0x3AF040 is. */
+ * byte-exact from include/vector, and the three class inserts since the MSL headers' round 40, by the
+ * device below. Each insert's temporary inlines the deleter's destructor and calls its clear out of
+ * line (0x3BD840, 0x3BD850, 0x3BD870), so it is generated AHEAD of clear, which only the destructor
+ * and the insert name: the image's tail (SOCOM 1's as well, 0x3118F0-0x312D00) is insert, resize per
+ * band vector, then the destructors, the erases and the clears, a walk ahead of what a resize alone
+ * would give. Something in the unit's own code calls these inserts -- the original's own function,
+ * dead-stripped, as nothing in either image calls them but the resizes. */
+
+/* A MODELLING DEVICE (the MSL headers round 40; the name ours, src/ABSENT.txt): an own function naming the
+ * three inserts, never called, dead-stripped. Its code references them, so the first walk at the unit's end
+ * reaches them, ahead of the walk that instantiates the deleters' clears */
+void BandInsertsDevice(CScrollingTexture_Object &s, CLOD_Object &l, CMaterial_Object &m, const CScrollingTexture_band &a,
+                       const CLOD_band &b, const CMaterial_band &c)
+{
+    s.push_back(a);
+    l.push_back(b);
+    m.push_back(c);
+}
 
 /* the colour a material band starts with: 0, 1, 0, 0 (the unit's initialiser, 0x4049E0 -- new in
  * SOCOM II; SOCOM 1's vis_data.cpp had none) */

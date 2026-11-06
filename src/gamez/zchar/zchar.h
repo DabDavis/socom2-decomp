@@ -430,6 +430,13 @@ public:
     public:
         /* empty, at no distance (Parse's temporary: all seven words zeroed) */
         LOD() : m_dist(0.0f) {}
+#ifdef __MSL_POD_DTOR_ARGS
+        /* the destructor's height, no code: too tall for the insert's temporary at the unit's level (char_type.cpp: a modelling device) */
+        static void __level1() {}
+        static void __level2() { __level1(); }
+        static void __level3() { __level2(); }
+        ~LOD() { __level3(); }
+#endif
 
         std::string m_file;   // 0x0: the model's name, the file's without its extension
         std::string m_name;   // 0xc: the file's name (SOCOM 1's names, both builds' use)

@@ -24,13 +24,14 @@
  * their data_ placeholders, each commented with SOCOM 1's name where its use pairs it. VuUpdate
  * (0xCC4) is byte-exact since round 33: its tail calls even 8-byte helpers out of line because its
  * decal walk is an inline six levels high (through GetVid), inlined one level -- not an inline
- * budget, as rounds 13-32 guessed. Still open here: the deque copy chain's init
- * 0x3B7E30, do_assign 0x3B8000 and default constructor 0x3B7FA0 (the rest of the chain is
- * byte-exact since the MSL headers' round 18: m_stack_vid, below). Round 20: the unit's
+ * budget, as rounds 13-32 guessed. The deque chain is byte-exact (m_stack_vid, below), its
+ * default constructor 0x3B7FA0 with 0x334120 and 0x334150 since the MSL headers' round 40. Round 20: the unit's
  * initialiser, the light tints (0x3B7170, 0x3B76B0, 0x3B78D0) and the header's lights (0x3B6870)
  * byte-exact. Round 25: the lights' packet 0x3B6B20 byte-exact (the by-value 4D copy is a CPnt4D
  * temporary handed to an inline by reference) and AttachDecal 0x3B3800 written (open, 8 bytes). */
 
+/* the vid stack's default constructor 0x3B7FA0 through 0x334120 -> 0x334150 (a modelling device: include/deque's __deque_buf) */
+#define __MSL_DEQUE_DEFAULT_INLINE
 #include <stack>
 #include "znode.h"
 #include "../zsys/zsys_public.h"

@@ -194,6 +194,207 @@ zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3
     return Di;
 }
 
+/* a point into a VU vector, its fields read through the reference (off the frame) */
+inline void FillVec(CPnt4D &v, const CPnt3D &p)
+{
+    v.x = p.x;
+    v.y = p.y;
+    v.z = p.z;
+    v.w = 1.0f;
+}
+
+/* the chord from the aim (p0) to the goal (p1) cut against the world: the goal pulled a little out, the
+ * short tether's length eased, the hit nearest the aim given as the out point -- and then four feelers from
+ * it (right, left, up, down, 0.75 each) pushing it off the walls (SOCOM 1's; SOCOM II's the shorter tether
+ * through the entity's own check).
+ * OPEN, 0xC48 of 0xC38, RightVec's accesses only (everything else byte-exact, the saved registers and the
+ * frame included: the spill pick wants Vec's two address temporaries spilled and rematerialised, which the view
+ * vector read through a reference gives; the characters' switch is a for fully unrolled). The target keeps
+ * &RightVec + 8 in a saved register for the length's read and the right vector's alone; the normalise's read and
+ * store and the scale's store of RightVec are frame-relative (hence its z read scheduled ahead of x's store), and
+ * &RightVec + 4 has no temporary. Here IRO_CommonSubs merges them all (pass 1: y's store and read; pass 2: z).
+ * Tried: helpers by reference and pointer, a reference local before the test, a by-value and a reference assign
+ * helper (the product then sits a pass too deep). */
+void CAppCamera::ClipCameraChord(float dT, CPnt3D *p0, CPnt3D *p1, CPnt3D *pout)
+{
+    bool flag = m_cam_death_state != 0;
+    CPnt3D Vec;
+
+    Vec = *p0 - *p1;
+
+    float len = Vec.Normalize();
+
+    len += 0.75f;
+    Vec = Vec * len;
+    *p1 = *p0 - Vec;
+
+    bool flag_body = GetNode__7CEntityFv(m_entity)->SetActive(false);
+
+    if (peekCur == 0.0f)
+        zdb::SetCameraCollideFlagRequired(true);
+    else
+        zdb::SetCameraCollideFlagRequired(false);
+
+    zdb::IntersectStruct *di;
+    CZSealBody *carried = 0;
+    bool carriedWas;
+
+    if (m_bc)
+        carried = *(CZSealBody **)((char *)m_bc + 0xeac);
+    if (carried)
+        carriedWas = GetNode__7CEntityFv(carried)->SetActive(false);
+    camera_tether_intersects_something = false;
+
+    di = GetNearestIntersectCamPoint(zdb::CWorld::m_world->GetIntersects(p0, p1, flag), p0);
+
+    if (m_short_tether_timer > 0.0f)
+        m_short_tether_timer -= dT;
+    if (len > save_short_tether_length) {
+        if (m_short_tether_timer <= 0.0f || save_short_tether_length < 3.3000002f || camera_tether_intersects_something)
+            save_short_tether_length += short_tether_rate * (len - save_short_tether_length);
+    } else
+        save_short_tether_length = len;
+    if (di) {
+        CZSealBody *bc = m_bc;
+
+        if (m_entity == bc || bc != ftsGetPlayer()
+            || !GetNode__7CEntityFv(bc)->FindChild(di->m_node, true)) {
+            CPnt3D intersect(di->m_pos);
+
+            intersect.Sub(p0, &intersect);
+
+            float d = intersect.Normalize();
+
+            d -= 0.75f;
+            if (d < 0.75f)
+                d = 0.75f;
+            if (d < save_short_tether_length)
+                save_short_tether_length = d;
+            else
+                d = save_short_tether_length;
+            intersect.Scale(d, &intersect);
+            intersect.Add(p0, pout);
+            m_short_tether_timer = 1.5f;
+        }
+    } else {
+        Vec.Normalize();
+        Vec = Vec * save_short_tether_length;
+        *p1 = *p0 - Vec;
+        pout->x = p1->x;
+        pout->y = p1->y;
+        pout->z = p1->z;
+    }
+
+    CPnt3D RightVec;
+
+    Vec.ToRightXZ(&RightVec);
+
+    float rlen = sqrtf(RightVec.x * RightVec.x + RightVec.z * RightVec.z);
+
+    if (rlen != 0.0f) {
+        rlen = 1.0f / rlen;
+        RightVec.x *= rlen;
+        RightVec.z *= rlen;
+    }
+    RightVec = RightVec * 0.75f;
+
+    CPnt3D pR;
+
+    pR = *pout + RightVec;
+
+    CPnt3D pL;
+
+    pL = *pout - RightVec;
+    zdb::DiIntersect *dis[4];
+    CPnt4D up;
+    CPnt4D right;
+
+    right.x = RightVec.x;
+    right.y = RightVec.y;
+    right.z = RightVec.z;
+    right.w = 1.0f;
+
+    CPnt4D view;
+
+    FillVec(view, Vec);
+
+    sceVu0OuterProduct((float *)&up, (float *)&right, (float *)&view);
+    sceVu0Normalize((float *)&up, (float *)&up);
+
+    CPnt3D Up;
+
+    Up.x = up.x;
+    Up.y = up.y;
+    Up.z = up.z;
+    Up.Scale(0.75f, &Up);
+
+    CPnt3D Down;
+
+    Down = *pout - Up;
+    Up = *pout + Up;
+
+    unsigned int mask = m_camera->GetCameraCanSeeRegion();
+
+    dis[0] = &dilr0;
+    dis[1] = &dilr1;
+    dis[2] = &dilr2;
+    dis[3] = &dilr3;
+    dilr0.m_Type = 2;
+    dilr0.m_Tail = *pout;
+    dilr0.m_Tip = pR;
+    dilr0.SetMask(mask);
+    dilr1.m_Type = 2;
+    dilr1.m_Tail = *pout;
+    dilr1.m_Tip = pL;
+    dilr1.SetMask(mask);
+    dilr2.m_Type = 2;
+    dilr2.m_Tail = *pout;
+    dilr2.m_Tip = Up;
+    dilr2.SetMask(mask);
+    dilr3.m_Type = 2;
+    dilr3.m_Tail = *pout;
+    dilr3.m_Tip = Down;
+    dilr3.SetMask(mask);
+    for (int i = 0; i < 4; i++)
+        dis[i]->m_IntersectCharacters = !flag;
+    zdb::CWorld::m_world->GetIntersectBatch(dis, 4);
+
+    zdb::IntersectStruct *di0 = dilr0.GetNearestIntersect();
+    zdb::IntersectStruct *di1 = dilr1.GetNearestIntersect();
+
+    if (di0 && di1) {
+        *pout = di0->m_pos + (di1->m_pos - di0->m_pos) * 0.5f;
+        m_short_tether_timer = 1.5f;
+    } else if (di0) {
+        pout->x += di0->m_pos.x - pR.x;
+        pout->z += di0->m_pos.z - pR.z;
+        m_short_tether_timer = 1.5f;
+    } else if (di1) {
+        pout->x += di1->m_pos.x - pL.x;
+        pout->z += di1->m_pos.z - pL.z;
+        m_short_tether_timer = 1.5f;
+    }
+    di0 = dilr2.GetNearestIntersect();
+    di1 = dilr3.GetNearestIntersect();
+    if (di0 && di1) {
+        *pout = di0->m_pos + (di1->m_pos - di0->m_pos) * 0.5f;
+        m_short_tether_timer = 1.5f;
+    } else if (di0) {
+        *pout += di0->m_pos - Up;
+        m_short_tether_timer = 1.5f;
+    } else if (di1) {
+        *pout += di1->m_pos - Down;
+        m_short_tether_timer = 1.5f;
+    }
+    Vec = *pout - *p0;
+    if (Vec.Normalize() < 0.75f)
+        *pout = *p0 + Vec * 0.75f;
+    GetNode__7CEntityFv(m_entity)->SetActive(flag_body);
+    if (carried)
+        GetNode__7CEntityFv(carried)->SetActive(carriedWas);
+    zdb::SetCameraCollideFlagRequired(false);
+}
+
 /* the view's preset taken up: the goal position and aim, the tether's length, and -- with a SEAL
  * attached -- the camera put there, looking at the aim, both carried into the SEAL's space (the
  * name ours) */
@@ -1066,7 +1267,7 @@ void CAppCamera::ResetDeathCam()
     data_00416208 = 0.0f;
     data_00416210 = 0.0f;
     data_00416218 = 0.0f;
-    m_death_state_timer = 0.0f;
+    m_death_time = 0.0f;
     m_f4 = 0;
     m_f5 = m_f4;
     m_110 = -1;
@@ -1179,6 +1380,8 @@ extern CftsPlayer ftsPlayer;
 class CHUD {
 public:
     bool PauseGame();
+    /* a flash: a colour faded to, held, faded from (hud_fader.h's, 0x1F7E80, SOCOM 1's) */
+    void Flash(float a, const CPnt3D &color, float fadeOut, float faded, float fadeIn);
 };
 
 extern CHUD *theHUD;
@@ -1193,7 +1396,7 @@ inline void SetDeathState(CAppCamera *cam, unsigned char state)
         keep = true;
     if (!keep) {
         cam->m_cam_death_state = state;
-        cam->m_death_state_timer = 0.0f;
+        cam->m_death_time = 0.0f;
     }
 }
 
@@ -1244,6 +1447,340 @@ static inline float (*MatrixRows(CMatrix *m))[4]
     return r;
 }
 
+
+/* the mission's camera path (fts_mission.cpp's CCamPath and CMission: only the path, at 0x1910), the fade
+ * to the mission's end and the flag holding the core state's fade (fts_state.h's m_fc) */
+class CCamPath {
+public:
+    /* a point `step` on from `index`, its place, direction and name given (-1: none) */
+    int GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name);
+};
+
+class CMission {
+public:
+    void FadeToEndMission(float t, int how);
+
+    unsigned char _0[0xfc];
+    unsigned char m_fcHold : 1;   // 0xfc
+    unsigned char _fc1 : 7;
+    unsigned char _fd[0x18f8 - 0xfd];
+    CBBox m_bounds;   // 0x18f8: the free camera's bounds (the name ours)
+    CCamPath m_campath;   // 0x1910
+};
+
+extern CMission theMission;
+
+/* the heartbeats (SOCOM II's, looked up by func_00295660: ~HEART_SLOW, ~HEART_MED, ~HEART_FAST) and the one
+ * playing; the death flashes' times (data, read per state; the names ours); the pipe's colour pair at 0x6e0
+ * (zrndr_pipe.cpp's tag_PipeColor: its first word and its GS register word) */
+extern "C" {
+extern CSnd *heartSlowSnd;
+extern CSnd *heartMedSnd;
+extern CSnd *heartFastSnd;
+extern CSndInstance *heartInstance;
+extern float deathFlashOut1;
+extern float deathFlashHeld1;
+extern float deathFlashIn1;
+extern float deathFlashOut2;
+extern float deathFlashHeld2;
+extern float deathFlashIn2;
+extern float deathEndFadeTime;
+extern int data_00488EA0;
+extern unsigned long data_00488EA8;
+/* the pad's button state as the game reads it (fts_controller.cpp's) */
+unsigned char func_002C64E0(int func, CPad *pad);
+/* CEntity::GetEntityList's copy, and the list's search by id (ent_main.cpp's: camera.h's list is a plain one) */
+void *func_00299140();
+CEntity *GetEntityById__11CEntityListCFUi(void *list, unsigned int id);
+void func_00594600(CAppCameraCtrl *ctrl, float dT, float rate);
+/* the low motor run for a time (zseal.h's CSealCtrl, OVL2 0x592B40: camera.h's controller is a stand-in) */
+void SetLowRumbleTime__9CSealCtrlFff(CAppCameraCtrl *ctrl, float t, float strength);
+}
+
+/* the pipe's overlay blend: (Cs - Cd) * FIX + Cd at FIX 128, its kind set (inline: the seven sites' two 8-byte
+ * locals sit in the order of their calls, below the colours). FIX is stored after the four bit fields, and the
+ * word ahead of the kind: a later temporary is coloured first, so FIX's constant takes v0 and blocks it for
+ * each mask, which chains every field's load and result in v0 -- with FIX first each result takes its mask's
+ * register (196 off) */
+static inline void DeathPipeBlend(int kind)
+{
+    zdb::BLENDMODE m;
+    unsigned long word;
+
+    m.m_alphaWORD = 0x44;
+    m.m_alpha.A = 0;
+    m.m_alpha.B = 1;
+    m.m_alpha.C = 2;
+    m.m_alpha.D = 1;
+    m.m_alpha.FIX = 128;
+    memcpy(&word, &m, 8);
+    data_00488EA8 = word;
+    data_00488EA0 = kind;
+}
+
+/* the death camera's state machine: the state's timer run down, each state's flashes and pipe blend, the
+ * killer's follow, the heartbeats; the controller's rumble, the player's stick taking the camera over, the
+ * head's pitch eased (SOCOM 1's; the blend and the heartbeats SOCOM II's) */
+void CAppCamera::UpdateDeathCamState(float dT)
+{
+    m_death_time += dT;
+    if (m_cam_death_state == 1) {
+        m_rumble_counter = 0;
+        m_rumble_timer = -1.0f;
+        m_next_rumble_time = -1.0f;
+        m_next_rumble_time_scaler = 1.15f;
+        m_rumble_time = 0.2f;
+        m_rumble_time_scaler = 1.075f;
+        m_rumble_power = 180.0f;
+        m_rumble_power_scaler = 0.9f;
+        m_allow_player_death_cam_control = 1;
+        m_flashcounter = 0;
+        m_killed = m_bc;
+
+        CZSealBody *seal = m_bc;
+
+        if (seal) {
+            CEntity *e = GetEntityById__11CEntityListCFUi(func_00299140(), seal->m_lastHitBy);
+
+            m_killer = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+        }
+        if (theNetwork.m_9) {
+            if (m_killer && m_killer != m_killed)
+                m_cam_death_state = 3;
+            else
+                m_cam_death_state = 6;
+        } else {
+            m_flashcounter = 0;
+            m_next_rumble_time = 1.0f;
+            m_cam_death_state = 2;
+            m_death_state_timer = 2.5f;
+            theMission.m_fcHold = 1;
+        }
+    }
+    if (theNetwork.m_9 && m_bc && !m_bc->IsPlayer())
+        m_cam_death_state = 7;
+    if (m_death_state_timer > 0.0f) {
+        m_death_state_timer -= dT;
+        if (m_death_state_timer <= 0.0f) {
+            switch (m_cam_death_state) {
+            case 2:
+                if (m_killer) {
+                    switch (m_flashcounter) {
+                    case 0: {
+                        if (!theNetwork.m_9)
+                            DeathPipeBlend(1);
+                        m_flashcounter++;
+
+                        CPnt3D color(0.0f, 0.0f, 0.0f);
+
+                        m_death_fade_out_time = 0.2f;
+                        m_death_faded_time = 0.1f;
+                        m_death_fade_in_time = 0.2f;
+                        m_death_state_timer = m_death_fade_out_time + 0.5f * m_death_faded_time;
+                        theHUD->Flash(0.0f, color, m_death_fade_out_time, m_death_faded_time, m_death_fade_in_time);
+                        m_rumble_timer = 0.5f * m_death_fade_out_time;
+                        break;
+                    }
+                    case 1:
+                        if (!theNetwork.m_9)
+                            DeathPipeBlend(0);
+                        m_flashcounter = 0;
+                        m_death_state_timer = 3.0f + m_death_fade_in_time;
+                        m_cam_death_state = 4;
+                        Follow((CEntity *)m_killer, 0);
+                        break;
+                    }
+                } else {
+                    m_death_state_timer = 5.0f;
+                    m_cam_death_state = 6;
+                    if (!theNetwork.m_9)
+                        DeathPipeBlend(3);
+                }
+                break;
+            case 4:
+                switch (m_flashcounter) {
+                case 0: {
+                    m_flashcounter++;
+
+                    CPnt3D color(0.0f, 0.0f, 0.0f);
+
+                    m_death_fade_out_time = 0.2f;
+                    m_death_faded_time = 0.1f;
+                    m_death_fade_in_time = 0.2f;
+                    m_death_state_timer = m_death_fade_out_time + 0.5f * m_death_faded_time;
+                    theHUD->Flash(0.0f, color, m_death_fade_out_time, m_death_faded_time, m_death_fade_in_time);
+                    m_rumble_timer = 0.5f * m_death_fade_out_time;
+                    break;
+                }
+                case 1:
+                    if (!theNetwork.m_9)
+                        DeathPipeBlend(3);
+                    m_flashcounter = 0;
+                    m_death_state_timer = 2.5f + (0.5f * m_death_faded_time + m_death_fade_in_time);
+                    m_cam_death_state = 6;
+                    Follow((CEntity *)m_killed, "spinelo");
+                    if (heartFastSnd) {
+                        if (heartInstance) {
+                            heartInstance->Stop();
+                            CSndInstance::ReleaseSoundInstance(heartInstance);
+                            heartInstance = 0;
+                        }
+                        heartInstance = heartFastSnd->PlaySound((CSndInstance *)0, 255);
+                    }
+                    break;
+                }
+                break;
+            case 6:
+                if (!theNetwork.m_9) {
+                    switch (m_flashcounter) {
+                    case 0: {
+                        m_flashcounter++;
+
+                        CPnt3D color(0.0f, 0.0f, 0.0f);
+
+                        m_death_fade_out_time = deathFlashOut1;
+                        m_death_faded_time = deathFlashHeld1;
+                        m_death_fade_in_time = deathFlashIn1;
+                        m_death_state_timer = m_death_fade_out_time + 0.5f * m_death_faded_time;
+                        theHUD->Flash(0.0f, color, m_death_fade_out_time, m_death_faded_time, m_death_fade_in_time);
+                        m_rumble_timer = 0.5f * m_death_fade_out_time;
+                        break;
+                    }
+                    case 1: {
+                        if (!theNetwork.m_9)
+                            DeathPipeBlend(5);
+                        m_flashcounter++;
+
+                        CPnt3D color(0.0f, 0.0f, 0.0f);
+
+                        m_death_state_timer = 1.0f + (0.5f * m_death_faded_time + m_death_fade_in_time);
+                        theHUD->Flash(1.0f, color, 0.01f, 0.2f, -0.1f);
+                        if (heartMedSnd) {
+                            if (heartInstance) {
+                                heartInstance->Stop();
+                                CSndInstance::ReleaseSoundInstance(heartInstance);
+                                heartInstance = 0;
+                            }
+                            heartInstance = heartMedSnd->PlaySound((CSndInstance *)0, 255);
+                        }
+                        break;
+                    }
+                    case 2: {
+                        m_flashcounter++;
+
+                        CPnt3D color(0.0f, 0.0f, 0.0f);
+
+                        m_death_fade_out_time = deathFlashOut2;
+                        m_death_faded_time = deathFlashHeld2;
+                        m_death_fade_in_time = deathFlashIn2;
+                        m_death_state_timer = m_death_fade_out_time + 0.5f * m_death_faded_time;
+                        theHUD->Flash(0.0f, color, m_death_fade_out_time, m_death_faded_time, m_death_fade_in_time);
+                        m_rumble_timer = 0.7f * m_death_fade_out_time;
+                        break;
+                    }
+                    case 3: {
+                        if (!theNetwork.m_9)
+                            DeathPipeBlend(7);
+                        m_flashcounter++;
+
+                        CPnt3D color(0.0f, 0.0f, 0.0f);
+
+                        m_death_state_timer = 0.5f + (0.5f * m_death_faded_time + m_death_fade_in_time);
+                        theHUD->Flash(1.0f, color, 0.01f, 0.2f, -0.1f);
+                        m_rumble_timer = m_death_state_timer;
+                        if (heartSlowSnd) {
+                            if (heartInstance) {
+                                heartInstance->Stop();
+                                CSndInstance::ReleaseSoundInstance(heartInstance);
+                                heartInstance = 0;
+                            }
+                            heartInstance = heartSlowSnd->PlaySound((CSndInstance *)0, 255);
+                        }
+                        break;
+                    }
+                    case 4:
+                        theMission.FadeToEndMission(deathEndFadeTime, 0);
+                        m_allow_player_death_cam_control = 0;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+    if (!theNetwork.m_9 && m_cam_death_state == 7)
+        DeathPipeBlend(3);
+
+    CAppCameraCtrl *controller = 0;
+
+    if (theNetwork.m_9) {
+        if (m_ctrl && m_ctrl->IsPlayer())
+            controller = m_ctrl;
+        else if (m_killed)
+            controller = (CAppCameraCtrl *)m_killed->m_control;
+    } else if (m_killed) {
+        controller = (CAppCameraCtrl *)m_killed->m_control;
+        if (controller && controller->m_171_3) {
+            CPad *pad = controller->m_padid < CInput::NUM_PADS ? CInput::m_pads[controller->m_padid] : 0;
+
+            if (pad && func_002C64E0(0, pad) == 1 && m_death_time > 5.0f)
+                theMission.FadeToEndMission(0.2f, 0);
+        }
+    }
+    if (controller && m_rumble_timer > 0.0f) {
+        m_rumble_timer -= dT;
+        if (m_rumble_timer <= 0.0f) {
+            SetLowRumbleTime__9CSealCtrlFff(controller, m_rumble_time, m_rumble_power);
+            switch (m_rumble_counter) {
+            case 0:
+                m_rumble_timer = 2.0f * m_rumble_time;
+                m_rumble_counter = 1;
+                break;
+            case 1:
+                m_rumble_counter = 0;
+                m_rumble_power = m_rumble_power * m_rumble_power_scaler;
+                break;
+            }
+        }
+    }
+    if (m_allow_player_death_cam_control && m_cam_death_state != 7) {
+        CAppCameraCtrl *c = 0;
+
+        if (theNetwork.m_9)
+            c = (CAppCameraCtrl *)m_killed->m_control;
+        else if (m_ctrl && m_ctrl->IsPlayer())
+            c = m_ctrl;
+
+        float turn_throttle = 0.0f;
+        float pitch_throttle = 0.0f;
+
+        if (c) {
+            turn_throttle = c->m_throttle2;
+            pitch_throttle = c->m_throttle3;
+        }
+        if ((!(fabsf(turn_throttle) < 0.01f) || !(fabsf(pitch_throttle) < 0.01f)) && m_bc && m_bc->m_state == 8) {
+            if (m_cam_death_state == 4)
+                Follow((CEntity *)m_killed, 0);
+            m_auto_death_cam = 0;
+            m_cam_death_state = 7;
+            theMission.m_fcHold = 0;
+            if (!theNetwork.m_9)
+                theMission.FadeToEndMission(5.0f, 0);
+            m_death_state_timer = -1.0f;
+            m_next_rumble_time = -1.0f;
+            m_rumble_timer = -1.0f;
+        }
+    }
+    if (!theNetwork.m_9 && m_killed && m_bc == m_killed && controller
+        && (m_cam_death_state == 6 || m_cam_death_state == 2)) {
+        float x = m_killed->m_fwdlook.vec.x;
+
+        if (x > -0.2f)
+            func_00594600(controller, dT, -0.5f);
+        else if (x < -0.3f)
+            func_00594600(controller, dT, 0.5f);
+    }
+}
 
 /* the death camera's own look (SOCOM 1's GetDeadCamPoints' place and signature -- GetTetherCamPoints
  * calls it, it calls UpdateDeathCamState first -- SOCOM II's body): the turn taken from the stick
@@ -1461,6 +1998,205 @@ void CAppCamera::APTeatherCam(CMatrix &cTw, float dT)
     }
     LookAt(&cam_new_pos, &cam_aim_point, cTw);
     UpdateRegions(this);
+}
+
+/* the fly speed (data: -300, a variable), and the pitch's sign the options keep (SOCOM 1's hackPitchFactor);
+ * one of the pad's buttons out of its read (libpad2's, zin_pad.cpp's) */
+extern "C" float flyCamSpeed;
+extern float hackPitchFactor;
+extern "C" int func_001BDA78(int port, void *data, int button);
+
+/* a level over TransformVectors: its two vectors below the two cross products' in the frame */
+static inline void TransformVectorInPlace(const CMatrix *m, CPnt3D *p)
+{
+    TransformVectors(m, p, p, 1);
+}
+
+/* the unit vector across two points, through VU0 */
+static inline void CrossNormalized(CPnt3D *out, const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt4D v0;
+    CPnt4D v1;
+    CPnt4D v2;
+
+    v1.x = a.x;
+    v1.y = a.y;
+    v1.z = a.z;
+    v1.w = 1.0f;
+    v2.x = b.x;
+    v2.y = b.y;
+    v2.z = b.z;
+    v2.w = 1.0f;
+    sceVu0OuterProduct((float *)&v0, (float *)&v1, (float *)&v2);
+    sceVu0Normalize((float *)&v0, (float *)&v0);
+    out->x = v0.x;
+    out->y = v0.y;
+    out->z = v0.z;
+}
+
+/* a pad to read and the player's controller free for it */
+static inline bool FlyCamActive(CPad *pad)
+{
+    PLAYER_CAM_STATE mode = *(PLAYER_CAM_STATE *)&ftsGetPlayer()->m_control->m_221;
+    bool on = false;
+
+    if (pad && mode == 0)
+        on = true;
+    return on;
+}
+
+/* an altitude to read */
+static inline bool FlyCamHits(zdb::DiIntersect *di)
+{
+    bool any = false;
+
+    if (di && di->m_Cnt > 0)
+        any = true;
+    return any;
+}
+
+/* mode 6: the free camera (SOCOM II's): first time placed at the third person's point, then flown by the pad's
+ * sticks and triggers in the view's frame -- or, the death camera's state 2, the sticks' y zooming -- held inside
+ * the mission's bounds and over the ground below it, the view's matrix set, the regions updated */
+void func_002964F0(CAppCamera *cam, CMatrix &cTw, float dT)
+{
+    if (cam->m_44) {
+        CPnt3D offset;
+        float len;
+
+        cam->m_44 = 0;
+        cam->m_wPos = cam->GetThirdPersonCamPos(&offset, &len);
+        if (cam->m_entity)
+            cam->m_entity->GetMatrix()->Transform(&cam->m_wPos, 1);
+    }
+    if (cam->m_ctrl && cam->m_ctrl->IsPlayer())
+        cam->m_padid = cam->m_ctrl->m_padid;
+
+    CPad *pad = cam->m_padid < CInput::NUM_PADS ? CInput::m_pads[cam->m_padid] : 0;
+
+    if (!pad)
+        pad = CInput::m_pads[0];
+
+    bool active = FlyCamActive(pad);
+    CPnt3D prev(cam->m_wPos.x, cam->m_wPos.y, cam->m_wPos.z);
+    float fwd = !active ? 0.0f : dT * (flyCamSpeed * pad->GetStick(1));
+    float zoom = !active ? 0.0f : dT * pad->m_220[1];
+    float strafe = !active ? 0.0f : dT * (flyCamSpeed * pad->GetStick(0));
+    float rise = !active ? 0.0f : dT * (flyCamSpeed * (0.003921569f * func_001BDA78(pad->m_port, pad->m_e4, 28)));
+
+    if (active)
+        rise -= dT * (flyCamSpeed * (0.003921569f * func_001BDA78(pad->m_port, pad->m_e4, 30)));
+
+    float yaw = !active ? 0.0f : dT * (1.8849558f * pad->GetStick(2));
+    float pitch = !active ? 0.0f : dT * (1.8849558f * pad->GetStick(3));
+
+    cam->m_fc += yaw;
+    cam->m_f8 += pitch * hackPitchFactor;
+    if (cam->m_f8 > 1.5f)
+        cam->m_f8 = 1.5f;
+    else if (cam->m_f8 < -1.5f)
+        cam->m_f8 = -1.5f;
+    while (cam->m_fc < 0.0f)
+        cam->m_fc += 6.2831855f;
+    while (cam->m_fc > 6.2831855f)
+        cam->m_fc -= 6.2831855f;
+    cTw.SetRotate((CPnt3D *)&cam->m_f8);
+    if (*(unsigned char *)&cam->m_f4 == 0) {
+        CPnt3D dir = CPnt3D::unit_z;
+
+        TransformVectorInPlace(&cTw, &dir);
+        cam->m_wPos += dir * fwd;
+
+        CPnt3D up(dir.x, 10000.0f, dir.z);
+        CPnt3D right;
+
+        CrossNormalized(&right, dir, up);
+        cam->m_wPos -= right * strafe;
+
+        CPnt3D up2;
+
+        CrossNormalized(&up2, dir, right);
+        cam->m_wPos += up2 * rise;
+    } else if (*(unsigned char *)&cam->m_f4 == 2) {
+        float k = 1.3f;
+
+        cam->m_118 += k * (zoom * cam->m_118);
+        if (cam->m_118 < 1.0f)
+            cam->m_118 = 1.0f;
+        else if (cam->m_118 > 30.0f)
+            cam->m_118 = 30.0f;
+
+        float z = cam->m_118;
+
+        cam->m_118 = z;
+        appCamera->SetZoom(z);
+    }
+
+    CPnt3D *lo = &theMission.m_bounds.m_min;
+    CPnt3D *hi = &theMission.m_bounds.m_max;
+    bool bounded = false;
+
+    if (hi->x - lo->x > 5.0f)
+        bounded = true;
+    if (bounded) {
+        if (cam->m_wPos.x < lo->x)
+            cam->m_wPos.x = lo->x;
+        else if (cam->m_wPos.x > hi->x)
+            cam->m_wPos.x = hi->x;
+        if (cam->m_wPos.z < lo->z)
+            cam->m_wPos.z = lo->z;
+        else if (cam->m_wPos.z > hi->z)
+            cam->m_wPos.z = hi->z;
+    }
+
+    zdb::DiIntersect *di = zdb::CWorld::m_world->GetAltitudes(&cam->m_wPos);
+
+    bool any = FlyCamHits(di);
+
+    if (!any) {
+        if (bounded) {
+            if (cam->m_wPos.y < lo->y)
+                cam->m_wPos.y = lo->y;
+            else if (cam->m_wPos.y > hi->y)
+                cam->m_wPos.y = hi->y;
+        } else {
+            zdb::CWorld::m_world->GetAltitudes(&prev);
+            cam->m_wPos = prev;
+        }
+    } else {
+        float *low = 0;
+        float *high = 0;
+        int i;
+        int n = di->m_Cnt;
+
+        for (i = 0; i < n; i++) {
+            zdb::IntersectStruct *is = &di->m_Intersects[i];
+
+            if (!low) {
+                low = &is->m_pos.y;
+                high = low;
+            } else {
+                if (is->m_pos.y < *low)
+                    low = &is->m_pos.y;
+                if (is->m_pos.y > *high)
+                    high = &is->m_pos.y;
+            }
+        }
+
+        float below = 10.0f;
+        float above = 0.5f * cam->m_camera->GetFarPlane();
+
+        if (*low >= cam->m_wPos.y - below) {
+            cam->m_wPos.y = *low + below;
+        } else {
+            float top = *high + above;
+
+            if (cam->m_wPos.y > top)
+                cam->m_wPos.y = top;
+        }
+    }
+    LaSet3(cTw.m_matrix[3], cam->m_wPos.x, cam->m_wPos.y, cam->m_wPos.z);
+    cam->UpdateCameraRegions();
 }
 
 /* the controller's aim pitched by a rate (OVL2 0x594600, the SEALs' controller: not named yet) and
@@ -1685,20 +2421,6 @@ void CAppCamera::Follow(CEntity *prey, const char *part)
  * (SOCOM II's; GetTetherCamPoints calls it with the SEAL's matrix) */
 extern "C" void func_00294B40(CDeathCam *dc, CMatrix *sealMat, CMatrix *view, float dT);
 
-/* the mission's camera path (fts_mission.cpp's CCamPath and CMission: only the path, at 0x1910) */
-class CCamPath {
-public:
-    /* a point `step` on from `index`, its place, direction and name given (-1: none) */
-    int GetPoint(int index, int step, CPnt3D *pos, CPnt3D *dir, const char **name);
-};
-
-class CMission {
-public:
-    unsigned char _0[0x1910];
-    CCamPath m_campath;   // 0x1910
-};
-
-extern CMission theMission;
 
 /* the death camera's pad, online with the player down and the player's controller not
  * zooming: TRIANGLE picks the SEAL nearest the view line, CROSS steps the camera to its next
