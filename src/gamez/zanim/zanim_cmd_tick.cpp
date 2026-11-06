@@ -1905,22 +1905,22 @@ static inline float AccDist(float v, float a, float t)
 
 /* the profile's times for the distance between the points, and the whole run's: where the
  * distance is too short to reach v1, the top speed is bisected down to fit.
- * OPEN, 5 instructions: the target materialises the 0.5f right after the call, before the
- * distance's copy (whose source pointer then takes a1); MW puts it with its first use. The
- * first pass's v1 in a local, hi declared before lo and a block-local midpoint are each
- * load-bearing (each was a register or a reload off). Round 21: the 0.5f a named or const local
- * (top, after the distance, after lo), the difference a declared, assigned or Sub'd local -- 15 each (v_crt21*.py). */
+ * Byte-exact since the engine core's round 27 (open since round 4). The target's 0.5f comes right
+ * after the call, ahead of the distance's copy (whose source pointer then takes a1), because `lo` is
+ * set only after the difference: its `mtc1 zero` ahead of them took the pre-RA scheduler's earlier
+ * slot, the 0.5f behind the copy's source pointer. The first pass's v1 in a local and hi declared
+ * first are each load-bearing (each was a register or a reload off). */
 float CZAnimFromToAcc::ComputeRunTime(CPnt3D *from, CPnt3D *to)
 {
     float dist = (*from - *to).Length();
     float hi;
-    float lo = 0.0f;
     float top = v1;
 
     t1 = (top - v0) / a1;
     t3 = (v2 - top) / a2;
     float acc = AccDist(v0, a1, t1) + AccDist(top, a2, t3);
     float diff = dist - acc;
+    float lo = 0.0f;
     if (diff < 0.0f) {
         hi = v1;
         while (fabsf(diff) > 0.0001f) {
@@ -2047,20 +2047,20 @@ static inline CPnt3D FromToGoal(zanim_cmd_from_to *cmd, zanim_from_to_pos *pos)
     return pos->to;
 }
 
-/* OPEN, 34 instructions, all registers: the anim pointer and the node trade s2 and s0. Wherever
- * it is declared (first, last, uninitialised, assigned apart) the anim takes the lowest saved
- * register; the declarations here give the other four theirs. A 12-minute permuter run (8,880
- * candidates) found nothing better. */
+/* Byte-exact since the engine core's round 27 (34 off since round 4; "the anim takes the lowest saved
+ * register wherever it is declared" was the scale pointer: a block-local declared last, coloured
+ * first, took s0, and the anim, not interfering with it, took s0 too). The target's holders read off
+ * the replay's colouring order: path s5, pos s4, set s3, anim and the scale pointer s2, cmd s1, node
+ * s0 -- which is the declaration order below, the scale pointer declared at the top. */
 void zAnimObjectMotionFromToBegin(_zanim_cmd_hdr *hdr)
 {
     CZAnimFromToAcc *path;
     zanim_from_to_pos *pos;
     bool set;
-    CNode *node;
     CZAnim *anim = ZAnim.m_CurAnim;
+    zanim_from_to_scale *s;
     zanim_cmd_from_to *cmd = (zanim_cmd_from_to *)hdr;
-
-    node = anim->GetNode(cmd->node, false);
+    CNode *node = anim->GetNode(cmd->node, false);
 
     if (!node)
         return;
@@ -2169,7 +2169,7 @@ void zAnimObjectMotionFromToBegin(_zanim_cmd_hdr *hdr)
         }
     }
     if ((cmd->flags & 0x200) && cmd->scale != 0) {
-        zanim_from_to_scale *s = (zanim_from_to_scale *)((char *)cmd + cmd->scale);
+        s = (zanim_from_to_scale *)((char *)cmd + cmd->scale);
 
         if (cmd->flags & 0x100)
             node->SetScale(&s->from);
@@ -2375,12 +2375,16 @@ struct zanim_script_track {
 /* Play a frame of the script from time t for up to *dT: wait for its start, then move the node
  * along it to its end -- on into the next frame without a stop when that frame carries the same
  * tracks and starts by then. Returns the time used, *dT left what is not.
- * OPEN, 13 instructions: `used` and `step` take each other's FP register ($f20/$f21). Not the
- * declaration order, not which is defined first, not the early return's spelling. Round 21, the FPR replay: `used` must be numbered after
- * ~60 temporaries (v33 >= 96.5) or @4963 past 160 -- no source placement reaches either (asf_want.txt) */
+ * Byte-exact since the engine core's round 27 (13 off since round 3). `used` and the long-lived value
+ * (`*dT`'s common subexpression, shared with the test by the else arm) took each other's $f20 / $f21:
+ * the arm's `step = *dT` coalesced into the common subexpression's temporary, numbered above `used`,
+ * because a reused `step` splits that web off (IRO_SplitLifetimes: the earliest definition keeps the
+ * name, a later web takes a number after everything). With the early return's step a local of its own,
+ * `step` has one web, keeps its name, and declared ahead of `used` holds the value below it. */
 float apply_script_frame(_zanim_object_motion_script *cmd, _zanim_si_script *script, CNode *node,
                          zanim_script_frame_header *frame, float t, float *dT)
 {
+    float step;
     float used = 0.0f;
 
     if (t + *dT < frame->start) {
@@ -2394,7 +2398,6 @@ float apply_script_frame(_zanim_object_motion_script *cmd, _zanim_si_script *scr
         t = frame->start;
         *dT -= used;
     }
-    float step;
     if (t + *dT > frame->end) {
         int offset = cmd->offset;
         float time = cmd->time;
@@ -2413,9 +2416,10 @@ float apply_script_frame(_zanim_object_motion_script *cmd, _zanim_si_script *scr
                 (zanim_script_frame_header *)&((int *)script->script_data)[(unsigned int)cmd->offset / 4];
 
             if (next->flags == frame->flags && t + *dT > next->start) {
-                step = frame->end - t;
-                *dT -= step;
-                used += step;
+                float left = frame->end - t;
+
+                *dT -= left;
+                used += left;
                 cmd->time = frame->end;
                 cmd->offset = offset;
                 return used;
@@ -3163,14 +3167,13 @@ static inline int NestLevelOf(_zanim_cmd_hdr *hdr)
 }
 
 /* an if: its expression follows the record; false skips to the matching else, elseif (whose
- * expression is tried in turn) or endif. OPEN, 8 bytes long: the target loads m_CurSeq once and
- * re-tests it for each of the three type comparisons, each read the if-assign way (h = 0 in the
- * delay slot, then the load) where CmdHdr's ternary -- which BreakTick, GoToEndIf and the
- * FOR_CHILDREN handler need -- branches over; an if-assign accessor here fixes the comparisons
- * but not the ProcExpr test before them (two delay slots unfilled), still 0x1C8. Every other
- * spelling tried reloads it, or (with the type in a local) shares the read, 0x20 short. Round 21: CmdHdr as an inline assigning its own parameter
- * (`if (seq) h = pc; return h;`, the UI's round-31 if-mode) for every read, the three compares, the first, the
- * last two -- 0x1C8, the level's read 0x1D0 (v_iftick21.py) */
+ * expression is tried in turn) or endif. Byte-exact since the engine core's round 27 (8 bytes long
+ * since round 4). CmdHdr's ternary ASSIGNED to a declared local gives the if-assign read (the zero in
+ * the delay slot) for the three type comparisons and the level -- m_CurSeq shared, as a common
+ * subexpression, in a0 -- written as a comma in each `||` operand; the two later reads initialise a
+ * local of their own, the branch-over read with the command's type loaded after the diamond; straight
+ * in the comparison MW loads the m_cmd_* first. `done` is set inside the failed test (`move s0,zero`
+ * in the bnez's delay slot). */
 bool zAnimIfTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     bool found;
@@ -3178,28 +3181,35 @@ bool zAnimIfTick(_zanim_cmd_hdr *hdr, float *dT)
     func_002681C0(&ZAnim, 1);
     found = false;
     do {
-        bool done = false;
-
         ZAnim.CmdNext(8);
         if (!CZAnimExpression::ProcExpr(dT)) {
+            bool done = false;
+
             do {
                 ZAnim.CmdNext();
                 if (!ZAnim.CmdValid()) {
                     done = true;
                 } else {
-                    if (ZAnim.CmdHdr()->data_type == ZAnim.m_cmd_else.data_type ||
-                        ZAnim.CmdHdr()->data_type == ZAnim.m_cmd_elseif.data_type ||
-                        ZAnim.CmdHdr()->data_type == ZAnim.m_cmd_endif.data_type) {
-                        int level = NestLevelOf(ZAnim.CmdHdr());
+                    _zanim_cmd_hdr *h;
+
+                    if ((h = ZAnim.CmdHdr(), h->data_type == ZAnim.m_cmd_else.data_type) ||
+                        (h = ZAnim.CmdHdr(), h->data_type == ZAnim.m_cmd_elseif.data_type) ||
+                        (h = ZAnim.CmdHdr(), h->data_type == ZAnim.m_cmd_endif.data_type)) {
+                        h = ZAnim.CmdHdr();
+                        int level = NestLevelOf(h);
                         if (level == func_002681C0(&ZAnim, 0)) {
                             done = true;
-                            if (ZAnim.CmdHdr()->data_type == ZAnim.m_cmd_endif.data_type)
+                            int t = ZAnim.CmdHdr()->data_type;
+
+                            if (t == ZAnim.m_cmd_endif.data_type)
                                 func_002681C0(&ZAnim, -1);
                         }
                     }
                 }
             } while (!done);
-            if (ZAnim.CmdHdr()->data_type != ZAnim.m_cmd_elseif.data_type)
+            int t = ZAnim.CmdHdr()->data_type;
+
+            if (t != ZAnim.m_cmd_elseif.data_type)
                 found = true;
         } else {
             found = true;
