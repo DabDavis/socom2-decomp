@@ -6704,6 +6704,7 @@
 0x003857C0 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY
 0x00385900 Find__13CUIVarManagerFPCc
 0x003859D0 FindDormantVar__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY
+0x00385A60 CollectGarbage__13CUIVarManagerFv
 0x00385C30 Reset__13CUIVarManagerFv
 0x00385CE0 __dt__13CUIVarManagerFv
 0x00385D90 DetachUIVar__10UIVarMixinFP11CUIVariable
@@ -7125,6 +7126,7 @@
 0x0039EFD0 __ct__7CFileIOFv
 0x0039F010 SetRootPath__7CFileIOFPCc
 0x0039F0B0 fread__7CFileIOFiPPv
+0x0039F0C0 UTF8GetChar__FRPCc
 0x0039F160 UTF8CharLen__FRPCc
 0x0039F1B0 OnTableFull__7CSTableFPCc
 0x0039F1C0 CreateString__7CSTableFPCc
@@ -7140,6 +7142,7 @@
 0x0039FB30 __dt__7CSTableFv
 0x0039FBD0 __ct__7CSTableFUiUi
 0x0039FC60 UTF8Strncpy__FPcPCci
+0x0039FD80 UTF8Append__FRQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Us
 0x0039FEB0 GetMode__10CMemCardIOCFv
 0x0039FEC0 fsyncAsync__10CMemCardIOFiPi
 0x0039FF40 fwriteAsync__10CMemCardIOFPCvi
