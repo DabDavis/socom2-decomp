@@ -2557,8 +2557,9 @@ typedef struct DmeUpdateMsg {
 extern DmeUpdateMsg data_0066C4F8;      /* the update being sent */
 extern int data_00686A20;               /* the object update's message type */
 extern void func_0061A328(DmeTargetMask *pMask, unsigned int nIndex);
-extern unsigned char func_0061A488(DmeObject *pObject, unsigned int nIndex, char *pnMsgClass, void *pData,
-                                   int *pnLength);
+struct DmeObjectData;
+extern unsigned char func_0061A488(struct DmeObjectData *pObject, int nIndex, char *pnMsgClass,
+                                   unsigned char *pData, unsigned int *pnLength);
 
 /* SOCOM 1's NetSendObjectFullUpdate's head (0x61A6D8; its body is 0x61A488 now): the object's changed
  * fields to the clients its filter picks, or to everyone. Measured: the header goes in by memcpy through a
@@ -2592,7 +2593,8 @@ int func_0061A6D8(unsigned int nIndex)
     hdr.nIndex = nIndex;
     nLength = sizeof(hdr);
     hdr.nClass = pObject->nClass;
-    hdr.nFields = func_0061A488(pObject, nIndex, &nMsgClass, pMsg->abData, &nLength);
+    hdr.nFields = func_0061A488((struct DmeObjectData *)pObject, nIndex, &nMsgClass, pMsg->abData,
+                                (unsigned int *)&nLength);
     memcpy(pMsg, &hdr, sizeof(hdr));
     if (hdr.nFields == 0)
         return DME_OK;
@@ -2745,4 +2747,58 @@ unsigned char func_0061B2A0(DmeObjectData *pObject, int nIndex, unsigned char nF
         pOld += pField->nSize;
     }
     return 0;
+}
+
+/* SOCOM 1's NetSendObjectFullUpdate's body (0x61A488, its head is 0x61A6D8): each field due -- its interval
+ * passed since it was last sent -- that has changed (func_0061B2A0) and fits, as its index and its bytes;
+ * the bytes kept as last sent, the field's flags or'ed into the message class; the count returned */
+unsigned char func_0061A488(DmeObjectData *pObject, int nIndex, char *pnMsgClass, unsigned char *pData,
+                            unsigned int *pnLength)
+{
+    unsigned char nFields = 0;
+    DmeStructure *pStruct;
+    DmeField *pField;
+    char *pNew;
+    char *pOld;
+    unsigned char i;
+
+    if (pData == 0)
+        return 0;
+    if (pnLength == 0)
+        return 0;
+    if (pObject == 0)
+        return 0;
+    if (pObject->nClass >= 16)
+        return 0;
+    pStruct = &NetStructureList[pObject->nClass];
+    if (pStruct == 0)
+        return 0;
+    for (i = 0; i < pStruct->nFields; i++) {
+        if (*pnLength >= 511)
+            continue;
+        pField = pStruct->apFields[i];
+        if (pField == 0)
+            continue;
+        if (pField->nKind == 0)
+            continue;
+        if (pObject->pnSent[i] + pField->nInterval >= CurrentNetTime)
+            continue;
+        pNew = pObject->pNew + pStruct->anOffsets[i];
+        pOld = pObject->pOld + pStruct->anOffsets[i];
+        if (func_0061B2A0(pObject, nIndex, i) == 0)
+            continue;
+        if (510 - *pnLength < pField->nSize * pField->nCount + 1)
+            continue;
+        *pData = i;
+        pData++;
+        (*pnLength)++;
+        memcpy(pData, pNew, pField->nSize * pField->nCount);
+        pData += pField->nSize * pField->nCount;
+        nFields++;
+        *pnLength += pField->nSize * pField->nCount;
+        *pnMsgClass |= pField->bFlags;
+        memcpy(pOld, pNew, pField->nSize * pField->nCount);
+        pObject->pnSent[i] = CurrentNetTime;
+    }
+    return nFields;
 }
