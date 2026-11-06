@@ -3829,7 +3829,7 @@
 0x002A98B0 0x1B8 FadeToEndMissionTick__8CMissionFf  # OVL1; s1:align
 0x002A9A70 0xC0 EndMission__8CMissionFv  # OVL1; by hand (the states lane, round 14; the name ours): the mission ended unless m_DelayEndMission -- _OnMissionComplete, CVideo::Clear, the HUD's flashes reset, the delay and fading bits cleared, ResetDeathCam and the exit state pushed, the tail of SOCOM 1's FadeToEndMissionTick; CCoreState::Tick calls it
 0x002A9B30 0x3AC OnMissionComplete__8CMissionF13MISSION_STATE  # OVL1; s1:calls by hand (the states lane, round 39): SOCOM 1's CMission::OnMissionComplete(MISSION_STATE) (0x1F6200) -- the same blocks in the same order: the state kept, then in a network game UninitBomb, the abort's three-second wait, strncpy of the abort dialog and CGame::Switch, else the master's GetByName of the two scores and the winner, the round counted, the major state 6 or 4, UpdateLocalGame and the Push; alone, nofade's EndMission; Tick calls it for each outcome; fts_mission.cpp (byte-exact since the states' round 40)
-0x002A9EE0 0x8 func_002A9EE0  # OVL1
+0x002A9EE0 0x8 UpdateLocalGame__8CMissionFP9CZNetGame  # OVL1; by hand (the states lane, round 49; the name ours): a CMission member -- its one caller, CZOnlineLobby::ForceStatusReport 0x2F8350, passes a0 = &theMission and a1 = theMission's net game (0x1808, m_pNetGame) once the two network flags CZGameState::UpdateLocalGame itself tests are set -- whose body is CZGameState's static UpdateLocalGame(game) as a tail call (j 0x2C00F0; move a0,a1); SOCOM II's, between OnMissionComplete and DestroyNetGame where SOCOM 1 has nothing; fts_mission.cpp
 0x002A9EF0 0x8 DestroyNetGame__8CMissionFv  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls DestroyNetGame__8CMissionFv from the same place; SOCOM II's is SOCOM 1's 8 bytes, the online game at 0x1808 (fts_state.h's m_netGame) handed to 0x2A75F0 as a tail call)
 0x002A9F00 0x2C CreateNetGame__8CMissionFv  # OVL1; s1:align
 0x002A9F30 0x558 TickObjectives__8CMissionFf  # OVL1; s1:calls by hand (the HUD lane's lead, vetted by the states lane: SOCOM 1's CZObjectiveList::SelectPreviousObjective calls TickObjectives(theMission, 1000.0f) at each step as SOCOM II's 0x206BA0/0x206DB0/0x207570 call this with (0x4364E0, 1000.0f); SOCOM 1's CMission::Tick calls it as Tick__8CMissionFf (0x2AA490) calls this; the same head: the timer at +0x138 summed with dT, nothing below 1.0, then the current objective and IsAvailable); byte-exact in fts_mission.cpp since the states lane, round 42
@@ -3991,7 +3991,7 @@
 0x002B5750 0x8 func_002B5750  # OVL1
 0x002B5760 0x70 _actionValveCallback__FP6CValvePv  # OVL1; s1:align
 0x002B57D0 0x60 __dt__Q211CNodeAction9ContainerFv  # OVL1; s1:align
-0x002B5830 0x580 func_002B5830  # OVL1
+0x002B5830 0x580 Draw__12C2DMessage_QFPQ23zdb7CCamera  # OVL1; s1:vtable by hand (the states lane, round 49): slot 0xC of C2DMessage_Q's vtable 0x4063B0 (after the destructor 0x2B6EE0, before C2D's inline Draw(matrix) copy), SOCOM 1's Draw__12C2DMessage_QFPQ23zdb7CCamera in the same slot (0x1FF9A0); IsOn, the lines placed and faded, the two backgrounds SetPos'd and drawn, C2D::Draw last as SOCOM 1's; fts_message.cpp, byte-exact
 0x002B5DB0 0x5FC Tick__12C2DMessage_QFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B63B0 0x78 __dt__16C2DMessageStringFv  # OVL1; s1:calls
 0x002B6430 0xF4 func_002B6430  # OVL1
