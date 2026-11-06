@@ -559,6 +559,102 @@ extern "C" void func_00570D90(CSealCtrlAi *ai, bool on)
         SetRange6F4(ai, ai->m_aiParams.courage);
 }
 
+extern "C" {
+/* (OVL2 0x572190, below: whether the controller is busy -- auto-inlined into the grenade choice) */
+bool func_00572190(CSealCtrlAi *ai);
+/* (OVL2 0x565460: whether a grenade of the item reaches the point -- unwritten) */
+bool func_00565460(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *pos);
+/* (OVL2 0x564D20: the grenade thrown at the point -- unwritten; CSealCtrlAi::OnCommand and the
+ * breach's Tick call it too) */
+bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *pos, int a, int b);
+/* (OVL2 data: how long the AI waits after a grenade before choosing another, read as a variable) */
+extern float data_0064FF80;
+/* (OVL1 data: the game's clock, as this unit reads it) */
+extern float data_004365C0;
+}
+
+/* the grenades the AI chooses by its target's range: the item and the squared ranges it covers (OVL2
+ * data 0x650210, eight: 121 and 126 from 50 to 600, the others from 100 to 600; the names ours) */
+struct AI_GRENADE_RANGE {
+    EQUIP_ITEM m_item;   // 0x0
+    float m_min;   // 0x4
+    float m_max;   // 0x8
+};
+extern "C" AI_GRENADE_RANGE data_00650210[8];
+
+/* an entity's position, or none (an inline: the target's point copied out of it) */
+static inline const CPnt3D *EntityPosW(const CEntity *e)
+{
+    return e ? &e->m_posW : 0;
+}
+
+/* whether the SEAL holds the item with the rounds asked; asked a negative count, the item given it
+ * with that many (0x5657C0) */
+static inline bool HasGrenadeRounds(CSealCtrlAi *ai, EQUIP_ITEM item, int count)
+{
+    CZKit *kit = &((CZSealBody *)ai->m_entity)->m_kit;
+
+    bool ok;
+
+    if (count >= 0) {
+        ok = kit->HasItem(item);
+        if (ok)
+            ok = kit->GetAmmoTotal(kit->GetItemIndex(item)) >= count;
+    } else
+        ok = func_005657C0(ai, item, -count);
+    return ok;
+}
+
+/* a grenade chosen and thrown at the target: not within its wait of the last (0x770) nor while the
+ * controller is busy (0x572190); for no item, none at a team mate, item 123 at an entity not to be shot,
+ * none by a navy SEAL, else the first of the table's whose ranges hold the target's, the SEAL holding
+ * it with a round (flag 0x20: given one) and its throw reaching the point; whether it was thrown (OVL2
+ * 0x565110, new in SOCOM II: 0x563E10 and the sensors' tick call it; the name unknown). Byte-exact (the
+ * SEALs' round 57, unwritten before) with: 0x572190 auto-inlined (its first `r = true` the reused 1 of
+ * the count's movz, `andi s1,v1`); the rounds test with ONE exit, each arm assigning `ok` (a bool call's
+ * `&&` operand is `sltu`, its assignment `andi`; two returns add an `andi` at the join); the SEAL declared
+ * before the wait (else the clock is loaded ahead of 0x770); the table's item an EQUIP_ITEM field read
+ * straight into `item` -- `lb`, kept unnormalised (a signed char field cast to EQUIP_ITEM gives `lbu`) */
+extern "C" bool func_00565110(CSealCtrlAi *ai, EQUIP_ITEM item, CTarget *target, unsigned int flags)
+{
+    bool r = false;
+    CEntity *seal = ai->m_entity;
+    float since = data_004365C0 - ai->m_770;
+    CPnt3D pos = *EntityPosW(target->m_ent);
+    int count = (flags & 0x20) ? -1 : 1;
+
+    if (since > data_0064FF80 && !func_00572190(ai)) {
+        bool ok = false;
+
+        if (item == EQUIP_NONE) {
+            CEntity *e = target->m_ent;
+
+            if (!(e->m_team & seal->m_team)) {
+                if (NoShoot(e))
+                    item = (EQUIP_ITEM)123;
+                else if (!ai->IsNavySeal()) {
+                    float d = target->m_distSq;
+
+                    for (int i = 0; i < 8; i++) {
+                        if (d >= data_00650210[i].m_min && d <= data_00650210[i].m_max) {
+                            item = data_00650210[i].m_item;
+                            if (HasGrenadeRounds(ai, item, count) && func_00565460(ai, item, &pos)) {
+                                ok = true;
+                                break;
+                            }
+                            item = EQUIP_NONE;
+                        }
+                    }
+                }
+            }
+        } else if (HasGrenadeRounds(ai, item, count) && func_00565460(ai, item, &pos))
+            ok = true;
+        if (ok)
+            r = func_00564D20(ai, item, &pos, 0, 0);
+    }
+    return r;
+}
+
 /* the valve of a name, or none (OVL2 0x574730; SOCOM 1's, without its fourth valve and the alias) */
 SEAL_VALVE CSealCtrlAi::get_valve(const char *name)
 {

@@ -1327,7 +1327,9 @@ public:
     unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x770 - 0x76d];
-    unsigned int m_770;   // 0x770
+    /* when the AI last threw a grenade, on the game clock (the grenade choice 0x565110 waits a while
+     * from it; the constructor zeroes it; the name ours) */
+    float m_770;   // 0x770
     /* a point a thrower's own grenade is measured from (the grenade state's Tick, 0x55AC20: within
      * 50 of it the throw back is not wanted; the name ours) */
     CPnt3D m_774;   // 0x774
