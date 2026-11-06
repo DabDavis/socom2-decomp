@@ -841,6 +841,79 @@ extern "C" bool func_005FC550(const CAiFollowKind *k)
     return r;
 }
 
+extern "C" {
+/* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) */
+bool func_005750A0(void);
+/* the AI's move toward its goal (OVL2 0x567900, the SEALs' seal_ai.cpp: unnamed) */
+void func_00567900(CSealCtrlAi *ai, float dT);
+/* a byte of OVL2 bss that keeps the duck off (seal_ai.cpp's: GetDuckStance tests it too) */
+extern unsigned char data_0066B038;
+}
+
+/* whether the follower's master sees it -- true unless the master is the player, offline and the duck
+ * switch off, and (at the team bit 0x20000) holding its weapon in state 1, when 0x5FD150 says, at the
+ * follow's distance, its range test allowed by the flag bit 2 clear -- that bit then set when it does
+ * not, if asked (inline, twice in 0x5FAE70: the master read again for the call; the name ours) */
+static inline bool MasterSees(CAiSFollow *f, CSealCtrlAi *ai, bool mark)
+{
+    bool r = true;
+    CZSealBody *master = f->m_master;
+    CEntity *me = EntityOf(ai);
+
+    if (master && master->IsPlayer() && !func_005750A0() && !data_0066B038) {
+        if (!(me->m_team & 0x20000) || master->GetWeaponState() == 1) {
+            r = func_005FD150(ai, f->m_master, !(f->m_6c & 4), f->m_f4);
+            if (mark)
+                f->SetFlag(4, !r);
+        }
+    }
+    return r;
+}
+
+/* the follower's creep: in the follow's mode 4 the creep, kept at a goal while the master sees it; in
+ * mode 3 the flag bit 2 set while the master does not see it, then the move on while it does, else the
+ * hide look and the creep (the AI-map collision then on) or the throttles stopped; otherwise the plain
+ * creep -- and the collision bit set; with no follow the AI's mode restored (OVL2 0x5FAE70, new in
+ * SOCOM II: CSealCtrlAi::PreTick calls it; the name unknown). Byte-exact (the kit's round 54): the two
+ * flags read into unsigned char locals first (the target loads both ahead of the first test; bool
+ * locals add an sltu), the inline's result declared first and the SEAL through EntityOf (numbered
+ * after the follow -- igreplay: me s2, f s3, master s4, r s5), the flag bit set inside the inline after
+ * the call (the target's early outs skip it), and `hide` set before its creep call (the jalr's delay
+ * slot) */
+extern "C" void func_005FAE70(CSealCtrlAi *ai, float dT)
+{
+    CAiState *s = ai->GetAiState();
+    CAiSFollow *f = s && s->m_state == AI_STATE_FOLLOW ? (CAiSFollow *)s : 0;
+
+    if (f) {
+        unsigned char creep = f->m_7c;
+        unsigned char hold = f->m_7d;
+        bool hide = false;
+
+        if (creep) {
+            bool b = ai->m_goal_pos_valid;
+
+            if (b)
+                b = MasterSees(f, ai, false);
+            ai->CreepTick(dT, b);
+        } else if (hold) {
+            bool r = MasterSees(f, ai, true);
+
+            if (r) {
+                func_00567900(ai, dT);
+                f->m_6c &= ~2;
+            } else if (f->SetHideLook(ai)) {
+                hide = true;
+                ai->CreepTick(dT, false);
+            } else
+                ai->StopThrottles(false);
+        } else
+            ai->CreepTick(dT, false);
+        ai->SetDoAiMapCollide(hide);
+    } else
+        ai->RestoreAiMode();
+}
+
 /* (OVL2 0x5FADF0) */
 CAiSFollow::~CAiSFollow()
 {
