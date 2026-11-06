@@ -10658,6 +10658,7 @@
 0x005B8760 GetCurItemFireClass__5CZKitFv
 0x005B8820 GetItemFireClass__5CZKitF10EQUIP_ITEM
 0x005B88C0 func_005B88C0
+0x005B8920 OnDeath__5CZKitFv
 0x005B8F20 SetItemPtr__5CZKitFiPv
 0x005B8FC0 ClearItemPtr__5CZKitFi
 0x005B8FF0 GetItemPtr__5CZKitFi
@@ -10697,6 +10698,7 @@
 0x005BC410 SetItemByIndex__5CZKitFiP8CZWeapon
 0x005BC5D0 SetItem__5CZKitFUiP8CZWeaponPvi
 0x005BC6A0 FillWeaponEnum__5CZKitFiPP11CZFTSWeapon
+0x005BC730 HandleRemotePlaceExplosive__5CZKitFPC6CPnt3DPC5CQuatPQ23zdb5CNodePQ23zdb5CNode
 0x005BD030 FireGrenade__5CZKitFPC6CPnt3DPC6CPnt3D
 0x005BD100 SetCurAccuracy__5CZKitFv
 0x005BD530 CurMagHasAmmo__5CZKitFv
@@ -10745,6 +10747,7 @@
 0x005C0FD0 Tick__5CZKitFf
 0x005C1660 PreTick__5CZKitFf
 0x005C1800 Apply_LensEffects__5CZKitFbP6CPnt3D
+0x005C1970 TickExplosives__5CZKitFf
 0x005C2400 IsFireDelayed__5CZKitFv
 0x005C2430 GetHandFloorHit__5CZKitFb
 0x005C2670 TickReticule__5CZKitFf
@@ -10983,6 +10986,7 @@
 0x005E0010 GetWeaponState__10CZSealBodyCFv
 0x005E0030 AddBlendable__7AnimSetFiff
 0x005E0450 SetMaxMotion__7AnimSetFv
+0x005E0690 DefineFPAnims__7AnimSetFv
 0x005E19A0 SetPistolAnim__10CAnimsByFPF8AnimType8AnimType
 0x005E19D0 PistolFPAnim__10CAnimsByFPCF8AnimType
 0x005E1A10 RifleFPAnim__10CAnimsByFPCF8AnimType
@@ -10991,7 +10995,8 @@
 0x005E1AF0 SetPistolFPAnim__7AnimSetF8AnimType8AnimType
 0x005E1BF0 SetRifleFPAnim__7AnimSetF8AnimType8AnimType
 0x005E1CF0 SetPistolAnim__7AnimSetF8AnimType8AnimType
-0x005E1DF0 func_005E1DF0
+0x005E1DF0 InitializeAnimNames__Fv
+0x005E30F0 Load__7AnimSetFb
 0x005E3720 Get__12CAnimAuxDataFUi
 0x005E3740 Inherit__7AnimSetFP7AnimSet
 0x005E3940 func_005E3940
@@ -11019,6 +11024,7 @@
 0x005E5AB0 Contains__10CBlendableF8AnimType
 0x005E5B10 MarkStateAll__12CAnimTypeRecFii
 0x005E5BF0 ClearStateAll__12CAnimTypeRecFi
+0x005E5CC0 insert__Q23std170__vector_imp<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,Q23std78allocator<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,0>FPQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>UiRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x005E6120 __dt__Q23std172__vector_deleter<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,Q23std78allocator<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>>Fv
 0x005E6190 clear__Q23std172__vector_deleter<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,Q23std78allocator<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>>Fv
 0x005E6230 GetRemoteControl__11CRemoteCtrlFv
@@ -11047,6 +11053,7 @@
 0x005E7690 func_005E7690
 0x005E76D0 GetAwareCounter__9CSealUnitCFv
 0x005E7830 func_005E7830
+0x005E7960 PlayMessage__FP7CEntityi
 0x005E7F20 PlayRemoteMsg__FP7CEntityii
 0x005E7FB0 SetPlayAutoMessages__Fb
 0x005E7FC0 GetPlayAutoMessages__Fv
@@ -11251,6 +11258,7 @@
 0x005F8C00 func_005F8C00
 0x005F8C20 func_005F8C20
 0x005F8C40 remove_copy_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>
+0x005F8D40 func_005F8D40
 0x005FAAE0 EventTick__11CSealCtrlAiFf
 0x005FAD00 SetAiEvent__11CSealCtrlAiFQ28CAiEvent5EVENTfPC6CPnt3D
 0x005FAD50 Destroy__8CAiDodgeFv
@@ -11333,6 +11341,7 @@
 0x00601EC0 CanPushAiState__11CAiSHostageF8AI_STATEP11CSealCtrlAi
 0x00601F20 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00601F80 Tick__9CAiSAvoidFP11CSealCtrlAi
+0x00602270 Begin__9CAiSAvoidFP10CZSealBodyP10CZSealBodyf
 0x00602B20 ShouldAvoid__FP10CZSealBodyP10CZSealBodyf
 0x00602D10 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00603690 SetTarget__8CAiSRushFP10CZSealBody

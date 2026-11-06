@@ -2066,6 +2066,41 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 62** (nine of its fourteen unwritten rows byte-exact, 19,956 bytes:
+  AnimSet::Load 0x5E30F0 and DefineFPAnims 0x5E0690, vector<string>'s insert 0x5E5CC0, PlayMessage 0x5E7960, CZKit::OnDeath
+  0x5B8920, TickExplosives 0x5C1970 and HandleRemotePlaceExplosive 0x5BC730, 0x5F8D40, CAiSAvoid::Begin 0x602270; four more
+  written, open; scratch build/scratch/kit-r62/kit/):
+  - NUMBERS: a scalarised local CPnt3D's members are numbered after the named floats (z f20, y f21, x f22). A one-member
+    struct holder is numbered after the linearizer's `?:` temps. A reused pointer local's late webs take word slots below
+    all temporaries; a temp in a deeper inline takes later frame slots. A byte enum holder keeps a read ahead of the item's
+    in a call's argument order.
+  - A parameter the inline modifies (`set = set;`) gets a real copy, giving an s-register `this` copy; a modified float
+    parameter (`duration = duration;`) did not help. A cast of a parameter at an inline's argument makes field addresses
+    subable into saved registers, so use exact parameter types and array members. A cast of a byte-array member to a class
+    makes its addresses common subexpressions in saved registers, where a real union member gives plain `offset(s4)`. A
+    union member with a destructor compiles, but the enclosing destructor destroys it (0x573E60 moved) while the constructor
+    leaves it alone.
+  - FLOATS: `m_time = c ? a : b` gives `mtc1` and a `swc1` stolen into the `b`, if/else gives `lui; sw` per arm. Literal
+    `0.0f + 1.0f * x` folds, through an inline's parameters it survives. A named `r`'s `lo + range * r` is forward-
+    propagated past later calls, `lo + (hi - lo) * (K * rand())` stays in a temp ahead of them. `k = (float)one; k *=
+    scale;` keeps a product by 1 as a temp, a `const float` holder only survives across blocks. `float f = a / b; r += (1.0f
+    - f) * K;` gives `mul.s f0,f1,f0`, the in-place expression swaps it. `(float)byteEnumCall()` converts without `andi`.
+  - BRANCHES: `own == 0 ? 1 : x` keeps the null arm first; `!own ? 1 : x` and an inline's early return do not. `reload ?
+    ENUM_A : ENUM_B` (byte enum) over a bool gives `li; movz; andi` to an int parameter. `(p ? p : &zero)->x` with a literal
+    0 leaves a `b` over a dead `move v0,zero` per field. An int-returning inline `return t > k;` keeps `li 1; c.le; bc1f;
+    move zero`, with the `andi` at its use. `held = held ? x != 0 : held;` has no pad at the join. `i != e` with a local end
+    keeps tree `tail()` inlined when the finder is itself inlined.
+  - COPIES AND CLASSES: a view with one user `operator=` member keeps the implicit assignment member by member (3 `lwc1`, 3
+    `swc1`), a hand-written `m_pos = o.m_pos` goes field by field. Dtor flag 0 on a string local means a class derived from
+    string. A `const char *` constructor's dead `erase()` tag keeps frame slots below the body's. `if (x[n][m[n]] > 0)
+    x[n][m[n]]--;` written twice gives the target's `addu` order, a reference does not.
+  - Open: HandleEvent 0x5F95D0 (0x14F8 vs 0x1504, 30 runs: the target keeps the chance float in memory, every natural form
+    folds it into a saved FPR, so this saves f21 and the extra word shifts the 8-byte pads), HandleFireWeapon 0x5BE9A0
+    (0xEE0 vs 0xF00: block-optimization copies, the bound's `movn`), 0x5CAC00 (0x840 vs 0x848: 24 declaration orders tried,
+    best d=72), AnimSet::Load 0x5E3FF0 (7: the network_log bit's value must colour before index and element). 0x5C5340
+    unwritten: SOCOM 1's `Fire__5CZKitFiPC6CPnt3DPC6CPnt3DPC6CPnt3D` at 0x2ACD70 (0x1130) by signature, every call passing
+    index, pos, vel, v. Names ours: PlayMessage, OnDeath, CAiSAvoid::Begin (its fourth float unused; the caller passes
+    20.0).
 - **Tells from the SEALs, round 60** (twelve new rows by the full check, 20,744 bytes, all unwritten before: CSealCtrlAi's
   AllowCommand 0x590BC0, OnStunDamage 0x571B10, ChooseWeapon 0x563470, SetRoute 0x5623B0; CZSealBody's UpdateAiMapLoc
   0x5B7BA0, RemoteRespawn 0x598B90, PopBlend 0x589AA0, ~CZSealBody 0x5533E0, WeaponHitAnim 0x5A2690;
