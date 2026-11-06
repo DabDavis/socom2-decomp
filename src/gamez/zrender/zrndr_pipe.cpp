@@ -1433,19 +1433,11 @@ void BuildNodeLocalLightList(zdb::CNode *node);
  * strength reduction at no code cost), which retires round 21's function-scoped `#pragma
  * opt_strength_reduction off` and round 28's hand-rotated `if (k < n) { det = ...; do ... while (++k
  * < n); }` -- both stand-ins -- at the same 20 (the same diff, word for word).
- * OPEN, 20 instructions at the target's size, every register the target's -- placement only: the
- * vector's address (s6) is computed at the top and the texture list's (s7) fills the entry test's
- * delay slot, where the target computes the list's in the loop's preheader (the vector's in the
- * slot, then the fov narrowing, then the list's). Round 31: the vector read in place keeps its
- * address at the top (the guard's copy of the test shares it), the list read in place is
- * copy-propagated (0x3D4), a list pointer local changes nothing (20). Round 28 measured: any
- * definition at the top of the visual loop's body (the list as a reference
- * declared there, or a pointer assigned there) turns MW's guarded loop into a jump to its bottom
- * test (0x3F0); assigned later in the body, or written in place, the list is copy-propagated and
- * s7 is never allocated (0x3D4); the two references in any order at the top keep 21-25. Named
- * locals keep their definitions' place, and every form that leaves them to LICM (the vector read in
- * place, the list or the layers assigned inside the loop, accessors, pointers, other orders) loses
- * the registers (22-36) */
+ * Byte-exact since round 34 (20 off since round 21, placement only): the alpha pass's texture list is an address the
+ * target's loop preheader computes, in a saved register, with the vector's in the entry test's slot -- an assignment in the
+ * body that LICM hoists. Held through an unsigned 4-byte enum at its first use (A MARKED DEVICE: enums are not propagated,
+ * the weapons' round 40): a reference declared at the top keeps the place of the top, the read in place is propagated
+ * back (0x3D4), and a definition at the body's top turned MW's guarded loop into a jump to its bottom test (0x3F0) */
 static inline CMatrix *StackTop()
 {
     return CStack::m_top;
@@ -1458,7 +1450,6 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
     CMatrix *m = StackTop();
     float opacity = m_opacity_stack[m_opacity_stack_index];
     zdb::CVisualVector &v = node->m_visual;
-    zdb::CDynTexList &dyn = m_alpha.m_dyntexlist;
 
     for (zdb::CVisualVector::iterator i = v.begin(); i != v.end(); ++i) {
         zdb::CVisual *vis = *i;
@@ -1494,14 +1485,16 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
             if (opacity <= 1.0f / 128)
                 continue;
             m_alpha.Add(m_node, node, vis, fov, opacity);
-            dyn.Add(&vis->m_dynTexList);
+            enum DynHolder { kDynMax = 0xffffffffu } dyn = (DynHolder)(unsigned int)&m_alpha.m_dyntexlist;
+
+            ((zdb::CDynTexList *)dyn)->Add(&vis->m_dynTexList);
             unsigned int mat = vis->m_7;
 
             if (mat) {
                 zdb::CTexHandle *tex = zdb::CWorld::m_world->m_Material_Object.GetMaterial(mat)->m_tex;
 
                 if (tex)
-                    dyn.Add(tex, true);
+                    ((zdb::CDynTexList *)dyn)->Add(tex, true);
             }
         } else {
             if (FirstVisDrawn) {
