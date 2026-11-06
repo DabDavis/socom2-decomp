@@ -7,7 +7,7 @@
  * the shapes' constructors and destructors call CDI() and ~CDI out of line and CDI::Create calls
  * CDIPoly() out of line, where one unit had needed all three pinned (README "The inlining mode,
  * measured"). Written so far: the small functions below. Unwritten: ~DiIntersect (0x2DC680),
- * IsInside, GetRegion, Release and 0x2DC620. Defined in reverse of their image order
+ * IsInside, GetRegion and Release. Defined in reverse of their image order
  * (-inline deferred). */
 
 #include "node_world.h"
@@ -47,6 +47,17 @@ void DiIntersect::SetMask(unsigned int mask)
         m_mask = mask | 1;
     else
         m_mask = -1;
+}
+
+/* whether the mask takes a region bit, none counting as the first (new in SOCOM II, the name ours;
+ * CGrid::NodeGetIntersectBatch's test, 0x2DC620) */
+int DiIntersect::TestMask(unsigned int bit)
+{
+    if (!bit)
+        bit = 1;
+    if (m_mask & bit)
+        return 1;
+    return 0;
 }
 
 /* no points and no holders, the parameters' constructor inlined first (SOCOM 1's). int_shapes.cpp's

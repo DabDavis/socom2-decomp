@@ -16,7 +16,16 @@ public:
 
     /* MSL's: the container copied from a default one (the rdr editor's CRdrEditor(), 0x333AE0: a
      * temporary deque built, copied in and torn down) */
-    explicit stack(const Container &x = Container()) : c(x) {}
+    explicit stack(const Container &x = Container()) : c(x)
+    {
+        /* a modelling device (no code; the MSL headers round 39): see deque's __chain -- this constructor is parsed before the
+         * end-of-unit walk, and only a unit that copies a deque builds one */
+        typedef void (*F)(void *);
+        F f = &Container::__chain;
+
+        if (0)
+            f(0);
+    }
     bool empty() const { return c.empty(); }
     unsigned int size() const { return c.size(); }
     value_type &top() { return c.back(); }

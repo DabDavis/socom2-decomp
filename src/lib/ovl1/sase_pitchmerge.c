@@ -3,7 +3,7 @@
  * frame's decision 0x24F010 (called by the frame analysis 0x248FB0) over its helpers -- the two
  * candidates' merge 0x24F468, 0x24F108, the voicing ratio 0x24F170 and 0x24F250. No assert names
  * the object's file (it links between libvect.c and the encoder API's), so the unit is named by
- * what it does, as sase_vad.c is. Written in the GCC lane's round 26a: 0x24F170, 0x24F468 (the
+ * what it does, as sase_vad.c is. Written in the GCC lane's round 26a: 0x24F170, 0x24F468; round 44a: 0x24F250 (the
  * decoder's 0x254458 is the same text, at -G0). The constants are the vendor's truncated
  * conversions, as hex floats (round 12a). Placeholders: the codec's names are not in SOCOM 1.
  * Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
@@ -21,7 +21,7 @@ typedef struct {
 } PITCH_STATE;
 
 extern void func_0024F108(void *pvSpec, float *pfBuf, int *piLength, void *pv, float fPitch);
-extern float func_0024F250(float *pfBuf, int iLength, float *pfV, float fPitch, float fMin);
+float func_0024F250(float *pfBuf, int iLength, float *pfV, float fPitch, float fMin);
 float func_0024F468(float fP1, float fP2, float fV1, float fV2);
 float func_0024F170(float fA, float fB, float fCur, float fV, float *pfPrev);
 
@@ -100,5 +100,62 @@ float func_0024F468(float fP1, float fP2, float fV1, float fV2)
 		if (fP < 30.0F && fV * fP * 0.5F < 1.0F)
 			fP = (fP1 < fP2) ? fP2 : fP1;
 	}
+	return fP;
+}
+
+extern float sqrtf(float);
+extern float func_00248F60(const float *pfA, const float *pfB, int iLength);
+extern float func_0024D498(float *pfYpeak, float fY_1, float fY0, float fY1);
+extern const float data_001D5590[];		/* -MAXFLOAT, addressed whole (no $gp): another object's */
+
+/* the pitch refined by the autocorrelation around it: the lag of the largest product in pitch +- 4 (or the fraction fMin of
+ * it), interpolated when it is inside the search, and its value normalised by the two parts' energies */
+float func_0024F250(float *pfBuf, int iLength, float *pfV, float fPitch, float fMin)
+{
+	float afY[3];
+	float fMax, fDelta, fP, fDot, fE;
+	int iDelta, iLo, iHi, i, iBest, j, k, n;
+
+	afY[0] = afY[1] = afY[2] = 0.0F;
+	fMax = data_001D5590[0];
+	fMin *= fPitch;
+	iDelta = (int)(fMin + 0.5F);
+	if (iDelta > 4)
+		iDelta = 4;
+	fDelta = (float)iDelta;
+	fMin = fPitch - fDelta;
+	iLo = (int)(fMin + 0.5F);
+	fMin = fPitch + fDelta;
+	iHi = (int)(fMin + 0.5F);
+	if (iLo < 8)
+		iLo = 8;
+	if (iHi > 160)
+		iHi = 160;
+	iBest = 0;
+	j = 0;
+	i = iLo;
+	do {
+		fDot = func_00248F60(pfBuf, pfBuf + i, iLength - i);
+		i++;
+		if (fMax < fDot) {
+			iBest = j;
+			fMax = fDot;
+			afY[0] = afY[1];
+		} else if (iBest == j - 1)
+			afY[2] = fDot;
+		afY[1] = fDot;
+		j++;
+	} while (i <= iHi);
+	k = iBest + iLo;
+	if (iLo < k && k < iHi)
+		fP = (float)k + func_0024D498(pfV, afY[0], fMax, afY[2]);
+	else {
+		fP = (float)k;
+		*pfV = fMax;
+	}
+	n = iLength - k;
+	fE = func_00248F60(pfBuf, pfBuf, n);
+	fE *= func_00248F60(pfBuf + k, pfBuf + k, n);
+	*pfV /= sqrtf(fE + 0x1.0c6f7ap-20F);
 	return fP;
 }

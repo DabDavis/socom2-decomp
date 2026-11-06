@@ -83,8 +83,8 @@ extern void func_0024C6C0(void *pvCircMblk, int iOffset, int iLength, const floa
 float func_002499A8(CircMblk *pvCircMblk, void *pvLdpda, float *pfEnergy);
 void func_00249A38(void *pvState, CircMblk *pvCircMblk, float *pfRe, float *pfIm, int *piLength,
 		   int *piWinShift, float fEnergy);
-extern int func_002492A0(void *pvCircMblk, float *pfRe, float *pfIm, EncFrame *pFrame, void *pEnc,
-			 int iLength, int iWinShift, int *piMode, float *pfMax);
+int func_002492A0(void *pvCircMblk, float *pfRe, float *pfIm, EncFrame *pFrame, void *pEnc,
+		  int iLength, int iWinShift, int *piMode, float *pfMax);
 extern void func_0024F010(void *p, EncFrame *pFrame, int n, short sFlag, int iMode, float fMax);
 extern void func_00248C80(const EncFrame *pfIn, void *p);
 extern void func_002525C0(int i, float fEnergy, float fPitch);
@@ -368,3 +368,182 @@ void func_00249A38(void *pvState, CircMblk *pvCircMblk, float *pfRe, float *pfIm
 	*piLength = iLength;
 }
 
+extern float fabsf(float);
+extern void func_0024C7D0(CircMblk *pvCircMblk, int iDelay, int iLen, float *pfOut);
+
+typedef struct {
+	float afRe[4];			/* 0x00 */
+	float afIm[4];			/* 0x10 */
+	float fRe;			/* 0x20 */
+	float fIm;			/* 0x24 */
+	int iPos;			/* 0x28 */
+	int iBest;			/* 0x2C */
+} TransientState;
+
+/* the window's shift from the block's transient: a sliding sum of four smoothed bins, the largest step in phase against its
+ * power over the block, the position scaled to +-40 from the centre (GCC round 44a; one float, fA, is the gain and the step's
+ * size: global, so f4, and the multiplies tie to the bins' locals; the two rings through plain float pointers) */
+int func_00249C88(void *pvState, CircMblk *pvCircMblk, int iDelay, int iLength, float *pfWork)
+{
+	TransientState *p = pvState;
+	float *pfRe = pvState;
+	float *pfIm = p->afIm;
+	int iBest = 0;
+	int iPos, iStart, i, iShift;
+	float fRe, fIm, fSumRe, fSumIm, fBestP, fBestM, fT;
+
+	iPos = p->iPos;
+	fSumRe = p->fRe;
+	iStart = p->iBest - 150;
+	fRe = pfRe[iPos];
+	fIm = pfIm[iPos];
+	fSumIm = p->fIm;
+	func_0024C7D0(pvCircMblk, iDelay, 161, pfWork);
+	fBestP = 1.0F;
+	fBestM = 0x1.47ae14p-3F;
+	for (i = 0; i < 160; i += 2) {
+		float fX = pfWork[0];
+		float fY = pfWork[1];
+		float fOldRe, fOldIm, fM, fP, fA;
+
+		fA = fX * 0x1.fcp-6F;
+		pfWork += 2;
+		fRe = fA * fX + fRe * 0x1.f01ffep-1F;
+		fIm = fA * fY + fIm * 0x1.f01ffep-1F;
+		iPos = (iPos + 1) % 4;
+		fOldRe = pfRe[iPos];
+		fOldIm = pfIm[iPos];
+		pfRe[iPos] = fRe;
+		pfIm[iPos] = fIm;
+		fM = fIm * fSumRe - fRe * fSumIm;
+		fP = fSumRe * fRe;
+		fSumRe = fSumRe + fRe - fOldRe;
+		fSumIm = fSumIm + fIm - fOldIm;
+		fA = fabsf(fM);
+		if (i >= iStart && fA * fBestP > fP * fBestM) {
+			fBestP = fP;
+			fBestM = fA;
+			iBest = i;
+		}
+	}
+	p->iPos = iPos;
+	p->fRe = fSumRe;
+	p->fIm = fSumIm;
+	p->iBest = iBest;
+	if (iBest > 80) {
+		fT = (float)(160 - iBest) * (float)(iDelay - (iLength >> 1)) * 0x1.999998p-7F;
+		iShift = (int)(fT + 0.5F);
+		if (iShift > 40)
+			iShift = 40;
+	} else {
+		fT = (float)(iBest * (iDelay - (iLength >> 1))) * 0x1.999998p-7F;
+		iShift = (int)(fT + 0.5F);
+		iShift = -iShift;
+		if (iShift < -40)
+			iShift = -40;
+	}
+	return iShift;
+}
+
+typedef struct {
+	char pad00[0x20];
+	short sAcc;			/* 0x20 */
+	short sStart;			/* 0x22 */
+	float fRatio;			/* 0x24 */
+	unsigned short usFlag;		/* 0x28 */
+} EncWarp;
+
+typedef struct {
+	char pad00[0x08];
+	float afVoic[3];		/* 0x08 */
+	void *pvTrack;			/* 0x14 */
+	char pad18[0x18];
+	float fPrevVoic;		/* 0x30 */
+	float fPrevPitch;		/* 0x34 */
+	char pad38[0x0C];
+	int iWarp;			/* 0x44 */
+	EncWarp *pWarp;			/* 0x48 */
+} EncAnalysis;
+
+extern void (*data_001D55B0)(void *p, int c, int n);	/* the host's memset */
+extern void (*data_001D55B4)(void *pDst, const void *pSrc, int n);	/* the host's memcpy */
+extern void func_0024CF10(const float *pfRe, const float *pfIm, float *pfMag, float *pfAmp, float *pfFreq, int *piNPeaks);
+extern void func_0024CAE8(const float *pfEnv, const float *pfMag, const float *pfFreq, int iLength, float *pfOut, float fPitchDFT);
+extern void func_00250F60(float *pfV, const float *pfMag, float *pfPitch, float *pfOut, float *pfAmp, const float *pfFreq, int iNPeaks);
+extern void func_0024AB48(float *pfSpec, int iLength, float fStep);
+extern void func_0024D770(float *pfLogEnv, int iLpcOrder, float *pfGain, float *pfLPC, float *pfRC);
+extern void func_0024E918(int iLPCorder, const float *pfk, float *pfASK);
+extern void func_0024EEA0(const float *pfIn, int iLength, float *pfOut, float fScale);
+extern void func_0024C458(float *pfWindow, int iLength);
+extern float func_0024F250(float *pfBuf, int iLength, float *pfV, float fPitch, float fMin);
+extern float func_00251270(float fCorr, float fVoic, float fPrev, float fPitch, float fPrevPitch);
+extern int func_00248AD0(void *hParamMblk, void *pTrack, const float *pfLPC, int iOrder);
+
+/* a frame's analysis: its spectral peaks, envelope and voicing, the envelope resampled and (when the warp is on) shifted by the
+ * warp's offset, its LPC and their arcsines; the window's pitch refined and the voicing tracked; the mode from the coder's
+ * choice, the pitch halved in the mode that doubled it. OPEN (GCC round 44a; 0x2E8 against 0x2E4, the first draft 0x2E4 with 103
+ * words of registers): the target spills two (the circular block, piMode), here three; its pfRe and the pitch pointer share s1 --
+ * `addiu s1,s5,40` in the first call's slot, the next statement reorg took -- where here the pointer's set climbs above the
+ * calls (s3, before the first jalr), so the two conflict. */
+int func_002492A0(void *pvCircMblk, float *pfRe, float *pfIm, EncFrame *pFrame, void *pEnc,
+		  int iLength, int iWinShift, int *piMode, float *pfMax)
+{
+	float afAmp[100];
+	float afFreq[100];
+	float afEnv[256];
+	float afWin[292];
+	float afTmp[256];
+	int iPeaks;
+	float *pfEnv = afEnv;
+	float *pfF = afFreq;
+	float fSpacing = 512.0F;
+	EncAnalysis *p = pEnc;
+	EncWarp *pWarp = p->pWarp;
+	float *pfPitch;
+	float *pfW;
+	float fFirst, fX;
+	short i, j, sStart;
+	int iMode;
+
+	data_001D55B0(afAmp, 0, sizeof(afAmp));
+	data_001D55B0(pfF, 0, sizeof(afFreq));
+	func_0024CF10(pfRe, pfIm, pfEnv, afAmp, pfF, &iPeaks);
+	pfPitch = pFrame->afPitch;
+	fSpacing /= pfPitch[0];
+	func_0024CAE8(pfEnv, afAmp, pfF, iPeaks, pfEnv, fSpacing);
+	func_00250F60(p->afVoic, pfEnv, pfPitch, &pFrame->afPitch[1], afAmp, pfF, iPeaks);
+	func_0024AB48(pfEnv, 256, fSpacing);
+	if (p->iWarp != 0 && pWarp->usFlag != 0) {
+		fFirst = pfEnv[0];
+		sStart = pWarp->sStart;
+		j = pWarp->sAcc;
+		for (i = 0; i < 256; i++) {
+			int k = j++;
+
+			if (i < sStart)
+				fX = pfEnv[i];
+			else if ((unsigned short)k < 256)
+				fX = pfEnv[k];
+			else if (k < 256)
+				fX = pfEnv[i];
+			else
+				fX = pfEnv[255];
+			afTmp[i] = fX;
+		}
+		data_001D55B4(pfEnv, afTmp, 256);
+	}
+	func_0024D770(pfEnv, 12, &pFrame->f80, afAmp, pfF);
+	if (p->iWarp != 0)
+		pWarp->fRatio = pfEnv[0] / fFirst;
+	func_0024E918(12, pfF, (float *)&pFrame->f80 + 1);
+	pfW = afWin;
+	func_0024C7D0(pvCircMblk, iWinShift + 145, iLength, pfW);
+	func_0024EEA0(pfW, iLength, pfW, 2.0F);
+	func_0024C458(pfW, iLength);
+	func_0024F250(pfW, iLength, pfMax, pfPitch[0], 0.0F);
+	pfPitch[1] = func_00251270(*pfMax, pfPitch[1], p->fPrevVoic, pfPitch[0], p->fPrevPitch);
+	iMode = func_00248AD0(pFrame, p->pvTrack, afAmp, 12);
+	*piMode = iMode;
+	if (iMode == 1)
+		pfPitch[0] *= 0.5F;
+}

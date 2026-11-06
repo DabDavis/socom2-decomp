@@ -473,7 +473,9 @@ public:
 class CAiSScript : public CAiState {
 public:
     CAiSScript() : CAiState(AI_STATE_SCRIPT) {}
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
@@ -505,7 +507,8 @@ public:
 
     unsigned int m_58;   // 0x58
     unsigned char m_hold : 1;   // 0x5c bit 0: no pursuit (the name ours)
-    unsigned char m_5c_1 : 2;
+    unsigned char m_held_once : 1;   // bit 1: the next tick only clears it (the name ours)
+    unsigned char m_keep_anim : 1;   // bit 2: a dead SEAL's anim runs on (the name ours)
     unsigned char m_bit3 : 1;   // bit 3 (set through 0x5F3FC0)
     unsigned char m_5c_4 : 4;
     unsigned char m_mode;   // 0x5d: the AI's mode the script runs in (the name ours)
@@ -513,9 +516,12 @@ public:
     unsigned char m_seq;
     unsigned char m_5f;   // 0x5f: 255 once the sequence holds or lets go (slot 0x0C)
     float m_60;   // 0x60
-    unsigned char _64;
+    signed char m_mode_saved;   // 0x64: the AI's mode, kept while a state above runs (1 on a reset; the name ours)
     char m_seqName[16];   // 0x65: the sequence's name (ActivateSequence's strncpy; SOCOM 1's +0x35)
-    unsigned char _75[0x84 - 0x75];   // 0x84 bytes, Create's new
+    unsigned char _75[0x78 - 0x75];
+    class AnimSet *m_78;   // 0x78: the SEAL's set, kept while a state above runs
+    class AnimSet *m_animset;   // 0x7c: the SEAL's set kept while the script is held (the names ours)
+    unsigned int m_80;   // 0x80 (0x84 bytes, Create's new)
 };
 
 class CAiSGoto : public CAiState {
@@ -557,6 +563,7 @@ public:
         __ct__9CAiMapLocFv(&m_cell);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSPlan();
 
     union {
@@ -581,7 +588,8 @@ public:
     unsigned char m_pathState;   // 0xe4: its state (1-3 failed, 4 arrived)
     unsigned char _e5[0x100 - 0xe5];
     unsigned int m_100;   // 0x100
-    unsigned char _104[0x10c - 0x104];
+    class CAiMapLoc *m_104;   // 0x104: where the route ends
+    unsigned char _108[0x10c - 0x108];
     char *m_10c;   // 0x10c: a block of its own, freed
     unsigned char m_110;   // 0x110
     unsigned char _111[0x114 - 0x111];
@@ -736,6 +744,7 @@ public:
     /* its timer, the last member, built by hand where the member's constructor would run */
     CAiSUseVehicle() : CAiState(AI_STATE_USEVEHICLE) { __ct__8CAiTimerFf(&m_60, 0.0f); }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSUseVehicle();
     void SetTimeout(float t);

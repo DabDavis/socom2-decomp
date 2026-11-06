@@ -236,10 +236,17 @@ static inline void *LoadAlloc(unsigned int size)
  * swapped for a buffer over it (SOCOM 1's, grown: SOCOM 1's copied a static zero tail, SOCOM II's
  * clears it -- a brace-initialised struct is MW's null-tested byte loop, as func_002642F0's PNT4D;
  * its key buffer's reserve, 0x2597B0, is byte-exact from here).
- * OPEN, the target's size, 47 instructions: the seek's and the read's results reach `ok` through
- * an `andi` (computed in v0, branched on there, narrowed into s0 in the slot -- an int-typed
- * right side: `(int)` casts give the size, not the narrowing; `!(... == -1)` is 8 bytes long), the
- * padding's total and pad trade s3/s4, and the data's read loads its size late */
+ * OPEN, 3 words (the target's size; 47 instructions before the engine core's round 27): the seek's and
+ * the read's results reach `ok` through an `andi` where this converts (sltu s0,zero,v0) -- the target
+ * computes them in v0, branches on v0, narrows into s0 in the slot -- and the join of the two tests
+ * takes no pad nop there. Tried: int, unsigned char, const bool and enum holders, explicit casts,
+ * inline bool / int reads (each folded into the assignment: sltu or 8 bytes short), `ok` a byte (the
+ * same, 8 short), `&=` (0x520), a negated inline bool (0x518), asm directives around it.
+ * Round 27 closed the rest: pad declared ahead of total (total then takes the key bytes' s3, pad the
+ * size's s4); the chain `m_pFile = m_pFileAlloc = b` (the stores' order); a conversion on one of the
+ * two arguments (a1's load ahead of a2's: `(unsigned int)` on fread's size, `(void *)(unsigned int)` on
+ * Open's buffer -- plain loads are set up right to left, a converted one after them or before as the
+ * calls show; an inline accessor is folded and changes nothing) */
 bool CZAR::ReadDirectory(int dir, unsigned int mode)
 {
     bool ok = false;
@@ -255,9 +262,14 @@ bool CZAR::ReadDirectory(int dir, unsigned int mode)
             m_modified = 1;
             m_pFile->fseek(0, 0);
         } else {
-            ok = (int)(m_pFile->fseek(0, 0) != -1);
-            if (ok)
-                ok = (int)(m_pFile->fread(&tail, sizeof(tail)) == sizeof(tail));
+            int e = m_pFile->fseek(0, 0) != -1;
+
+            ok = e;
+            if (e) {
+                int e2 = m_pFile->fread(&tail, sizeof(tail)) == sizeof(tail);
+
+                ok = e2;
+            }
             if (ok) {
                 ok = tail.version == 0x20002;
                 if (ok) {
@@ -285,9 +297,9 @@ bool CZAR::ReadDirectory(int dir, unsigned int mode)
                     ok = m_root->Read(this, &io, base);
                     io.Close();
 
+                    int pad;
                     int total = bytes + (size + 100);
                     int rem = total % m_tail.padded;
-                    int pad;
 
                     if (rem)
                         pad = m_tail.padded - rem;
@@ -302,7 +314,7 @@ bool CZAR::ReadDirectory(int dir, unsigned int mode)
                             if (!m_24 || !m_databuffer)
                                 m_databuffer = LoadAlloc(m_data_size);
                             m_data_start = pad + total;
-                            m_pFile->fread(m_databuffer, m_data_size);
+                            m_pFile->fread(m_databuffer, (unsigned int)m_data_size);
                             if (m_pFileAlloc) {
                                 m_pFileAlloc->Close();
                                 delete m_pFileAlloc;
@@ -311,8 +323,8 @@ bool CZAR::ReadDirectory(int dir, unsigned int mode)
 
                                 CBufferIO *b = new CBufferIO;
 
-                                m_pFileAlloc = m_pFile = b;
-                                b->Open(m_databuffer, m_data_size);
+                                m_pFile = m_pFileAlloc = b;
+                                b->Open((void *)(unsigned int)m_databuffer, m_data_size);
                                 m_data_start = 0;
                             }
                         }

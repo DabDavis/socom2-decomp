@@ -9,7 +9,11 @@
  * 0x2F62B0, so they are its copies, and the lobby unit starts at 0x2F6D00). Every own function is
  * written. The deque instances: push_back 0x2F5290 with init 0x2F5940 and do_assign 0x2F5700, the
  * block buffer from an allocator 0x2F5FF0 and the pair 0x2F6060 byte-exact since the online lane's
- * round 24 (ChatQueueBuffers below, a dead-stripped device). OPEN, the copy chain and the iterators
+ * round 24 (ChatQueueBuffers below, a dead-stripped device). CLOSED BY THE MSL HEADERS' ROUND 39: the
+ * copy 0x2F5F80, the class element's own range init 0x2F6600 with second() 0x2F6A60 and __resize 0x2F6A50,
+ * do_assign 0x2F6340 and both make_iterators; only the buffer's copy 0x2F6090 is open (include/deque's
+ * __init_class; with begin, end, init and the storage's constructor named in ChatQueueBuffers it is the
+ * target's size, 27 off: the start's shift, CSE'd across end and begin, numbered too late). Older notes: OPEN, the copy chain and the iterators
  * -- the deque's copy constructor 0x2F5F80 (calls begin()/end() const where the target inlines them
  * and calls make_iterator), the circular buffer's 0x2F6090 (0xCC of 0x19C: x.alloc() called, begin()/
  * end() not inlined, the init's iterators not copied twice around the two empty temporaries -- the

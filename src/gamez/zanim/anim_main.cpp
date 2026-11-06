@@ -548,7 +548,11 @@ inline int CZAnimMain::NewAnimSet(int index)
  * (MW canonicalises the add: v_gasi21.py); round 22, the replay: the list's load (v97) must be
  * numbered after the offset's five temporaries (v98-v102: `--move 97=102.5` gives the target) --
  * a byte-offset local, the index assigned in the subscript, the list or the store through inline
- * wrappers: 6 or 0x23C (build/scratch/core/v_gasi22.py) */
+ * wrappers: 6 or 0x23C (build/scratch/core/v_gasi22.py). Round 27: the target's add is list + offset
+ * with the offset generated first and the list's load scheduled first; a held offset (enum, const,
+ * unsigned) or element pointer generates them so but hoists the first shift ahead of the load (0x23C,
+ * the chain's first temporary in v0); an inline over the list, or the list held, 6
+ * (build/scratch/core/v_gasi1-3.py) */
 int CZAnimMain::GetAnimSetIndex(const char *name, bool create)
 {
     for (int i = 0; i < m_animset_count; i++) {

@@ -57,8 +57,8 @@ extern int func_00614F58(unsigned int nStream, void **ppStream);
 extern int NetFreeRemoteObject(int nIndex);
 extern int func_006437E0(void *p);
 extern int func_00618B38();
-extern int func_0061BC68(int);
-extern int func_0061CCA8(int);
+extern int func_0061BC68(unsigned char bBlock);
+extern int func_0061CCA8(unsigned char bReport);
 extern void func_00614888(void **ppMemory);
 extern char *strncpy(char *dst, const char *src, unsigned int n);
 
@@ -68,7 +68,14 @@ extern void *data_006766E0[DME_MAX_OBJECTS];
 extern signed char NetObjectStatus[DME_MAX_OBJECTS];
 extern DmeAddress data_0066CF08;
 extern DmePingSlot data_0067B7B8[DME_MAX_PING_SLOTS];
-extern DmeAddress data_0066CF60;        /* sized: its first word is its size, 24 */
+/* the last update's status (0x61BC68 fills it, 0x61C0F0 hands it out): its size, each world's code, the peer layer's */
+typedef struct DmeStatus {
+    int nSize;                          /* 0x00: 24 */
+    int aStatus[DME_MAX_WORLDS];        /* 0x04 */
+    int nP2p;                           /* 0x14 */
+} DmeStatus;
+
+extern DmeStatus data_0066CF60;
 extern void *data_0066CAF8[DME_MAX_WORLDS];
 
 /* a networked object's record (NetGetObject hands one out) */
@@ -1192,7 +1199,7 @@ extern int RtMsgToDmeConnectionIndex(unsigned short nConnection);
 extern unsigned short data_0067B7A8;
 extern unsigned short data_0067A6E0;
 extern int RtMsgToDmeConnectionIndex(unsigned short nConnection);
-extern int func_00614B18(int nWorld, int nClient, char *szIp, unsigned short nPort);
+extern void func_00614B18(unsigned int nWorld, unsigned int nClient, char *szIp, unsigned short nPort);
 extern int func_006164E0(int nWorld, int nClient);
 
 /* SOCOM 1's RemoteClientEvent grown (0x616748): a client of a world connected or left */
@@ -1535,7 +1542,30 @@ int func_00618458(void *pAddress)
     data_0066CF08 = *(DmeAddress *)pAddress;
     return DME_OK;
 }
-extern int func_006187A0(int *pParams, DmeConnectStatus *pStatus);
+/* the peer layer's connect parameters: two addresses by kind, the 64-byte session key */
+typedef struct DmeHostAddr {
+    int nKind;                          /* 0x00: 2 the first address, 1 the second */
+    char szIp[16];                      /* 0x04 */
+    unsigned short nPort;               /* 0x14 */
+} DmeHostAddr;                          /* 0x18 */
+
+typedef struct DmeHostKey { char b[64]; } DmeHostKey;
+
+typedef struct DmeHostParams {
+    int nVersion;                       /* 0x00: 1 */
+    DmeHostAddr aAddr[2];               /* 0x04 */
+    DmeHostKey key;                     /* 0x34 */
+} DmeHostParams;
+
+typedef struct DmeHostInfo {
+    DmeHostKey key;                     /* 0x00 */
+    char szIp[16];                      /* 0x40: kind 2's */
+    char szIp2[16];                     /* 0x50: kind 1's */
+    unsigned short nPort;               /* 0x60 */
+    unsigned short nPort2;              /* 0x62 */
+} DmeHostInfo;                          /* 0x64 */
+
+extern int func_006187A0(DmeHostParams *pParams, DmeConnectStatus *pStatus);
 extern int func_0061CB18(unsigned char *pbValue);
 
 /* the join's checks (0x6186B0), as func_00617690's for the connection: then func_006187A0 */
@@ -1565,7 +1595,7 @@ int func_006186B0(int *pParams, DmeConnectStatus *pStatus)
     }
     pStatus->nResult = func_0061CB18(&bValue);
     if (pStatus->nResult == 0 && bValue == 1)
-        func_006187A0(pParams, pStatus);
+        func_006187A0((DmeHostParams *)pParams, pStatus);
     return pStatus->nResult;
 }
 /* a peer the address resolution waits on (0x66CF78: 256 of 36 bytes) */
@@ -2054,9 +2084,9 @@ int func_0061C0F0(int *pAddress)
 {
     if (pAddress == 0)
         return 10;
-    if (pAddress[0] != sizeof(DmeAddress))
+    if (pAddress[0] != sizeof(DmeStatus))
         return 39;
-    *(DmeAddress *)pAddress = data_0066CF60;
+    *(DmeStatus *)pAddress = data_0066CF60;
     return DME_OK;
 }
 
@@ -2322,7 +2352,7 @@ int func_0061D3C8(void)
     return DME_OK;
 }
 
-extern void func_00617060(int nWorld, int nClient, int bJoined, unsigned short nPort, int bFailed);
+extern void func_00617060(unsigned int nWorld, int nClient, unsigned char bConnected, unsigned short nValue, int nArg);
 
 void func_0061D4D8(int nClient, unsigned short nPort, int nError)
 {
@@ -2423,7 +2453,7 @@ void func_0061D650(char *szIp, unsigned short nPort, int nError)
 
 extern int func_006398C0(int nP2P, int nConnection, int *pnWhich);
 extern int func_00639940(int nP2P, int nConnection, int nWhich, char *szIp, unsigned short *pnPort);
-extern int func_00614B18(int nWorld, int nClient, char *szIp, unsigned short nPort);
+extern void func_00614B18(unsigned int nWorld, unsigned int nClient, char *szIp, unsigned short nPort);
 extern int func_006164E0(int nWorld, int nClient);
 extern void func_00616478(int nWorld, int nClient, unsigned short nConnection, int nValue,
                           unsigned short nPort);
@@ -3191,4 +3221,1137 @@ int func_006195E0(char *szIp, void (*pfnCallback)(int nEvent, char *szIp, int nV
         rt_time_get_time_stamp(data_0066CF78[nSlot].tStart);
     }
     return DME_OK;
+}
+
+/* a message's fragment header (20 bytes): a message past 510 bytes goes out in pieces of 490 under DME's own
+ * fragment type (data_00686A1C), each with its type, the piece's length, the count, the index, one random id
+ * for the set, the whole length and the piece's offset */
+typedef struct DmeFragment {
+    unsigned char nType;                /* 0x00 */
+    unsigned char nSubType;             /* 0x01 */
+    unsigned short nLength;             /* 0x02 */
+    unsigned short nCount;              /* 0x04 */
+    unsigned short nIndex;              /* 0x06 */
+    unsigned char nId;                  /* 0x08 */
+    int nTotal;                         /* 0x0C */
+    int nOffset;                        /* 0x10 */
+} DmeFragment;
+
+extern unsigned char randomMT(void);
+extern unsigned int data_00686A1C;
+
+/* SOCOM 1's NetSendMessage grown (0x6158F8): the checks, the fragments, and the choice of transport: world 0xFFFF
+ * and world 0 by UDP (func_00615660), the others by TCP (func_006157E0) */
+int func_006158F8(char nMsgClass, unsigned int nWorld, int nTarget, unsigned int nType, unsigned int nSubType,
+                  int nLength, void *pData)
+{
+    DmeFragment frag;
+    struct {
+        DmeFragment hdr;
+        unsigned char abData[492];
+    } msg;
+    DmeWorld *pWorld = 0;
+    int nOffset = 0;
+    int nSend = 0;
+    int nCount;
+    unsigned int nSendType;
+    unsigned int nSendSub;
+    char nClass;
+    int i;
+    int result;
+
+    if (nType >= 6)
+        return DME_ERR_ARGUMENT;
+    if (nSubType >= 256)
+        return DME_ERR_ARGUMENT;
+    if (nLength <= 0)
+        return DME_ERR_ARGUMENT;
+    if (pData == 0)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    if (pWorld->field_44C == 4)
+        return 15;
+    if (nLength >= 511) {
+        if (nTarget == 0xFFFF)
+            return 31;
+        nCount = (nLength + 489) / 490u;
+        nSendSub = data_00686A1C;
+        nSendType = 0;
+        nClass = nMsgClass | 0x50;
+        frag.nId = randomMT();
+    } else {
+        nSend = nLength;
+        nClass = nMsgClass;
+        nSendType = nType;
+        nOffset = nSend;
+        nSendSub = nSubType;
+        nCount = 1;
+        memcpy(&msg, pData, nSend);
+    }
+    for (i = 0; i < nCount; i++) {
+        if (nSend != nLength) {
+            int nPiece = nLength - nOffset;
+
+            if (nPiece > 490)
+                nPiece = 490;
+            frag.nIndex = i;
+            frag.nType = nType;
+            frag.nSubType = nSubType;
+            frag.nTotal = nLength;
+            nSend = nPiece + 20;
+            frag.nCount = nCount;
+            frag.nLength = nPiece;
+            frag.nOffset = nOffset;
+            memcpy(&msg, &frag, sizeof(frag));
+            memcpy(msg.abData, (char *)pData + nOffset, nPiece);
+            nOffset += nPiece;
+        }
+        if (nWorld == 0xFFFF || nWorld == 0) {
+            result = func_00615660(nClass, nWorld, nTarget, nSendType, nSendSub, nSend, &msg);
+            if (result != 0)
+                return result;
+        } else {
+            result = func_006157E0(nClass, nWorld, nTarget, nSendType, nSendSub, nSend, &msg);
+            if (result != 0)
+                return result;
+        }
+    }
+    return DME_OK;
+}
+
+/* SOCOM 1's NetPing grown (0x6193F8): every client's slot takes the callback; 0xFFFF pings the world's server, whose
+ * slot holds world 4 and client 256 */
+/* SOCOM 1's NetPing grown (0x6193F8): every client's slot takes the callback; 0xFFFF pings the world's server, whose
+ * slot holds world 4 and client 256 */
+int func_006193F8(unsigned int nWorld, unsigned int nTarget, void (*pfnCallback)())
+{
+    struct {
+        int nTime;
+        char nSlot;
+        unsigned char bTimebase;
+    } msg;
+    DmeClientInfo *pClient = 0;
+    int nSlot;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (nTarget >= DME_MAX_CLIENTS && nTarget != 0xFFFF)
+        return DME_ERR_ARGUMENT;
+    if (pfnCallback == 0)
+        return DME_ERR_ARGUMENT;
+    if (nTarget == -1)
+        return DME_ERR_RANGE;
+    nSlot = FindFreePingSlot();
+    if (nSlot == DME_MAX_PING_SLOTS)
+        return 25;
+    msg.bTimebase = 1;
+    msg.nTime = 0;
+    msg.nSlot = nSlot;
+    NetSendMessage(-128, nWorld, nTarget, 0, data_00686A0C, sizeof(msg), &msg);
+    if (nTarget == 0xFFFF) {
+        result = func_006148E0(data_0067B7B8[nSlot].abIp, func_0061C8E8(nWorld));
+        if (result != 0)
+            return result;
+        data_0067B7B8[nSlot].nPort = data_0067A6E0;
+        data_0067B7B8[nSlot].nWorld = 4;
+        data_0067B7B8[nSlot].nClient = 256;
+    } else {
+        result = func_0061C720(nWorld, nTarget, &pClient);
+        if (result != 0)
+            return result;
+        if (pClient == 0)
+            return result;
+        result = func_006148E0(data_0067B7B8[nSlot].abIp, pClient->szIp);
+        if (result != 0)
+            return result;
+        data_0067B7B8[nSlot].nWorld = nWorld;
+        data_0067B7B8[nSlot].nPort = pClient->nPort;
+        data_0067B7B8[nSlot].nClient = nTarget;
+    }
+    data_0067B7B8[nSlot].pfnCallback = pfnCallback;
+    data_0067B7B8[nSlot].bTimebase = 0;
+    func_00615028(&data_0067B7B8[nSlot].nSent);
+    return DME_OK;
+}
+
+extern int data_006511C0;               /* the clock's last local reading */
+extern unsigned int data_00651184;      /* the last ping round's time */
+extern int func_006203C8(void);
+extern void func_0061BA10(void);
+extern void func_0061B6E8(void);
+extern int KM_SetLocalClientID(int nKMID, int nClient);
+extern int func_00643EF0(unsigned int nWorld, int nClient, DmeClientInfo *pClient);
+extern int func_00639A30(int nP2p, int nWhich, char *szAddress, unsigned short *pnPort);
+extern void (*data_00651190)(void *pReport);    /* the waiting caller's callback */
+extern int data_00651194;               /* and its user value */
+
+/* SOCOM 1's NetUpdate grown (0x61BEE8): the clock, the pings every three seconds, then the rest of the tick */
+int func_0061BEE8(void)
+{
+    int tStart;
+    int tNow;
+    DmeWorld *pWorld;
+    DmeClientInfo *pClient;
+    int i;
+    int result;
+
+    if (data_00651180 == 0)
+        return 17;
+    rt_time_get_local(&tStart);
+    result = func_0061D3C8();
+    if (result != DME_OK)
+        return result;
+    result = func_0061BC68(1);
+    if (result != DME_OK)
+        return result;
+    rt_time_get_local(&tNow);
+    CurrentNetTime += tNow - data_006511C0;
+    data_006511C0 = tNow;
+    if (data_00651178 < DME_MAX_WORLDS) {
+        pWorld = 0;
+        pClient = 0;
+        result = func_0061C600(data_00651178, &pWorld);
+        if (result != DME_OK || pWorld == 0)
+            return result;
+        if (data_00651184 + 3000 < CurrentNetTime && pWorld->field_438 == 1
+            && (int)pWorld->nMyClient < pWorld->field_444) {
+            i = 0;
+            if (pWorld->field_444 > 0) {
+                do {
+                    result = func_0061C720(data_00651178, i, &pClient);
+                    if (result != DME_OK)
+                        return result;
+                    if (pClient != 0 && i != pWorld->nMyClient && pClient->bConnected == 1)
+                        func_006192A0(i);
+                    i++;
+                } while (i < pWorld->field_444);
+            }
+            data_00651184 = CurrentNetTime;
+        }
+        if (pWorld->field_438 == 1 && (int)pWorld->nMyClient < pWorld->field_444 && data_0065117C == 1) {
+            func_0061BA10();
+            func_0061B6E8();
+        }
+    }
+    result = func_0061C9E8();
+    if (result != DME_OK)
+        return result;
+    result = func_0061CCA8(1);
+    if (result != DME_OK)
+        return result;
+    result = func_0061D1B0();
+    if (result != DME_OK)
+        return result;
+    result = func_006203C8();
+    return result;
+}
+
+/* the connection's result (0x617060, in SOCOM 1's MsgClientConnectCallback's place): the world marked connected and
+ * this client's record made, or the world closed; the waiting caller told through its callback, once */
+void func_00617060(unsigned int nWorld, int nClient, unsigned char bConnected, unsigned short nValue, int nArg)
+{
+    struct {
+        int nWorld;
+        int nState;
+        int nArg;
+        int nResult;
+        int nUser;
+    } report;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != DME_OK)
+        return;
+    if (pWorld == 0)
+        return;
+    if (pWorld->field_438 == 1)
+        return;
+    if (bConnected) {
+        if (func_0061D440(nClient) != 1)
+            return;
+        result = func_0061C7A8(nWorld, nClient, &pClient);
+        if (result != DME_OK)
+            return;
+        if (pClient == 0)
+            return;
+        pWorld->field_438 = 1;
+        pWorld->nMyClient = nClient;
+        pWorld->field_440 = nValue - 1;
+        pClient->nState = 2;
+        pClient->field_18 = 0;
+        pClient->field_1C = 0;
+        pClient->bConnected = 1;
+        KM_SetLocalClientID(-1, nClient);
+        if (func_00644060(nWorld) == 1) {
+            result = func_00643EF0(nWorld, nClient, pClient);
+            if (result != DME_OK)
+                return;
+        }
+        if (func_00639A30(data_006511D8, 1, pClient->szIp, &pClient->nPort) != 0)
+            return;
+    } else {
+        pWorld->nMyClient = 256;
+        result = 3;
+        pWorld->field_438 = 3;
+        if (func_00644060(nWorld) == 1)
+            func_00643E48(nWorld);
+    }
+    if (data_00651190 != 0) {
+        memset(&report, 0, sizeof(report));
+        report.nWorld = nWorld;
+        report.nState = pWorld->field_438;
+        report.nArg = nArg;
+        report.nResult = result;
+        report.nUser = data_00651194;
+        data_00651190(&report);
+        data_00651190 = 0;
+        data_00651194 = 0;
+    }
+}
+
+extern int data_0066F3F8[DME_MAX_WORLDS];   /* a world's receive failed */
+extern int rt_msg_client_update(int nConnection, unsigned char bBlock);
+extern int func_00643878(unsigned int nWorld, unsigned char bBlock);
+extern int func_0063A5C0(int nP2p);
+
+/* SOCOM 1's NetTick grown (0x61BC68): each world's message client updated in turn, each one's error kept in the
+ * status record (data_0066CF60: its size, four worlds' codes, the peer layer's), then the peer layer's own update */
+/* SOCOM 1's NetTick grown (0x61BC68): each world's message client updated in turn, each one's error kept in the
+ * status record (its size, four worlds' codes, the peer layer's), then the peer layer's own update */
+/* SOCOM 1's NetTick grown (0x61BC68): each world's message client updated in turn, each one's error kept in the
+ * status record (its size, four worlds' codes, the peer layer's), then the peer layer's own update. The three failure
+ * arms are one block in the target by cross-jumping: written as one (a goto), the loop is short enough for loop.c to
+ * hoist the constants 1 and 12 (scan_loop's threshold x savings x lifetime against the insn count). */
+/* OPEN (round 26b): one word short: the target has a no-op `movz v0,s0,s0` after `move v0,s0` before the pWorld test;
+ * the source of it is not found. The rest is exact with the three fail arms written apart (loop.c's hoist threshold
+ * counts the loop's length, jump.c cross-jumps them later) and the `aStatus[0] = nP2p = 12` chain. */
+int func_0061BC68(unsigned char bBlock)
+{
+    DmeWorld *pWorld = 0;
+    int nStatus = 0;
+    int result;
+    unsigned char i;
+
+    memset(data_0066F3F8, 0, sizeof(data_0066F3F8));
+    memset(&data_0066CF60, 0, sizeof(data_0066CF60));
+    data_0066CF60.nSize = sizeof(data_0066CF60);
+    for (i = 0; i < DME_MAX_WORLDS; i++) {
+        result = func_0061C600(i, &pWorld);
+        if (result != DME_OK) {
+            data_0066CF60.aStatus[i] = result;
+            nStatus = result;
+            continue;
+        }
+        if (pWorld == 0) {
+            data_0066CF60.aStatus[i] = 0;
+            continue;
+        }
+        if (i != 0 && (unsigned int)(pWorld->field_438 - 1) < 2) {
+            result = NetMapMsgClientError(rt_msg_client_update(DmeToRtMsgConnectionIndex(i), bBlock), 24);
+            if (result != DME_OK) {
+                data_0066CF60.aStatus[i] = result;
+                nStatus = result;
+                continue;
+            }
+            if (data_0066F3F8[i] != 0) {
+                data_0066CF60.aStatus[i] = 12;
+                nStatus = 12;
+                continue;
+            }
+        }
+        if (func_00644060(i) == 1) {
+            result = func_00643878(i, bBlock);
+            if (result != DME_OK) {
+                data_0066CF60.aStatus[i] = result;
+                nStatus = result;
+                continue;
+            }
+        }
+    }
+    if (data_006511D4 != 1)
+        return nStatus;
+    if (bBlock)
+        result = func_0063A5C0(data_006511D8) != 0 ? 37 : 0;
+    else
+        result = func_0063A590(data_006511D8) != 0 ? 37 : 0;
+    if (result != 0) {
+        data_0066CF60.nP2p = result;
+        return result;
+    }
+    if (data_0066F3F8[0] != 0) {
+        data_0066CF60.aStatus[0] = data_0066CF60.nP2p = 12;
+        return 12;
+    }
+    result = func_0061C600(0, &pWorld);
+    if (pWorld == 0) {
+        if (nStatus == 0)
+            return 0;
+        return nStatus;
+    }
+    if (result == 0 && (unsigned int)(pWorld->field_438 - 1) < 2)
+        data_0066CF60.aStatus[0] = data_0066CF60.nP2p;
+    return nStatus;
+}
+
+extern char *strcpy(char *d, const char *s);
+extern int func_0063A038(int nP2p, void *pInfo);
+extern unsigned char data_0066C2F8[512];
+extern unsigned int data_00686A24;      /* the named object's request's message type */
+
+/* in SOCOM 1's NetHostPeerToPeer's place (0x6187A0): hands the peer layer its two addresses and the key */
+int func_006187A0(DmeHostParams *pParams, DmeConnectStatus *pStatus)
+{
+    DmeHostInfo info;
+    unsigned int i;
+
+    if (pStatus == 0)
+        return DME_ERR_ARGUMENT;
+    pStatus->nResult = 30;
+    pStatus->field_00 = 1;
+    if (pParams == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    if (data_00651180 != 1) {
+        pStatus->nResult = 17;
+        return 17;
+    }
+    if (pParams->nVersion != 1) {
+        pStatus->nResult = 38;
+        return 38;
+    }
+    if (data_006511D4 != 1) {
+        pStatus->nResult = 26;
+        return 26;
+    }
+    memset(&info, 0, sizeof(info));
+    info.key = pParams->key;
+    for (i = 0; i < 2; i++) {
+        if (pParams->aAddr[i].nKind == 2) {
+            strncpy(info.szIp, pParams->aAddr[i].szIp, 16);
+            info.nPort = pParams->aAddr[i].nPort;
+        } else if (pParams->aAddr[i].nKind == 1) {
+            strncpy(info.szIp2, pParams->aAddr[i].szIp, 16);
+            info.nPort2 = pParams->aAddr[i].nPort;
+        }
+    }
+    if (func_0063A038(data_006511D8, &info) != 0)
+        pStatus->nResult = 37;
+    else
+        pStatus->nResult = DME_OK;
+    return pStatus->nResult;
+}
+
+/* a named object's creation message: its head, the name, then the structure's fields */
+typedef struct DmeCreateMsg {
+    unsigned char nClient;              /* 0x00 */
+    unsigned char nClass;               /* 0x01 */
+    unsigned char nField02;             /* 0x02 */
+    unsigned char nField03;             /* 0x03 */
+    unsigned char nField04;             /* 0x04 */
+    short nIndex;                       /* 0x06 */
+    short nField08;                     /* 0x08 */
+    int nTime;                          /* 0x0C */
+    int nField10;                       /* 0x10 */
+    char szName[16];                    /* 0x14 */
+} DmeCreateMsg;                         /* 0x24 */
+
+/* SOCOM 1's NetRequestCreateRemoteNamedObject grown (0x6197A0): asks a client to make a named object, unless this one
+ * already knows it; the time is offset from the clock now */
+int func_006197A0(int *pnIndex, int nUnused, int a2, int nTimeOffset, int t0, int t1, int t2, void *pData, char *szName,
+                  unsigned int nClass, unsigned int nClient)
+{
+    DmeCreateMsg msg;
+    unsigned char abDefault[512];
+    DmeStructure *pStruct;
+    int nIndex;
+    int nOffset;
+    int i;
+
+    if (pnIndex == 0)
+        return DME_ERR_ARGUMENT;
+    if (pData == 0)
+        return DME_ERR_ARGUMENT;
+    if (szName == 0)
+        return DME_ERR_ARGUMENT;
+    if (nClass >= 16)
+        return DME_ERR_ARGUMENT;
+    if (nClient >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    nIndex = func_00616290(szName, data_00651178, nClient);
+    *pnIndex = nIndex;
+    if (nIndex != -1)
+        return DME_OK;
+    nOffset = sizeof(msg);
+    pStruct = &NetStructureList[nClass];
+    i = 0;
+    strcpy(msg.szName, szName);
+    msg.nIndex = nIndex;
+    msg.nClient = func_0061D448(nClient);
+    msg.nClass = nClass;
+    msg.nField02 = t0;
+    msg.nField04 = a2;
+    msg.nField03 = t2;
+    msg.nTime = CurrentNetTime + nTimeOffset;
+    msg.nField10 = t1;
+    msg.nField08 = 0;
+    memcpy(data_0066C2F8, &msg, sizeof(msg));
+    if (pStruct->nFields > 0) {
+        do {
+            DmeField *pField = pStruct->apFields[i];
+            int nBytes = pField->nSize * pField->nCount;
+
+            memcpy(data_0066C2F8 + nOffset, (char *)pData + pStruct->anOffsets[i], nBytes);
+            nOffset += nBytes;
+            i++;
+        } while (i < pStruct->nFields);
+    }
+    func_00615DE0(80, data_00651178, nClient, data_00686A24, nOffset, data_0066C2F8);
+    return DME_OK;
+}
+extern int rt_msg_client_udp_disable_heartbeat(void);
+
+/* the pending peers' tick (0x61CCA8): the probe resent until it goes out, ten seconds to answer, and -- when bReport
+ * says so -- each one's callback told, once */
+int func_0061CCA8(unsigned char bReport)
+{
+    unsigned char bSent;
+    unsigned int nElapsed;
+    unsigned int i;
+    int result;
+
+    if (data_006511CC != 1)
+        return DME_OK;
+    result = NetMapMsgClientError(rt_msg_client_udp_disable_heartbeat(), 24);
+    if (result != DME_OK)
+        return result;
+    for (i = 0; i < DME_MAX_CLIENTS; i++) {
+        switch (data_0066CF78[i].nState) {
+        case 0:
+            break;
+        case 1:
+            bSent = 0;
+            if (rt_msg_client_send_udp(&bSent, data_0066CF78[i].szIp, data_0066CF78[i].nPort) == 0 && bSent == 1) {
+                rt_time_get_time_stamp(data_0066CF78[i].tStart);
+                data_0066CF78[i].nState = 2;
+            }
+            break;
+        case 2:
+            rt_time_elapsed(data_0066CF78[i].tStart, &nElapsed);
+            if (nElapsed > 10000) {
+                data_0066CF78[i].nState = 4;
+                if (bReport == 1) {
+                    if (data_0066CF78[i].pfnCallback != 0) {
+                        data_0066CF78[i].pfnCallback(14, data_0066CF78[i].szIp, 0);
+                        data_0066CF78[i].pfnCallback = 0;
+                    }
+                    data_0066CF78[i].nState = 0;
+                }
+            }
+            break;
+        case 4:
+            if (bReport == 1) {
+                if (data_0066CF78[i].pfnCallback != 0) {
+                    data_0066CF78[i].pfnCallback(14, data_0066CF78[i].szIp, 0);
+                    data_0066CF78[i].pfnCallback = 0;
+                }
+                data_0066CF78[i].nState = 0;
+            }
+            break;
+        case 3:
+            if (bReport == 1) {
+                if (data_0066CF78[i].pfnCallback != 0) {
+                    data_0066CF78[i].pfnCallback(0, data_0066CF78[i].szIp, data_0066CF78[i].nElapsed);
+                    data_0066CF78[i].pfnCallback = 0;
+                }
+                data_0066CF78[i].nState = 0;
+            }
+            break;
+        default:
+            data_0066CF78[i].nState = 0;
+            break;
+        }
+    }
+    return DME_OK;
+}
+
+/* SOCOM 1's SendClientNetObjectUpdates grown (0x61BA10): every live object this client owns (or made, unowned) sent
+ * whole, or field by field to each client asking for updates, then the requests cleared */
+void func_0061BA10(void)
+{
+    DmeObjectData *pObject = 0;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    void *pEntry;
+    unsigned int nMyClient;
+    int i;
+    int j;
+
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(data_00651178, &pWorld) != DME_OK)
+        return;
+    if (pWorld == 0)
+        return;
+    nMyClient = pWorld->nMyClient;
+    if (nMyClient >= DME_MAX_CLIENTS)
+        return;
+    for (i = 0; i < ActiveNetObjectCount; i++) {
+        if (NetObjectStatus[i] != 2)
+            continue;
+        if (func_00614EC8((void **)&pObject, i) != DME_OK)
+            continue;
+        if (pObject == 0)
+            continue;
+        if (nMyClient != pObject->nOwner && (pObject->nOwner != -1 || nMyClient != pObject->nCreator))
+            continue;
+        if (pObject->field_2C == 0 || (pObject->field_28 != 0 && (unsigned int)(pObject->field_2C + pObject->field_28) < (unsigned int)CurrentNetTime)) {
+            func_0061A800(-1, i);
+            continue;
+        }
+        for (j = 0; j < pWorld->field_444; j++) {
+            pEntry = 0;
+            func_006126E8(&pEntry, data_00651178, j);
+            if (pEntry != 0) {
+                func_0061C720(data_00651178, j, &pClient);
+                if (pClient != 0 && j != nMyClient && pClient->field_29 == 1)
+                    func_0061A800(j, i);
+            }
+        }
+        func_0061A6D8(i);
+    }
+    for (j = 0; j < pWorld->field_444; j++) {
+        func_0061C720(data_00651178, j, &pClient);
+        if (pClient != 0 && j != nMyClient && pClient->field_29 == 1)
+            pClient->field_29 = 0;
+    }
+}
+
+extern int func_0061F920(int nWorld, int a1, int a2, int a3);
+extern int func_006447C0(int nWorld, int nClient);
+extern void NetClientLeaves(int nWorld, int nClient);
+extern int rt_circ_buf_create(void *pCirc, int nSize, void *pBuffer);
+extern int data_0067C5A8;               /* the message classes registered */
+extern int func_0063A898(int nP2p, int nMaxClients);
+extern int func_00639FB8(int nP2p, unsigned int *pnClient);
+extern int func_00643900(int nWorld, int nMaxClients, void *pKey);
+
+/* a data stream's slot, whole (DmeStream's head; 0x44 bytes) */
+typedef struct DmeStreamRec {
+    unsigned char nState;               /* 0x00: 2 open */
+    unsigned char field_01;             /* 0x01 */
+    unsigned char field_02;             /* 0x02 */
+    unsigned char nType;                /* 0x03 */
+    unsigned char field_04;             /* 0x04 */
+    unsigned char field_05;             /* 0x05: 1 to everyone */
+    int nTarget;                        /* 0x08 */
+    int nOwner;                         /* 0x0C */
+    char *pBuffer;                      /* 0x10 */
+    char *pEnd;                         /* 0x14 */
+    char *pRead;                        /* 0x18 */
+    int field_1C;                       /* 0x1C */
+    int nRate;                          /* 0x20 */
+    unsigned short field_24;            /* 0x24 */
+    unsigned short field_26;            /* 0x26 */
+    int field_28;                       /* 0x28 */
+    char circ[24];                      /* 0x2C */
+} DmeStreamRec;
+
+/* the host's parameters */
+typedef struct DmeHostPeerKey {
+    int field_00;
+    int nFlag;                          /* 0x04: 1 opens the media streams */
+} DmeHostPeerKey;
+
+typedef struct DmeHostPeerParams {
+    int nVersion;                       /* 0x00: 1 */
+    void (*pfnCallback)(void *pReport); /* 0x04 */
+    int nUser;                          /* 0x08 */
+    void *pfnClient;                    /* 0x0C */
+    int nClientUser;                    /* 0x10 */
+    int pfnLeave;                       /* 0x14 */
+    int nLeaveUser;                     /* 0x18 */
+    int nMaxClients;                    /* 0x1C */
+    DmeHostPeerKey key;                 /* 0x20 */
+    char field_28[76];
+    int nValue;                         /* 0x74 */
+} DmeHostPeerParams;
+
+/* SOCOM 1's RemoteClientDisconnectEvent grown (0x6164E0): a client gone from a world -- its objects freed, the world's
+ * client callback told, and when this client was the one closing the world, the world closed */
+/* OPEN (round 26b): d=10: the first arm's `beqzl v1,..; b tail; lw v1,20(v1)` where this gives bnezl, and the report's
+ * store order (pClient last; not permuted). */
+int func_006164E0(int nWorld, int nClient)
+{
+    struct {
+        int nWorld;
+        int nClient;
+        DmeClientInfo *pClient;
+        int nState;
+        int field_10;
+        int nUser;
+    } report;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    void *pEntry = 0;
+    int nMyClient;
+    int result;
+
+    if (nClient < 0 && nWorld >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    result = func_0061C720(nWorld, nClient, &pClient);
+    if (result != DME_OK)
+        return result;
+    nMyClient = pWorld->nMyClient;
+    if (pClient == 0) {
+        if (pWorld->field_440 != 0)
+            pWorld->field_440--;
+        result = func_0061C720(nWorld, nMyClient, &pClient);
+        if (result != DME_OK || pClient == 0)
+            return result;
+        goto tail;
+    } else if (pClient->bConnected != 0) {
+        func_006126E8(&pEntry, nWorld, nClient);
+        if (pEntry != 0)
+            NetClientLeaves(nWorld, nClient);
+        if (nMyClient != DME_MAX_CLIENTS) {
+            unsigned char bConnected;
+
+            result = func_0061C720(nWorld, nMyClient, &pClient);
+            if (result != DME_OK || pWorld == 0)
+                return result;
+            bConnected = pClient->bConnected;
+            if (bConnected == 1) {
+                if (func_00644060(nWorld) == bConnected)
+                    func_006447C0(nWorld, nClient);
+                if (pWorld->field_430 != 0) {
+                    result = func_0061C720(nWorld, nClient, &pClient);
+                    if (result != DME_OK || pWorld == 0)
+                        return result;
+                    memset(&report, 0, sizeof(report));
+                    report.nState = pClient->nState;
+                    report.nUser = pWorld->field_434;
+                    report.nWorld = nWorld;
+                    report.nClient = nClient;
+                    report.pClient = pClient;
+                    ((void (*)(void *))pWorld->field_430)(&report);
+                }
+            }
+        }
+        RemoteClientDisconnects(nWorld, nClient);
+        result = func_0061C720(nWorld, nMyClient, &pClient);
+        if (result != DME_OK || pClient == 0)
+            return result;
+        if (pClient->nState == 3)
+            func_0061F920(nWorld, 0, 0, 0);
+    } else {
+        if (pWorld->field_440 != 0)
+            pWorld->field_440--;
+tail:
+        if (pClient->nState == 3)
+            func_0061F920(nWorld, 0, 0, 0);
+    }
+    return DME_OK;
+}
+
+/* SOCOM 1's NetOpenDataStream grown (0x619DD8): a free stream slot of this client's block made open, its ring buffer
+ * allocated; 21 for a client without a block, 20 for no free slot */
+/* OPEN (round 26b): d=14 with the stream in a one-member struct (a real alias set; a plain pointer's alias word did not
+ * flip under pert.py): the constant -1 takes a1 in the target and a2 here, and pStream loads before pWorld. */
+int func_00619DD8(int *pnStream, int nSize, int nRate, int nType, int a4, int nTarget, int a6, unsigned short a7,
+                  unsigned short a8)
+{
+    DmeClient *pClient = 0;
+    DmeWorld *pWorld = 0;
+    struct {                            /* an aggregate: its reload survives int stores (its MEM keeps an alias set, a
+                                         * scalar's ADDRESSOF does not) -- only the byte stores reload it in the target */
+        DmeStreamRec *p;
+    } stream;
+    int nMyClient;
+    int nIndex;
+    int i;
+    int result;
+
+    stream.p = 0;
+    if (pnStream == 0)
+        return DME_ERR_ARGUMENT;
+    *pnStream = -1;
+    if (nSize < 0)
+        return DME_ERR_ARGUMENT;
+    if (nRate < 0)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return 15;
+    if (nType < 0 || nType >= data_0067C5A8)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(data_00651178, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    nMyClient = pWorld->nMyClient;
+    if (nMyClient < 0 || nMyClient >= pWorld->field_444)
+        return 21;
+    if (func_006126E8((void **)&pClient, data_00651178, nMyClient) != 0 || pClient == 0)
+        return 21;
+    if (pClient->nStreams == 0)
+        return 20;
+    for (i = 0; i < pClient->nStreams;) {
+        nIndex = i + pClient->nFirstStream;
+        i++;
+        if (func_00614F58(nIndex, (void **)&stream.p) != DME_OK)
+            return 20;
+        if (stream.p == 0)
+            return 20;
+        if (stream.p->nState != 2) {
+            stream.p->pBuffer = DMEmalloc(nSize);
+            if (stream.p->pBuffer == 0) {
+                stream.p->nState = 0;
+                return 22;
+            }
+            if (rt_circ_buf_create(stream.p->circ, nSize, stream.p->pBuffer) != 0) {
+                func_00614888((void **)&stream.p->pBuffer);
+                stream.p->pBuffer = 0;
+                return 20;
+            }
+            stream.p->nState = 2;
+            stream.p->nOwner = pWorld->nMyClient;
+            stream.p->nRate = nRate;
+            stream.p->nType = nType;
+            stream.p->field_02 = a4;
+            stream.p->nTarget = nTarget;
+            stream.p->field_04 = 0;
+            stream.p->field_24 = a7;
+            stream.p->field_26 = a8;
+            stream.p->pRead = stream.p->pBuffer;
+            stream.p->pEnd = stream.p->pBuffer + nSize;
+            stream.p->field_28 = 0;
+            stream.p->field_1C = 0;
+            stream.p->field_01 = a6;
+            if (nTarget == -1)
+                stream.p->field_05 = 1;
+            else
+                stream.p->field_05 = 0;
+            *pnStream = nIndex;
+            return DME_OK;
+        }
+    }
+    return 20;
+}
+
+/* SOCOM 1's NetHostPeerToPeer grown (0x6181B8): world 0 made this client's, its first client, the transport and the
+ * peer layer's host started, the join reported at once through 0x617060 */
+/* OPEN (round 26b): d=9 when the alias state above it is stale, d=119 as this file stands (pStatus's field_08 written
+ * as `((int *)pStatus)[2]` because declaring it flips 0x617060): the stores' order and a1/a2 for the constant 2. */
+int func_006181B8(DmeHostPeerParams *pParams, DmeConnectStatus *pStatus)
+{
+    struct {
+        int nWorld;
+        int nState;
+        int nFlag;
+        int nResult;
+        int nUser;
+    } report;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    int result = 0;
+    int r;
+
+    if (pStatus == 0)
+        return DME_ERR_ARGUMENT;
+    pStatus->nResult = 29;
+    pStatus->field_00 = 1;
+    r = func_0061D3C8();
+    if (r != DME_OK)
+        return r;
+    if (pParams == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    if (pParams->nVersion != 1) {
+        pStatus->nResult = 38;
+        return 38;
+    }
+    if (pParams->nMaxClients == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    r = func_0061C638(0, &pWorld);
+    pStatus->nResult = r;
+    if (r != DME_OK || pWorld == 0)
+        return r;
+    r = func_0061C7A8(0, 0, &pClient);
+    pStatus->nResult = r;
+    if (r != DME_OK || pClient == 0)
+        return r;
+    func_0061C998(0, 256);
+    pWorld->field_43C = 1;
+    pWorld->field_444 = pParams->nMaxClients;
+    pWorld->field_448 = pParams->nValue;
+    data_00651190 = pParams->pfnCallback;
+    data_00651194 = pParams->nUser;
+    ((int *)pStatus)[2] = 0;
+    pWorld->pfnClientCallback = pParams->pfnClient;
+    pWorld->field_42C = pParams->nClientUser;
+    pWorld->field_438 = 2;
+    pWorld->field_430 = pParams->pfnLeave;
+    pWorld->field_434 = pParams->nLeaveUser;
+    pWorld->nMyClient = 256;
+    if (data_006511D4 == 0)
+        result = func_00616C98();
+    if (func_0063A898(data_006511D8, pWorld->field_444) != 0)
+        return 37;
+    if (result == 0 && pParams->key.nFlag == 1)
+        result = func_00643900(0, pParams->nMaxClients, &pParams->key);
+    if (result != 0) {
+        func_00643E48(0);
+        pWorld->field_438 = 3;
+        if (data_00651190 != 0) {
+            memset(&report, 0, sizeof(report));
+            report.nWorld = 0;
+            report.nState = 3;
+            report.nFlag = 1;
+            report.nResult = result;
+            report.nUser = data_00651194;
+            data_00651190(&report);
+        }
+        pStatus->nResult = result;
+    }
+    if (result != 0)
+        return result;
+    if (func_00639FB8(data_006511D8, &pWorld->nMyClient) == 0) {
+        func_00617060(0, pWorld->nMyClient, 1, 1, 0);
+        pStatus->nResult = 0;
+    } else {
+        func_00617060(0, 256, 0, 0, 1);
+        pStatus->nResult = 3;
+    }
+    return pStatus->nResult;
+}
+
+extern int func_00644698(unsigned int nWorld, unsigned int nClient);
+extern int data_00686A44;               /* a new client's greeting's message type */
+extern int data_00686A3C;               /* a stream's packet's message type */
+extern int rt_circ_buf_get_used(void *pCircBuf, unsigned int *pnUsed);
+extern int rt_circ_buf_free(void *pCircBuf, unsigned int nLength);
+extern unsigned char data_0066C8F8[512];
+
+/* SOCOM 1's RemoteClientConnects grown (0x614B18): the client's record filled, its streams, the client callback for a
+ * client-server world; a peer's world answers with this client's address and public key and its state report */
+/* OPEN (round 26b): d=137 here, 97 at its image place, flipped at K>=14 dummy declarations: the target reloads pClient
+ * after each store, here the stale alias set (purge_addressof's half-written MEM) stops that. */
+void func_00614B18(unsigned int nWorld, unsigned int nClient, char *szIp, unsigned short nPort)
+{
+    struct {
+        unsigned char nWorld;
+        unsigned char nMaster;
+        unsigned char abIp[6];
+        char abKey[64];
+    } msg;
+    struct {
+        int nWorld;
+        int nClient;
+        DmeClientInfo *pClient;
+        int nState;
+        int field_10;
+        int nUser;
+    } report;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    int nHost = 256;
+    char *pRecord;
+
+    if (nClient >= DME_MAX_CLIENTS)
+        return;
+    if (nWorld >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != DME_OK)
+        return;
+    if (pWorld == 0)
+        return;
+    if (func_0061C7A8(nWorld, nClient, &pClient) != DME_OK)
+        return;
+    if (pClient == 0)
+        return;
+    if (pClient->bConnected == 1) {
+        if (pWorld->field_44C != 4)
+            func_00613FD0(nWorld, nClient);
+        return;
+    }
+    if (pWorld->field_440 != 0)
+        pWorld->field_440--;
+    strncpy(pClient->szIp, szIp, 16);
+    pClient->nPort = nPort;
+    pClient->bConnected = 1;
+    if (func_0061C720(nWorld, pWorld->nMyClient, &pClient) != DME_OK)
+        return;
+    if (pClient == 0)
+        return;
+    if (pClient->bConnected != 0) {
+        if (func_00644060(nWorld) == 1) {
+            if (func_00644698(nWorld, nClient) != 0)
+                return;
+        }
+        if (pWorld->field_44C == 4) {
+            if (func_0061C720(nWorld, nClient, &pClient) != DME_OK)
+                return;
+            if (pClient == 0)
+                return;
+            pClient->nState = 2;
+            pClient->field_18 = 0;
+            pClient->field_1C = 0;
+            pClient->nValue = 0;
+            memset(&report, 0, sizeof(report));
+            report.nState = pClient->nState;
+            report.nUser = pWorld->field_42C;
+            report.nWorld = nWorld;
+            report.nClient = nClient;
+            report.pClient = pClient;
+            report.field_10 = 0;
+            pWorld->pfnClientCallback(&report, 0, 0);
+            pClient->field_2A = 1;
+        }
+    }
+    if (pWorld->field_438 != 1)
+        return;
+    if (pWorld->field_44C == 4)
+        return;
+    msg.nMaster = func_0061D448(pWorld->nMyClient);
+    if (func_0061C720(nWorld, msg.nMaster, &pClient) != DME_OK)
+        return;
+    if (pClient == 0)
+        return;
+    func_006148E0(msg.abIp, pClient->szIp);
+    msg.nWorld = nWorld;
+    func_0062F818(0, msg.abKey);
+    func_00615DE0(80, nWorld, nClient, data_00686A44, sizeof(msg), &msg);
+    func_00613FD0(nWorld, nClient);
+    func_00615090(&nHost, nWorld);
+    if (nWorld != 0)
+        return;
+    if (pWorld->nMyClient != nHost)
+        return;
+    pRecord = 0;
+    func_0061C510(nClient, (void **)&pRecord);
+    if (pRecord != 0)
+        rt_time_get_time_stamp(pRecord + 408);
+}
+
+typedef struct DmeStreamView {          /* a data stream's slot as the send reads it */
+    unsigned char nState;               /* 0x00: 2 open */
+    unsigned char field_01;
+    unsigned char field_02;
+    unsigned char nType;                /* 0x03 */
+    unsigned char bClosing;             /* 0x04 */
+    unsigned char bToHost;              /* 0x05 */
+    int nTarget;                        /* 0x08 */
+    int nOwner;                         /* 0x0C */
+    char *pBuffer;                      /* 0x10 */
+    char *pEnd;                         /* 0x14 */
+    char *pRead;                        /* 0x18 */
+    int field_1C;                       /* 0x1C */
+    int nRate;                          /* 0x20 */
+    unsigned short field_24;            /* 0x24 */
+    unsigned short nMaxSend;            /* 0x26 */
+    unsigned int tLast;                 /* 0x28 */
+    struct {
+        int x00;
+        int x04;
+        int nLength;                    /* 0x34 */
+        int x0C;
+        char *pData;                    /* 0x3C */
+        int x14;
+    } circ;                             /* 0x2C */
+} DmeStreamView;
+
+/* SOCOM 1's SendClientDataStreams grown (0x61B6E8): each of this client's open streams sends what it holds as far as its
+ * rate allows; one that is closing and empty is freed and its close sent */
+/* OPEN (round 26b): d=112, one word long: the `move v0,s3` copy before the *1000 shifts is missing, and the registers
+ * shift from there. tools/retsweep.py: rt_circ_buf_destroy declared void brings it nearer (difflib 70 to 64), not home.
+ * */
+void func_0061B6E8(void)
+{
+    int nHost = 256;
+    DmeStreamView *pStream = 0;
+    DmeClient *pClient = 0;
+    DmeWorld *pWorld = 0;
+    unsigned int nUsed;
+    int nIndex;
+    int nTarget;
+    unsigned int i;
+
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(data_00651178, &pWorld) != DME_OK)
+        return;
+    if (pWorld == 0)
+        return;
+    if (func_006126E8((void **)&pClient, data_00651178, pWorld->nMyClient) != 0)
+        return;
+    if (pClient == 0)
+        return;
+    if (pClient->nFirstStream >= DME_MAX_STREAMS)
+        return;
+    if (func_00615090(&nHost, data_00651178) != 0)
+        return;
+    if (nHost < 0)
+        return;
+    if (nHost >= DME_MAX_CLIENTS)
+        return;
+    for (i = 0; i < pClient->nStreams; i++) {
+        nIndex = i + pClient->nFirstStream;
+        if (func_00614F58(nIndex, (void **)&pStream) != DME_OK)
+            continue;
+        if (pStream == 0)
+            continue;
+        if (pStream->nState != 2)
+            continue;
+        nTarget = pStream->nTarget;
+        if (data_0067E948[pStream->nType] != 0 && pWorld->nMyClient != nHost && pStream->bToHost != 0)
+            nTarget = nHost;
+        if (&pStream->circ == 0)
+            continue;
+        nUsed = 0;
+        if (rt_circ_buf_get_used(&pStream->circ, &nUsed) != 0)
+            continue;
+        if (nUsed != 0) {
+            DmeStreamView *p = pStream;
+            int nElapsed;
+            unsigned int nSend;
+            unsigned int nMax;
+
+            nMax = p->nMaxSend;
+            if (nMax >= nUsed)
+                nMax = nUsed;
+            nElapsed = CurrentNetTime - p->tLast;
+            nSend = 255;
+            if (nMax < 256)
+                nSend = nMax;
+            nUsed = nSend;
+            if ((double)(nUsed * 1000) < (double)(p->nRate * nElapsed) * 1.02) {
+                if (func_00615DE0(80, data_00651178, nTarget, data_00686A3C,
+                                  func_0061B3E0(data_0066C8F8, nIndex, nSend), data_0066C8F8) != 0)
+                    continue;
+                pStream->tLast = CurrentNetTime;
+                rt_circ_buf_free(&pStream->circ, nUsed);
+                rt_circ_buf_normalize(&pStream->circ, 1);
+                memcpy(pStream->pBuffer, pStream->circ.pData, pStream->circ.nLength);
+            }
+        } else if (pStream->bClosing != 0) {
+            func_00614888((void **)&pStream->pBuffer);
+            rt_circ_buf_destroy(&pStream->circ);
+            pStream->nState = 1;
+            pStream->pBuffer = 0;
+            func_0061B538(nTarget, nIndex);
+        }
+    }
 }
