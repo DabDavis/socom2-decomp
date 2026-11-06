@@ -1072,7 +1072,10 @@ extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, un
 /* func_003B09E0 of a rectangle, through it (inline; new in SOCOM II, not named). OPEN, 35
  * instructions, the same size: scheduling -- the target loads h, y, w, x and keeps more of the
  * products live (t3-t5); the inline call, the fields into locals (both orders) and the two words
- * built first all schedule as the by-value setter does */
+ * built first all schedule as the by-value setter does. Round 36 (build/scratch/wep/v_rect*.py):
+ * the setter's two stores swapped, each OR's operands swapped, the high halves into locals first
+ * (33-37), and any of the fields through an inline with a body of its own (ApplyDecalRender's
+ * argument rule: 35-36) -- the target's load order h, y, w, x is not an argument order */
 extern "C" void func_003B0A70(ZVID_RECT *r)
 {
     func_003B09E0(r->x, r->y, r->w, r->h);
