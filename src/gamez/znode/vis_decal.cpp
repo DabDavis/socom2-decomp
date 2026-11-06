@@ -530,13 +530,21 @@ extern "C" unsigned int data_004B50B8;
  * fused sltiu at); the unpack word built ahead of the STCYCL and its 0x4000 or'd apart; the zero
  * vector four address-taken floats zeroed `f0 = 0; f1 = f2 = f3 = 0;` (the target's store order);
  * the UV pair a four-short array (its 8-byte slot), the clamps `> 0x7FFF` (the li at in place).
- * OPEN, 23 instructions at the target's size: the group block's colouring -- the kind ternary's
- * result (a code-generation temporary) takes a1 where the target's takes t4, the chain word built
- * from the unpack t3 for a1, mat t4 for t3, and the scheduler then orders the block's head
- * differently; `tools/igreplay.py --movers` places the ternary's node anywhere before mat (31.5 to
- * 47.5) or after every node (533.5) for the target's three -- a named `kind` declared before mat
- * (ternary, if/else, != / > / !, short or int) is copy-propagated away, the movn's node unchanged
- * (build/scratch/wep/v_d9*.py) */
+ * BYTE-EXACT since the weapons' round 35 (23 off before), by three shapes:
+ *  - the group's kind an int declared with mat and assigned by an if/else (the movn): two
+ *    definitions keep it a variable numbered before mat -- IRO's expression propagation (doldecomp
+ *    mweppc IroPropagate.c) substitutes `v = expr` into a use only in the same flow node and only
+ *    when v has that one use, and a ternary's result is a front-end temporary the named local is
+ *    copied from, so a `kind = c ? 2 : 1` local vanishes into it whatever its type or place
+ *    (igreplay on the FINAL colouring, record 1 -- record 0 is the first try before the li 1's
+ *    rematerialisation -- puts the node before mat, 31.5-47.5, for mat t3 and the kind t4);
+ *  - the item's strip vertex read straight off the batch, `data_004B5078->m_items[i].m_10[j]`, as
+ *    the count walk reads it: through `item->m_10[j]` the addu takes j*4 first;
+ *  - the strip count's field `n * 0x10000`, not `n << 16`: MW's linearizer (IroLinearForm.c)
+ *    evaluates a commutative operator's right operand first when it costs at least the left, and
+ *    the backend then emits it as the first source -- a shift costs 2 more than its operand (3
+ *    here) against the chain's 1, so `| (n << 16)` gives `or a0,t1,a0` where the target has
+ *    `or a0,a0,t1`; the multiply costs 1, the chain is evaluated first (the same sll) */
 extern "C" void func_003BD9E0(CMeshDecal *d, float life, unsigned int n, CTexHandle *tex, CMesh *mesh,
                               std::vector<CMatrix *> *palette)
 {
@@ -580,6 +588,7 @@ extern "C" void func_003BD9E0(CMeshDecal *d, float life, unsigned int n, CTexHan
     d->m_34 = (unsigned int *)((char *)mem + qw * 16);
     data_004B50B8 = 0;
 
+    int kind;
     unsigned int mat;
     unsigned int start;
     unsigned int *tag = d->m_34;
@@ -609,8 +618,12 @@ extern "C" void func_003BD9E0(CMeshDecal *d, float life, unsigned int n, CTexHan
             tag[7] = k;
             MD_PUT(0x01000101);
             MD_PUT(((k * 2 + 1) << 16) | 0x6D008004);
+            if (j == 0)
+                kind = 2;
+            else
+                kind = 1;
             hdr = (short *)&((unsigned int *)d->m_verts)[data_004B50B8];
-            hdr[0] = j == 0 ? 2 : 1;
+            hdr[0] = kind;
             hdr[1] = n;
             hdr[2] = mat;
             hdr[3] = k;
@@ -618,7 +631,7 @@ extern "C" void func_003BD9E0(CMeshDecal *d, float life, unsigned int n, CTexHan
             tag += 8;
             for (unsigned int i = 0; i < data_004B5078->m_count; i++) {
                 CDecalBatchItem *item = &data_004B5078->m_items[i];
-                unsigned int *src = (unsigned int *)item->m_10[j];
+                unsigned int *src = (unsigned int *)data_004B5078->m_items[i].m_10[j];
 
                 if (src) {
                     short e = item->m_e * 2;
@@ -650,7 +663,7 @@ extern "C" void func_003BD9E0(CMeshDecal *d, float life, unsigned int n, CTexHan
     tag[2] = j * 2;
     tag[3] = 0;
 
-    unsigned int unpack = (data_004B5078->m_count * 3 + 4) | 0x8000 | (n << 16) | 0x6E000000;
+    unsigned int unpack = (data_004B5078->m_count * 3 + 4) | 0x8000 | (n * 0x10000) | 0x6E000000;
 
     MD_PUT(0x01000102);
     MD_PUT(unpack | 0x4000);
