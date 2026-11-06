@@ -67,10 +67,14 @@ class CHUD;
 class CEntity;
 class CZBodyPart;
 
-/* a seal's controller: its mode at 0x221 (5 hands the zoom to the camera) */
+/* a seal's controller: its throttle (zentity.h's CEntityCtrl: SOCOM 1's three axes at 0x8, SOCOM
+ * II's four -- the death camera turns by the third and fourth) and its mode at 0x221 (5 hands the
+ * zoom to the camera) */
 class CEntityCtrl {
 public:
-    unsigned char _0[0x221];
+    unsigned char _0[8];
+    float m_throttle[4];   // 0x8
+    unsigned char _18[0x221 - 0x18];
     unsigned char m_221;   // 0x221
 };
 
@@ -82,7 +86,8 @@ enum SEAL_PEEK {
     PEEK_NONE = 2
 };
 
-/* a SEAL's kit (zkit's CZKit: only what the zoom calls, over its 0xA80 bytes) */
+/* a SEAL's kit (zkit's CZKit: only what the zoom calls; zseal.h's member is one word, the SEAL's
+ * own fields follow it) */
 class CZKit {
 public:
     void SetCurReticule(bool on);   /* 0x5BE570 */
@@ -90,7 +95,7 @@ public:
     /* the lens effects on or off toward a colour (SOCOM 1's; 0x5C1800, the kit's round 38) */
     void Apply_LensEffects(bool on, CPnt3D *color);
 
-    unsigned char _0[0x1060 - 0x5e0];
+    unsigned char _0[4];
 };
 
 /* a SEAL's body (zbody.h's CBody: only the part's place in space, OVL1 0x2869D0) */
@@ -117,10 +122,18 @@ public:
     /* the reticule's hit taken along the camera's matrix (OVL2 0x5AA6E0, SOCOM 1's CheckDIShoot:
      * the SEALs' round 48) */
     void CheckDIShoot(CPnt3D *pos, CMatrix *cTw);
+    /* whether a player drives it (zseal.h's inline: the controller tested, IsPlayer called) */
+    bool IsPlayer();
 
-    unsigned char _4[0xc0 - 4];
+    unsigned char _4[0x1c - 4];
+    CPnt3D m_posW;   // 0x1c (CEntity's: the node's position)
+    unsigned char _28[0xc0 - 0x28];
     CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x170 - 0xc4];
+    unsigned char _c4[0xe0 - 0xc4];
+    unsigned int _e0 : 12;   // 0xe0: CEntity's flag word
+    unsigned int m_isAlive : 1;
+    unsigned int _e0_13 : 19;
+    unsigned char _e4[0x170 - 0xe4];
     CBody m_body;   // 0x170 (SOCOM 1: 0x110; the stand-in's first word only)
     short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE: the body's, at its +4)
     unsigned char _176[0x2e8 - 0x176];
@@ -129,6 +142,13 @@ public:
     SEAL_PEEK m_desiredPeek;   // 0x375
     unsigned char _376[0x5e0 - 0x376];
     CZKit m_kit;   // 0x5e0 (SOCOM 1: 0x520)
+    unsigned char _5e4[0xf7a - 0x5e4];
+    /* the SEAL's life as the network reports it, 1 up (zseal.h's m_netlife, a NET_LIFE byte) */
+    unsigned char m_netlife;   // 0xf7a
+    unsigned char _f7b[0x105c - 0xf7b];
+    unsigned int _105c : 23;   // 0x105c: zseal.h's flag word (SOCOM 1's at 0xf58)
+    unsigned int m_inwater : 1;
+    unsigned int _105c_24 : 8;
     unsigned char _b0 : 5;   // 0x1060
     unsigned char m_zooming : 1;
     unsigned char _b6 : 2;
@@ -217,6 +237,11 @@ public:
     float m_130;   // 0x130
 };
 
+inline bool CZSealBody::IsPlayer()
+{
+    return m_control ? ((CAppCameraCtrl *)m_control)->IsPlayer() : false;
+}
+
 class CAppCamera {
 public:
     CAppCamera(zdb::CCamera *cam);
@@ -281,12 +306,16 @@ public:
     CPnt3D m_cameraTie;   // 0x10
     CPnt3D m_camGoalPos;   // 0x1c
     float m_goal_t_len;   // 0x28
-    unsigned char _2c[0x44 - 0x2c];
+    /* SOCOM II's: first person's eased camera point and aim point, the ease on (m_45), run over a
+     * second (m_46: else six times the frame), and how far it has gone (the names ours) */
+    CPnt3D m_easePos;   // 0x2c
+    CPnt3D m_easeAim;   // 0x38
     /* SOCOM II's, set by the constructor (the names ours) */
     unsigned char m_44;   // 0x44 (1)
     unsigned char m_45;   // 0x45 (0)
     unsigned char m_46;   // 0x46 (1)
-    unsigned char _47[0x4c - 0x47];
+    unsigned char _47;
+    float m_easeT;   // 0x48
     float m_short_tether_timer;   // 0x4c (SOCOM 1: 0x2c; -1)
     CShakeParams m_shake[3];   // 0x50: SMALL, MEDIUM, LARGE (SOCOM II's)
     unsigned int m_padid;   // 0xb0 (SOCOM 1: 0x30): the pad the views are cycled from

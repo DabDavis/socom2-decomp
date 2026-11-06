@@ -71,13 +71,6 @@ public:
 
     float m_matrix[4][4];
 } __attribute__((aligned(16)));
-/* a box (zmath.h's CBBox, 0x20 bytes: nothing built for a local) */
-class CBBox {
-public:
-    float m_min[4];   // 0x0
-    float m_max[4];   // 0x10
-};
-
 /* a point (zmath.h's CPnt3D has no written copy either: a copy is the compiler's -- over the C
  * struct, as zmath.h's: a temporary copied ld/sd + lwc1/swc1, Destruction_Instance::Tick's spin) */
 struct PNT3D {
@@ -97,6 +90,13 @@ public:
     /* zmath's (out of line in both builds) and its two inline operators */
     void Scale(float s, CPnt3D *out) const;
     void Add(const CPnt3D *b, CPnt3D *out) const;
+    void Sub(const CPnt3D *b, CPnt3D *out) const;
+    CPnt3D operator-(const CPnt3D &b) const
+    {
+        CPnt3D r;
+        Sub(&b, &r);
+        return r;
+    }
     CPnt3D operator*(float s) const
     {
         CPnt3D r;
@@ -109,6 +109,13 @@ public:
         return *this;
     }
 };   // 0xc bytes
+
+/* a box (zmath.h's CBBox: two points, 0x18 bytes; nothing built for a local) */
+class CBBox {
+public:
+    CPnt3D m_min;   // 0x0
+    CPnt3D m_max;   // 0xc
+};
 
 namespace zdb {
 class CTexPalette;
@@ -145,11 +152,52 @@ public:
     CTexPalList m_pal_list;   // 0xc
 };   // 0x18 bytes
 class CNode;
+class IntersectStruct;
+}
+class CZProjectile;
+namespace zdb {
+/* a node's extension (znode.h's class: its three virtuals inline, the vtable 0x406000) */
+class CNodeEx {
+public:
+    virtual int OnWeaponHit(CNode *node, IntersectStruct *hit, CZProjectile *projectile) { return -1; }
+    virtual int Slot0C() { return 0; }
+    virtual bool Slot10(float amount) { return false; }
+};   // 4 bytes
 /* a vector of nodes (znode.h's class: the particles' node pool is one, SOCOM 1's
  * __sinit_zparticle.cpp registering ~CNodeVector for it, SOCOM II's 0x1EA340 four this-tests deep) */
 class CNodeVector : public std::vector<CNode *> {
 };
-class CDI;
+/* a collision piece (znode.h's tag_DI_HEAD and CDI: the flags word at 8 through its inline
+ * setters, the vtable pointer at 0xc -- Allocate its second slot) and a polygon (node_world.h's
+ * CDIPoly, 0x14 bytes, its constructor 0x2DDBF0); declared only */
+class CDI {
+public:
+    void SetDiType(int n) { m_ditype = n; }
+    void SetMaterial(int n) { m_material = n; }
+    void SetCameraType(int n) { m_cameratype = n; }
+
+    unsigned int _0;   // 0x0
+    unsigned int m_refcount;   // 0x4
+    unsigned int m_ditype : 2;   // 0x8
+    unsigned int m_ptcount : 8;
+    unsigned int m_material : 8;
+    unsigned int m_cameratype : 2;
+    unsigned int _8_20 : 12;
+
+    virtual ~CDI();
+    virtual void Allocate(int n);
+
+    /* the normal of the first three points (znode.h's) */
+    void SetEdgeVecsAndNorm();
+
+    PNT4D *m_pnts;   // 0x10
+};
+class CDIPoly : public CDI {
+public:
+    CDIPoly();
+};   // 0x14 bytes
+/* a box's eight corners (node_world.h's, int_main.cpp's) */
+void GetBBoxCorners(CPnt3D *out, const CBBox *b);
 /* a node's collision pieces (znode.h's class: PullVisuals gathers them; its constructor sets the
  * two search flags, the destruction manager's local inlines it) */
 class CDIVector : public std::vector<CDI *> {
@@ -167,12 +215,15 @@ public:
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
-    unsigned char _0[0x58];   // 0x0: tag_NODE_PARAMS
+    unsigned char _0[0x40];   // 0x0: tag_NODE_PARAMS
+    CBBox m_bbox;   // 0x40 (znode.h's)
     unsigned short m_type;   // 0x58: 2 for an instance of a model (znode.h's)
     unsigned char _5a[2];   // 0x5a
     unsigned int _5c : 7;   // 0x5c
     unsigned int m_transparent : 1;   // 0x5c: bit 7
-    unsigned int _5c_8 : 24;
+    unsigned int _5c_8 : 4;
+    unsigned int m_hasDI : 1;   // 0x5c: bit 12 (znode.h's)
+    unsigned int _5c_13 : 19;
 
     /* SOCOM II's vtable order (znode.h's), the pointer at 0x60; declared only */
     virtual ~CNode();
@@ -192,9 +243,16 @@ public:
      * with no bool conversion (sltu) between; the call is virtual, so no symbol depends on it */
     virtual bool SetActive(unsigned char on);   // +0x38
 
+    /* znode.h's (node_main.cpp's: the constructor 0x316E30, AddDI, SetName, SetNodeEx) */
+    CNode();
+    bool AddDI(CDI *di);
+    void SetName(const char *name);
+    void SetNodeEx(CNodeEx *ex, bool b);
     static CNode *Create(const char *name);
     static void Delete(CNode *node);
     void SetPosition(float x, float y, float z);
+    /* znode.h's: a point's (inline) */
+    void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
     /* znode.h's: the rotation read and set, the matrix set (node_main.cpp's) */
     void GetRotation(CPnt3D *out) const;
     void SetRotation(const CPnt3D *rot);
@@ -214,7 +272,8 @@ public:
     float m_Opacity;   // 0x9c
     unsigned char _a0[0xb4 - 0xa0];
     CNode *m_model;   // 0xb4: an instance's model (znode.h's CModel *)
-};
+    unsigned char _b8[0xc0 - 0xb8];
+};   // 0xc0 bytes
 
 /* a view test's result (SOCOM 1's enum, zcamera.h's; one byte under -enum min) */
 enum tag_ZVIS_FOV {
@@ -239,22 +298,27 @@ public:
     static CTexHandle *GetTexHandle(const char *name);
     static CModel *GetModel(const char *name);
 
-    unsigned char _b8[0xc0 - 0xb8];
     PNT4D m_Wind;   // 0xc0: the wind (znode.h's CWind's first member, the world's m_Wind)
     unsigned char _d0[0x128 - 0xd0];
     CCamera *m_camera;   // 0x128
 };
 }
 
-/* a particle effect's collision node (no destructor: deleted with operator delete) */
-class CParticleEx {
+namespace Particle {
+class Source;
+}
+
+/* a particle effect's collision node's extension (SOCOM 1's DWARF: CParticleEx : CNodeEx, its
+ * emitter at 4; its vtable 0x406A20 CNodeEx's inline slots; no destructor of its own: deleted
+ * with operator delete) */
+class CParticleEx : public zdb::CNodeEx {
 public:
-    int _0;
+    CParticleEx(Particle::Source *emitter) : m_emitter(emitter) {}
+
+    Particle::Source *m_emitter;   // 0x4
 };
 
 namespace Particle {
-
-class Source;
 
 /* a free list threaded through its objects' second word (SOCOM 1's instance pool, SOCOM II's two;
  * the class is ours): Close and the purge pop it through an inline whose emptiness test is an
@@ -553,7 +617,8 @@ public:
     unsigned char m_goodPos;   // 0x1 (SOCOM 1's)
     unsigned char m_frozen;   // 0x2 (SOCOM 1's: an instance of a frozen source is not ticked)
     unsigned char m_outOfRange;   // 0x3 (SOCOM 1's)
-    unsigned char _4[0x19 - 4];   // 0x4: SOCOM 1's m_oldPosW .. m_landmark, and SOCOM II's word
+    CPnt3D m_oldPosW;   // 0x4 (SOCOM 1's)
+    unsigned char _10[0x19 - 0x10];   // 0x10: SOCOM 1's m_applyGlobalLighting .. m_landmark, and SOCOM II's word
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
     unsigned char _1a[0x2c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_streakFade
     float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)
@@ -567,7 +632,7 @@ public:
     CPnt3D m_bboxMin;   // 0xec: SOCOM 1's m_bbox (a CBBox of two points there)
     CPnt3D m_bboxMax;   // 0xf8
     zdb::CNode *m_diNode;   // 0x104
-    unsigned char _108[0x18];   // 0x108: SOCOM 1's m_diPolies
+    zdb::CDI *m_diPolies[6];   // 0x108 (SOCOM 1's: the box's six faces)
     unsigned char m_hasbbox;   // 0x120
     float m_filled_volume;   // 0x124
     CParticleEx *m_particleEx;   // 0x128

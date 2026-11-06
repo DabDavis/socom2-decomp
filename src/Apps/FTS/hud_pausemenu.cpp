@@ -4,7 +4,9 @@
  * last the destructor and the constructor. SOCOM II's CZPauseTest is 0x13C0 bytes (SOCOM 1's
  * 0x380), laid out from its destructor. Written: On, Off, Draw, Clear, ReInit, the constructor, the
  * lines' test and the line's constructor and destructor (round 37); ClosePauseMenu (round 51: its old
- * menu state SOCOM 1's MENU_STATE m_oldmenustate -- a signed char field cast to the enum loads with lbu). Defined in reverse of their
+ * menu state SOCOM 1's MENU_STATE m_oldmenustate -- a signed char field cast to the enum loads with lbu); TickOffState (round 59: the
+ * unit's first function, 0x2011F0, as SOCOM 1's; HudTick 0x201690, Init 0x202520, HandleSelectionInput
+ * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten). Defined in reverse of their
  * image order (-inline deferred): the unit ends with the lines' test 0x205A70, the line's
  * constructor 0x205970 (generated before the menu's constructor, which takes its address) and the
  * menu's constructor 0x205800. */
@@ -68,6 +70,14 @@ public:
     void Clear();
     void ClosePauseMenu();
     bool IsSelectable(signed char line);
+    /* the menu closed: the start button opens it (SOCOM 1's TickOffState, 0x2011F0), the faded
+     * parts fade out; and the menu's tick, set-up, pad and opening (SOCOM 1's HudTick, Init,
+     * HandleSelectionInput and OpenPauseMenu: 0x201690, 0x202520, 0x2041E0, 0x204A40, unwritten) */
+    void TickOffState(const CPad &pad, float dT);
+    void HudTick(CPad *pad, float dT);
+    void Init();
+    void HandleSelectionInput(const CPad &pad);
+    void OpenPauseMenu();
     /* a line by its index (an int: the test re-extends the char line after the valve lookup, where
      * m_items[line] keeps the extension across the call in a saved register) */
     CPauseItem &Item(int i) { return m_items[i]; }
@@ -129,8 +139,17 @@ extern unsigned char data_00409080;
 /* a second byte the menu keeps (OVL1 bss 0x409070; no row named yet) */
 extern unsigned char data_00409070;
 
-/* a word the menu keeps (OVL1 bss 0x409088; no row named yet) */
-extern int data_00409088;
+/* a word the menu keeps (OVL1 bss 0x409088; no row named yet): the seconds since the mission's
+ * set-up (ReInit zeroes it, TickOffState counts it up to s_pauseDelay) */
+extern float data_00409088;
+
+/* the HUD (hud_main.cpp's, theHUD 0x408E58): turned back on once the menu has closed */
+class CHUD {
+public:
+    void On();
+};
+
+extern CHUD *theHUD;
 
 /* the network game (fts_net_game's theNetwork, 0x45A0C0): whether it is one */
 class CZNetwork {
@@ -166,8 +185,16 @@ public:
     virtual void AllowCommand();
     virtual bool IsPlayer() const;   /* +0x2c */
 
+    /* the menu state (SOCOM 1's GetMenuState, out of line there: SOCOM II reads it inline) */
+    MENU_STATE GetMenuState() const { return m_menustate; }
+
     unsigned char _4[0x114 - 0x4];
     unsigned int m_port;   // 0x114: its pad
+    unsigned char _118[0x170 - 0x118];
+    unsigned int m_flags0 : 11;   // 0x170
+    unsigned int m_input_enabled : 1;   // bit 11 (zseal.h's)
+    unsigned char _172[0x221 - 0x172];
+    MENU_STATE m_menustate;   // 0x221
 };
 
 class CZKit {
@@ -226,6 +253,10 @@ extern CAppCamera *appCamera;
 
 /* the camera's zoom the menu put aside (OVL1 .data 0x3DC410, 1.0; the name ours) */
 static float s_pauseCamZoom = 1.0f;
+
+/* how long the menu waits after a mission's set-up before the start button opens it (OVL1 .data
+ * 0x3DC420, 2.0 seconds; TickOffState's; the name ours) */
+static float s_pauseDelay = 2.0f;
 
 /* a pad by its index, none past the last (SOCOM 1's inline over CInput's table) */
 static inline CPad *GetPad(unsigned int n)
@@ -481,4 +512,90 @@ void CZPauseTest::On()
 {
     m_open = 1;
     C2D::On();
+}
+
+/* the menu closed (SOCOM 1's TickOffState, its unit's first function as here): nothing until two
+ * seconds after the mission's set-up; then the start button -- or, off line, the pad's second state
+ * (m_dc) going down -- opens the menu when the player's input is on, the 0x409070 byte is clear and
+ * the controller is not in menu states 5 or 3; otherwise, while 0x409080 holds, the background,
+ * the panels, the bitmaps and the strings fade out at 300 a second (the byte cleared once all four
+ * groups reach zero). The HUD comes back on after the menu's own flag (m_socom2_bc1). Each fade
+ * read, then reduced in its own statement (`t = x.GetTrans() - 300.0f * dT` computes the product
+ * ahead of the first call: 0x394); the menu test's two arms written out, its first a bool local */
+void CZPauseTest::TickOffState(const CPad &pad, float dT)
+{
+    if (data_00409088 < s_pauseDelay) {
+        data_00409088 += dT;
+        return;
+    }
+
+    CZSealBody *player = ftsGetPlayer();
+    CSealCtrl *ctrl = player ? player->m_ctrl : 0;
+    bool input = ctrl ? (bool)ctrl->m_input_enabled != false : false;
+    bool start = pad.m_state[0] == 1;
+    bool pressed = true;
+
+    if (!theNetwork.m_bNetwork) {
+        pressed = pad.m_dc == 1;
+        start = start || !pressed;
+    }
+
+    bool open = start && input && !data_00409070;
+    MENU_STATE state = ctrl->GetMenuState();
+
+    if ((open && state != 5 && state != 3) || (!pressed && state != 5 && state != 3)) {
+        OpenPauseMenu();
+    } else if (data_00409080) {
+        bool bgDone = false;
+        bool bitmapDone = false;
+        bool textDone = false;
+        bool panelDone = false;
+        float t;
+
+        t = m_background.GetTrans();
+        t -= 300.0f * dT;
+        if (t < 0.0f) {
+            t = 0.0f;
+            bgDone = true;
+        }
+        m_background.SetTrans(0, t);
+        m_background.SetTrans(3, t);
+
+        t = m_bitmap2a0.GetTrans();
+        t -= 300.0f * dT;
+        if (t < 0.0f) {
+            t = 0.0f;
+            bitmapDone = true;
+        }
+        m_bitmap2a0.SetTrans(t);
+        m_poly6b0.SetTrans(t);
+        m_bitmap3a0.SetTrans(t);
+
+        t = m_panel.GetTrans();
+        t -= 300.0f * dT;
+        if (t < 0.0f) {
+            t = 0.0f;
+            panelDone = true;
+        }
+        m_panel.SetTrans(t);
+        m_bitmap320.SetTrans(t);
+
+        t = m_text420.GetTrans();
+        t -= 300.0f * dT;
+        if (t < 0.0f) {
+            t = 0.0f;
+            textDone = true;
+        }
+        m_text420.SetTrans(t);
+        m_texta90.SetTrans(t);
+        m_textb28.SetTrans(t);
+        for (unsigned int i = 0; i < 12; i++)
+            m_items[(signed char)i].m_text.SetTrans(t);
+        if (bgDone && bitmapDone && textDone && panelDone)
+            data_00409080 = 0;
+    }
+    if (m_socom2_bc1) {
+        m_socom2_bc1 = 0;
+        theHUD->On();
+    }
 }

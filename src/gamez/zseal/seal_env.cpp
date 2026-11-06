@@ -1032,7 +1032,6 @@ extern short data_003DF0E0;
 extern short data_003DF0E8;
 extern short data_003DF108;
 extern short data_003DF110;
-extern short data_003DEC68;
 extern short data_003DF0F0;
 extern short data_003DF0F8;
 }
@@ -1428,7 +1427,7 @@ bool CZSealBody::IsChangingWeapons(bool kit)
         return true;
     ACTIVE_ANIM *a = m_overlay.m_anim;
 
-    if (a && a->m_anim && (a->m_id == data_003DEC68 || a->m_id == data_003DF0F0 || a->m_id == data_003DF0F8))
+    if (a && a->m_anim && (a->m_id == AnimTypes::MovingRifle2Pistol || a->m_id == data_003DF0F0 || a->m_id == data_003DF0F8))
         return true;
     return false;
 }
@@ -3087,7 +3086,7 @@ extern "C" void func_005A5DA0(CZSealBody *seal)
         if (ov.m_anim && ov.m_anim->m_anim) {
             short id = ov.m_anim->m_id;
 
-            if (id == data_003DEC68) {
+            if (id == AnimTypes::MovingRifle2Pistol) {
                 CallOnce(ov.m_callback, seal);
                 if (ov.m_state == -1)
                     func_005A60D0(seal, 1, 0);
