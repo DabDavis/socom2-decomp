@@ -1043,8 +1043,19 @@ struct CTMap : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
+/* a parameter's value as the block holds it: a number, a byte name's code, or a region's cell packed
+ * into a word (ours) */
+union TASK_VALUE {
+    int i;
+    float f;
+};
+
+/* ai::PARAM (SOCOM 1's CTParam): a parameter of the SEAL's AI tested (the layout read off Parse; the
+ * names ours) */
 struct CTParam : TASK_HDR {
-    unsigned char _8[0x10 - 0x8];
+    unsigned short m_which;   // 0x8: an AI_PARAM
+    unsigned short m_op;   // 0xa: an ai::TEST_OP (CValve::ParseOperator's code)
+    TASK_VALUE m_value;   // 0xc
     TASK_ENT m_ent;   // 0x10: an entity whose SEAL is tested in the task's SEAL's place (the tick's)
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
@@ -3886,6 +3897,121 @@ void CTSound::Begin(_zanim_cmd_hdr *hdr)
     cmd->SetStarted(true);
     cmd->SetBit7(false);
     cmd->m_inst = 0;
+}
+
+/* a parameter by its name, none for none or an unknown one (inline: CTParam::Parse walks the names
+ * twice; SOCOM 1's get_param(const char *), out of line there) */
+static inline AI_PARAM TaskParamByName(const char *name)
+{
+    AI_PARAM r = PARAM_NONE;
+
+    if (name)
+        for (int i = 0; i < 23; i++)
+            if (!strcasecmp(name, get_param_name((AI_PARAM)i))) {
+                r = (AI_PARAM)i;
+                break;
+            }
+    return r;
+}
+
+/* a cell packed into a word: the map in the top six bits, then x and y (ours) */
+static inline int TaskLocWord(const CAiMapLoc &loc)
+{
+    return loc.y | (loc.m_mapid << 26 | loc.x << 13);
+}
+
+/* a role's name to its code (OVL2 0x5756B0, seal_ai.cpp's) */
+extern "C" unsigned char func_005756B0(const char *name);
+
+/* a parameter test read: the parameter's name, the operator and the value -- a role or a stance by
+ * name, a sleep region's cell (none's for a value not a name), a whole number or a real by the
+ * parameter -- and for a value read the block made, with the entity named fourth (or by "entity"
+ * past four) and the "ai" argument (OVL2 0x5D5140; SOCOM 1's). The block null declared first (its
+ * zero in the count's first delay slot), `ok` defined after the first walk (it shares s0 with the
+ * walk's counter and the entity), the operator an int narrowed at its store, `n > 4` the fused test,
+ * and the entity through a reference to it (its address held in s1 across AddName -- written
+ * `cmd->m_ent.` MW folds the offsets, 2 instructions short) */
+_zanim_cmd_hdr *CTParam::Parse(_zrdr *rdr)
+{
+    CTParam *cmd = 0;
+    int n = rdr->Count();
+
+    if (n >= 3) {
+        const char *name = rdr->Item(0)->String();
+        int op = CValve::ParseOperator(rdr->Item(1)->String());
+        TASK_VALUE value;
+        AI_PARAM p = TaskParamByName(name);
+        bool ok = false;
+
+        switch (p) {
+        case PARAM_ROLE:
+            if (zrdr_isitemtype(rdr, 2, 3)) {
+                value.i = func_005756B0(rdr->Item(2)->String());
+                ok = true;
+            }
+            break;
+        case PARAM_STANCE:
+            if (zrdr_isitemtype(rdr, 2, 3)) {
+                value.i = sealai::get_stance(rdr->Item(2)->String());
+                ok = true;
+            }
+            break;
+        case PARAM_SLEEP_REGION:
+            if (zrdr_isitemtype(rdr, 2, 3)) {
+                CAiMapLoc loc;
+
+                if (AiMaps.GetRegion(rdr->Item(2)->String(), loc)) {
+                    ok = true;
+                    value.i = TaskLocWord(loc);
+                }
+            } else {
+                ok = true;
+                value.i = TaskLocWord(CAiMapLoc::invalid);
+            }
+            break;
+        case PARAM_SLEEP:
+        case PARAM_AWARE:
+        case PARAM_INSIDE:
+        case PARAM_OUTSIDE:
+        case PARAM_WEAPON_UP:
+        case PARAM_DOCORPSE:
+        case PARAM_DEEPSLEEPER:
+        case PARAM_NOFADE:
+        case PARAM_AWARE_COUNT:
+        case PARAM_CANCHAT:
+        case PARAM_REDSMOKE:
+            value.i = rdr->Item(2)->Int();
+            ok = true;
+            break;
+        default:
+            ok = true;
+            value.f = rdr->Item(2)->Real();
+            break;
+        }
+        if (ok) {
+            const char *ent = 0;
+
+            if (n == 4)
+                ent = rdr->Item(3)->String();
+            else if (n > 4)
+                ent = zrdr_findstring(rdr, "entity");
+            AI_PARAM which = TaskParamByName(name);
+
+            cmd = NewTask<CTParam>();
+            TASK_ENT &e = cmd->m_ent;
+
+            cmd->m_which = which;
+            cmd->m_op = (ai::TEST_OP)op;
+            cmd->m_value = value;
+            e.m_name = 0;
+            e.m_id = CEntity::invalidId;
+            e.m_type = 0;
+            e.SetName(ent);
+            cmd->m_param = 0;
+            zrdr_finduint(rdr, "ai", (unsigned int *)&cmd->m_param, 1);
+        }
+    }
+    return &cmd->hdr;
 }
 
 /* a state push read: the state by name, and for the follow, the vehicle, the action and the rush the
