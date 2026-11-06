@@ -2065,6 +2065,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 35** (no new row, 565 of 577 in the lane's units; comments only, measurements):
+  - a conditional branch's delay slot is filled from the jumped-to block only when that block's first instruction writes
+    a register the not-taken arm overwrites, otherwise from the not-taken arm (an inference from GetNextEvent 0x50EA50,
+    true of both builds: the target's bit-test block opens `andi a1` and its slot takes the false arm's `move v0,zero`,
+    ours opens `srl v0` and the slot takes it -- ten spellings of the bit test give the same block, and `#pragma
+    scheduling off` changes nothing mwcps2 emits);
+  - the pod vector's resize (0x53AA50, 0x18B050, 0x28B0E0, the same 0x6C bytes) is byte-exact from include/vector's
+    `resize(n, c)` in a unit that does not generate the range erase first; once erase is generated first MW inlines it
+    into resize (0x94), whatever the header's declaration or definition order -- so a dead-stripped caller in
+    ai_maplayer.cpp (the device of src/ABSENT.txt) does not emit 0x53AA50 (build/scratch/aicore-r35/ai/podres*.cpp);
+  - in mweppc's optimiser (the PowerPC source, doldecomp/mweppc) pass 0 hoists loop invariants before common
+    subexpressions, and each use takes the first available identical expression in flowgraph order -- read from the
+    source, not proven on mwcps2 (ValidateRoutes 0x52F4A0's hoisted x with a load of its own);
+  - mwcps2 3.0 rejects the explicit instantiation of one member of a class template ("illegal explicit template
+    specialization").
 - **Tells from the game states, round 48** (CLoadState::Tick 0x1F5E70 and CMenuState::RunEventAnim 0x1F3BF0 -- both
   unwritten before -- byte-exact, UpdateLocalSeal 0x2BD640 byte-exact, C2D::Tick's and C2D::SetTrans's inline copies
   emitted and byte-exact; C2DMessage_Q::Tick 0x2B5DB0 written, OPEN at the size, 38; 0x2B7A90 named ftsNetworkSealInit__Fv):
