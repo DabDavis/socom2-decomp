@@ -220,7 +220,7 @@ struct LANGVT {
     unsigned int (*GetNbrWarpFactors)(LANGVT *l);     /* +76, slot 19 */
     int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
     int (*GetNbrSpeechUnitClass)(LANGVT *l);          /* +84, slot 21 */
-    void *s22;
+    int (*GetNbrTones)(LANGVT *l);                    /* +88, slot 22 */
     int (*GetUserWordSpeechUnitClass)(LANGVT *l);     /* +92, slot 23 */
     void *s24;
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
@@ -240,7 +240,9 @@ struct LANGVT {
     void *(*GetpTransWord)(LANGVT *l);                /* +172, slot 43 */
     void *s44[2];
     void *(*GetpPhenUserWordTraining)(LANGVT *l);     /* +184, slot 46 */
-    void *s47[3];
+    unsigned short *(*GetpDimensionsOfToneConversionMatrix)(LANGVT *l); /* +188, slot 47 */
+    unsigned short *(*GetpOffsetForFinals)(LANGVT *l); /* +192, slot 48 */
+    unsigned short *(*GetpToneConversionMatrix)(LANGVT *l); /* +196, slot 49 */
     void *(*GetpExtraEventContext)(LANGVT *l);        /* +200, slot 50 */
     void *s51;
     int (*CheckBitField)(LANGVT *l, int mask);        /* +208, slot 52 */

@@ -9,17 +9,17 @@
  * -fno-strict-aliasing -funroll-loops (README "The GCC front"). The file's name is ours. Written:
  * SplitUp_Finals (round 32c, OPEN), Swap_Finals (round 39c, OPEN), Tone_Of_Final and the two
  * counting walks after it, FillOut_Syntax_Statedict_And_Wordprops_ForChinese (round 40c); the rest
- * of the object is not (FreeSecondPassContext_ForChinese stands as a matched draft). The trees'
- * records are named by use.
+ * of the object is not: Build_Tree_ForChinese and Translate_Prons_Into_Items_And_Tones. Round 41c:
+ * FreeSecondPassContext_ForChinese, CreateSecondPassContext_ForChinese. The trees' records are named by use.
  *
- * Tone_Of_Final is inlined into Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree (its
- * `unsigned char` result zero-extended once at the join, `andi 0xff`, as SOCOM 1's is) while its
- * own copy stays at its place: a GNU `extern __inline__` body above, the real function below
- * (tos.c's pattern). Nothing calls the copy in either build. */
+ * Tone_Of_Final and the two counting walks are inline functions defined above the builder: both inline into it (the recursion's
+ * inner call stays a call) and GCC writes their deferred copies at the end of the object, after the builder -- the image's
+ * order, which no other shape gives (their rows closed with it: round 41c). */
 
 #include "casr.h"
 
 extern void *heap_Alloc(void *heap, unsigned int size);
+extern void heap_Free(void *heap, void *p);
 extern void *memset(void *dst, int c, unsigned int n);
 
 /* the second pass's context (ctxinfo.c's CTXINFO) */
@@ -65,19 +65,23 @@ typedef struct DICTTREE {
 /* the final-swapped translated tree: the same items and links at +12 and +16, the split tree's at
  * +20 and +24, the tones' count at +48 */
 typedef struct FSTREE {
-    char pad0[12];
+    CASR *c;                            /* +0 */
+    struct TREEITEM *tree;              /* +4: the word tree (Build_Tree_ForChinese) */
+    unsigned int *treelinks;            /* +8 */
     DICTITEM *items;                    /* +12 */
     DICTLINK *links;                    /* +16 */
     DICTITEM *newitems;                 /* +20 */
     DICTLINK *newlinks;                 /* +24 */
-    char pad28[12];
+    unsigned short *lex;                /* +28 */
+    int *begin;                         /* +32 */
+    int *su;                            /* +36 */
     unsigned short *table;              /* +40: the swapped final of (a, tone, pron), na x a + nb x tone + pron */
     unsigned short na;                  /* +44 */
     unsigned short nb;                  /* +46 */
     unsigned short ntones;              /* +48 */
 } FSTREE;
 
-extern __inline__ unsigned char Tone_Of_Final(unsigned short final, unsigned short n)
+__inline__ unsigned char Tone_Of_Final(unsigned short final, unsigned short n)
 {
     if (final != 0 && final < n)
         return 1;
@@ -176,12 +180,6 @@ static unsigned int SplitUp_Finals(FSTREE *t, unsigned int node, unsigned int *n
 
 /* a final's tone is valid: nonzero and below the count (SOCOM II's body; SOCOM 1's returned the
  * compare itself after the zero test) */
-unsigned char Tone_Of_Final(unsigned short final, unsigned short n)
-{
-    if (final != 0 && final < n)
-        return 1;
-    return 0;
-}
 
 /* the split tree's finals swapped for their tone-carrying forms, down the tree: on a chain of single children
  * the pending final is carried along, an item with a valid tone settling the one before it. SOCOM 1's body.
@@ -397,7 +395,7 @@ static int FillOut_Syntax_Statedict_And_Wordprops_ForChinese(CASR *c, DICTITEM *
 
 /* the states a subtree's words take: a single-state item one, a pronunciation its states less
  * the two it shares (SOCOM 1's LOCAL; the order of the sum compiles the same three ways) */
-static void Calculate_NbrOfStatesInDict_ForChinese(unsigned int node, int *count, DICTTREE *t)
+static __inline__ void Calculate_NbrOfStatesInDict_ForChinese(unsigned int node, int *count, DICTTREE *t)
 {
     unsigned int c;
 
@@ -412,14 +410,9 @@ static void Calculate_NbrOfStatesInDict_ForChinese(unsigned int node, int *count
 }
 
 /* the item nodes the final swap adds: an item with a valid tone and more than one child gets a
- * node for each child after the first (SOCOM 1's LOCAL).
- * OPEN (19 words, the right size): the first child is a local (the target reuses its index and
- * link address after the tone test; re-reading the field is 0x140), but its *8 shares the
- * recursion loop's pseudo here (s0, the target's t0) and the temporaries sit one register off.
- * A variable of its own for the first child is 18 (inside the test) or the wrong size (the
- * recursion loop outside it, or one `&&` test); one for the counting loop 32-45. */
-static void Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree(unsigned int node, FSTREE *t,
-                                                                   int *count)
+ * node for each child after the first (SOCOM 1's LOCAL). */
+static __inline__ void Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree(unsigned int node, FSTREE *t,
+                                                                              int *count)
 {
     unsigned int c = t->items[node].child;
 
@@ -427,8 +420,312 @@ static void Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree(unsigned int 
         if (t->links[c].next != 0xFFFF && Tone_Of_Final(t->items[node].tone, t->ntones)) {
             for (c = t->links[c].next; c != 0xFFFF; c = t->links[c].next)
                 (*count)++;
+            c = t->items[node].child;
         }
-        for (c = t->items[node].child; c != 0xFFFF; c = t->links[c].next)
+        for (; c != 0xFFFF; c = t->links[c].next)
             Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree(t->links[c].node, t, count);
+    }
+}
+
+/* The free stays above the builder: the call to a function defined earlier in the unit has the nothrow note, so
+ * reorg can read through it for the registers its target needs (the first failure's `beqz s8; move a0,s8`). */
+void FreeSecondPassContext_ForChinese(CASR *c)
+{
+    SPCTX *sp;
+
+    if (c->map != 0) {
+        heap_Free(c->heap, c->map);
+        c->map = 0;
+    }
+    sp = c->sp_ctx;
+    if (sp != 0) {
+        if (sp->tab != 0)
+            heap_Free(c->heap, sp->tab);
+        if (((SPCTX *)c->sp_ctx)->dict != 0)
+            heap_Free(c->heap, ((SPCTX *)c->sp_ctx)->dict);
+        if (((SPCTX *)c->sp_ctx)->bounds != 0)
+            heap_Free(c->heap, ((SPCTX *)c->sp_ctx)->bounds);
+        if (((SPCTX *)c->sp_ctx)->wtp != 0)
+            heap_Free(c->heap, ((SPCTX *)c->sp_ctx)->wtp);
+        if (((SPCTX *)c->sp_ctx)->props != 0)
+            heap_Free(c->heap, ((SPCTX *)c->sp_ctx)->props);
+        if (((SPCTX *)c->sp_ctx)->mask != 0)
+            heap_Free(c->heap, ((SPCTX *)c->sp_ctx)->mask);
+        heap_Free(c->heap, c->sp_ctx);
+        c->sp_ctx = 0;
+    }
+}
+
+extern void Build_Tree_ForChinese(CASR *c, struct TREEITEM *items, unsigned int *links, unsigned short *dict, int *bow,
+                                  int tab0, unsigned int *pnlinks, unsigned int *pnnodes);
+extern void Translate_Prons_Into_Items_And_Tones(unsigned int node, unsigned int *pnitems, unsigned int *pnlinks,
+                                                 FSTREE *t);
+
+typedef struct TREEITEM {
+    int id;
+    int pron;                           /* +4 */
+    unsigned short link;                /* +8 */
+} TREEITEM;
+
+typedef struct TREEUW {
+    unsigned short *lex;
+    int *begin;
+} TREEUW;
+
+typedef struct NBRWORD {
+    int state;
+    int score;
+    int end;
+    int f12;
+    struct NBRWORD *next;
+} NBRWORD;
+
+typedef struct NBRESULT {
+    int f0;
+    int score;
+    int f8;
+    NBRWORD *words;
+    struct NBRESULT *next;
+} NBRESULT;
+
+static __inline__ unsigned short IsStartWord(unsigned short f)
+{
+    return f & 1;
+}
+
+/* the context for Mandarin: the word tree, its pronunciations translated into items and tones, the finals split up
+ * and swapped; SOCOM 1's body (round 41c). What the code said: one variable holds the table's sum and then the total (`move
+ * s0,zero` stays after the last call by its anti-dependence on `sw s0,40(s3)`; a value of its own floats up across the calls and
+ * collides with the table's s0); its product is assigned back (`mult s0,s0,v0`); the running maximum is a register twin of a
+ * frame word, read once before the loops, stored once after them, its address a pointer of its own per maximum (else it is
+ * put back in a register; one pointer for both keeps it in a register across cprop); `n3` is read for the first allocation and
+ * `n4` for the later ones: without the second copy PRE commons the two sums' shift across the calls (a spilled temporary); the second
+ * early failure has its own tail (its refs lift c above t: s2 against s3); `sizeof * (maxn * n3) * maxn` is the target's operand
+ * order, and the first count's locals are set in the order the second scheduling pass needs (issue rate two, loads by sched1's order). */
+int CreateSecondPassContext_ForChinese(CASR *c)
+{
+    unsigned int maxp;
+    unsigned int nlinks;
+    unsigned int nnodes;
+    unsigned int maxn;
+    unsigned int nitems;
+    unsigned int nlinks2;
+    int nitems2;
+    unsigned int nnew;
+    unsigned int nnewlinks;
+    int nstates;
+    int nroots;
+    unsigned int n3;
+    SPCTX *rc;
+    LANGVT *lng;
+    int *bow;
+    unsigned short *dict;
+    int tab0;
+    unsigned short *dims;
+    TREEUW *uw;
+    SPCTX *sp;
+    FSTREE *t;
+    unsigned int total;
+    NBRESULT *r;
+    unsigned int n;
+    unsigned int m;
+    unsigned int *pm1, *pm2;
+    unsigned int n2, n4;
+    TREEITEM *items;
+    unsigned int *links;
+    DICTITEM *ditems;
+    DICTLINK *dlinks;
+    unsigned int l;
+
+    nroots = 0;
+    maxp = 0;
+    nlinks = 0;
+    nnodes = 1;
+    nstates = 0;
+    nitems = 1;
+    maxn = 0;
+    nlinks2 = 0;
+    nitems2 = 0;
+    nnew = 0;
+    nnewlinks = 0;
+    rc = c->run_ctx;
+    lng = c->lng;
+    bow = rc->tab;
+    dict = rc->dict;
+    tab0 = *bow;
+    dims = lng->GetpDimensionsOfToneConversionMatrix(lng);
+    uw = c->uw_tables;
+    if (c->sp_ctx != 0)
+        FreeSecondPassContext_ForChinese(c);
+    sp = heap_Alloc(c->heap, sizeof(SPCTX));
+    if (sp == 0)
+        goto fail;
+    memset(sp, 0, sizeof(SPCTX));
+    c->sp_ctx = sp;
+    t = heap_Alloc(c->heap, sizeof(FSTREE));
+    if (t == 0) {
+        FreeSecondPassContext_ForChinese(c);
+        return 1;
+    }
+    t->c = c;
+    t->lex = uw->lex;
+    t->begin = uw->begin;
+    t->su = lng->GetpSpeechUnit(lng);
+    total = (unsigned int)lng->GetpToneConversionMatrix(lng);
+    total -= *lng->GetpOffsetForFinals(lng) * 2;
+    t->table = (unsigned short *)total;
+    t->na = dims[2];
+    t->nb = dims[2] * dims[1];
+    t->ntones = lng->GetNbrTones(lng) + 1;
+    total = 0;
+    n = 0;
+    pm1 = &maxp;
+    m = *pm1;
+    for (r = *(NBRESULT **)c->sp_arg1; r != 0; r = r->next) {
+        NBRWORD *w;
+        unsigned int mul = 1;
+
+        for (w = r->words; w != 0; w = w->next) {
+            unsigned short *d = dict + w->state;
+
+            if (!IsStartWord(*d)) {
+                unsigned int id;
+
+                d++;
+                id = d[1] + (d[2] << 16);
+                n = bow[id + 1] - bow[id];
+                if (m < n)
+                    m = n;
+                total += n * mul;
+            } else {
+                if (m == 0)
+                    m = 1;
+                total += mul;
+            }
+            mul *= n;
+        }
+    }
+    *pm1 = m;
+    items = heap_Alloc(c->heap, (total + 1) * sizeof(TREEITEM));
+    t->tree = items;
+    total *= maxp;
+    links = heap_Alloc(c->heap, total * 4);
+    t->treelinks = links;
+    if (items == 0 || links == 0) {
+        if (items != 0)
+            heap_Free(c->heap, items);
+        if (links != 0)
+            heap_Free(c->heap, links);
+        goto freet;
+    }
+    items[0].link = -1;
+    Build_Tree_ForChinese(c, items, links, dict, bow, tab0, &nlinks, &nnodes);
+    for (l = items[0].link; l != 0xFFFF; l = ((unsigned short *)&links[l])[1])
+        nroots++;
+    {
+        unsigned int nw;
+        unsigned short *lex;
+        int *begin;
+        unsigned int i;
+        unsigned int k;
+        unsigned int e;
+        unsigned int m2;
+
+        k = items[0].link;
+        n2 = 0;
+        nw = nnodes - 1;
+        e = 0;
+        lex = uw->lex;
+        begin = uw->begin;
+        while (k != 0xFFFF) {
+            k = ((unsigned short *)&links[k])[1];
+            e++;
+        }
+        pm2 = &maxn;
+        m2 = e;
+        for (i = 1; i <= nw; i++) {
+            int pron = items[i].pron;
+
+            if (pron == -2) {
+                n2++;
+            } else {
+                unsigned short *p = lex + begin[pron];
+                unsigned short *e = lex + begin[pron + 1];
+
+                p++;
+                n2 += e - p;
+            }
+            e = 0;
+            k = items[i].link;
+            while (k != 0xFFFF) {
+                k = ((unsigned short *)&links[k])[1];
+                e++;
+            }
+            if (m2 < e)
+                m2 = e;
+        }
+        *pm2 = m2;
+    }
+    n3 = n2;
+    ditems = heap_Alloc(c->heap, (n3 + 1) * sizeof(DICTITEM));
+    t->items = ditems;
+    dlinks = heap_Alloc(c->heap, n2 * maxn * sizeof(DICTLINK));
+    t->links = dlinks;
+    if (ditems == 0 || dlinks == 0) {
+        heap_Free(c->heap, items);
+        heap_Free(c->heap, links);
+        if (ditems != 0)
+            heap_Free(c->heap, ditems);
+        if (dlinks != 0)
+            heap_Free(c->heap, dlinks);
+        goto freet;
+    }
+    Translate_Prons_Into_Items_And_Tones(0, &nitems, &nlinks2, t);
+    heap_Free(c->heap, items);
+    heap_Free(c->heap, links);
+    n4 = n2;
+    nitems2 = n4;
+    Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree(0, t, &nitems2);
+    {
+        DICTITEM *ni = heap_Alloc(c->heap, maxn * ((n4 + 1) * sizeof(DICTITEM)));
+        DICTLINK *nl;
+
+        t->newitems = ni;
+        nl = heap_Alloc(c->heap, sizeof(DICTLINK) * (maxn * n3) * maxn);
+        t->newlinks = nl;
+        if (ni == 0 || nl == 0) {
+            heap_Free(c->heap, ditems);
+            heap_Free(c->heap, dlinks);
+            if (ni != 0)
+                heap_Free(c->heap, ni);
+            if (nl != 0)
+                heap_Free(c->heap, nl);
+            goto freet;
+        }
+        SplitUp_Finals(t, 0, &nnew, &nnewlinks);
+        heap_Free(c->heap, ditems);
+        heap_Free(c->heap, dlinks);
+        if (Swap_Finals(0xFFFF, 0, 0, t) != 0)
+            goto fail2;
+        Calculate_NbrOfStatesInDict_ForChinese(0, &nstates, (DICTTREE *)t);
+        nstates += nitems2 * 2;
+        if (FillOut_Syntax_Statedict_And_Wordprops_ForChinese(c, ni, nl, nstates, nitems2,
+                                                              nlinks2 - nroots + (nitems2 - n4) + 1, sp) != 0) {
+fail2:
+            heap_Free(c->heap, ni);
+            heap_Free(c->heap, nl);
+freet:
+            heap_Free(c->heap, t);
+fail:
+            FreeSecondPassContext_ForChinese(c);
+            return 1;
+        }
+        heap_Free(c->heap, ni);
+        heap_Free(c->heap, nl);
+        heap_Free(c->heap, t);
+        sp->n = nitems2;
+        sp->f0 = 0;
+        sp->nstates = nstates;
+        return 0;
     }
 }
