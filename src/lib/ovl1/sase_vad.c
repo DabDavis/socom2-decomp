@@ -287,14 +287,10 @@ out:
 	return ret;
 }
 
-/* active: speech, its flag and the caller's agreeing, at a level of 0.45 or more.
- * OPEN (17 words, one short): the target holds the active flag's own lb in s0 across the two
- * double calls and selects it or 0 with movn into a2 -- the result never in a saved register; here
- * CSE follows the three equalities (the flag == sFlag == bSpeech == 1) and the result is a known 1
- * kept in s0 from the entry. Thirteen spellings (one result or several returns, an int or a char
- * result, the tests nested or one &&, the comparison inverted; build/scratch/gcc/v_vad3.c, v_vad4.c in
- * the GCC lane's round 19a) give 17-31 words; with the result a char the flag is lbu'd and re-extended
- * (22). The 0.45 is a double, an ulp below the exact decimal as 2.96's parser lands it (round 11c). */
+/* active: speech, its flag and the caller's agreeing, at a level of 0.45 or more. Byte-exact in GCC round 45a: the store on the else
+ * path, `if (!(x < k)) ret = c;`, falls after the compare's two double calls, so ret never crosses them (a2) and the flag alone
+ * is saved; the first thirteen spellings set it first. The 0.45 is a double, an ulp below the exact decimal as 2.96's parser lands
+ * it (round 11c). */
 signed char func_002533B0(VadState *p, short sFlag, float fLevel)
 {
 	int ret = 0;
@@ -303,9 +299,8 @@ signed char func_002533B0(VadState *p, short sFlag, float fLevel)
 	if (p->bSpeech == 1 && sFlag == p->bSpeech) {
 		c = p->bActive;
 		if (c == sFlag) {
-			ret = c;
-			if (fLevel < 0x1.cccccccccccccp-2)
-				ret = 0;
+			if (!(fLevel < 0x1.cccccccccccccp-2))
+				ret = c;
 		}
 	}
 	return ret;

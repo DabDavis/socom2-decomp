@@ -10,9 +10,8 @@
  * __sort132 0x226600, __selection_sort 0x2267C0: the raw-pointer sort SOCOM 1 had would be 0x3B4
  * bytes, not 0x598), SetMpStatUiVars, CNetClock's two time accessors (0x224BF0/0x224C80), the round
  * result (0x224D10), and round 21's UnInit, Tick, Init, UpdateCareerRecord (0x225070: the career
- * record, 0x2F98F0/0x2F96F0) and ComputeNewRating (0x2253C0: mp_rating.cpp's Elo match). Open:
- * Init, GetRoundResult, SetMpStatUiVars, SetFinalTeamTotalsUiVar (each says how far;
- * ComputeNewRating byte-exact since round 53, SetFinalTeamTotalsUiVar since round 62). Defined in reverse of their image order (-inline deferred). */
+ * record, 0x2F98F0/0x2F96F0) and ComputeNewRating (0x2253C0: mp_rating.cpp's Elo match). All byte-exact (ComputeNewRating
+ * since round 53, SetFinalTeamTotalsUiVar since round 62, GetRoundResult and Init since round 65). Defined in reverse of their image order (-inline deferred). */
 
 #include "fts_state.h"
 #include "../../gamez/zrdr/zrdr.h"
@@ -851,26 +850,13 @@ void UpdateCareerRecord(int a, int b)
 /* a SEAL's round: whether it won, by the game's type (1-5) -- the living SEALs, terrorists and
  * third side counted, two of the SEALs' round counters summed -- and its round score (the name
  * ours; Init's call).
- * OPEN, 19 instructions, three temporaries renamed: after the two side calls the target holds the
- * side bool in t0, the game's type in a3 and the alive bool in a1 (the network state's pointer's
- * register, after the type's load); here a3, a1 (the pointer's, coalesced) and a2 (the
- * bitfield's). Every saved register, the frame and the code are the target's. Tried: the alive
- * bool, the stats reference and the side bools declared in each order, uninitialised and assigned
- * later, as unsigned char, through an inline IsAlive(); the type in an int or byte local; the
- * score's add spelled out. Round 59's replay (igreplay -r 1 --target, the spilled pass's record):
- * one move closes all three -- the game's type (v96, a code-generation temporary loaded at the
- * switch, after the alive bool's v88-v91) numbered anywhere from 42.5 (after bTerr) to 89.5; an
- * int / byte local for it, before or after the alive bool, and a GetGameType() accessor (int, byte,
- * enum, reference) are all forward-substituted into the switch (the load still follows the alive
- * bool's), so 19 each. Round 61: the type an int or byte local given a dead first definition at the
- * top (assigned at the switch, after bTerr or before the alive bool): 19 each. Round 62: an int
- * local for the type defined BEFORE a conditional alive bool (`m_isAlive ? true : false`: a flow
- * node boundary, so IRO_ExpressionPropagation -- per node, mweppc IroPropagate.c -- cannot
- * forward-substitute it) keeps the type's load ahead of the alive bool's code: 16 (the alive bool
- * in the target's a1; the type, the pointer and bTerr then a2 / a2 / a3 against a3 / a1 / t0);
- * `if (bAlive) {}`, `switch (type = ...)`, `(int)` / `(unsigned int)` selectors: 19 */
+ * The game's type read into an enum-typed local after the alive bool: enums are not propagated (the game states' round 53),
+ * so it keeps the place round 59's replay asked for (42.5-89.5, 19 off in every integer spelling since round 20). The enum's
+ * name is ours */
 void GetRoundResult(CZSealBody *pSeal, int *pWins, int *pScore)
 {
+    enum EGameType { kType1 = 1, kType2, kType3, kType4, kType5 };
+
     int iSeals = 0;
     int iTerrs = 0;
     int iOthers = 0;
@@ -904,8 +890,9 @@ void GetRoundResult(CZSealBody *pSeal, int *pWins, int *pScore)
     bool bTerr = func_002C30B0(pSeal);
     CSealStats &stats = pSeal->GetRoundStats();
     bool bAlive = pSeal->m_isAlive;
+    EGameType type = (EGameType)data_00437CE8->m_type;
 
-    switch (data_00437CE8->m_type) {
+    switch (type) {
     case 1:
         if (bTerr && ((bAlive && iSeals == 0) || iSum38 == 0))
             (*pWins)++;
@@ -1094,29 +1081,23 @@ CMPExitState::CMPExitState() : CGameState("MPExitState")
  * record written at the game's end, the decals and messages cleared, the screen's archive, menu,
  * anims and strings loaded, every SEAL's node and bomb gear put away, the game's clock reset at the
  * game's end (SOCOM 1's Init, SOCOM II's stats and rating added) */
-/* OPEN, 14 instructions, one register rotation: the network game's pointer takes s0 here and the
- * first walk's list address s1 (the rounds lost s2), where the target has the pointer in s1
- * (shared with the game-over flag), the list address and the rounds lost in s0 -- the pointer is
- * the first variable null-tested, which MW numbers last. Everything else is the target's: the
- * frame, the draws spilled to the stack, the inline Add's order, the hit percentage through an
- * unsigned local, the clock reset through one load (an inline on the game), CMPExitMenu's 0x930
- * bytes. Tried: tools/perm.py over the six top declarations (14 after 1,644 steps), the pointer
- * declared first, tested `!= 0`, the late locals declared ahead, the draws' sum reversed. Round
- * 59's replay (-r 1, the spilled pass's record): the pointer's node (v52, numbered last as the first
- * null-tested) placed anywhere from 39.5 to 46.5 -- after the first walk's pSeal, before the walk's
- * list address @2023 -- gives all three; an inline wrapper for the global (with or without a local
- * of its own) and the null test on the global itself leave it where it is */
+/* Byte-exact since round 65, open for 44 rounds at 14: the pointer's node has to be numbered after the first walk's pSeal and
+ * before the walk's list address (round 59's replay: 39.5-46.5), which takes a `const` local (the engine core's round 27: not
+ * folded back, it keeps a named number -- plain, it is IRO_CommonSubs' @2094, numbered last) declared after C-style pPlayer and
+ * pSeal -- the local declarations here are a numbering, not a claim about the original's text */
 bool CMPExitState::Init()
 {
     sealSaveFireModes();
     ZAnim.FreeNetworkPacketBuffer();
 
     int iRounds = -1;
-    CZNetGame *pGame = data_00437CE8;
     int iSealsWon = 0;
     int iDraws = 0;
     int iTerrsWon = 0;
     int iSide = 0;
+    CZSealBody *pPlayer;
+    CZSealBody *pSeal;
+    CZNetGame *const pGame = data_00437CE8;
 
     if (pGame) {
         iSealsWon = pGame->m_seals_won;
@@ -1126,11 +1107,11 @@ bool CMPExitState::Init()
         iDraws = iRounds - (iSealsWon + iTerrsWon);
     }
 
-    CZSealBody *pPlayer = ftsGetPlayer();
+    pPlayer = ftsGetPlayer();
 
     for (CEntityItr it; it.More(); it.Advance()) {
         if (it.IsLiveSeal()) {
-            CZSealBody *pSeal = &it.GetSeal();
+            pSeal = &it.GetSeal();
 
             pSeal->m_fd2 = pSeal->m_fd1;
             if (iSide == 0 && func_002C31D0(pSeal))

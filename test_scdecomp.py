@@ -2027,6 +2027,72 @@ def test_igreplay_replays_and_predicts():
     ck(s in conflicts2 and conflicts2[s].get("s4") == 1, f"the target's s4 use of `s` is read ({conflicts2.get(s)})")
 
 
+def test_igsearch_finds_a_known_numbering_and_greedy_follows():
+    """tools/igsearch.py (GCC round 45a: the AI core's round 37 iganneal.py, igallperm.py, igpicks.py, igedges.py) and igreplay
+    --greedy (the weapons' round 40 greedy.py). The fixture's ig_pair: declared first then second gives first s1 and second s0, and
+    the swapped declaration s0 and s1 (test_igreplay_replays_and_predicts, measured by igdump). So asked for s0 and s1 anneal finds the
+    swap at once, allperm reports the one order and its precedence -- second before first -- and every order was tried; asked for the
+    registers as recorded, the other order; greedy reaches them in one move and finds nothing to do from the record's own registers.
+    NEGATIVES: two nodes wanted in one register no numbering gives, anneal stops at a miss and allperm reports none; picks finds
+    the record's own registers with no pick needed and not the swapped ones; edges finds that dropping first-second ALLOWS both in
+    one register (a hit only an interference's removal can give), and no order did."""
+    import igdump
+    import igreplay as R
+    import igsearch as S
+    frecs, _ = igdump.dump(_ig_fixture(), BUILD / "ig_fixture.jsonl")
+    rec = igdump.select(frecs, "^ig_pair$", 0)[0][1]
+    first, second = R.node_index(rec, "first"), R.node_index(rec, "second")
+    regs = lambda f, s: {first: R._rnum(f), second: R._rnum(s)}
+    score, order, evals = S.anneal(rec, regs("s0", "s1"), seconds=30)
+    ck(score == 0 and order == [second, first], f"anneal finds the swap ({score}, {order}, {evals} evaluations)")
+    score, order, _ = S.anneal(rec, regs("s1", "s0"), seconds=30)
+    ck(score == 0 and order == [first, second], f"anneal keeps the record's own order for its own registers ({score}, {order})")
+    orders, common, complete = S.allperm(rec, regs("s0", "s1"), [first, second], seconds=30)
+    ck(complete and orders == [[second, first]] and common == [(second, first)],
+       f"allperm: one order, its precedence, every order tried ({orders}, {common}, {complete})")
+    score, _, _ = S.anneal(rec, regs("s0", "s0"), seconds=2)
+    ck(score == 1, f"anneal: a conflict no numbering removes stops at a miss ({score})")
+    orders, common, complete = S.allperm(rec, regs("s0", "s0"), [first, second], seconds=30)
+    ck(complete and not orders and not common, f"allperm: none, said ({orders}, {common})")
+    hits, leaves = S.picks(rec, regs("s1", "s0"))
+    ck(leaves == 1 and hits == [[]], f"picks: the record's own registers, no pick needed ({hits}, {leaves})")
+    hits, leaves = S.picks(rec, regs("s0", "s1"))
+    ck(leaves == 1 and not hits, f"picks: not the swapped ones ({hits}, {leaves})")
+    missed, found = S.edge_search(rec, regs("s0", "s0"), seconds=30)
+    ck(missed and (("drop", min(first, second), max(first, second)),) in found,
+       f"edges: dropping the interference gives both one register ({missed}, {found})")
+    steps, cur, left, stopped = R.greedy(rec, {first: "s0", second: "s1"})
+    ck(len(steps) == 1 and not left and not stopped, f"greedy reaches the swap in one move ({steps}, {left})")
+    colour, mp, _ = R.replay_moved(rec, cur)
+    ck((R.rname(colour[mp[first]]), R.rname(colour[mp[second]])) == ("s0", "s1"), f"its move replays so ({cur})")
+    steps, cur, left, stopped = R.greedy(rec, {first: "s1", second: "s0"})
+    ck(not steps and not left and not cur, f"greedy: nothing to do from the record's own registers ({steps}, {cur})")
+    steps, cur, left, stopped = R.greedy(rec, {first: "s0", second: "s0"})
+    ck(not steps and left, f"greedy: no single move helps a conflict, said ({steps}, {left})")
+
+
+def test_scdiff_reports_data_references_as_sets():
+    """scdiff's report, GCC round 45a (the weapons' round 40): when the code differs, the data each side reaches, as sets -- a
+    relocation has no partner by position then. target_data_refs reads lui/%lo pairs and $gp from the target's code alone. On a real
+    open row the two sides' sets are printed; a byte-exact function has no such line; and it is a report: the verdict of a miss with
+    the same code and a wrong symbol (WRONG REFERENCE) comes from the relocations as before. A NEGATIVE: an `addu` onto the %hi keeps
+    it for the %lo through the sum (an indexed table's base), a second lui replaces it, and an unrelated register's %lo reads nothing."""
+    lui = lambda rt, hi: (0x0F << 26 | rt << 16 | hi).to_bytes(4, "little")
+    lw = lambda rt, rs, imm: (0x23 << 26 | rs << 21 | rt << 16 | (imm & 0xFFFF)).to_bytes(4, "little")
+    addu = lambda rd, rs, rt: (rs << 21 | rt << 16 | rd << 11 | 0x21).to_bytes(4, "little")
+    ck(D.target_data_refs(lui(3, 0x1D) + lw(4, 3, 0x5548), 0) == {0x1D5548}, "lui + %lo")
+    ck(D.target_data_refs(lui(3, 0x1D) + addu(3, 3, 19) + lw(3, 3, 0x5548), 0) == {0x1D5548}, "lui, addu an index, %lo: the table's base")
+    ck(D.target_data_refs(lui(3, 0x1D) + lui(3, 0x3E) + lw(4, 3, 0x10), 0) == {0x3E0010}, "a second lui replaces the first")
+    ck(D.target_data_refs(lui(3, 0x1D) + lw(4, 5, 0x10), 0) == set(), "another register's offset reads nothing")
+    ck(D.target_data_refs(lw(4, 28, -32064), 0, 0x1DD2F0) == {0x1D55B0}, "$gp")
+    import subprocess
+    unit = HERE / "src" / "lib" / "ovl1" / "sase_libquan.c"
+    r = subprocess.run([sys.executable, str(HERE / "scdiff.py"), str(unit), "func_0024B2F8"], capture_output=True, text=True, cwd=HERE)
+    ck("data references as sets:" in r.stdout, f"an open row's report holds the sets ({r.stdout[:300]!r})")
+    r = subprocess.run([sys.executable, str(HERE / "scdiff.py"), str(unit), "func_0024B720"], capture_output=True, text=True, cwd=HERE)
+    ck("MATCH" in r.stdout and "data references as sets" not in r.stdout, f"a byte-exact row's report has none ({r.stdout[:200]!r})")
+
+
 def _swap_gprs(w: int, a: int, b: int) -> int:
     """An integer instruction word with GPRs a and b exchanged in its register fields (SPECIAL and
     MMI: rs, rt, rd; REGIMM: rs; j/jal: none; the rest, I-type: rs, rt)."""

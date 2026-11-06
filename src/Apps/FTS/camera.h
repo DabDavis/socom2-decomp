@@ -43,6 +43,9 @@ class DiIntersect {
 public:
     DiIntersect(int n);
     ~DiIntersect();
+    /* the hit mask and the nearest hit (node_world.h's real class has both) */
+    void SetMask(unsigned int mask);
+    IntersectStruct *GetNearestIntersect();
 
     unsigned int m_Type : 16;   // 0x0
     unsigned int m_IntersectCharacters : 1;
@@ -200,7 +203,10 @@ public:
     unsigned char _eac[0xf7a - 0xeac];
     /* the SEAL's life as the network reports it, 1 up (zseal.h's m_netlife, a NET_LIFE byte) */
     unsigned char m_netlife;   // 0xf7a
-    unsigned char _f7b[0x105c - 0xf7b];
+    unsigned char _f7b[0xfc4 - 0xf7b];
+    /* who last hurt the SEAL, by entity id (SOCOM 1's at 0xeb4, the death camera's killer) */
+    unsigned int m_lastHitBy;   // 0xfc4
+    unsigned char _fc8[0x105c - 0xfc8];
     unsigned int _105c : 23;   // 0x105c: zseal.h's flag word (SOCOM 1's at 0xf58)
     unsigned int m_inwater : 1;
     unsigned int _105c_24 : 8;
@@ -208,7 +214,7 @@ public:
     unsigned char m_zooming : 1;
     unsigned char _b6 : 2;
     unsigned char _1061[0x1070 - 0x1061];
-    CQuat m_fwdlook;   // 0x1070 (SOCOM 1: 0xf60; RotateHead sets it)
+    CQuat m_fwdlook;   // 0x1070 (SOCOM 1: 0xf60; RotateHead sets it, the death camera reads its x)
     unsigned char _1080[0x1344 - 0x1080];
     /* SOCOM II's: a scale the prone first-person camera reads, its y at least 0.5 (the name ours) */
     CPnt3D m_1344;   // 0x1344
@@ -286,10 +292,17 @@ public:
     virtual bool AllowCommand(CZSealBody *seal, int cmd, void *data);
     virtual bool IsPlayer() const;   /* +0x2C */
 
-    unsigned char _4[0x114 - 4];
+    unsigned char _4[0x10 - 4];
+    float m_throttle2;   // 0x10: the throttle's third axis (camera.h's CEntityCtrl)
+    float m_throttle3;   // 0x14
+    unsigned char _18[0x114 - 0x18];
     unsigned int m_padid;   // 0x114
     unsigned char _118[0x130 - 0x118];
     float m_130;   // 0x130
+    unsigned char _134[0x171 - 0x134];
+    unsigned char _171b : 3;   // 0x171
+    unsigned char m_171_3 : 1;   // bit 3: read by the death camera with its pad's end-mission test (the name ours)
+    unsigned char _171e : 4;
 };
 
 inline bool CZSealBody::IsPlayer()
@@ -433,14 +446,25 @@ public:
     unsigned char m_allow_player_death_cam_control;   // 0x143 (SOCOM 1: 0x93)
     unsigned char m_cam_death_state;   // 0x144 (SOCOM 1: 0x94, a CAM_DEATH_STATE)
     unsigned char _145[0x148 - 0x145];
-    float m_death_state_timer;   // 0x148 (SOCOM 1: 0x98)
-    unsigned char _14c[0x150 - 0x14c];
+    float m_death_time;   // 0x148: SOCOM II's, how long the death camera has run (the name ours)
+    float m_death_state_timer;   // 0x14c (SOCOM 1: 0x98)
     /* the SEAL killed and its killer (SOCOM 1's m_killed / m_killer at 0x9C / 0xA0, their names:
      * the death camera's look carries its point about the first and aims at the second; the
      * constructor clears both) */
     CZSealBody *m_killed;   // 0x150
     CZSealBody *m_killer;   // 0x154
-    unsigned char _158[0x188 - 0x158];
+    int m_flashcounter;   // 0x158 (SOCOM 1: 0xa4, its names to 0x184)
+    float m_death_fade_out_time;   // 0x15c
+    float m_death_faded_time;   // 0x160
+    float m_death_fade_in_time;   // 0x164
+    float m_next_rumble_time;   // 0x168
+    float m_next_rumble_time_scaler;   // 0x16c
+    int m_rumble_counter;   // 0x170
+    float m_rumble_timer;   // 0x174
+    float m_rumble_time;   // 0x178
+    float m_rumble_time_scaler;   // 0x17c
+    float m_rumble_power;   // 0x180
+    float m_rumble_power_scaler;   // 0x184
 };   // 0x188 bytes (LoadWorld news 392)
 
 extern CAppCamera *appCamera;

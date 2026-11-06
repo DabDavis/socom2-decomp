@@ -2066,6 +2066,146 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 28** (ten byte-exact, 26,568 bytes; body.cpp and zanim_cmd_parse.cpp whole: CPad::Tick
+  0x2DA930, zAnimObjectMotionTick 0x261370 with GetBBox's copy 0x262550, zAnimObjectMotionBegin 0x262690,
+  zAnimParticleSourceTick 0x266830, camera mode 6 0x2964F0, CAppCamera::UpdateDeathCamState 0x2980D0, CBody::Destroy
+  0x28B6D0, zar::CKey::DeleteChildren 0x25B580, zAnimFireWeaponTick 0x25CCB0; the first three rules read from the 3.0b52
+  executable, the first confirmed by a gdb trace of the matched function -- 87 of 87 blocks with empty predecessor lists, 0
+  of 27 fall-through tries hoisting):
+  - BLOCK OPTIMIZATION (0x4C6D60) CLEARS EVERY BLOCK'S PREDECESSOR LIST ON ANY CHANGE, so the delay-slot pass (0x4C7690)
+    hoists nothing from any fall-through in the whole function, and target steals become copies that leave the stolen
+    instruction behind a `b; nop` -- it closed all of zAnimFireWeaponTick's 0x40 bytes. It fires on a conditional branch to
+    a lone `b` (`e = e && e->t == K ? e : 0`, the then-arm coalesced), a `b` to the next block, or a block merged into its
+    only predecessor (build/scratch/core-r28/core/hoistlist.py scans for the signature, no argument set-up in any branch
+    slot; dsdump.py traces the pass under gdb);
+  - A LOOP IS ROTATED unless the function has an asm barrier (byte 0x5B7F7D: why camera mode 6's whiles keep their `b`), its
+    test isn't its header, or the header's one outside predecessor doesn't end in a goto with the body's first block next;
+    optimize_for_size also requires a known trip count; `#pragma opt_rotateloops off` exists, acts only through its state at
+    the unit's end, and a `?:` in a loop test also stops rotation (CKey::Write: d=0 under the pragma, which regresses three
+    others);
+  - label pads (`.p2alignl`) come only from statement labels (0x436230) and switches, and a block opening with one can't be
+    hoisted or stolen from; `m = e && e->t == K ? (T *)e : 0` branches straight to the join with no pad, `if (!e || ...) e =
+    0` pads;
+  - an object expression through an inline with a body (`CZAnim *r = a; return r;`) is evaluated ahead of plain args, so a0
+    is set first; an accessor as a product's right operand is read first while the mul keeps its operand order; `CPnt3D
+    d(cmd->dir)` right before a call stores through a0's address (x, y, z), `d(a->x, a->y, a->z)` loads z, y, x, `d =
+    cmd->dir` interleaves; reads through a reference lower an address temporary's spill cost, so it is rematerialised per
+    use;
+  - `for (int i = 0; i < 4; i++) a[i]->m = !flag;` fully unrolled reads frame-direct with `!flag` hoisted, an aggregate
+    initialiser of addresses copies from a pool with lq / sq; a constant store written after bit-field stores is numbered
+    later, coloured first, and chains every field through v0 (196 instructions off the other way round); `x = a == b ? 0.0f
+    : expr` stores at the join, an if/else gives sw zero; `float d = f(); d -= K;` keeps d in f0 and mov.s f12,f0, `float d
+    = f() - K` coalesces with f12; written-out inlines with CPnt3D copies field by field drop about 50 units under
+    inline_max_size, closing a size cut with no pragma (CBody::Destroy);
+  - zar_key.cpp carries a marked per-unit opt-in, include/vector's __MSL_VECTOR_POD_PAIR, with `#pragma inline_depth(8)` at
+    its end for DeleteChildren, a "Level 6, or 8?" witness; the class name in __vector_pod_pair is ours, modelled on SOCOM
+    1's compressed pair.
+- **Tells from the SEALs, round 59** (20 byte-exact, 18 unwritten before: seal_control.cpp's PostTick 0x5970B0,
+  ThrottlesPreTick 0x5966A0, PerformProximityActions 0x5937C0; seal_ai.cpp's CSealCtrl::CreepTick 0x566DC0,
+  CSealCtrlAi::OnDeath 0x5714B0; seal.cpp's CZSealBody::OnDeath 0x547AF0, 0x54D620, 0x552EC0; seal_body.cpp's ProneControl
+  0x583500, InStateProne, InStateStand, InStateCrouch, SetStance, Climb, CheckAnim, 0x57D810, 0x57E1B0, 0x57E770, and Crouch
+  and InStateHang, open before; six rows named, the five helpers among them ours and unsure):
+  - a value-mode `xori; bnez X; sltu; X: bnez R` is `!a || b`, not `a && b`: read the branch target, X being the second
+    bnez; a pad-less byte-zero loop with its count loaded before the address's null test is `float t[3] = { 0.0f }`, inline
+    and placement-new forms pad the join and move the count;
+  - STATEMENT ORDER SETS FLOAT COLOURS through the pre-colour schedule: `igreplay --move` found a numbering that matched the
+    colours, but moving the clamp's bounds after the value closed CreepTick; a named local set from an inline disappears
+    into the inline's @N, numbered after all named locals, and `--saved` shows `s0=@N` -- the next local must also come
+    through an inline to number after it (`unit = UnitOf(this)`, a marked device);
+  - a `const CEntityList &` walk gives the target's lwc1 / swc1 temporary pairs with the iterator in a saved register, walks
+    over the non-const list fold them: const and non-const views split CSE classes; a counter passed as `int &n` from a
+    caller's named local numbers an inner inline's counter early (it closed Crouch, InStateHang, InStateCrouch, SetStance);
+    a stack pointer held across two inlined clears gives the target's numbering where a one-member struct gets the late
+    number;
+  - an in-class inline's local statics are emitted by every unit that sees the body, even uncalled -- hence the new header
+    seal_throw.h for CDynGrenade::Initalize, whose statics landed in eight other units in zseal.h; inline statics' row names
+    carry MW's @0 / @1, and const statics go to another section; the one-level cut's frame tell: a cut inline's locals sit
+    below every other temporary, and even CPnt3D() is called;
+  - an if/else chain into a result local gives a direct b plus alignment nops, returns lose them; an inline with an assigned
+    result keeps the b after an if-join; a by-value `0.0f` argument, or `float goal = 0.0f`, keeps the multiply or add by
+    zero where a literal folds; float literals can be products, `14.8f*14.8f`, `9.81f*10.0f`; `a >= b` has no xori where
+    `!(a < b)` does; switch cases emit in reverse source order and avoid the `||` range fold; a value `a<K && f()==0` gives
+    two li / move pairs with no andi; a `(float)` parameter copy lets locals number below a parameter; an explicit template
+    instantiation makes the template auto-inline at calls in that unit; self-recursive auto functions obey the 15-statement
+    limit.
+- **Tells from the kit and AI states, round 61** (11 rows new: CZKit::HasPickupSlot 0x5BAC30, PickupAmmo 0x5BB000 and
+  0x5BB990, SetCurAccuracy 0x5BD100, FirstFrame 0x5C0250, CZKit::Tick 0x5C0FD0, the goto's move 0x5DB8F0,
+  CZSealBody::UpdateAimDir 0x5DEEC0, WeaponsTick 0x5DFC80 -- open since round 52 --, the hold's callout 0x606EC0 and watch
+  0x6067A0, the last a marked device; CAiSHold::Tick and CSealCtrlAi::StateTick written open; nine rows named, FirstFrame
+  the one unsure):
+  - FIELD-ADDRESS STORES (x direct, y and z through one register recomputed before each store; also in 0x357F30, 0x5483D0,
+    ClipCameraChord): a field written once folds into the frame offset, separate temporaries get drawn to the block head
+    even when the IRO_CommonSubs temporary is forced with a late-folding guard over dead reads; one pointer with four
+    definitions, a no-code asm read and a guarded read reproduces it (as read in mweppc the asm keeps IRO_SplitLifetimes off
+    and the guarded read IRO_ExpressionPropagation; only the combined effect was measured). IRO_ExpressionPropagation counts
+    uses per flow node for every earlier definition, so a chain of N definitions loses one per pass from the end (a mweppc
+    reading, matching two lost of four on 0x6067A0);
+  - a `const float` holder closed WeaponsTick: the const keeps its number where a plain local propagates; a class iterator's
+    scalarised member numbers after every named local, so a plain cursor is needed when a named reference must colour lower;
+    a materialised iterator `!=` (xor; sltiu; xori) comes from an inline returning `!(a == b)`; `m_phase` read into a byte
+    enum, a lbu read with a lb reload from the spill slot, is CAiState::STEP as both the local and the return type;
+    `GetId()` as an argument gives lb where `(EQUIP_ITEM)w->m_ID` gives lbu, and in a compare it numbers the read below
+    hoisted constants;
+  - spill-pick ties go to the highest index, so C-style declaration order decides the top saved register (StateTick); `const
+    CPnt3D &p = v` gives pointer reads with frame-direct stores; an unsigned 4-byte enum parameter keeps n-1 and +1
+    unfolded; a derived constructor builds a bitfield temporary in place with narrow accesses where a by-value inline return
+    copies through the copy constructor; a call in an if arm keeps labels, pads and daddiu against RegenerateExpressions;
+    `GetId() != K` in `if (flag && ...)` stops the regenerated sltu chain; `> 3` gives slti at, `>= 4` materialises in a
+    register inside an `&&` chain; reference locals declared outside a loop keep addresses hoisted and the object
+    unscalarised; `#pragma opt_strength_reduction off` in a body keeps sll / addu indexing.
+- **Tells from the HUD, round 65** (21 byte-exact, five units whole: SetMags 0x237B40, GetRoundResult 0x224D10,
+  CMPExitState::Init 0x223970, C2DButton::HandlePad 0x377040, CWrappedText::SetString 0x379F70, both CListItemArrayTypeImpl
+  constructors, ~CUIListBox 0x375710, CUIListBox::Draw 0x373850, CTeleType::Tick 0x377B80, hudTurnOnScorePopup 0x22CC10,
+  MapCompass::Tick 0x211510, the nav_package insert 0x212E50, the claymore and bomb Ticks, HandleScrolling 0x20A120,
+  __sinit_hud_tcm.cpp, CZPauseTest::OpenPauseMenu, HandleSelectionInput and HudTick, CMPTeammateNames::Tick; AddItem and
+  CWhosTalking::Init closed by the MSL's round 39; every device marked; 35 data rows, the net game 0x437CE8 and the
+  night-vision flag 0x4B4A70 settled):
+  - ENUM HOLDERS CLOSE REAL ROWS (SetMags, GetRoundResult, HandlePad, the sinit): `this` through an unsigned 4-byte enum
+    keeps a global's address out of folding;
+  - of two pad bytes read ahead of a branch the later-declared is scheduled first and the earlier lands in the delay slot;
+    `A || B ? k : 0` copies the one-constant arm's constant into the branch's delay slot and moves the target past it, `if`
+    and `!x && ...` forms do not (CZPauseTest::HudTick); `!x` swaps ternary and if arms, `x == 0` keeps them; `bool on = !x;
+    x = on; on ? a : b` gives sb; andi; beqz with the object loaded in the delay slot, `(x = !x) ? a : b` sinks that load
+    after the ternary;
+  - assigning 3 to a char local narrows a CSE'd constant, an int local copies it; `(char)sel` on a signed char keeps the
+    read's narrowing while calls pass it plain; a store through a pointer or reference to a global array keeps a global
+    float's load in the loop, an indexed store lets it hoist; `line->F(G(id))` with `line` defined first keeps the address
+    across the call, a spelled-out `m_items[i].m_text.SetColor(...)` computes it late; `SetColor(100 + 28*p, 100 + 28*p, 100
+    + -36*p)` on a global p loads it once and CSEs the two sums;
+  - padding nops align labels to 8 bytes, except labels right after a `b` and its delay slot; a parameter read directly has
+    its copy at entry, one instruction more ahead of the first vptr la, flipping up-front against serialised vtable stores;
+    a const conversion at an inline's argument makes `p + k` subable and hoisted, a same-type helper keeps it refused; `T x
+    = {0}` on any aggregate is the inline memclr byte loop; `m_x += k; const float &r = m_x;` gives add, store, mov.s; a
+    const local after C-style locals, and a const copy of `this` numbered above a local; one-member structs number locals
+    after a scalarised iterator; SOCOM 1's DWARF lists block locals in reverse declaration order.
+- **Tells from the UI, round 39** (13 rows new, 16,248 bytes: CUIListBoxSpec::CUIListBoxSpec 0x37EAB0 and
+  CButtonSpec::CButtonSpec 0x380620, unwritten since round 13; CreateSoftKeyboard 0x38E160, SkbScaleDisplay 0x397950,
+  _SaveSavedGame 0x27F820, CSkbSplit::Next 0x3903A0, the hangul composer 0x391670 and matcher 0x3919D0, rbegin<Ui> 0x391D40,
+  resize / insert<SKBCOMPLETE>, SkbCaseLetter 0x39A8D0, __sinit_zui_hangul.cpp 0x403770; ~CSkbSplit and the composer's
+  accessors from source over their drafts; 21 rows named, the class and member names marked ours in their notes descriptive,
+  not recovered):
+  - AN `#pragma inline_depth(6)` THAT INLINES EVERY USE CAN LEAVE A ROW WITH NO EMITTER, and a specialisation, an explicit
+    instantiation and dont_inline over one call all emit nothing: check dropped functions with an ELF symbol diff, not only
+    the WRONG rows. CInit<Us,0>() 0x392760 stays matched through a small marked function, SkbCodeCtorRow, named by `sc: as=`
+    on the unit's first line (a later `sc:` line fails the build). zui_hangul.cpp's pragma is a marked "Level 6, or 8?"
+    witness: 82 of 90 with it, 76 of 89 without;
+  - a local `T x[N] = {0};` is the compiler's byte clear (`addiu; beqz; li N`, two nops, no aligned head), every written
+    loop form 8 bytes longer; `new (&x) T()` of a constructor-less POD clears nothing here;
+  - the late-folding guard (the weapons' round 40) also gives a per-pass `addiu reg,sp,K` for a frame read, where a
+    reference or enum-held address is hoisted into a saved register (CreateSoftKeyboard); the guard on a row base stops
+    strength reduction folding it, so the inner offset gets its own induction (SkbScaleDisplay), and a loop with the guard
+    in its body is not unrolled;
+  - a value read through a small inline each time is numbered high and coloured first, a named reference coloured last; a
+    user copy constructor means no callee copy of by-value class parameters, and body assignment keeps address CSE where
+    mem-init does not (include/deque's iterator: the mem-init form loses resize 0x285660);
+  - `beq; nop; b L; nop; A:` stays uninverted only if the empty arm holds a copy until colouring, truly empty arms invert to
+    one bne; same-text literals merge into an inlined strcmp chain (`move a1,a0`), dont_reuse_strings does not part them, a
+    static array does; a dead inlined loop result leaves two guards falling into the next block; `r += x` puts the
+    accumulator first in the add; `if (!(a && b)) return false;` lays the false block first; `r = r ? c < K : r;` under
+    `#pragma bool off` has no pad;
+  - the pod's out-of-line alloc() / cap(), SOCOM 1's `if (data_) alloc().deallocate(data_, cap())`, are called by clear and
+    erase of SKBSEQ and SKBCOMPLETE, resize<SKBPIECE> and CNodeAction::Close: include/vector's pod destructor has no such
+    calls to leave out of line, at level 5 or 6 -- the MSL's next request.
 - **Tells from the weapons, round 40** (all ten open rows byte-exact: the turret aim 0x3A8910 and 0x3B0A70 with no device;
   CVehicle::~CVehicle 0x3ACA60, zVid_Init 0x3B1200, CVisual::ApplyDecal 0x3B3AB0, CMesh::ApplyDecal 0x3B8680,
   CDecal::AddDecal 0x3BECA0, CWaterRipple::Flatten 0x3C0CF0, CWaterRippleManager::ClearGroups 0x3C2A10 and Ripple 0x3C2CB0
@@ -2193,7 +2333,7 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   CVehicleRdrEntry 0x534630 in the lane's own unit, and -- opted in by the integrator from its measurements, each +1 and
   nothing lost -- AcctRecord 0x2FE3E0, CTurretDef 0x3ABD90, zrdr_sym 0x3325E0, CDlgDesignModel 0x384ED0; resize<line>
   0x51C070 by a marked `#pragma inline_depth(6)` at ai_mapio.cpp's end, a "Level 6, or 8?" witness like util_loc.cpp's):
-  - SEARCH THE NUMBERING FIRST: annealing over the numbering (build/scratch/aicore-r37/ai/igallperm.py, iganneal.py) shows
+  - SEARCH THE NUMBERING FIRST: annealing over the numbering (now `tools/igsearch.py anneal` / `allperm`, GCC round 45a; then build/scratch/aicore-r37/ai/igallperm.py, iganneal.py) shows
     whether a target numbering exists before any source is written; if `this` must sit above locals, named copies of
     parameters can place it there (GetLocation -- what the original wrote behind those two copies is unknown);
   - the class-insert dichotomy is settled for all five: each needs a pointer end numbered before m, chosen per element --
@@ -9833,7 +9973,7 @@ online lane's round 10 renamed their rows, the lobby queue's 0x2E0DC0 (its draft
 ~CLobbySaveModule's copy 0x2FD070, once listed with it, matches from source since the online lane's round 18, and the
 lobby's and the chat's deque() 0x2E0D90 and 0x2F6230 since its round 29 -- whose names added the lobby buffer's
 allocator constructor 0x2E0D50, 0x2C against 0x18, and the chat's __deque_buf() 0x2F6260, 0x20 against 0x30, each
-draft with an `sc: as=` line: twelve still -- and 0x2E0D50, 0x2E0DC0, 0x2F6260 and the rdr editor's 0x3340B0 match from source since the MSL headers' round 39: EIGHT left, 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3929C0, 0x3B7FA0, 0x3C6880, 0x510080), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
+draft with an `sc: as=` line: twelve still -- and 0x2E0D50, 0x2E0DC0, 0x2F6260 and the rdr editor's 0x3340B0 match from source since the MSL headers' round 39: EIGHT left then, SEVEN since the UI's round 39 wrote 0x3929C0 from source: 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3B7FA0, 0x3C6880, 0x510080), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller; matched from hand source since the MSL headers' round 36 -- the range erase's step through ++), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all, TWELVE since the MSL headers' round 36 -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion). Since the GCC front's round 38a
 sccheck tells such a row from a real loss itself: a row a partial check loses ONLY by inline copies is
 built and scored against its other emitters outside `--files` (its draft, and the hand-written units
@@ -9841,8 +9981,8 @@ naming the copy's identifiers) and printed `not lost -- an inline copy missed he
 outside --files still matches: <row> by <emitter>`, rc 0 -- the thirteen each by its draft. Only a
 `REGRESSIONS` line is a loss; a strong definition's miss is never held ("The GCC front: the prebuilt
 libraries", "The tools, round 38a").
-Since the MSL headers' round 39 eight remain: 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3929C0, 0x3B7FA0, 0x3C6880, 0x510080 (0x2E0D50, 0x2E0DC0, 0x2F6260 and 0x3340B0 now
-match from source).
+Since the UI's round 39 seven remain: 0x1EF8C0, 0x32C5F0, 0x333330, 0x3340F0, 0x3B7FA0, 0x3C6880, 0x510080 (0x2E0D50, 0x2E0DC0, 0x2F6260 and 0x3340B0 match from source since the
+MSL headers' round 39, 0x3929C0 since the UI's round 39, in zui_hangul.cpp under its level).
 
 ## The generated tier: `src/auto/`
 
@@ -12719,6 +12859,34 @@ The lane's `src/lib` 1,326 byte-exact of 1,383 scored (`lib/(sdk|libc|libgcc|lib
   GCSE's one pass reuses the integer -- spilled at 1312(sp), every saved register taken -- and not its conversion, reloaded by `lwc1` (0x24AB48: one variable keeps the float in $f23, the frame 16 smaller); an address-taken `i` in a loop is `loop.c`'s load_mems: a shadow register, the store on the loop's EXIT alone (0x250F60: the two tests that skip the loop skip the store); a value stepped by a loop is an EXPRESSION of the biv when its start follows the entry test (0x24A5A8's `(iStep * i + 0x4000) >> 15`, `li a2,16384`; 0x2513F0's `(iAcc + iBnd + 0x4000) >> 15`, `move t2,v0`), an accumulator's start precedes it; `j++` in the arm keeps `(j + 1) << 2` from folding (0x24A5A8); an 8-byte table of known size indexed `[i - 4]` is one `la` (no temporary, GCC's giv start: 0x24B028); a struct-free `a[0] = a[1] = a[2] = 0.0F` stores through a float register in that order (`swc1 $f0` three times, not `sw zero`: 0x24F250); an `if` that keeps `(a < b) ? x : a` stores on both paths, one branch-likely (0x24FFF8's cost, 0x24FBE8's clamps); `x = f(); x = K / x` ties the divide (0x24FFF8).
 - **`update_equiv_regs` moves a global pseudo's constant to just before its one use** (local-alloc.c: REG_BASIC_BLOCK < 0, loop depth 0): 0x1C46D0's 16 in v0 right before its `sw` is that shape, the constant assigned in another block -- every placement gives the `li`, but the `sh` then falls after the `sw` (5 words against 4): left OPEN with the note.
 - **Open, read further**: accept 0x1C32A8 is a TIE in global-alloc, addr and the client's address both 4 refs across 95 insns, the lower pseudo (the parameter) wins: 21 spellings of the head moved nothing (flow's lengths come after the extra copies die); frombcd's `mult; mflo` is no type: 1,458 spellings of the shift, the constant and the product, none gives it (mulsi3_mult3_r5900's `mult %1,%2` alternative needs the product in LO).
+
+**The tools, round 45a** (the lanes' requests; the rows first, below). (0) **`tools/igsearch.py`, new**: the AI core's round 37 searches (`iganneal.py`, `igallperm.py`, `igpicks.py`, `igedges.py`) as one tool with four subcommands, for what `igreplay.py --want/--movers` cannot finish or does not ask: `anneal` (the nearest numbering of ten or more movers), `allperm` (every order that gives the registers and THE PRECEDENCES COMMON TO ALL -- what the source's declaration order must respect), `picks` (every sequence of spill picks, the numbering as dumped), `edges` (which added or dropped interference, one then two). They replay Metrowerks' colouring through igreplay's Graph, so they apply to MW records only. Canary `test_igsearch_finds_a_known_numbering_and_greedy_follows` (19 with the next item): the fixture's ig_pair, whose swapped declaration igdump measured: anneal finds the swap, allperm the one order and its precedence with every order tried; NEGATIVES: two nodes wanted in one register stop anneal at a miss and allperm at none, picks finds the record's own registers with no pick and not the swapped ones, and edges finds that only dropping first-second gives one register. (1) **`igreplay --target UNIT F --greedy`** (the weapons' round 40 `greedy.py`, the integrator's request): repeatedly the single renumbering that most reduces the nodes the target disagrees with, printed as `--move` lines; --move/--drop are its base, --timeout its budget, and `no single renumbering helps` is said. `igreplay.greedy()`; nothing else in the tool changed. (2) **`scdiff`'s report: data references as sets when the code differs** (the integrator's request, the weapons' round 40): `data references as sets: N in both, M only the target's (K of them unnamed), L only this candidate's, O of this object's own not compared`, with the rows named -- a relocation has no partner by position once the code moves, so WRONG REFERENCE cannot say it. The target's side is read from its code alone (`target_data_refs`: lui/%lo pairs through an `addu` of an index, the other arm's `addiu r,r,%lo`, $gp). A report: `res.data_refs` is read by `report()` only, no verdict or relocation status reads it, and an exception prints one line. Canary `test_scdiff_reports_data_references_as_sets`. **The proof**: every hand-written unit (`./sccheck.py --files '^(?!auto/)' -j 2`, MW and GCC together, on the tree merged with master 007cb6b8) scored with this branch's `scdiff.py`, `sccheck.py`, `scdecomp.py`, `scd.py` and with master's, nothing else different: both rc 0, 15,521 lines each, `diff` empty, 11,720 byte-exact of 12,006 scored. The whole canary: 63 of 63 tests, 491 assertions. The drafts (`auto/`) were not part of it. The harness is `build/scratch/gcc/r45/proof.sh`.
+
+**Round 45a** (2026-11-06, the requests first, then the never-written rows, which is where the yield was): 16 rows newly byte-exact (12,548 bytes), 15 of them among the 16 functions first written this round: the socket layer's poll 0x1C3E60, getsockopt 0x1C4140, setsockopt 0x1C43D0 (`sdk/inet_sock.c`); `libnetb_recv_from` 0x247D30, `libnetb_send_to` 0x247FE8 (`ovl1/libnetb.c`); and Nellymoser's decoder whole but for the FFT: the voiced synthesis 0x254510, its three- and four-set forms 0x254730, 0x254A88 (`sase_decsc.c`), the three- and four-handle frames 0x255028, 0x255490 (`sase_decapi.c`), SetAmps.c's 0x255E68 (new `sase_setamps.c`), SWSynth.c's frames 0x256420, 0x2566D8; libmpeg's demultiplexer whole, `sceMpegDemuxPssRing` 0x1BAB08 and `_PES_packet` 0x1BB0D8 (`sdk/mpeg_demux.c`, with `sceMpegDemuxPss` written over its draft); and one old open: 0x2533B0 (round 19a, thirteen spellings then). Written and OPEN: `sceIoctl` 0x1A8820 (right size, the first time written; see below). 0x2492A0 went from 0x2E8 against 0x2E4 and 103 words of registers (the first draft) to the right size and 14 words, every saved register right; 0x24B2F8 to 8 bytes over, every saved register right, its last word diagnosed. No rows named. What they showed:
+
+- **WRITE THE NEVER-WRITTEN ROWS BEFORE REVISITING THE OPEN ONES.** 15 of 16 first drafts matched, most after one or two of the rules below; about the same effort on the two leads above matched neither. A sibling that matches is a template: 0x254A88, 0x255490 and 0x2566D8 came out of a generator or a copy of the row before. (The sibling EQOA project's decomp rig, outside this repository, holds flow.c, haifa.c, jump.c and toplev.c of a 1999 GCC: not this 2.96 and not a complete tree, but the rank_for_schedule tie-break below reads there as measured here.)
+- **A PARAMETER'S PSEUDO THAT DIES IN THE FIRST BLOCK IS LOCAL-ALLOC'S, AND IS ALLOCATED BEFORE EVERY GLOBAL ONE** (0x2492A0; calls do not end a block). So it holds its saved register against global-alloc's priorities, a pointer set after its last use takes that register back (`addiu s1,s5,40` in the first call's slot), and a later pseudo local to another block starts from s0 again. "pfRe and the pitch pointer share s1" was this, not one variable: written as one variable the allocation came out right but for one swap, and that swap was the tell (a pseudo set twice is global, and the priorities then order it wrongly).
+- **THE FIRST PASS ISSUES TWO A CYCLE, SO ONE MORE INSN ABOVE SHIFTS WHICH SIDE OF A CALL A LOW-PRIORITY INSN LANDS ON** (0x2492A0: `pfAmp = afAmp`, an equivalence reload deletes, moves the pointer's set past `$4 = pfRe`). An insn that vanishes at reload still takes a slot at sched1. `-fsched-verbose=4`'s visualisation shows the slot.
+- **`rank_for_schedule`'s TIES**: priority, then (before reload) register weight, the class against the last insn, THE INSN WITH MORE LATER INSNS DEPENDING ON IT, and only then the lower LUID (`--dump "-dS -dR -fsched-verbose=5"` prints each insn's priority and dependents). Two rows closed by it: 0x255028 / 0x255490 (the handle's blk and frame in one alias set make each earlier frame store a dependence of the blk load, one more dependent, and the stores go first; `void *blk`, `void *frame`, the frame's in and out typed apart), and 0x256420 / 0x2566D8 (a call's first argument move has the earlier call's every argument as a dependence, so WHICH ARGUMENT IS FIRST IN THE NEXT CALL'S PROTOTYPE reorders this call's moves: `(fStep, n, fX, ...)`). Read a one-move miss off the dependents column before permuting.
+- **AN ALIAS SET IS READ OFF A STORE THAT FLOATS** (0x247FE8: `h->self = h` scheduled past the struct copy as a pointer, held behind it as an int). 2.96 keeps a store below a BLKmode copy of ints only if the alias sets conflict; ccperm's 5,040 orders never reached the target until the field's type changed.
+- **A SUM INTO A VARIABLE OF ITS OWN IS NOT TIED TO ITS OPERANDS** (measured on 0x254510: `fR = fS + fT; fR = fR + 32768.5F - 32768.0F`, 14 words to none; why -- user variables, or fR's two sets -- not separated). `fB` reused in the two halves of 0x255E68 took f3 where the target has f0 and its sum was not tied (33 words); inlining it as an expression closed that (6): read it as a pseudo that dies twice not being local-alloc's, a reading, the fit of one row.
+- **A VARIABLE SHARED ACROSS THREE LOOPS IS GLOBAL, THE SAME ONE LOOP-SCOPED IS LOCAL, AND THE WHOLE CHOICE SHOWS** (0x254730, read by predicting it: the phase index function-scope and masked in a statement of its own `k = ...; k &= 0xFF;` lets the table pointer take v0 first and gives `mfc1 v1; andi v1; sll v1,v1,2`; `fA` shared shows as f3 in all three loops).
+- **A PLAIN `return 2` IN EVERY CHECK IS NOT A `ret` VARIABLE** (0x247D30, 0x247FE8): the target's checks are `blezl s6,...; ld s0,16(sp)`, the epilogue's first word stolen into a branch-likely's slot, and a variable's one return block loses them.
+- **AN IF-CHAIN WITH IDENTICAL ARMS IS NOT `||`** (0x1C4140, 0x1C43D0: `if (name == 9) size = 4; else if (name == 10) size = 4; else if (name == 11) size = 4; else return ...`): the `||` of the same three is folded into a range test (measured on 0x1C4140: 0x278 against 0x290, d=38).
+- **`do { ... } while (a && b)` IS ROLLED AT EXPAND** (0x1BAB08): the `.rtl` dump already has `b`'s test above the loop's head, entered by a jump over it. `if (!a) break; } while (b);` keeps the target's layout, and so does `while (!a ? 0 : b)`; a `goto` loop has no notes at all (0x2D8 against 0x2F8). Read as expand_end_loop's roll finding `a`'s conditional exit across the inner loops; stmt.c is not on this box.
+- **`for (i = 0; !x && i < n; i++)` IS NOT `if (x) break;` AT THE BODY'S END** (0x1BAB08): with `x` zero on entry the condition's first test folds and the loop rotates, which the `break` leaves undone.
+- **A FRAME WORD RELOADED IN A LOOP THAT NEVER STORES IT IS A SPILLED PSEUDO, NOT A STRUCT** (0x1BAB08: 160-172(sp), plain locals; nine saved registers were taken, the slots in pseudo order). Declaration order sets the slots; the assignments' order is free (split declarations from assignments to move them without renumbering).
+- **THE SPILL STORES KEEP SCHED1'S ORDER AGAINST A LOAD, SO THE ORDER AROUND A CALL IS READ OFF THE SECOND PASS'S MEMORY ORDER** (0x1BAB08, the last 4 words): a store above the load after the call means its assignment was issued with the call, ahead of the other low-priority sets (the ready list's ties go by LUID): `alldata = 0` textually before `cont = 1`.
+- **A STORE LEFT ABOVE A BRANCH WHOSE SLOT TOOK THE TARGET'S INSN MEANS A LABEL STOOD BETWEEN THEM** (0x1BB0D8: `sd; beqz a1; li v0,1`; reorg's backward scan stops at a label, as recalled, reorg.c is not on this box): one `if (m) jump(m)` after the arm, not one call in each arm (0x5AC against 0x5B0). The other path's branch still lands past the test in the target and in this compile.
+- **A CALL'S DEAD RETURN VALUE CAN COST THE NEXT TEMPORARY v0** (0x1BB0D8, 12 words: `_sysbitMarker` declared void in the unit, or a named temporary for the low word; not separated).
+- **A BLOCK-LOCAL TEMPORARY SCOPED TO ITS BLOCK IS LOCAL-ALLOC'S** (0x1BB0D8: a, b, c per timestamp block gave every saved register at once; shared across the function they were global and the bit reader's pointer moved).
+- **`if (!(x < k)) r = c;` IS NOT `r = c; if (x < k) r = 0;`** (0x2533B0): a store on the else path comes after the compare's calls, so `r` never crosses them and is no saved register (the target's `move a2,s0; movn a2,zero,v0`). Thirteen spellings in round 19a did not try the plain negation.
+- **Live lengths are doubled on more than a set-once equivalence** (measured on 0x2492A0's and 0x254730's loops: i 56, the walker 60, against the shift's 31, a loop of about 28 insns; the doubled ones' first sets are a copy of a frame address or a constant, each with a REG_EQUAL at cse2, and the undoubled shift's is a load). The reading -- update_equiv_regs doubles at the first set and a later set's no_equiv drops the note but not the doubling -- is inferred, local-alloc.c is not on this box. It is what 0x2492A0's last 14 words turn on.
+- **loop.c's movable test is measurable**: `threshold * savings * life >= the loop's real insns` hoists `(set t (plus fp N))` out of the loop, and combine can then not fold it into the address (0x24B2F8: `addiu v1,sp,80; addu v0,v1,s3` for the target's `addu v0,sp,s3; lw v1,80(v0)`). The threshold is between 63 and 71 on this build (with a call in the loop): the log's `Insn N: regno R (life L), savings S moved` / `not desirable` lines bracket it. A statement added to the loop proved it; the source's real extra insns are not found.
+- **A dead compare left in the target reads as a jump deleted after flow's last pass** (0x251748, still open, a reading): the target's `c.lt.s; jr ra` ends the chain one test deeper than `if (fX > 48.0F) return 161;` falling off the end gives (0x7C against 0x8C, d=9, from 0x70).
+- **Open, read further**: `sceIoctl`: all but the first 0x40 bytes: the target holds the constant 1 in s5 from the top (`li s5,1` under `get_iob`, used once, by the switch's `beql s1,s5`), so its registers shift; a dead `int one = 1` is not emitted and a `(void)` use changes nothing, and the first pass cannot hoist it (each block before the loop is its own region). `sceLseek`'s family: the target tests `flag & 0x8000` twice with no GCSE pseudo where this compile hoists one (`andi s4,s2,0x8000`), so `offset` and the semaphore share s2 in the target alone; `flag` read in a later statement is the nearest (d=33). `func_0024F888`: six spellings of the coded buffer's pointer leave it at 0xFC.
+
+**automatch** (`--range ... --max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's private build): MAIN `18DB90 1C4CC0`, OVL1 `243000 256FD0`, `1E7F58 1E8FD4`: no new hits (hit rate 0.0 %), emitted 0.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

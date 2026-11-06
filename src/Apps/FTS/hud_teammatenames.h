@@ -18,7 +18,7 @@ public:
     C2DString m_names[8];   // 0x18
     C2DBitmap m_bitmap1;   // 0x4e0
     C2DBitmap m_bitmap2;   // 0x560
-    int m_socom2_5e0;   // 0x5e0: zeroed by Init
+    float m_socom2_5e0;   // 0x5e0: zeroed by Init; the names' row height (a float: Tick's screen test)
     bool m_socom2_5e4;   // 0x5e4: On shows the names only while it is set
 };   // 0x5f0 bytes
 

@@ -49,8 +49,7 @@ public:
     unsigned char m_dilate;   // 0x1d
     unsigned char m_socom2_1e;   // 0x1e: SOCOM II's (the names ours)
     float m_socom2_20;   // 0x20
-    unsigned char m_socom2_24;   // 0x24
-    unsigned char m_socom2_25;   // 0x25
+    unsigned char m_socom2_24[2];   // 0x24: an axis's power curve and slew limit on (per axis; the name ours)
 };   // 0x28 bytes
 
 /* the pad's dead zones are kept scaled by this (SOCOM 1's global) */
@@ -74,6 +73,8 @@ public:
     float GetAcceleration(int stick);
     void SetAcceleration(int stick, float accel);
     void Tick(float dt);
+    /* an axis of the sticks as the game reads them (the free camera's; the name ours) */
+    float GetStick(int i) const { return m_220[i]; }
     /* SOCOM II's takes whether to read the pad a few frames to settle it (the name SOCOM 1's) */
     void Flush(bool settle);
     bool IsOpen() const;
@@ -98,12 +99,19 @@ public:
     int m_dc;   // 0xdc (Flush clears these and the block after them; the names ours)
     int m_e0;   // 0xe0
     unsigned char m_e4[256];   // 0xe4
-    unsigned char _1e4[0x20c - 0x1e4];
-    unsigned char m_20c;   // 0x20c (the constructor clears it)
+    unsigned char m_1e4[0x14];   // 0x1e4: the actuators' profile (the name ours)
+    unsigned char m_1f8[0x14];   // 0x1f8: the buttons' profile (the name ours)
+    unsigned char m_swapSticks;   // 0x20c (SOCOM 1's; the constructor clears it)
     unsigned char _20d[3];
-    int m_210[4];   // 0x210
-    float m_220[4];   // 0x220 (Flush copies the last into the other three)
-    int m_230[4];   // 0x230: SOCOM II's
+    union {
+        int m_210[4];   // 0x210: Flush's view, a word each
+        float m_stick[4];   // 0x210: left x, y, right x, y (SOCOM 1's m_LeftStick, m_RightStick)
+    };
+    float m_220[4];   // 0x220: the sticks as the game reads them (Flush copies the last into the other three)
+    union {
+        int m_230[4];   // 0x230: SOCOM II's, the constructor's view
+        float m_slew[4];   // 0x230: each axis's value held for the slew limit (the name ours)
+    };
     unsigned char m_lastStickRaw[4];   // 0x240 (SOCOM 1's DWARF, 0x130 on from there)
     float m_lastStickVal[4];   // 0x244
     float m_maxStick[4];   // 0x254

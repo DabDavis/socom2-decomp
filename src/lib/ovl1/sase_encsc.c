@@ -447,7 +447,7 @@ int func_00249C88(void *pvState, CircMblk *pvCircMblk, int iDelay, int iLength, 
 
 typedef struct {
 	char pad00[0x20];
-	short sAcc;			/* 0x20 */
+	unsigned short sAcc;		/* 0x20 */
 	short sStart;			/* 0x22 */
 	float fRatio;			/* 0x24 */
 	unsigned short usFlag;		/* 0x28 */
@@ -470,7 +470,7 @@ extern void (*data_001D55B4)(void *pDst, const void *pSrc, int n);	/* the host's
 extern void func_0024CF10(const float *pfRe, const float *pfIm, float *pfMag, float *pfAmp, float *pfFreq, int *piNPeaks);
 extern void func_0024CAE8(const float *pfEnv, const float *pfMag, const float *pfFreq, int iLength, float *pfOut, float fPitchDFT);
 extern void func_00250F60(float *pfV, const float *pfMag, float *pfPitch, float *pfOut, float *pfAmp, const float *pfFreq, int iNPeaks);
-extern void func_0024AB48(float *pfSpec, int iLength, float fStep);
+extern void func_0024AB48(float fStep, float *pfSpec, int iLength);
 extern void func_0024D770(float *pfLogEnv, int iLpcOrder, float *pfGain, float *pfLPC, float *pfRC);
 extern void func_0024E918(int iLPCorder, const float *pfk, float *pfASK);
 extern void func_0024EEA0(const float *pfIn, int iLength, float *pfOut, float fScale);
@@ -481,10 +481,17 @@ extern int func_00248AD0(void *hParamMblk, void *pTrack, const float *pfLPC, int
 
 /* a frame's analysis: its spectral peaks, envelope and voicing, the envelope resampled and (when the warp is on) shifted by the
  * warp's offset, its LPC and their arcsines; the window's pitch refined and the voicing tracked; the mode from the coder's
- * choice, the pitch halved in the mode that doubled it. OPEN (GCC round 44a; 0x2E8 against 0x2E4, the first draft 0x2E4 with 103
- * words of registers): the target spills two (the circular block, piMode), here three; its pfRe and the pitch pointer share s1 --
- * `addiu s1,s5,40` in the first call's slot, the next statement reorg took -- where here the pointer's set climbs above the
- * calls (s3, before the first jalr), so the two conflict. */
+ * choice, the pitch halved in the mode that doubled it. OPEN (GCC round 45a; every saved register right, 14 words, the warp loop's
+ * registers alone): the target gives the loop's output pointer a2, i a3, the walker t0, the shift t1 (here i a2, the shift a3, the
+ * walker t0, the pointer t1) and i + 1 v1 (here v0). What the first draft lacked (0x2E8 against 0x2E4, 103 words of registers):
+ * pfRe and pfIm are BLOCK-LOCAL pseudos -- local-alloc gives them s1 and s0 before global-alloc runs, so pfW takes s0 back (it too
+ * is local to the last block) and the pitch pointer can take s1 only if its set falls after `$4 = pfRe`; the scheduler's list runs
+ * two to a cycle, and one more first-block insn (`pfAmp = afAmp`, an equivalence reload deletes) pushes it past the call. The shift
+ * is an expression of the biv (`short k = i + usAcc`: lhu, a giv); k's range test is `k >= 0 && k < 256` folded, the arms in the
+ * order the cross-jump keeps. The float comes first in 0x24AB48's prototype (its definition keeps byte-exact). For the loop's
+ * registers: a pseudo whose FIRST set has a constant REG_EQUAL (the copy of a frame address, `i = 0`) has its live length doubled
+ * by update_equiv_regs, even when a later set drops the equivalence -- here i 56, the walker 60 -- so the target's order
+ * (pointer > i > walker > shift) needs the pointer at 14/29: undoubled, or a preference for a2. */
 int func_002492A0(void *pvCircMblk, float *pfRe, float *pfIm, EncFrame *pFrame, void *pEnc,
 		  int iLength, int iWinShift, int *piMode, float *pfMax)
 {
@@ -499,40 +506,40 @@ int func_002492A0(void *pvCircMblk, float *pfRe, float *pfIm, EncFrame *pFrame, 
 	float fSpacing = 512.0F;
 	EncAnalysis *p = pEnc;
 	EncWarp *pWarp = p->pWarp;
-	float *pfPitch;
-	float *pfW;
+	float *pfPitch, *pfW;
+	float *pfAmp = afAmp;
 	float fFirst, fX;
-	short i, j, sStart;
+	float *pfIn, *pfOut;
+	short i, sStart;
 	int iMode;
 
-	data_001D55B0(afAmp, 0, sizeof(afAmp));
+	data_001D55B0(pfAmp, 0, sizeof(afAmp));
 	data_001D55B0(pfF, 0, sizeof(afFreq));
-	func_0024CF10(pfRe, pfIm, pfEnv, afAmp, pfF, &iPeaks);
+	func_0024CF10(pfRe, pfIm, pfEnv, pfAmp, pfF, &iPeaks);
 	pfPitch = pFrame->afPitch;
 	fSpacing /= pfPitch[0];
-	func_0024CAE8(pfEnv, afAmp, pfF, iPeaks, pfEnv, fSpacing);
-	func_00250F60(p->afVoic, pfEnv, pfPitch, &pFrame->afPitch[1], afAmp, pfF, iPeaks);
-	func_0024AB48(pfEnv, 256, fSpacing);
+	func_0024CAE8(pfEnv, pfAmp, pfF, iPeaks, pfEnv, fSpacing);
+	func_00250F60(p->afVoic, pfEnv, pfPitch, &pFrame->afPitch[1], pfAmp, pfF, iPeaks);
+	func_0024AB48(fSpacing, pfEnv, 256);
 	if (p->iWarp != 0 && pWarp->usFlag != 0) {
 		fFirst = pfEnv[0];
 		sStart = pWarp->sStart;
-		j = pWarp->sAcc;
-		for (i = 0; i < 256; i++) {
-			int k = j++;
+		for (i = 0, pfIn = pfEnv, pfOut = afTmp; i < 256; i++, pfIn++, pfOut++) {
+			short k = i + pWarp->sAcc;
 
 			if (i < sStart)
-				fX = pfEnv[i];
-			else if ((unsigned short)k < 256)
+				fX = *pfIn;
+			else if (k >= 0 && k < 256)
 				fX = pfEnv[k];
-			else if (k < 256)
-				fX = pfEnv[i];
-			else
+			else if (k >= 256)
 				fX = pfEnv[255];
-			afTmp[i] = fX;
+			else
+				fX = *pfIn;
+			*pfOut = fX;
 		}
 		data_001D55B4(pfEnv, afTmp, 256);
 	}
-	func_0024D770(pfEnv, 12, &pFrame->f80, afAmp, pfF);
+	func_0024D770(pfEnv, 12, &pFrame->f80, pfAmp, pfF);
 	if (p->iWarp != 0)
 		pWarp->fRatio = pfEnv[0] / fFirst;
 	func_0024E918(12, pfF, (float *)&pFrame->f80 + 1);
@@ -542,7 +549,7 @@ int func_002492A0(void *pvCircMblk, float *pfRe, float *pfIm, EncFrame *pFrame, 
 	func_0024C458(pfW, iLength);
 	func_0024F250(pfW, iLength, pfMax, pfPitch[0], 0.0F);
 	pfPitch[1] = func_00251270(*pfMax, pfPitch[1], p->fPrevVoic, pfPitch[0], p->fPrevPitch);
-	iMode = func_00248AD0(pFrame, p->pvTrack, afAmp, 12);
+	iMode = func_00248AD0(pFrame, p->pvTrack, pfAmp, 12);
 	*piMode = iMode;
 	if (iMode == 1)
 		pfPitch[0] *= 0.5F;

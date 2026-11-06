@@ -351,10 +351,14 @@ int CConsole::Send(CPacket *packet)
  * WantsAck, !handler, both handler tests and the type-3 test), pads the joins after the two
  * Dispatches, and its remove binder's functor sits at sp+132 above the push_back temporaries (ours
  * at sp+124, below them). Not tried yet: the lookups as an inline helper of their own, the reply
- * through a named iterator. Round 27: zAnimFireWeaponTick 0x25CCB0 has the same unfilled slots. The
- * filler hoists an argument's set-up out of the next block unless the register is live at the
- * branch's target: the three kept in zAnimObjectMotionFromToBegin (byte-exact) are a0 holding the flags
- * there -- build/scratch/core/hoist.py, hoist2.py -- but in these two nothing visible reads a0 */
+ * through a named iterator. Round 28 (read in the compiler): no slot in the function is hoisted into, and that is
+ * function-wide -- block optimization (mwccps2 0x4C6D60) fired somewhere, and on any change it clears every block's
+ * predecessor list, so the delay-slot pass (0x4C7690) finds no single predecessor anywhere; it was the whole of
+ * zAnimFireWeaponTick's 0x40 bytes, through one `e = e && ... ? e : 0`. It fires on a conditional branch to a lone `b`, a `b`
+ * to the next block, or a block merged into its only predecessor. Here the place is not found: the pad and label ahead of
+ * the reply's `lw s1,4(s1)` (no branch reaches it in the final code) say the type-3 test is the place; `||` spellings with
+ * an empty or a self-assigning arm, nested ifs, the test as a ternary or a bool: 0x290-0x2AC, none fires it
+ * (build/scratch/core/v_rp1.py, v_rp2.py, v_rp3.py) */
 bool CConsole::RecvPacket(CPacket *packet)
 {
     bool handled = true;

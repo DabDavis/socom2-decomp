@@ -5,8 +5,7 @@
  * constructor, CInput::ClosePadIO and OpenPadIO last. SOCOM II drops GetSingleClick and the
  * sensitivity pair, adds a pressure to UpdateButton and a settle flag to Flush, and keeps one
  * libpad2 socket per pad. The file name is ours. Defined in reverse of their image order
- * (-inline deferred).
- * Unwritten: Tick (0x2DA930, 0x10B4). */
+ * (-inline deferred). */
 
 #include <string.h>
 
@@ -21,6 +20,14 @@ extern "C" int func_001BD5C8();
 extern "C" int func_0018FD10();
 extern "C" int func_0018FF50();
 extern "C" int sceGsSyncV(int mode);
+/* libpad2's (MAIN, not named yet): the socket's state, its read, one button's value out of the
+ * read, the two profiles, the actuators' send */
+extern "C" int func_001BD938(int port);
+extern "C" int func_001BD790(int port, void *data);
+extern "C" int func_001BDA78(int port, void *data, int button);
+extern "C" int func_001BD868(int port, void *profile);
+extern "C" int func_001BE530(int port, void *profile);
+extern "C" int func_001BE5B0(int port, int a, void *profile, int b, void *act);
 /* the math library's (MAIN) */
 extern "C" float sinf(float);
 extern "C" float atan2f(float, float);
@@ -40,6 +47,15 @@ extern float pad_dt;
 extern float data_003DF268;
 extern float data_003DF208;
 extern float data_003DF210;
+
+/* a value inside (-range, range) (inline: CheckStickVelocity materialises each test; the name
+ * ours) */
+inline bool InsideRange(float v, float range)
+{
+    if (v < range && -v < range)
+        return true;
+    return false;
+}
 
 /* the IOP modules started, libpad2 set up, the pad made (SOCOM 1's) */
 int CInput::OpenPadIO()
@@ -65,7 +81,7 @@ CPad::CPad(int port, int slot)
     int p;
 
     m_port = -1;
-    m_20c = 0;
+    m_swapSticks = 0;
     if (port == 0)
         p = 0;
     else if (port == 1)
@@ -125,6 +141,226 @@ CPad::~CPad()
     if (IsOpen()) {
         func_001BD738(m_port);
         m_port = -1;
+    }
+}
+
+/* one stick axis from its raw byte (SOCOM 1's expression) */
+inline float StickValue(unsigned char raw)
+{
+    return 0.007843138f * (127.5f - raw);
+}
+
+/* an axis through the stick's power curve (SOCOM 1's, for every stick; SOCOM II's asks per axis) */
+#define RESPONSE(v_, stick_) do { \
+        float v = m_stick[v_]; \
+        float sign = v < 0.0f ? -1.0f : 1.0f; \
+        int n = (int)m_stickType[stick_].m_valueForN; \
+        float r = v * m_stickType[stick_].m_valueForConstant; \
+        for (int j = 1; j < n; j++) \
+            r *= v; \
+        m_stick[v_] = sign * fabsf(r); \
+    } while (0)
+
+/* the frame's read: the socket's state and phase (the profiles once, then the read and the
+ * actuators), the raw sticks through their velocity test, dead zone, stretch, dilation, power curve
+ * and SOCOM II's slew limit, the sticks' copy, the buttons (SOCOM 1's, read through libpad2) */
+void CPad::Tick(float dt)
+{
+    int read = 0;
+
+    pad_dt = dt;
+    m_dc = func_001BD938(m_port);
+    if (m_dc == 1) {
+        switch (m_e0) {
+        case 0: {
+            int a = func_001BD868(m_port, m_1f8);
+            int b = func_001BE530(m_port, m_1e4);
+
+            if (a >= 0 && b >= 0)
+                m_e0++;
+            break;
+        }
+        case 1:
+            read = func_001BD790(m_port, m_e4);
+            if (m_1e4[0]) {
+                short act = (m_ActData[1] << 1) | m_ActData[0];
+
+                func_001BE5B0(m_port, 1, m_1e4, 2, &act);
+            }
+            break;
+        }
+    } else {
+        m_ActData[0] = m_ActData[1] = 0;
+        m_210[0] = m_210[1] = m_210[2] = m_210[3] = 0;
+        m_220[0] = m_220[1] = m_220[2] = m_220[3];
+        memset(m_e4, 0, sizeof m_e4);
+        memset(m_state, 0, sizeof m_state);
+        memset(m_held, 0, sizeof m_held);
+        m_e0 = 0;
+    }
+    if (read) {
+        m_lastStickRaw[0] = func_001BDA78(m_port, m_e4, 18);
+        m_lastStickRaw[1] = func_001BDA78(m_port, m_e4, 19);
+        m_lastStickRaw[2] = func_001BDA78(m_port, m_e4, 16);
+        m_lastStickRaw[3] = func_001BDA78(m_port, m_e4, 17);
+        m_stick[0] = StickValue(func_001BDA78(m_port, m_e4, 18));
+        m_stick[1] = StickValue(func_001BDA78(m_port, m_e4, 19));
+        m_stick[2] = StickValue(func_001BDA78(m_port, m_e4, 16));
+        m_stick[3] = StickValue(func_001BDA78(m_port, m_e4, 17));
+        CheckStickVelocity(m_stick[0], m_stick[1], 0);
+        CheckStickVelocity(m_stick[2], m_stick[3], 1);
+        if (InsideRange(m_stick[0], m_stickType[0].m_absoluteDeadZone))
+            m_stick[0] = 0.0f;
+        if (InsideRange(m_stick[1], m_stickType[0].m_absoluteDeadZone))
+            m_stick[1] = 0.0f;
+        if (InsideRange(m_stick[2], m_stickType[1].m_absoluteDeadZone))
+            m_stick[2] = 0.0f;
+        if (InsideRange(m_stick[3], m_stickType[1].m_absoluteDeadZone))
+            m_stick[3] = 0.0f;
+        if (m_stickType[0].m_normalize) {
+            if (m_stick[0] > 0.0f)
+                m_stick[0] -= m_stickType[0].m_absoluteDeadZone;
+            if (m_stick[1] > 0.0f)
+                m_stick[1] -= m_stickType[0].m_absoluteDeadZone;
+            if (m_stick[0] < 0.0f)
+                m_stick[0] += m_stickType[0].m_absoluteDeadZone;
+            if (m_stick[1] < 0.0f)
+                m_stick[1] += m_stickType[0].m_absoluteDeadZone;
+            m_stick[0] *= 1.0f / (1.0f - m_stickType[0].m_absoluteDeadZone);
+            m_stick[1] *= 1.0f / (1.0f - m_stickType[0].m_absoluteDeadZone);
+            _saturate(&m_stick[0], -1.0f, 1.0f);
+            _saturate(&m_stick[1], -1.0f, 1.0f);
+        }
+        if (m_stickType[1].m_normalize) {
+            if (m_stick[2] > 0.0f)
+                m_stick[2] -= m_stickType[1].m_absoluteDeadZone;
+            if (m_stick[3] > 0.0f)
+                m_stick[3] -= m_stickType[1].m_absoluteDeadZone;
+            if (m_stick[2] < 0.0f)
+                m_stick[2] += m_stickType[1].m_absoluteDeadZone;
+            if (m_stick[3] < 0.0f)
+                m_stick[3] += m_stickType[1].m_absoluteDeadZone;
+            m_stick[2] *= 1.0f / (1.0f - m_stickType[1].m_absoluteDeadZone);
+            m_stick[3] *= 1.0f / (1.0f - m_stickType[1].m_absoluteDeadZone);
+            _saturate(&m_stick[2], -1.0f, 1.0f);
+            _saturate(&m_stick[3], -1.0f, 1.0f);
+        }
+        Dilate(m_stick[0], m_stick[1], 0);
+        Dilate(m_stick[2], m_stick[3], 1);
+        if (m_stickType[0].m_socom2_24[0])
+            RESPONSE(0, 0);
+        if (m_stickType[0].m_socom2_24[1])
+            RESPONSE(1, 0);
+        if (m_stickType[1].m_socom2_24[0])
+            RESPONSE(2, 1);
+        if (m_stickType[1].m_socom2_24[1])
+            RESPONSE(3, 1);
+
+        for (int i = 0; i < 4; i++) {
+            float v;
+            float *p;
+            int stick, axis;
+
+            switch (i) {
+            case 0:
+                stick = 0;
+                v = m_stick[0];
+                axis = 0;
+                p = &m_stick[0];
+                break;
+            case 1:
+                axis = 1;
+                v = m_stick[1];
+                stick = 0;
+                p = &m_stick[1];
+                break;
+            case 2:
+                stick = 1;
+                v = m_stick[2];
+                axis = 0;
+                p = &m_stick[2];
+                break;
+            case 3:
+                stick = 1;
+                v = m_stick[3];
+                axis = 1;
+                p = &m_stick[3];
+                break;
+            }
+            if (m_stickType[stick].m_socom2_24[axis] && m_stickType[stick].m_socom2_1e) {
+                float k = m_stickType[stick].m_socom2_20;
+                float a = dt + (1.0f - dt) * (1.0f - (0.87f + 0.13f * k));
+
+                if (dt > 1.0f)
+                    a = 1.0f;
+                if (k > 0.5f)
+                    a *= 1.0f / (0.5f + k);
+
+                float sign = v < 0.0f ? -1.0f : 1.0f;
+                float *q = &m_slew[stick * 2 + axis];
+
+                if (sign * *q <= 0.0f)
+                    *q = 0.0f;
+
+                float fv = fabsf(v);
+
+                if (fv > a + fabsf(*q)) {
+                    float m = sign * a;
+
+                    *p = m + *q;
+                }
+                _saturate(p, -1.0f, 1.0f);
+                *q = *p;
+            }
+        }
+        if (m_swapSticks) {
+            float x;
+
+            x = m_stick[0];
+            m_stick[0] = m_stick[2];
+            m_stick[2] = x;
+            x = m_stick[1];
+            m_stick[1] = m_stick[3];
+            m_stick[3] = x;
+        }
+        m_220[2] = m_stick[2];
+        m_220[3] = m_stick[3];
+        m_220[0] = m_stick[0];
+        m_220[1] = m_stick[1];
+        if (m_e4[4] || m_e4[5] || m_e4[6] || m_e4[7])
+            m_0 = 1;
+        else
+            m_0 = 0;
+        float press;
+
+        UpdateButton(PAD_START, func_001BDA78(m_port, m_e4, 3), 0.0f);
+        UpdateButton(PAD_SELECT, func_001BDA78(m_port, m_e4, 0), 0.0f);
+        press = func_001BDA78(m_port, m_e4, 20);
+        UpdateButton(PAD_RIGHT, func_001BDA78(m_port, m_e4, 5), press);
+        press = func_001BDA78(m_port, m_e4, 21);
+        UpdateButton(PAD_LEFT, func_001BDA78(m_port, m_e4, 7), press);
+        press = func_001BDA78(m_port, m_e4, 22);
+        UpdateButton(PAD_UP, func_001BDA78(m_port, m_e4, 4), press);
+        press = func_001BDA78(m_port, m_e4, 23);
+        UpdateButton(PAD_DOWN, func_001BDA78(m_port, m_e4, 6), press);
+        press = func_001BDA78(m_port, m_e4, 24);
+        UpdateButton(PAD_TRIANGLE, func_001BDA78(m_port, m_e4, 12), press);
+        press = func_001BDA78(m_port, m_e4, 25);
+        UpdateButton(PAD_CIRCLE, func_001BDA78(m_port, m_e4, 13), press);
+        press = func_001BDA78(m_port, m_e4, 27);
+        UpdateButton(PAD_SQUARE, func_001BDA78(m_port, m_e4, 15), press);
+        press = func_001BDA78(m_port, m_e4, 26);
+        UpdateButton(PAD_CROSS, func_001BDA78(m_port, m_e4, 14), press);
+        press = func_001BDA78(m_port, m_e4, 29);
+        UpdateButton(PAD_TRIGGER_R1, func_001BDA78(m_port, m_e4, 11), press);
+        press = func_001BDA78(m_port, m_e4, 31);
+        UpdateButton(PAD_TRIGGER_R2, func_001BDA78(m_port, m_e4, 9), press);
+        press = func_001BDA78(m_port, m_e4, 28);
+        UpdateButton(PAD_TRIGGER_L1, func_001BDA78(m_port, m_e4, 10), press);
+        press = func_001BDA78(m_port, m_e4, 30);
+        UpdateButton(PAD_TRIGGER_L2, func_001BDA78(m_port, m_e4, 8), press);
+        UpdateButton(PAD_LEFT_STICK, func_001BDA78(m_port, m_e4, 1), 0.0f);
+        UpdateButton(PAD_RIGHT_STICK, func_001BDA78(m_port, m_e4, 2), 0.0f);
     }
 }
 
@@ -203,8 +439,8 @@ void CStickType::ReadControlFile(int stick)
         m_dilate = 1;
         m_socom2_1e = 0;
         m_socom2_20 = 1.0f;
-        m_socom2_24 = 0;
-        m_socom2_25 = 0;
+        m_socom2_24[0] = 0;
+        m_socom2_24[1] = 0;
     } else {
         m_minStickVelocity = 0.01640625f;
         m_velocityDeadZone = 0.0099999998f;
@@ -218,18 +454,9 @@ void CStickType::ReadControlFile(int stick)
         m_dilate = 1;
         m_socom2_20 = 1.0f;
         m_socom2_1e = 1;
-        m_socom2_24 = 1;
-        m_socom2_25 = 1;
+        m_socom2_24[0] = 1;
+        m_socom2_24[1] = 1;
     }
-}
-
-/* a value inside (-range, range) (inline: CheckStickVelocity materialises each test; the name
- * ours) */
-inline bool InsideRange(float v, float range)
-{
-    if (v < range && -v < range)
-        return true;
-    return false;
 }
 
 /* a stick resting: an axis inside its velocity dead zone that has barely moved for long enough

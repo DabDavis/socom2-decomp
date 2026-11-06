@@ -1,8 +1,7 @@
 /* hud_ammo.cpp -- the HUD's ammunition counts (OVL1 ...-0x23841B): SOCOM II's unit (no SOCOM 1
  * counterpart; the file name is ours), before the info box's: the counts' update from the kit
  * (0x237760), SetMags, SetTrans, Off, On, Reset, Init (0x237FC0), the destructor and the
- * constructor (the unit's last function in the image). All written, byte-exact but SetMags
- * (OPEN). Defined in reverse of their image order (-inline deferred). */
+ * constructor (the unit's last function in the image). All written, all byte-exact. Defined in reverse of their image order (-inline deferred). */
 
 #include "hud_ammo.h"
 
@@ -240,27 +239,15 @@ void CAmmoDisplay::SetTrans(float trans)
 
 /* the magazines: one to three lit among the four bitmaps; otherwise all off, and a texture given
  * (the count's) shown in the first -- the first bitmap's texture is the magazines' own unless so.
- * OPEN, 7 instructions, all the switch's registers: the target narrows the count into a0 after
- * loading the cases' 3 and 1 into v0 and v1, where this narrows it into v1 first and loads the 1
- * into a0. The argument is an int narrowed inside (On passes the cached word whole; an unsigned
- * char parameter makes On narrow it), and the load ternary (where an `if (own) tex = ...` pads its
- * join with a nop) fixes the tail; tried: `mags & 0xff`, a byte enum, an unsigned char local, a
- * signed char -- each leaves the same swap. Round 54's replay (igreplay --want 38=v1,40=a0): the
- * narrowed count (v40) must be numbered among the named locals (31.5-37.5), or the case constant 1
- * (v38) after it (40.5-42.5); a named unsigned char local before or after `own` (initialised,
- * assigned, dead-zeroed first, an int of the cast) and an inline narrowing it (by parameter, cast or
- * local) all fold back to the same temporary: 7. Round 56: the parameter itself reassigned narrowed
- * (`mags = (unsigned char)mags;` before the switch, 11; inside the switch's expression, 7). Round
- * 61: the switch as an if / else chain on a byte local or on the narrowed parameter (0x1B8; in case
- * order 1-2-3, 67 off). Round 62: igdump's PCode numbers the case-1 constant (v38) BEFORE the
- * narrowed count (v40): the back end reuses one constant register per value, made at its first
- * materialisation; a byte local, an int local of the cast (each before own), own assigned apart,
- * `(bool)1`, a `(unsigned int)` selector: 7 each. */
+ * Byte-exact through an enum-typed selector (the game states' round 53, the kit's round 60: enums are not propagated, so
+ * the narrowed count keeps a named number where every integer spelling folded back to the same temporary, the round 54
+ * replay's 31.5-37.5). The name of the enum and its enumerators are ours. */
 void CAmmoDisplay::SetMags(int mags, zdb::CTexHandle *tex)
 {
     bool own = true;
+    enum EMags { kMags1 = 1, kMags2, kMags3 } lit = (EMags)(unsigned char)mags;
 
-    switch ((unsigned char)mags) {
+    switch (lit) {
     case 1:
         m_bitmaps[0].On();
         m_bitmaps[1].Off();
