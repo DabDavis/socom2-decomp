@@ -9,7 +9,7 @@
  * entry point checks its handle through an inline returning 6 (null) or 11 (not a live engine):
  * 2.96 if-converts the magic test into `li 11; movz`, and a caller that returns its own constant
  * drops the 6. SOCOM 1's statics casrFreeResult and the NoClearErrorLog pair are inlined into
- * their callers. The functions not yet written are missing; the rest is in image order. */
+ * their callers. The object is whole since round 40c (casrCreateResult at its head), in image order. */
 
 #include "casr.h"
 

@@ -13,8 +13,8 @@
  * lists by size; a tree node's word indexes a table of its states' offsets. Only the functions
  * written so far are here, in image order: InitIsoWordTokenDpContext (round 32c),
  * FreeIsoWordTokenDp, InitNewUtterance, ExtendNodeWheel (OPEN, diagnosed in place),
- * ExpandGarbageArrays, IsoWordTokenDpProcess (round 32c; RePruneToPho and FrameDPacoust, between
- * ExtendNodeWheel and ExpandGarbageArrays, are not written), GetNBest and ControlIsoWordTokenDp
+ * RePruneToPho (round 40c), FrameDPacoust (round 39c, OPEN), ExpandGarbageArrays,
+ * IsoWordTokenDpProcess (round 32c), GetNBest and ControlIsoWordTokenDp
  * (round 31c), ConstructIsoWordTokenDp,
  * InitIsoWordTokenDpProcess, CalcNrNodes, IdleProcess, ScoreCompare. CalcNrNodes reads the child count before its depth test (the
  * target's load in the test's delay slot) and steps its child pointer in the for (the unrolled
