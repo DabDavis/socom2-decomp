@@ -1076,7 +1076,9 @@ FIREMODE CZKit::GetCurFireMode()
  * that closed GetFiremodeGraphic: 0x1F4). Round 43: the six matched functions with the target's
  * `bnez; move v0,zero; b end; nop; pad; jal` (Logout, ScanForVehicleByName, UIJoinGameServer,
  * ChooseSlotForCharacter, PlaySound3D, ActivateSequence) all have code after the call -- here the call
- * is the function's tail, which MW lays out first */
+ * is the function's tail, which MW lays out first. Round 56: peephole, opt_propagation, opt_dead_code,
+ * opt_common_subs, opt_dead_assignments or opt_lifetimes off inside the body, and a result local
+ * under propagation or dead-code off: 4-89 off, none the target's layout */
 int CZKit::GetMaxAmmoCount(int index)
 {
     index = wrap(index, m_num_items);
