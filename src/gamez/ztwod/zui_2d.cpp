@@ -521,7 +521,7 @@ public:
     float GetScale() { return m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f); }
 
     CSaferStr m_text;   // 0xc0
-    int m_cc;   // 0xcc
+    float m_cc;   // 0xcc: the cursor's pulse, an angle (or, fading, the fade)
     int m_len;   // 0xd0: the text's length
     int m_typed;   // 0xd4: the characters shown
     int m_d8;   // 0xd8
@@ -533,7 +533,7 @@ public:
     float m_f0;   // 0xf0
     unsigned char _f4[0x100 - 0xf4];
     CPlainBmp m_cursor;   // 0x100
-    int m_1a0;   // 0x1a0
+    float m_1a0;   // 0x1a0: the pause's time left (the text's #P)
     bool m_showCursor;   // 0x1a4: no NOCURSOR
     bool m_fadeCursor;   // 0x1a5: FADECURSOR
     int m_1a8;   // 0x1a8
@@ -2143,6 +2143,132 @@ int CTeleType::GetZAnimCmdType(const char *name)
     return CRenderableString::GetZAnimCmdType(name);
 }
 
+class CGameMenu {
+public:
+    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
+};
+
+class CMenuNode;
+CMenuNode *UiGetCurMenu();
+
+/* slot 12: typed out (SOCOM 1's CTeleType::Tick, SOCOM II's codes and word wrap): at the speed's
+ * factor; while a #P pause runs only the cursor pulses; past the text's end the rest is added and the
+ * cursor pulses or fades; else the next word measured -- it goes down a line when it would not fit --,
+ * the clock advanced, a line break or a #N, #P code taken, or the next (UTF-8) character added; the
+ * menu told (event 21) when the text ends */
+void CTeleType::Tick(float dT)
+{
+    if (!IsOn())
+        return;
+    dT *= g_fTtySpeedFactor;
+    if (m_1a0 > 0.0f) {
+        m_1a0 -= dT;
+        m_cc += dT * m_pulseRate;
+        if (m_cc > 6.2831855f)
+            m_cc -= 6.2831855f;
+        m_cursor.SetTrans(96.0f + 32.0f * sinf(m_cc));
+        C2DString::Tick(dT);
+        return;
+    }
+    UpdatePos();
+    if (!(m_typed < m_len)) {
+        if (m_text[m_typed]) {
+            while (m_text[m_typed])
+                AddCharacter(m_text[m_typed++]);
+            if (m_typed > 0 && g_bTtyNoise)
+                PlayCountSound();
+        }
+        m_cc += dT * m_pulseRate;
+        if (m_fadeCursor) {
+            if (m_cc > 1.0f)
+                m_cc = 1.0f;
+            m_cursor.SetTrans(128.0f * (1.0f - m_cc));
+        } else {
+            if (m_cc > 6.2831855f)
+                m_cc -= 6.2831855f;
+            m_cursor.SetTrans(96.0f + 32.0f * sinf(m_cc));
+        }
+        C2DString::Tick(dT);
+        return;
+    }
+
+    float last = m_e8;
+    bool wrap = false;
+
+    if (dT > 0.0f || (m_typed > 0 && m_text[m_typed - 1] == ' ')) {
+        C2DString word;
+
+        word.SetFont(m_font);
+        word.m_scale = m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f);
+        word.C2DString::SetString("", true);
+
+        int i = m_typed;
+
+        while (i < m_len && m_text[i] != ' ' && m_text[i] != '\n')
+            word.AddCharacter(m_text[i++]);
+        word.UpdatePos();
+        if (word.m_length + m_shortLength > m_maxLength) {
+            wrap = true;
+            m_typed--;
+        }
+    }
+    m_cursor.SetTrans(128.0f);
+    m_e8 += dT * m_interval * (m_scale * (m_font ? m_font->GetScaleFactor() : 1.0f));
+    if ((m_e8 > m_maxLength && m_text[m_typed] == ' ' && m_shortLength > m_maxLength) || wrap) {
+        NewLine();
+        m_f0 += m_shortLength;
+        m_e8 -= m_shortLength;
+        m_typed++;
+        if (m_e8 < 0.0f)
+            m_e8 = 0.0f;
+        else
+            Tick(0.0f);
+    } else if (m_text[m_typed] == '\n') {
+        NewLine();
+        m_f0 = m_length;
+        m_e8 = 0.01f;
+        m_typed++;
+    } else if (m_text[m_typed] == '#') {
+        m_typed++;
+        if (m_text[m_typed] == 'N') {
+            NewLine();
+            m_f0 = m_length;
+            m_e8 = 0.01f;
+            m_typed++;
+        } else if (m_text[m_typed] == 'P') {
+            m_typed++;
+
+            char buf[256] = {0};
+
+            while (m_text[m_typed] != ' ' && m_typed < m_len) {
+                sprintf(buf, "%s%c", buf, m_text[m_typed]);
+                m_typed++;
+            }
+            m_typed++;
+            m_1a0 = (float)atof(buf);
+        }
+    } else if (m_e8 + m_f0 > m_length) {
+        if (m_typed < m_len) {
+            if (dT > 0.0f && m_typed > 0 && g_bTtyNoise)
+                PlayCountSound();
+
+            const char *p = &m_text[m_typed];
+            int n = UTF8CharLen(p);
+
+            for (int i = 0; i < n; i++) {
+                AddCharacter(m_text[m_typed]);
+                m_typed++;
+            }
+            UpdatePos();
+            if (m_typed == m_len)
+                ((CGameMenu *)UiGetCurMenu())->RunEventAnim((ActionItem::EVENT)21, 0);
+            Tick(0.0f);
+        } else if (last + m_f0 <= m_length)
+            ((CGameMenu *)UiGetCurMenu())->RunEventAnim((ActionItem::EVENT)21, 0);
+    }
+    C2DString::Tick(dT);
+}
+
 /* the slider's command after the button's two: SetValue (its count, as SOCOM 1's, two) */
 int CSliderBar::GetZAnimCmdType(const char *name)
 {
@@ -3608,11 +3734,6 @@ void CWrappedText::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
 
 /* the slider's menu (zui.cpp's CGameMenu: the event it runs, SLIDER_MOVED; PlaySelectionSound is
  * zui.cpp's too) */
-class CGameMenu {
-public:
-    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
-};
-
 /* the slider's value written to its variable: the left half of the bar scaled below the centre
  * value, the right half above it (ours: the inverse of UpdateUIVar below) */
 inline void CSliderBar::ApplyValue()
