@@ -5,14 +5,13 @@
  * list and SOCOM 1's last three words. Defined in reverse of their image order (-inline deferred).
  * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem, Draw and
  * the small ones, TickFullScreenMap (round 48), SetupNorthIndicator, SwitchToCompassMap and
- * SwitchMapToFullScreen (round 52), TickFullScreenAnims (round 57), FrameObjective (round 58);
- * open: HandleScrolling and GetScrollPermissions (round 48, SOCOM 1's names). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
+ * SwitchMapToFullScreen (round 52), TickFullScreenAnims (round 57), FrameObjective (round 58), InitMap
+ * (round 64); open: HandleScrolling and GetScrollPermissions (round 48, SOCOM 1's names), HudTick
+ * (round 64: SOCOM 1's TickCompassMap inlined into it). The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
  * code-exact once every static is defined (round 30: the legend's pictures and flag, the scroll
  * bitmaps, the three computed floats); its four __arraydtor$N references stay unresolved (scdiff
  * compares a local function by its bytes, relocation fields included). The rest by SOCOM 1's
- * order and calls (unwritten, unnamed):
- * 0x209AE0 HudTick (CHUD::Tick's
- * call; SOCOM 1's TickCompassMap inlined into it), 0x20A330 (TickFullScreenMap's second call, after
+ * order and calls (unwritten, unnamed): 0x20A330 (TickFullScreenMap's second call, after
  * HandleScrolling: the zoom step, through the far zoom then the near: its m2c draft matches),
  * 0x20C080 the legend's builder (InitMap's call; the nine labels and
  * bitmaps through MapCompass's anchor images and the string table). */
