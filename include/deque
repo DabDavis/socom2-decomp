@@ -506,12 +506,26 @@ public:
             : p_(data + start), data_(data), first_(*&data_ + start), last_(*&data_ + cap)
         {
         }
+        iterator(const iterator &x)
+        {
+            p_ = x.p_;
+            data_ = x.data_;
+            first_ = x.first_;
+            last_ = x.last_;
+        }
         value_type *const &d() const { return data_; }
         value_type &operator*() const { return *p_; }
         iterator &operator++()
         {
             if (++p_ == last_)
                 p_ = data_;
+            return *this;
+        }
+        iterator &operator--()
+        {
+            if (p_ == data_)
+                p_ = last_;
+            p_--;
             return *this;
         }
         iterator &operator+=(int n)
@@ -1022,6 +1036,13 @@ public:
         {
             if (++p_ == last_)
                 p_ = data_;
+            return *this;
+        }
+        iterator &operator--()
+        {
+            if (p_ == data_)
+                p_ = last_;
+            p_--;
             return *this;
         }
         iterator &operator+=(int n)

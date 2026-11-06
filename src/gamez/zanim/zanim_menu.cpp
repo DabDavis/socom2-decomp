@@ -5184,3 +5184,55 @@ void CSelectedCharsItr::Advance()
 #pragma auto_inline reset
 
 }
+
+/* the state queue's buffer erase (0x285D30: cdeque<const void *>::erase, resize 0x285660 calls it; an
+ * explicit specialisation of include/deque's declaration, so only this unit's tail emits it) */
+typedef Metrowerks::cdeque<const void *, std::allocator<const void *> > CStateBuf;
+
+template <class X, class Y>
+static inline int StateBufDist(const X &x, const Y &y)
+{
+    const void *const *f = x.first_;
+    int n = x.p_ - y.p_;
+
+    if (x.p_ >= f) {
+        if (y.p_ < f)
+            n -= x.last_ - x.data_;
+    } else if (y.p_ >= f)
+        n += x.last_ - x.data_;
+    return n;
+}
+
+static inline void StateBufCopyBack(const void *const *stop, CStateBuf::iterator it, CStateBuf::iterator result)
+{
+    while (it.p_ != stop)
+        *--result = *--it;
+}
+
+static inline void StateBufCopy(CStateBuf::iterator it, const void *const *stop, CStateBuf::iterator result)
+{
+    for (; it.p_ != stop; ++it, ++result)
+        *result = *it;
+}
+
+template <>
+CStateBuf::iterator CStateBuf::erase(iterator first, iterator last)
+{
+    if (first == last)
+        return first;
+    const CStateBuf &self = *this;
+    const_iterator b = self.begin();
+    const void *const *deadlast = b.last_;
+    const_iterator e = self.end();
+    unsigned int pos = StateBufDist(first, b);
+    unsigned int back = StateBufDist(e, last);
+    unsigned int n = StateBufDist(last, first);
+
+    if (pos < back) {
+        StateBufCopyBack(b.p_, first, last);
+        this->start_ = (this->start_ + n) % this->capacity_;
+    } else
+        StateBufCopy(last, e.p_, first);
+    this->size_ -= n;
+    return begin() + pos;
+}
