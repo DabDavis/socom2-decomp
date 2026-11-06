@@ -4052,15 +4052,11 @@ int func_006181B8(DmeHostPeerParams *pParams, DmeConnectStatus *pStatus)
         int nResult;
         int nUser;
     } report;
-    struct {                            /* an aggregate: its reload survives the int stores (dme 0x619DD8) */
-        DmeWorld *p;
-    } world;
-    DmeClientInfo *pClient;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
     int result = 0;
     int r;
 
-    world.p = 0;
-    pClient = 0;
     if (pStatus == 0)
         return DME_ERR_ARGUMENT;
     pStatus->nResult = 29;
@@ -4080,36 +4076,36 @@ int func_006181B8(DmeHostPeerParams *pParams, DmeConnectStatus *pStatus)
         pStatus->nResult = DME_ERR_ARGUMENT;
         return DME_ERR_ARGUMENT;
     }
-    r = func_0061C638(0, &world.p);
+    r = func_0061C638(0, &pWorld);
     pStatus->nResult = r;
-    if (r != DME_OK || world.p == 0)
+    if (r != DME_OK || pWorld == 0)
         return r;
     r = func_0061C7A8(0, 0, &pClient);
     pStatus->nResult = r;
     if (r != DME_OK || pClient == 0)
         return r;
     func_0061C998(0, 256);
-    world.p->field_43C = 1;
-    world.p->field_444 = pParams->nMaxClients;
-    world.p->field_448 = pParams->nValue;
+    pWorld->field_43C = 1;
+    pWorld->field_444 = pParams->nMaxClients;
+    pWorld->field_448 = pParams->nValue;
     data_00651190 = pParams->pfnCallback;
     data_00651194 = pParams->nUser;
     ((int *)pStatus)[2] = 0;
-    world.p->pfnClientCallback = pParams->pfnClient;
-    world.p->field_42C = pParams->nClientUser;
-    world.p->field_438 = 2;
-    world.p->field_430 = pParams->pfnLeave;
-    world.p->field_434 = pParams->nLeaveUser;
-    world.p->nMyClient = 256;
+    pWorld->pfnClientCallback = pParams->pfnClient;
+    pWorld->field_42C = pParams->nClientUser;
+    pWorld->field_438 = 2;
+    pWorld->field_430 = pParams->pfnLeave;
+    pWorld->field_434 = pParams->nLeaveUser;
+    pWorld->nMyClient = 256;
     if (data_006511D4 == 0)
         result = func_00616C98();
-    if (func_0063A898(data_006511D8, world.p->field_444) != 0)
+    if (func_0063A898(data_006511D8, pWorld->field_444) != 0)
         return 37;
     if (result == 0 && pParams->key.nFlag == 1)
         result = func_00643900(0, pParams->nMaxClients, &pParams->key);
     if (result != 0) {
         func_00643E48(0);
-        world.p->field_438 = 3;
+        pWorld->field_438 = 3;
         if (data_00651190 != 0) {
             memset(&report, 0, sizeof(report));
             report.nWorld = 0;
@@ -4123,8 +4119,8 @@ int func_006181B8(DmeHostPeerParams *pParams, DmeConnectStatus *pStatus)
     }
     if (result != 0)
         return result;
-    if (func_00639FB8(data_006511D8, &world.p->nMyClient) == 0) {
-        func_00617060(0, world.p->nMyClient, 1, 1, 0);
+    if (func_00639FB8(data_006511D8, &pWorld->nMyClient) == 0) {
+        func_00617060(0, pWorld->nMyClient, 1, 1, 0);
         pStatus->nResult = 0;
     } else {
         func_00617060(0, 256, 0, 0, 1);
