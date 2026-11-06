@@ -333,15 +333,20 @@ static inline void StoreImageReset()
  * last quadword's bytes copied and the padding read away; every wait counts on one counter and
  * gives up past 0x1000000 polls (-1), the later ones resetting the path first. Written in the
  * weapons' round 30: the register tests `(x & m) == 0` (`!(x & m)` materialises sltu/xori: 0x440).
- * OPEN, 15 instructions at the target's size: the FIFO loop's store -- the target keeps a second
- * counter k (from the block count, t0) beside i (t1) and computes dst + (k << 4) each pass; any
- * `dst[k++]` (int, unsigned, short, separate step, in the for's step, through a value local, a char *
- * or shifted address, a volatile view) MW strength-reduces to a pointer stepped by 16 (45 off), and
- * `dst[base + i]` (here) re-adds base + i each pass; the byte copy's pointer is set before the
- * `0 < count` guard here, inside it in the target (the for-init: no better); the padding loop's
- * counter and bound trade a1/a2. Round 31: the store through an integer address, `*(u_long128 *)
- * ((unsigned int)dst + (k << 4))` with k++ apart or inside, is strength-reduced to an offset stepped
- * by 16 (8 short); `(int)dst + k * 16`, an unsigned k, a char pointer: 45 off */
+ * BYTE-EXACT since the weapons' round 37, by three shapes:
+ *  - the FIFO loop's second counter k is unsigned and indexes through `(int)k`: a same-size
+ *    signedness cast of the induction variable is not a safe conversion to MW's strength reduction
+ *    (PowerPC MW's IroLoop.c, IsSafeTypcon: only a widening, or unsigned to a LARGER signed type,
+ *    passes), so the target's dst + (k << 4) is recomputed each pass; any uncast `dst[k++]` (int,
+ *    unsigned, short, a value local, a char * or shifted address -- rounds 30-31) became a pointer
+ *    stepped by 16 (45 off), `dst[base + i]` re-added base + i (15 off);
+ *  - ONE int i, declared before k (the target's k t0, i t1), counts all three loops: the byte copy's
+ *    and the padding loop's are later webs that IRO_SplitLifetimes renumbers after the loop pass's
+ *    temporaries (the byte copy's index then takes a3 and its induction pointer t0, the padding
+ *    loop's counter a1 and its bound a2, as the target's -- a j of their own trades each pair);
+ *  - the byte copy reads the quadword as `((unsigned char *)&q)[i]`: the strength-reduced pointer
+ *    MW makes is set in the rotated loop's preheader, after the `0 < count` guard as the target's,
+ *    where a pointer of the source's own (`p = &q` in the for-init, `*p++`) was set before it */
 extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
 {
     unsigned int count = 0;
@@ -377,16 +382,18 @@ extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
         }
     }
 
-    int base = data_004A45A8;
+    int i;
+    unsigned int k = data_004A45A8;
 
-    for (int i = 0; i < data_004A45B8; i++) {
+    for (i = 0; i < data_004A45B8; i++) {
         while ((*ZV_VIF1_STAT & 0x1F000000) == 0) {
             if (count++ > 0x1000000) {
                 StoreImageReset();
                 return -1;
             }
         }
-        dst[base + i] = *ZV_VIF1_FIFO;
+        dst[(int)k] = *ZV_VIF1_FIFO;
+        k++;
     }
     if (data_004A45C0) {
         u_long128 q;
@@ -398,13 +405,9 @@ extern "C" int func_003B24C0(GS_STOREIMAGE_REGS *si, u_long128 *dst)
             }
         }
         q = *ZV_VIF1_FIFO;
-
-        unsigned char *p;
-        int j;
-
-        for (j = 0, p = (unsigned char *)&q; j < data_004A45C0; j++)
-            ((unsigned char *)&dst[data_004A45A8 + data_004A45B8])[j] = *p++;
-        for (int j = 0; j < data_004A45B0; j++) {
+        for (i = 0; i < data_004A45C0; i++)
+            ((unsigned char *)&dst[data_004A45A8 + data_004A45B8])[i] = ((unsigned char *)&q)[i];
+        for (i = 0; i < data_004A45B0; i++) {
             while ((*ZV_VIF1_STAT & 0x1F000000) == 0) {
                 if (count++ > 0x1000000) {
                     StoreImageReset();
@@ -594,33 +597,29 @@ extern "C" void func_003B1DD0(void *arg)
 }
 
 /* the mean of the last n brightness samples: all sixteen in order, or n back from the newest (new in
- * SOCOM II, not named). OPEN, 17 instructions, the same size: the unrolled walk's index and its
- * bound (n - 8) trade v1 and a1; the single exit gave the sum $f0 and declaring i first its a2 (the
- * index declared before i, at the top, unsigned, a while loop: no better). Round 29, by
- * `tools/igreplay.py --target`: those two are the only differing nodes, idx (v35) and the unroller's
- * bound, a front-end temporary (v36, `n - 8`, defined right after idx's load) -- every placement
- * numbering the bound BEFORE idx gives the target's registers (91 of 3,481). Not found in source:
- * the step in the for, two statements, the for-init, idx unsigned, a named count, `last - i` (0x1F0),
- * a pointer walk (0x188), a while (no unrolling). Round 30: the bound is a temporary the loop pass
- * makes, so idx would have to be one too -- made after it (the remainder loop's induction pointer
- * @671 is): an inline's local or parameter, a copy of a named start, a reference or pointer to the
- * global, a dead first definition then the same load again (CSE), casts -- all still numbered ahead
- * of the bound (17); the CSE rule that closed CMaterial_Object::Read does not reach here. Round 31:
- * the kit's round-49 device -- idx through a leaf template inline returning its argument or a cast
- * (Ident<int>, Cast<int>, Cast<unsigned>, Ref<int>), the element through a template accessor, a
- * pointer through AtPtr<float> -- still 17 (the pointer forms 0x188, the accessor 0x1D0) */
+ * SOCOM II, not named). BYTE-EXACT since the weapons' round 37: ONE unsigned variable at function
+ * scope is the first loop's counter AND the second loop's walk index -- IRO_SplitLifetimes gives the
+ * later web (the walk) a temporary of its own, made after the loop unroller's bound (`n - 8`), so the
+ * walk's index is numbered after the bound and takes the target's v1 (the bound a1). Before: OPEN, 17
+ * instructions, the same size -- idx (v35) and the unroller's bound (v36) traded v1 and a1, every
+ * placement numbering the bound BEFORE idx giving the target's registers (round 29's igreplay); a
+ * declared idx (signed or unsigned, at the top or in the branch), an inline's local or parameter, a
+ * dead first definition, casts and template accessors (rounds 29-31) all kept idx a declared-local
+ * number; the loop counter i shared by both loops instead (18 off) or a dead `idx = 0` first (22) do
+ * not reach it -- the first web must be live */
 extern "C" float func_003B1BF0(unsigned int n)
 {
     float sum = 0.0f;
+    unsigned int idx;
 
     if (n == 16) {
-        for (unsigned int i = 0; i < 16; i++)
-            sum += data_004A4560[i];
+        for (idx = 0; idx < 16; idx++)
+            sum += data_004A4560[idx];
         sum /= 16.0f;
     } else {
         unsigned int i;
-        int idx = data_004A45A0;
 
+        idx = data_004A45A0;
         for (i = 0; i < n; i++)
             sum += data_004A4560[idx--];
         sum /= n;
@@ -863,7 +862,15 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
  * Round 31: 31 off at the round's start (not 11: an earlier round's header change); the target
  * keeps 1 in a1 from the top for flag91 AND both of Create's arguments (`move a2,a1`: one shared
  * constant) and 255 in v1 -- the fade's two stores right after swapMode 21 off, at the top 23,
- * the alpha alone at the top 22, through an unsigned char or int local 31 */
+ * the alpha alone at the top 22, through an unsigned char or int local 31.
+ * Round 37 (igdump --iro / --pcode, build/scratch/wep/vorder.py, v_zvi37*.py): IRO hands the stores
+ * to the back end in SOURCE order (its last dump), and the target keeps that order; our back end
+ * moves every store of a constant 0 but the first to the function's last run of zero stores
+ * (swapMode / pcrtcDo to flag90's; with the flags first, finalBlend and runTime move too), and
+ * `swapMode = 1` or `= mode` stays put. `#pragma scheduling off` changes nothing, `#pragma peephole
+ * off` scatters the zero stores up instead (the pre-pass scheduler then places them freely) -- the
+ * grouping is the peephole's; false, a zero local (char or int), casts, an enum 0 and field types
+ * bool / char (swapMode's or the flags') all group the same */
 void zVid_Init(_zvid_mode mode)
 {
     zVid.runTime = 0;
@@ -1075,7 +1082,12 @@ extern "C" void func_003B09E0(unsigned int x, unsigned int y, unsigned int w, un
  * built first all schedule as the by-value setter does. Round 36 (build/scratch/wep/v_rect*.py):
  * the setter's two stores swapped, each OR's operands swapped, the high halves into locals first
  * (33-37), and any of the fields through an inline with a body of its own (ApplyDecalRender's
- * argument rule: 35-36) -- the target's load order h, y, w, x is not an argument order */
+ * argument rule: 35-36) -- the target's load order h, y, w, x is not an argument order. Round 37
+ * (igdump --pcode; v_rect37.py): the inliner substitutes x and y (used before the first store) and
+ * gives only w and h argument temporaries, so the PCode already reads h, w, y, x before colouring
+ * (igreplay --target: 14 PCode instructions unmatched -- the schedule, not a numbering); the body
+ * written in place with either OR's halves in either order and either store first, and wrapper
+ * inlines taking the fields as (x, w, y, h), (h, w, y, x) or (w, x, h, y): 35-38 */
 extern "C" void func_003B0A70(ZVID_RECT *r)
 {
     func_003B09E0(r->x, r->y, r->w, r->h);

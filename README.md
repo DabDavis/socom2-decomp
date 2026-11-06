@@ -2065,6 +2065,72 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 37** (func_003B1BF0 -- 17 off since round 29 -- and func_003B24C0 -- 15 off since round 30
+  -- byte-exact; Flatten, Ripple, zVid_Init and 0x3B0A70 measured with the optimiser's own log, `igdump --iro`):
+  - REUSING ONE VARIABLE ACROSS TWO LOOPS gives the later loop's use a temporary numbered after the loop passes'
+    temporaries (IRO_SplitLifetimes) -- the first use must be live, a dead first assignment does not split (0x3B1BF0's
+    counter and walk index in one `unsigned int`);
+  - a same-size signedness cast on a loop counter used as an index (`dst[(int)k]`, k unsigned) blocks MW's strength
+    reduction at no code cost -- PowerPC MW's IroLoop.c counts only widening casts as safe; indexing by the counter instead
+    of a pointer of your own puts MW's pointer after the rotated loop's guard, a pointer in the for-init is set before it;
+  - `#pragma opt_propagation` applies to the whole function as it stands at the function's end -- scoped around one
+    declaration it is ignored;
+  - MW hands stores to the back end in source order and the back end groups stores of the constant 0 with the function's
+    last run of them (zVid_Init's open); only `#pragma peephole off` stops it, `scheduling off` does not.
+- **Tells from the SEALs, round 55** (nine byte-exact: 0x54A3D0 -- open since round 51 --, CSealStats::Reset 0x545200,
+  CSealCtrl::SetEnabled 0x598840, the turret seat 0x585CD0, CZSealBody::CalcGoalDir 0x5AE040, CLook::SetLookDir 0x5ADC70,
+  InStateCarried 0x583AF0, InStateCarrying 0x583E70, UpdateQuadrant 0x5858A0; SetEyeLookDir's signature corrected):
+  - A `(float)` CAST OF A FLOAT IS AN EXPRESSION NODE THAT COSTS NO CODE but makes that operand the heavier one, so MW
+    numbers it first and emits the other operand first -- 0x54A3D0's `r * (float)(1.3f - t) * 0.6f` and both carry
+    states' `x * (float)rep->m_anim->m_1c`: the lever for any float operand order;
+  - a float tested as a bool (`if (len)`, `!a && !b`) compiles to `c.eq.s x,0`; `x != 0.0f`, `x == 0.0f` and `0.0f != x`
+    all put the zero first;
+  - an inline returning from two places keeps its loop variable in v0 when the caller assigns the result; with one result
+    variable for both arms MW merges it into the caller's saved-register variable and a fourth saved register appears;
+  - a float declared bare and assigned later is numbered at its declaration (CLook::SetLookDir's pitch $f24 -> $f20);
+    globals read into locals are loaded ahead of the computation, the computed value declared after them takes the lowest
+    register; a copy constructed inside an `if` loads all three fields, then stores through the next call's argument
+    register;
+  - a parameter the only caller never sets does not exist (SetEyeLookDir: SOCOM II dropped SOCOM 1's direction); a
+    "constructor" without `move v0,a0` is not a constructor (0x545200 is SOCOM 1's Reset, called twice by CZSealBody's
+    constructor in both games).
+- **Tells from the engine core, round 24** (GetDeadCamPoints 0x297A30 -- the weapons' round-36 rule: the rotation's second
+  argument through a `static inline MatrixRows(CMatrix *)` that assigns a local and returns it -- and CZAnim::Copy 0x26D940,
+  unwritten before, byte-exact; zdb::CDIBBox::SetCDIBBox 0x2DC7A0 written under its name, OPEN at the size, 32):
+  - an argument made of an inline with a body of its own is set up first even when it is a register parameter; casts and
+    one-expression inlines do not change the order;
+  - `&local.member[0]` at offset 0 (the object's own address) is never a common subexpression -- only a no-op integer
+    conversion makes MW hold it in a register (SetCDIBBox's first corner, a marked stand-in);
+  - one loop counter shared by every loop of a function changes a later loop's counter / offset numbering and allows
+    strength reduction, a fresh counter per loop merges with the count or is not reduced (CZAnim::Copy);
+  - `*p++` loads and then steps the pointer; the target's step-then-load-at-minus-4 is `p++; ... p[-1]`; a member pointer
+    read into a local before a `new` stays in a saved register, read through `this` it is reloaded after the call;
+  - `struct { ctor(box) { GetBBoxCorners(m_pts, box); } CPnt3D m_pts[8]; }` gives the CPnt3D() construction loop -- the
+    device of zparticle_source.cpp's FaceCorners and node_model.cpp's BoxCorners.
+- **Tells from the zdb world, textures, rdr and sound, round 30** (zdb::CSaveLoad::Load 0x318DA0, 0x7D8 and unwritten
+  before, byte-exact -- SOCOM 1's FilterMissionFolder inlined with root "/run"; UpdateBBoxFromDI's children call corrected
+  to vtable slot 0x40; CVisual::m_basefog_near named, SOCOM 1's):
+  - MW EVALUATES AN INLINED CALL'S ARGUMENTS RIGHT TO LEFT (they are bound to the inline's parameters) and an out-of-line
+    call's left to right; conversions inside an inlined body keep left to right (build/scratch/world-r30/wld/p_args*.cpp);
+    calls passed as arguments to an inline wrapper are inlined one level deeper than written directly (BuildMTW);
+  - `key = f(); if (key)` moves the result to a saved register and tests that, `if ((key = f()) != 0)` tests v0 with the
+    move in the delay slot -- a declaration inside the condition behaves like the first form; a pointer declared
+    uninitialised mid-block, ahead of the local it is later assigned from, is numbered first;
+  - `s = 1/x; g1 = s; g2 = 1/s;` puts both divisions ahead of the stores, `g1 = 1/x; g2 = 1/g1;` stores between and costs
+    two instructions; `obj->f = call()` loads obj after the call -- to hold it in a saved register across the call, as
+    the target does, assign it to a pointer local first.
+- **Tells from the UI, round 35** (UpdateSelItemValves 0x282140, unwritten before, and zAnimUIMenuTick 0x2745A0, open since
+  round 12, byte-exact; ReleaseSlotItem 0x283170 written, OPEN at the size):
+  - a member of a stack object read through an inline accessor is read off the frame; read directly it shares the
+    constructor's hoisted address in a spare saved register (UpdateSelItemValves' `it.Weapons()`);
+  - `igreplay --move` with `--target` worked twice: move a named local's node out among the late temporaries -- the shape
+    is "drop the named local" -- and number an inline's local at a chosen place -- "a by-reference out-parameter into a
+    variable the caller declares there" (zAnimUIMenuTick's GetCommandC2D overload);
+  - a loop whose body always returns keeps MW's unrotated layout (a jump to the test at the bottom, no guard copy); a
+    `return` at the end of a branch repeats the destructor calls of the scope's objects at that exit; a flag set after the
+    step's call in while form lands in the back branch's delay slot, in a `for` in the step call's slot;
+  - a float operator's operands are numbered left first, and nothing tried makes MW generate the right operand first
+    (PowerPC MW does so only when the right operand contains a call).
 - **Tells from completing the MSL headers, round 36** (every one-byte scalar vector on the byte pod; the list's range init
   through push_back; the HUD's frame-slot hypothesis confirmed and measured; probes build/p36/, untracked: mkbyte.py,
   rmequip.py, oies.py, additem.py, imsprobe.py, runcheck.sh, cmpcheck.py; runs and objcmp output in build/scratch/msl-r36/.
@@ -13942,6 +14008,65 @@ written OPEN: 12 of 14; NBRWORD and NBRESULT's fields typed, BTREC +16 the end s
 superseded; `src/lib/asr` 585 of 614 (582 of 610 before). No rows renamed (all had SOCOM 1's names). No
 tool changed (scratch: build/scratch/gcc/r36/ -- vt.py scores a unit's variants with their
 allocation priorities, allunits.py scores every asr unit, v_*.py the variants).
+
+**Round 37c: three of the casr object's unwritten rows by SOCOM 1's bodies -- the parameter setter, the
+acquisition, the context activation.**
+
+- **Which copy of a cross-jumped tail survives is decided by the jump chain's order** (casrSetParam,
+  281 words -> 0): jump2 walks the insns forward and tries each jump against the label's chain, which
+  lists the jumps last-first, so with every case ending in `break` (all in the exit label's chain from
+  the start) the first case's `_tosControl` tail is redirected into the LAST case's copy. The target kept
+  case 1's: its cases end in `return (unsigned char)c->last_error;` (the failure exits too) -- each such
+  return is first moved onto the copy after the switch (the code before the return label: one insn,
+  minimum 1), and only then joins the exit label's chain, as it is processed; so each later case finds
+  only the earlier ones and cross-jumps into case 1's send. A label in the way stops a merge (case 4's
+  failure return keeps its own first send), and jump optimisation inverts what is left into the
+  target's `beqz ...; b exit`.
+- **An inline's arguments are expanded as sums** (integrate.c, EXPAND_SUM): a pointer sum passed to an
+  inline puts the shift first (`addu t1,v1,a2`); computed into a variable by a statement it keeps the
+  source's order (`tab + tab[n]`: `addu t1,a3,v1`). **An inline that walks its own parameter** (`for (;
+  first <= last; first++)`) copies the argument before the body's first test -- a `p = first` per loop
+  copies it in each arm -- which moved a conflict and gave the target's dict a2, tab a3; a local `n`
+  (rather than `rc->n` twice) lets GCSE reuse `n * 4` for `tab[n]` across the join.
+- **The extern-inline redefinition carries a whole function into its later callers** (casrSetParam,
+  casrAcquisition): Set_EndBackTraceMask_In_StateDict and casrDoSecondPass, both rows near the object's
+  end, are inlined into callers above them -- an `extern __inline__` copy before the caller, the real
+  definition below; a caller above the inline (casrStop) keeps its jal. casrDoSecondPass is
+  `unsigned char` (the inlined store-flag's `andi v0,v1,0xff`); its own row and casrStop are the same
+  either way.
+- **A guard written as the condition, not an early return** (casrActivateContext, 206 words -> 6): `if
+  (c->state == 1) return 0; c->state = 1; ...cb(1, ...)` gives the compare's constant the callback's a0
+  (the call's own `li` then goes: measured, 206 words); `if (c->state != 1) { c->state = 1; ...cb(c->state, ...)
+  }` is the target's v1 for compare and store and a fresh `li a0,1` (CSE folds the reloaded halfword to
+  the constant). Then a `?:` of two function pointers called once against an if/else of two calls (the
+  store's place before the next call's argument), and two stores to a local record written in the
+  reverse of the target's order (round 27c's rule): 0.
+- **A declaration's initialiser is its statement's place**: `int err = casrCheckHandle(c); int acc =
+  0;` puts acc's zero after the inline's join (the target's `move s5,zero` between the movz and the
+  test); `int acc = 0;` first schedules it into the prologue.
+- **Two adjacent byte flags tested together are one halfword load** (fold_truthop): `c->use_dp == 0 &&
+  c->iso_word == 0` is the target's `lhu v0,576(s0)`.
+- **Open, diagnosed in place**: the older opens (their diagnoses stand; Calculate_NbrOfItemNodes_In_...:
+  the recursion loop's walker a variable of its own, block-scoped or not, 33; the counting loop's 32).
+  Not reached: BacktraceWordsParBT (the brief's block-scoping rule has nothing to act on: every variable
+  in the swap spans blocks, so all go to global-alloc), cbIsoWordRecognised (0x678, 20 frame slots,
+  floats), casrActivateData (0x620), cbCheckConfusion (0x42C: struct copies by ldl/sdl and soft-float
+  doubles), casrDoSpelling, casrCheckUserWordConfusion, casrCreateResult, the Chinese builders,
+  CreateSecondPassTreeContext, RePruneToPho, FrameDPacoust, the distance passes, InitCalculateDistances.
+
+Hand-written in round 37c: `asr/casr.c` (casrSetParam, casrAcquisition and casrActivateContext new, each
+with SOCOM 1's body; the extern inlines of Set_EndBackTraceMask_In_StateDict and casrDoSecondPass; CTXVT's
+slots 15 and 20 named IsSpellingContext and IsIsoWordContext, contextv2.c's table; the object's RUNCTX,
+CTXDATA and UWTABLES as far as these read them: 61 of 61), `asr/casr.h` (+496 p496, +500 p500, +688
+`pending` (the part frame's bytes), +1072 `wtp`, +1092 f1092 from pads; LANGVT slots 26 and 27
+GetRecogWTP and GetSpellingWTP, language.c's table), `asr/chinese_tree.c` (Translate_Prons_Into_Items_
+And_Tones_TreeCtx written OPEN, 116 words and two short: the kind read once through the walker's first
+post-increment (161 read in the loop), then registers; 2 of 5) -- 3 rows new to the map's byte-exact rows
+(3,604 bytes), no draft superseded; `src/lib/asr` 588 of 618 (585 of 614 before). No rows renamed (all three
+had SOCOM 1's names). No tool changed (scratch: build/scratch/gcc/r37/ -- vt.py scores a unit's variants,
+open37.py lists the range's open rows and their units, rank.py ranks unwritten rows by SOCOM 1's
+mnemonic ratio, vsplit.py writes a `//==` probe's variants as units, sdiff.py side by side, p_xj.c the
+cross-jump probe).
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
