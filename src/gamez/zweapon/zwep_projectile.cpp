@@ -661,7 +661,7 @@ bool CZProjectile::PostTick(float dT)
  * a variable at its first definition: closest s4, i s3, n s2 as the target's), the loop's point at
  * function scope (its y/z addresses hoisted into s6/s7, the frame's order) and the last hit's its own;
  * the done flag spilled to the frame (sp+176) as the target's.
- * OPEN, 0x438 against 0x440, 2 instructions: the item tests -- the target copies the weapon's id
+ * Once OPEN (byte-exact since), 0x438 against 0x440, 2 instructions: the item tests -- the target copies the weapon's id
  * with `lb a0` and narrows it (`andi v1,a0,0xff`) ahead of the 172/173/178/185 compares and again
  * after the 185 arm's join, compares unfolded; here MW reads one `lbu` and folds 172/173 into a range
  * test. GetDamage's (2) is the same miss. Tried: GetId() inline, a local (single-assigned, with a dead

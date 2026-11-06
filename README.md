@@ -2066,6 +2066,39 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 40** (all ten open rows byte-exact: the turret aim 0x3A8910 and 0x3B0A70 with no device;
+  CVehicle::~CVehicle 0x3ACA60, zVid_Init 0x3B1200, CVisual::ApplyDecal 0x3B3AB0, CMesh::ApplyDecal 0x3B8680,
+  CDecal::AddDecal 0x3BECA0, CWaterRipple::Flatten 0x3C0CF0, CWaterRippleManager::ClearGroups 0x3C2A10 and Ripple 0x3C2CB0
+  through marked stand-ins, the original's spelling unknown; the lane's units 792 of 797, the five misses the MSL's band
+  inserts and two draft-held copies):
+  - WHICH ENUMS AREN'T PROPAGATED (the game states' round 53, refined): an unsigned 4-byte enum holds a pointer or word, a
+    1-byte enum a byte; a 4-byte enum holding a zero-extended byte folds, and a signed enum behaves as int and folds;
+  - A NO-CODE READ: `asm { beq x, x, L1; L1: }` reads x for a call's argument order and costs nothing, the branch to the
+    next instruction removed later -- every C read dies before that order, an asm `move` is dropped, an instruction that
+    remains also counts but costs its word, and the label pads with a nop if it lands misaligned (CMesh::ApplyDecal's last
+    2);
+  - A LATE-FOLDING GUARD: a struct flag stored outside the loops and read through a reference bound at the read (`F &r = f;
+    if (r.on) p = &x;`) survives pass 0's loop phase as conditional, then folds to a plain per-iteration assignment in pass
+    1; a store inside the loop gets pulled out, a reference bound at the function's top never folds (Ripple's per-strip
+    pointer, 5);
+  - `K * (float)x`, x a float local holding a constant, stays unfolded to the back end and the product is hoisted at run
+    time (Flatten); named short locals defined at a body's top and read in a later block are not expression-propagated, so
+    IRO_PullOutInvariantAssignments pulls them into the out-of-line guard-plus-preheader, and a third local for an equal
+    value makes a third pull;
+  - a li whose store is ready at once gets that store next, so a run of such pairs gives a zero store no slot, and a li
+    whose store is not ready lets the first ready zero store in behind it: where an enum-typed constant is defined decides
+    where zero stores land (zVid_Init, whose wrong data symbols for all those rounds showed only as WRONG REFERENCE at d=0:
+    a wrong data symbol is invisible until the code aligns);
+  - READ COLOURS BY HAND: a node's register implies a coloured neighbour for each lower register, which gives the
+    code-generation order -- for 0x3B0A70 w, 640, h, 448, y, x led to the plain source form; a variable two neighbours over
+    K is deferred (AddDecal's prim, reached by computing strip just before its first store); read igreplay's last record
+    when a function spills;
+  - FLATTENING A TALL CHAIN AT LEVEL 5: calling a member's destructor from the function's own text inlines it whole
+    (`g->m_nodes.~CNodeVector()`, six high at a delete site: ClearGroups), and holding a member as raw words lets the
+    constructor and destructor chains differ in height (~CVehicle's CVehicleRegion). Both rows also close at `#pragma
+    inline_depth(6)`, each noted in its function's comment; the level-5 forms were kept, needing no pragma;
+  - the turret's y-first schedule came from assigning x, y, z and storing z, x, y (432 orders tried), not from y-first
+    source.
 - **Tells from the SEALs, round 58** (22 byte-exact: seal_ai.cpp's OnWeaponEvent 0x5729F0, OnWeaponHit 0x572330, 0x5743C0,
   0x56A8E0; seal_env.cpp's HandleLanding 0x5AF590, DropItem 0x59F730, PickupItem 0x59F0C0, HandleSealStep 0x5A3570,
   RemoteWeaponDamageVictim 0x5A1B80, HandleGrenadeExplosion 0x5A0E70, CanTraverse 0x5B3CE0 and seven more; seal_create.cpp's
@@ -15624,6 +15657,44 @@ Hand-written in round 25b: `medius/dmelocal.c` (+9: 0x61A118 closed; 0x615D88, 0
 `medius/rt_udp.c` (+6: 0x63E4A0 closed; 0x63FA28, 0x63FC08, 0x640B70, 0x641308, 0x641BA0 written; 48 of 54) -- 25 rows new to the map's
 byte-exact rows (9,604 bytes; `src/lib/medius` 985 -> 1,013 of 1,027 -> 1,049), 3 superseding matched drafts; unwritten rows 84 -> 65. No
 rows named: DME's API names are Dme.c's wrappers' (round 7b), and these bodies' own names have no evidence past their position. No tool changed.
+
+**Round 26b: an alias word nobody wrote, image order for the RT units, and the unwritten rows -- 40 rows written, 27 of them byte-exact.**
+
+- **A MEM's alias set can be half uninitialised, and it decides reloads and PRE**: a MEM made by purge_addressof (`gen_rtx_MEM`) has its
+  8-byte HOST_WIDE_INT alias set only half written. The dump shows it plainly, `(mem:SI (plus:SI (reg:SI 1 at) (const_int 36)) -578781546471751680)`.
+  The high word is stale obstack bytes, so it depends on what compiled before. Zero: an address-taken local reloads after every store. Nonzero:
+  the reload survives int stores (only a byte store, alias 0, kills it) and GCSE's PRE acts (a load inserted on the other arm's edge, a reaching
+  copy). That is why a declaration with no connection to a function flips it: 0x617060 flipped only with both `int field_08` in DmeConnectStatus
+  and func_0061CCA8's prototype changed. It explains round 25b's 0x63C170 note ("it looks like PRE, which this compile does not do"): this compile
+  does, in the other state. `pert.py`'s K dummy declarations or moved definitions can flip it, but did not on 0x63B5D0, 0x63C170, 0x63F168, 0x6419E8,
+  0x639FB8, 0x61F7B0, 0x637318 or 0x61F518.
+- **A one-member struct or array holds a real alias set, a union does not**: `struct { T *p; } s;` gives reloads only after byte stores. On 0x61F518
+  that took the master pointer's PRE home (d=30 to 14); on 0x619DD8 CSE1 merged instead, with no PRE copy. A union gives set 0.
+- **Image order keeps paying**: declarations first, a prototype for each function, functions sorted by address (a scratch sortunit.py). rt_udp.c +3
+  and rt_p2p.c +1 with nothing lost, and 0x636B30 is exact only at its image place: a callee compiled above or not changes `bne`/`bnel`.
+  dmelocal.c stayed as it was: sorted it gives the same 113 with other opens.
+- **A run's last store can come first**: 0x64A750's run of `sw zero` came out 248, 252, 28, 32, 48, 244 from a source ending in the 248 store: sched1's dump has all six
+  in the ready list and takes the last statement's first. So on this one function the target's 252, 28, 32, 48, 244, 248 is 28, 32, 48, 244, 248, 252 in the source, field
+  order, and writing it so made the row exact. Read a run of equal stores from its second element.
+- **An addressed scalar's slot comes with its first `&`**: 0x635A70 has its two key arrays, then the short and bytes, then the signature; the signature
+  belongs in the inner block that uses it, and declared at the top it takes the scalars' place (0x63C4F0 is the same).
+- **A pointer reassigned in two statements keeps its register**: `pBody += round; pBody = (char *)(pBody - pList->pBuf);` is `addu s0,s0,v0; subu s0,s0,a0`
+  where one expression gives v0 and swaps the loads (0x631848). Its third short-lived pointer is what puts pNew in s1: global-alloc's priority again.
+- **Smaller shapes**: `if (a || b) return X;` keeps `bnezl p,X; b end` because of the label between (0x619DD8, 0x63B9A0's range test, 0x6400A8's send, and
+  0x61F518's four-term chain). A reorg likely/annul follows the source's polarity (`if (n == 0) n = 2; else n++;` gives bnez, the other bnezl). A found arm
+  after the loop via goto lets the other arms' calls cross-jump to it (0x63F4C8). `do { } while (0)` rotation and arms ending in break or return are what
+  loop.c moves (0x640EA0). Fail arms written apart keep a loop long enough that loop.c does not hoist its constants (0x61BC68). A guard round a do-while
+  avoids the known-zero register in a first loop test (0x61BEE8). Distinct function-pointer types let loads pass stores (rt_p2p's callbacks, 0x6395B8).
+  floor_log2(refs)*refs/live drops at 16 refs: one `return result` against a goto flipped 0x640EA0. Check a callee's arity before fitting registers: KM_SetLocalClientID
+  takes two, so a2/a3 were free pseudos (0x617060), and 0x61F518's `li a2,5` is a compare's constant, not a third argument to 0x61C998.
+- **tools/retsweep.py over `lib/medius` (46 units, 118 flips): 0 HIT, 1 closer**: rt_circ_buf_destroy declared void brings 0x61B6E8 from 70 to 64, not home. rt_circ_buf.c
+  defines it returning int, so it is not applied. The open Medius rows are not the callee's declaration.
+- **Open, diagnosed in place** (OPEN notes above each): 0x61F518 (the report's six stores: the full 720 orders leave pWorld and pClient's loads swapped, d=9), 0x61BC68
+  (one word: a no-op `movz v0,s0,s0`), 0x6164E0, 0x619DD8, 0x6181B8, 0x614B18 (the alias word), 0x61B6E8, 0x61F920 and 0x61ED48 (first drafts, shape incomplete), 0x63ACA0
+  (3), 0x63EF38 (two arms that do not cross-jump, 0x30 long), 0x6404D8 and 0x645380 (registers).
+- **Correction**: the commit d1d7fb79 says 0x63ACA0 is byte-exact. It is open, d=3 (`move s0,zero` stands before `lw a1,120(sp)`).
+
+Hand-written in round 26b: `medius/dmelocal.c` (+8: 0x6158F8, 0x6193F8, 0x617060, 0x61BEE8, 0x6187A0, 0x6197A0, 0x61CCA8, 0x61BA10 byte-exact, 0x614B18, 0x6164E0, 0x6181B8, 0x619DD8, 0x61B6E8, 0x61BC68 written, open; 113 of 122), `medius/dmemessage.c` (+0: 0x61ED48, 0x61F518, 0x61F920 written, open; 18 of 22), `medius/mediusapi.c` (+1, 0x64A750; whole, 111 of 111), `medius/mediusresp.c` (new, span 0x64D490; 1 of 1), `medius/rt_frag.c` (+1, 0x645528; 0x645380 written, open; 3 of 5), `medius/rt_list.c` (+1, 0x631848; whole, 23 of 23), `medius/rt_msg_client.c` (+2: 0x636B30, 0x635A70; 93 of 97), `medius/rt_p2p.c` (+8: 0x6395B8, 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63B708, 0x63B9A0, 0x63C4F0; 0x63ACA0 written, open; 40 of 46), `medius/rt_udp.c` (+5: 0x63F4C8, 0x6400A8, 0x640940, 0x640EA0, 0x641490; 0x63EF38, 0x6404D8 written, open; 53 of 61) -- 27 rows new to the map's byte-exact rows (16,500 bytes; `src/lib/medius` 1,013 -> 1,040 of 1,049 -> 1,089), unwritten rows 65 -> 25. No rows named: these bodies' own names have no evidence past their position, and no symtab row changed. No tool changed.
 
 ## Open, and next
 
