@@ -92,14 +92,6 @@ struct SKBSEQ {
     CInit<int, 0> m_val2;   // 0x10
 };
 
-/* (AddPiece's count: read through a struct at the count's address, by the original's accessor over
- * the vector's size word; MW then hoists the word's address out of the matcher's loops) */
-struct CSkbCount {
-    unsigned int Get() const { return m_n; }
-
-    unsigned int m_n;
-};
-
 /* the pieces composed so far (a vector of SKBPIECE; the members ours) */
 class CSkbPieces : public std::vector<SKBPIECE> {
 public:

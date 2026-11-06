@@ -315,7 +315,9 @@ namespace {
  * loads being available around the back edge and leaves no code. Measured: a used reference to the
  * iterator does stop them (the latch re-reads both words) but keeps the iterator in memory (0x158);
  * an unused reference, the element or the bool through locals, a per-use it.m_weapons, end().m_p are
- * all still merged (build/scratch/ui/v_oies1-5.py) */
+ * all still merged (build/scratch/ui/v_oies1-5.py). Round 39: the latch's list through the late-folding guard
+ * merges all the same, pass 1 merging what pass 0 could not (0x120, v_oies9.py); the guard as a test of its own
+ * after ++i is 0x130 */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
@@ -1649,7 +1651,13 @@ inline bool ChatHasText(const char *s)
  * s2,4(v0); B: b L; nop`. The reversed ternary `type != 3 ? text : String()` gives the target's head but
  * keeps `b L; nop` inside the inner String() (0x408). Tried, none both: if / else with an empty arm, a
  * goto, an `||` with a folded operand, a one-case switch (pads A), inline bools, inline returns, a
- * statement-inline String (build/scratch/ui/v_chat1-6.py) */
+ * statement-inline String (build/scratch/ui/v_chat1-6.py).
+ * Round 39 (v_chat9-12.py), the two halves located. The target's head (`beq; nop; b L; nop`, not inverted) wants an
+ * empty arm that holds a copy until colouring: the reversed ternary, or `const char *t = text; if (type != 3) text =
+ * t; else text = String();`; with a truly empty arm (void ternaries, a no-code asm is 0x408 as well) MW inverts it
+ * to one `bne`. Each form then costs two words. The ternary keeps an empty join for the result's copy (`b J; lw s2,
+ * 4(v0); J: nop`) with no pad at A; the if / else has no join but pads A (`nop` at 0x6C) and keeps the `b L; lw` the
+ * target falls through. None gives no pad and no branch, with a String() as a ternary or as a statement. */
 /* (materialised, sltu and xori, before the test branches on it) */
 inline bool ChatNul(char c)
 {
@@ -5190,7 +5198,12 @@ void CSelectedCharsItr::Advance()
 }
 
 /* the state queue's buffer erase (0x285D30: cdeque<const void *>::erase, resize 0x285660 calls it; an
- * explicit specialisation of include/deque's declaration, so only this unit's tail emits it) */
+ * explicit specialisation of include/deque's declaration, so only this unit's tail emits it).
+ * OPEN, 76 instructions at the target's size (0x428), 6 of them structural: the target's first block holds `sll
+ * t6,t3,2` (the capacity's shift: begin()'s dead last_ surviving pass 0's common subexpressions) and one data read,
+ * and the rest is the register rotation they cause; a dead read of begin()'s last_ in the text changes nothing.
+ * The insert 0x286160 (0x868) is not written: its begin() is built in memory at sp+208 by the four-argument iterator
+ * constructor, a shape this erase does not exercise. */
 typedef Metrowerks::cdeque<const void *, std::allocator<const void *> > CStateBuf;
 
 template <class X, class Y>
@@ -5226,7 +5239,6 @@ CStateBuf::iterator CStateBuf::erase(iterator first, iterator last)
         return first;
     const CStateBuf &self = *this;
     const_iterator b = self.begin();
-    const void *const *deadlast = b.last_;
     const_iterator e = self.end();
     unsigned int pos = StateBufDist(first, b);
     unsigned int back = StateBufDist(e, last);

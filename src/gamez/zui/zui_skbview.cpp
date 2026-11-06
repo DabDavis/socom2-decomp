@@ -11,7 +11,7 @@
  *
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
- * OPEN: the tick 0x3949C0 (written round 32, 17 off: its note), the display's scaler 0x397950. The cap look reader
+ * OPEN: the tick 0x3949C0 (written round 32, 17 off: its note). The cap look reader
  * 0x397D30 (CSkbLook::ReadCapLook) is byte-exact since round 27, its POSITION pair assigned whole
  * into the cap's m_pos (zui_skb.h's CIntPair over two CInit<int, 0>: an assignment of class-typed
  * members copies each word through $f0 off an address register, plain ints copy with lw/sw).

@@ -142,7 +142,9 @@ static inline const float &StringWidth(const C2DString &s)
  * `SKBTOKEN &t = tokens[i]` loads the data first in both builds). Round 38, reasoned from the colouring,
  * not replayed: the numbering looks the target's (index chain, then data, then sum) and its first
  * shift's v1 wants the data load live before the index's addu, which here follows it (sll, addu, lw,
- * sll). What orders that block is not established */
+ * sll). What orders that block is not established. Round 39: the piece through an inline taking a reference, or
+ * through the late-folding guard (a pointer to the piece, to its start), stay at 5 (v_wt2.py); a no-code asm read
+ * of a pointer to it keeps it in a saved register, 0x268 */
 bool SkbWrapTokens(std::vector<CSaferStr> &lines, std::vector<SKBTOKEN> &tokens, C2DFont *font, float scale,
                    float width)
 {
