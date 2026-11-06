@@ -6,7 +6,7 @@
  * lines' test and the line's constructor and destructor (round 37); ClosePauseMenu (round 51: its old
  * menu state SOCOM 1's MENU_STATE m_oldmenustate -- a signed char field cast to the enum loads with lbu); TickOffState (round 59: the
  * unit's first function, 0x2011F0, as SOCOM 1's; HudTick 0x201690, Init 0x202520, HandleSelectionInput
- * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten); OpenPauseMenu and HandleSelectionInput (round 65). Defined in reverse of their
+ * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten); HudTick, HandleSelectionInput and OpenPauseMenu (round 65; Init 0x202520 still unwritten). Defined in reverse of their
  * image order (-inline deferred): the unit ends with the lines' test 0x205A70, the line's
  * constructor 0x205970 (generated before the menu's constructor, which takes its address) and the
  * menu's constructor 0x205800. */
@@ -73,7 +73,7 @@ public:
     bool IsSelectable(signed char line);
     /* the menu closed: the start button opens it (SOCOM 1's TickOffState, 0x2011F0), the faded
      * parts fade out; and the menu's tick, set-up, pad and opening (SOCOM 1's HudTick, Init,
-     * HandleSelectionInput 0x2041E0, OpenPauseMenu 0x204A40; HudTick 0x201690 and Init 0x202520 unwritten) */
+     * HudTick 0x201690, HandleSelectionInput 0x2041E0, OpenPauseMenu 0x204A40; Init 0x202520 unwritten) */
     void TickOffState(const CPad &pad, float dT);
     void HudTick(CPad *pad, float dT);
     void Init();
@@ -104,8 +104,8 @@ public:
     float m_bc8;   // 0xbc8
     MENU_STATE m_oldmenustate;   // 0xbcc: SOCOM 1's (0x364 there), put back on closing
     CPauseSub *m_bd0;   // 0xbd0
-    void *m_bd4;   // 0xbd4
-    void *m_bd8;   // 0xbd8
+    CPauseSub *m_bd4;   // 0xbd4
+    CPauseSub *m_bd8;   // 0xbd8
     unsigned char m_socom2_bdc;   // 0xbdc: the third panel drawn instead of the lines
     int m_be0;   // 0xbe0
     unsigned char m_be4;   // 0xbe4
@@ -610,7 +610,7 @@ extern unsigned char FireModeSwapIsOn;
 extern unsigned char data_0044D4F8;
 extern unsigned char data_003DF1A8;
 extern unsigned char data_003DC3E0;
-extern int data_00409078;
+extern float data_00409078;
 bool IsRumbleOn();
 bool hudHelpWindowsEnabled();
 const char *GetString(int id);
@@ -689,7 +689,7 @@ void CZPauseTest::OpenPauseMenu()
     m_text420.SetTrans(110.0f);
     m_texta90.SetTrans(110.0f);
     m_textb28.SetTrans(110.0f);
-    data_00409078 = 0;
+    data_00409078 = 0.0f;
     for (unsigned int i = 0; i < 12; i++) {
         CPauseItem *item;
         CPauseItem *items = m_items;
@@ -762,7 +762,7 @@ void CZPauseTest::OpenPauseMenu()
 /* the valve the quit confirmation sets (no row name yet); the word the delete-from-map line clears
  * (no row name yet); the voice object and its modulation (hud_mpinfobox.cpp's data_0045B718) */
 extern CValve *data_0043668C;
-extern int data_003DC418;
+extern float data_003DC418;
 extern void *data_0045B718;
 extern "C" void func_0030E5A0(void *voice, bool off);
 
@@ -930,6 +930,199 @@ void CZPauseTest::HandleSelectionInput(const CPad &pad)
             data_003DC418 = 0;
         if (item->m_flag4)
             ClosePauseMenu();
+    }
+}
+
+/* the statics of the menu's tick (OVL1 .data 0x3DC428-0x3DC43B, the top of bss 0x409090-0x4090A0;
+ * no rows named yet): the selection bar's fast speed, the delay and the elapsed time between pad moves
+ * and whether one may come, the selected line's pulse and its direction */
+static float s_pauseBarFast = 3.0f;
+static float s_pauseMoveDelay = 0.2f;
+static float s_pausePulseDir = 1.0f;
+extern float data_00409090;
+extern unsigned char data_00409098;
+extern float data_004090A0;
+
+/* the menu's tick (SOCOM 1's HudTick, much grown): the third panel's bitmap kept up, the selection bar
+ * slid to the selected line, then closed the closed tick, or open: the sound ticked, the yes/no of the
+ * third panel or the up/down of the lines at a delay between moves, the pad's selection handled, each
+ * line's colour reset and the selected one's pulsed; a word's blink of the selected line */
+void CZPauseTest::HudTick(CPad *pad, float dT)
+{
+    if (m_socom2_bdc)
+        m_panel2.On();
+    else
+        m_panel2.Off();
+    if (!m_socom2_bdc) {
+        CPauseItem *item = &m_items[m_sel];
+        float target = (float)(int)(item->m_text.m_posy + item->m_text.m_socom2_80) - 21.0f - -2.0f;
+        float cur = m_poly6b0.m_tris[0].m_vertex[0][1];
+
+        if (target != cur) {
+            float dir = 1.0f;
+
+            if (target < cur)
+                dir = -1.0f;
+
+            float dist = target - cur;
+            float speed = 1.0f;
+
+            if (dist < 0.0f)
+                dist *= -1.0f;
+            if (!(dist <= 31.0f))
+                speed = s_pauseBarFast;
+
+            float y;
+
+            if (speed == s_pauseBarFast)
+                y = cur + 640.0f * dir;
+            else
+                y = cur + speed * (400.0f * (dir * dT));
+            if (dir == -1.0f) {
+                if (y < target)
+                    y = target;
+            } else if (!(y <= target)) {
+                y = target;
+            }
+            m_poly6b0.SetPos(171.0f, y, 297.0f, 21.0f);
+        }
+    }
+    if (!m_open) {
+        TickOffState(*pad, dT);
+    } else {
+        CSnd::PostTick(0.0f, 0);
+
+        CZSealBody *owner = CHUD::GetHUDOwner();
+        CSealCtrl *ctrl = owner ? owner->m_ctrl : 0;
+        bool input = ctrl ? (bool)ctrl->m_input_enabled != false : false;
+
+        if (!data_00409098) {
+            data_00409090 += dT;
+            if (!(data_00409090 <= s_pauseMoveDelay)) {
+                data_00409090 = 0.0f;
+                data_00409098 = 1;
+            }
+        }
+        if (m_socom2_bdc) {
+            if (data_00409098) {
+                char left = pad->m_state[PAD_LEFT];
+                char right = pad->m_state[PAD_RIGHT];
+
+                if (m_be4 && ((unsigned char)right == KEY_FALLING || (unsigned char)right == KEY_DOWN)) {
+                    m_be4 = !m_be4;
+                    if (m_bd4)
+                        m_bd4->Notify(0, 255);
+                } else if (!m_be4 && ((unsigned char)left == KEY_FALLING || (unsigned char)left == KEY_DOWN)) {
+                    m_be4 = !m_be4;
+                    if (m_bd8)
+                        m_bd8->Notify(0, 255);
+                }
+            }
+        } else {
+            char up = pad->m_state[PAD_UP];
+            char down = pad->m_state[PAD_DOWN];
+
+            if (data_00409098) {
+                unsigned char kup = up;
+
+                if (kup == KEY_FALLING || kup == KEY_DOWN || (unsigned char)down == KEY_FALLING || (unsigned char)down == KEY_DOWN) {
+                    if ((unsigned char)down == KEY_FALLING || (unsigned char)down == KEY_DOWN) {
+                        if (m_bd8)
+                            m_bd8->Notify(0, 255);
+
+                        signed char sel = m_sel;
+                        bool done = false;
+
+                        do {
+                            /* a device: the plain char read is what keeps the target's narrowing of the
+                             * read before the add; sel itself goes to IsSelectable as it is */
+                            sel = (signed char)((char)sel + 1);
+                            if (sel == 12)
+                                sel = 0;
+                            if (IsSelectable(sel))
+                                done = true;
+                        } while (!done);
+                        m_sel = sel;
+                        data_00409098 = 0;
+                    }
+                    if (kup == KEY_FALLING || kup == KEY_DOWN) {
+                        if (m_bd4)
+                            m_bd4->Notify(0, 255);
+
+                        signed char sel = m_sel;
+                        bool done = false;
+
+                        do {
+                            sel = (signed char)((char)sel - 1);
+                            if (sel == -1)
+                                sel = 11;
+                            if (IsSelectable(sel))
+                                done = true;
+                        } while (!done);
+                        m_sel = sel;
+                        data_00409098 = 0;
+                    }
+                    for (unsigned int i = 0; i < 12; i++)
+                        m_items[(signed char)i].m_text.SetTrans(128.0f);
+                }
+            }
+        }
+        data_00409078 += dT;
+        if (pad && input)
+            HandleSelectionInput(*pad);
+        for (unsigned int i = 0; i < 12; i++) {
+            CPauseItem *item = &m_items[(signed char)i];
+
+            item->m_text.m_color[0] = 100.0f;
+            item->m_text.m_color[1] = 100.0f;
+            item->m_text.m_color[2] = 100.0f;
+        }
+        data_004090A0 += s_pausePulseDir * (7.0f * dT);
+        if (!(data_004090A0 <= 1.0f)) {
+            data_004090A0 = 1.0f;
+            s_pausePulseDir *= -1.0f;
+        }
+        if (data_004090A0 < 0.0f) {
+            data_004090A0 = 0.0f;
+            s_pausePulseDir *= -1.0f;
+        }
+
+        static CPnt3D from = s_pauseColor3;
+        static CPnt3D to(52.0f, 76.5f, 84.0f);
+        CPnt3D diff = to - from;
+
+        if (m_socom2_bdc) {
+            if (m_be4) {
+                m_text1080.SetColor(100.0f + 28.0f * data_004090A0, 100.0f + 28.0f * data_004090A0, 100.0f + -36.0f * data_004090A0);
+                m_bitmap1120.SetColor(from.x + diff.x * data_004090A0, from.y + diff.y * data_004090A0, from.z + diff.z * data_004090A0);
+                m_text1220.SetColor(100.0f, 100.0f, 100.0f);
+                m_bitmap12c0.SetColor(from.x, from.y, from.z);
+            } else {
+                m_text1220.SetColor(100.0f + 28.0f * data_004090A0, 100.0f + 28.0f * data_004090A0, 100.0f + -36.0f * data_004090A0);
+                m_bitmap12c0.SetColor(from.x + diff.x * data_004090A0, from.y + diff.y * data_004090A0, from.z + diff.z * data_004090A0);
+                m_text1080.SetColor(100.0f, 100.0f, 100.0f);
+                m_bitmap1120.SetColor(from.x, from.y, from.z);
+            }
+        } else {
+            m_items[m_sel].m_text.SetColor(100.0f + 28.0f * data_004090A0, 100.0f + 28.0f * data_004090A0, 100.0f + -36.0f * data_004090A0);
+            m_poly6b0.SetColor(from.x + diff.x * data_004090A0, from.y + diff.y * data_004090A0, from.z + diff.z * data_004090A0);
+        }
+        m_bc4 = 0.2f;
+        m_bc8 = -0.7f;
+    }
+    if (!(data_003DC418 < 0.0f)) {
+        data_003DC418 += dT;
+
+        bool hi = false;
+
+        if (!(data_003DC418 < 0.1f) && data_003DC418 < 0.2f)
+            hi = true;
+
+        int trans = hi || data_003DC418 >= 0.3f ? 128 : 0;
+
+        m_items[m_sel].m_text.SetTrans((float)trans);
+        if (!(data_003DC418 < 0.3f))
+            data_003DC418 = -1.0f;
     }
 }
 
