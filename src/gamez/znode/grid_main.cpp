@@ -902,18 +902,13 @@ bool CGrid::Read(CSaveLoad &io)
  * a prop no cell took deleted; the clutter marked created and the manager made if it was not
  * (SOCOM 1's, 0x214940, sprintf'd its path; SOCOM II builds it with strcat; written in the core
  * lane's round 17).
- * OPEN, 23 instructions (the target's size, every call and block in place): the archive's inner
- * calls go through a pointer to it (`z`, the target's s5 -- SOCOM 1's build kept the address so
- * too), the key's test on the call's own value (`(key = ...) != 0`: beqz v0 with the copy in the
- * delay slot, a declaration-initialised key tests the copy); left: the target tests the model's
- * copy (move s4,v0; beqz s4) where MW here tests the ternary's v0, and this/z/model take s6/s5/s4
- * where ours take s5/s4/s6 -- the model through an if/else, preset, an inline, `!= 0`, a cast, a
- * declaration ahead of the key: the same 23 or 0x3C4 (build/scratch/core/v_rc*.py); the replay
- * (igreplay --want this=s6,z=s5,model=s4) finds no placement of z and model alone. Round 18: the
- * model through an inline with two returns (0x3C4), with a preset local returned (17: the test on
- * the copy, as the target, but the ternary's join and every register lost), the ternary reversed
- * (`strcmp(...) ? GetModel : 0`, 0x3C4), the name in a local (0x3C4); the replay with this, z and
- * model as movers found no placement in the 15 % it searched in 150 s (build/scratch/core/v_rc*.py) */
+ * Byte-exact since the engine core's round 27 (23 off since round 17): the archive's inner calls go
+ * through a pointer to it (`z`, the target's s5 -- SOCOM 1's build kept the address so too), the key's
+ * test on the call's own value (`(key = ...) != 0`: beqz v0 with the copy in the delay slot, a
+ * declaration-initialised key tests the copy); the model a word declared ahead of the key (ours, a
+ * marked device): a plain pointer copy is propagated, the test falling on the ternary's v0 with the
+ * model in s6. A `const` pointer, an int or an enum holds it (move s4,v0; beqz s4); only the int or
+ * the enum can be declared ahead of the key, which gives s4 / s3 (build/scratch/core/v_rc1-2.py). */
 bool CGrid::ReadClutter(const char *map, const char *dir)
 {
     if (m_ClutterCreated)
@@ -948,15 +943,16 @@ bool CGrid::ReadClutter(const char *map, const char *dir)
 
             if (root) {
                 for (zar::CKey::iterator it = root->begin(); it != root->end(); ++it) {
+                    int model;
                     zar::CKey *key;
 
                     if ((key = z->OpenKey(*it)) != 0) {
-                        CNode *model = strcmp(key->m_name, "NULL") == 0 ? 0 : CWorld::GetModel(key->m_name);
+                        model = (int)(strcmp(key->m_name, "NULL") == 0 ? 0 : CWorld::GetModel(key->m_name));
 
                         if (model)
-                            model->SetApplyClutterFlag(true);
+                            ((CNode *)model)->SetApplyClutterFlag(true);
                         for (zar::CKey::iterator j = key->begin(); j != key->end(); ++j) {
-                            CClutter *c = new CClutter(model);
+                            CClutter *c = new CClutter((CNode *)model);
 
                             z->OpenKey(*j);
                             if (c->Read(z)) {
