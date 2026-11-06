@@ -434,9 +434,9 @@ public:
     void SetUV(float u1, float v1, float u2, float v2);
     void SetColor(float r, float g, float b);
     void MakePacket(zdb::CCamera *cam);
-    /* the vertices, colours and UVs set from or filled into the clipper's rows (SOCOM 1's
-     * SetClipInfo took a count as well) */
-    void SetClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4]);
+    /* the vertices, colours and UVs set from or filled into the clipper's rows (SetClipInfo takes
+     * SOCOM 1's count as well -- CZLineMap::Clip, its one caller, passes 2 in t0 -- unused here) */
+    void SetClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4], int count);
     void FillClipInfo(float (*vertex)[4], float (*rgb)[4], float (*uv)[4]);
 
     int m_x;   // 0x18

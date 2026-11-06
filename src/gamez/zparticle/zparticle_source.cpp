@@ -46,6 +46,20 @@ void Source::SetActive(bool on)
     }
 }
 
+/* the source's collision box made (below) */
+extern "C" void func_0032AD20(Source *s);
+
+/* the source's collision box switched (0x329A40, new in SOCOM II: zAnimParticleSourceTick calls it,
+ * the world's round 29; the name ours): made first when the source has no node, then the flag at
+ * 0x120 set and the node switched by it (the stored byte read back) */
+void Source::SetHasBBox(bool on)
+{
+    if (!m_diNode)
+        func_0032AD20(this);
+    m_hasbbox = on;
+    m_diNode->SetActive(m_hasbbox);
+}
+
 /* SOCOM 1's: the box grown to hold a particle, the radius's square kept */
 void Source::CheckExtents(CPnt4D p, float r)
 {

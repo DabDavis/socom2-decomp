@@ -40,8 +40,6 @@ extern char _gp[];
 class CSimpleStateMachine;
 typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
 
-extern "C" void func_002852B0(void *queue, SSMState state);   /* the state queue's push (0x2852B0) */
-
 /* the state queue (ours: a class of its own around std::queue -- its destructor is the fourth
  * this-tested level ~CSimpleStateMachine inlines before __deque_buf's) */
 class CStateQueue : public std::queue<SSMState> {
@@ -58,7 +56,7 @@ public:
     {
         SSMState s = state;
 
-        func_002852B0(&m_queue, s);
+        m_queue.push(s);   /* include/deque's __deque_imp::push_back, out of line (0x2852B0, linked from zanim_menu.cpp) */
     }
 
     bool StartThread(int stackSize, int priority);

@@ -60,16 +60,16 @@ class tag_NODE_PARAMS {
 public:
     /* the facade cleared first (CNode's constructor, SOCOM 1's too, writes it with a word access
      * ahead of the vtable pointer) */
-    tag_NODE_PARAMS() { m_facade = 0; }
+    tag_NODE_PARAMS() : m_facade(0) {}
 
     CMatrix m_matrix;   // 0x0
     CBBox m_bbox;   // 0x40
-    unsigned short m_type;   // 0x58 (SOCOM II's CNode code reads a halfword; SOCOM 1's DWARF: an int)
+    unsigned int m_type : 16;   // 0x58 (SOCOM II's CNode code reads a halfword; SOCOM 1's DWARF: an int)
     /* SOCOM II's: two bits set through a whole tree (OVL2 sets 2 on models it loads), the rest
      * unread here -- the names are ours */
-    unsigned short m_socom2_mode : 2;   // 0x5a
-    unsigned short m_socom2_5a_bit2 : 1;   // 0x5a (InitNodeParams copies it)
-    unsigned short m_socom2_5a : 13;   // 0x5a (InitNodeParams clears it)
+    unsigned int m_socom2_mode : 2;   // 0x5a
+    unsigned int m_socom2_5a_bit2 : 1;   // 0x5a (InitNodeParams copies it)
+    unsigned int m_socom2_5a : 13;   // 0x5a (InitNodeParams clears it)
     unsigned int m_active : 1;   // 0x5c
     unsigned int m_dynamic_motion : 1;   // 0x5c
     unsigned int m_dynamic_light : 1;   // 0x5c
@@ -788,7 +788,9 @@ public:
         return was;
     }
     virtual CBBox *UpdateBBox(bool up);
-    virtual void UpdateBBoxFromDI(bool up);
+    /* the box made from the DIs' points and (up) the children's boxes, returned as GetBBox gives it
+     * (SOCOM 1's; node_model.cpp, the world's round 29: `addiu v0,s5,64` / the parent's box) */
+    virtual CBBox *UpdateBBoxFromDI(bool up);
 
     CNode();
     void SetName(const char *name);
@@ -851,8 +853,17 @@ public:
     /* a node read from the archive's open key and added to the parent (SOCOM 1's static
      * Read(CSaveLoad &, CNode *), 0x311520: CWorld::Read calls it where SOCOM 1's does) */
     static CNode *Read(CSaveLoad &io, CNode *parent);
+    /* node_io.cpp's (the online lane's round 28): the node's name, visuals and DI read off the
+     * open key (SOCOM 1's ReadDataBegin, called where SOCOM 1's CLight::Read calls it), its
+     * children (SOCOM II's, the name ours: SOCOM 1's Read read them itself), and an instance of the
+     * model the key names (SOCOM 1's static CreateInstance(CSaveLoad &)) */
+    int ReadDataBegin(CSaveLoad &io);
+    int ReadChildren(CSaveLoad &io);
+    static CNode *CreateInstance(CSaveLoad &io);
     void CopyParams(CNode *to) const;
-    void SetModel(CModel *model);
+    /* the model an instance (type 2) or a cross-reference (type 3, the model its one child) is of:
+     * false for any other node (SOCOM 1's; node_model.cpp's first row, 0x3178A0 -- `li v0,1`) */
+    bool SetModel(CModel *model);
     void RemoveFromParent();
     bool Rendered(int frames);
     void SetDynamic(bool on, bool recurse);
@@ -923,8 +934,10 @@ public:
     float m_Opacity;   // 0x9c
     /* SOCOM II's at 0xa0, where SOCOM 1's DWARF has m_Atom: CZAnim::State and CreateInstanceNode
      * test the byte at 0xa1 with a mask (4) and CreateInstanceNode sets that bit as a bitfield on
-     * an instance -- both views, names unknown */
-    unsigned char m_socom2_a0;   // 0xa0
+     * an instance -- both views, names unknown. The byte at 0xa0 is signed: CNode() stores -1 (`li
+     * v1,-1`, the world's round 29), CVisual::NodeSetup and the pipe read it as a signed light scale
+     * (negative: the default), the weapons store 127 * (1 - light) */
+    signed char m_socom2_a0;   // 0xa0
     union {
         unsigned char m_socom2_a1;   // 0xa1
         struct {
@@ -994,6 +1007,22 @@ public:
         m_minRange = min;
         m_maxRange = max;
         m_maxRangeSq = max * max;
+        m_invMaxRange = 1.0f / m_maxRange;
+        m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
+        UpdateBBox(false);
+    }
+    /* each range alone, its derived terms and the bounds after it (inline: CLight::Read, node_io.cpp,
+     * keeps the squared range in a register for both stores only so; the names are ours) */
+    void SetMinRange(float min)
+    {
+        m_minRange = min;
+        m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
+        UpdateBBox(false);
+    }
+    void SetMaxRangeSq(float sq)
+    {
+        m_maxRange = sqrtf(sq);
+        m_maxRangeSq = sq;
         m_invMaxRange = 1.0f / m_maxRange;
         m_invDeltaRange = 1.0f / (m_maxRange - m_minRange);
         UpdateBBox(false);
@@ -1218,6 +1247,13 @@ public:
     CTexHandle *AddTexture(CTexture *tex);
     CModel *AddModel(CModel *model);
     CTexPalette *AddPalette(CTexPalette *pal, bool check);
+    /* a model taken off the list again (inline, node_world.h defines it; the name ours) and a model
+     * by name off the list (inline: ~CModel calls its out-of-line copy, 0x318C30; the name ours) */
+    inline void RemoveModel(CModel *model);
+    /* the library's own model of that name taken off (inline, node_world.h: ~CModel's, the world's
+     * round 29; the name ours) */
+    inline void RemoveModel(const char *name);
+    CModel *GetModel(const char *name) { return m_models.GetModel(name); }
     bool IsNamed(const char *name);
     char *RootName();
     /* the render phase by value (inline: CAssetList::FindLib(_RenderPhase) narrows its argument
@@ -1260,6 +1296,13 @@ public:
     /* a model read from the archive's open key for a library (SOCOM 1's static, 0x3119A0:
      * CSaveLoad::LoadModels_PS2 calls it where SOCOM 1's LoadAssetLib_PS2 does) */
     static CModel *Create(CSaveLoad &io, CAssetLib *lib);
+    /* the online lane's round 28: the constructor (SOCOM 1's, 0x318C40), its table's two
+     * overrides (__vt__Q23zdb6CModel's +0x08 and +0x34: ~CModel 0x318930, Read 0x311880, node_io.cpp)
+     * and the library setter (inline, out of line at 0x311AD0 in CModel::Create; the name ours) */
+    CModel(const char *name);
+    virtual ~CModel();
+    virtual bool Read(CSaveLoad &io);
+    void SetAssetLib(CAssetLib *lib) { m_AssetLib = lib; }
 };
 
 }
@@ -2177,6 +2220,11 @@ public:
 };   // 0x10 bytes
 
 extern CNodeUniverse *NodeUniverse;
+
+/* a node's mesh textures, found or gathered into a list (node_main.cpp, 0x312D00: SOCOM 1's
+ * CNode::FindMeshTextures() with two parameters added, called with the node first --
+ * CWorld::AddTextureAssetCharacter's; the world's round 29) */
+CDynTexList *FindMeshTextures(CNode *node, bool find, CDynTexList *list);
 
 
 }
