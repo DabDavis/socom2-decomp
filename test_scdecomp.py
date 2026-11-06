@@ -538,6 +538,92 @@ def test_mw_local_function_resolves_by_its_code():
     ck(not r.match and sum(f.status == "CONTENT-MISMATCH" for f in r.relocs) == 4, "switched off, the four fail")
 
 
+LOCAL_CALL_FIXTURE = """/* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
+typedef unsigned char u_char;
+typedef struct {
+	u_char stat, second, minute, hour, pad, day, month, year;
+} sceCdCLOCK;
+
+static u_char ig_tobcd(u_char x)
+{
+	return x + (x / 10) * 6;
+}
+
+void converttobcd(sceCdCLOCK *t)
+{
+	t->year = ig_tobcd(t->year);
+	t->month = ig_tobcd(t->month);
+	t->day = ig_tobcd(t->day);
+	t->hour = ig_tobcd(t->hour);
+	t->minute = ig_tobcd(t->minute);
+	t->second = ig_tobcd(t->second);
+}
+"""
+
+
+def test_local_call_is_checked_by_its_code():
+    """A call to a TU-local function no map row names is checked by the callee's CODE (GCC round 42a,
+    the integrator's request: the zdb world's round 31 saw CShadowCaster "match" with a jal to the wrong
+    static, node_world.cpp's `static inline` NodeBBox -- local_code_ok said the code differed, by_code
+    returned None and the call stayed `unchecked`, which passes). Strictly now: content-ok when the
+    candidate's local function is the target's at the jal's address, CONTENT-MISMATCH when it is not --
+    its bytes differ, or the map has no row of its size there. GCC: libscf's converttobcd calling its
+    static tobcd under another name (no row; not at the target's distance) matches by tobcd's code, six
+    calls content-ok; the same caller calling a static whose body differs (`* 7`) -- its own bytes
+    unchanged -- does not, and under the old rule (SC_LOCAL_CALLS=lenient) it did. Metrowerks: ldimage.cpp
+    with its static setLoadImageTagsYX renamed (setLoadImageTags' tail call by code, content-ok at 0x30B770);
+    the target's jal retargeted to loadImage (a row of another size) or its callee's body changed by a
+    word: no MATCH, where the old rule matched both."""
+    img, st = E.image(), E.symbols()
+    BUILD.mkdir(parents=True, exist_ok=True)
+
+    def scored(src: Path, fn: str, image=None, home: Path | None = None):
+        if home is None:                    # a GCC fixture: built as sccheck builds it, its directive's
+            _, obj, err = C.build_one(src, BUILD / "localcall", root=src.parent)
+            assert obj is not None, f"{src.name} did not build: {err[-300:]}"
+        else:                               # a unit's copy: its own directory's headers on the path
+            obj = BUILD / "localcall" / f"{src.stem}.o"
+            D.compile_obj(src, obj, includes=[HERE / "include", HERE / "src", home])
+        r = D.compare(obj, fn, st.get(fn), image or img, st)
+        calls = [f for f in r.relocs if f.type == "R_MIPS_26"]
+        D.STRICT_LOCAL_CODE = False
+        try:
+            old = D.compare(obj, fn, st.get(fn), image or img, st).match
+        finally:
+            D.STRICT_LOCAL_CODE = True
+        return r, calls, old
+
+    gcc = BUILD / "ig_localcall.c"
+    gcc.write_text(LOCAL_CALL_FIXTURE)
+    r, calls, old = scored(gcc, "converttobcd")
+    ck(r.match and old and len(calls) == 6 and all(f.status == "content-ok" and f.want == st.get("tobcd").addr
+                                                   for f in calls),
+       f"GCC: six calls to a static the map does not name resolve by its code: {r.verdict}, {[f.status for f in calls]}")
+    wrong = BUILD / "ig_localcall_wrong.c"
+    wrong.write_text(LOCAL_CALL_FIXTURE.replace("(x / 10) * 6", "(x / 10) * 7"))
+    r, calls, old = scored(wrong, "converttobcd")
+    ck(r.masked_equal and not r.match and calls and all(f.status == "CONTENT-MISMATCH" for f in calls),
+       f"GCC: calling a static whose code is not the target's callee's -- the caller's bytes the same -- fails: "
+       f"{r.verdict}")
+    ck(old, "and under the old rule (lenient) it matched: the integrity bug, reproduced")
+    unit = HERE / "src" / "gamez" / "zmpeg" / "ldimage.cpp"
+    mw = BUILD / "ig_ldimage.cpp"
+    mw.write_text(unit.read_text().replace("setLoadImageTagsYX", "igLocalTagsYX"))
+    fn = "setLoadImageTags__FPUiPviiUi"
+    r, calls, old = scored(mw, fn, home=unit.parent)
+    ck(r.match and old and len(calls) == 1 and calls[0].status == "content-ok" and calls[0].want == 0x30B770,
+       f"MW: the renamed static's call resolves by its code: {r.verdict}, {[(f.status, hex(f.want)) for f in calls]}")
+    row = st.get(fn)
+    a, w = next((a, w) for a, w, t in E.disasm(img.read(row.addr, row.size), row.addr) if t.startswith(("jal ", "j ")))
+    for image, what in ((_image_with_word(img, a, (w & ~0x03FFFFFF) | ((0x30B740 >> 2) & 0x03FFFFFF)),
+                         "the jal retargeted to loadImage"),
+                        (_image_with_word(img, 0x30B770, struct.unpack("<I", img.read(0x30B770, 4))[0] ^ 0x8),
+                         "the callee's first word (its frame) changed")):
+        r, calls, old = scored(mw, fn, image, home=unit.parent)
+        ck(r.masked_equal and not r.match and calls and calls[0].status == "CONTENT-MISMATCH" and old,
+           f"MW: {what} -- no MATCH (the old rule matched): {r.verdict}")
+
+
 def test_padding_after_a_function_must_be_zero():
     """A candidate one instruction short of a function whose next word is code fails."""
     img, st = E.image(), E.symbols()
