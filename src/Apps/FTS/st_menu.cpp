@@ -667,3 +667,152 @@ void CMenuState::UnInit()
     GetLobbySaveManager()->Close();
     GetStringTables()->Unload("UIMn");
 }
+
+extern "C" int strcmp(const char *a, const char *b);
+/* the menu's actions on an event (zui.cpp's CGameMenu::RunEventAnim(ActionItem::EVENT, const char *),
+ * 0x367810: called by its name -- fts_state.h's CGameMenu cannot meet zui_spec.h's ActionItem) */
+extern "C" bool RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc(CGameMenu *menu, int event, const char *argument);
+
+/* an event's actions run on the menu by the event's name (OVL1 0x1F3BF0; SOCOM 1's, with SOCOM II's
+ * 63 events -- the names ParseButtonAnim maps, to the same values; ONSTART and an unknown name run
+ * nothing) */
+bool CMenuState::RunEventAnim(const char *eventname, const char *argument)
+{
+    bool result = false;
+
+    if (m_menu) {
+        int event;
+
+        if (!strcmp(eventname, "ONSTART"))
+            event = 0;
+        else if (!strcmp(eventname, "ONEXIT"))
+            event = 1;
+        else if (!strcmp(eventname, "ONACTIVATE"))
+            event = 2;
+        else if (!strcmp(eventname, "ONMPEGEND"))
+            event = 3;
+        else if (!strcmp(eventname, "MP_JOIN_ROOM"))
+            event = 4;
+        else if (!strcmp(eventname, "ON_SKB_APPLY"))
+            event = 14;
+        else if (!strcmp(eventname, "ON_SKB_APPLY2"))
+            event = 15;
+        else if (!strcmp(eventname, "ON_STATE_POP"))
+            event = 13;
+        else if (!strcmp(eventname, "ON_SKB_CLOSE"))
+            event = 16;
+        else if (!strcmp(eventname, "MP_PLAYER_NOT_FOUND"))
+            event = 5;
+        else if (!strcmp(eventname, "MP_SUCCESS"))
+            event = 6;
+        else if (!strcmp(eventname, "MP_CREATE_CLAN_SUCCESS"))
+            event = 7;
+        else if (!strcmp(eventname, "MP_CREATE_CLAN_FAILURE"))
+            event = 8;
+        else if (!strcmp(eventname, "MP_DISBAND_CLAN_SUCCESS"))
+            event = 9;
+        else if (!strcmp(eventname, "MP_DISBAND_CLAN_FAILURE"))
+            event = 10;
+        else if (!strcmp(eventname, "MP_MEDIUS_ERROR"))
+            event = 11;
+        else if (!strcmp(eventname, "MP_MEDIUS_HAS_INVITES"))
+            event = 12;
+        else if (!strcmp(eventname, "ON_LOAD_COMPLETE"))
+            event = 17;
+        else if (!strcmp(eventname, "ON_CLIENT_CONNECT"))
+            event = 18;
+        else if (!strcmp(eventname, "ON_FORCE_NEW_DB"))
+            event = 19;
+        else if (!strcmp(eventname, "ON_LADDER_REFRESH"))
+            event = 20;
+        else if (!strcmp(eventname, "ON_TTY_DONE"))
+            event = 21;
+        else if (!strcmp(eventname, "MP_MEDIUS_JOIN_GAME_FAILURE"))
+            event = 22;
+        else if (!strcmp(eventname, "MP_MEDIUS_READY_TO_CONNECT"))
+            event = 23;
+        else if (!strcmp(eventname, "MP_PLAYER_ALREADY_MEMBER"))
+            event = 24;
+        else if (!strcmp(eventname, "MP_VERSION_NUMBER_ERROR"))
+            event = 25;
+        else if (!strcmp(eventname, "MP_LEADERSHIP_TRANSFER_SUCCESS"))
+            event = 26;
+        else if (!strcmp(eventname, "MEMCARD_ERROR"))
+            event = 27;
+        else if (!strcmp(eventname, "MP_MEDIUS_BECAME_LEADER"))
+            event = 28;
+        else if (!strcmp(eventname, "ON_SKB_CANCEL"))
+            event = 29;
+        else if (!strcmp(eventname, "NETCNF_ERROR"))
+            event = 30;
+        else if (!strcmp(eventname, "MP_MEDIUS_JOIN_ROOM_FAILURE"))
+            event = 31;
+        else if (!strcmp(eventname, "MP_PLAYER_IS_LEADER"))
+            event = 32;
+        else if (!strcmp(eventname, "MP_CLAN_DISBANDED"))
+            event = 33;
+        else if (!strcmp(eventname, "MP_INVALID_PASSWORD"))
+            event = 34;
+        else if (!strcmp(eventname, "MP_PLAYER_ALREADY_INVITED"))
+            event = 35;
+        else if (!strcmp(eventname, "MP_PLAYER_LOGGED_IN"))
+            event = 36;
+        else if (!strcmp(eventname, "MP_FILTER_FAILURE"))
+            event = 37;
+        else if (!strcmp(eventname, "ONFOCUS"))
+            event = 43;
+        else if (!strcmp(eventname, "MP_GAME_NAME_EXISTS"))
+            event = 38;
+        else if (!strcmp(eventname, "LOADED_FROM_MEMCARD"))
+            event = 39;
+        else if (!strcmp(eventname, "SLIDER_MOVED"))
+            event = 40;
+        else if (!strcmp(eventname, "ONSCROLL"))
+            event = 41;
+        else if (!strcmp(eventname, "ONSCROLL_END"))
+            event = 42;
+        else if (!strcmp(eventname, "USBKBD_ENTER"))
+            event = 44;
+        else if (!strcmp(eventname, "MP_BANNED_FROM_GAME"))
+            event = 45;
+        else if (!strcmp(eventname, "ON_UPDATE_UIVAR"))
+            event = 46;
+        else if (!strcmp(eventname, "CLAN_MESSAGE_ID_ERR"))
+            event = 47;
+        else if (!strcmp(eventname, "CLAN_MESSAGE_EMPTY"))
+            event = 48;
+        else if (!strcmp(eventname, "MP_PLAYER_IS_FRIEND"))
+            event = 49;
+        else if (!strcmp(eventname, "MP_FRIEND_CONFIRMATION_REQUESTED"))
+            event = 50;
+        else if (!strcmp(eventname, "MP_EJECT_SPECTATOR"))
+            event = 51;
+        else if (!strcmp(eventname, "MP_EIGHTY_READY"))
+            event = 52;
+        else if (!strcmp(eventname, "MP_DNAS_ERROR"))
+            event = 53;
+        else if (!strcmp(eventname, "MP_DOWNLOAD_ERROR"))
+            event = 54;
+        else if (!strcmp(eventname, "MP_MEDIUS_FILE_DOES_NOT_EXIST"))
+            event = 55;
+        else if (!strcmp(eventname, "MP_CLAN_FULL"))
+            event = 56;
+        else if (!strcmp(eventname, "MEMCARD_STATUS"))
+            event = 57;
+        else if (!strcmp(eventname, "MP_SYSTEM_MESSAGE"))
+            event = 58;
+        else if (!strcmp(eventname, "PLAYER_IS_IGNORED"))
+            event = 59;
+        else if (!strcmp(eventname, "MP_RANDOM_GAME_FOUND"))
+            event = 60;
+        else if (!strcmp(eventname, "HDD_ERROR"))
+            event = 61;
+        else if (!strcmp(eventname, "MP_IGNORE_LIST_FULL"))
+            event = 62;
+        else
+            event = 0;
+        if (event)
+            result = RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc(m_menu, event, argument);
+    }
+    return result;
+}

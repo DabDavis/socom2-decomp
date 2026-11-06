@@ -10,6 +10,13 @@ see which registers every variable then takes.
     ./tools/igreplay.py DUMP -f Read -r 0 --watch 87 --drop 87-37     # an interference removed
     ./tools/igreplay.py DUMP -f Read -r 0 --want 33=v1,34=a1 --movers 33,34   # which numbering gives it
     ./tools/igreplay.py DUMP -f Read -r 0 --nb 87                     # a node's neighbours and sweeps
+    ./tools/igreplay.py DUMP --link '^__dt__Q23zdb11CNodeVector' -r 0 --watch 33   # by the mangled name
+
+-f is a regex SEARCHED in the function's bare name -- igdump's `proc` with its `@0xK` suffix stripped
+(`Read@0x8` is `Read`): `-f '^Read$'` selects one function's records, `-f Read` every name containing
+it; --link searches the mangled name instead (igdump's `link`, GCC round 39a: two `__dt`s told apart).
+-r N counts the records selected. Every record igdump writes is named since GCC round 39a; in an
+older dump a function named in 24 characters or more has none (its records only `-f '^$'` selects).
 
 The allocator is the decompiled PowerPC backend's (doldecomp/mweppc Coloring.c; README "Tells from
 completing the MSL headers, round 10/11"): virtual registers are numbered arguments, then named
@@ -792,7 +799,8 @@ def later_end(recs: list[dict], k: int) -> int | None:
     the dump with the same procedure and frame), for stack_slots' `later_end`; None if k's is the last."""
     rec, last = recs[k], None
     for r in recs[k + 1:]:
-        if r.get('proc') != rec.get('proc') or r.get('frame') != rec.get('frame'):
+        if (r.get('proc') != rec.get('proc') or r.get('link') != rec.get('link')
+                or r.get('frame') != rec.get('frame')):
             break
         if r.get('spills'):
             last = r['spills']['end']
@@ -813,7 +821,11 @@ def node_index(rec: dict, key: str) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("dump", type=Path, help="tools/igdump.py's output")
-    ap.add_argument("-f", "--func", help="only the records of the functions matching this regex")
+    ap.add_argument("-f", "--func", help="only the records of the functions matching this regex, searched in the "
+                    "bare name igdump read with its @0xK suffix stripped (`-f '^Read$'`; every record is named "
+                    "since GCC round 39a's igdump -- an older dump's 24-character-or-longer names are '')")
+    ap.add_argument("--link", help="only the records whose MANGLED name (igdump's `link`, GCC round 39a) matches "
+                    "this regex")
     ap.add_argument("--cls", type=int, default=-1, help="register class: 0 GPR, 1 FPR, -1 both (default)")
     ap.add_argument("-r", "--record", type=int, help="the Nth selected record (with --move/--want/--nb)")
     ap.add_argument("--watch", help="nodes whose colours to print (indices or variables, comma-separated)")
@@ -834,9 +846,11 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     recs = load(a.dump)
     rx = re.compile(a.func) if a.func else None
+    lrx = re.compile(a.link) if a.link else None
     sel = [(k, r) for k, r in enumerate(recs)
            if (a.cls < 0 or r['cls'] == a.cls) and r['cls'] in VOLATILE
-           and (rx is None or rx.search((r.get('proc') or '').split('@0x')[0]))]
+           and (rx is None or rx.search((r.get('proc') or '').split('@0x')[0]))
+           and (lrx is None or (r.get('link') and lrx.search(r['link'])))]
     single = a.move or a.drop or a.want or a.nb or a.watch or a.target
     if not single:
         bad_recs = nslots = 0

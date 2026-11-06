@@ -3,7 +3,7 @@
  * after fts_remote.cpp, to the static initialiser 0x400650's registered destructor (0x2BFFC0): the
  * remote guy list's vector instances (insert 0x2BF980, its temporary's deleter destructor 0x2BFDD0,
  * reserve 0x2BFE40, the list's destructor 0x2BFFC0) close it. Only some of it so far: not yet
- * IncrementalUpdateRemoteSeal (0x2BE150) and the tail; UpdateLocalSeal (0x2BD640) written, OPEN. Defined in reverse of their image order (-inline deferred). */
+ * IncrementalUpdateRemoteSeal (0x2BE150) and the tail; UpdateLocalSeal (0x2BD640) byte-exact since round 48. Defined in reverse of their image order (-inline deferred). */
 
 class CZSealBody;
 
@@ -700,16 +700,21 @@ void *memcpy(void *dst, const void *src, unsigned int n);
  * controls as bytes, the weapon state, the desired state and stance, the controller's flag, six
  * values as fractions of their full ones (bytes, rounded up), the network life, the killer, the
  * death's kind (saturated to a byte), the stats, the character type, the vertical aim, the current
- * item and fire mode, the packed weapons and the body -- then copied into the object.
- * OPEN, 2 instructions (written in the game states' round 47, unwritten before): the escortee's unit
- * number falling back on the player's -- the target ends that then-arm with a branch to the join
- * (`b; addiu a0,v0,32`) where this falls through onto an alignment nop; every ternary spelling
- * (`id = id ? id : ...`, in the store, through an inline helper, `!id ? ... : id`) sinks the store
- * into both arms instead (0x75C). The rest is the target's: the entry test one `||` expression
- * with a `return` (the shared `b end` block), the heading converted through `short` (an unsigned
- * short field converts unsigned), the killer stored chained (`p.m_76 = kind = ...`: no reload of
- * the address-taken int), the vertical aim through a float local stored after the clear, the
- * clamps' locals declared ahead in their slots' order */
+ * item and fire mode, the packed weapons and the body -- then copied into the object. Byte-exact
+ * since the game states' round 48 (written in round 47, 2 off): the escortee's unit number falling
+ * back on the player's is `id == 0 ? UnitNumber(ftsGetPlayer()) : id` -- the inline's return keeps
+ * the then-arm's branch to the join (`b; addiu a0,v0,32`) where `if (!id) id = ...;` falls through
+ * onto an alignment nop and `!id ? ... : id` / `id ? id : ...` sink the store into both arms
+ * (0x75C). The rest: the entry test one `||` expression with a `return` (the shared `b end` block),
+ * the heading converted through `short` (an unsigned short field converts unsigned), the killer
+ * stored chained (`p.m_76 = kind = ...`: no reload of the address-taken int), the vertical aim
+ * through a float local stored after the clear, the clamps' locals declared ahead in their slots'
+ * order */
+static inline int UnitNumber(CZSealBody *seal)
+{
+    return seal->m_4 + 32;
+}
+
 extern "C" void func_002BD640(CZSealBody *body, int send)
 {
     if (!theNetwork.m_bNetwork || func_002C2FD0(body) && !send)
@@ -731,11 +736,10 @@ extern "C" void func_002BD640(CZSealBody *body, int send)
         if (id == 17) {
             p.m_unit_id = 17;
         } else if (body->m_c8 & 0x20000) {
-            if (!id)
-                id = ftsGetPlayer()->m_4 + 32;
+            id = id == 0 ? UnitNumber(ftsGetPlayer()) : id;
             p.m_unit_id = id;
         } else {
-            p.m_unit_id = body->m_4 + 32;
+            p.m_unit_id = UnitNumber(body);
         }
     }
     int kind;

@@ -789,6 +789,8 @@ public:
     virtual unsigned char *GetMissionSequence();
     bool AllowsType(int type);
     bool HasMissions();
+    bool IsFriendlyFire();
+    bool IsRespawnAllowed();
 
     int m_194;   // 0x194
     bool m_unchecked;   // 0x198: set for every game as the game list is asked for again
@@ -806,6 +808,22 @@ class TransientGame : public RoomGame {
 public:
     TransientGame(LANGameInfo *info) : RoomGame(info) {}
 };
+
+/* a network address as the DME builds it (16 bytes) */
+struct LANAddress {
+    unsigned char m_bytes[16];
+};
+
+/* a game another console announced (SOCOM II's LANGame : TransientGame : RoomGame, by its RTTI at
+ * 0x4066C0, 0x1D8 bytes: its address and port after the room game; its constructor 0x2E1CE0 the room
+ * unit's -- TransientGame's table stored, then its own) */
+class LANGame : public TransientGame {
+public:
+    LANGame(LANAddress *addr, int port);
+
+    LANAddress m_addr;   // 0x1c4
+    int m_port;   // 0x1d4
+};   // 0x1d8
 
 /* a room as the channel list reports it (the Medius SDK's MediusChannelListResponse, 0x70 bytes:
  * copied member by member into the room -- the id bytewise, the name two bytes a pass) */
@@ -1024,6 +1042,18 @@ public:
     void DeclineClanInvitation(int id);
     bool ClanHasInvitations();
     bool HasClanInvitations();
+    bool CanInviteMorePlayersToClan();
+    void GetClanMemberInfo(const char *name);
+    bool JoinAsSpectator();
+    void ForceStatusReport();
+    bool GameRejectsRank(const char *name);
+    bool ClanGameClosed(const char *name);
+    bool IsSwitchTeamsOK();
+    bool GameHasSpectatorPassword(const char *name);
+    bool GameIsPasswordProtected(const char *name);
+    int GetAccountID();
+    const char *GetAccountName();
+    void SetPlayerDescription(const char *desc);
     void CreateClan(const char *name);
     void TransferLeadership(const char *name);
     void ChangeState(LOBBY_STATE state);
@@ -1079,6 +1109,10 @@ public:
     int GetRankLevel(int rank);
     void GetLadderBest(int n);
     void GetLadderList(int start, int n);
+    int GetLadderStart();
+    int GetClanLadderStart();
+    int GetLadderTotal();
+    int GetClanLadderTotal();
     int GetClanRankTier(int rank);
     void GetClanLadderList(int start, int n);
     void GetClanRanking(int n);
