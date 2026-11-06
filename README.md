@@ -2065,6 +2065,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the zdb world, textures, rdr and sound, round 28** (zdb::CWorld::AddTextureAssetCharacter 0x31D260 and the
+  particle source's collision box 0x32AD20, both unwritten before, byte-exact with their inline copies; Particle::Source::
+  GetBBox 0x329510 written, OPEN at 0x3F8 of 0x404; CPipe::RenderVisual 24 -> 20):
+  - `new T(f())` calls operator new before f(): an original that calls f() first held the argument in a local
+    (AddTextureAssetCharacter's FindLib); an unused stack object only built and destroyed still emits its constructor and
+    destructor calls (its first CDynTexList); a constructor MW would inline into the second `new` needs `#pragma
+    auto_inline off` to stay a call;
+  - an array member of CPnt3D (inline constructor) built by a constructor too big to expand whole -- inlined one level --
+    keeps a loop calling CPnt3D() out of line; a local array in such an inline unrolls into one call per element;
+    anywhere else there is no call at all;
+  - any definition at the top of a for-loop body (a reference declared there, a pointer assigned there) turns MW's
+    guarded loop into a jump to its bottom test; a hand-rotated loop, `if (k < n) { p = ...; do ... while (++k < n); }`,
+    places a named local's definition after the entry test and keeps its named-local number -- left to loop hoisting the
+    same load becomes a temporary (RenderVisual's detail loop exact so, a marked stand-in beside its pragma);
+  - a three-float constructor reads its arguments right to left (z, y, x); `SetPosition(p.x, p.y, p.z)` on such a point
+    keeps &p.y and &p.z in saved registers, the inline `SetPosition(const CPnt3D &)` overload folds them into frame
+    offsets;
+  - zparticle.h's stand-ins grown to the real layouts (CBBox as zmath's two points, CNode's 0xC0 with its constructor,
+    m_bbox at 0x40, AddDI / SetName / SetNodeEx; CNodeEx, CDI / CDIPoly and SOCOM 1's CParticleEx), its other includers
+    unchanged; 0x312D00 looks like SOCOM 1's CNode::FindMeshTextures() with two parameters added, matched as a free
+    function taking the node first (queued for the online lobby's round 28, which holds those rows this round).
 - **Tells from the engine core, round 22** (five cameras byte-exact, all unwritten before -- camera.cpp's death camera
   stick turn 0x294B40 and pad handler 0x295260, first person's 0x295B00, mode 1's 0x295F20, the tether's 0x296F10; the
   tether's death points 0x297410 written, OPEN at 0x60C of 0x614):
