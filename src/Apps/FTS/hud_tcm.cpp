@@ -147,7 +147,7 @@ CTCM::CTCM() : m_cache(0), m_da8(0), m_dac(0), m_db0(1.0f), m_hold(-1.0f)
 
 void CTCM::Init()
 {
-    func_002344E0();
+    tcmBuildCaches();
     m_path.reserve(5);
     m_children.reserve(32);
 }

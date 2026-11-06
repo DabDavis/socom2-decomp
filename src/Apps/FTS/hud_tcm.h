@@ -259,10 +259,8 @@ public:
 
 extern CTCMColumn g_tcmColumns[8];
 
-/* the tree's menu builder (0x2344E0, hud_tcmtree.cpp's: not written yet) */
-extern "C" {
-void func_002344E0();
-}
+/* the tree's menu builder (0x2344E0, hud_tcmtree.cpp's) */
+void tcmBuildCaches();
 
 /* an item's node from the current cache's entry of that name, under every node named `parent`
  * (hud_tcm.cpp's 0x237000: the tree's cache builders call it) */

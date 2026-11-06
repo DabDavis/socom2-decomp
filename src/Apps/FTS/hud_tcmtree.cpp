@@ -642,6 +642,124 @@ bool CTCM::Select(const char *name)
     return done;
 }
 
+/* the commands and tests the caches hold (hud_tcmcmds.cpp's) */
+int tcmCharacterTaunt(CZSealBody *player, int arg);
+int tcmCueScaryMusic(CZSealBody *player, int arg);
+int tcmIntimidate(CZSealBody *player, int arg);
+int tcmMute(CZSealBody *player, int arg);
+int tcmNiceOne(CZSealBody *player, int arg);
+int tcmNodeAction(CZSealBody *player, int arg);
+int tcmRadioOnOff(CZSealBody *player, int arg);
+int tcmReportStatus(CZSealBody *player, int arg);
+int tcmSayAgain(CZSealBody *player, int arg);
+int tcmSelectPlayer(CZSealBody *player, int arg);
+int tcmSelectTeam(CZSealBody *player, int arg);
+int tcmSendMessage(CZSealBody *player, int arg);
+int tcmSetChannel(CZSealBody *player, int arg);
+int tcmTeamCommand(CZSealBody *player, int arg);
+int tcmTeamMember(CZSealBody *player, int arg);
+int tcmUpdateIntimidate(CZSealBody *player, int arg);
+int tcmUpdateMessage(CZSealBody *player, int arg);
+int tcmUpdateMute(CZSealBody *player, int arg);
+int tcmUpdateNodeAction(CZSealBody *player, int arg);
+int tcmUpdatePlayer(CZSealBody *player, int arg);
+int tcmUpdateRadio(CZSealBody *player, int arg);
+int tcmUpdateRadioOnOff(CZSealBody *player, int arg);
+int tcmUpdateTeam(CZSealBody *player, int arg);
+int tcmUpdateTeamCommand(CZSealBody *player, int arg);
+int tcmUpdateTeamMember(CZSealBody *player, int arg);
+int tcmUpdateVote(CZSealBody *player, int arg);
+int tcmUpdateVoteAll(CZSealBody *player, int arg);
+int tcmVote(CZSealBody *player, int arg);
+int tcmVoteAll(CZSealBody *player, int arg);
+int tcmWhassup(CZSealBody *player, int arg);
+/* an entry of the kinds' table (ours: a byte enum -- the kind's first and end entries come back
+ * unnarrowed and are zero-extended where they are compared as ints) */
+enum TCM_ENTRY { TCM_ENTRY_NONE = 0, TCM_ENTRY_LAST = 0xff };
+
+/* a team's and a team command's name (OVL2's) */
+extern "C" const char *func_0058DD70(signed char group);
+extern "C" const char *func_0058EB00(TCM_ENTRY entry);
+extern CTCMCache spCache;
+extern CTCMCache mpCache;
+
+/* the six teams' numbers (.data 0x3DCAE8, a local static of bytes) */
+/* the caches filled: the single player's teams, the teammates' FT_COMMAND names, the team commands and a
+ * few words; then the network game's radio menu (0x2344E0: the menu's Init calls it; the name ours) */
+void tcmBuildCaches()
+{
+    static signed char s_teams[6] = { 1, 2, 3, 17, 18, 29 };
+    int i;
+
+    spCache.m_entries.reserve(96);
+    mpCache.m_entries.reserve(64);
+    for (i = 0; i < 6; i++) {
+        signed char t = s_teams[i];
+        unsigned char id = t;
+
+        spCache.Add(func_0058DD70(t), tcmSelectTeam, id, tcmUpdateTeam, id);
+    }
+    spCache.Add("INTIMIDATE", tcmIntimidate, 0, tcmUpdateIntimidate, 0);
+    for (i = 0; i < 24; i++)
+        spCache.Add(CSealCtrl::GetCommandName((FT_COMMAND)i), tcmTeamMember, i, tcmUpdateTeamMember, i);
+    for (i = 1; i < 42; i++)
+        spCache.Add(func_0058EB00((TCM_ENTRY)i), tcmTeamCommand, i, tcmUpdateTeamCommand, i);
+    spCache.Add("NICE ONE", tcmNiceOne, 0, 0, 0);
+    spCache.Add("WHASSUP", tcmWhassup, 0, 0, 0);
+    spCache.Add("REPORT STATUS", tcmReportStatus, 0, 0, 0);
+    spCache.Add("CUE SCARY MUSIC", tcmCueScaryMusic, 0, 0, 0);
+    spCache.Add("SAY AGAIN", tcmSayAgain, 0, 0, 0);
+    mpCache.Add("NODEACTION ROOT", 0, 0, tcmUpdateRadio, 0);
+    mpCache.Add("NODEACTION 01", tcmNodeAction, 1, tcmUpdateNodeAction, 1);
+    mpCache.Add("NODEACTION 02", tcmNodeAction, 2, tcmUpdateNodeAction, 2);
+    mpCache.Add("NODEACTION 03", tcmNodeAction, 3, tcmUpdateNodeAction, 3);
+    mpCache.Add("NODEACTION 04", tcmNodeAction, 4, tcmUpdateNodeAction, 4);
+    mpCache.Add("NODEACTION 05", tcmNodeAction, 5, tcmUpdateNodeAction, 5);
+    mpCache.Add("NODEACTION 06", tcmNodeAction, 6, tcmUpdateNodeAction, 6);
+    mpCache.Add("NODEACTION 07", tcmNodeAction, 7, tcmUpdateNodeAction, 7);
+    mpCache.Add("NODEACTION 08", tcmNodeAction, 8, tcmUpdateNodeAction, 8);
+    mpCache.Add("TACTICAL ORDERS", tcmSelectTeam, 31, tcmUpdateTeam, 31);
+    mpCache.Add("MP HOLD FIRE", tcmSendMessage, 6, tcmUpdateMessage, 6);
+    mpCache.Add("MP FIRE AT WILL", tcmSendMessage, 3, tcmUpdateMessage, 3);
+    mpCache.Add("MP CLEAR AREA", tcmSendMessage, 23, tcmUpdateMessage, 23);
+    mpCache.Add("MP COVER ME", tcmSendMessage, 45, tcmUpdateMessage, 45);
+    mpCache.Add("MP DEFUSE BOMB", tcmSendMessage, 46, tcmUpdateMessage, 46);
+    mpCache.Add("MP PROTECT", tcmSendMessage, 47, tcmUpdateMessage, 47);
+    mpCache.Add("MP POINT", tcmSendMessage, 48, tcmUpdateMessage, 48);
+    mpCache.Add("TAUNTS", 0, 0, tcmUpdateRadio, 0);
+    mpCache.Add("CHARACTER TAUNT", tcmCharacterTaunt, 0, 0, 0);
+    mpCache.Add("CUSTOM TAUNT 01", tcmSendMessage, 54, tcmUpdateMessage, 54);
+    mpCache.Add("CUSTOM TAUNT 02", tcmSendMessage, 55, tcmUpdateMessage, 55);
+    mpCache.Add("CUSTOM TAUNT 03", tcmSendMessage, 56, tcmUpdateMessage, 56);
+    mpCache.Add("CUSTOM TAUNT 04", tcmSendMessage, 57, tcmUpdateMessage, 57);
+    mpCache.Add("CUSTOM TAUNT 05", tcmSendMessage, 58, tcmUpdateMessage, 58);
+    mpCache.Add("MESSAGES", tcmSelectTeam, 31, tcmUpdateTeam, 31);
+    mpCache.Add("CUSTOM MSG 1", tcmSendMessage, 49, tcmUpdateMessage, 49);
+    mpCache.Add("CUSTOM MSG 2", tcmSendMessage, 50, tcmUpdateMessage, 50);
+    mpCache.Add("CUSTOM MSG 3", tcmSendMessage, 51, tcmUpdateMessage, 51);
+    mpCache.Add("CUSTOM MSG 4", tcmSendMessage, 52, tcmUpdateMessage, 52);
+    mpCache.Add("CUSTOM MSG 5", tcmSendMessage, 53, tcmUpdateMessage, 53);
+    mpCache.Add("RADIO", 0, 0, tcmUpdateRadio, 0);
+    mpCache.Add("RADIO ONOFF", tcmRadioOnOff, 0, tcmUpdateRadioOnOff, 0);
+    mpCache.Add("ACTIVE CHANNEL", 0, 0, 0, 0);
+    mpCache.Add("TEAM", tcmSetChannel, 0, 0, 0);
+    mpCache.Add("OFFENSE", tcmSetChannel, 2, 0, 0);
+    mpCache.Add("DEFENSE", tcmSetChannel, 1, 0, 0);
+    mpCache.Add("TEAMMATES", 0, 0, 0, 0);
+    mpCache.Add("SPECTATORS", 0, 0, 0, 0);
+    mpCache.Add("PLAYER 1", tcmSelectPlayer, 0, tcmUpdatePlayer, 0);
+    mpCache.Add("PLAYER 2", tcmSelectPlayer, 1, tcmUpdatePlayer, 1);
+    mpCache.Add("PLAYER 3", tcmSelectPlayer, 2, tcmUpdatePlayer, 2);
+    mpCache.Add("PLAYER 4", tcmSelectPlayer, 3, tcmUpdatePlayer, 3);
+    mpCache.Add("PLAYER 5", tcmSelectPlayer, 4, tcmUpdatePlayer, 4);
+    mpCache.Add("PLAYER 6", tcmSelectPlayer, 5, tcmUpdatePlayer, 5);
+    mpCache.Add("PLAYER 7", tcmSelectPlayer, 6, tcmUpdatePlayer, 6);
+    mpCache.Add("PLAYER 8", tcmSelectPlayer, 7, tcmUpdatePlayer, 7);
+    mpCache.Add("VOTE RETAIN:REMOVE", tcmVote, 0, tcmUpdateVote, 0);
+    mpCache.Add("MUTE ON:OFF", tcmMute, 0, tcmUpdateMute, 0);
+    mpCache.Add("VOTE ALL ON:OFF", tcmVoteAll, 0, tcmUpdateVoteAll, 0);
+}
+
 /* push-to-talk while the menu is closed in a network game: the radio on while the button is held
  * (for at most the longest talk), off with a short hold when it is let go */
 void CTCM::TalkTick(float dt)
@@ -676,12 +794,8 @@ void CTCM::TalkTick(float dt)
  * byte argument (the callees narrow it). The kind is GetCommandName's FT_COMMAND for all five of
  * its readers (round 54): converted from an unsigned char at a call MW narrows it with an andi the
  * target never has, so the kind builder takes the enum too (its name ours, its row renamed) */
-/* an entry of the kinds' table (ours: a byte enum -- the kind's first and end entries come back
- * unnarrowed and are zero-extended where they are compared as ints) */
-enum TCM_ENTRY { TCM_ENTRY_NONE = 0, TCM_ENTRY_LAST = 0xff };
-
 extern "C" {
-const char *func_0058DD70(unsigned char group);
+const char *func_0058DD70(signed char group);
 const char *func_0058E950(FT_COMMAND kind);
 const char *func_0058E900(FT_COMMAND kind);
 const char *func_0058E750(FT_COMMAND kind);
@@ -694,7 +808,7 @@ const char *func_0058E120(TCM_ENTRY entry);
 }
 
 /* the kind's item under a group's parent, its caption returned (ours) */
-static inline const char *tcmAddGroupItem(unsigned char group, FT_COMMAND kind)
+static inline const char *tcmAddGroupItem(signed char group, FT_COMMAND kind)
 {
     const char *parent = func_0058DD70(group);
     const char *name = CSealCtrl::GetCommandName(kind);
