@@ -13037,6 +13037,54 @@ of 4) -- 5 rows new to the map's byte-exact rows (6,756 bytes), no draft superse
 (568 of 596 before). Named (2, data.txt): `costab` 0x659140 and `sintab` 0x659180 (s1:data: SOCOM 1's globals of
 those names, read by fht at the same instructions). No rows renamed (all had SOCOM 1's names). No tool changed.
 
+**Round 34c: the combiner's process closed, the VAD's init, the distance block's process, language load and copy.**
+
+- **A float load through a pointer cannot cross an earlier int store without strict aliasing**
+  (CombinerProcess, 127 words -> 0): the target's x[0] load sits above the state's `sw`, so the source
+  reads it into a local before `c->state++` and stores from the local -- and with the load first sched1
+  issues the head's `h & 7` first and every register falls into place (87 -> 3). The empty loop keeps its
+  own counter (the target's a1) only when the ring's turn is a second `if (src != 0)` after the send: src
+  is stepped in the loops, so the test survives, and jump threading sends the first test's null arm
+  straight to the epilogue. **`(unsigned char)(f + 1) & 7` is the target's `lbu` of a halfword ring
+  index**; `& 7` alone keeps `lhu`.
+- **A spelling per count, not one `n` reused** (LoadLanguage): one variable for three counts read
+  across thirteen calls is one pseudo, set three times, whose priority takes the interface's s-register;
+  each its own and every register is the target's. **An inline's argument narrows at the call**: a
+  value computed into an unsigned int in both arms of an if and passed as the inline's unsigned short
+  is the target's single `andi` after the join (a `?:` assigned to the short converts in each arm). **A
+  null test through an inline's pointer** (`lw v1,0(s7)`) is the inline returning `*list`.
+- **The second loop's bound in a local** (InitVad): a base read through the block inside a loop that
+  stores through a pointer stays inside (0x480); read into a local first it is the target's hoisted
+  `lwc1`. A count-down `for (i = n - 1; i >= 0; i--)` is SOCOM 1's (counting up, 0x3E8).
+- **2.96's folder lands an ulp where the literal does not**: `2.302585f / 1000` gives the target's
+  0x3B16E6F6 (`0.0023025851f` is one high); `5 * 4.3429f` and `21.7145f` both give 0x41ADB74B. The
+  vendor's dB-to-neper factor is a double, `1 / 4.3429` (0.23026088558336597, soft-float calls), and an
+  unrolled loop's copies each get a constant-pool entry of their own (three 1/255 doubles in a row).
+- **Reading a pointer input once** (DistSilProcess): two reads of `in[2]` around a store reload it (no
+  strict aliasing); a flag loaded into the variable before `1 - sil` is the target's `lbu s6`.
+- **Open, diagnosed in place**: InitDistSilProcess (3 words, the right size: the float-to-unsigned
+  conversion's 2^31 constant in $f3 where the target has $f12 -- global-alloc takes the first
+  call-clobbered register no lower-priority neighbour prefers, so the target's choice needs $f3..$f11
+  preferred by a neighbour or $f12 by the constant, and neither shows here);
+  ProcessVad (2: a structured `if (i < n)` flips the two accumulators' priorities, 6,315 against 6,250,
+  sum's live length 160 there against 158 with `if (i == n) goto out` -- but it is 2 words
+  longer; all fifteen orders of the init's statements give the same live lengths, sched1 places them
+  alike); SplitUp_Finals and the
+  older opens (their diagnoses stand). Not reached: CreateSecondPassTreeContext, RePruneToPho,
+  FrameDPacoust, ConstructArchitecture (tos.c: three inlined helpers returning bytes, 358 words),
+  VadFastTrackProcess, ControlDistSilProcess, the 8- and 4-bit distance passes (0x4FDE08, 0x4FE6C8).
+
+Hand-written in round 34c: `asr/combiner.c` (CombinerProcess closed: the object whole, 4 of 4), `asr/vad.c`
+(InitVad new: 8 of 9), `asr/distsil.c` (DistSilProcess, func_004FD5C8 and LoadLanguage new, InitDistSilProcess
+written OPEN: 13 of 14; the record's fields from +40 to +312, the codebook and frames records and the language's
+interface typed by these uses) -- 5 rows new to the map's byte-exact rows (4,824 bytes), no draft superseded;
+`src/lib/asr` 578 of 607 (573 of 602 before). Named (1): DistSilProcess 0x4FFCE8 (s1:order: SOCOM 1's distsil
+object holds it between NormCorrection and ControlDistSilProcess as ours holds this row, the same body).
+func_004FD5C8 has no SOCOM 1 counterpart (LoadLanguage and ControlDistSilProcess call it): unnamed. No tool
+changed (scratch: build/scratch/gcc/r34/ -- vprio.py scores variants with their allocation priorities,
+fbits.py and fexpr.py find a float's 2.96 spellings and folded forms, sdiff.py aligns a function by
+mnemonics to find size misses).
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and

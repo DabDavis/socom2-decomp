@@ -354,7 +354,11 @@ extern void VadFastTrackProcess(VAD *v, float e);
  * written so, sum's extra read (the copy) ranks it first (6,410 against 6,315) and every add's
  * registers swap (17 words); zeroing cnt first gives the loop's registers and reverses the copy.
  * Chained, both zeroed, x's store moved, the adds or the declarations swapped, `cnt++`, the
- * quotient through cnt or sum: no closer. */
+ * quotient through cnt or sum: no closer. Round 34c (build/scratch/gcc/r34/pv): with sum zeroed
+ * first, all fifteen orders of the init's four statements give sum 25 refs over 158 insns, cnt 24
+ * over 152 (6,329 against 6,315: sum still takes $f0); a structured `if (i < n) { ... }` for the
+ * goto flips them (sum's live 160: 6,250) but is 0x26C; a zero temporary copied into both is folded
+ * into the first copy by CSE (the same two shapes again). */
 static void ProcessVad(VAD *v, float **in, int n)
 {
     float *volatile x;
