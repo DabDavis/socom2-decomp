@@ -330,6 +330,108 @@ bool CZKit::HasItemWithAmmo(EQUIP_ITEM item)
     return false;
 }
 
+/* a valve by name, its state read (zanim.h's CValve, which this unit cannot include: its _zrdr rivals node_world.h's --
+ * the view ours) */
+struct CKitValve {
+    unsigned char _0[4];
+    unsigned short m_state;   // 0x4
+};
+
+extern "C" CKitValve *GetByName__6CValveFPCc(const char *name);
+
+/* the kit made: empty, its items' slots zeroed, its state cleared in SOCOM 1's order and the screen offsets reset; the
+ * zoomed reticle's valve read (OVL2 0x5C8190; SOCOM 1's by its place after ~CZKit, CZSealBody's constructor calls it) */
+CZKit::CZKit()
+    : m_num_items(0), m_body(0), m_flashlight_model(0), m_lightMap(0)
+{
+    for (int i = 0; i < 30; i++) {
+        m_item[i] = 0;
+        m_ammo[i] = 0;
+        m_firemode[i] = 0;
+        for (int j = 0; j < 10; j++)
+            m_reloads[i][j] = 0;
+        m_currentmag[i] = 0;
+        m_associatedgear[i] = 0;
+        m_iteminuse[i] = 0;
+        m_itemstate[i] = 0;
+    }
+    m_requested_item = false;
+    m_bit13 = false;
+    m_tracercount = 0;
+    m_cur_zoom = 0;
+    m_restore_zoom = m_cur_zoom;
+    m_selected_item = 0;
+    m_last_selected = -1;
+    m_itemptr.reserve(8);
+    m_81c = 0.0f;
+    m_burst_count = 0;
+    m_firetime = 0.0f;
+    m_waiting_to_fire = false;
+    m_waiting_to_raise = false;
+    m_retsize = 0.0f;
+    m_prev_retsize = 0.0f;
+    m_prev_factor = 0.0f;
+    m_prev_axis_a = 0.0f;
+    m_prev_axis_b = 0.0f;
+    m_retblockedsize = 0.0f;
+    m_retsizegoal = 0.0f;
+    m_retmin = 0.0f;
+    m_retmax = 0.0f;
+    m_reticuletypeChanged = false;
+    m_retoffsetx = 0.0f;
+    m_18 = 0.0f;
+    m_retoffsety = 0.0f;
+    m_1c = 0.0f;
+    m_retblockedX = 0.0f;
+    m_retblockedY = 0.0f;
+    m_retblocked = false;
+    m_curitemreticule = (RETICULE_TYPE)2;
+    m_first = true;
+    m_changeToRifle = false;
+    m_current_requested_ammo = false;
+    m_pickupRequestWait = 0.0f;
+    m_chill_parabola = 0.0f;
+    m_heartbeat_state = 0;
+    m_heartbeat_accum = 0.0f;
+    m_sniper_posx = 0.0f;
+    m_sniper_posy = 0.0f;
+    m_sniper_prev_posx = 0.0f;
+    m_sniper_prev_posx = 0.0f;
+    m_firerifle_kick_baseline = 0.0f;
+    m_firerifle_kick_movedist = 0.0f;
+    m_firerifle_kick_accum = 0.0f;
+    m_firerifle_kick_state = 0;
+    m_nvg_enabled = false;
+    m_binocs_enabled = false;
+    m_heartbeat_enabled = true;
+    m_bit16 = false;
+    m_lase_timer = 0.0f;
+    m_lase_anim = 0;
+    m_lase_mapname = 0;
+    m_lase_echo = false;
+    m_lase_deploy_echo = false;
+    m_second_hand = false;
+    m_lasesnd_start = 0;
+    m_lasesnd_fin = 0;
+    m_lase_inst = 0;
+    m_lase_inst2 = 0;
+    CKitValve *v = GetByName__6CValveFPCc("EQlimit");
+    if (v && v->m_state == 1)
+        m_second_hand = true;
+    m_unused = 0;
+    ResetScreenOffsetXY();
+    m_fire_delay = 0.0f;
+    m_alt_firedelay = false;
+    m_explosiveDamage = 0.0f;
+    m_hand_firemode = 0;
+    m_hand_item = (EQUIP_ITEM)255;
+    m_8 = 0;
+    m_8bc = -1.0f;
+    m_8a4 = 0.2f;
+    m_8ac = CPnt3D::zero;
+    m_8a8 = 0;
+}
+
 /* a sniper rifle in hand, loaded (OVL2 0x5C85D0; SOCOM 1's, whose class was 100) */
 bool CZKit::HasSniperRifle()
 {

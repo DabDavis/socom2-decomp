@@ -150,6 +150,8 @@ public:
 
 class CZKit {
 public:
+    /* (OVL2 0x5C8190; SOCOM 1's, by its place after ~CZKit and its caller, CZSealBody's constructor) */
+    CZKit();
     /* (OVL2 0x5C8110; SOCOM 1's, the item pointers' vector freed -- the kit's round 52) */
     ~CZKit();
     void ResetScreenOffsetXY();
@@ -600,7 +602,9 @@ public:
     bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
     unsigned char _5[0x8 - 0x5];
     int m_8;   // 0x8: zeroed by Init (new in SOCOM II; the name ours)
-    unsigned char _c[0x20 - 0xc];
+    unsigned char _c[0x18 - 0xc];
+    float m_18;   // 0x18: zeroed by the constructor (new in SOCOM II; the names ours)
+    float m_1c;   // 0x1c
     float m_retoffsetx;   // 0x20 (SOCOM 1's 0xc: its TickReticule's)
     float m_retoffsety;   // 0x24 (SOCOM 1's 0x10)
     float m_sniper_posx;   // 0x28 (SOCOM 1's 0x14)
@@ -645,14 +649,23 @@ public:
      * environment's pickup code (OVL2 0x59F0C0, 0x59F730) sets, reads and clears it through the
      * three accessors below 0x5B9020 (the names ours) */
     std::vector<void *> m_itemptr;
-    unsigned char _840[0x84c - 0x840];
+    void *m_detonator_model;   // 0x840 (SOCOM 1's CNode *, 0x824)
+    void *m_flashlight_model;   // 0x844 (SOCOM 1's CNode *, 0x828)
+    void *m_detonator_icon;   // 0x848 (SOCOM 1's CTexture *, 0x82c)
     float m_retsize;   // 0x84c (SOCOM 1's 0x830): the reticle's size
     float m_prev_retsize;   // 0x850 (SOCOM 1's 0x834)
-    unsigned char _854[0x86c - 0x854];
+    float m_prev_factor;   // 0x854 (SOCOM 1's 0x838)
+    float m_prev_axis_a;   // 0x858 (SOCOM 1's 0x83c)
+    float m_prev_axis_b;   // 0x85c (SOCOM 1's 0x840)
+    float m_retblockedsize;   // 0x860 (SOCOM 1's 0x844)
+    float m_retblockedX;   // 0x864 (SOCOM 1's 0x848)
+    float m_retblockedY;   // 0x868 (SOCOM 1's 0x84c)
     float m_retsizegoal;   // 0x86c (SOCOM 1's 0x850)
     float m_retmax;   // 0x870 (SOCOM 1's 0x854)
     float m_retmin;   // 0x874 (SOCOM 1's 0x858)
-    unsigned char _878[0x884 - 0x878];
+    int m_tracercount;   // 0x878 (SOCOM 1's 0x85c)
+    float m_firetime;   // 0x87c (SOCOM 1's 0x860)
+    unsigned char _880[0x884 - 0x880];
     zdb::CLightMap *m_lightMap;   // 0x884 (SOCOM 1's 0x864)
     CSnd *m_rldsnd;   // 0x888 (SOCOM 1's 0x868)
     CSnd *m_clicksnd;   // 0x88c (SOCOM 1's 0x86c)
