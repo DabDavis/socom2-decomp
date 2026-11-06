@@ -37,11 +37,15 @@ CAiSlice ai_slice4;
 class CAiSRescued : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSRescued();
+    void SetExtractValve(CValve *valve);
 
-    unsigned int m_58;   // 0x58 (SOCOM 1's 0x28)
+    /* 0x58 (SOCOM 1's 0x28): the extraction region the SEAL was rescued into -- led to the cell its
+     * name gives once the valve opens (PreTick's, from GetRegionTypeContainer(1, ...)) */
+    CAiMap::region *m_58;
     unsigned int m_5c;   // 0x5c
-    unsigned int m_60;   // 0x60
+    CValve *m_60;   // 0x60: the extraction valve (SetExtractValve's)
 };
 
 /* the base's phase and its timer (CAiState's words at 0x34 and 0x38: ai_states.h names the first) */
@@ -221,6 +225,14 @@ void CAiSRescued::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_3:
         break;
     }
+}
+
+/* the extraction valve given: kept, and flag 1 set with one, cleared without (OVL2 0x559470; SOCOM 1's
+ * SetExtractValve, between Tick and OnSignal in both builds -- SOCOM II's also marks the flags dirty) */
+void CAiSRescued::SetExtractValve(CValve *valve)
+{
+    m_60 = valve;
+    SetFlags(valve != 0, !(valve != 0));
 }
 
 /* the entities of kind 4 counted at a mission's start (OVL2 bss 0x66AFE8) */
@@ -3108,12 +3120,12 @@ static inline void FadeToward(zdb::CNode *node, float target, float dT)
     if (op != target) {
         float step = 0.75f * dT;
 
-        if (op >= target) {
-            op -= step;
-            _saturate(&op, target, 1.0f);
-        } else {
+        if (!(target <= op)) {
             op += step;
             _saturate(&op, -1.0f, target);
+        } else {
+            op -= step;
+            _saturate(&op, target, 1.0f);
         }
         node->m_Opacity = op;
     }
@@ -4219,7 +4231,7 @@ bool CSealCtrlAi::PostTick(float dT)
                     CAiState *st = GetAiState();
                     CAiSRescued *r = st && st->m_state == AI_STATE_RESCUED ? (CAiSRescued *)st : 0;
 
-                    r->m_58 = (unsigned int)region;
+                    r->m_58 = region;
                     r->m_5c = m_follow_master_id;
                     r->SetActive(true);
                     func_00545480(&master->m_stats, master);
@@ -4686,6 +4698,90 @@ static inline bool PathIdle(CSealCtrlAi *ai)
     if (((CAiPath *)&ai->m_path)->HasPoints() || ((CAiPath *)&ai->m_path)->IsPlanning())
         return false;
     return true;
+}
+
+extern "C" {
+/* the AI sent to a cell (OVL2 0x5623B0, not written yet; the name unknown) */
+void func_005623B0(CSealCtrlAi *ai, const CAiMapLoc *loc);
+}
+
+/* the rescued SEAL's tick (OVL2 0x559070, slot 0x10; SOCOM 1's slot alike): step 0 joins team 17's
+ * squad (a SEAL of team bit 17 not in it yet); 1 waits for flag 1 (an extraction valve given), 3 for
+ * the valve to reach 2; 4 sets 3 seconds, drops the path and sends the AI to its destination's
+ * cell; 5 counts the time down while the path is free, then opens the valve (3); 6 suspends the AI.
+ * Step 2 fades the SEAL's node out and, offline, puts the AI to sleep once it is hidden. OPEN, 10
+ * instructions (round 52, written): FadeToward's two arms only -- the target reloads the opacity copy
+ * from its slot in each arm (`lwc1 $f0,84(sp)`, the step in $f1 from the branch's delay slot), ours
+ * adds to the register the first load left ($f1, the step in $f0); PostMortemPreTick's two fades
+ * show the same reload. The arms' order and compare are the target's with `!(target <= op)` (18 ->
+ * 10 here, 77 -> 67 there); the copy through a reference or a pointer, a by-value parameter, the
+ * step assigned apart, `op = op + step` and the comma `_saturate((op += step, &op), ...)` all keep
+ * the register (build/scratch/seal-r52/v_fade*.py) */
+int CAiSRescued::Tick(CSealCtrlAi *ai)
+{
+    unsigned int step = m_phase;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    switch (step) {
+    case 0:
+        if (seal->m_team & 0x20000) {
+            CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
+
+            if (unit != ai->m_unit)
+                unit->SealJoinUnit(seal);
+        }
+        step = 1;
+        break;
+    case 1:
+        if (m_flags & 1)
+            step = 3;
+        break;
+    case 2: {
+        zdb::CNode *node = seal->GetNode();
+
+        FadeToward(node, 0.0f, m_dT);
+        if (!theNetwork.m_9 && !node->m_active) {
+            SetActive(false);
+            ai->SetSleeping(true);
+        }
+        break;
+    }
+    case 3:
+        if (m_60->GetValue() >= 2)
+            step = 4;
+        break;
+    case 4:
+        m_time = 3.0f;
+        step = 5;
+        ResetPath(ai);
+        if (m_58) {
+            CAiMapLoc loc;
+
+            if (AiMaps.GetLocation(m_58->m_name, loc))
+                func_005623B0(ai, &loc);
+        }
+        break;
+    case 5:
+        if (func_005629B0(ai)) {
+            m_time -= m_dT;
+            if (m_time <= 0.0f) {
+                SetValveValue(m_60, 3);
+                step = 6;
+            }
+        }
+        break;
+    case 6:
+        if (ai->PushAiState((AI_STATE)18, 0)) {
+            CAiState *s = ai->GetAiState();
+
+            s = s && s->m_state == 18 ? s : 0;
+            s->SetFlags(0xe, 0);
+            s->SetActive(true);
+        }
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
 }
 
 /* a point turned about (the three loaded, negated and stored: a value built by the three-float
