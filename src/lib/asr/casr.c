@@ -52,7 +52,9 @@ struct CTXVT {
     int (*GetNbrWord)(CTXVT *vt);                   /* +36, slot 9 */
     void *s10[5];
     int (*IsSpellingContext)(CTXVT *vt);            /* +60, slot 15 */
-    void *s16[4];
+    unsigned short *(*GetpLex)(CTXVT *vt);          /* +64, slot 16 */
+    int *(*GetpBeginOfWords)(CTXVT *vt);            /* +68, slot 17: read as words here */
+    void *s18[2];
     int (*IsIsoWordContext)(CTXVT *vt);             /* +80, slot 20 */
 };
 
@@ -1613,7 +1615,7 @@ int casrStartUserWordTraining(CASR *c, void *a, void *b)
 typedef struct CONFREC {
     unsigned short conf;                /* +0: 0-100 */
     short pad2;
-    int pad4;
+    int word;                           /* +4 */
 } CONFREC;
 
 typedef struct CONFCHECK {
@@ -1685,6 +1687,159 @@ int cbCheckConfusion(RESULT *r, CASRINFO *info)
             p->conf = v;
     }
     return 0;
+}
+
+/* the trained word's confusion with a context's words: the context's lexicon searched for the
+ * trained transcription (a pronunciation of type 2 of its length, phoneme for phoneme), each word's
+ * record cleared, then the three training utterances recognised again under the context with
+ * cbCheckConfusion as the only callback (timeouts off, the N best 20, no second pass) and every
+ * callback and parameter put back. SOCOM 1's body (round 38c): the handle check's result and every
+ * later result one variable (the target's s3 throughout), each loop its own counter (one counter
+ * over the four loops crosses the calls and takes s1: round 25c's rule). OPEN, 584 words of 591:
+ * every s-register of c, the result, found, conf, size, ctx and the lexicon's walker and base is the
+ * target's; the target keeps &c->cb, &c->lab_buf[0], &c->lab_pos[0], &bufs[0] and &sizes[0] in
+ * s7, s5, s6, s4 and s1 for the whole function (index 0 through them too), so the saved host pointer
+ * spills to 196(sp), where ours addresses them by offset and keeps &saved in s7 (the missing words
+ * are those address set-ups, the spill and its reload); tlen and trans also land in a0/a1 swapped
+ * (both statement orders and both declaration orders tried). */
+int casrCheckUserWordConfusion(CASR *c, IMPORT *ctx, CONFREC *conf, unsigned int size)
+{
+    CTXVT vt;
+    CASRCBTABLE saved;
+    unsigned char *bufs[3];
+    int sizes[3];
+    CONFCHECK cc;
+    unsigned int params[5];
+    int err = casrCheckHandle(c);
+    int found = -1;
+    unsigned short *lex, *lp, *next, *q, *trans;
+    int *bow, *p, *end;
+    unsigned int nword, tlen, i, k, j, n;
+    int r2, ret;
+    void *user;
+
+    if (err)
+        return err;
+    if (c->state != 20)
+        return _tosErrorLog(c->event, 7);
+    if (conf == 0)
+        return _tosErrorLog(c->event, 18);
+    if (ctx == 0)
+        return _tosErrorLog(c->event, 6);
+    if (memcmp(((CTXDATA *)ctx->data)->version, (*(LNGFILE **)c->data)->hdr.w, 128) != 0)
+        return _tosErrorLog(c->event, 19);
+    FillContextV2VirtualTable(&vt);
+    vt.data = ctx->data;
+    lex = vt.GetpLex(&vt);
+    lp = lex;
+    bow = vt.GetpBeginOfWords(&vt);
+    nword = vt.GetNbrWord(&vt);
+    tlen = (unsigned int)*c->trans_size >> 1;
+    trans = *c->trans;
+    if (size < nword * sizeof(CONFREC))
+        return _tosErrorLog(c->event, 38);
+    p = &bow[nword + 2];
+    for (i = 0; i < nword; i++) {
+        for (end = &bow[bow[i + 1]]; p <= end; p++) {
+            next = &lex[*p];
+            if (*lp++ == 2) {
+                if (next - lp == tlen) {
+                    for (q = trans; lp < next && *lp == *q; lp++, q++)
+                        ;
+                    if (lp == next) {
+                        found = i;
+                        break;
+                    }
+                }
+                lp = next;
+            }
+        }
+        if (found != -1)
+            break;
+    }
+    if (found == -1)
+        return _tosErrorLog(c->event, 37);
+    for (k = 0; k < nword; k++) {
+        conf[k].word = k;
+        conf[k].conf = 0;
+    }
+    cc.word = found;
+    cc.conf = conf;
+    saved = c->cb;
+    user = c->info->user;
+    err = casrGetParamNoClearErrorLog(c, 1, &params[0]);
+    err |= casrGetParamNoClearErrorLog(c, 2, &params[1]);
+    err |= casrGetParamNoClearErrorLog(c, 13, &params[2]);
+    err |= casrGetParamNoClearErrorLog(c, 15, &params[3]);
+    err |= casrGetParamNoClearErrorLog(c, 16, &params[4]);
+    if (err)
+        return err;
+    c->cb.ts_cb = 0;
+    c->cb.start_cb = 0;
+    c->cb.result_cb = (int (*)(void *, void *))cbCheckConfusion;
+    c->cb.state_cb = 0;
+    c->cb.train_cb = 0;
+    c->cb.abnorm_cb = 0;
+    c->cb.gain_cb = 0;
+    c->cb.askgain_cb = 0;
+    c->info->user = &cc;
+    err = casrSetParamNoClearErrorLog(c, 1, 0);
+    err |= casrSetParamNoClearErrorLog(c, 2, 0);
+    err |= casrSetParamNoClearErrorLog(c, 13, 20);
+    err |= casrSetParamNoClearErrorLog(c, 15, 1);
+    err |= casrSetParamNoClearErrorLog(c, 16, 0);
+    if (err == 0) {
+        sizes[0] = c->lab_pos[0] - c->lab_buf[0];
+        err = 1;
+        bufs[0] = heap_Alloc(c->heap, sizes[0]);
+        if (bufs[0] != 0) {
+            memcpy(bufs[0], c->lab_buf[0], sizes[0]);
+            for (j = 1; j < c->uw_recs_needed; j++) {
+                bufs[j] = c->lab_buf[j];
+                sizes[j] = c->lab_pos[j] - c->lab_buf[j];
+            }
+            err = casrActivateContext(c, ctx, 1);
+            if (err == 0) {
+                for (n = 0; n < c->uw_recs_needed; n++) {
+                    err = casrStart(c);
+                    if (err != 0)
+                        break;
+                    err = casrAcquisition(c, 3, bufs[n], sizes[n]);
+                    if (err != 0)
+                        break;
+                    err = casrStop(c);
+                    if (err != 0)
+                        break;
+                }
+                r2 = casrActivateContext(c, 0, 1);
+                if (err == 0)
+                    err = r2;
+                if (c->state != 20) {
+                    c->state = 20;
+                    if (c->cb.state_cb != 0) {
+                        ret = c->cb.state_cb(c->state, 0, c->info);
+                        if (c->last_state == 0 && ret != 0) {
+                            c->last_state = ret;
+                            _tosErrorLog(c->event, 27);
+                        }
+                    }
+                }
+            }
+            memcpy(c->lab_buf[0], bufs[0], sizes[0]);
+            c->lab_pos[0] = c->lab_buf[0] + sizes[0];
+            heap_Free(c->heap, bufs[0]);
+        }
+    }
+    c->cb = saved;
+    c->info->user = user;
+    r2 = casrSetParamNoClearErrorLog(c, 1, params[0]);
+    r2 |= casrSetParamNoClearErrorLog(c, 2, params[1]);
+    r2 |= casrSetParamNoClearErrorLog(c, 13, params[2]);
+    r2 |= casrSetParamNoClearErrorLog(c, 15, params[3]);
+    r2 |= casrSetParamNoClearErrorLog(c, 16, params[4]);
+    if (err == 0)
+        err = r2;
+    return err;
 }
 
 /* the segmentation's table: one block of 3 x (each utterance's length + 2) shorts per gender, and
