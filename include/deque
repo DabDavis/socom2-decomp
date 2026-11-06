@@ -1139,7 +1139,11 @@ public:
         T **last_;
     };
 
+#ifdef __MSL_DEQUE_DEFAULT_INLINE
+    cdeque() {}
+#else
     cdeque();
+#endif
     explicit cdeque(const Allocator &a);
     cdeque(const cdeque &x);
     ~cdeque();
@@ -1202,10 +1206,12 @@ public:
     void pop_back() { base::pop_back(); }
 };
 
+#ifndef __MSL_DEQUE_DEFAULT_INLINE
 template <class T, class Allocator>
 cdeque<T *, Allocator>::cdeque()
 {
 }
+#endif
 
 template <class T, class Allocator>
 cdeque<T *, Allocator>::~cdeque()
@@ -1264,7 +1270,19 @@ class __deque_buf {
 public:
     typedef Metrowerks::cdeque<T *, allocator<T *> > buf_type;
 
+    /* THE SECOND T-FREE CHAIN, BY UNIT (the MSL headers round 40, the integrator's request; build/p40/mkd2.py, untracked: a modelling
+     * device, `#define __MSL_DEQUE_DEFAULT_INLINE` ahead of a unit's includes). game_main.cpp's deque<T *>() 0x2CEE00 inlines deque<PCv>() and
+     * __deque_imp(), calling __deque_buf<PCv>() 0x2CEE40 and allocator<PCv>() 0x2CEE30, __deque_buf() calling cdeque<PPCv>() 0x2CEE70: this
+     * chain out of class, each member a call. The rdr editor's and the vid stack's deque<T *>() (0x3340F0, 0x3B7FA0, 0x28 bytes) call a
+     * different pair, the same words under other names in the overlay: 0x334120 -> 0x334150. They are the same chain ALL IN CLASS, by the
+     * level alone: deque<PCv>() is eight high with __deque_buf() and cdeque<T *>() inline, too tall, so it is admitted at the last pass,
+     * its own body, calling __deque_imp<PCv>() 0x334120, whose own copy holds __deque_buf()'s body the same way and calls
+     * compressed_pair() 0x334150, four high and whole (the sixteen zeroed bytes). Named so; both words checked in vis_vu.cpp */
+#ifdef __MSL_DEQUE_DEFAULT_INLINE
+    __deque_buf() { this->start_ = 0; this->size_ = 0; }
+#else
     __deque_buf();
+#endif
     explicit __deque_buf(const Allocator &a);
     ~__deque_buf();
     const Allocator &alloc() const;
@@ -1274,12 +1292,14 @@ public:
     unsigned int size_;   // 0x14
 };
 
+#ifndef __MSL_DEQUE_DEFAULT_INLINE
 template <class T, class Allocator>
 __deque_buf<T, Allocator>::__deque_buf()
 {
     this->start_ = 0;
     this->size_ = 0;
 }
+#endif
 
 template <class T, class Allocator>
 __deque_buf<T, Allocator>::__deque_buf(const Allocator &a) : buf_(a, buf_type(allocator<T *>(a))), start_(0), size_(0)
