@@ -106,24 +106,52 @@ typedef struct SESSIONDATA {
 } SESSIONDATA;
 
 /* a recognition result: its items (a word sequence each), each with its words */
+typedef struct RESREC {
+    int f0;                             /* +0 */
+    int score;                          /* +4: -1 when not scored */
+    int word;                           /* +8 */
+} RESREC;
+
 typedef struct RESWORD {
-    int pad[3];
-    void *p;                            /* +12: heap */
+    int n;                              /* +0: 1 */
+    int start;                          /* +4: ms, -1 when not timed */
+    int end;                            /* +8 */
+    RESREC *p;                          /* +12: heap */
 } RESWORD;
 
 typedef struct RESITEM {
     int n;                              /* +0: words */
-    int pad[4];
+    int conf;                           /* +4: the confidence, 0-10000 */
+    unsigned int score;                 /* +8 */
+    int start;                          /* +12: ms */
+    int end;                            /* +16 */
     RESWORD *words;                     /* +20: heap */
 } RESITEM;
 
 typedef struct RESULT {
     int n;                              /* +0: items */
     RESITEM *items;                     /* +4: heap */
+    int reason;                         /* +8: 2 the timeout, 4 rejected, else 0 */
 } RESULT;
 
+/* the iso-word block's N best as its command 4 sends them (isowdp.c: its record from +176): a
+ * word and its score per entry, the best first, and the garbage paths' scores per frame */
+typedef struct ISONBEST {
+    int *best;                          /* +0: word, score pairs; a negative word is -(k + 1),
+                                         * k the first of a list of the context tree's words */
+    unsigned int ngarbage;              /* +4 */
+    unsigned int *garbage1;             /* +8: the single-word garbage's */
+    unsigned int *garbage2;             /* +12: the sentence garbage's */
+} ISONBEST;
+
+/* the context tree's word lists (+1080): a word and the next entry, -1 at the end */
+typedef struct TREEWORD {
+    int word;
+    int next;
+} TREEWORD;
+
 extern void casrCreateResult(CASR *c, RESULT **r, int frame, int how);
-extern int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, int arg1, int arg2);
+int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *nb, int n);
 int casrGetParam(CASR *c, int id, unsigned int *value);
 int casrSetParam(CASR *c, int id, unsigned int value);
 extern int CreateSecondPassContext(CASR *c);
@@ -183,6 +211,118 @@ static __inline__ void casrFreeResult(CASR *c, RESULT *r)
     heap_Free(c->heap, r);
 }
 
+/* the iso-word block's result: an item per entry of the N best, its confidence from the score
+ * over the sentence garbage's per frame (a logistic curve at the ends, a line between), its words
+ * from the context tree's list when the entry names one; reason 2 when the utterance outran the
+ * timeout, 4 when the best is above the engine's rejection (_tosControl 99). SOCOM 1's body
+ * (round 38c), as SOCOM 1 has it but for expf: the spilled locals' slots in declaration order (i,
+ * then base, garbage, frames, len: reload's stack slots go by pseudo number); x and the confidence
+ * one variable (the division and both arms land in $f12); the second logistic's constant added as a
+ * negative (`+ -4.467109f`: both arms' `add.s; jal expf` tail is then one, cross-jumped); a list's
+ * first entry spelled `-word - 1` in both loops (with `word = -word` GCSE's PRE copies the first
+ * `word - 1` into the second and combine folds the lone negation into a `nor`; spelled so, the
+ * negation is CSE's common value and combine folds each pre-test into `beqz` on it); vt.data before
+ * frames (sched1's order of the head). OPEN, 31 words, the right size: registers in the head block
+ * only -- sched1 issues the garbage list's load (`nb->garbage2`, an argument-based address, which
+ * alias.c separates from the vt store on the frame) at t=4 beside len, before the vt store and the
+ * index shift, so local-alloc gives it a0 and reload takes v0 for nb; the target's registers (the
+ * list's pointer in v1, nb reloaded into a0, n into a1, base reloaded in the preheader) are those
+ * of the load issued after the store and the shift. Every order of the head's four statements,
+ * `*(p + len)`, a temporary, a volatile read: no change. */
+int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, ISONBEST *nb, int n)
+{
+    int i;
+    unsigned int base, garbage, frames, len;
+    RESULT *r;
+    CTXVT vt;
+    int *p;
+    TREEWORD *list;
+    unsigned int score, thr, best;
+    int j, k, cnt, word, err;
+    float x, conf;
+
+    base = *c->frame_base;
+    p = nb->best;
+    r = heap_Alloc(c->heap, sizeof(RESULT));
+    if (r == 0)
+        return 1;
+    r->n = n;
+    if (n != 0)
+        r->items = heap_Alloc(c->heap, n * sizeof(RESITEM));
+    else
+        r->items = 0;
+    FillContextV2VirtualTable(&vt);
+    vt.data = c->ctx->data;
+    frames = c->frames;
+    len = frames - base;
+    garbage = nb->garbage2[len];
+    for (i = 0; i < n; i++) {
+        word = *p++;
+        score = *p++;
+        conf = ((float)(score - c->wtp) - (float)garbage) / (float)len;
+        if (conf < -26.0f)
+            conf = 10000.0f / (1.0f + expf(conf * 0.085444444f + 0.027330978f));
+        else if (conf <= 78.0f)
+            conf = (91.0f - conf) * 76.9f;
+        else
+            conf = 10000.0f / (1.0f + expf(conf * 0.085444444f + -4.467109f));
+        r->items[i].conf = conf;
+        r->items[i].score = score;
+        r->items[i].start = base * 110;
+        r->items[i].end = frames * 110;
+        if (word < 0) {
+            cnt = 0;
+            list = c->tree_words;
+            for (k = -word - 1; k != -1; k = list[k].next)
+                cnt++;
+            r->items[i].words = heap_Alloc(c->heap, cnt * sizeof(RESWORD));
+            r->items[i].n = cnt;
+            j = cnt - 1;
+            for (k = -word - 1; k != -1; k = list[k].next) {
+                r->items[i].words[j].p = heap_Alloc(c->heap, sizeof(RESREC));
+                r->items[i].words[j].n = 1;
+                r->items[i].words[j].start = -1;
+                r->items[i].words[j].end = -1;
+                r->items[i].words[j].p->word = list[k].word;
+                r->items[i].words[j].p->f0 = 0;
+                r->items[i].words[j].p->score = -1;
+                j--;
+            }
+        } else {
+            r->items[i].words = heap_Alloc(c->heap, sizeof(RESWORD));
+            r->items[i].n = 1;
+            r->items[i].words->p = heap_Alloc(c->heap, sizeof(RESREC));
+            r->items[i].words->n = 1;
+            r->items[i].words->start = base * 110;
+            r->items[i].words->end = (base + c->frames) * 110;
+            r->items[i].words->p->word = word;
+            r->items[i].words->p->f0 = 0;
+            r->items[i].words->p->score = score;
+        }
+    }
+    if (c->p420 != 0 && c->p420 < c->frames)
+        r->reason = 2;
+    else {
+        thr = -1;
+        best = -1;
+        if (nb->best != 0)
+            best = nb->best[1];
+        if (_tosControl(c->event, 99, (int)&thr, 0) != 0)
+            return 1;
+        if (thr < best)
+            r->reason = 4;
+        else
+            r->reason = 0;
+    }
+    err = c->cb.result_cb(r, c->info);
+    casrFreeResult(c, r);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    return 0;
+}
+
 /* the end of an utterance: a second pass when parameter 15 asks for one, else the result now.
  * Round 24c, byte-exact: the second pass's two arguments stored before its flag (8 of the 24
  * orders of the arm's four statements match, build/scratch/gcc/r24c/v_dsp.py; round 9c's order --
@@ -209,7 +349,7 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         if (_tosControl(c->event, 7, 0, 0) != 0)
             return 1;
         if (c->iso_word)
-            err = cbIsoWordRecognised(c, a1, a2, arg1, arg2);
+            err = cbIsoWordRecognised(c, a1, a2, (ISONBEST *)arg1, arg2);
         else {
             casrCreateResult(c, &r, arg1, 1);
             ret = c->cb.result_cb(r, c->info);
