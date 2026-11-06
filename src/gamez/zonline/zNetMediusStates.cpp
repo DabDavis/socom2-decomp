@@ -210,6 +210,9 @@ public:
     unsigned short m_flags;   // 0x6: the type and the pool bits
 };
 
+void SetClanTeamFromValve(CValve *valve);   /* the clan game's team set from the valve (the clan unit's) */
+unsigned int GetClanTeam();   /* the clan game's team as the reports carry it (the clan unit's) */
+
 struct MediusSessionBeginResponse {
     MEDIUS_RESPONSE_HEAD
     char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x1c: the session's key, kept
@@ -327,8 +330,6 @@ void func_002ED9C0(int, int, int, MediusFindWorldByNameResponse *);   /* cbFindR
 void func_002EE210(int, int, int, MediusFindWorldByNameResponse *);   /* cbFindGameByName */
 MediusErrorCode MediusCreateGame(MediusCreateGameRequest *req,
                               void (*cb)(int, int, int, MediusCreateGameResponse *));   /* MediusCreateGame */
-void func_002E9840(CValve *valve);   /* the clan game's team set from the valve (the clan unit's) */
-int func_002E99F0();   /* the clan game's field (the clan unit's) */
 
 extern NetConnectionInfo data_0066A540;   /* the room's lobby server (OVL2 bss) */
 extern NetConnectionInfo data_0066A8F0;   /* the game's server (OVL2 bss) */
@@ -337,7 +338,6 @@ extern int MediusWorldID;   /* the game joined (SOCOM 1's) */
 extern unsigned char g_bJoiningRandomGame;
 extern float data_004A44A0;   /* (a clock) */
 extern float data_0044F9E8;   /* when the room was joined */
-int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator */
 void func_002F4080(void *msg, int type);   /* a request put into the network's order (empty) */
 
 void func_00300680();   /* the Medius connection closed */
@@ -451,7 +451,7 @@ void CreateNewGameStateHandler(LOBBY_STATE_FLAG flag)
             *var = "";
         }
         if (clanValve)
-            func_002E9840(clanValve);
+            SetClanTeamFromValve(clanValve);
         MediusCreateGameRequest req;
 
         memset(&req, 0, sizeof(req));
@@ -470,7 +470,7 @@ void CreateNewGameStateHandler(LOBBY_STATE_FLAG flag)
         req.RulesSet = 0;
         req.GenericField1 = LobbyWorldID;
         req.GenericField2 = 65000;
-        req.GenericField3 = func_002E99F0();
+        req.GenericField3 = GetClanTeam();
         req.GameHostType = 0;
         CheckMediusError(MediusCreateGame(&req, cbCreateGame));
         break;
@@ -516,8 +516,8 @@ void JoinGameStateHandler(LOBBY_STATE_FLAG flag)
         SetSessionKey(req.SessionKey);
         req.MediusWorldID = MediusWorldID;
         req.GameHostType = 0;
-        req.JoinType = func_002F6D00(&theLobby) ? MediusJoinAsSpectator : MediusJoinAsPlayer;
-        CUIVariable *var = theUIVarManager.Add(func_002F6D00(&theLobby) ? "SpectatorGamePassword"
+        req.JoinType = theLobby.JoinAsSpectator() ? MediusJoinAsSpectator : MediusJoinAsPlayer;
+        CUIVariable *var = theUIVarManager.Add(theLobby.JoinAsSpectator() ? "SpectatorGamePassword"
                                                                          : "PlayerGamePassword",
                                                0, UIVL_PERMANENT);
         if (ZString(var))
@@ -763,7 +763,6 @@ MediusErrorCode MediusSendWorldReport(MediusWorldReport *rep);   /* MediusSendWo
 void func_00621F90(int conn, int clients, void (*cb)(int, int, int));   /* (the DME's NetPing) */
 void func_002EFA60(int, int, int);   /* its callback */
 void func_002F7C40(void *rules);   /* the game's rules filled in (the lobby unit's) */
-int func_002E99F0();   /* (the clan unit's) */
 extern int data_0066A838;   /* our performance figure */
 extern char *data_004364FC;
 extern LANMissionRules *data_00437CE8;
@@ -820,7 +819,7 @@ extern "C" int func_002EF590(CValve *locked)
         delay = 5000;
     rep.GenericField1 = LobbyWorldID;
     rep.GenericField2 = data_0066A838;
-    rep.GenericField3 = func_002E99F0();
+    rep.GenericField3 = GetClanTeam();
     if (locked->m_value)
         rep.WorldStatus = 3;
     else if (data_00437CE8->m_113 == 1)

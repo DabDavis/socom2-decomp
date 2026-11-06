@@ -279,9 +279,6 @@ void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27
 
 extern "C" {
 int sprintf(char *s, const char *format, ...);
-int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (the lobby unit's) */
-bool func_002E34D0(RoomGame *game);   /* the game's friendly fire (the room unit's) */
-bool func_002E33D0(RoomGame *game);   /* and its respawns */
 extern CUIVariable *data_0044F434;   /* the game's name as the menus show it */
 }
 
@@ -301,12 +298,12 @@ bool CZLANLobby::JoinGame(const char *name)
         if (game) {
             CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(game->m_info.m_maxPlayers);
             CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(game->m_maxSpectators);
-            CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(func_002E34D0(game));
-            CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(func_002E33D0(game));
+            CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(game->IsFriendlyFire());
+            CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(game->IsRespawnAllowed());
             CValve::Create("EQlimit", VALVE_TYPE_1)->SetValue(game->m_19f[0]);
             CValve::Create("mp_max_rounds", VALVE_TYPE_1)->SetValue(game->m_19a[1]);
             CValve::Create("mp_max_round_time", VALVE_TYPE_1)->SetValue(game->m_19a[2]);
-            if (func_002F6D00(&theLobby) && !game->m_maxSpectators)
+            if (theLobby.JoinAsSpectator() && !game->m_maxSpectators)
                 return true;
             data_0066A924 = 1;
             data_0066A8F0 = 2;

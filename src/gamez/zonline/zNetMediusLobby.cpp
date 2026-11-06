@@ -1071,8 +1071,6 @@ void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27
 
 extern "C" {
 int sprintf(char *s, const char *format, ...);
-bool func_002E34D0(RoomGame *game);   /* the game's friendly fire (its 0x30 flags' bit 0; the room unit's) */
-bool func_002E33D0(RoomGame *game);   /* and its respawns (bit 1) */
 }
 
 /* the random game asked for: the candidates let go, the game list's filter dropped -- its callback
@@ -1123,8 +1121,8 @@ bool CZOnlineLobby::JoinGame(const char *name)
         CValve::Create("mp_game_sort_order", VALVE_TYPE_1)->SetValue(game->m_19f[1]);
         CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(game->m_info.m_maxPlayers);
         CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(game->m_maxSpectators);
-        CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(func_002E34D0(game));
-        CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(func_002E33D0(game));
+        CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(game->IsFriendlyFire());
+        CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(game->IsRespawnAllowed());
         CValve::Create("EQlimit", VALVE_TYPE_1)->SetValue(game->m_19f[0]);
         CValve::Create("mp_max_rounds", VALVE_TYPE_1)->SetValue(game->m_19a[1]);
         CValve::Create("mp_max_round_time", VALVE_TYPE_1)->SetValue(game->m_19a[2] * 60);

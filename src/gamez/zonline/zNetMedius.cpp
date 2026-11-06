@@ -34,7 +34,6 @@ void KM_GenerateRSAKeyPair(void *pPublic, void *pPrivate);   /* (OVL2 0x6305C8: 
 
 extern BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
 extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
-void func_002E81A0();   /* the clan team forgotten (the clan unit's) */
 void func_002E3AA0(CZOnlineLobby *lobby, C2D *page);   /* the room list asked for (the rooms' unit's) */
 }
 
@@ -100,8 +99,10 @@ extern int data_0066A990;
 extern int data_0066A998;
 extern int data_0044F518;
 extern unsigned char data_0066A5F8;   /* the details to go at once (the chat unit's) */
-void func_002E9920();   /* the clan team forgotten (the clan unit's) */
 }
+
+void ClearClanTeam();   /* the clan team forgotten (the clan unit's) */
+void ForgetClanRequest();   /* the clan to be asked for again (the clan unit's) */
 
 /* the lobby itself (0x44F370): the unit's one dynamically initialised static -- its initialiser
  * 0x401E30 constructs it and registers the destructor 0x2E0630 */
@@ -148,7 +149,7 @@ bool CZOnlineLobby::Init()
         data_0066A990 = 0;
         data_0066A998 = 0;
         data_0044F518 = 0;
-        func_002E9920();
+        ClearClanTeam();
         PlayerClanID = -1;
         StoredClanInfo.ClanID = -1;
         StoredClanInfo.LeaderAccountID = -1;
@@ -265,7 +266,7 @@ bool CZOnlineLobby::Open(const char *host, int port)
     data_0066A750.m_side = STATS_SEALS;
     sprintf(data_0066A750.m_desc, "Description Not Set");
     data_0066A838 = 65000;
-    func_002E9920();
+    ClearClanTeam();
     AccountInfo.AccountID = -1;
     CopyTo(AccountInfo.AccountName, "zname_a", 32);
     CopyTo(AccountInfo.AccountPassword, "zpass_a", 32);
@@ -332,7 +333,7 @@ void CZOnlineLobby::ReleaseUIResources()
     ReleaseVector<RoomGame>(data_0044FAB0);
     FriendVec.DeleteAll();
     ReleaseVector(FriendVec);
-    func_002E81A0();
+    ForgetClanRequest();
     ReleaseFileTransfers();
     uiv_GameList = 0;
     uiv_RoomList = 0;
@@ -462,4 +463,15 @@ void CZOnlineLobby::UnInit()
 int CZOnlineLobby::MediusConnectionIndex()
 {
     return myConnectionIndex;
+}
+
+/* the game clock set from the host's: ten seconds ahead of the time sent, the variable made when it
+ * is first wanted (SOCOM 1's, through a global; here the lobby's member, read through theLobby, and
+ * the float setter's equality test -- OVL1 0x2DF560: the game signal handler 0x2B9150 calls it on
+ * theLobby) */
+void CZOnlineLobby::SyncGameClock(int t)
+{
+    if (!theLobby.uiv_GameClock)
+        theLobby.uiv_GameClock = theUIVarManager.Add("GameClock", 0, UIVL_PERMANENT);
+    *theLobby.uiv_GameClock = 10.0f + (float)t;
 }
