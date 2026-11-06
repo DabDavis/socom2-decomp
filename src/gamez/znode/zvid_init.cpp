@@ -852,6 +852,12 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
     FlushCache(0);
 }
 
+/* (a marked device, zVid_Init's note: a byte-sized value IRO does not propagate) */
+enum ZviByte {
+    ZVI_0 = 0,
+    ZVI_FF = 255
+};
+
 /* the video system set up: the display 640x448 in the GS's 1728,1824 window, its buffers, the z
  * range, the fade cleared, the LOD valve made, the video thread started and the mode set (SOCOM 1's,
  * with SOCOM II's window, second buffer and thread). OPEN, 11 instructions, the same size: the two
@@ -875,33 +881,60 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
  * just ahead of flag90's, with `li 1` (a1) and `li 255` between them -- so 255 is live only there and
  * takes v0; the target's 255 is live from the top (v1), its zero stores where the source writes them.
  * SOCOM 1's zVid_Init (the demo's 0x308690) has the same shape: 255 into v1 near the top, its two zero
- * byte stores in source order among the constants -- a code-generation property of both builds */
+ * byte stores in source order among the constants -- a code-generation property of both builds.
+ * Round 40 (build/scratch/wep/v_zvi40*.py): 2 OFF, by two marked devices. THE ENUM LEVER (the game
+ * states' round 53): 1 and 255 held in enum-typed locals defined first -- not propagated, so each stays
+ * one `li` at the top of the list, and 255 takes v1 and 1 a1, as the target's, at no other cost. THE
+ * `.set` LEVER (the zdb world's round 33): a split after every store from 640 to ztest_off -- the
+ * zero byte store of pcrtcDo goes into the scheduling cycle any `li` leaves free, so it needs the split
+ * ahead of it; and with that split the block's critical path is short (no float chain), every `li`
+ * urgent, and two `li`s are issued together (v0 and v1 alternating) unless each pair has its own block.
+ * Left: `li v1,255; lui at; move s0,a0` against `move s0,a0; lui at; li v1,255`: the target's li has a
+ * height (its sb is in the block), here its sb lies behind the splits and the tie goes to the parameter's
+ * move. Tried: every order of the first five statements, the parameter copied into a local (an enum or
+ * int local is scheduled alike), a removable branch reading the two (`beq one, ff, L1; L1:`; removed by
+ * the block pass but the blocks stay apart for the scheduler, and its label pads at 0x34), volatile
+ * stores (no order among them here), `asm { nop }` (emitted). Volatile, an enum zero and a cast do not
+ * hold pcrtcDo's store; what does in the original, with the whole body in one block, is the open question */
 void zVid_Init(_zvid_mode mode)
 {
+    ZviByte one = (ZviByte)1;
+    ZviByte ff = (ZviByte)255;
+
     zVid.runTime = 0;
     zVid.swapMode = 0;
     zVid.renderWidth = 640;
+    asm { .set reorder }
     zVid.renderHeight = 448;
+    asm { .set reorder }
     zVid.screenLeft = 1728;
+    asm { .set reorder }
     zVid.screenRight = 2368;
+    asm { .set reorder }
     zVid.screenTop = 1824;
+    asm { .set reorder }
     zVid.screenBottom = 2272;
+    asm { .set reorder }
     zVid.renderBuf = 140;
+    asm { .set reorder }
     zVid.renderBuf2 = 280;
+    asm { .set reorder }
     zVid.ztest_on = &zon_writeon_dmaref;
+    asm { .set reorder }
     zVid.ztest_off = &zon_writeoff_dmaref;
+    asm { .set reorder }
     zVid.pcrtcDo = 0;
     zVid.iMinZ = 10;
     zVid.iMaxZ = 0xFFFF;
     zVid.textureBaseAddr = 11200;
     zVid.textureEndAddr = 16384;
     zVid.flag90 = 0;
-    zVid.flag91 = 1;
+    zVid.flag91 = one;
     zVid.finalBlend = 0;
     zVid.displayBuf = 0;
     zVid.psm = 0;
     *(unsigned long *)zvid_fade = 0;
-    zvid_fade[3] = 255;
+    zvid_fade[3] = ff;
     zVid.minZ = zVid.iMinZ;
     zVid.maxZ = zVid.iMaxZ;
     if (!lodLevel)
