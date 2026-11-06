@@ -2066,6 +2066,39 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 40** (all ten open rows byte-exact: the turret aim 0x3A8910 and 0x3B0A70 with no device;
+  CVehicle::~CVehicle 0x3ACA60, zVid_Init 0x3B1200, CVisual::ApplyDecal 0x3B3AB0, CMesh::ApplyDecal 0x3B8680,
+  CDecal::AddDecal 0x3BECA0, CWaterRipple::Flatten 0x3C0CF0, CWaterRippleManager::ClearGroups 0x3C2A10 and Ripple 0x3C2CB0
+  through marked stand-ins, the original's spelling unknown; the lane's units 792 of 797, the five misses the MSL's band
+  inserts and two draft-held copies):
+  - WHICH ENUMS AREN'T PROPAGATED (the game states' round 53, refined): an unsigned 4-byte enum holds a pointer or word, a
+    1-byte enum a byte; a 4-byte enum holding a zero-extended byte folds, and a signed enum behaves as int and folds;
+  - A NO-CODE READ: `asm { beq x, x, L1; L1: }` reads x for a call's argument order and costs nothing, the branch to the
+    next instruction removed later -- every C read dies before that order, an asm `move` is dropped, an instruction that
+    remains also counts but costs its word, and the label pads with a nop if it lands misaligned (CMesh::ApplyDecal's last
+    2);
+  - A LATE-FOLDING GUARD: a struct flag stored outside the loops and read through a reference bound at the read (`F &r = f;
+    if (r.on) p = &x;`) survives pass 0's loop phase as conditional, then folds to a plain per-iteration assignment in pass
+    1; a store inside the loop gets pulled out, a reference bound at the function's top never folds (Ripple's per-strip
+    pointer, 5);
+  - `K * (float)x`, x a float local holding a constant, stays unfolded to the back end and the product is hoisted at run
+    time (Flatten); named short locals defined at a body's top and read in a later block are not expression-propagated, so
+    IRO_PullOutInvariantAssignments pulls them into the out-of-line guard-plus-preheader, and a third local for an equal
+    value makes a third pull;
+  - a li whose store is ready at once gets that store next, so a run of such pairs gives a zero store no slot, and a li
+    whose store is not ready lets the first ready zero store in behind it: where an enum-typed constant is defined decides
+    where zero stores land (zVid_Init, whose wrong data symbols for all those rounds showed only as WRONG REFERENCE at d=0:
+    a wrong data symbol is invisible until the code aligns);
+  - READ COLOURS BY HAND: a node's register implies a coloured neighbour for each lower register, which gives the
+    code-generation order -- for 0x3B0A70 w, 640, h, 448, y, x led to the plain source form; a variable two neighbours over
+    K is deferred (AddDecal's prim, reached by computing strip just before its first store); read igreplay's last record
+    when a function spills;
+  - FLATTENING A TALL CHAIN AT LEVEL 5: calling a member's destructor from the function's own text inlines it whole
+    (`g->m_nodes.~CNodeVector()`, six high at a delete site: ClearGroups), and holding a member as raw words lets the
+    constructor and destructor chains differ in height (~CVehicle's CVehicleRegion). Both rows also close at `#pragma
+    inline_depth(6)`, each noted in its function's comment; the level-5 forms were kept, needing no pragma;
+  - the turret's y-first schedule came from assigning x, y, z and storing z, x, y (432 orders tried), not from y-first
+    source.
 - **Tells from the SEALs, round 58** (22 byte-exact: seal_ai.cpp's OnWeaponEvent 0x5729F0, OnWeaponHit 0x572330, 0x5743C0,
   0x56A8E0; seal_env.cpp's HandleLanding 0x5AF590, DropItem 0x59F730, PickupItem 0x59F0C0, HandleSealStep 0x5A3570,
   RemoteWeaponDamageVictim 0x5A1B80, HandleGrenadeExplosion 0x5A0E70, CanTraverse 0x5B3CE0 and seven more; seal_create.cpp's
