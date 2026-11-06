@@ -937,19 +937,15 @@ int tcmUpdatePlayer(CZSealBody *player, int index)
     return r;
 }
 
-/* OPEN, 19 instructions (registers only): the target numbers the index parameter last (s0; the
- * end s1, the iterator s2, the entity s3, the count s4), here the index is s4 and the rest one
- * lower -- as if the walk were an inline helper whose parameters come after the caller's locals.
- * Round 49's replay (tools/igreplay.py --want, this unit's dump): the index node must sit at 37.5 --
- * after the walk's two iterator temporaries (@1778, @1780: front-end temporaries, so after every
- * named local) and before the code-generation temporaries; moved to the very end it takes s5. A
- * copy declared after the iterators (`int want = index;`) is 17 off (want s3: a named local, still
- * before the temporaries); the walk as an inline helper of (player, index), `index == n`, the count
- * declared after the iterators: 19. (SlotList::NextWeapon's index, the same miss, closed in round 49
- * as a new variable `next = index + 1` -- this walk does no arithmetic on its index.) */
+/* the PLAYER n items' select: the n-th live teammate made the target. Byte-exact since round 62
+ * (open since round 23: the index parameter numbered last, s0): the count is UNSIGNED, so `n ==
+ * index` converts the index -- a widening-or-equal int ETYPCON is an IRO-subable expression, and
+ * a loop-invariant one, so IRO_MoveInvariantExpressions hoists it into a temporary made after the
+ * walk's scalarised iterators (round 49's replay wanted it at 37.5, after @1778 / @1780) and before
+ * the common subexpressions: the target's s0. An `int` count compares the parameter itself */
 int tcmSelectPlayer(CZSealBody *player, int index)
 {
-    int n = 0;
+    unsigned int n = 0;
     std::list<CEntity *>::const_iterator it = tcmEntities().begin();
     std::list<CEntity *>::const_iterator e = tcmEntities().end();
 
