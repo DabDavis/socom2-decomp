@@ -2066,6 +2066,34 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 39** (13 rows new, 16,248 bytes: CUIListBoxSpec::CUIListBoxSpec 0x37EAB0 and
+  CButtonSpec::CButtonSpec 0x380620, unwritten since round 13; CreateSoftKeyboard 0x38E160, SkbScaleDisplay 0x397950,
+  _SaveSavedGame 0x27F820, CSkbSplit::Next 0x3903A0, the hangul composer 0x391670 and matcher 0x3919D0, rbegin<Ui> 0x391D40,
+  resize / insert<SKBCOMPLETE>, SkbCaseLetter 0x39A8D0, __sinit_zui_hangul.cpp 0x403770; ~CSkbSplit and the composer's
+  accessors from source over their drafts; 21 rows named, the class and member names marked ours in their notes descriptive,
+  not recovered):
+  - AN `#pragma inline_depth(6)` THAT INLINES EVERY USE CAN LEAVE A ROW WITH NO EMITTER, and a specialisation, an explicit
+    instantiation and dont_inline over one call all emit nothing: check dropped functions with an ELF symbol diff, not only
+    the WRONG rows. CInit<Us,0>() 0x392760 stays matched through a small marked function, SkbCodeCtorRow, named by `sc: as=`
+    on the unit's first line (a later `sc:` line fails the build). zui_hangul.cpp's pragma is a marked "Level 6, or 8?"
+    witness: 82 of 90 with it, 76 of 89 without;
+  - a local `T x[N] = {0};` is the compiler's byte clear (`addiu; beqz; li N`, two nops, no aligned head), every written
+    loop form 8 bytes longer; `new (&x) T()` of a constructor-less POD clears nothing here;
+  - the late-folding guard (the weapons' round 40) also gives a per-pass `addiu reg,sp,K` for a frame read, where a
+    reference or enum-held address is hoisted into a saved register (CreateSoftKeyboard); the guard on a row base stops
+    strength reduction folding it, so the inner offset gets its own induction (SkbScaleDisplay), and a loop with the guard
+    in its body is not unrolled;
+  - a value read through a small inline each time is numbered high and coloured first, a named reference coloured last; a
+    user copy constructor means no callee copy of by-value class parameters, and body assignment keeps address CSE where
+    mem-init does not (include/deque's iterator: the mem-init form loses resize 0x285660);
+  - `beq; nop; b L; nop; A:` stays uninverted only if the empty arm holds a copy until colouring, truly empty arms invert to
+    one bne; same-text literals merge into an inlined strcmp chain (`move a1,a0`), dont_reuse_strings does not part them, a
+    static array does; a dead inlined loop result leaves two guards falling into the next block; `r += x` puts the
+    accumulator first in the add; `if (!(a && b)) return false;` lays the false block first; `r = r ? c < K : r;` under
+    `#pragma bool off` has no pad;
+  - the pod's out-of-line alloc() / cap(), SOCOM 1's `if (data_) alloc().deallocate(data_, cap())`, are called by clear and
+    erase of SKBSEQ and SKBCOMPLETE, resize<SKBPIECE> and CNodeAction::Close: include/vector's pod destructor has no such
+    calls to leave out of line, at level 5 or 6 -- the MSL's next request.
 - **Tells from the weapons, round 40** (all ten open rows byte-exact: the turret aim 0x3A8910 and 0x3B0A70 with no device;
   CVehicle::~CVehicle 0x3ACA60, zVid_Init 0x3B1200, CVisual::ApplyDecal 0x3B3AB0, CMesh::ApplyDecal 0x3B8680,
   CDecal::AddDecal 0x3BECA0, CWaterRipple::Flatten 0x3C0CF0, CWaterRippleManager::ClearGroups 0x3C2A10 and Ripple 0x3C2CB0
