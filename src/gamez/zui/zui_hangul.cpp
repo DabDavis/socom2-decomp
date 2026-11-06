@@ -1,3 +1,4 @@
+/* sc: as=SkbCodeCtorRow__FPUs __ct__11CInit<Us,0>Fv */
 /* zui_hangul.cpp -- the soft keyboard's Korean input (OVL1 0x3903A0-0x3941CF, its initialiser
  * 0x403770 building two vectors and a word at 0x49ED08-0x49ED40; its template tail ends on the two
  * vectors' destructors the initialiser registers, 0x3940F0 and 0x394170, so 0x3941D0-0x39441F --
@@ -20,7 +21,9 @@
  * RemovePiece 0x390730 pinned to call it, ~CSkbSplit 0x390690, the pieces' clear 0x3929C0, the composer's matcher,
  * the initialiser 0x403770 (CSkbCompleteVec() six high, inlined whole) and resize / insert<SKBCOMPLETE> 0x392770 /
  * 0x3931A0: 81 of the unit's 89 rows against 75 without it. A MODELLING DEVICE, one more "Level 6, or 8?" witness.
- * CInit<Us,0>() 0x392760 is no longer emitted here, inlined everywhere; its draft keeps the row.
+ * Under the pragma every implicit use inlines CInit<Us,0>() 0x392760 and nothing is left to emit, while the target
+ * calls it out of line from resize<SKBPIECE> 0x392670 (its one caller, OPEN below): SkbCodeCtorRow, at the unit's
+ * top, keeps the row (a modelling device, to go when that resize closes; the row has no draft).
  * OPEN, THE POD'S ACCESSORS: clear<SKBSEQ> 0x393C60 (0xA4 of 0xC8), clear<SKBCOMPLETE> 0x393E40 (0x9C of 0xC0),
  * erase<SKBSEQ> 0x3935F0, erase<SKBCOMPLETE> 0x393030 and resize<SKBPIECE> 0x392670 have every this-test of the
  * target and differ in one thing: the element's pod destructor there calls `alloc()` and `cap()` out of line and
@@ -170,6 +173,15 @@ unsigned int SkbRdrCount(_zrdr *rdr);
 JAMO FindJamo(const char *name);
 _zrdr *zrdr_flat_findtag_startidx(const _zrdr *rdr, const char *tag, int start);
 char *zrdr_flat_findstring(const _zrdr *rdr, const char *tag, int start);
+
+/* the code's own constructor out of line (0x392760: THE LEVEL in the file's opening note), under the row's name
+ * through the `as=` on the file's first line. A modelling device: at the unit's level every use inlines it, and a specialisation, an
+ * explicit instantiation or `dont_inline` over one call emit nothing */
+unsigned short *SkbCodeCtorRow(unsigned short *p)
+{
+    *p = 0;
+    return p;
+}
 
 /* the jamo composed into pieces by the rules (0x391670; the name ours) */
 bool SkbHangulCompose(CSkbPieces *pieces, std::vector<char> *jamo);
