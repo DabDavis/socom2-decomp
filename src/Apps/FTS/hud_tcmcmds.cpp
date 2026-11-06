@@ -674,7 +674,10 @@ int tcmSelectTeam(CZSealBody *player, int team)
  * holder interferes with it there -- here the player's neighbours are r, m and unit only (caption,
  * the target's s3, is born after the player's last use): the original keeps the player live
  * longer, or numbers something else there. Round 62: igreplay --want 32=s4,34=s2,35=s1 over every
- * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge */
+ * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge. Round 65: the edge is a read of
+ * the player while caption lives -- `asm { beq player, player, L1; L1: }` (the weapons' round 40's no-code read) at the return gives
+ * the size and the frame, 10 off: an int member (`int m = (unsigned char)member`, the compare through a KEY cast) passes it with no andi,
+ * but the player then takes s3 and caption s4, and the virtual call's arguments go a0, a1, a2 where the target's go a2, a1, a0 */
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;

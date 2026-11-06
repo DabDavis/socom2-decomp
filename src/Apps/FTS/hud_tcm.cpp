@@ -43,16 +43,7 @@ static CPnt3D s_tcmColor3(48.0f, 48.0f, 48.0f);
 static CPnt3D s_tcmColor4 = s_tcmColor3;
 
 /* the menu, and the item caches by name: the network game's and the single-player game's (the
- * tree's cache builders 0x232BC0/0x2344E0 fill them).
- * OPEN, 2 instructions (__sinit_hud_tcm.cpp, 0x160 against 0x168): the colours, theTCM and both
- * caches' vector stores are the target's, but for each cache's strcpy the target materialises the
- * object (`addiu v0,v0,lo(cache)`) and takes the name off it (`addiu a0,v0,12`), where MW folds the
- * name's address into one lui/addiu pair. Tried: the name through a pointer or reference local, a
- * cast of this, &m_name[0], an inline setter or accessor, a member class holding the name, the
- * constructor out of class, member-initialised, copy- or converting-initialised globals -- all fold.
- * Round 61: the name or `this` through a pointer-returning inline (member or free: the device that
- * keeps TickAnchors' and DrawLaseTarget's addresses), the name as a second base class -- all fold
- * too (the object's address is a constant, propagated through any temporary) */
+ * tree's cache builders 0x232BC0/0x2344E0 fill them; __sinit_hud_tcm.cpp byte-exact since round 65: CTCMCache's constructor) */
 CTCM theTCM;
 CTCMCache mpCache("mpCache");
 CTCMCache spCache("spCache");

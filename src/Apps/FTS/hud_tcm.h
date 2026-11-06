@@ -58,8 +58,16 @@ public:
  * them with their names) */
 class CTCMCache {
 public:
-    /* named (the initialiser's: the vector's three words zeroed, then the name copied) */
-    CTCMCache(const char *name) { strcpy(m_name, name); }
+    /* named (the initialiser's: the vector's three words zeroed, then the name copied). `this` through an
+     * unsigned 4-byte enum, a MODELLING DEVICE (enums are not propagated -- the weapons' round 40: such an enum
+     * holds a pointer): __sinit_hud_tcm.cpp materialises the object and takes the name off it, `addiu a0,v0,12`,
+     * where every pointer, reference and inline folded the name's address (open since round 49) */
+    CTCMCache(const char *name)
+    {
+        enum Self { kSelfMax = 0xffffffffu } self = (Self)(unsigned int)this;
+
+        strcpy(((CTCMCache *)self)->m_name, name);
+    }
     CTCMEntry *Find(const char *name);
     CTCMEntry *Add(const char *name, TCMFunc action, int actionArg, TCMFunc update, int updateArg);
     ~CTCMCache();
