@@ -16058,7 +16058,7 @@ What is open across lanes, and what comes next:
   and second() out of line and inline all the rest all put the pod's or the deleter's destructor at pass 5, which is level 8 with alloc() over first(); units that need it say so
   by `__MSL_POD_DTOR_ARGS` and a level pragma, seven units so far, the tree staying at 5.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
-  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short --
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() since round 40 --
   round 34: the image's chain is the exported out-of-line copies of inline functions cut at their
   callers, depth first, so it wants the chain refitted as inline functions, not reordered) and
   its iterator classes (every do_assign calls separate source and destination operators out of line,
