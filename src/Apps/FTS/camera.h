@@ -65,6 +65,7 @@ zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3
 
 class CHUD;
 class CEntity;
+class CAppCamera;
 class CZBodyPart;
 
 /* a seal's controller: its throttle (zentity.h's CEntityCtrl: SOCOM 1's three axes at 0x8, SOCOM
@@ -72,9 +73,11 @@ class CZBodyPart;
  * zoom to the camera) */
 class CEntityCtrl {
 public:
-    unsigned char _0[8];
+    unsigned char _0[4];
+    CEntity *m_entity;   // 0x4: what it drives (a turret's: the SEAL manning it)
     float m_throttle[4];   // 0x8
-    unsigned char _18[0x221 - 0x18];
+    unsigned char _18[0x220 - 0x18];
+    unsigned char m_220;   // 0x220 (6 while its SEAL is down online: the camera's follow)
     unsigned char m_221;   // 0x221
 };
 
@@ -118,6 +121,8 @@ public:
 
     virtual ~CEntity();
     virtual CMatrix *GetMatrix();
+    /* its node (out of line, 0x29ED20: SOCOM 1's) */
+    zdb::CNode *GetNode();
 
     unsigned char _4[0x10 - 4];
     TYPE m_type;   // 0x10
@@ -159,7 +164,11 @@ public:
     SEAL_PEEK m_desiredPeek;   // 0x375
     unsigned char _376[0x5e0 - 0x376];
     CZKit m_kit;   // 0x5e0 (SOCOM 1: 0x520)
-    unsigned char _5e4[0xf7a - 0x5e4];
+    unsigned char _5e4[0xea8 - 0x5e4];
+    /* the camera watching the SEAL, if any (SOCOM II's: a follow online sets its mode, the name
+     * ours) */
+    CAppCamera *m_camera;   // 0xea8
+    unsigned char _eac[0xf7a - 0xeac];
     /* the SEAL's life as the network reports it, 1 up (zseal.h's m_netlife, a NET_LIFE byte) */
     unsigned char m_netlife;   // 0xf7a
     unsigned char _f7b[0x105c - 0xf7b];
@@ -282,6 +291,9 @@ public:
      * names ours */
     void Follow(CEntity *prey, const char *part);
     void Follow(CZSealBody *seal, const char *part);
+    /* the death camera, 0xF4-0x11B (camera.cpp's CDeathCam: read through this at each use, its
+     * fields are this one's offsets -- a local pointer to it takes a saved register) */
+    struct CDeathCam *DeathCam() { return (struct CDeathCam *)&m_f4; }
     /* where the tether puts the camera, its offset and the tether's length handed back (SOCOM 1's,
      * 0x29A950) */
     CPnt3D GetThirdPersonCamPos(CPnt3D *CamOffset, float *tetherLen);

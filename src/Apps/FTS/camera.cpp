@@ -1587,10 +1587,97 @@ void CAppCamera::APFirstPersonCam(CMatrix &cTw, float dT)
     UpdateRegions(this);
 }
 
-/* a SEAL followed: the entity's own (0x2956E0 not written yet, so a call -- an 8-byte jump) */
+/* a SEAL followed: the entity's own (defined after it, so a call -- an 8-byte jump) */
 void CAppCamera::Follow(CZSealBody *seal, const char *part)
 {
     Follow((CEntity *)seal, part);
+}
+
+/* an entity followed (SOCOM 1's AttachTo's first half, SOCOM II's): online, a SEAL down puts its
+ * controller and the camera watching it -- else this one -- in mode 6, one up takes this one out
+ * of it, and with the player down the death camera is set to watch it; the entity refused at
+ * state 7 online unless a SEAL other than the one followed. Then the SEAL (the entity, else what
+ * its controller drives) and its controller taken, the pad from a player's, the effects node and
+ * the part to hang from found, and the death camera's turns put back */
+void CAppCamera::Follow(CEntity *prey, const char *part)
+{
+    bool ok = true;
+
+    if (theNetwork.m_9) {
+        CZSealBody *seal = dynamic_cast<CZSealBody *>(prey);
+
+        if (seal) {
+            if (func_002C2FD0(seal)) {
+                if (seal->m_control)
+                    seal->m_control->m_220 = 6;
+                if (seal->m_camera)
+                    seal->m_camera->SetCameraMode(cam_mode_6);
+                else
+                    SetCameraMode(cam_mode_6);
+            } else if (m_camera_mode == cam_mode_6)
+                m_camera_mode = cam_mode_tether;
+            if (func_002C2FD0(ftsGetPlayer())) {
+                if (DeathCam()->m_state == 0)
+                    DeathCam()->m_next = 0;
+                else if (DeathCam()->m_state == 1)
+                    DeathCam()->m_next = 1;
+                else if (DeathCam()->m_state == 2)
+                    if (fabsf(m_118 - 1.0f) > 0.01f) {
+                        m_118 = 1.0f;
+                        appCamera->SetZoom(1.0f);
+                    }
+                if (seal != ftsGetPlayer()) {
+                    DeathCam()->m_state = 1;
+                    DeathCam()->m_seal = seal;
+                } else
+                    DeathCam()->m_state = 0;
+                DeathCam()->m_yaw = 0.0f;
+                DeathCam()->m_pitch = 0.0f;
+            }
+        }
+    }
+    if (theNetwork.m_9 && m_cam_death_state == 7) {
+        if (!dynamic_cast<CZSealBody *>(prey) || prey == m_entity)
+            ok = false;
+    }
+    if (ok) {
+        m_45 = 0;
+        if (prey) {
+            m_bc = dynamic_cast<CZSealBody *>(prey);
+            /* the controller tested twice, as the target (two beqz on one register: a pointer
+             * conversion's or an accessor's own test in the original, likely; `c ?` or an inline
+             * returning 0 add a store of zero, one test is 2 short) */
+            if (!m_bc) {
+                CEntityCtrl *c = prey->m_control;
+
+                if (c) {
+                    if (c)
+                        m_bc = (CZSealBody *)c->m_entity;
+                }
+            }
+            if (m_bc)
+                m_ctrl = (CAppCameraCtrl *)m_bc->m_control;
+            else
+                m_ctrl = 0;
+        }
+        if (m_ctrl && m_ctrl->IsPlayer())
+            m_padid = m_ctrl->m_padid;
+        if (m_entity != prey)
+            m_44 = 1;
+        m_entity = (CZSealBody *)prey;
+        if (m_bc) {
+            m_camera_effects = m_bc->GetNode()->FindChild("camera_effects", true);
+            if (part)
+                m_skel_root = m_bc->FindPart(part);
+            else
+                m_skel_root = m_bc->m_root;
+        } else {
+            m_camera_effects = 0;
+            m_skel_root = 0;
+        }
+        data_00416208 = 0.0f;
+        data_00416210 = 0.0f;
+    }
 }
 
 /* the death camera turned by the player's stick: the yaw and pitch added up at twice the stick's
