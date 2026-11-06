@@ -820,6 +820,95 @@ extern int data_0044D590;
 extern int data_0044D598;
 }
 
+/* (the lowest a probe starts from, OVL2 bss 0x66AAB8: a variable) */
+extern "C" float data_0066AAB8;
+
+/* the body's bits as bools with a block each (inlines; the names ours) */
+static inline bool HoldsNoProbe(const CZSealBody *seal)
+{
+    if (seal->m_1060_bit11)
+        return true;
+    return false;
+}
+
+static inline bool WantsProbe(const CZSealBody *seal)
+{
+    if (seal->m_bit8)
+        return true;
+    return false;
+}
+
+static inline bool DrivenByPlayer(const CZSealBody *seal)
+{
+    if (seal->m_control)
+        return ((CSealCtrl *)seal->m_control)->IsPlayer();
+    return false;
+}
+
+static inline void SetEntityBit8(CEntity *e, bool on)
+{
+    e->m_bit8 = on;
+}
+
+static inline void SetAltitudeCharacters(zdb::DiIntersect *di, bool on);
+
+/* the ground probe queued for the frame, for a SEAL asked to or a player's: from the gunner's place
+ * (held at the lowest start), lifted by the root's place -- only its height when the state is 3 -- a
+ * pool entry made when all are taken, the region's mask and the characters' flag set (OVL2 0x5B0840, new
+ * in SOCOM II: PrePostTick calls it, SOCOM 1's PreCheckDIDown inlined at its head; the name unknown) */
+extern "C" void func_005B0840(CZSealBody *seal)
+{
+    seal->m_down_di = -999;
+    if (HoldsNoProbe(seal))
+        return;
+    if (!WantsProbe(seal) && !DrivenByPlayer(seal))
+        return;
+    SetEntityBit8(seal, false);
+
+    CPnt3D pos = seal->m_gunner_pos;
+
+    if (data_0066AAB8 > seal->m_gunner_pos.y)
+        pos.y = data_0066AAB8;
+
+    zdb::CNode *root = seal->GetRootPart()->m_node;
+    CPnt3D rootpos;
+    CPnt3D d;
+
+    rootpos.x = root->m_matrix.m_matrix[3][0];
+    rootpos.y = root->m_matrix.m_matrix[3][1];
+    rootpos.z = root->m_matrix.m_matrix[3][2];
+
+    TransformVectors(&seal->m_node->m_matrix, &rootpos, &d, 1);
+    if (seal->m_state == 3)
+        pos.y += d.y;
+    else
+        pos.Add(&d, &pos);
+
+    zdb::DiIntersect *di;
+
+    if (data_0044D598 == data_0044D590) {
+        di = new zdb::DiIntersect(32);
+        if (!di)
+            return;
+        di->m_Type = 1;
+        data_0044D588 = (zdb::DiIntersect **)_realloc(data_0044D588, (data_0044D590 + 1) * 4, 0, 0);
+        if (!data_0044D588)
+            return;
+        data_0044D588[data_0044D590] = di;
+        data_0044D590++;
+    }
+    seal->m_down_di = data_0044D598;
+    di = data_0044D588[seal->m_down_di];
+    data_0044D598++;
+    di->m_Tail = pos;
+    di->SetMask(seal->m_last_altitude.GetRegion());
+    if (seal->m_altitude_characters)
+        SetAltitudeCharacters(di, true);
+    else
+        SetAltitudeCharacters(di, false);
+    di->m_Node = seal->GetNode();
+}
+
 /* the intersection pool let go: each deleted, the array freed, the words cleared (OVL2 0x5B61A0, new
  * in SOCOM II; CCoreState::UnInit, CMPExitState::Init and CMission::ReOpen_Unload1 call it) */
 extern "C" void func_005B61A0()
