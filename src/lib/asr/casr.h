@@ -125,7 +125,8 @@ typedef struct CASR {
     unsigned char iso_word;             /* +577 */
     char pad578[2];
     void *run_ctx;                      /* +580: the context the engine runs (_tosControl 36) */
-    char pad584[12];
+    char pad584[8];
+    struct UWTABLES *uw_tables;         /* +592: the user words' tables (intCreateCtxTree's) */
     void *sp_ctx;                       /* +596: the second pass's (CreateSecondPassContext) */
     int pad600;
     TNODE *iso_ctx;                     /* +604: the iso-word context's tree, run again after a second pass */
