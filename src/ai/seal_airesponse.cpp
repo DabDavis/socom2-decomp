@@ -943,6 +943,157 @@ extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
     }
 }
 
+/* the cell a step from a cell in a direction reaches and its cell, and whether a step may end on it;
+ * false off the map (ai_target.cpp's TraversableNeighbor: GetMapId, GetCell and the cell's test called
+ * out of line) */
+static inline bool ShotAtNeighbor(const CAiMap &map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out,
+                                  CAiCell *&cell)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map.m_nx && y >= 0 && y < map.m_ny) {
+        out.x = x;
+        out.y = y;
+        out.m_mapid = map.GetMapId();
+        cell = map.GetCell(out, 0);
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+extern "C" {
+/* the controller's alertness set with a point (OVL2 0x561110, zseal.h's SetAiAware) and the way to
+ * look from a spot (0x559580, seal_ai.cpp's) */
+CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out, int n,
+                          int *got);
+}
+
+/* a point negated into another, by pointer (inline: in place, the reads and the writes two forms, each field once in
+ * each -- frame-relative, where in place on the local the second access of a field takes an address temporary;
+ * the name ours, CPnt3D's Scale(f, out) shape) */
+static inline void ShotAtNeg(const CPnt3D *v, CPnt3D *o)
+{
+    o->x = -v->x;
+    o->y = -v->y;
+    o->z = -v->z;
+}
+
+/* the alert the shot-at state still moves on (OVL2 data) */
+extern float data_0064FF60;
+
+/* shot at (OVL2 0x6089F0; SOCOM 1's grown): straight to the end for an AI with bit 7; a target taken
+ * (mode byte 4) ends it on entry, else after the entry's wait the reaction (2): alert at the shot's
+ * point, a look there, the throttle, a crouch, the goto pushed there; 3 the reaction alone; 4 a step
+ * up to three cells away from the shot -- a goal there, the shot's point the SEAL's -- and 6 waits on
+ * the goal; with little alert left a move to the point (7). Byte-exact (round 65, unwritten before):
+ * the count unsigned and tested `n-- > 0` (`move; beqz` -- a plain `n--` beside the inline's `&&`
+ * materialises `sltu; xori`, a signed `> 0` gives `blez`); the facing reversed through a pointer
+ * helper (in place the second access of y and z takes an address temporary) */
+int CAiSShotAt::Tick(CSealCtrlAi *ai)
+{
+    STEP step = (STEP)m_phase;
+    CEntity *seal = ai->m_entity;
+
+    if (ai->m_aibit7)
+        step = STEP_5;
+    switch (step) {
+    case STEP_0:
+        if (ai->m_26c == 4) {
+            func_00609190(this, ai);
+            ai->SetAiAware(AIA_GENERAL, 0, 0.0f);
+            step = STEP_5;
+        } else {
+            if (!(ai->m_stateStack.m_timer < m_time))
+                step = STEP_2;
+            ai->SetAiMode((AI_MODE)4);
+        }
+        break;
+    case STEP_2: {
+        CAiMapLoc loc;
+
+        func_00609190(this, ai);
+        ai->SetAiAware(AIA_DIRECTION, &m_5c, -1.0f);
+        if (ai->SetLookPosW((AI_LOOK)6, &m_5c)) {
+            ai->ModifyLookFlags(1, 6);
+            ai->SetLookTimer(CAiTimer::infinite);
+        }
+        func_00570F90(ai, 1.0f);
+        ai->ChangeStanceDelayed((SEAL_STANCE)0, (SEAL_STANCE)1, 0.15f);
+        if (AiMaps.GetLocation(&m_5c, loc))
+            func_005F0B30(ai, &m_5c, 5, 3, 4);
+        step = STEP_4;
+        break;
+    }
+    case STEP_3:
+        func_00609190(this, ai);
+        step = STEP_5;
+        break;
+    case STEP_4: {
+        CAiMapLoc loc(seal->m_mapLocValid);
+        CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+        if (map) {
+            CPnt3D dir = seal->m_posW - m_5c;
+
+            dir.Normalize();
+            CAiMap::DIR d = func_00559580(&loc, &dir, 0x40000, 0, 10, 0);
+            CAiCell *found = 0;
+            CAiCell *cell = 0;
+            unsigned int n = 3;
+            CAiMapLoc next;
+
+            while (n-- > 0 && ShotAtNeighbor(*map, loc, d, next, cell)) {
+                found = cell;
+                loc = next;
+            }
+            if (found) {
+                CPnt3D c;
+
+                if (map->GetCellCenter(loc, &c) && ai->SetGoalPos(GOAL_MOVE, &c, 3.0f)) {
+                    ShotAtNeg(&dir, &dir);
+                    ai->SetGoalDir(GOAL_MOVE, &dir, true);
+                    m_5c.x = seal->m_posW.x;
+                    m_5c.y = seal->m_posW.y;
+                    m_5c.z = seal->m_posW.z;
+                    ai->SetAiMode((AI_MODE)4);
+                    ai->SetAiBit2(true);
+                    m_time = ai->m_stateStack.m_timer + 2.5f;
+                    step = STEP_6;
+                    func_00609190(this, ai);
+                }
+            }
+        }
+        if (step != STEP_6)
+            step = STEP_5;
+        break;
+    }
+    case STEP_6: {
+        bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+        if (!has || !(ai->m_stateStack.m_timer < m_time)) {
+            step = STEP_5;
+            if (ai->m_718 <= data_0064FF60 && ai->SetGoalPos(GOAL_MOVE, &m_5c, 5.0f)) {
+                ai->SetAiMode((AI_MODE)4);
+                step = STEP_7;
+            }
+        }
+        break;
+    }
+    case STEP_7: {
+        bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+        if (!has)
+            step = STEP_5;
+        break;
+    }
+    }
+    UpdatePhase(step);
+    if (step == STEP_5)
+        SetActive(false);
+    return Result();
+}
+
 /* a word's bits under a mask, the mask a parameter (the name ours): asked for all of them (~0) the
  * AND survives as the 32-bit zero extension `dsll32/dsrl32` before the branch -- written in place,
  * `& ~0u` folds away */
@@ -1157,6 +1308,203 @@ extern "C" void func_006055B0(CAiSEvent *s, CSealCtrlAi *ai)
         }
         s->SetFlags(0x10, 0xc);
     }
+}
+
+extern "C" {
+/* a script sequence run on the AI's script state (OVL2 0x5F43B0) and a state's hold on the AI's
+ * weapon kind given back (0x5F6190): seal_aistate.cpp's */
+bool func_005F43B0(CSealCtrlAi *ai, const char *name, unsigned int flags);
+void func_005F6190(CAiState *s, CSealCtrlAi *ai);
+}
+
+/* the event's random wait, its Rfloat drawn (zkit.h's Rfloat::operator float, inline; the name ours) */
+static inline float EventWait(CAiSEvent *s)
+{
+    float f;
+
+    if (s->m_rnd_range == 0.0f)
+        f = s->m_rnd_min;
+    else {
+        float r = 4.656613e-10f * rand();
+        f = s->m_rnd_min + s->m_rnd_range * r;
+    }
+    return f;
+}
+
+/* the plan the goto just pushed onto the event's own stack, or 0 (inline; the name ours) */
+static inline CAiSPlan *EventPlan(CAiSEvent *s)
+{
+    CAiState *st = s->m_stack.GetState();
+
+    return (CAiSPlan *)(st ? (st && st->m_state == AI_STATE_PLAN ? st : 0) : 0);
+}
+
+/* an event (OVL2 0x604CE0; SOCOM 1's grown): the player's side never shouts or orders (bits 1-3); the
+ * sub-step first; a held target (bit 4) or the alert (bit 5) breaks it off (8) unless it waits (bit 2),
+ * as does its clock running out. 0 the callout, 1 and 2 a look at each point, 3 a goto to the event's
+ * cell with a plan covering the event (5 after), 5 the look held there, 6 the goto back to the cell the
+ * SEAL started from (8 after), 7 a wait, 8 and 9 the way out -- the AI's script told the event's name.
+ * Byte-exact (round 65, unwritten before): the player's-side test `m_navyseal ? true : false` (sltu); the
+ * wait an Rfloat drawn through a NON-const pointer (const, its range's second read takes an address
+ * temporary); the scan angle 20 degrees (0.34906584f); the cell test `x != || y != ? 6 : 8`; the step
+ * copied into a local before the end's compare (its address is taken: read in place, it is reloaded
+ * after the m_8d store); the limits function-local statics (8-byte-spaced data, content-checked) */
+int CAiSEvent::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+
+    if (ai->m_navyseal ? true : false)
+        SetFlags(0, 0xe);
+    STEP step = (STEP)m_phase;
+
+    Virtual14(ai, 0);
+    unsigned int flags = m_flags;
+
+    if (flags & 4) {
+        bool waiting = m_phase == 0 || m_8d == 0;
+
+        if (waiting)
+            goto timed;
+    }
+    if ((flags & 0x10) && TargetHeld(ai))
+        step = STEP_8;
+    else if (HasFlags(this, 0x20) && !(((CAiCtrlEvent *)ai)->m_718 <= 1.0f))
+        step = STEP_8;
+timed:
+    if (m_time != -1.0f && step >= 0) {
+        if ((m_time -= m_dT) <= 0.0f)
+            step = STEP_8;
+    }
+    switch (step) {
+    case STEP_0:
+        NextStep(&step, m_88);
+        func_006055B0(this, ai);
+        break;
+    case STEP_1:
+        ai->m_stateStack.SetFlags(1, 0);
+        if (ai->SetLookPosW((AI_LOOK)5, &m_pos)) {
+            ai->SetLookTimer(EventWait(this));
+            ai->SetScanAngle(0.34906584f);
+            ai->ModifyLookFlags(1, 0);
+        }
+        NextStep(&step, (m_flags & 2) ? m_80 : EventWait(this));
+        ai->m_stateStack.SetFlags(1, 0);
+        break;
+    case STEP_2:
+        if (ai->SetLookPosW((AI_LOOK)5, &m_pos2)) {
+            ai->ModifyLookFlags(1, 0);
+            ai->SetLookTimer(EventWait(this));
+            ai->SetScanAngle(0.34906584f);
+        }
+        NextStep(&step, EventWait(this));
+        break;
+    case STEP_3: {
+        static float s_tolNear = 0.15f;
+        static float s_tolFar = 1.0f;
+        static int s_limit = 10000;
+        static int s_tol = 3;
+        CAiMapLoc loc;
+        bool ok;
+
+        step = STEP_8;
+        switch ((signed char)m_58) {
+        case 5:
+            ok = AiMaps.GetLocation(&m_pos, loc);
+            m_cell = *(unsigned int *)&CAiMapLoc::invalid;
+            break;
+        default:
+            ok = AiMaps.GetLocation((m_flags & 1) ? &m_pos2 : &m_pos, loc);
+            m_cell = *(unsigned int *)&seal->m_mapLocValid;
+            break;
+        }
+        if (ok && func_005F0830(ai, (unsigned int *)&loc, 4, -1, -1)) {
+            CAiSPlan *plan = EventPlan(this);
+
+            plan->m_114 = (unsigned int)this;
+            plan->m_124 = 5;
+            plan->m_128 = 8;
+            plan->m_12c = (m_flags & 8) ? s_tolNear : s_tolFar;
+            plan->m_11c = s_limit;
+            plan->m_130 = s_tol;
+            step = STEP_5;
+            m_8c = 5;
+        }
+        break;
+    }
+    case STEP_5: {
+        static float s_hold = 5.0f;
+        static float s_angle = 1.5707964f;
+
+        m_84 = s_hold;
+        if (ai->SetLookPosW((AI_LOOK)5, (m_flags & 1) ? &m_pos2 : &m_pos)) {
+            ai->SetLookTimer(m_84);
+            ai->SetLookFlags(6);
+            ai->SetScanAngle(s_angle);
+            ai->SetScanRate(1.0f);
+            ai->SetLookRate(1.0f);
+        }
+        m_8c = ((CAiMapLoc *)&m_cell)->x != CAiMapLoc::invalid.x || ((CAiMapLoc *)&m_cell)->y != CAiMapLoc::invalid.y ? 6 : 8;
+        step = STEP_7;
+        break;
+    }
+    case STEP_6: {
+        static float s_tolNear = 0.15f;
+        static float s_tolFar = 1.0f;
+        static int s_limit = 10000;
+        static int s_tol = 3;
+
+        ai->ClearLook((AI_LOOK)5);
+        if (m_flags & 8) {
+            func_00571010(ai, func_00609530(2), 258, (ORDER_KIND)11);
+            func_005F6190(this, ai);
+        }
+        if (func_005F0830(ai, &m_cell, 4, -1, -1)) {
+            CAiSPlan *plan = EventPlan(this);
+
+            plan->m_114 = (unsigned int)this;
+            plan->m_124 = 8;
+            plan->m_128 = 8;
+            plan->m_12c = (m_flags & 8) ? s_tolNear : s_tolFar;
+            plan->m_11c = s_limit;
+            plan->m_130 = s_tol;
+            step = STEP_8;
+            m_8c = 8;
+        } else {
+            m_84 = 1.5f;
+            m_8c = 8;
+            step = STEP_7;
+        }
+        break;
+    }
+    case STEP_7:
+        if ((m_84 -= m_dT) <= 0.0f) {
+            m_84 = 0.0f;
+            step = (STEP)(signed char)m_8c;
+        }
+        break;
+    case STEP_8:
+        ai->ClearLook((AI_LOOK)5);
+        step = STEP_9;
+        m_84 = 0.0f;
+    case STEP_9:
+        if ((m_84 -= m_dT) <= 0.0f) {
+            if ((m_flags & 8) && ai->GetAiAware() == AIA_SUSPICIOUS)
+                ai->SetAiAware(AIA_UNAWARE, 0, -1.0f);
+            ai->PopAiState();
+            if (m_name[0]) {
+                func_005F43B0(ai, m_name, 3);
+                return AI_RUNNING;
+            }
+        }
+        break;
+    }
+    STEP s = step;
+
+    if (s != m_phase) {
+        m_8d = m_phase;
+        UpdatePhase(s);
+    }
+    return Result();
 }
 
 /* the hold's signed-byte count (a file static: its Tick reads it too; OVL2 data 0x650E10) */
@@ -1753,7 +2101,7 @@ void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 {
     switch (sig) {
     case SIGNAL_4:
-        m_tries = s_pathTries;
+        ((MAP_DIRCOUNT *)m_exits)->m_range = s_pathTries;
         break;
     case SIGNAL_0:
         ai->SetAiMode((AI_MODE)4);
@@ -1773,6 +2121,219 @@ void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_active = false;
         break;
     }
+}
+
+extern "C" {
+/* the AI's stamp's age (OVL2 0x557F30) and a route handed to the controller (0x5557B0): the SEAL
+ * lane's rows */
+float func_00557F30(CAiStamp *stamp);
+void func_005557B0(CSealCtrlAi *ai, int x);
+}
+
+/* the recovery's limits (OVL2 data, the unit's: 8 bytes apart) */
+static float s_pathWait = 2.0f;
+static int s_pathGiveUp = 15;
+
+/* a route point by index, or none past the end (inline; the name ours) */
+static inline const CAiMapLoc *PathPoint(CAiPathBytes *p, unsigned int i)
+{
+    return i < (unsigned int)p->m_9c ? (const CAiMapLoc *)(*(char **)&p->_a0 + i * 8) : 0;
+}
+
+/* the last cell of the recovery's vector, or the invalid cell (inline; the name ours) */
+struct PathVecView {
+    unsigned int m_capacity;
+    unsigned int m_size;   // 0x4
+    CAiMapLoc *m_data;   // 0x8
+};
+
+static inline const CAiMapLoc *PathLast(CAiSPathRecover *s)
+{
+    return ((PathVecView *)s->m_vec)->m_size == 0 ? &CAiMapLoc::invalid
+                                                  : ((PathVecView *)s->m_vec)->m_data + ((PathVecView *)s->m_vec)->m_size - 1;
+}
+
+/* a path recovery (OVL2 0x603950; SOCOM 1's grown): once the SEAL's cell is valid again, the route
+ * resumed (5, 6) and done (7); else a goal back to the last valid cell (0, 4), or the ways out of the
+ * cell counted (1) and the best one taken (2, the way's count spent when the stamp says it was tried);
+ * 3 waits for the AI's mode; past 15 it gives up (8).
+ * OPEN (round 65, written from the target; 0x9F0 of 0x9E8, d=87): the exits loop -- the target
+ * strength-reduces `this` into a walker (s2, +4 a pass: counts at 0x118, cells at 0x138) with i, the
+ * best way and its count in s4/s6/s5; here &m_exits stays a base and each pass indexes it (through a
+ * reference to m_exits; read straight, neither the walker nor the index's shift match -- d=244).
+ * Tried: the four locals in six orders, int/unsigned i, the count read late or not named, a pointer,
+ * a reference, `this` copied. Right: the cells' copies, the steps' tests, the plan registered (the
+ * vector read as fields), the route's points by index, the ok `&&` through a local path pointer */
+int CAiSPathRecover::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+    unsigned int step = m_phase;
+    CAiMapLoc valid(seal->m_mapLocValid);
+    CAiMapLoc loc(seal->m_mapLoc);
+
+    m_time += m_dT;
+    if (m_58 > s_pathGiveUp)
+        step = 8;
+    switch (step) {
+    case 0:
+        if (valid == loc)
+            step = 5;
+        else if (!(ai->m_bit16 ? true : false) && ai->SetGoalPos(GOAL_RECOVER, valid, 3.0f)) {
+            ai->SetAiMode((AI_MODE)4);
+            step = 4;
+        }
+        if (step == 0) {
+            CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+            if (map) {
+                map->CountMapExitDir(loc, (MAP_DIRCOUNT *)m_exits);
+                step = 1;
+            }
+        }
+        break;
+    case 3:
+        if (ai->m_3f4 != 4) {
+            ai->SetAiBit2(false);
+            step = 0;
+        } else if (!(m_time <= s_pathWait))
+            step = 0;
+        break;
+    case 4:
+        if (valid == loc)
+            step = 5;
+        else {
+            bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+            if (!has) {
+                CAiMapLoc here(seal->m_mapLoc);
+                CAiMap *map = AiMaps.GetMapByIndex(here.m_mapid);
+
+                if (map) {
+                    map->CountMapExitDir(here, (MAP_DIRCOUNT *)m_exits);
+                    step = 1;
+                }
+            }
+        }
+        break;
+    case 1: {
+        int bestCount = 10000;
+        int best = -1;
+        float bestH = -999.0f;
+        float y = seal->m_posW.y;
+
+        MAP_DIRCOUNT &dc = *(MAP_DIRCOUNT *)m_exits;
+
+        for (int i = 0; i < 8; i++) {
+            int c = dc.m_count[i];
+
+            if (c < s_pathTries) {
+                float h = -999.0f;
+
+                if (AiMaps.GetAltitude(dc.m_loc[i], h))
+                    h = y - h;
+                if (c < bestCount || (c == bestCount && !(h <= bestH)) || (bestH < 0.0f && !(h <= 0.0f))) {
+                    bestCount = c;
+                    bestH = h;
+                    best = i;
+                }
+            }
+        }
+        m_dir = best;
+        if (ai->SetGoalPos(GOAL_RECOVER, ((MAP_DIRCOUNT *)m_exits)->m_loc[best], 5.0f)) {
+            ai->m_stamp.Reset();
+            ai->SetAiMode((AI_MODE)4);
+        }
+        step = 8;
+        break;
+    }
+    case 2:
+        if (valid == loc)
+            step = 5;
+        else {
+            bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+            if (!has) {
+                if ((ai->m_stamp.m_8 & 6) && !(func_00557F30(&ai->m_stamp) <= 1.0f)) {
+                    step = 1;
+                    ((MAP_DIRCOUNT *)m_exits)->m_count[m_dir] = s_pathTries;
+                } else
+                    step = 0;
+            }
+        }
+        break;
+    case 5: {
+        CAiPathBytes *route = &ai->m_path;
+
+        step = 7;
+        bool ok = !(route->m_9c == 0) && route->m_state == 4;
+
+        if (ok) {
+            CAiMapLoc first(**(CAiMapLoc **)&route->_a0);
+
+            if (m_flags & 1) {
+                func_005628F0(ai);
+                if (ai->SetRoute(first))
+                    step = 6;
+                else
+                    step = 8;
+            } else if (valid == *PathLast(this))
+                SetActive(false);
+            else {
+                const CAiMapLoc *last = PathLast(this);
+                CAiCell *cell = AiMaps.GetCell(*last);
+
+                if (cell && cell->IsTraversable()) {
+                    PathVecView *v = (PathVecView *)m_vec;
+
+                    ((CAiPath *)m_path)->m_flags = 0;
+                    if (AiMaps.RegisterPathPlan(valid, v->m_data, v->m_size, (CAiPath *)m_path))
+                        step = 6;
+                    else if (AiMaps.RegisterPathPlan(valid, last, 1, (CAiPath *)m_path))
+                        step = 6;
+                } else {
+                    func_005628F0(ai);
+                    if (ai->SetRoute(first))
+                        step = 6;
+                    else
+                        step = 8;
+                }
+            }
+        }
+        break;
+    }
+    case 6: {
+        CAiPathBytes *path = (CAiPathBytes *)m_path;
+        unsigned char st = path->m_state;
+
+        if (st == 1 || st == 2 || st == 3)
+            break;
+        step = 7;
+        bool ok = !(path->m_9c == 0) && st == 4;
+
+        if (ok) {
+            func_005557B0(ai, 3);
+            if (!(m_flags & 1)) {
+                int n = (int)path->m_9c;
+                CAiPath *route = (CAiPath *)&ai->m_path;
+
+                for (int i = 0; i < n - 1; i++) {
+                    route->InsertPathLoc(*PathPoint(path, i), 0);
+                    route->IncrementPathId();
+                }
+            }
+        } else if (m_flags & 1)
+            step = 8;
+        break;
+    }
+    }
+    if (step == 7)
+        SetActive(false);
+    else if (step == 8)
+        SetActive(false);
+    else if (step != m_phase)
+        m_time = 0.0f;
+    UpdatePhase(step);
+    return Result();
 }
 
 /* the rush's count of SEALs in it (the SEALs' OVL2 bss 0x66B048: seal_ai.cpp's AI init zeroes it) */
@@ -1833,6 +2394,168 @@ void CAiSRush::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 void CAiSRush::SetTarget(CZSealBody *seal)
 {
     m_target = seal ? seal->m_id : CEntity::invalidId;
+}
+
+extern "C" {
+/* the controller's route failed (OVL2 0x562960, SOCOM 1's GetRouteFailed by its place; the SEAL lane's
+ * row), the target set (0x5668F0) and the plan's goal cell (0x5F1760, seal_aistate.cpp's) */
+bool func_00562960(CSealCtrlAi *ai);
+void func_005668F0(CSealCtrlAi *ai, CZSealBody *seal);
+void func_005F1760(CAiSPlan *plan, void *loc);
+}
+
+/* the most SEALs that rush at once, -1 for any (OVL2 bss beside the count), the cells within which the
+ * rush walks straight in (OVL2 data), and the side the next rush plans from (flipped each time) */
+extern "C" int data_0066B050;
+extern unsigned int data_00651018;
+extern bool data_0066BBB0;
+
+/* the distance squared between two points, through a local of its own (inline: an inline's local is laid out
+ * below the caller's -- the facing, copy-constructed later, keeps the higher slot as the target's does; a
+ * caller's named local declared first takes it; the name ours) */
+static inline float RushDistSq(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D d;
+
+    a.Sub(&b, &d);
+    return d.x * d.x + d.y * d.y + d.z * d.z;
+}
+
+/* a SEAL indoors (an inline bool: materialised, fts_player.cpp's `? true : false`; the name ours) */
+static inline bool RushInside(CZSealBody *s)
+{
+    return s->m_inside ? true : false;
+}
+
+/* two cells' x and y distances summed (seal_aifollow.cpp's FollowCellDist; the name ours) */
+static inline int RushCellDist(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
+
+    return dx + dy;
+}
+
+/* a rush (OVL2 0x602E30; SOCOM 1's grown): over once the target is gone, dead or a friend; a target the
+ * AI holds otherwise kept. Prone, it closes to 75; held with flag 4 a shout; either way within reach a
+ * pursuit (4). Else a place in the rush taken (0), a plan pushed to the target's cell -- outdoors by the
+ * way its cell's travel counts favour, alternately facing and behind it -- (1), the route walked and kept
+ * on the target's cell (2, 3). Byte-exact (round 65, unwritten before): the entity pointer filtered by
+ * assigning it twice; the distance's point an inline's local, so the facing (copy-constructed) keeps the
+ * higher slot; the facing reversed through ShotAtNeg; the route-done test an if/else, not a ?: */
+int CAiSRush::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+    unsigned int step = m_phase;
+    CEntity *e = CEntity::m_list.GetEntityById(m_target);
+
+    /* (assigned twice: the SEAL numbers late, s2 -- one initialiser takes s0) */
+    e = e && e->m_type == 2 ? e : 0;
+    CZSealBody *target = (CZSealBody *)e;
+
+    if (!target || !target->m_isAlive)
+        return AI_DONE;
+    if (((CAiTarget *)ai->m_67c)->m_entity != target) {
+        if (TargetGone(ai))
+            func_005668F0(ai, target);
+        else
+            m_target = ((CAiTarget *)ai->m_67c)->m_entity->m_id;
+    }
+    if (target->m_team & seal->m_team)
+        return AI_DONE;
+    const CAiMapLoc &mine = seal->m_mapLocValid;
+    const CAiMapLoc &his = target->m_mapLocValid;
+
+    if ((m_flags & 1) && !(ai->m_stateStack.m_timer <= m_time))
+        return AI_DONE;
+    if (!(m_flags & 2) && target->GetStance(false) == 2) {
+        m_range2 = 5625.0f;
+        SetFlags(2, 0);
+    }
+    if (m_flags & 2) {
+        if (RushDistSq(seal->m_posW, target->m_posW) <= m_range2)
+            step = 4;
+    }
+    if ((m_flags & 4) && TargetHeld(ai)) {
+        ai->PlayAiSound((CHARACTER_SOUND)71, 0.25f, CAiEvent::AIE_NONE);
+        step = 4;
+    }
+    switch (step) {
+    case 0:
+        if (data_0066B048 <= data_0066B050 || data_0066B050 == -1) {
+            data_0066B048++;
+            step = 1;
+            SetFlags(0x10, 0);
+        }
+        break;
+    case 1:
+        *(unsigned int *)&m_60 = *(unsigned int *)&his;
+        if (m_stack.Push(ai, AI_STATE_PLAN, 0)) {
+            CAiState *s = m_stack.GetState();
+            CAiSPlan *plan = (CAiSPlan *)(s ? (s && s->m_state == AI_STATE_PLAN ? s : 0) : 0);
+
+            plan->m_11c = 10000;
+            if (!RushInside(target)) {
+                CAiMap *map = AiMaps.GetMapByIndex(his.m_mapid);
+
+                if (map) {
+                    MAP_DIRCOUNT dc;
+
+                    dc.m_flags = 0;
+                    dc.m_range = 64;
+                    map->CountMapTravelDir(his, &dc);
+                    /* (copy-constructed: the loads batched, the stores through the slot's register) */
+                    CPnt3D heading = *(const CPnt3D *)target->m_node->m_matrix.m_matrix[0];
+
+                    if (data_0066BBB0)
+                        ShotAtNeg(&heading, &heading);
+                    data_0066BBB0 = !data_0066BBB0;
+                    func_005F1760(plan, &dc.m_loc[dc.GetBestDir(false, &heading)]);
+                }
+            }
+            func_005F1760(plan, (void *)&his);
+            ai->m_aibit3 = true;
+            ai->SetAiBit2(true);
+            step = 2;
+        }
+        break;
+    case 2:
+        if (func_00562960(ai)) {
+            if (HasFlags(this, 0x28)) {
+                step = 1;
+                SetFlags(0, 8);
+            } else
+                SetActive(false);
+        } else if (!func_005629B0(ai)) {
+            if ((unsigned int)RushCellDist(his, m_60) > data_00651018) {
+                if (AiMaps.CanTravelLine(mine, his, 0)) {
+                    func_005628F0(ai);
+                    ((CAiPath *)&ai->m_path)->AppendPathLoc(his, AiMaps.GetMapByIndex(his.m_mapid));
+                } else
+                    step = 1;
+            } else if ((unsigned int)RushCellDist(mine, his) < 2)
+                func_005628F0(ai);
+        } else if ((unsigned int)RushCellDist(mine, his) > data_00651018)
+            step = 1;
+        else
+            step = 4;
+        break;
+    case 3:
+        if (!((unsigned int)RushCellDist(his, m_60) < 2))
+            step = 1;
+        break;
+    case 4:
+        if (ai->PushAiState(AI_STATE_PURSUE, 2)) {
+            CAiState *s = ai->GetAiState();
+
+            s = s && s->m_state == AI_STATE_PURSUE ? s : 0;
+            s->SetFlags(2, 4);
+            s->SetActive(true);
+        }
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
 }
 
 /* standing or crouched (an inline taking the stance by value: its argument is read ahead of the

@@ -611,6 +611,8 @@ public:
     /* +0x08 (0x5F0470) */
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x5EFA50) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanScan() const;
@@ -809,22 +811,26 @@ public:
     {
         __ct__7CAiPathFv(m_path);
         __ct__12CAiMapLocVecFv(m_vec);
-        func_005F6F00(&m_110, 15, 0);
+        func_005F6F00(&m_exits, 15, 0);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x603950) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual const char *GetStatus() const;
     virtual bool CanAttack() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     /* (0x609810, not written yet: its members' destructors) */
     virtual ~CAiSPathRecover();
 
-    unsigned int m_58;   // 0x58
+    int m_58;   // 0x58: over 15 ends the recovery (compared signed; the name ours)
     unsigned char m_path[0xa8];   // 0x5c: a CAiPath (built by 0x528340)
-    unsigned char m_vec[0xc];   // 0x104: a vector (0x52EB00 zeroes its three words)
-    /* 0x110: a pair built (15, 0) -- 0 here, 15 in the tries (0x5F6F00) */
-    int m_110;   // 0x110
-    int m_tries;   // 0x114: reset to the unit's static count (10)
-    unsigned char _118[0x15c - 0x118];
+    unsigned char m_vec[0xc];   // 0x104: a vector of cells (0x52EB00 zeroes its three words)
+    /* 0x110: the ways out of the cell the SEAL stands on (CAiMap::CountMapExitDir's; built by
+     * 0x5F6F00 with (15, 0), its range reset to the unit's static count, 10, and a way's count set
+     * to it once tried -- the Tick, round 65; the name ours). Bytes, read as a MAP_DIRCOUNT: as the
+     * member, its CAiMapLoc array's implicit constructor would join Create's inlined constructor */
+    unsigned char m_exits[0x48];
+    int m_dir;   // 0x158: the way taken (0x15c bytes, Create's new)
 };
 
 class CAiSRush : public CAiState {
@@ -832,6 +838,8 @@ public:
     /* its timer a CAiTimer member (see CAiSBreach) */
     CAiSRush() : CAiState(AI_STATE_RUSH), m_timer(0.0f) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x602E30) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSRush();
     void SetTarget(CZSealBody *seal);
 
@@ -877,6 +885,8 @@ public:
         __ct__9CAiMapLocFv(&m_cell);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x604CE0) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x605800): an event interrupted by a held target or the AI's alarm */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     /* the step after `*step` picked by the flags and kept in m_8c, the delay in m_84, and
@@ -910,8 +920,8 @@ public:
     unsigned int m_cell;   // 0x7c: a CAiMapLoc
     float m_80;   // 0x80 (0.5 on a reset)
     float m_84;   // 0x84: the delay NextStep was given (the name ours)
-    unsigned int m_88;   // 0x88
-    unsigned char m_8c;   // 0x8c
+    float m_88;   // 0x88: the first step's delay (seal_aievent.cpp sets 3.0; the name ours)
+    signed char m_8c;   // 0x8c: the step after a wait (NextStep; read back with lb -- the name ours)
     unsigned char m_8d;   // 0x8d
     char m_name[16];   // 0x8e: a name, up to 16 characters (SetName; cleared on a reset)
     unsigned char _9e[0xa0 - 0x9e];   // 0xa0 bytes, Create's new
@@ -1007,6 +1017,8 @@ class CAiSShotAt : public CAiState {
 public:
     CAiSShotAt() : CAiState(AI_STATE_SHOTAT) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x6089F0) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x609340): over after 15 seconds; earlier, when the AI's byte at 0x32C is set, the
      * sub-state ended and step 3 taken */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
