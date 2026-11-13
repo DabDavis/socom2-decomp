@@ -267,6 +267,10 @@ public:
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
     void SetCurItemByIndex(int index);
+    /* the kind of the item in hand (kit.h's; OVL2 0x5C89D0 -- 0x565D30 asks it, the answer unread) */
+    EQUIP_ITEM GetCurItemEnum() const;
+    /* the binoculars put in their slot (kit.h's; OVL2 0x5C7450 -- InitAiBrain calls it for an enemy) */
+    void SetupBinocular();
     /* the item made current by its kind, and whether the weapon in hand will fire (kit.h's; OVL2
      * 0x5C8A20, 0x5C0AE0 -- CAiSDeploy::Tick asks both) */
     bool SetCurItemEnum(EQUIP_ITEM item);
@@ -1519,7 +1523,11 @@ public:
     unsigned char m_67c[4];   // 0x67c: an object the state CAiSPursue tests (0x60A850)
     unsigned char _680[0x6a8 - 0x680];
     unsigned int m_6a8;   // 0x6a8: the target's flags (bit 9 lets a held target interrupt: the kit lane)
-    unsigned char _6ac[0x6ec - 0x6ac];
+    unsigned char _6ac[0x6c0 - 0x6ac];
+    /* a count the weapon's change sets: 4 with a target, 2 for a sniper rifle, 0 for a Navy SEAL (0x565D30;
+     * the name ours) */
+    int m_6c0;   // 0x6c0
+    unsigned char _6c4[0x6ec - 0x6c4];
     float m_6ec;   // 0x6ec (1 from the constructor)
     float m_6f0;   // 0x6f0: the time since death (PostMortemPreTick 0x56EE80 runs it up; the name ours)
     /* SOCOM 1's four decays (its m_courage, m_audiofactor, m_dicipline and m_underfire, in its order:

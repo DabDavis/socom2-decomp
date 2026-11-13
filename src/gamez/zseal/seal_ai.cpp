@@ -2197,20 +2197,126 @@ extern "C" bool func_00555420(CSealCtrlAi *ai, CAiPathBytes *path, CAiRouteBytes
     return r;
 }
 
-/* a table of two rows of eighteen, the row picked by whether the word at 0xC is empty (OVL2
- * 0x558AA0; 0x558640 reads five of them) */
+/* the AI's glance counts at 0x284 (zseal.h's bytes; the class and names ours): the cell last counted
+ * from, the range counted and the rise worth a look, and two direction counts -- the latest at m_c, the
+ * other turned into the rise since the one before (0x558640). A count by direction of the risen one
+ * (OVL2 0x558AA0; 0x558640 reads five of them) */
 struct CAiRowTable {
-    unsigned char _0[0xc];
-    void *m_c;   // 0xc
-    unsigned char _10[0x18 - 0x10];
-    void *m_rows[2][18];   // 0x18
+    CAiMapLoc m_loc;   // 0x0
+    int m_range;   // 0x4
+    int m_rise;   // 0x8
+    unsigned int m_c;   // 0xc
+    MAP_DIRCOUNT m_dc[2];   // 0x10
 
     bool IsEmpty() { return !m_c; }
 };
 
-extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
+#pragma auto_inline off
+extern "C" int func_00558AA0(CAiRowTable *t, unsigned char i)
 {
-    return t->m_rows[t->IsEmpty()][i];
+    return t->m_dc[t->IsEmpty()].m_count[i];
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* a direction wrapped into the eight (OVL2 0x558A80, a draft's) */
+CAiMap::DIR func_00558A80(int dir);
+}
+
+/* the AI's glance on its frame slice (ai_slice1): with bit 13, a current state that lets it and not in
+ * mode 7, the cells seen from its cell counted again once it moves -- where any direction's count rose
+ * past the limit, the slice's taker counted and, below look mode 9, the direction of the most rise of
+ * the facing one and the two either side looked in (9) unless the facing one or none; else the look 9
+ * cleared. Without a glance the window widened by one (OVL2 0x558640, new in SOCOM II; the name ours).
+ * 0x558AA0 pinned out of line (the target calls it five times); the older count's index an `int` from
+ * IsEmpty() (narrowed once, at the def -- a bool or byte holder is masked again in the loop); the
+ * facing a DIR copy (masked at its first use, after the first call); each rise a local compared */
+extern "C" void func_00558640(CSealCtrlAi *ai)
+{
+    CAiMap::DIR d;
+    bool looked;
+    CAiRowTable *t;
+    CAiMap::DIR best;
+    int most;
+    CEntity *e = ai->m_entity;
+
+    if (ai_slice1.Has(e->m_index)) {
+        looked = false;
+        CAiState *s = ai->GetAiState();
+
+        if ((ai->m_aibit13 ? true : false) && s->Virtual3C(ai) && ai->m_3f4 != 7) {
+            const CAiMapLoc *loc = &e->m_mapLocValid;
+            t = (CAiRowTable *)&ai->_284[0];
+            const CMatrix &m = ai->m_entity->m_node->m_matrix;
+            CPnt3D back;
+
+            back.x = -m.m_matrix[2][0];
+            back.y = -m.m_matrix[2][1];
+            back.z = -m.m_matrix[2][2];
+            best = CAiMap::GetClosestDir(&back);
+            bool rose = false;
+
+            if (*loc != t->m_loc) {
+                CAiMap *map = AiMaps.GetMapByIndex(loc->m_mapid);
+
+                if (map) {
+                    t->m_loc = *loc;
+                    t->m_c = !t->m_c;
+                    int old = t->IsEmpty();
+
+                    t->m_dc[t->m_c].m_range = t->m_range;
+                    map->CountMapVisDir(*loc, &t->m_dc[t->m_c]);
+                    for (int i = 0; i < 8; i++) {
+                        int n = t->m_dc[t->m_c].m_count[i] - t->m_dc[old].m_count[i];
+
+                        t->m_dc[old].m_count[i] = n;
+                        if (n > t->m_rise)
+                            rose = true;
+                    }
+                }
+            }
+            if (rose) {
+                ai_slice1.m_count++;
+                looked = true;
+                if (ai->m_look_mode < 9) {
+                    int n;
+
+                    most = func_00558AA0(t, best);
+                    CAiMap::DIR face = best;
+
+                    d = func_00558A80(face + 1);
+                    n = func_00558AA0(t, d);
+                    if (n >= most) {
+                        best = d;
+                        most = n;
+                    }
+                    d = func_00558A80(face - 1);
+                    n = func_00558AA0(t, d);
+                    if (n >= most) {
+                        best = d;
+                        most = n;
+                    }
+                    d = func_00558A80(face + 2);
+                    n = func_00558AA0(t, d);
+                    if (n >= most) {
+                        best = d;
+                        most = n;
+                    }
+                    d = func_00558A80(face - 2);
+                    n = func_00558AA0(t, d);
+                    if (n >= most) {
+                        best = d;
+                        most = n;
+                    }
+                    if (best != 8 && best != face)
+                        ai->SetLookDirW((AI_LOOK)9, best);
+                }
+            }
+        } else
+            ai->ClearLook((AI_LOOK)9);
+        if (!looked)
+            ai_slice1.SetSize(ai_slice1.m_size + 1, ai_slice1.m_total);
+    }
 }
 
 /* (OVL2 0x60A850, unowned: a test of the AI's object at 0x67C) */
@@ -2358,12 +2464,10 @@ static inline void ZeroThrottles(CSealCtrlAi *ai)
  * 7 while still on top are refused; leaving 7 puts the AI-map collision back, and for 3 the path's next point
  * deployed; entering each mode rests the throttles or sets its own (OVL2 0x56CBF0; SOCOM 1's with the top test,
  * modes 7 and the path's point new).
- * OPEN, 6 instructions and the branch offsets past them (0x18 short): leaving mode 3 the target evaluates a test
- * whose result nothing uses -- the held 4 materialised, then `(state - 1) < 3` with its `sltiu at; beqz at`, an
- * empty arm `b J; nop` (SOCOM 1's had a body there). A dead bool, an empty inline or `if (0)` in the arm drop the
- * second term (here, everything else byte-exact). `int x = (a || b) ? 1 : 0` keeps it at the right size but MW then
- * stops putting `li` and the stack's address in the delay slots before them, all through the function (102 off);
- * `{}` or `(void)0` do the same and drop the term. */
+ * Leaving mode 3 the target evaluates a test whose result nothing uses -- the held 4 materialised, the range's
+ * `sltiu at; beqz at`, an empty arm `b J; nop`: SOCOM 1's body gone, its test the free test 0x5629B0 CALLED --
+ * auto-inlined late (deferred), after the dead code went, so it stays; written out in place (or as the
+ * IsState4Held inline) MW drops the range term, 6 short. */
 void CSealCtrlAi::SetAiMode(AI_MODE mode)
 {
     AI_MODE old;
@@ -2387,7 +2491,7 @@ void CSealCtrlAi::SetAiMode(AI_MODE mode)
         {
             bool on = false;
 
-            if (IsState4Held(this) || (unsigned int)(m_path.m_state - 1) < 3)
+            if (!func_005629B0(this))
                 on = true;
         }
         break;
@@ -2982,6 +3086,8 @@ public:
     void SetHasWeapon(bool b) { m_hasWeapon = b; }
     void SetHigh(unsigned int n) { m_high = n; }
     static float GetWeaponAccuracy(CZWeapon *w, float d, bool b);
+    /* a weapon's effective range (OVL2 0x5C93C0) */
+    static float GetWeaponEffectiveRange(CZWeapon *w);
 
     unsigned int m_mode : 2;   // bits 0-1
     unsigned int m_2 : 2;   // bits 2-3
@@ -3562,6 +3668,82 @@ static inline bool Chance(float chance)
 
     return Rfloat(0.0f, 1.0f) <= c;
 }
+
+extern "C" {
+/* the weapon's change's counts (OVL2 data 0x6501F0, 0x6501F8: ints 8 bytes apart; the names ours) */
+extern int data_006501F0;
+extern int data_006501F8;
+}
+
+/* the two trigger times set -- the second's first -- and rolled, as an attack's reset rolls them (an
+ * inline; the name ours) */
+static inline void SetTriggerTimes(CSealCtrlAi *ai, float a, float b, float c, float d)
+{
+    ai->m_73c[0] = c;
+    ai->m_73c[1] = d;
+    ai->m_734[0] = a;
+    ai->m_734[1] = b;
+    ai->m_748 = RollTime(ai->m_734);
+    ai->m_744 = ai->m_748 + RollTime(ai->m_73c);
+}
+
+/* the AI's fire after its weapon's change: with a target the count at 0x6C0 set (none for a Navy SEAL),
+ * the trigger times and the fire mode by the weapon -- a pistol or a weapon of one mode by its kind (a
+ * sniper rifle's count 2), else single shots beyond 1.2 of its effective range, bursts for a Navy SEAL,
+ * a weapon whose most is a burst or at even chances, else full automatic (OVL2 0x565D30, new in SOCOM
+ * II: ChooseWeapon and AttackTick call it; the name ours) */
+extern "C" void func_00565D30(CSealCtrlAi *ai)
+{
+    CZFTSWeapon *w;
+    EQUIP_ITEM id;
+    CZKit *kit;
+    FIREMODE mode;
+
+    kit = &((CZSealBody *)ai->m_entity)->m_kit;
+    w = kit->GetCurItem();
+    kit->GetCurItemEnum();
+    id = ((CZWeapon *)w)->GetIDType();
+    kit->GetCurFireMode();
+    mode = w->m_maxfiremode;
+    if (func_0060A850(ai->m_67c)) {
+        ai->m_6c0 = ai->m_navyseal ? 0 : data_006501F0;
+        if ((unsigned char)id == 4 || mode < BURST) {
+            switch ((unsigned char)id) {
+            case 101:
+                SetTriggerTimes(ai, 1.0f, 2.0f, 0.15f, 0.35f);
+                ai->m_6c0 = ai->m_navyseal ? 0 : data_006501F8;
+                break;
+            case 4:
+                SetTriggerTimes(ai, 0.15f, 1.15f, 0.25f, 0.25f);
+                break;
+            case 81:
+                SetTriggerTimes(ai, 1.0f, 2.0f, 0.25f, 0.25f);
+                break;
+            case 121:
+            case 141:
+            default:
+                SetTriggerTimes(ai, 8.0f, 0.0f, 0.1f, 0.0f);
+                break;
+            }
+            mode = SINGLE;
+        } else {
+            float range = CAiWepHint::GetWeaponEffectiveRange((CZWeapon *)w);
+
+            if (!(((CTarget *)ai->m_67c)->GetRange() <= 1.2f * range)) {
+                SetTriggerTimes(ai, 0.15f, 1.15f, 0.15f, 0.099999994f);
+                mode = SINGLE;
+            } else if (ai->IsNavySeal() || mode == BURST || Chance(0.5f)) {
+                SetTriggerTimes(ai, 0.5f, 1.0f, 0.5f, 0.5f);
+                mode = BURST;
+            } else {
+                mode = AUTOFIRE;
+                SetTriggerTimes(ai, 0.5f, 1.0f, 0.5f, 0.5f);
+            }
+        }
+        kit->SetCurFireMode(mode);
+    }
+}
+
 
 /* a sound of the SEAL's character played (SOCOM 1's PlayAiSound(CHARACTER_SOUND), which always played
  * it; OVL2 0x55FF60, slot 0x24 of CSealCtrlAi's vtable): not again within the sound's gap since it last
@@ -9348,6 +9530,305 @@ extern "C" bool func_00556280(CCellWalk *w, CCellGather *g)
         g->m_found = 1;
     }
     return !same;
+}
+
+extern "C" {
+/* the debug switches' word (OVL1 data 0x436620: 0x2000 hides the AI's SEALs), the aim's mode and point
+ * set (OVL2 0x60FB30, the AI states' range), the courage's fall-back (0x570D90, above), the scales'
+ * limits and the view cone's widening (OVL2 data 0x64FFF0, 0x64FE58: 0 and 1; 0x64FFE8: 1.3) */
+extern unsigned int data_00436620;
+void func_0060FB30(CSealCtrlAi *ai, signed char mode, const CPnt3D *point);
+extern float data_0064FFF0;
+extern float data_0064FE58;
+extern float data_0064FFE8;
+}
+
+extern "C" {
+/* the throttles' rates by the AI's mode, their scale (all 1), the walk's scale under look mode 9, the
+ * forward throttle a leaning SEAL holds, the creep's two throttles, each axis's rate rising and falling,
+ * and the closeness that ends a change (OVL2 data 0x6500A0 on, 0x64FFB0 on; the names ours) */
+extern float data_006500A0[8];
+extern CPnt4D data_006500D0;
+extern float data_006500E0;
+extern float data_006500E8;
+extern float data_006500F0;
+extern float data_006500F8;
+extern float data_0064FFB0[3];
+extern float data_0064FFC0[3];
+extern float data_0064FFD0;
+}
+
+/* two points apart (an inline bool: each compare materialised; the name ours) */
+static inline bool PointsDiffer(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x != b.x || a.y != b.y || a.z != b.z;
+}
+
+/* a throttle moved toward its goal: by the axis's rate -- falling when the goal is the smaller -- scaled
+ * by the mode's and the frame's time, never past it; at once with no rate, and once close enough (an
+ * inline, three times in 0x56C550; the name ours) */
+static inline float ApproachThrottle(CSealCtrlAi *ai, int axis, float goal, float dT)
+{
+    float d;
+    float &t = ai->m_throttle[axis];
+    float cur = t;
+
+    d = goal - cur;
+    if (d != 0.0f) {
+        float k = data_006500A0[(unsigned char)ai->m_3f4];
+        float rate = fabsf(goal) >= fabsf(cur) ? data_0064FFB0[axis] : data_0064FFC0[axis];
+
+        if (!(rate <= 0.0f)) {
+            float step = dT * (rate * k) * (d >= 0.0f ? 1.0f : -1.0f);
+
+            step = fabsf(step) <= fabsf(d) ? step : d;
+            t += step;
+            if (_close_enough(t, goal, data_0064FFD0))
+                t = goal;
+        } else
+            t = goal;
+    }
+    return t;
+}
+
+/* the AI's throttles run toward the goals it asks: none while an anim 0x5712F0 plays holds them (all
+ * zeroed); the goals scaled -- the walk's two at look mode 9 outside a restraint, the third nil for a
+ * restrained SEAL lying down -- the fourth copied; a leaning SEAL (state 4) only forward; a creep
+ * (the stamp's bit) toward its direction in the SEAL's frame -- from standstill a nudge each way, else
+ * the throttles turned onto it (OVL2 0x56C550, new in SOCOM II: PreTick calls it; the name ours). The
+ * approach an inline holding the throttle by reference from its top and returning it (the pointer in a
+ * saved register on both arms, x and y read back through it); its tests `>=` (`c.lt.s; bc1t` to the
+ * second arm), d declared first (FPRs: d f20, cur f21, k f22); the SEAL through SealOf (an inline
+ * result numbers after the three references: s0, as the target -- a named local takes s1) */
+void func_0056C550(CSealCtrlAi *ai, float dT)
+{
+    CZSealBody *seal = SealOf(ai);
+    CPnt4D scale = data_006500D0;
+
+    if (!ai->AiStateIs((AI_STATE)9) && ai->m_look_mode == 9) {
+        scale.x = data_006500E0;
+        scale.y = data_006500E0;
+    }
+    if (seal->m_restrained && CZSealBody::GetStanceFromState(((CZSealBody *)ai->m_entity)->GetStance(data_006502D0), ai->m_stance) == STANCE_PRONE)
+        scale.z = 0.0f;
+    if (func_005712F0(ai, ai->m_sound)) {
+        ai->m_throttle[1] = 0.0f;
+        ai->m_throttle[2] = 0.0f;
+        ai->m_throttle[0] = 0.0f;
+        ai->m_throttle[3] = 0.0f;
+        return;
+    }
+    ai->m_sound = -1;
+    float x = ApproachThrottle(ai, 0, ai->m_throttle_goal[0] * scale.x, dT);
+    float y = ApproachThrottle(ai, 1, ai->m_throttle_goal[1] * scale.y, dT);
+
+    ApproachThrottle(ai, 2, ai->m_throttle_goal[2] * scale.z, dT);
+    ai->m_throttle[3] = *(float *)&ai->m_260;
+    if (((CZSealBody *)ai->m_entity)->m_state == 4) {
+        ai->m_throttle[1] = 0.0f;
+        ai->m_throttle[2] = 0.0f;
+        if (x == 0.0f)
+            ai->m_throttle[0] = data_006500E8;
+    } else if (ai->m_stamp.m_8 & 1) {
+        if (PointsDiffer(ai->m_780, CPnt3D::zero)) {
+            func_005B3890(seal, 1);
+            CQuat q;
+            CPnt3D dir;
+
+            q.w = seal->m_quat.w;
+            q.vec.x = -seal->m_quat.vec.x;
+            q.vec.y = -seal->m_quat.vec.y;
+            q.vec.z = -seal->m_quat.vec.z;
+            q.Apply(&ai->m_780, &dir, 1);
+            if (x == 0.0f && y == 0.0f) {
+                ai->m_throttle[0] = dir.z >= 0.0f ? data_006500F0 : -data_006500F0;
+                if (ai->m_26c != 4)
+                    ai->m_throttle[1] = dir.x >= 0.0f ? data_006500F8 : -data_006500F8;
+            } else {
+                CPnt3D t(y, 0.0f, -x);
+
+                t.Normalize();
+                dir.Normalize();
+                float dot = Dot(t, dir);
+
+                ai->m_throttle[0] = x * dot;
+                ai->m_throttle[1] = y * dot;
+            }
+        }
+    }
+}
+
+/* the flags word at 0x268: `clear` cleared, `set` set (an inline; the name ours) */
+static inline void SetFlags268(CSealCtrlAi *ai, unsigned int set, unsigned int clear)
+{
+    ai->m_268 &= ~clear;
+    ai->m_268 |= set;
+}
+
+/* the AI's brain started over: a valve per kind, every flag set, the alive valve opened, the three
+ * points zeroed, the looks, states, path and mode cleared; for the player's team (bit 1) a Navy SEAL
+ * joining team 26, its call sign and code name read off its node's and display names, its radio
+ * valve opened, generally aware and given the item 128; for the rest the binoculars, and call sign 4
+ * for a hostage or an escortee; then the character's parameters merged in and scaled by the
+ * difficulty -- a Navy SEAL's fixed -- the escortee's or the rescued SEAL's set-up, the respawn's
+ * sequence (SOCOM 1's InitAiBrain; OVL2 0x573130: CMission::LoadVehicle, RemoteRespawn and
+ * DoRespawn call it) */
+void CSealCtrlAi::InitAiBrain()
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    for (int i = 0; i < 3; i++) {
+        sprintf(data_0066B110, "%s_%s", seal->m_node->GetName(), get_valve((SEAL_VALVE)i));
+        m_valve[i] = CValve::Create(data_0066B110, 0, (VALVE_TYPE)2);
+    }
+    m_aware.m_value = 0.0f;
+    m_aware.m_goal = 0.0f;
+    SetFlags268(this, 0xffffffff, 0);
+    CValve *alive = m_valve[SEAL_VALVE_ALIVE];
+
+    if (alive)
+        SetValveValue(alive, 1);
+    m_780 = m_78c = m_798 = CPnt3D::zero;
+    ClearLook(AIL_ALL);
+    ClearAiState(true);
+    SetAiState((AI_STATE)0, 0);
+    m_aibit21 = true;
+    m_aibit19 = true;
+    DropRoute(this);
+    SetAiMode((AI_MODE)1);
+    func_0056BEF0(this, true);
+    m_bit17 = true;
+    m_aibit15 = false;
+    m_274 = 0;
+    m_270 = 0;
+    m_6f0 = 0.0f;
+    func_0060FB30(this, 0, &CPnt3D::unit_nz);
+    m_26e = 0;
+    m_follow_master = 0;
+    m_follow_master_id = CEntity::invalidId;
+    func_005604D0(this, 0);
+    SetGroup(0);
+    func_0056C080(this, (CAiPath *)&m_path, &CAiMapLoc::invalid);
+    m_aibit18 = false;
+    m_5c0 = -100.0f;
+    m_5c8 = 0.0f;
+    m_awareTimer = 0.0f;
+    m_awarePending = (AI_AWARE)0;
+    m_5c4 = 0;
+    m_40c = 0.0f;
+    m_400 = 0.0f;
+    m_404 = 0.0f;
+    m_408 = seal->m_health;
+    m_stamp.Reset();
+    m_624 = CAiMapLoc::invalid;
+    m_leg_cell = CAiMapLoc::invalid;
+    m_61c = CAiMapLoc::invalid;
+    m_620 = CAiMapLoc::invalid;
+    m_768 = 1.0f;
+    m_underfire.m_value = 0.0f;
+    m_underfire.m_goal = 0.0f;
+    m_730 = CEntity::invalidId;
+    if (seal->m_team & 2) {
+        m_navyseal = true;
+        m_aibit16 = true;
+        m_aibit17 = false;
+        m_aibit5 = true;
+        m_nosnooze = true;
+        seal->m_invisible = (data_00436620 & 0x2000) != 0;
+        seal->JoinTeam(26);
+        m_debug = false;
+        m_aibit13 = true;
+        const char *display = seal->m_display_name;
+        const char *name = seal->m_node->GetName();
+
+        if (!strcasecmp(name, "able2"))
+            m_26c = 1;
+        else if (!strcasecmp(name, "bravo1"))
+            m_26c = 2;
+        else if (!strcasecmp(name, "bravo2"))
+            m_26c = 3;
+        m_26d = 0;
+        switch (m_26c) {
+        case 1:
+            seal->CreateCompassAnchor(12, 0);
+            m_debug = false;
+            break;
+        case 2:
+        case 3:
+            seal->CreateCompassAnchor(13, 0);
+            if (!strcasecmp(display, "polaris") || !strcasecmp(display, "bludshot"))
+                m_26d = 1;
+            else if (!strcasecmp(display, "sabre") || !strcasecmp(display, "reaver"))
+                m_26d = 2;
+            break;
+        }
+        func_00574EF0(this, 1);
+        SetAiAware((AI_AWARE)2, 0, 0.0f);
+        m_6c0 = 0;
+        func_005657C0(this, (EQUIP_ITEM)128, 0);
+    } else {
+        m_navyseal = false;
+        m_aibit16 = false;
+        m_aibit17 = false;
+        seal->m_kit.SetupBinocular();
+        m_debug = false;
+        m_26c = 0;
+        if ((m_entity->m_team & 0x4000000) || (m_entity->m_team & 0x20000))
+            m_26c = 4;
+    }
+    SetDoAiMapCollide(true);
+    UpdateEventMask();
+    SetViewFOV(1.134464f);
+    CCharacterType *type = seal->GetCharacter();
+
+    if (type) {
+        m_aiParams.Merge(m_aiParams, type->m_aiParams);
+        SetRange6F4(this, m_aiParams.courage);
+        SetViewFOV(0.017453292f * m_aiParams.visual_fov * data_0064FFE8);
+        SetViewRange(m_aiParams.visual_range * data_0064FE60[data_0066AFD8][7]);
+        m_aiParams.target_delay *= data_0064FE60[data_0066AFD8][3];
+        m_aiParams.visual_sens *= data_0064FE60[data_0066AFD8][4];
+        if (m_navyseal) {
+            m_aiParams.training = 1.0f;
+            m_aiParams.target_delay = 0.1f;
+            m_aiParams.target_discipline = 0.85f;
+            m_aiParams.visual_sens = 1.25f + 0.1f * (float)data_0066AFD8;
+            m_aiParams.stealth = 2.0f;
+            SetViewRange(-1.0f);
+        }
+        _saturate(&m_aiParams.target_delay, data_0064FFF0, data_0064FE58);
+    }
+    if (seal->m_team & 0x10000000)
+        seal->m_restrainable = true;
+    if (seal->m_team & 0x20000) {
+        if (!data_0045A0C1) {
+            if (seal->m_team & 0x80000000)
+                seal->m_restrainable = true;
+        } else {
+            m_26c = 4;
+            func_00555900(this, 3, 0);
+            m_debug = false;
+            CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
+
+            if (unit)
+                unit->SealJoinUnit(seal);
+        }
+        seal->CreateCompassAnchor(4, 0);
+    } else if (seal->m_team & 0x40000) {
+        if (!seal->m_compass_anchor)
+            seal->CreateCompassAnchor(5, 0);
+        func_00570D90(this, true);
+    }
+    if (m_has_respawned ? true : false) {
+        OnMissionStart();
+        CAiState *s = GetAiState();
+
+        s = s && s->m_state == AI_STATE_SCRIPT ? s : 0;
+        if (s)
+            ((CAiSScript *)s)->ActivateSequence("on_respawn", 3);
+    }
+    if (m_entity->m_team & 2)
+        ((CAiPath *)&m_path)->m_unk24 = m_entity->m_team;
 }
 
 /* the stamp restarted: the mission's time, its fields cleared (OVL2 0x558590; the sleep setters

@@ -1121,8 +1121,6 @@ bool CSealCtrl::PreTick(float dT)
     return true;
 }
 
-enum TWO { TWO_0, TWO_1, TWO_2, TWO_BIG = 0x7fff };
-
 /* an arc cosine kept to its domain (an inline, seal_env.cpp's) */
 static inline float ClampAcos(float c)
 {
@@ -1137,11 +1135,9 @@ static inline float ClampAcos(float c)
  * the initial pitch held -- moved by the throttle (500 times the rate over the zoom), set as throttle 3, and
  * back inside its limits at half a unit a second; online kept to the game's limits; the head turned to it and
  * the rate of the change kept (OVL2 0x594600: SOCOM 1's TickAimPitch with the tilt, the zoom's and the
- * limits new). OPEN, 2 instructions, the first test of the mark: the target has `li v1,2` before the load and
- * `bne v0,v1` -- the 2 coloured v1, the value v0, where the later test of the same mark (read `== 2`) has the
- * value v1 and the 2 v0. Only a non-propagated holder on the LEFT (an enum local, below) takes the
- * colours, at `daddiu` and `bne v1,v0`; `data == 2` (either way round), a const, cast, int or byte holder, an
- * inline's parameter, a local read, propagation off and `!(two != data)` are 8-9 off */
+ * limits new). The first test of the mark through a `short` holder on the right (`data == two`): the 2
+ * coloured v1 ahead of the load, the value v0 -- an enum holder (TWO_BIG 0x7fff) gave `daddiu` and the swapped
+ * `bne`, int, unsigned, bool and unsigned short 9 off */
 void CSealCtrl::TickAimPitch(float dT, float throttle)
 {
     CZSealBody *seal = (CZSealBody *)m_entity;
@@ -1151,9 +1147,9 @@ void CSealCtrl::TickAimPitch(float dT, float throttle)
     bool prone = seal->m_state == stateProne;
     float prev = m_aimPitch;
 
-    TWO two = TWO_2;
+    short two = 2;
 
-    if (two == data_0066B3D8) {
+    if (data_0066B3D8 == two) {
         if (prone) {
             float init = dyn->m_initAimPitch;
 
