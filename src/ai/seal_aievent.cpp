@@ -173,7 +173,6 @@ struct CSoundEventView {
 };
 
 extern "C" float GetTimeSinceLastSighting__9CAiTargetCFv(const void *target);
-extern "C" void func_00560B20(CSealCtrlAi *ai, CSealCtrlAi *other, bool b);
 extern "C" void func_00572240(CSealCtrlAi *ai, CEntity *alert, float amount);
 extern "C" void func_00605770(CSealCtrlAi *ai, bool order, CHARACTER_SOUND sound, float vol);
 extern "C" void func_00570D20(CSealCtrlAi *ai, float v);
@@ -560,10 +559,10 @@ extern "C" bool func_005F8D40(CSealCtrlAi *ai, CSoundEventView *ev, CZSealBody *
 
                 if (other && other->m_730 != CEntity::invalidId) {
                     if ((unsigned char)ai->GetAiAware() >= 2) {
-                        func_00560B20(ai, other, true);
+                        ai->AcquireAiAware(other, true);
                         func_00572240(ai, CEntity::m_list.GetEntityById(other->m_730), 0.0f);
                     } else {
-                        func_00560B20(ai, other, true);
+                        ai->AcquireAiAware(other, true);
                         if (TargetGone(ai) && ai->PushAiState(AI_STATE_EVENT, 0)) {
                             CAiState *s = ai->GetAiState();
                             CAiSEvent *st = s && s->m_state == AI_STATE_EVENT ? (CAiSEvent *)s : 0;

@@ -1652,10 +1652,9 @@ extern "C" CDiPool::dir *func_005C9830(CDiPool::CDirList *free);
 extern "C" void func_005CC100(CDiPool::dir *d, CEntity *e, int x);
 extern "C" void func_005CC0D0(CDiPool::CDiList *used, CDiPool::dir **d);
 
-/* the AI's reaction to a target it lost track of, and to a friend's AI (OVL2 0x565110, 0x560B20 --
- * seal_ai.cpp's range, unwritten; the names unknown) */
+/* the AI's reaction to a target it lost track of (OVL2 0x565110, seal_ai.cpp's range, unwritten; the
+ * name unknown) */
 extern "C" void func_00565110(CSealCtrlAi *ai, int kind, void *target, int x);
-extern "C" void func_00560B20(CSealCtrlAi *ai, CSealCtrlAi *other, int x);
 /* the glance on the AI's frame slice (OVL2 0x558640, seal_ai.cpp's) and the pickups' sighting (0x5CB870,
  * this unit's) */
 extern "C" void func_00558640(CSealCtrlAi *ai);
@@ -1776,7 +1775,7 @@ void CSealCtrlAi::SensorPreTick(float dT)
                        && (t->m_flags & 0x200))
                 PlayAiSound((CHARACTER_SOUND)5, 1.0f, (CAiEvent::EVENT)1);
         } else if (ai)
-            func_00560B20(this, ai, 0);
+            AcquireAiAware(ai, false);
         if (enemy) {
             bool seen = _GetTargetPerception(*t);
 

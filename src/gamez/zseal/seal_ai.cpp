@@ -4997,6 +4997,160 @@ public:
     CPnt3D m_lastPos;   // 0x58: where the target was last seen
 };
 
+/* the alertness's pass-on (OVL2 data 0x650318-0x650378, function-local statics read as variables; the
+ * names ours): the scale a sure alertness is passed on at, the range by the time since the band changed
+ * and its floor, the line visibility seen at and the eye's height */
+extern "C" {
+extern float data_00650318;
+extern float data_00650320;
+extern float data_00650328;
+extern float data_00650370;
+extern float data_00650378;
+}
+
+/* a hand signal by alertness band: in reach (squared), the signal and its odds (OVL2 data 0x650330, five
+ * of them; the names ours) */
+struct CAwareSignal {
+    float m_rangeSq;   // 0x0
+    SEAL_HANDSIGNAL m_signal;   // 0x4
+    float m_chance;   // 0x8
+};
+extern "C" CAwareSignal data_00650330[5];
+
+/* whether a point lies in the controller's view cone (seal_sensors.cpp's ConeContains: CAiCone::ContainsPoint
+ * on zseal.h's members, the depth a local stored once; inline, the name ours) */
+static inline bool AwareConeContains(CSealCtrl *c, const CPnt3D *p)
+{
+    p->Sub((const CPnt3D *)c->m_cone_pos, (CPnt3D *)c->m_cone_vec);
+    const CSealCtrl *k = c;
+    float dot = k->m_cone_dir[0] * k->m_cone_vec[0] + k->m_cone_dir[1] * k->m_cone_vec[1] + k->m_cone_dir[2] * k->m_cone_vec[2];
+
+    c->m_cone_dot = dot;
+    if (dot <= 0.0f || dot > k->m_cone_height)
+        return false;
+    float di = dot * k->m_cone_inv_height;
+    float r = k->m_cone_point_radius + di * k->m_cone_radius;
+
+    if (k->m_cone_vec[2] * k->m_cone_vec[2] + (k->m_cone_vec[0] * k->m_cone_vec[0] + k->m_cone_vec[1] * k->m_cone_vec[1]) - dot * dot <= r * r)
+        return true;
+    return false;
+}
+
+/* the band an alertness lies in (0x560AC0's walk inlined, its 4 an enumerator; the name ours) */
+static inline AI_AWARE AwareBand(float x)
+{
+    for (int i = 0; i <= 4; i++)
+        if (InBand(x, i))
+            return (AI_AWARE)i;
+    return AIA_SPECIFIC;
+}
+
+/* the alertness passed on from another AI (OVL2 0x560B20: SOCOM 1's AcquireAiAware(CSealCtrlAi *) by its
+ * place, between GetAiAware(float) and the two SetAiAwares, and its body; SOCOM II's takes whether to
+ * take it regardless -- the AI event's walk passes true, the sensors false): none while asleep and held
+ * (bit 15), from a dead SEAL, or across the Navy SEAL line; a sure other passes on 0.95 of its own; only
+ * a higher one, from GENERAL up, into a lower band. Unless regardless, only from one within reach seen
+ * in the view cone with the line clear, or one the maps can see from here within the range the other's
+ * band time sets. The alertness set; by the band the other's target taken up -- DIRECTION its place an
+ * event for 3 seconds, SPECIFIC the target heard and, unless held or seen within 2.5 seconds, set --
+ * and, seen, the other signals the band's hand signal within its reach by its odds. Written from the
+ * target (the round 72 SEALs): the locals from/to/d declared first (their slots); the distance before
+ * the range; the cone's reads through a const view (through the controller itself MW keeps &vec in a
+ * saved register, the target reads off `this`); its radius term through a local product.
+ * OPEN, 4 instructions, register-only: the target holds this AI's alertness in f1 and reloads it for its
+ * band into f2; here the other way round (GetAiAware(), a const view, an inline read, the declarations
+ * reordered -- the second band's reload stays, the colours do not swap) */
+void CSealCtrlAi::AcquireAiAware(CSealCtrlAi *other, bool b)
+{
+    CEntity *me = m_entity;
+    CPnt3D from;
+    CPnt3D to;
+    CPnt3D d;
+
+    if (IsSleeping() && IsAiBit15())
+        return;
+    CEntity *oe = other->m_entity;
+
+    if (!oe->m_isAlive)
+        return;
+    if (IsNavySeal() != other->IsNavySeal())
+        return;
+    float oa = other->m_aware.m_value;
+    float ma = m_aware.m_value;
+    AI_AWARE ob = AwareBand(oa);
+    AI_AWARE mb = ((const CSealCtrlAi *)this)->GetAiAware();
+
+    if (ob > AIA_GENERAL) {
+        oa *= data_00650318;
+        ob = AwareBand(oa);
+    }
+    if (oa <= ma)
+        return;
+    if (ob <= AIA_SUSPICIOUS)
+        return;
+    if (!(mb < ob))
+        return;
+    const CPnt3D *mp = &me->m_posW;
+    const CPnt3D *op = &oe->m_posW;
+
+    mp->Sub(op, &d);
+    float dist = d.x * d.x + d.y * d.y + d.z * d.z;
+    float r = data_00650320 * other->m_5c8;
+    float range = r * r;
+
+    range = ai::_max(data_00650328, range);
+    bool ok = b;
+    bool seen = false;
+
+    if (!b && dist < data_00650328) {
+        from = CPnt3D(mp->x, mp->y + data_00650378, mp->z);
+        to = CPnt3D(op->x, op->y + data_00650378, op->z);
+        bool vis = AwareConeContains(this, op);
+
+        if (vis)
+            vis = data_00650370 < AiMaps.ComputeLineVisibility(&from, &to, 0);
+        seen = vis;
+        ok = seen || AiMaps.CanSeePoint(mp, op, range);
+    }
+    if (!ok)
+        return;
+    SetAiAware(oa, 1);
+    switch (ob) {
+    case AIA_UNAWARE:
+    case AIA_SUSPICIOUS:
+    case AIA_GENERAL:
+        break;
+    case AIA_DIRECTION:
+        if (func_0060A850(other->m_67c))
+            SetAiEvent((CAiEvent::EVENT)2, 3.0f, &((CAiTarget *)other->m_67c)->m_entity->m_posW);
+        break;
+    case AIA_SPECIFIC:
+        if (func_0060A850(other->m_67c)) {
+            bool take;
+            CTarget *t = m_entity->m_targets.FindTarget(((CAiTarget *)other->m_67c)->m_entity);
+
+            if (t) {
+                t->m_flags |= 0x100;
+                take = true;
+
+                if (func_0060A850(m_67c)) {
+                    bool held = func_0060A850(m_67c) && (m_6a8 & 0x200);
+
+                    if (!held)
+                        take = ((CAiTarget *)m_67c)->GetTimeSinceLastSighting() > 2.5f;
+                    else
+                        take = false;
+                }
+                if (take)
+                    SetTarget(t);
+            }
+        }
+        break;
+    }
+    if (seen && dist < data_00650330[ob].m_rangeSq && Chance(data_00650330[ob].m_chance))
+        ((CZSealBody *)other->m_entity)->DoHandSignal(data_00650330[ob].m_signal);
+}
+
 /* a squad's sound (OVL2 0x5EAF20, the kit lane's seal_unit.cpp) */
 extern "C" void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
 
