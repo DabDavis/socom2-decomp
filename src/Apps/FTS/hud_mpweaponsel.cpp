@@ -637,7 +637,11 @@ void CMPWeaponSel::SetSlot(int slot, CZWeapon *weapon)
  * items no slot holds; an M203 weapon's grenades turned off and its 141 and 175-174 replaced by
  * them, the grenade launcher's 179, the 203's 175 and the F2000's 183 likewise, a class-101 weapon
  * giving way to another class's takes its 195 back; a two-slot weapon's pair item (185, 186, else
- * 254) replaced by fresh picks; then the slot emptied */
+ * 254) replaced by fresh picks; then the slot emptied. OPEN (round 69, written): size equal, 38 words,
+ * registers only -- the target colours `used` with `old` (s0) and the 141 slot `i` with the
+ * launchers' `second` (s2), this the other way; no declaration order or numbering moves it (igvar:
+ * eight spellings, igreplay's mover search found no placement in the part it searched), so it is an
+ * interference: the statement shape round `used` is the lead */
 /* the weapon of an item, through the list as a local (an assignment the loops' invariant pass pulls
  * into their out-of-line preheaders) */
 static inline CZWeapon *GetWeaponOf(EQUIP_ITEM item)
