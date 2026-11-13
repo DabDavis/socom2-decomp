@@ -7754,10 +7754,13 @@ extern "C" bool func_005B4340(CZSealBody *seal, unsigned char kind)
  * than 10, or for a SEAL of bit 9; kept as it is when the face's edges cannot be found (OVL2 0x5B3890,
  * new in SOCOM II: the stance setters, the ladder's leave and the states call it; the name unknown).
  * The edge points declared lower first (the target's upper one at the lower slot).
- * OPEN, 16 instructions (the size right): the flattening store -- the target stores d.y = 0 with
- * `sw zero,100(sp)` in the reach test's delay slot and loads d.x twice (f2 squared in place, f7 for
- * the face's dot), d.z once; MW here stores it early through `addiu a0,sp,100` and keeps d.x and d.z
- * in f3/f7 for both. Tried: zmath.h's Dot for either or both products (the zero is then reloaded, 0x1D0
+ * OPEN, 5 instructions, register-only (16 before round 71): the flattening store through a view
+ * (`((CPnt3D *)&d)->y = 0.0f` -- the target's `sw zero,100(sp)` in the reach test's delay slot, d.y then
+ * propagated as the zero) and the face's x read first through a const view (`dx`: its second load of
+ * d.x, in the first block). Left: dx takes f8 and the zero f7, the reverse of the target -- igreplay
+ * (FPR class): dx must be numbered after d.y's common subexpression (an IRO temporary, not a named
+ * local); declaring dx anywhere, a zero local, the length in a local, the view on the length's x
+ * instead: no. Before: zmath.h's Dot for either or both products (the zero is then reloaded, 0x1D0
  * and more), a pointer Dot, the reach in a local, 24*24, the flag declared first, the zero an int, a
  * PNT3D view, a Flatten inline, the normal by reference. */
 extern "C" void func_005B3890(CZSealBody *seal, int drop_now)
@@ -7773,10 +7776,11 @@ extern "C" void func_005B3890(CZSealBody *seal, int drop_now)
     bool drop = false;
 
     seal->m_posW.Sub(&hit->m_pos, &d);
-    d.y = 0.0f;
+    float dx = ((const CPnt3D *)&d)->x;
+    ((CPnt3D *)&d)->y = 0.0f;
     if (d.x * d.x + d.y * d.y + d.z * d.z > 576.0f)
         drop = true;
-    if (d.x * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z <= 0.0f)
+    if (dx * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z <= 0.0f)
         drop = true;
 
     const CMatrix &m = seal->m_node->m_matrix;
