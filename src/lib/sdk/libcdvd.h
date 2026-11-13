@@ -71,7 +71,7 @@ extern volatile int data_001D5F94;
 extern struct ThreadParam data_001D5FA0;        /* the caller's status */
 extern struct ThreadParam data_001D5FD0;        /* the callback thread's parameters */
 extern int _icmd_bind;
-extern int Init_seq;
+extern volatile int Init_seq;
 extern void (*data_001D5F88)(void *);           /* the power-off callback, its $gp and argument */
 extern int data_001D5F8C;
 extern void *data_001D5F90;

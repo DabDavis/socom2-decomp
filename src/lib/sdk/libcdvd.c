@@ -466,16 +466,22 @@ extern int _i_mode;
 extern int _dr_mode;
 extern char data_001CC2C0[];                    /* the newer disk-ready call's reply */
 
-/* OPEN (0x2D4 against 0x2E0, 65 structural words): the request's three reply words are tested
- * 255, 254, then each version / 256 < 2 -- the target keeps `ret` in s0 through a bnezl'd `li s0,2`
- * per test where this compile if-converts the second into a movz, and its mode is s3 (here s2);
- * the switch's case tree (bltz, slti 2, bne 5: cases 0 and 1 a break, 5 the exit) is the target's. */
+/* OPEN (right size since GCC round 83, 36 words, registers and the prologue's store schedule): the
+ * call made INSIDE the bind loop, under `if (cdit.serve != 0)`, its break after the failure test --
+ * loop.c hoists _i_mode's address, the reply's %hi and _it_bind's %hi out (s2, s8, s4), which the
+ * old after-the-loop shape never had; the reply's words read through the pointer passed to the call
+ * (CSE's related value, `addiu v0,s0,12`), in offset order; `v1 / 256 < 2 || v2 / 256 < 2` one
+ * assignment (bnezl into it); Init_seq volatile (libcdvd.h), so GCSE stops carrying its %hi from the
+ * first store into a callee-saved register. Left: c_cnt's %hi in s4 where the target has s5 (its
+ * priority 833 against _it_bind's 677), the six -1 stores' bases; my_thid volatile takes 8 more but
+ * loses sceCdInitEeCB. */
 int sceCdInit(int mode)
 {
 	int ret;
 	int r;
 	int i;
 	int v1, v2, v3;
+	char *rd;
 
 	if (sceCdSyncS(1))
 		return 0;
@@ -499,29 +505,28 @@ int sceCdInit(int mode)
 				;
 			continue;
 		}
-		if (cdit.serve != 0)
+		if (cdit.serve != 0) {
+			_i_mode = mode;
+			_it_bind = 0;
+			sceSifWriteBackDCache(&_i_mode, 4);
+			if (sceSifCallRpc(&cdit, 0, 0, &_i_mode, 4, rd = _sceCd_scmdrdata, 16, 0, 0) < 0) {
+				Init_seq = 0;
+				return 0;
+			}
 			break;
+		}
 		i = 0x100000;
 		while (i--)
 			;
 	}
-	_i_mode = mode;
-	_it_bind = 0;
-	sceSifWriteBackDCache(&_i_mode, 4);
-	if (sceSifCallRpc(&cdit, 0, 0, &_i_mode, 4, _sceCd_scmdrdata, 16, 0, 0) < 0) {
-		Init_seq = 0;
-		return 0;
-	}
-	v3 = *(int *)((u_int)&_sceCd_scmdrdata[12] | 0x20000000);
-	v1 = *(int *)((u_int)&_sceCd_scmdrdata[4] | 0x20000000);
-	v2 = *(int *)((u_int)&_sceCd_scmdrdata[8] | 0x20000000);
+	v1 = *(int *)((u_int)&rd[4] | 0x20000000);
+	v2 = *(int *)((u_int)&rd[8] | 0x20000000);
+	v3 = *(int *)((u_int)&rd[12] | 0x20000000);
 	ret = 1;
 	if (v3 != 255) {
 		if (v3 == 254)
 			SCE_CD_debug = 1;
-		else if (v1 / 256 < 2)
-			ret = 2;
-		else if (v2 / 256 < 2)
+		else if (v1 / 256 < 2 || v2 / 256 < 2)
 			ret = 2;
 	}
 	Init_seq = 0;
