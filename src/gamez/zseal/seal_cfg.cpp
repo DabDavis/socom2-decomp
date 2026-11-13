@@ -640,18 +640,23 @@ static inline float Factor(CZSIScriptCommon *a)
  * speed's rate; none, the nearest band's end anim at the edge's rate (negated for a reversed speed);
  * two, weighed between them by where the speed lies, the unused one put back. The anims taken
  * (RTList<ACTIVE_ANIM>::Remove: its OVL2 copy 0x58D190 in this unit's tail, byte-exact).
- * OPEN, the size right (304 instructions; round 32), registers and frame: the target spills the list
- * (252) and keeps the two edge types in the frame (224, 208: the max's copied from the min's -1),
- * with a 304-byte frame against 256 here, where MW keeps the list in s8; its blendable test is a
- * `slti; movn` on the parameter's register (the ternary assigned back to the parameter still
- * branches here); the float registers follow the frame (minEnd f21, maxEnd f22 in the target).
- * Round 33: the edge types set through an inline taking a short reference, or through `*&`, change
- * nothing (MW folds both); the blendable test as an if-assign loses 6 */
+ * OPEN, 6 instructions (the MW lane's round 81: 245 to 6, every register and spill slot the target's):
+ * the blendable test `m_type > -1 ? blendable : 0` (round 80's tell: the target's `slti; movn`, where
+ * `< 0 ? 0 :` branches); the anim id an `int id` (FindAnim's argument, kept in s6 and stored to m_id --
+ * the extra saved register that spills the list to 252), its pool's blend taken first; the edge types
+ * AnimType, the max's copied from the min's (as shorts each copy took a sign-extension and maxType a
+ * 2-byte slot: an AnimType assigned a constant spills to a 16-byte one, 224 and 208); maxEnd declared
+ * ahead of minEnd and the band's type declared outside the walk (the FPR and GPR numbering); the first
+ * script's factor in a float local. Left: the frame (304 against 272: 32 bytes above `taken` that
+ * SOCOM 1's 256-byte frame has too -- `taken[12]` gives it, not committed), the first GetScript's
+ * argument read ahead of the set (the target reads the set first) and the pool's address one slot
+ * earlier. Round 33: the edge types set through an inline taking a short reference, or through `*&`,
+ * change nothing (MW folds both); the blendable test as an if-assign loses 6 */
 int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float scale, float wt)
 {
     if (wt <= 0.0f)
         return 0;
-    blendable = blendable->m_band[0].m_type < 0 ? 0 : blendable;
+    blendable = blendable->m_band[0].m_type > -1 ? blendable : 0;
     if (!blendable)
         return 0;
     CBlendable::BAND *band = blendable->m_band;
@@ -659,17 +664,21 @@ int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float sca
     float speed = fabsf(scale);
     float lo = 100.0f;
     float hi = 0.0f;
-    short minType, maxType;
+    AnimType minType, maxType;
 
-    maxType = minType = -1;
-    float minEnd = lo;
+    minType = (AnimType)-1;
+    maxType = minType;
     float maxEnd = hi;
+    float minEnd = lo;
     ACTIVE_ANIM *taken[4];
+    float f = m_animset->GetScript((AnimType)band->m_type)->m_1c;
+    float s = 100.0f * speed * f;
     CActiveAnimPool *pool = &m_active_anim_pool;
-    float s = 100.0f * speed * m_animset->GetScript((AnimType)band->m_type)->m_1c;
+
+    AnimType type;
 
     for (int i = 0; i < 4; i++, band++) {
-        short type = band->m_type;
+        type = (AnimType)band->m_type;
 
         if (type == -1)
             break;
@@ -686,7 +695,9 @@ int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float sca
             maxType = type;
         }
         if (min <= s && s <= max) {
-            ACTIVE_ANIM *a = ((CZBodyAnimBlend *)func_00555170(&m_blends))->FindAnim(type);
+            CZBodyAnimBlend *blend = (CZBodyAnimBlend *)func_00555170(&m_blends);
+            int id = type;
+            ACTIVE_ANIM *a = blend->FindAnim(id);
 
             if (a) {
                 ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_anims.Remove(a);
@@ -699,7 +710,7 @@ int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float sca
                     sc = m_animset->GetScript((AnimType)type, 0);
                 if (sc)
                     a = pool->GetActiveAnim(sc, -1);
-                a->m_id = type;
+                a->m_id = id;
                 taken[n++] = a;
             }
             a->SetPlayback(scale * script->m_1c);
