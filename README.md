@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks rows, round 77** (CBBox::GetIntersect 0x307640 byte-exact. Not closed: the turret test (all three
+  targets one block shape -- null test to the zero block, kind test to the true arm, the false arm a lone `b` to the zero block;
+  SetTarget's `if (!t || kind != TURRET) t = 0;` gives it but pads the join; ~70 more spellings), 0x57F530 (the dead-store arm gives
+  the layout word for word but the call's bool result takes an `andi`: 0x80 of 0x78, not committed), CanPickup (the -1 is a
+  codegen temporary v98, numbered after every named local and optimiser temporary -- no source-level renumbering reaches it),
+  Create3Sided (igreplay `--move 59=60.5` on the FPR record: the uv1 constant after the multiply's result), GetNextEvent, Pop):
+  - A CONSTANT HOISTED PAST A GCC-STYLE `asm __volatile__` WANTS A METROWERKS `asm { .set noreorder ... .set reorder }` BLOCK NAMING
+    THE C VARIABLES (`this` through a copy): the noreorder block is a scheduling barrier (without `.set noreorder`, 19 off) --
+    GetIntersect's note blamed MW scheduling every inline-asm instruction, true only of the GCC-style form.
+  - the dead-store arm also fixes an early-return layout: both tests `{ r = false; goto done; }` lay the false block before the
+    call's (0x57F530), but a bool call result assigned to r takes an `andi`.
+  - A SHAPE THAT MATCHES EXCEPT FOR A PAD AT A JOIN LANDING AT 4 MOD 8 IS AN EXPRESSION SPELLED AS A STATEMENT.
 - **Tells from the GCC recogniser, SDK and OVL1 libraries, round 77** (four rows byte-exact, every OPEN note wrong: sase_libquan.c's
   squared distance 0x24C000 (since 34a: one difference variable reused for both axes), libmc.c's sceMcWrite (`base = (int)buff -
   16;` its own statement; both arms store size, origin, buffer as ps2sdk's mcWrite), sase_coder.c's frame coder 0x2488A0 (since 44a:
