@@ -295,7 +295,13 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
  * once into an unsigned short (andi 0xffff, then narrowed to the byte enum for the shift and the
  * kind test, and re-extended for the entity test -- SOCOM 1's code has the same three uses); the
  * kind test is `!(any || same)`: its fall-through gets the target's padding nop.
- * OPEN, 2 instructions (0x19C against 0x1A4): the seen test's two arms. The target fills the
+ * OPEN, 8 instructions at the size since the OVL1 lane's round 74 (0x19C before): the seen test's bit test
+ * through EventSeen, an inline with an argument over CBits::Test, gives the target's arms -- the false
+ * arm's `move v0,zero` in the compare's slot, the `b` unfilled, the bit test's label padded (b; nop; nop);
+ * every body spelt in place (one level) is 0x19C. Left: the bit block's order -- the target's andi, srl,
+ * li, sllv, sll, lw (the mask first), ours srl, andi, sll, lw, li, sllv: the mask or the word through
+ * an inline (with an argument, a local, by pointer, the vector or the word passed in), one level deeper
+ * still: the same 8 (build/scratch/ovl1-r74/v_gne*.py). Was: the seen test's two arms. The target fills the
  * kind compare's delay slot with the false arm's `move v0,zero`, leaves the `b` over the bit test
  * unfilled and pads the bit test's label to 8 (b; nop; nop), and schedules the mask before the
  * word (andi, srl, li, sllv, sll, lw: SOCOM 1's order too); this build steals the bit test's srl
@@ -336,6 +342,10 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
  * that point: its andi then srl first (a1, v0: the mask a0 reuses i's register) read as the bit and word indices computed ahead as
  * statements. Written so (locals off it.m_bit, through a by-value i, `i >>= 5`, as an explicit if/else on a bool) IRO folds them back
  * and the same 0x19C comes out. The pragma itself costs the head and tail their registers */
+/* whether an event's walk bit is set, through an inline of its own over CBits::Test (round 74: the
+ * extra inline level keeps the seen test's arms labelled -- GetNextEvent's size) */
+static inline bool EventSeen(CAiEvent *e, int bit) { return e->m_bits.Test(bit); }
+
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;
@@ -352,7 +362,7 @@ CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
             continue;
         if (it.m_owner == e->m_owner)
             continue;
-        if (it.m_bit != ~0 && (type == AIE_ENTITY ? false : e->m_bits.Test(it.m_bit)))
+        if (it.m_bit != ~0 && (type == AIE_ENTITY ? false : EventSeen(e, it.m_bit)))
             continue;
         CPnt3D d;
 
