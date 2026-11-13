@@ -2779,10 +2779,11 @@ static inline CMaterialNoise *MaterialNoise(unsigned int i)
     return (CMaterialNoise *)CMaterialExArray::m_materialex_list[i];
 }
 
-/* whether an AI is awake (an inline, the name ours: neither of the sleep bits, materialised) */
-static inline int AwakeBits(CSealCtrlAi *ai)
+/* whether an AI is awake (an inline bool, the name ours: `!(a != 0 || b != 0)` gives the target's `sltu; bnez;
+ * nop; andi; sltu; X: xori`, the first test's value the `||`'s; typed int it adds an `andi`) */
+static inline bool AwakeBits(CSealCtrlAi *ai)
 {
-    return (ai->m_aibit9 ? 1 : (ai->m_aibit8 != 0)) ^ 1;
+    return !(ai->m_aibit9 != 0 || ai->m_aibit8 != 0);
 }
 
 /* a kind and the visible bit through values (inlines, the names ours: `andi a0,zero,1` for a zero) */
@@ -2795,9 +2796,9 @@ static inline bool CtrlIsAi(CSealCtrl *ctrl)
     return ctrl ? ctrl->IsAi() : false;
 }
 
-/* OPEN, 2 instructions short (0x3C8 of 0x3D0), about 16 off: the awake test's value `||` -- the target's `sltu;
- * bnez; nop; andi; sltu; X: xori` with no pad at X (an `if` pads X, the conditional here has no sltu, `!(a || b)`
- * adds an andi) -- and the dead arm's schedule, the event's old word read first. Every saved register right.
+/* Byte-exact in round 71 (open since its writing, 0x3C8 of 0x3D0): the awake test an inline bool over `!=`s,
+ * the dead arm's type test through a volatile view (the old word then read again for the kind's insert, as the
+ * target; plain, CSE reuses the test's load) and the speed into a local (`fabsf(sp * k)`'s operands in order).
  * a SEAL's own AI event kept up to the frame: alive, heard over a range by how it moves and what it stands on, at
  * its place (kind 3; a sleeping AI's hardly at all); dead, once, heard far and seen 10 up as kind 5 (OVL2 0x550A80,
  * new in SOCOM II: PrePostTick calls it; the name unknown) */
@@ -2815,8 +2816,9 @@ extern "C" void func_00550A80(CZSealBody *seal)
             float t = ctrl->m_throttle[1];
 
             if (!(fabsf(ctrl->m_throttle[0]) + fabsf(t) <= 0.0f)) {
-                float f = fabsf(sqrtf(seal->m_velW.x * seal->m_velW.x + seal->m_velW.y * seal->m_velW.y +
-                                      seal->m_velW.z * seal->m_velW.z) * data_0064FCB0);
+                float sp = sqrtf(seal->m_velW.x * seal->m_velW.x + seal->m_velW.y * seal->m_velW.y +
+                                 seal->m_velW.z * seal->m_velW.z);
+                float f = fabsf(sp * data_0064FCB0);
 
                 range = data_0064FCA0 * (1.0f - f) + data_0064FCA8 * f;
                 if (seal->m_last_altitude.m_poly) {
@@ -2840,7 +2842,7 @@ extern "C" void func_00550A80(CZSealBody *seal)
             SetEventType(seal->m_aiEvent, 3);
             SetEventVisible(seal->m_aiEvent, false);
         }
-    } else if ((signed char)event->m_type != 0) {
+    } else if ((signed char)((volatile CAiEvent *)event)->m_type != 0) {
         SetEventType(event, 5);
         seal->m_aiEvent->m_rangeSq = 160000.0f;
         SetEventVisible(seal->m_aiEvent, true);
