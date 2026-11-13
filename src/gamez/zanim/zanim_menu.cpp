@@ -273,63 +273,31 @@ void UpdateCharWeaponUiVars(int index);   /* 0x2AF190 */
 const char *GetDefCharTypeName(int index);   /* 0x2AF760 */
 namespace {
 
-/* whether any selected character carries the item the argument names (SOCOM 1's). OPEN, 6
- * instructions short (0x120 against 0x138): the target re-reads the list's size and data at every
- * step of the walk (`lw 4(a2); lw 8(a2)` before each test: the end recomputed, the list kept in
- * a2), where MW hoists them out of the loop here -- SOCOM 1's computed the end once, as this does.
- * Tried, all 0x120 or shorter: the walk through a reference, a const reference and const
- * iterators, the iterator assigned, postfix/`+= 1`/`i = i + 1` steps, a while, a do-while behind
- * an if, a goto loop, a found flag with break (0x130), the walk as an inline member or free function
- * (21 off), the end spelled `begin() + size()` or through raw pointers, an index loop (0x100); the
- * item's unsigned compare (andi/lbu) is EQUIP_ITEM's (build/scratch/core/v_iseq.py). Round 12: the
- * found flag in either loop's condition with a break (SequenceRunning's shape: 0x118-0x134, the
- * blocks moved), the end through reference accessors on the list (the size `unsigned int &`, the
- * data's reference, a const local) -- MW hoists the end whatever its spelling, so the target's
- * loop holds something that blocks the hoist (build/scratch/core/v_iseq2.py, v_iseq3.py). Round 34
- * (the UI lane): the target's test is a MATERIALISED `!(i == end)` (xor, sltiu, xori before the
- * branch), a class iterator's operator!=; an inline `!(a == b)` over the iterators by const
- * reference gives that test (d 20, still 0x120: end() hoisted), by value 0x178; with it, `#pragma
- * opt_common_subs off` gives the size (0x138, 34 off), opt_propagation off 0x130, opt_loop_invariants
- * off 0x118 -- so the original iterator is a class whose comparison re-reads the vector's end
- * (include/vector's class-vector iterator is a pointer: the MSL's; build/scratch/ui/v_oies*.py).
- * The MSL headers round 36 (build/p36/oies.py, untracked): include/vector's class-vector iterator IS
- * a class (__MSL_VECTOR_ACCESS: m_p, != as !(==)) -- the materialised test above is today's code
- * already -- and the target's loop is plain: its latch re-reads size and data through the list's
- * register and adds size*12 (scdiff printed that addu masked, round 33's tell). Ten header
- * forms of end() and == (a reference or const count, size(), straight data_ + size_, begin() + n,
- * base() compares, == by value, const references to the fields) all hoist the end (0x120); a const
- * view's size() re-reads only the size (0x140), a const self pointer the data (0x128). SOCOM 1's
- * DWARF and symtab: vector's iterators are raw pointers there (do_assign<PC14CCharacterWeap>), the
- * only vector iterator class vector<bool>'s {vec_, pos_}. No header change. Round 36, read in
- * mwccps2's optimiser log (igdump --iro): IRO's own loop passes leave the latch's end loads in the
- * loop (could_error loads, not marked invariant); it is IRO_CommonSubs that merges the guard's end
- * with the latch's along the back edge (its @N first appears after that pass) -- so the target's
- * latch end is an expression the guard's does not equal or the loop kills (the iterator scalarised
- * early here, IRO_ScalarizeClassDataMembers, so ++i kills nothing the end depends on); a postfix,
- * `+= 1`, `i = i + 1` or assigned iterator, `i->`, copy initialisation all 0x120.
- * Round 38, the pragma scan's lead followed (opt_dead_assignments off: the size and 6 words off, only
- * the latch's registers; build/scratch/ui/oies_da.iro against oies_base.iro): pass 0's dead-store removal
- * leaves one occurrence of the end in the latch and IRO_CommonSubs merges it with the guard's; with the
- * pass off, the operator==() result's store keeps a second occurrence there and the latch makes its own
- * temporaries. THE TARGET'S LATCH LOOKS LIKE NEITHER (reasoned from its colouring -- size a0, data v0,
- * size*12 v1, the end v0 -- not replayed): one tree generated right operand first with no
- * common-subexpression temporary, which would mean the end is never merged: something stops its
- * loads being available around the back edge and leaves no code. Measured: a used reference to the
- * iterator does stop them (the latch re-reads both words) but keeps the iterator in memory (0x158);
- * an unused reference, the element or the bool through locals, a per-use it.m_weapons, end().m_p are
- * all still merged (build/scratch/ui/v_oies1-5.py). Round 39: the latch's list through the late-folding guard
- * merges all the same, pass 1 merging what pass 0 could not (0x120, v_oies9.py); the guard as a test of its own
- * after ++i is 0x130 */
+/* whether any selected character carries the item the argument names (SOCOM 1's). Byte-exact since
+ * the OVL1 lane's round 74, long open (0x120 against 0x138: the target re-reads the
+ * list's size and data at every latch, `lw 4(a2); lw 8(a2)`, where MW hoisted the whole end -- every
+ * header form of end() and ==, and the pragma scans, are in the history: build/scratch/core/v_iseq*.py,
+ * ui/v_oies*.py, p36/oies.py). The walk is rotated by hand (round 73's tell: MW's own guard block),
+ * the guard's end the plain end() sharing begin()'s data load, the latch's built from a view whose
+ * size is VOLATILE: the size re-read pins the data's re-read with it, size first. Both volatile, or
+ * the view in an unrotated for: the data first, or the guard re-reading it (0x140) */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
 
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
         CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+        struct WeapView { void *c; volatile unsigned int size; CCharacterWeap *data; };
+        WeapView *v = (WeapView *)weapons;
+        CCharacterWeapList::iterator i = weapons->begin();
 
-        for (CCharacterWeapList::iterator i = weapons->begin(); i != weapons->end(); ++i)
-            if ((*i).m_wepId == item)
-                return true;
+        if (i != weapons->end()) {
+            do {
+                if ((*i).m_wepId == item)
+                    return true;
+                ++i;
+            } while (i != CCharacterWeapList::iterator(v->data + v->size));
+        }
     }
     return false;
 }
