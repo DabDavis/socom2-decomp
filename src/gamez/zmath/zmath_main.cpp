@@ -340,9 +340,22 @@ void CQuat::Apply(const CPnt3D *in, CPnt3D *out, int n) const
     }
 }
 
+/* a point into a VU vector, read through the reference (the name ours) */
+inline void FillV(float *v, const CPnt3D &p)
+{
+    v[0] = p.x;
+    v[1] = p.y;
+    v[2] = p.z;
+    v[3] = 1.0f;
+}
+
 /* The rotation taking `from` onto `to` (both unit): about their cross product by twice the
  * half angle -- the half-way vector does it in one step. Opposite vectors have no half-way
- * vector or cross product; any axis perpendicular to `from` in the ground plane serves. */
+ * vector or cross product; any axis perpendicular to `from` in the ground plane serves.
+ * Byte-exact since the engine back half's round 1 (50 instructions before): the half-way vector
+ * read into b through a reference (FillV), so &half + 4 and + 8 are the address temporaries the
+ * fill and the final Dot share (s1, s0) and the assignment `half = from + to` stores frame-relative;
+ * filled field by field, the assignment's stores took the temporaries instead. */
 void CQuat::Align(const CPnt3D &from, const CPnt3D &to)
 {
     CPnt3D half;
@@ -355,14 +368,8 @@ void CQuat::Align(const CPnt3D &from, const CPnt3D &to)
         sceVu0FVECTOR b;
 
         half.Normalize();
-        a[0] = from.x;
-        a[1] = from.y;
-        a[2] = from.z;
-        a[3] = 1.0f;
-        b[0] = half.x;
-        b[1] = half.y;
-        b[2] = half.z;
-        b[3] = 1.0f;
+        FillV(a, from);
+        FillV(b, half);
         sceVu0OuterProduct(c, a, b);
         CPnt3D axis;
         axis.x = c[0];
