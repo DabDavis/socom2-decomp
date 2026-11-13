@@ -85,8 +85,30 @@ public:
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0x28 */
     virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
-    virtual void Virtual34();
+    /* whether another console drives it (zseal.h's IsRemote) */
+    virtual bool IsRemote() const;   /* +0x34 */
     virtual class CSealCtrlAi *GetSealCtrlAi();
+    /* (zseal.h's +0x3C-+0x80, unread here) */
+    virtual void Virtual3C();
+    virtual void Virtual40();
+    virtual void Virtual44();
+    virtual void Virtual48();
+    virtual void Virtual4C();
+    virtual void Virtual50();
+    virtual void Virtual54();
+    virtual void Virtual58();
+    virtual void Virtual5C();
+    virtual void Virtual60();
+    virtual void Virtual64();
+    virtual void Virtual68();
+    virtual void Virtual6C();
+    virtual void Virtual70();
+    virtual void Virtual74();
+    virtual void Virtual78();
+    virtual void Virtual7C();
+    virtual void Virtual80();
+    /* an order handed the SEAL's controller (zseal.h's OnCommand) */
+    virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);   /* +0x84 */
 };
 
 /* the SEAL as far as this unit reads it (zseal.h's CZSealBody, which this unit does not include:
@@ -596,6 +618,190 @@ CSealUnit *CSealUnit::GetUnitByTeam(unsigned int team)
 /* (OVL2 0x5EA4D0; CAiState's destructor follows it in, 0x5EA450) */
 CAiSBreach::~CAiSBreach()
 {
+}
+
+extern "C" {
+/* (declared again below: the online game's byte, the squad sound) */
+int func_005750A0(void);
+bool func_005EAF20(CSealUnit *unit, int sound, bool b, float chance);
+}
+CZSealBody *ftsGetPlayer();
+
+/* the top squad above one: its first level written out, the rest GetTop's (an inline: the
+ * ternary left unthreaded; the name ours) */
+static inline CSealUnit *TopOf(CSealUnit *u)
+{
+    return u->m_parent ? u->m_parent->GetTop() : u;
+}
+
+/* the squad's tick (OVL2 0x5E8060; SOCOM 1's Tick, its data gone -- the kit's round 65): when a
+ * member died the dead SEALs moved to the dead list (squads 1-3 offline say so, the player's or the
+ * AI's line) and the dead escortees too (squad 17 told), the follow flags set when the squad
+ * follows; the squad's update; with no SEAL left alive the escortees handed to the first dead SEAL or
+ * the player, the remote ones dropped; a dead follow source replaced by its squad's tail; the
+ * follow given the squad and the AI SEALs in a chain; the formation reset; the squads under it
+ * ticked; the point-out's clocks run down.
+ * The member-died block holds the squad update and the escortees' hand-over (the target skips both
+ * when m_a3 is clear); the iterators ASSIGNED (memory, lwc1/swc1 copies), one `i` for both walks (its
+ * second web the lowest slot, 128); the top squad through an inline's unthreaded ternary, taken into a
+ * local before the sound's call; the squad-range test an `||` (range-folded), the network test spelled
+ * `bool open = n == 0 || n > 32` (the value form -- HostEscort() inlined here branches); the ends of
+ * the follow walks and the sub-squad ticks in locals first.
+ * OPEN, 25 instructions at the target's size, every one the frame: the target puts the five iterator
+ * copies' temporaries first (188-172), then the hand-over's erase (168/164), then each walk's erase
+ * and push_back interleaved (160-132); here each walk's erase sits with its copies, the hand-over's
+ * after them and the push_backs last (and loop 1's iterator in v1 for a3). Wrapping the walks' erase
+ * in an inline (by value, by reference, returning the wrapper or the base iterator, or assigning
+ * through a reference) moves the erases a pass deeper but never level with the push_backs; an
+ * explicit conversion or the base iterator spelled out changes nothing */
+void CSealUnit::Tick(float dT)
+{
+    int alive = 0;
+
+    if (m_a3) {
+        m_a3 = 0;
+        bool told = false;
+        CZSealBody *dead;
+        slist::iterator i;
+
+        slist::iterator e = m_seals.end();
+
+        for (i = m_seals.begin(); i != e;) {
+            CZSealBody *s = *i;
+
+            if (!s->m_isAlive) {
+                told = m_unit_num - 1 < 3;
+                dead = s;
+                i = m_seals.erase(i);
+                m_dead_guys.push_back(s);
+            } else {
+                alive++;
+                ++i;
+            }
+        }
+        if (told && !func_005750A0()) {
+            CSealUnit *top = TopOf(this);
+
+            func_005EAF20(top, dead->IsPlayer() ? 58 : 57, false, 1.0f);
+        }
+        for (i = m_escortees.begin(); i != m_escortees.end();) {
+            CZSealBody *s = *i;
+
+            if (!s->m_isAlive) {
+                if (m_unit_num != 17)
+                    GetUnitByTeam(17)->m_a3 = 1;
+                i = m_escortees.erase(i);
+                m_dead_guys.push_back(s);
+            } else
+                ++i;
+        }
+        if (m_follow_source && m_follow_source->m_isAlive) {
+            if (m_commands.front() == 4 || HostEscort())
+                m_a0 = 1;
+            else if (!m_a0) {
+                ulist::iterator e = m_sub_units.end();
+
+                for (ulist::iterator u = m_sub_units.begin(); u != e; ++u)
+                    if ((*u)->m_commands.front() == 4)
+                        m_a1 = 1;
+            }
+        }
+        func_005E7830(this);
+        if (alive <= 0) {
+            CZSealBody *to = m_dead_guys.empty() ? ftsGetPlayer() : m_dead_guys.front();
+
+            for (slist::iterator e = m_escortees.begin(); e != m_escortees.end(); e = m_escortees.begin()) {
+                CZSealBody *s = *e;
+
+                ((CUnitSealCtrl *)s->m_control)->OnCommand(to, (FT_COMMAND)5, 0, false);
+                if (s->m_control ? ((CUnitSealCtrl *)s->m_control)->IsRemote() : false)
+                    m_escortees.erase(e);
+            }
+        }
+    }
+    CZSealBody *src = m_follow_source;
+
+    if (m_a0 || m_a1) {
+        if (src && !src->m_isAlive) {
+            m_follow_source = ((CUnitCtrl *)src->m_control)->m_unit->GetTail();
+            src = m_follow_source;
+        }
+        if (!src) {
+            m_a0 = 0;
+            m_a1 = 0;
+        }
+    }
+    if (!(m_unit_num == 1 || m_unit_num == 2 || m_unit_num == 3)) {
+        bool open = m_unit_num == 0 || m_unit_num > 32;
+        if (open)
+            open = theNetwork.m_bNetwork && theNetwork.m_bSessionMaster;
+        if (!open) {
+            m_a0 = 0;
+            m_a1 = 0;
+        }
+    }
+    if (m_a0) {
+        m_a0 = 0;
+        m_a1 = 0;
+        if (m_follow_source)
+            IssueCommand(m_follow_source, (FT_COMMAND)4, 0, false);
+    }
+    if (m_a1) {
+        m_a1 = 0;
+        slist::iterator e = m_seals.end();
+
+        for (slist::iterator i = m_seals.begin(); i != e; ++i) {
+            CZSealBody *s = *i;
+
+            if (s != m_follow_source && (s->m_control ? ((CUnitSealCtrl *)s->m_control)->IsAi() : false)) {
+                if (src)
+                    s->IssueCommand(src, (FT_COMMAND)4, 0, true);
+                src = s;
+            }
+        }
+        ulist::iterator ue = m_sub_units.end();
+
+        for (ulist::iterator u = m_sub_units.begin(); u != ue; ++u)
+            if ((*u)->m_commands.front() == 4 && src)
+                (*u)->IssueCommand(src, (FT_COMMAND)4, 0, true);
+    }
+    if (m_a2)
+        SetFormation(m_8, 0);
+    ulist::iterator te = m_sub_units.end();
+
+    for (ulist::iterator u = m_sub_units.begin(); u != te; ++u)
+        (*u)->Tick(dT);
+    if (0 < m_point_ticks) {
+        m_point_ticks--;
+        m_leader_point_data.timer -= dT;
+        if (0.0f > m_leader_point_data.timer) {
+            m_leader_point_data.timer = 0.0f;
+            if (m_leader_point_data.in_point) {
+                m_leader_point_data.start_anim = 0;
+                m_leader_point_data.start_turn = 0;
+                m_leader_point_data.in_point = 0;
+            }
+        }
+        m_follower_point_data.timer -= dT;
+        if (0.0f > m_follower_point_data.timer) {
+            m_follower_point_data.timer = 0.0f;
+            if (m_follower_point_data.in_point) {
+                m_follower_point_data.start_anim = 0;
+                m_follower_point_data.start_turn = 0;
+                m_follower_point_data.in_point = 0;
+            }
+        }
+        if (m_unit_in_point)
+            m_unit_in_point = m_unit_in_point ? (m_leader_point_data.in_point != 0 || m_follower_point_data.in_point != 0) : false;
+    } else {
+        m_leader_point_data.in_point = 0;
+        m_leader_point_data.start_anim = 0;
+        m_leader_point_data.start_turn = 0;
+        m_follower_point_data.in_point = 0;
+        m_follower_point_data.start_anim = 0;
+        m_follower_point_data.start_turn = 0;
+        m_unit_in_point = 0;
+    }
 }
 
 /* every squad that is no part of another ticked, once they are made (OVL2 0x5E7FD0; SOCOM 1's,
