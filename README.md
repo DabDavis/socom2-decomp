@@ -2066,6 +2066,29 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 67** (two rows byte-exact, both unwritten before: 0x54F7E0 (0xB50, seal.cpp), SOCOM 1's
+  CollidePlayers -- cuts the SEAL's motion where its cylinder would sweep into another's, pushes a player out of one it stands
+  in, tells meeting AIs about each other, returns whether the motion changed; SOCOM II passes (seal, dT), dT unused -- and
+  0x556370 (0xB64, seal_ai.cpp), the AI's alert-record tick, new in SOCOM II (level 1 the follow step, the avoid push or
+  0x557190; 4 marks the cells ahead; 2 a cell moved off; each ending in a path recovery or the record dropped). Signatures,
+  each callee still exact: func_00550330 in SOCOM 1's collideCylinders order, func_00558440 the amount before the flag,
+  func_00557190 takes the f12 frame time unused, ClearGoal passes `SetGoalPos(type, 0, 3.0f)`. ai_states.h:
+  CAiState::Virtual38 and CAiSAction's take `CSealCtrlAi *ai` (rows 0x5553D0, 0x5F07A0 renamed; objcmp --by-address: only
+  seal_ai.cpp differs, by 0x556370 and the `_max<f>` copy 0x575C50 it now emits, matching). 0x56AF50 is SOCOM 1's
+  LadderClimbTick (0x78C there, 0xDB4 here): m2c draft and disassembly in the lane's scratch, four throttle-reset blocks and
+  three inlined goal-clear copies):
+  - A TERNARY LOCAL USED ONCE IS COPY-PROPAGATED into a temporary numbered last (f20 for the target's f25): `if (s == P) h = 6;
+    else h = s == C ? 15 : 19.1f;` keeps it a named local.
+  - A PARAMETER'S POSITION SETS ARGUMENT LOAD ORDER: MW loads simple arguments left to right, so the caller's load order tells
+    the declared order when the callee's registers cannot (ints and floats allocate apart).
+  - a sub-record of `this` through any pointer keeps the offset in a register; a view struct with it as a member
+    (`&((View *)ai)->m_alert`) folds every field to one offset off the AI. An inline's local takes the lowest frame slot.
+  - a bool call tested `? false : true` through an int inline gives `andi; sltu; xori; beqz` (bool inline, `!`, `== 0`
+    branch on the andi). `(v & ~clear) != 0` through an inline, clear 0, gives the dsll32/dsrl32 zero-extension.
+    `steps > 1` branches on `slti at`. A float argument held in a local ahead of the `&&` loads in the first branch's slot.
+  - `(*t).m_distSq` stops an address spill `t->m_distSq` causes on the iterator. Two constants declared hi, lo, assigned lo
+    first, give the load order and colours. The stack-top test as `bool r = ...; return r;` over the const stack calls the
+    const GetState 0x5F8330.
 - **Tells from OVL1's GCC libraries, round 1** (22 of the 26 unmatched rows in 0x243000-0x258000 are written, WRONG; of the four
   with no source the radix-4 FFT 0x251C80 (0x418) is byte-exact in the new sase_fft4cfg.c -- the codec's CPU path when VU0 is
   off (the dispatcher 0x251B78 calls it when 0x1D55A0's flag is clear), its twiddles from the VU0 version's 2016-byte table
