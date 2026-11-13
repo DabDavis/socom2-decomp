@@ -3832,6 +3832,20 @@ static inline bool Climbable(zdb::IntersectStruct *hit)
  * go; with none, the hold at 0x1140 taken again; the step's ground height, the AI map's repel, the next matrix,
  * the quaternion and the velocity taken (OVL2 0x5483D0, new in SOCOM II: PrePostTick calls it -- SOCOM 1's
  * PostComputeNextPosition did its work; the name unknown) */
+static inline bool GtRef(float a, float b) { bool r = a > b; return r; }
+static inline void SlideAlong(CPnt3D &step, CPnt3D &push, const CPnt3D &nrm)
+{
+    float dot = Dot(nrm, step);
+    CPnt3D s = nrm;
+
+    s.Scale(dot);
+    push.Add(&s, &push);
+    CPnt3D t = step;
+
+    t -= s;
+    step = t;
+}
+
 extern "C" void func_005483D0(CZSealBody *seal, float dT)
 {
     if (seal->m_1060_bit11 ? true : false)
@@ -3844,11 +3858,11 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
         CProbeHit *out = data_0066AAD0;
         zdb::DiIntersect **di = &data_003DE940[seal->m_ef4];
 
-        for (int i = seal->m_ef4; i < seal->m_ef4 + seal->m_ef8 && n < 64; i++, di++) {
+        for (int i = seal->m_ef4; i < seal->m_ef4 + seal->m_ef8 && n < 64; di++, i++) {
             zdb::DiIntersect *d = *di;
 
             if (d->m_Cnt > 0) {
-                if (d->m_Cnt >= 2)
+                if (d->m_Cnt > 1)
                     out->m_hit = d->GetNearestIntersect();
                 else
                     out->m_hit = d->m_Intersects;
@@ -3868,14 +3882,8 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
         bool moved;
         bool turning;
 
-        if (seal->m_f44.x * seal->m_f44.x + seal->m_f44.y * seal->m_f44.y + seal->m_f44.z * seal->m_f44.z <= 0.00002f)
-            moved = false;
-        else
-            moved = true;
-        if (fabsf(seal->m_23c) <= 0.000001f)
-            turning = false;
-        else
-            turning = true;
+        moved = GtRef(seal->m_f44.x * seal->m_f44.x + seal->m_f44.y * seal->m_f44.y + seal->m_f44.z * seal->m_f44.z, 0.00002f);
+        turning = GtRef(fabsf(seal->m_23c), 0.000001f);
         CPnt3D saved = seal->m_f44;
         CPnt3D push(0.0f, 0.0f, 0.0f);
         bool ladder = func_00587F50(seal) || func_00587F10(seal) || func_00588030(seal);
@@ -3895,7 +3903,7 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                               ((CSealCtrl *)seal->m_control)->GetSealCtrlAi(), &data_0066AAD0[0].m_hit->m_pos,
                               data_0064FD10);
 
-            CPnt3D step = seal->m_f44;
+            CPnt3D step(seal->m_f44.x, seal->m_f44.y, seal->m_f44.z);
 
             for (int i = 0; i < n; i++) {
                 CPnt3D nrm = data_0066AAD0[i].m_hit->m_norm;
@@ -3904,7 +3912,7 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                     nrm.y = 0.0f;
                 nrm.Normalize();
                 if (ladder) {
-                    CPnt3D tip = data_003DE940[data_0066AAD0[i].m_index]->m_Tip;
+                    CPnt3D tip; const CPnt3D &tt = data_003DE940[data_0066AAD0[i].m_index]->m_Tip; tip.x = tt.x; tip.y = tt.y; tip.z = tt.z;
                     CPnt3D d;
 
                     tip.Sub(&data_0066AAD0[i].m_hit->m_pos, &d);
@@ -3916,19 +3924,10 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                         s.Scale(-dot);
                         step.Add(&s, &step);
                     }
-                } else {
-                    float dot = Dot(nrm, step);
-                    CPnt3D s = nrm;
-
-                    s.Scale(dot);
-                    push.Add(&s, &push);
-                    CPnt3D t = step;
-
-                    t -= s;
-                    step = t;
-                }
+                } else
+                    SlideAlong(step, push, nrm);
                 if (seal->IsPlayer()) {
-                    CPnt3D tip = data_003DE940[data_0066AAD0[i].m_index]->m_Tip;
+                    CPnt3D tip; const CPnt3D &tt = data_003DE940[data_0066AAD0[i].m_index]->m_Tip; tip.x = tt.x; tip.y = tt.y; tip.z = tt.z;
                     CPnt3D d;
 
                     tip.Sub(&data_0066AAD0[i].m_hit->m_pos, &d);
@@ -3946,10 +3945,11 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
             }
             seal->m_f44 = step;
             if (!(deepest <= 1.0f)) {
-                if (prone || n >= 3)
+                if (prone || n > 2)
                     StopStep(seal);
                 else {
-                    wall.Scale(deepest - 1.0f);
+                    deepest -= 1.0f;
+                    wall.Scale(deepest);
                     seal->m_f44.Add(&wall, &seal->m_f44);
                 }
             }
@@ -3968,9 +3968,12 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                     float reach;
 
                     if (prone)
-                        reach = 11.46f;
+                        reach = 11.460001f;
                     else {
-                        reach = seal->m_state == stateCrouch ? 10.5f : 5.25f;
+                        if (seal->m_state == stateCrouch)
+                            reach = 10.5f;
+                        else
+                            reach = 5.25f;
                         float ax = seal->m_curr_firepos.x;
                         float az = seal->m_curr_firepos.z;
                         float al = sqrtf(ax * ax + az * az);
@@ -3988,7 +3991,12 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                     }
                     dir.Scale(reach + len);
 
-                    CPnt3D from = *(CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+                    const float *row = seal->m_node->m_matrix.m_matrix[3];
+                    CPnt3D from;
+
+                    from.x = row[0];
+                    from.y = row[1];
+                    from.z = row[2];
                     CPnt3D end;
 
                     end = from + dir;
@@ -4002,12 +4010,13 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                         blocked = true;
                         seal->m_f44 = CPnt3D::zero;
                     }
+                    if (!blocked)
                     for (int i = 0; i < n && !blocked; i++) {
                         data_0066AAD0[i].m_hit->m_pos.Interp(&data_003DE940[data_0066AAD0[i].m_index]->m_Tail, 0.1f,
                                                             &from);
                         end = seal->m_f44;
                         if (end.x * end.x + end.z * end.z < 4.0f)
-                            end.Scale(2.0f / end.Length());
+                            end.Scale(2.0f / sqrtf(end.x * end.x + end.y * end.y + end.z * end.z));
                         end.Add(&from, &end);
                         hit = ProbeOff(seal, &from, &end);
                         if (hit && !PassThrough(hit)) {
