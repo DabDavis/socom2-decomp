@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEAL AI, round 72** (three rows byte-exact: CAiHidePlanner::is_goal 0x5F8570 (1 slot: `r = m_hide ? vis <=
+  m_thresh : vis >= m_thresh;`, the UI's round-31 if-versus-ternary rule), 0x562C80 (a stray `andi` since round 56), CSealCtrlAi::Tick
+  0x56FD00 (29); SetTarget 0x566540 at size (7 structural: the mode test's layout), 0x569E40 23 to 6. Is() (Pop, PopTo, CAiSBreach,
+  0x5F43B0): ~25 more spellings, MW threads the join every time. AnimSignal: inline_depth/dont_inline around it do nothing, the
+  unit-end state wins. No header change; the lane's if-to-ternary sweep scripts in its scratch, build/scratch/ai-r72/):
+  - A SELF-ASSIGNING TERNARY `r = r ? B : r;` joins unmasked where `if (r) r = B;` adds `andi 0xff` at the merge; on a pointer
+    `t = t ? (... ? 0 : t) : t;` drops the join pad an `if` gives. With a bool r a final `!r` re-normalises with `sltu`; an
+    `int r` with `^ 1` does not.
+  - A DEFAULT ARGUMENT STORES WHEN THE ARGUMENTS ARE EVALUATED: an inline taking a constant's address (`_close_enough(..., eps)`)
+    with the constant as a default argument stores its slot right to left, before a ternary argument; a body local stores after.
+  - `go = A && B;` keeps A's bool unmasked, the `andi` in the branch's slot (`go = A; if (go) go = B;` masks before the branch).
+    Locals declared bare and assigned later number after one initialised at its declaration (FPR order).
 - **Tells from the GCC libraries, round 72a** (five rows byte-exact, 3,048 bytes: libmpeg's _updateRefImage 0x1B9280 (0x2B4, the
   reference slots turned over, returns whether valid), _cpr8 0x1B95D8 (0x290, a picture stored as RAW8 through the scratchpad;
   libmpeg.h gains D8/D9_MADR) and _csc_storeRefImage 0x1BA3E8 (0x288, mpeg_csc.c) -- all unwritten before -- _extensionAndUserData
