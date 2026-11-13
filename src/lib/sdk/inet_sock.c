@@ -54,6 +54,11 @@
  * call site as the target's (as int: each its own call, 86 words); their piece size is an if/else
  * (`n = len < ... ? ... : len` folds to a signed MIN: `slt` for the target's `sltu`).
  *
+ * getsockname/getpeername func_001C46D0 (GCC round 78; open since 21a, 4 words): the port's
+ * conversion and store are written in EACH arm -- one call site in the target is jump2's cross-jump
+ * of the two arms' tails, so the 16 for *namelen sits in the join's own block, where sched1 cannot
+ * hoist it above the sh and local-alloc hands it the call's dead v0.
+ *
  * OPEN: func_001C1D40, the first-fit allocation (0x14C against 0x150: the target computes the
  *   remainder as (size' - 12) - size from the loop's own load of the block's size, and after a split
  *   reloads the new block's size where the exact fit keeps the loop's -- nine spellings of the
@@ -65,9 +70,7 @@
  *   func_001C32A8, accept (10 words, right size: the peer address's pointer and libnet's client
  *   address trade s5/s6 -- global-alloc's priorities; four spellings alike, gen_accept.py; the
  *   lists' pushes and unlinks, the gotos' layout and every store as the target's);
- *   func_001C46D0, getsockname/getpeername (4 words, right size: the target materialises the 16
- *   for *namelen in v0 after the port's sh, this compile in v1 before it; two spellings alike);
- *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
+ *    *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
  *   `func_001C2310(c, X); return 0;` apart -- three calls, each `b epilogue; move v0,zero` -- where
  *   this compile cross-jumps them into one call; the h_errno chain's value through one store as
  *   the target's); func_001C4A20, gethostbyaddr (0x1EC against 0x1FC: the same question -- the
@@ -1432,7 +1435,7 @@ int func_001C46D0(int id, struct sockaddr_in *name, int *namelen, int peer)
 {
 	CTX *c;
 	SOCK *s;
-	int r, port;
+	int r;
 	sceInetInfo_t info;
 
 	c = func_001C2160(0);
@@ -1459,12 +1462,11 @@ int func_001C46D0(int id, struct sockaddr_in *name, int *namelen, int peer)
 	name->sin_family = 2;
 	if (peer) {
 		func_001C2458(&name->sin_addr, &info.remote_adr);
-		port = info.remote_port;
+		name->sin_port = func_001C24B0(info.remote_port);
 	} else {
 		func_001C2458(&name->sin_addr, &info.local_adr);
-		port = info.local_port;
+		name->sin_port = func_001C24B0(info.local_port);
 	}
-	name->sin_port = func_001C24B0(port);
 	*namelen = sizeof(struct sockaddr_in);
 	return func_001C2310(c, 0);
 }
