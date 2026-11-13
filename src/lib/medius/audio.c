@@ -268,10 +268,11 @@ int func_0060FBE0(AUDIO *pAudio, char *pBuf, int nSize)
     return n;
 }
 
-/* Decodes a peer's pending (or streamed) frame and plays it.
- * OPEN (52s): the target keeps the frame's length in v1 (a `move v1,v0` after the stream's read),
- * 2.96 here in v0, and stores the decode count before the time -- every spelling of the length's
- * variable tried (its own test, assigned in the test, declared first) gives the same. */
+/* Decodes a peer's pending (or streamed) frame and plays it. GCC round 74a (open since written, 52s):
+ * the length in v1 was control flow, not the length's spelling -- the empty test a guard of its own
+ * (its `return 0` set in the slot, v0 then live across the test) and the play under `if (pfnPlay !=
+ * 0) {...}` falling to the final return; pData = buf before the read (`move s2,sp` in the jal's slot).
+ * The argument and store orders followed. */
 int func_0060FC90(AUDIO *pAudio, PEER *p)
 {
     char buf[32256];
@@ -281,20 +282,22 @@ int func_0060FC90(AUDIO *pAudio, PEER *p)
     if (n != 0) {
         p->nPending = 0;
     } else if (p->pStream != 0) {
-        n = func_00645528(p->pStream, buf, sizeof(buf));
         pData = buf;
+        n = func_00645528(p->pStream, buf, sizeof(buf));
     }
-    if (n == 0 || pAudio->pfnPlay == 0)
+    if (n == 0)
         return 0;
-    if (p->pFrame == 0)
-        p->pFrame = func_006456F8(pAudio->nWidth, pAudio->nHeight);
-    func_0060FB50();
-    func_006456C8(pAudio->nWidth, pAudio->nHeight, pAudio->pHandles[3], pAudio->pHandles[4],
-                  pAudio->pHandles[5], pData);
-    pAudio->tDecode += func_0060FB78();
-    pAudio->nDecoded++;
-    func_00645708(pAudio->pHandles[3], pAudio->pHandles[4], pAudio->pHandles[5], p->pFrame);
-    pAudio->pfnPlay(pAudio, p->info.nId, p->pFrame);
+    if (pAudio->pfnPlay != 0) {
+        if (p->pFrame == 0)
+            p->pFrame = func_006456F8(pAudio->nWidth, pAudio->nHeight);
+        func_0060FB50();
+        func_006456C8(pAudio->nWidth, pAudio->nHeight, pAudio->pHandles[3], pAudio->pHandles[4],
+                      pAudio->pHandles[5], pData);
+        pAudio->tDecode += func_0060FB78();
+        pAudio->nDecoded++;
+        func_00645708(pAudio->pHandles[3], pAudio->pHandles[4], pAudio->pHandles[5], p->pFrame);
+        pAudio->pfnPlay(pAudio, p->info.nId, p->pFrame);
+    }
     return 0;
 }
 
