@@ -1986,6 +1986,168 @@ void CAiSRush::SetTarget(CZSealBody *seal)
     m_target = seal ? seal->m_id : CEntity::invalidId;
 }
 
+extern "C" {
+/* the controller's route failed (OVL2 0x562960, SOCOM 1's GetRouteFailed by its place; the SEAL lane's
+ * row), the target set (0x5668F0) and the plan's goal cell (0x5F1760, seal_aistate.cpp's) */
+bool func_00562960(CSealCtrlAi *ai);
+void func_005668F0(CSealCtrlAi *ai, CZSealBody *seal);
+void func_005F1760(CAiSPlan *plan, void *loc);
+}
+
+/* the most SEALs that rush at once, -1 for any (OVL2 bss beside the count), the cells within which the
+ * rush walks straight in (OVL2 data), and the side the next rush plans from (flipped each time) */
+extern "C" int data_0066B050;
+extern unsigned int data_00651018;
+extern bool data_0066BBB0;
+
+/* the distance squared between two points, through a local of its own (inline: an inline's local is laid out
+ * below the caller's -- the facing, copy-constructed later, keeps the higher slot as the target's does; a
+ * caller's named local declared first takes it; the name ours) */
+static inline float RushDistSq(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D d;
+
+    a.Sub(&b, &d);
+    return d.x * d.x + d.y * d.y + d.z * d.z;
+}
+
+/* a SEAL indoors (an inline bool: materialised, fts_player.cpp's `? true : false`; the name ours) */
+static inline bool RushInside(CZSealBody *s)
+{
+    return s->m_inside ? true : false;
+}
+
+/* two cells' x and y distances summed (seal_aifollow.cpp's FollowCellDist; the name ours) */
+static inline int RushCellDist(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
+
+    return dx + dy;
+}
+
+/* a rush (OVL2 0x602E30; SOCOM 1's grown): over once the target is gone, dead or a friend; a target the
+ * AI holds otherwise kept. Prone, it closes to 75; held with flag 4 a shout; either way within reach a
+ * pursuit (4). Else a place in the rush taken (0), a plan pushed to the target's cell -- outdoors by the
+ * way its cell's travel counts favour, alternately facing and behind it -- (1), the route walked and kept
+ * on the target's cell (2, 3). Byte-exact (round 65, unwritten before): the entity pointer filtered by
+ * assigning it twice; the distance's point an inline's local, so the facing (copy-constructed) keeps the
+ * higher slot; the facing reversed through ShotAtNeg; the route-done test an if/else, not a ?: */
+int CAiSRush::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+    unsigned int step = m_phase;
+    CEntity *e = CEntity::m_list.GetEntityById(m_target);
+
+    /* (assigned twice: the SEAL numbers late, s2 -- one initialiser takes s0) */
+    e = e && e->m_type == 2 ? e : 0;
+    CZSealBody *target = (CZSealBody *)e;
+
+    if (!target || !target->m_isAlive)
+        return AI_DONE;
+    if (((CAiTarget *)ai->m_67c)->m_entity != target) {
+        if (TargetGone(ai))
+            func_005668F0(ai, target);
+        else
+            m_target = ((CAiTarget *)ai->m_67c)->m_entity->m_id;
+    }
+    if (target->m_team & seal->m_team)
+        return AI_DONE;
+    const CAiMapLoc &mine = seal->m_mapLocValid;
+    const CAiMapLoc &his = target->m_mapLocValid;
+
+    if ((m_flags & 1) && !(ai->m_stateStack.m_timer <= m_time))
+        return AI_DONE;
+    if (!(m_flags & 2) && target->GetStance(false) == 2) {
+        m_range2 = 5625.0f;
+        SetFlags(2, 0);
+    }
+    if (m_flags & 2) {
+        if (RushDistSq(seal->m_posW, target->m_posW) <= m_range2)
+            step = 4;
+    }
+    if ((m_flags & 4) && TargetHeld(ai)) {
+        ai->PlayAiSound((CHARACTER_SOUND)71, 0.25f, CAiEvent::AIE_NONE);
+        step = 4;
+    }
+    switch (step) {
+    case 0:
+        if (data_0066B048 <= data_0066B050 || data_0066B050 == -1) {
+            data_0066B048++;
+            step = 1;
+            SetFlags(0x10, 0);
+        }
+        break;
+    case 1:
+        *(unsigned int *)&m_60 = *(unsigned int *)&his;
+        if (m_stack.Push(ai, AI_STATE_PLAN, 0)) {
+            CAiState *s = m_stack.GetState();
+            CAiSPlan *plan = (CAiSPlan *)(s ? (s && s->m_state == AI_STATE_PLAN ? s : 0) : 0);
+
+            plan->m_11c = 10000;
+            if (!RushInside(target)) {
+                CAiMap *map = AiMaps.GetMapByIndex(his.m_mapid);
+
+                if (map) {
+                    MAP_DIRCOUNT dc;
+
+                    dc.m_flags = 0;
+                    dc.m_range = 64;
+                    map->CountMapTravelDir(his, &dc);
+                    /* (copy-constructed: the loads batched, the stores through the slot's register) */
+                    CPnt3D heading = *(const CPnt3D *)target->m_node->m_matrix.m_matrix[0];
+
+                    if (data_0066BBB0)
+                        ShotAtNeg(&heading, &heading);
+                    data_0066BBB0 = !data_0066BBB0;
+                    func_005F1760(plan, &dc.m_loc[dc.GetBestDir(false, &heading)]);
+                }
+            }
+            func_005F1760(plan, (void *)&his);
+            ai->m_aibit3 = true;
+            ai->SetAiBit2(true);
+            step = 2;
+        }
+        break;
+    case 2:
+        if (func_00562960(ai)) {
+            if (HasFlags(this, 0x28)) {
+                step = 1;
+                SetFlags(0, 8);
+            } else
+                SetActive(false);
+        } else if (!func_005629B0(ai)) {
+            if ((unsigned int)RushCellDist(his, m_60) > data_00651018) {
+                if (AiMaps.CanTravelLine(mine, his, 0)) {
+                    func_005628F0(ai);
+                    ((CAiPath *)&ai->m_path)->AppendPathLoc(his, AiMaps.GetMapByIndex(his.m_mapid));
+                } else
+                    step = 1;
+            } else if ((unsigned int)RushCellDist(mine, his) < 2)
+                func_005628F0(ai);
+        } else if ((unsigned int)RushCellDist(mine, his) > data_00651018)
+            step = 1;
+        else
+            step = 4;
+        break;
+    case 3:
+        if (!((unsigned int)RushCellDist(his, m_60) < 2))
+            step = 1;
+        break;
+    case 4:
+        if (ai->PushAiState(AI_STATE_PURSUE, 2)) {
+            CAiState *s = ai->GetAiState();
+
+            s = s && s->m_state == AI_STATE_PURSUE ? s : 0;
+            s->SetFlags(2, 4);
+            s->SetActive(true);
+        }
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
+}
+
 /* standing or crouched (an inline taking the stance by value: its argument is read ahead of the
  * `&&` it sits in, the compare narrows it again; the name ours) */
 inline bool Upright(SEAL_STANCE s)

@@ -834,6 +834,8 @@ public:
     /* its timer a CAiTimer member (see CAiSBreach) */
     CAiSRush() : CAiState(AI_STATE_RUSH), m_timer(0.0f) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x602E30) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSRush();
     void SetTarget(CZSealBody *seal);
 
