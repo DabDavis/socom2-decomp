@@ -11289,6 +11289,24 @@ the work happens here and `tools/publish.sh` pushes the committed state (`--dry-
 to look first). It refuses a tracked line that looks private, as claude-eqoa's
 `_publish.py` does.
 
+## Port preparation
+
+`include/zport.h` (2026-11-13) is the switch between this build and a native port (`-DZ_PORT=1`; the plan is
+claude-socom's docs/native-port-scope.md, the port is socom-port, the EQOA path). With `Z_PORT` 0 every macro expands to
+the tokens the source spelt before. It is reached through `<eetypes.h>` and `<stdarg.h>`.
+- The tree's one 128-bit type is `<eetypes.h>`'s, through `Z_QWORD_TYPEDEF`; no unit or header declares its own `mode(TI)`.
+- MW's 32-digit literals are `Z_Q128(hi, lo)`; va_list is `Z_VA_*`, layout checks `Z_LAYOUT_OK`, MW's intrinsics `Z_RSQRT`,
+  `Z_MEMCPY`, `Z_I_BREAK`, `Z_I_NOP`.
+- Asm is never wrapped in a macro: a port gives each asm site `#if Z_PORT <C> #else <asm untouched> #endif` (its M1).
+
+Rules for new source: declare `std::swap` before use (`<algorithm>` and `<tree>` include `<msl_utility>`); never jump over
+an initialised local (brace the case); one linkage per declaration; never spell a `data_` placeholder for an address the
+source defines under a name; never declare an MW-mangled name `extern "C"`. Every such change is proved by whole-tree sccheck
+plus `tools/objcmp.py --by-address` (2026-11-13: 672 units, 0 differ). The SDK rows the game calls are named (libpad2,
+libvib, libusbkb, libdbc, libcdvd's streaming calls and sceCdSeek, tolower), each map note saying whether its evidence is a
+SOCOM 1 caller, ps2sdk, or Sony's API alone; still placeholders: func_0018EF70 (the newer disk-ready call) and
+func_00181D80/func_00181C90 (MW's overlay entry and loader).
+
 ## Working in parallel
 
 Agents (or people) can work at once in git worktrees of claude-socom, each on its own units, with
