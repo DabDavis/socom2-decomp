@@ -16,18 +16,18 @@ int sceIoctl(int fd, int req, void *arg);
 void *sceSifAllocIopHeap(unsigned int size);
 int sceSifFreeIopHeap(void *addr);
 
-/* libcdvd's streaming (MAIN, unnamed yet) */
+/* libcdvd's streaming (MAIN) */
 struct sceCdRMode {
     unsigned char trycount;
     unsigned char spindlctrl;
     unsigned char datapattern;
     unsigned char pad;
 };
-int func_0018EF70(int mode);   /* sceCdSync? */
-int func_0018F7D8(unsigned int bufmax, unsigned int bankmax, void *buffer);   /* sceCdStInit */
-int func_0018F808(unsigned int lbn, sceCdRMode *mode);   /* sceCdStStart */
-int func_0018F870(unsigned int lbn);   /* sceCdStSeek */
-int func_0018F8A0(void);   /* sceCdStStop */
+int func_0018EF70(int mode);   /* the newer disk-ready call (libcdvd.c; its Sony name not established) */
+int sceCdStInit(unsigned int bufmax, unsigned int bankmax, void *buffer);
+int sceCdStStart(unsigned int lbn, sceCdRMode *mode);
+int sceCdStSeek(unsigned int lbn);
+int sceCdStStop(void);
 int sceCdStRead(unsigned int size, void *buf, unsigned int mode, unsigned int *err);
 }
 
@@ -74,7 +74,7 @@ int strFileOpen(const char *filename)
         infile.isOnCD = 1;
         func_0018EF70(0);
         infile.iopBuff = (unsigned char *)sceSifAllocIopHeap(0x28010);
-        func_0018F7D8(0x50, 5, (void *)(((int)infile.iopBuff + 15) & ~15));
+        sceCdStInit(0x50, 5, (void *)(((int)infile.iopBuff + 15) & ~15));
         if (!(infile.entry = CFileCD::Find(fname))) {
             strFileClose();
             return 0;
@@ -83,7 +83,7 @@ int strFileOpen(const char *filename)
         mode.trycount = 0;
         mode.spindlctrl = 0;
         mode.datapattern = 0;
-        func_0018F808(infile.entry->lsn, &mode);
+        sceCdStStart(infile.entry->lsn, &mode);
     } else {
         infile.isOnCD = 0;
         infile.fd = sceOpen(fname, 0x8001);
@@ -112,7 +112,7 @@ int strFileRewind()
     int r;
 
     if (zSys.isCdBoot)
-        r = func_0018F870(infile.entry->lsn);
+        r = sceCdStSeek(infile.entry->lsn);
     else
         r = sceLseek(infile.fd, 0, 0);
     if (r < 0) {
@@ -126,7 +126,7 @@ int strFileRewind()
 int strFileClose()
 {
     if (infile.isOnCD) {
-        func_0018F8A0();
+        sceCdStStop();
         sceSifFreeIopHeap(infile.iopBuff);
     } else
         sceClose(infile.fd);

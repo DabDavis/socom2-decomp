@@ -253,12 +253,12 @@ int sceCdInit(int mode);
 int LoadExecPS2(const char *filename, int argc, char **argv);
 char *strcpy(char *, const char *);
 char *strcat(char *, const char *);
-int func_001BD938(int port);                    /* the pad's state */
-int func_001BD790(int port, void *data);        /* the pad read */
-int func_001BDA78(int port, void *data, int n);
-void func_001BD738(int port);
-void func_001BD5C8(void);
-void func_0018FF50(void);
+int scePad2GetState(int port);                    /* the pad's state */
+int scePad2Read(int port, void *data);        /* the pad read */
+int scePad2GetButtonInfo(int port, void *data, int n);
+void scePad2DeleteSocket(int port);
+void scePad2End(void);
+void sceDbcEnd(void);
 
 /* the boot ELF's own name, argc and argv (for the reboot) */
 extern char *data_001CE650;
@@ -298,15 +298,15 @@ void func_001C6390(int device, int result)
         for (;;) {
             sceGsSyncV(0);
             ok = 0;
-            if (func_001BD938(data_001E6300) == 1)
-                ok = func_001BD790(data_001E6300, data_001E6310);
+            if (scePad2GetState(data_001E6300) == 1)
+                ok = scePad2Read(data_001E6300, data_001E6310);
             if (ok == 0)
                 continue;
-            if (func_001BDA78(data_001E6300, data_001E6310, 14) == 0)
+            if (scePad2GetButtonInfo(data_001E6300, data_001E6310, 14) == 0)
                 continue;
-            func_001BD738(data_001E6300);
-            func_001BD5C8();
-            func_0018FF50();
+            scePad2DeleteSocket(data_001E6300);
+            scePad2End();
+            sceDbcEnd();
             sceCdInit(5);
             if (data_001E60C0 == 0) {
                 LoadExecPS2("cdrom0:\\SCUS_972.75;1", data_001E60B0, data_001E60B8);
@@ -513,8 +513,8 @@ int sceSifLoadModule(const char *filename, int args, const char *argp);
 int sceCdGetDiskType(void);
 int sceCdMmode(int media);
 int sceFsReset(void);
-int func_0018FD10(void);
-int func_001BD588(int mode);
+int sceDbcInit(void);
+int scePad2Init(int mode);
 
 /* libpad2's socket parameters (src/lib/sdk/libpad2.c's) */
 typedef struct {
@@ -522,7 +522,7 @@ typedef struct {
     char name[16];
 } PAD2SOCKETPARAM;
 
-int func_001BD630(PAD2SOCKETPARAM *param, void *addr);
+int scePad2CreateSocket(PAD2SOCKETPARAM *param, void *addr);
 extern char data_001E6200[];
 
 typedef struct {
@@ -674,14 +674,14 @@ int main(int argc, char **argv)
     LOAD_IRX("DS2U_S1.IRX");
     LOAD_IRX("MCMAN.IRX");
     LOAD_IRX("MCSERV.IRX");
-    func_0018FD10();
-    func_001BD588(0);
+    sceDbcInit();
+    scePad2Init(0);
     pad.f0 = 2;
     pad.f4 = 0;
     pad.f8 = 0;
     pad.f12 = 0;
     pad.name[0] = 0;
-    data_001E6300 = func_001BD630(&pad, data_001E6200);
+    data_001E6300 = scePad2CreateSocket(&pad, data_001E6200);
     sceMcInit();
     sceMcSync(0, &cmd, &result);
     if (CardReady(0)) {
@@ -712,9 +712,9 @@ int main(int argc, char **argv)
     func_001C6570(data_001E60D0, 640, 448, 0, 0);
     if (!ok && !data_001E60C0)
         ok = func_001C59C0();
-    func_001BD738(data_001E6300);
-    func_001BD5C8();
-    func_0018FF50();
+    scePad2DeleteSocket(data_001E6300);
+    scePad2End();
+    sceDbcEnd();
     if (ok)
         func_004C53C0(argc, argv);
     return 0;

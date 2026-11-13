@@ -8,7 +8,7 @@
  * The client data and the buffer are the object's own .bss, spelled by address here (data_<VA>);
  * SendData2's and SendData3's buffers have data rows (dbcSendData2Buf, dbcSendData3Buf: ours).
  * Its init (0x18FD10: the three binds and the version check), end (0x18FF50) and version query
- * (0x18FCB8) keep placeholders (they print no name; sceDbcInit/sceDbcEnd by the API, not proven).
+ * (0x18FCB8) print no name; the first two are named sceDbcInit/sceDbcEnd by Sony's API (map notes).
  * GCC r24a: a copy loop's base is assigned inside the loop (loop.c hoists it into the preheader,
  * where combine cannot fold it into the store), and the create request's two buffers are pointers
  * (their stores alias no int load under strict aliasing): CreateSocket, SendData and ReceiveData,
@@ -65,7 +65,7 @@ int func_0018FCB8(void)
  * dbcman's major version checked against the library's 3, the semaphore made, the work area
  * cleared and handed over; each bind's failure prints and returns on its own (cross-jumping keeps
  * one copy, laid out after the semaphore's failure: as one goto label at the end it sits last) */
-int func_0018FD10(void)
+int sceDbcInit(void)
 {
 	struct SemaParam sp;
 	int i, ver;
@@ -120,7 +120,7 @@ int func_0018FD10(void)
 }
 
 /* the library's end: the semaphore deleted once bound */
-int func_0018FF50(void)
+int sceDbcEnd(void)
 {
 	if (data_001CC410 == 0)
 		return 0;

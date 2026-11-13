@@ -9,7 +9,7 @@
  * Read's 0x1BEFF8, GetLocation's 0x1BF570, the LED setters' 0x1BF5C0 and 0x1BF5E0). The setters
  * without RPC keep a 56-byte state per keyboard. Written: the init and end (0x1BE6A0, 0x1BE898:
  * the library's sceUsbKbInit(int *max_connect) and sceUsbKbEnd() by Sony's API, but they print
- * only "libusbkb : ..." and "libusbkb.a : ...", so their rows keep placeholders), the RPC calls,
+ * only "libusbkb : ..." and "libusbkb.a : ...": named by the API, map notes), the RPC calls,
  * the sync and its dispatcher, the five result handlers but Read's, the state setters, the
  * INTC 3 handler the init installs (0x1BF600: each keyboard's repeat timer counted per vblank),
  * the key ring's clear, push and pop (0x1BF688-0x1BF728: four codes at the state's +0x22, through
@@ -133,14 +133,14 @@ extern int EnableIntc(int);
 extern int DisableIntc(int);
 extern int DIntr(void);
 extern int EIntr(void);
-extern int func_001BEE88(int mode, int *result);
+extern int sceUsbKbSync(int mode, int *result);
 static int func_001BF600(int);
 extern UsbKbDev data_001E4390[];
 
 static void func_001BEF28(void *);
 static int func_001BEF38(void);
 
-int func_001BE6A0(int *max)
+int sceUsbKbInit(int *max)
 {
 	UsbKbInfo info;
 	struct SemaParam sema;
@@ -170,7 +170,7 @@ int func_001BE6A0(int *max)
 		data_001CE5D8 = -1;
 		return -1;
 	}
-	func_001BEE88(0, &result);
+	sceUsbKbSync(0, &result);
 	if (result != 0) {
 		DeleteSema(data_001CE5D8);
 		data_001CE5D8 = -1;
@@ -218,7 +218,7 @@ int func_001BE6A0(int *max)
 	return 0;
 }
 
-int func_001BE898(void)
+int sceUsbKbEnd(void)
 {
 	int err = 0;
 	int intr, ret;
@@ -351,7 +351,7 @@ int sceUsbKbSetLEDMode(int no, u_int mode)
 	return 0;
 }
 
-int func_001BEDA0(int no, int sta, int interval)
+int sceUsbKbSetRepeat(int no, int sta, int interval)
 {
 	if (sta < 0)
 		return -11;
@@ -363,7 +363,7 @@ int func_001BEDA0(int no, int sta, int interval)
 	return 0;
 }
 
-int func_001BEDE8(int no, u_int type)
+int sceUsbKbSetCodeType(int no, u_int type)
 {
 	if (no >= data_001E41C0.max)
 		return -11;
@@ -383,7 +383,7 @@ int func_001BEE38(int no, u_int arrange)
 	return 0;
 }
 
-int func_001BEE88(int mode, int *result)
+int sceUsbKbSync(int mode, int *result)
 {
 	if (data_001CE5D8 == -1)
 		return -1;

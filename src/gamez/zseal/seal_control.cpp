@@ -585,7 +585,7 @@ void func_002C5C90(CPad *pad);
 float func_002C63F0(unsigned char func, const CPad *pad);
 float func_002C6350(CPad *pad);
 bool func_002C60C0(int func, CPad *pad);
-int func_001BDA78(int port, unsigned char *data, int n);
+int scePad2GetButtonInfo(int port, unsigned char *data, int n);
 /* the pressure's two rates (OVL2 data) */
 extern float data_006505E0;
 extern float data_006505D8;
@@ -1010,14 +1010,14 @@ bool CSealCtrl::PreTick(float dT)
         }
     }
     seal->m_desiredStance = STANCE_PRONE;
-    if (seal->m_state != stateDead && !func_001BDA78(pad->m_port, pad->m_e4, 12) && !fire) {
-        if (func_001BDA78(pad->m_port, pad->m_e4, 7)) {
-            if (!(func_001BDA78(pad->m_port, pad->m_e4, 21) / 255.0f <= 0.03f) && func_00596D60(this, -1, 7.8375f))
+    if (seal->m_state != stateDead && !scePad2GetButtonInfo(pad->m_port, pad->m_e4, 12) && !fire) {
+        if (scePad2GetButtonInfo(pad->m_port, pad->m_e4, 7)) {
+            if (!(scePad2GetButtonInfo(pad->m_port, pad->m_e4, 21) / 255.0f <= 0.03f) && func_00596D60(this, -1, 7.8375f))
                 seal->m_desiredStance = STANCE_NONE;
             else
                 func_0057DC80(seal);
-        } else if (func_001BDA78(pad->m_port, pad->m_e4, 5)) {
-            if (!(func_001BDA78(pad->m_port, pad->m_e4, 20) / 255.0f <= 0.03f) && func_00596D60(this, 1, 9.5f))
+        } else if (scePad2GetButtonInfo(pad->m_port, pad->m_e4, 5)) {
+            if (!(scePad2GetButtonInfo(pad->m_port, pad->m_e4, 20) / 255.0f <= 0.03f) && func_00596D60(this, 1, 9.5f))
                 seal->m_desiredStance = STANCE_CROUCH;
             else
                 func_0057DC80(seal);

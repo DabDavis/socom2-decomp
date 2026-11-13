@@ -1,7 +1,7 @@
 /* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
 /* libcdvd's seek object (MAIN 0x18F358, between sceCdRead's and sceCdGetDiskType's objects): Sony's
- * SDK, one function, not in SOCOM 1 (the demo's libcdvd has no such object, so the row keeps its
- * placeholder: N-command 5 is ps2sdk's reconstruction's CD_NCMD_SEEK, sceCdSeek(lbn), whose shape
+ * SDK, one function, not in SOCOM 1 (the demo's libcdvd has no such object; the row is named by
+ * ps2sdk: N-command 5 is ps2sdk's reconstruction's CD_NCMD_SEEK, sceCdSeek(lbn), whose shape
  * this is -- the drive's readiness, the N pre-check, the sector number sent without waiting, the
  * completion left to the callback thread, which is told the command (sceCdCbfunc_num 4) before the
  * call and cleared again when the call fails). GCC round 34a. */
@@ -12,7 +12,7 @@ extern int sceCdNcmdDiskReady(void);
 extern int _sceCd_ncmd_prechk(int cmd);
 extern void _sceCd_cd_callback(void *data);
 
-int func_0018F358(u_int lbn)
+int sceCdSeek(u_int lbn)
 {
 	u_int *sdata = (u_int *)_sceCd_ncmdsdata;
 

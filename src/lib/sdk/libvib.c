@@ -4,7 +4,7 @@
  * (command size 11, type 1, 3, 1, through sceDbcSendData2). The shapes of Sony's libvib, the DBC
  * pad's actuator library that came with libpad2 (sceVibGetProfile(socket, profile),
  * sceVibSetActParam(socket, profile_size, profile, data_size, data)); not in SOCOM 1's demo, and no
- * string or caller names them, so the rows keep their placeholders. Its own object (GCC round 30a):
+ * string names them: the rows take Sony's names by the shapes (the port preparation). Its own object (GCC round 30a):
  * libpad2 (0x1BD588) passes the same receive command as an int, its low word sign-extended, where
  * this object passes the 8-byte command struct whole (no truncation before either call). Both
  * byte-exact (the receive as first written): the send's `size = 40` comes before the command's
@@ -27,7 +27,7 @@ extern int sceDbcReceiveData(int s, sceDbcCmd cmd, int *size, char *buf);
 extern int sceDbcSendData2(int s, sceDbcCmd cmd, int *size, char *buf);
 extern void *memcpy(void *d, const void *s, unsigned int n);
 
-int func_001BE530(int socket, char *profile)
+int sceVibGetProfile(int socket, char *profile)
 {
 	sceDbcCmd cmd;
 	int size;
@@ -43,7 +43,7 @@ int func_001BE530(int socket, char *profile)
 	return r;
 }
 
-int func_001BE5B0(int socket, int profile_size, u_char *profile, int data_size, u_char *data)
+int sceVibSetActParam(int socket, int profile_size, u_char *profile, int data_size, u_char *data)
 {
 	sceDbcCmd cmd;
 	int buf[12];

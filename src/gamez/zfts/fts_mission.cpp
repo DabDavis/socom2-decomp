@@ -1509,7 +1509,7 @@ void CMission::PreOpen(const char *database)
         *var = database;
 }
 
-extern "C" int func_0019AFB0(int c);   /* (MAIN: tolower) */
+extern "C" int tolower(int c);   /* (MAIN's, newlib's) */
 
 /* a nav point's anchor type from its name's first letter, 'c' onwards (SOCOM 1's
  * FilterNavPointString, SOCOM II's types 14 on where SOCOM 1's started at 9; inlined). The
@@ -1517,7 +1517,7 @@ extern "C" int func_0019AFB0(int c);   /* (MAIN: tolower) */
  * a result with `i > 23`: `>= 24`, the `&&` forms, returns and ternaries all lay it out otherwise */
 inline int FilterNavPointString(const char *s)
 {
-    int i = (char)func_0019AFB0(*s) - 'c';
+    int i = (char)tolower(*s) - 'c';
     int r;
 
     if (i < 0 || i > 23)

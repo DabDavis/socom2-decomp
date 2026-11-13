@@ -45,7 +45,7 @@ struct sceGsDispEnv {
 extern "C" {
 int sceGsSetDefDispEnv(sceGsDispEnv *disp, short psm, short w, short h, short dx, short dy);
 void sceGsPutDispEnv(sceGsDispEnv *disp);
-int func_001BDA78(int port, unsigned char *data, int n);   /* (libpad2: the pad read) */
+int scePad2GetButtonInfo(int port, unsigned char *data, int n);   /* (libpad2: the pad read) */
 void func_003B0660(void);   /* (zvid: the frame's wait) */
 
 /* libmpeg (MAIN) */
@@ -232,7 +232,7 @@ void playPss(sceMpeg *mp, playPssRsrcs *rsrcs, unsigned int n)
         func_003B0660();
         sceGsPutDispEnv(&disp);
         CInput::Tick(1.0f / 30.0f);
-        if (func_001BDA78(CInput::m_pads[0]->m_port, CInput::m_pads[0]->m_e4, 14))
+        if (scePad2GetButtonInfo(CInput::m_pads[0]->m_port, CInput::m_pads[0]->m_e4, 14))
             pssDone = 1;
     }
 }

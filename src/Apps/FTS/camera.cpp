@@ -2004,7 +2004,7 @@ void CAppCamera::APTeatherCam(CMatrix &cTw, float dT)
  * one of the pad's buttons out of its read (libpad2's, zin_pad.cpp's) */
 extern "C" float flyCamSpeed;
 extern float hackPitchFactor;
-extern "C" int func_001BDA78(int port, void *data, int button);
+extern "C" int scePad2GetButtonInfo(int port, void *data, int button);
 
 /* a level over TransformVectors: its two vectors below the two cross products' in the frame */
 static inline void TransformVectorInPlace(const CMatrix *m, CPnt3D *p)
@@ -2082,10 +2082,10 @@ void func_002964F0(CAppCamera *cam, CMatrix &cTw, float dT)
     float fwd = !active ? 0.0f : dT * (flyCamSpeed * pad->GetStick(1));
     float zoom = !active ? 0.0f : dT * pad->m_220[1];
     float strafe = !active ? 0.0f : dT * (flyCamSpeed * pad->GetStick(0));
-    float rise = !active ? 0.0f : dT * (flyCamSpeed * (0.003921569f * func_001BDA78(pad->m_port, pad->m_e4, 28)));
+    float rise = !active ? 0.0f : dT * (flyCamSpeed * (0.003921569f * scePad2GetButtonInfo(pad->m_port, pad->m_e4, 28)));
 
     if (active)
-        rise -= dT * (flyCamSpeed * (0.003921569f * func_001BDA78(pad->m_port, pad->m_e4, 30)));
+        rise -= dT * (flyCamSpeed * (0.003921569f * scePad2GetButtonInfo(pad->m_port, pad->m_e4, 30)));
 
     float yaw = !active ? 0.0f : dT * (1.8849558f * pad->GetStick(2));
     float pitch = !active ? 0.0f : dT * (1.8849558f * pad->GetStick(3));

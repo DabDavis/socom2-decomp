@@ -1,6 +1,6 @@
 /* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
 /* libpad2 (MAIN 0x1BD588-0x1BDE08): Sony's SDK controller library over libdbc's sockets -- not in
- * SOCOM 1's demo (it links libpad), so its rows keep their placeholders. A port table of sixteen
+ * SOCOM 1's demo (it links libpad); the game's calls are named (map notes) and the rest not. A port table of sixteen
  * 820-byte records at 0x1E0E58 (data_001E0E58), each with a socket number at +12 and a DMA buffer
  * at +16 the DBC fills in two 128-byte halves, each half's frame counter at +124. GCC round 20a:
  * the start-up clear and the shutdown, the socket's deletion, its device number, a buffer's clear
@@ -76,7 +76,7 @@ typedef struct {
 extern PAD2PORT data_001E0E58[16];
 extern int data_001CE568;
 
-int func_001BD588(void)
+int scePad2Init(void)
 {
 	int i;
 
@@ -90,8 +90,8 @@ int func_001BD588(void)
 	return 1;
 }
 
-int func_001BD738(int port);
-int func_001BD938(int port);
+int scePad2DeleteSocket(int port);
+int scePad2GetState(int port);
 void func_001BDB58(int port);
 int func_001BDBD0(int port);
 PAD2BUF *func_001BDC28(int port);
@@ -99,14 +99,14 @@ PAD2BUF *func_001BDC90(int port);
 int func_001BDCF8(int port);
 int func_001BDD58(u_char *profile, PAD2BTN *btn);
 
-int func_001BD5C8(void)
+int scePad2End(void)
 {
 	int i, r;
 
 	data_001CE568 = 0;
 	for (i = 0; i < 16; i++) {
 		if (data_001E0E58[i].state) {
-			r = func_001BD738(i);
+			r = scePad2DeleteSocket(i);
 			if (r < 0)
 				return r;
 		}
@@ -115,7 +115,7 @@ int func_001BD5C8(void)
 }
 
 /* a socket created over the DBC, its buffer the caller's (64-byte aligned: two 128-byte halves) */
-int func_001BD630(PAD2SOCKETPARAM *param, void *addr)
+int scePad2CreateSocket(PAD2SOCKETPARAM *param, void *addr)
 {
 	sceDbcSocketParam p;
 	int s;
@@ -148,7 +148,7 @@ int func_001BD630(PAD2SOCKETPARAM *param, void *addr)
 	return s;
 }
 
-int func_001BD738(int port)
+int scePad2DeleteSocket(int port)
 {
 	int r = sceDbcDeleteSocket(port);
 
@@ -162,7 +162,7 @@ int func_001BD738(int port)
 
 /* the buttons read: the newer half's data copied out, its profile parsed into the port's table;
  * the data's length, or -1 */
-int func_001BD790(int port, u_char *data)
+int scePad2Read(int port, u_char *data)
 {
 	PAD2BUF *b;
 
@@ -182,11 +182,11 @@ int func_001BD790(int port, u_char *data)
 
 /* the button profile: the state queried first, the profile after the data copied out and parsed;
  * its length, or -1 */
-int func_001BD868(int port, u_char *profile)
+int scePad2GetButtonProfile(int port, u_char *profile)
 {
 	PAD2BUF *b;
 
-	func_001BD938(port);
+	scePad2GetState(port);
 	if (data_001E0E58[port].open == 0 && func_001BDBD0(port) < 0)
 		return -1;
 	b = func_001BDC90(port);
@@ -209,7 +209,7 @@ typedef struct {
 
 /* the port's state: the newer half's first byte when its frame changed, else one byte received
  * from the device; 0 (the port closed, its buffer cleared) when either fails */
-int func_001BD938(int port)
+int scePad2GetState(int port)
 {
 	PAD2BUF *b;
 	union { PAD2CMD c; int i; } cmd;
@@ -240,7 +240,7 @@ fail:
 
 /* one button's value out of the read data: a bit (pressed: 1) or a byte, by the profile's table;
  * -1 when the profile has no such button */
-int func_001BDA78(int port, u_char *data, int n)
+int scePad2GetButtonInfo(int port, u_char *data, int n)
 {
 	PAD2BTN b;
 	u_char *q;

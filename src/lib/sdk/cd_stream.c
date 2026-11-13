@@ -4,7 +4,7 @@
  * through func_0018FB50 -- INIT 5, START 1, SEEKF 9, SEEK 4, STOP 3, READ 2, PAUSE 7, RESUME 8,
  * STAT 6 (the numbers ps2sdk's reconstruction gives the same calls). Not in SOCOM 1's demo (a newer
  * libcdvd); the four that print their names are named by them (sceCdStRead, sceCdStPause,
- * sceCdStResume, sceCdStStat), the rest keep placeholders. The started flag (0x1CC3F8) and the
+ * sceCdStResume, sceCdStStat), the rest by ps2sdk's numbers, which those four confirm. The started flag (0x1CC3F8) and the
  * default read mode (0x1D6218) are this object's own data. The N-command semaphore is read plainly
  * here (its load fills SignalSema's delay slot; libcdvd.h's volatile declaration keeps it out). */
 
@@ -46,29 +46,29 @@ extern sceCdRMode data_001D6218;
 
 int func_0018FB50(u_int lbn, u_int nsectors, void *buf, u_int cmd, sceCdRMode *rm);
 
-int func_0018F7D8(u_int bufmax, u_int bankmax, void *buffer)
+int sceCdStInit(u_int bufmax, u_int bankmax, void *buffer)
 {
 	data_001CC3F8 = 0;
 	return func_0018FB50(bufmax, bankmax, buffer, 5, &data_001D6218);
 }
 
-int func_0018F808(u_int lbn, sceCdRMode *mode)
+int sceCdStStart(u_int lbn, sceCdRMode *mode)
 {
 	data_001CC3F8 = 1;
 	return func_0018FB50(lbn, 0, 0, 1, mode);
 }
 
-int func_0018F840(u_int lbn)
+int sceCdStSeekF(u_int lbn)
 {
 	return func_0018FB50(lbn, 0, 0, 9, &data_001D6218);
 }
 
-int func_0018F870(u_int lbn)
+int sceCdStSeek(u_int lbn)
 {
 	return func_0018FB50(lbn, 0, 0, 4, &data_001D6218);
 }
 
-int func_0018F8A0(void)
+int sceCdStStop(void)
 {
 	data_001CC3F8 = 0;
 	return func_0018FB50(0, 0, 0, 3, &data_001D6218);

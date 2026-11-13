@@ -13,21 +13,21 @@
 
 /* libpad2 and the pad modules (MAIN, not named yet: the socket's creation and deletion, the
  * library's init and end, the modules' load and unload, by their use here); the vertical sync wait */
-extern "C" int func_001BD630(void *param, void *dmabuf);
-extern "C" int func_001BD738(int port);
-extern "C" int func_001BD588(int mode);
-extern "C" int func_001BD5C8();
-extern "C" int func_0018FD10();
-extern "C" int func_0018FF50();
+extern "C" int scePad2CreateSocket(void *param, void *dmabuf);
+extern "C" int scePad2DeleteSocket(int port);
+extern "C" int scePad2Init(int mode);
+extern "C" int scePad2End();
+extern "C" int sceDbcInit();
+extern "C" int sceDbcEnd();
 extern "C" int sceGsSyncV(int mode);
 /* libpad2's (MAIN, not named yet): the socket's state, its read, one button's value out of the
  * read, the two profiles, the actuators' send */
-extern "C" int func_001BD938(int port);
-extern "C" int func_001BD790(int port, void *data);
-extern "C" int func_001BDA78(int port, void *data, int button);
-extern "C" int func_001BD868(int port, void *profile);
-extern "C" int func_001BE530(int port, void *profile);
-extern "C" int func_001BE5B0(int port, int a, void *profile, int b, void *act);
+extern "C" int scePad2GetState(int port);
+extern "C" int scePad2Read(int port, void *data);
+extern "C" int scePad2GetButtonInfo(int port, void *data, int button);
+extern "C" int scePad2GetButtonProfile(int port, void *profile);
+extern "C" int sceVibGetProfile(int port, void *profile);
+extern "C" int sceVibSetActParam(int port, int a, void *profile, int b, void *act);
 /* the math library's (MAIN) */
 extern "C" float sinf(float);
 extern "C" float atan2f(float, float);
@@ -60,8 +60,8 @@ inline bool InsideRange(float v, float range)
 /* the IOP modules started, libpad2 set up, the pad made (SOCOM 1's) */
 int CInput::OpenPadIO()
 {
-    func_0018FD10();
-    func_001BD588(0);
+    sceDbcInit();
+    scePad2Init(0);
     CreatePad(0);
     return 0;
 }
@@ -70,8 +70,8 @@ int CInput::OpenPadIO()
 void CInput::ClosePadIO()
 {
     DeletePad(0);
-    func_001BD5C8();
-    func_0018FF50();
+    scePad2End();
+    sceDbcEnd();
 }
 
 /* the pad on a port (0 or 1) opened through libpad2, its sticks' state cleared and their types
@@ -93,7 +93,7 @@ CPad::CPad(int port, int slot)
     m_socketSlot = slot;
     m_socketC4 = 0;
     m_socketC8 = 0;
-    m_port = func_001BD630(&m_socketType, m_DmaBufArray[port]);
+    m_port = scePad2CreateSocket(&m_socketType, m_DmaBufArray[port]);
     m_0 = 0;
     for (int i = 0; i < 4; i++) {
         m_lastStickVal[i] = 0.0f;
@@ -139,7 +139,7 @@ void CPad::Flush(bool settle)
 CPad::~CPad()
 {
     if (IsOpen()) {
-        func_001BD738(m_port);
+        scePad2DeleteSocket(m_port);
         m_port = -1;
     }
 }
@@ -169,23 +169,23 @@ void CPad::Tick(float dt)
     int read = 0;
 
     pad_dt = dt;
-    m_dc = func_001BD938(m_port);
+    m_dc = scePad2GetState(m_port);
     if (m_dc == 1) {
         switch (m_e0) {
         case 0: {
-            int a = func_001BD868(m_port, m_1f8);
-            int b = func_001BE530(m_port, m_1e4);
+            int a = scePad2GetButtonProfile(m_port, m_1f8);
+            int b = sceVibGetProfile(m_port, m_1e4);
 
             if (a >= 0 && b >= 0)
                 m_e0++;
             break;
         }
         case 1:
-            read = func_001BD790(m_port, m_e4);
+            read = scePad2Read(m_port, m_e4);
             if (m_1e4[0]) {
                 short act = (m_ActData[1] << 1) | m_ActData[0];
 
-                func_001BE5B0(m_port, 1, m_1e4, 2, &act);
+                sceVibSetActParam(m_port, 1, m_1e4, 2, &act);
             }
             break;
         }
@@ -199,14 +199,14 @@ void CPad::Tick(float dt)
         m_e0 = 0;
     }
     if (read) {
-        m_lastStickRaw[0] = func_001BDA78(m_port, m_e4, 18);
-        m_lastStickRaw[1] = func_001BDA78(m_port, m_e4, 19);
-        m_lastStickRaw[2] = func_001BDA78(m_port, m_e4, 16);
-        m_lastStickRaw[3] = func_001BDA78(m_port, m_e4, 17);
-        m_stick[0] = StickValue(func_001BDA78(m_port, m_e4, 18));
-        m_stick[1] = StickValue(func_001BDA78(m_port, m_e4, 19));
-        m_stick[2] = StickValue(func_001BDA78(m_port, m_e4, 16));
-        m_stick[3] = StickValue(func_001BDA78(m_port, m_e4, 17));
+        m_lastStickRaw[0] = scePad2GetButtonInfo(m_port, m_e4, 18);
+        m_lastStickRaw[1] = scePad2GetButtonInfo(m_port, m_e4, 19);
+        m_lastStickRaw[2] = scePad2GetButtonInfo(m_port, m_e4, 16);
+        m_lastStickRaw[3] = scePad2GetButtonInfo(m_port, m_e4, 17);
+        m_stick[0] = StickValue(scePad2GetButtonInfo(m_port, m_e4, 18));
+        m_stick[1] = StickValue(scePad2GetButtonInfo(m_port, m_e4, 19));
+        m_stick[2] = StickValue(scePad2GetButtonInfo(m_port, m_e4, 16));
+        m_stick[3] = StickValue(scePad2GetButtonInfo(m_port, m_e4, 17));
         CheckStickVelocity(m_stick[0], m_stick[1], 0);
         CheckStickVelocity(m_stick[2], m_stick[3], 1);
         if (InsideRange(m_stick[0], m_stickType[0].m_absoluteDeadZone))
@@ -333,34 +333,34 @@ void CPad::Tick(float dt)
             m_0 = 0;
         float press;
 
-        UpdateButton(PAD_START, func_001BDA78(m_port, m_e4, 3), 0.0f);
-        UpdateButton(PAD_SELECT, func_001BDA78(m_port, m_e4, 0), 0.0f);
-        press = func_001BDA78(m_port, m_e4, 20);
-        UpdateButton(PAD_RIGHT, func_001BDA78(m_port, m_e4, 5), press);
-        press = func_001BDA78(m_port, m_e4, 21);
-        UpdateButton(PAD_LEFT, func_001BDA78(m_port, m_e4, 7), press);
-        press = func_001BDA78(m_port, m_e4, 22);
-        UpdateButton(PAD_UP, func_001BDA78(m_port, m_e4, 4), press);
-        press = func_001BDA78(m_port, m_e4, 23);
-        UpdateButton(PAD_DOWN, func_001BDA78(m_port, m_e4, 6), press);
-        press = func_001BDA78(m_port, m_e4, 24);
-        UpdateButton(PAD_TRIANGLE, func_001BDA78(m_port, m_e4, 12), press);
-        press = func_001BDA78(m_port, m_e4, 25);
-        UpdateButton(PAD_CIRCLE, func_001BDA78(m_port, m_e4, 13), press);
-        press = func_001BDA78(m_port, m_e4, 27);
-        UpdateButton(PAD_SQUARE, func_001BDA78(m_port, m_e4, 15), press);
-        press = func_001BDA78(m_port, m_e4, 26);
-        UpdateButton(PAD_CROSS, func_001BDA78(m_port, m_e4, 14), press);
-        press = func_001BDA78(m_port, m_e4, 29);
-        UpdateButton(PAD_TRIGGER_R1, func_001BDA78(m_port, m_e4, 11), press);
-        press = func_001BDA78(m_port, m_e4, 31);
-        UpdateButton(PAD_TRIGGER_R2, func_001BDA78(m_port, m_e4, 9), press);
-        press = func_001BDA78(m_port, m_e4, 28);
-        UpdateButton(PAD_TRIGGER_L1, func_001BDA78(m_port, m_e4, 10), press);
-        press = func_001BDA78(m_port, m_e4, 30);
-        UpdateButton(PAD_TRIGGER_L2, func_001BDA78(m_port, m_e4, 8), press);
-        UpdateButton(PAD_LEFT_STICK, func_001BDA78(m_port, m_e4, 1), 0.0f);
-        UpdateButton(PAD_RIGHT_STICK, func_001BDA78(m_port, m_e4, 2), 0.0f);
+        UpdateButton(PAD_START, scePad2GetButtonInfo(m_port, m_e4, 3), 0.0f);
+        UpdateButton(PAD_SELECT, scePad2GetButtonInfo(m_port, m_e4, 0), 0.0f);
+        press = scePad2GetButtonInfo(m_port, m_e4, 20);
+        UpdateButton(PAD_RIGHT, scePad2GetButtonInfo(m_port, m_e4, 5), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 21);
+        UpdateButton(PAD_LEFT, scePad2GetButtonInfo(m_port, m_e4, 7), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 22);
+        UpdateButton(PAD_UP, scePad2GetButtonInfo(m_port, m_e4, 4), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 23);
+        UpdateButton(PAD_DOWN, scePad2GetButtonInfo(m_port, m_e4, 6), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 24);
+        UpdateButton(PAD_TRIANGLE, scePad2GetButtonInfo(m_port, m_e4, 12), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 25);
+        UpdateButton(PAD_CIRCLE, scePad2GetButtonInfo(m_port, m_e4, 13), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 27);
+        UpdateButton(PAD_SQUARE, scePad2GetButtonInfo(m_port, m_e4, 15), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 26);
+        UpdateButton(PAD_CROSS, scePad2GetButtonInfo(m_port, m_e4, 14), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 29);
+        UpdateButton(PAD_TRIGGER_R1, scePad2GetButtonInfo(m_port, m_e4, 11), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 31);
+        UpdateButton(PAD_TRIGGER_R2, scePad2GetButtonInfo(m_port, m_e4, 9), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 28);
+        UpdateButton(PAD_TRIGGER_L1, scePad2GetButtonInfo(m_port, m_e4, 10), press);
+        press = scePad2GetButtonInfo(m_port, m_e4, 30);
+        UpdateButton(PAD_TRIGGER_L2, scePad2GetButtonInfo(m_port, m_e4, 8), press);
+        UpdateButton(PAD_LEFT_STICK, scePad2GetButtonInfo(m_port, m_e4, 1), 0.0f);
+        UpdateButton(PAD_RIGHT_STICK, scePad2GetButtonInfo(m_port, m_e4, 2), 0.0f);
     }
 }
 

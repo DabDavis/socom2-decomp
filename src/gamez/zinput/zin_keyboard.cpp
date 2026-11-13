@@ -1,7 +1,7 @@
 /* zin_keyboard.cpp -- the USB keyboard: its reader set up and torn down, a keyboard's presence, and
  * CKeyboard (OVL1 0x2DBD40-0x2DBFAB). SOCOM 1's keyboard unit (after zin_cheats.cpp there) carried
  * its own sceUsbKeybd RPC wrappers; SOCOM II calls a keyboard library in MAIN instead (the
- * placeholders below), keeping SOCOM 1's order: the readers, InitKeyreadStuff, then CKeyboard's
+ * Sony's libusbkb), keeping SOCOM 1's order: the readers, InitKeyreadStuff, then CKeyboard's
  * Tick, destructor and constructor. CInput's unit calls the empty Tick and the constructor out of
  * line, so this is a unit of its own. The file name is ours. Defined in reverse of their image
  * order (-inline deferred). */
@@ -13,12 +13,12 @@
 /* the keyboard library's calls (MAIN: Sony's libusbkb -- GetInfo and Read named by their own
  * messages; the rest not yet named: its set-up, read mode, key repeat, teardown and
  * synchronisation, by their use here) */
-extern "C" int func_001BE6A0(int *maxConnect);
-extern "C" int func_001BEDE8(int no, int mode);
-extern "C" int func_001BEDA0(int no, int sta, int interval);
-extern "C" int func_001BE898();
+extern "C" int sceUsbKbInit(int *maxConnect);
+extern "C" int sceUsbKbSetCodeType(int no, int mode);
+extern "C" int sceUsbKbSetRepeat(int no, int sta, int interval);
+extern "C" int sceUsbKbEnd();
 extern "C" int sceUsbKbGetInfo(void *info);
-extern "C" int func_001BEE88(int mode, int *result);
+extern "C" int sceUsbKbSync(int mode, int *result);
 extern "C" int sceUsbKbRead(int no, void *data);
 
 /* a key read this frame: its code, and the shift, control and alt keys and the caps lock light
@@ -64,14 +64,14 @@ void InitKeyreadStuff()
 {
     int maxConnect = 1;
 
-    func_001BE6A0(&maxConnect);
-    func_001BEDE8(0, 0);
-    func_001BEDA0(0, 20, 6);
+    sceUsbKbInit(&maxConnect);
+    sceUsbKbSetCodeType(0, 0);
+    sceUsbKbSetRepeat(0, 20, 6);
 }
 
 void UninitKeyreadStuff()
 {
-    func_001BE898();
+    sceUsbKbEnd();
 }
 
 /* the next key the keyboard library read, reading again once the last read is used up: none when
@@ -88,12 +88,12 @@ int GetKeyReadThisFrame(KeyInput *key)
         memset(info, 0, sizeof info);
         sceUsbKbGetInfo(info);
         result = 0;
-        func_001BEE88(0, &result);
+        sceUsbKbSync(0, &result);
         if (!info[8])
             return 0;
         sceUsbKbRead(0, &kbdData);
         done = 0;
-        func_001BEE88(0, &done);
+        sceUsbKbSync(0, &done);
         if (done)
             kbdData.len = 0;
         if (kbdData.len <= 0)
@@ -119,6 +119,6 @@ bool KeyboardAttached()
     memset(info, 0, sizeof info);
     sceUsbKbGetInfo(info);
     result = 0;
-    func_001BEE88(0, &result);
+    sceUsbKbSync(0, &result);
     return info[8] != 0;
 }

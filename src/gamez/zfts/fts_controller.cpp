@@ -747,7 +747,7 @@ bool CCtrlrConfigs::IsJumpAndActionShared()
            g_pCurrentConfig->GetButton(PadBtnFunc::BTN_JUMP);
 }
 
-extern "C" int func_001BDA78(int port, unsigned char *data, int n);   /* (libpad2: the pad read) */
+extern "C" int scePad2GetButtonInfo(int port, unsigned char *data, int n);   /* (libpad2: the pad read) */
 
 /* function 2's button's pressure as the pad reports it, for the two buttons it is asked of (10 and
  * 9: the pad's bytes 29 and 26), none for any other (OVL1 0x2C6350: CSealCtrl::PreTick's; the
@@ -758,9 +758,9 @@ extern "C" float func_002C6350(CPad *pad)
     float r;
 
     if (g_pCurrentConfig->Button(2) == 10)
-        r = func_001BDA78(pad->m_port, pad->m_e4, 29);
+        r = scePad2GetButtonInfo(pad->m_port, pad->m_e4, 29);
     else if (g_pCurrentConfig->Button(2) == 9)
-        r = func_001BDA78(pad->m_port, pad->m_e4, 26);
+        r = scePad2GetButtonInfo(pad->m_port, pad->m_e4, 26);
     else
         r = 0.0f;
     return r;

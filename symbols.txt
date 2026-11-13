@@ -266,25 +266,25 @@
 0x0018ED78 0x1F8 sceCdDiskReady  # MAIN unaligned; s1:exact
 0x0018EF70 0x204 func_0018EF70  # MAIN
 0x0018F178 0x1E0 sceCdRead  # MAIN unaligned; s1:exact
-0x0018F358 0xCC func_0018F358  # MAIN unaligned
+0x0018F358 0xCC sceCdSeek  # MAIN unaligned; ps2sdk (ee/rpc/cdvd ncmd.c's sceCdSeek(lbn): N-command CD_NCMD_SEEK 5, the sector sent without waiting, the callback told SCECdFuncSeek 4 first and both cleared when the call fails -- the same steps, src/lib/sdk/cd_seek.c) -- the port preparation
 0x0018F428 0x98 sceCdGetDiskType  # MAIN unaligned; s1:exact
 0x0018F4C0 0x98 sceCdGetError  # MAIN; s1:exact
 0x0018F558 0xB4 sceCdPowerOff  # MAIN unaligned; s1:exact
 0x0018F610 0xD0 sceCdMmode  # MAIN; s1:calls
 0x0018F6E0 0xF8 sceCdReadClock  # MAIN; s1:exact
-0x0018F7D8 0x2C func_0018F7D8  # MAIN unaligned
-0x0018F808 0x34 func_0018F808  # MAIN unaligned
-0x0018F840 0x2C func_0018F840  # MAIN
-0x0018F870 0x2C func_0018F870  # MAIN
-0x0018F8A0 0x38 func_0018F8A0  # MAIN
+0x0018F7D8 0x2C sceCdStInit  # MAIN unaligned; ps2sdk (ee/rpc/cdvd ncmd.c: sceCdStInit(bufmax, bankmax, buf) is stream command CDVD_ST_CMD_INIT 5 over N-command 9, CD_NCMD_STREAM; the object's four self-named calls agree with that enum: READ 2, STAT 6, PAUSE 7, RESUME 8); strfile.cpp's open, as Sony's strfile sample -- the port preparation
+0x0018F808 0x34 sceCdStStart  # MAIN unaligned; ps2sdk (sceCdStStart(lbn, mode): stream command CDVD_ST_CMD_START 1, the read mode passed through; the enum checked as for sceCdStInit) -- the port preparation
+0x0018F840 0x2C sceCdStSeekF  # MAIN; ps2sdk (sceCdStSeekF(lbn): stream command CDVD_ST_CMD_SEEKF 9; the enum checked as for sceCdStInit) -- the port preparation
+0x0018F870 0x2C sceCdStSeek  # MAIN; ps2sdk (sceCdStSeek(lbn): stream command CDVD_ST_CMD_SEEK 4; the enum checked as for sceCdStInit); strfile.cpp's rewind -- the port preparation
+0x0018F8A0 0x38 sceCdStStop  # MAIN; ps2sdk (sceCdStStop(): stream command CDVD_ST_CMD_STOP 3; the enum checked as for sceCdStInit); strfile.cpp's close -- the port preparation
 0x0018F8D8 0x188 sceCdStRead  # MAIN unaligned; by its own message ('sceCdStRead call read size= %d mode= %d'; strfile.cpp's call already notes it) -- the GCC lane r22a
 0x0018FA60 0x50 sceCdStPause  # MAIN; by its own message ('sceCdStPause call') -- the GCC lane r22a
 0x0018FAB0 0x54 sceCdStResume  # MAIN; by its own message ('sceCdStResume call') -- the GCC lane r22a
 0x0018FB08 0x48 sceCdStStat  # MAIN unaligned; by its own message ('sceCdStStat call') -- the GCC lane r22a
 0x0018FB50 0x168 func_0018FB50  # MAIN
 0x0018FCB8 0x54 func_0018FCB8  # MAIN unaligned
-0x0018FD10 0x23C func_0018FD10  # MAIN
-0x0018FF50 0x48 func_0018FF50  # MAIN
+0x0018FD10 0x23C sceDbcInit  # MAIN; by Sony's libdbc API (it prints only "libdbc: ..."; libdbc.c's note): the three binds to 0x80001300 and the version check against dbcman.irx; zin_pad.cpp's OpenPadIO calls it before scePad2Init; socom-unzipped's independent table agrees -- the port preparation
+0x0018FF50 0x48 sceDbcEnd  # MAIN; by Sony's libdbc API (no string): the bound flag cleared and the library's semaphore deleted, 0 when it was never up; zin_pad.cpp's ClosePadIO calls it after scePad2End; socom-unzipped's independent table agrees -- the port preparation
 0x0018FF98 0x6C sceDbcSetWorkAddr  # MAIN unaligned; libdbc: by its own message 'sceDbcSetWorkAddr: rpc error' (RPC 0x80001304) -- round 12a
 0x00190008 0xD8 sceDbcCreateSocket  # MAIN unaligned; libdbc: by its own message 'sceDbcCreateSocket: rpc error' (RPC 0x80001301) -- round 12a
 0x001900E0 0x88 sceDbcDeleteSocket  # MAIN; libdbc: by its own message 'sceDbcDeleteSocket: rpc error' (RPC 0x80001302) -- round 12a
@@ -465,7 +465,7 @@
 0x0019AD20 0x2C strtol  # MAIN; s1:callee
 0x0019AD50 0x22C _strtoul_r  # MAIN; s1:calls
 0x0019AF80 0x2C strtoul  # MAIN; by body (newlib's stdlib/strtoul.c wrapper: _strtoul_r(_impure_ptr, s, ptr, base), byte-exact from src/lib/libc/strtoul.c; inet_aton's strtoul call)
-0x0019AFB0 0x20 func_0019AFB0  # MAIN
+0x0019AFB0 0x20 tolower  # MAIN; s1:order by hand (the demo's tolower 0x3E7B90 sits just before its toupper 0x3E7BB0, as this row before toupper 0x19AFD0; the same eight words bar movn for movz, toupper's own difference: the ctype table's upper bit (1) tested, 32 added; fts_mission.cpp's FilterNavPointString calls it) -- the port preparation
 0x0019AFD0 0x20 toupper  # MAIN; s1:exact by hand (MSL's: the ctype table's upper bit tested, 32 subtracted -- SOCOM 1's toupper, movn for movz)
 0x0019AFF0 0xE8 __submore  # MAIN; s1:order (newlib ungetc.c's static, the demo's 0x3E7BD0: _malloc_r, _realloc_r, memcpy)
 0x0019B0D8 0x188 ungetc  # MAIN unaligned; s1:order (newlib ungetc.c, after __submore as in the demo)
@@ -1125,14 +1125,14 @@
 0x001BD050 0x1AC sceSifMBindRpcParam  # MAIN; s1:callee
 0x001BD200 0x11C sceSifMUnBindRpc  # MAIN; s1:exact
 0x001BD320 0x264 sceSifMCallRpc  # MAIN; s1:exact
-0x001BD588 0x40 func_001BD588  # MAIN unaligned
-0x001BD5C8 0x68 func_001BD5C8  # MAIN unaligned
-0x001BD630 0x108 func_001BD630  # MAIN
-0x001BD738 0x54 func_001BD738  # MAIN unaligned
-0x001BD790 0xD4 func_001BD790  # MAIN
-0x001BD868 0xD0 func_001BD868  # MAIN unaligned
-0x001BD938 0x140 func_001BD938  # MAIN unaligned
-0x001BDA78 0xE0 func_001BDA78  # MAIN unaligned
+0x001BD588 0x40 scePad2Init  # MAIN unaligned; role by SOCOM 1's caller (CInput::OpenPadIO calls scePadInit(0) where SOCOM II's calls this with 0, src/gamez/zinput/zin_pad.cpp); prefix by the library (its version tag PsIIlibpad2 2710, its message "libpad2: ..."); clears the 16 ports, returns 1 -- the port preparation
+0x001BD5C8 0x68 scePad2End  # MAIN unaligned; role by SOCOM 1's caller (CInput::ClosePadIO calls scePadEnd where SOCOM II's calls this); prefix as scePad2Init's; deletes every open socket -- the port preparation
+0x001BD630 0x108 scePad2CreateSocket  # MAIN; role by SOCOM 1's caller (CPad's constructor calls scePadPortOpen where SOCOM II's calls this); libpad2's own message; wraps sceDbcCreateSocket (named by its own message) -- the port preparation
+0x001BD738 0x54 scePad2DeleteSocket  # MAIN unaligned; role by SOCOM 1's caller (CPad's destructor calls scePadPortClose where SOCOM II's calls this); wraps sceDbcDeleteSocket (named by its own message) -- the port preparation
+0x001BD790 0xD4 scePad2Read  # MAIN; role by SOCOM 1's caller (CPad::Tick reads the buttons with scePadRead where SOCOM II's calls this); copies the newer DMA half's data out -- the port preparation
+0x001BD868 0xD0 scePad2GetButtonProfile  # MAIN unaligned; by Sony's libpad2 API (no string, no SOCOM 1 counterpart): (socket, profile) -> the profile's length, the profile bytes copied out after the data; socom-unzipped's independent table agrees -- the port preparation
+0x001BD938 0x140 scePad2GetState  # MAIN unaligned; role by SOCOM 1's caller (CPad::Tick calls scePadGetState first, as SOCOM II's calls this; the result compared with the connected state) -- the port preparation
+0x001BDA78 0xE0 scePad2GetButtonInfo  # MAIN unaligned; by Sony's libpad2 API (no string, no SOCOM 1 counterpart): (socket, data, button) -> one button's bit or byte by the profile's table, -1 when absent; socom-unzipped's independent table agrees -- the port preparation
 0x001BDB58 0x78 func_001BDB58  # MAIN unaligned
 0x001BDBD0 0x54 func_001BDBD0  # MAIN
 0x001BDC28 0x64 func_001BDC28  # MAIN unaligned
@@ -1161,19 +1161,19 @@
 0x001BE450 0x8C AdjustTime  # MAIN; s1:exact
 0x001BE4E0 0x8 sceScfGetGMTfromRTC  # MAIN; s1:order (the demo's libscf object 0x3AA6F8: between AdjustTime and sceScfGetLocalTimefromRTC, 8 bytes in both; AdjustTime(rtc, -540), JST to GMT)
 0x001BE4E8 0x48 sceScfGetLocalTimefromRTC  # MAIN unaligned; s1:exact
-0x001BE530 0x80 func_001BE530  # MAIN
-0x001BE5B0 0xEC func_001BE5B0  # MAIN
-0x001BE6A0 0x1F8 func_001BE6A0  # MAIN
-0x001BE898 0xC8 func_001BE898  # MAIN unaligned
+0x001BE530 0x80 sceVibGetProfile  # MAIN; by Sony's libvib API, the DBC pad's actuator library (no string, no SOCOM 1 counterpart; src/lib/sdk/libvib.c's note): (socket, profile), a profile received over libdbc; socom-unzipped's independent table agrees -- the port preparation
+0x001BE5B0 0xEC sceVibSetActParam  # MAIN; by Sony's libvib API (no string; libvib.c's note): (socket, profile_size, profile, data_size, data), sent through sceDbcSendData2; socom-unzipped's independent table agrees -- the port preparation
+0x001BE6A0 0x1F8 sceUsbKbInit  # MAIN; by Sony's libusbkb API (it prints only "libusbkb : ..."; libusbkb.c's note): (int *max_connect), binds RPC 0x80000211, makes the library's semaphore, installs the INTC 3 repeat handler; zin_keyboard.cpp calls it first; socom-unzipped's independent table agrees -- the port preparation
+0x001BE898 0xC8 sceUsbKbEnd  # MAIN unaligned; by Sony's libusbkb API (it prints only "libusbkb.a : ..."): removes the INTC 3 handler, deletes the semaphore; zin_keyboard.cpp's shutdown; socom-unzipped's independent table agrees -- the port preparation
 0x001BE960 0xA8 sceUsbKbGetInfo  # MAIN; its own message (the GCC lane r14a: "sceUsbKbGetInfo: sceSifCallRpc -> %d" when its RPC, command 1, fails; libusbkb is not in SOCOM 1; src/lib/sdk/libusbkb.c)
 0x001BEA08 0xDC sceUsbKbRead  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbRead: sceSifCallRpc -> %d" when its RPC, command 2, fails; src/lib/sdk/libusbkb.c)
 0x001BEAE8 0xDC sceUsbKbGetLocation  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbGetLocation: sceSifCallRpc -> %d" when its RPC, command 3, fails; src/lib/sdk/libusbkb.c)
 0x001BEBC8 0xD8 sceUsbKbSetLEDStatus  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbSetLEDStatus: sceSifCallRpc -> %d" when its RPC, command 4, fails; src/lib/sdk/libusbkb.c)
 0x001BECA0 0xFC sceUsbKbSetLEDMode  # MAIN; its own message (the GCC lane r14a: "sceUsbKbSetLEDMode: sceSifCallRpc -> %d" when its RPC, command 5, fails; src/lib/sdk/libusbkb.c)
-0x001BEDA0 0x44 func_001BEDA0  # MAIN
-0x001BEDE8 0x4C func_001BEDE8  # MAIN unaligned
+0x001BEDA0 0x44 sceUsbKbSetRepeat  # MAIN; by Sony's libusbkb API (no string): (no, sta, interval) stored as the keyboard's repeat start and interval, -11/-12 when either is negative; zin_keyboard.cpp's (0, 20, 6); socom-unzipped's independent table agrees -- the port preparation
+0x001BEDE8 0x4C sceUsbKbSetCodeType  # MAIN unaligned; by Sony's libusbkb API (no string): (no, type) stored as the keyboard's code type, -11 past the keyboards connected, -12 for a type of 2 or more; socom-unzipped's independent table agrees -- the port preparation
 0x001BEE38 0x4C func_001BEE38  # MAIN unaligned
-0x001BEE88 0xA0 func_001BEE88  # MAIN unaligned
+0x001BEE88 0xA0 sceUsbKbSync  # MAIN unaligned; by Sony's libusbkb API (no string; libusbkb.c's note already calls it so): (mode, *result), waits for or polls the pending asynchronous RPC and runs its result handler; zin_keyboard.cpp calls it after each sceUsbKbGetInfo and sceUsbKbRead; socom-unzipped's independent table agrees -- the port preparation
 0x001BEF28 0xC func_001BEF28  # MAIN unaligned
 0x001BEF38 0x64 func_001BEF38  # MAIN unaligned
 0x001BEFA0 0x58 func_001BEFA0  # MAIN
