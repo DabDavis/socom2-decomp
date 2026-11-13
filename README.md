@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks rows, round 81** (nothing closed; CZSealBody::MixAnims 0x58BDF0 245 to 4, at size, every register and
+  spill slot right: `m_type > -1 ? blendable : 0` (slti; movn), `int id = type;` (the extra saved register that spills the list),
+  minType/maxType `AnimType` set `(AnimType)-1; maxType = minType;`, maxEnd before minEnd, `int i = 0;` before the pool pointer;
+  left: the frame 304 vs 272 (32 bytes above taken[], SOCOM 1's 256-byte frame has them too) and GetScript's argument loaded
+  before m_animset. HandleFireWeapon still 10 (the item byte, a CSE temporary, would need numbering after a codegen temporary --
+  another shape). The data-reference sweep done serially over all 101 WRONG rows: no new mismatches. Probe units for aliasing in
+  the lane's scratch, build/scratch/mw-r81/alias*.cpp):
+  - MW 3.0 HAS NO TYPE-BASED ALIASING: through any pointer (any type, a union, `char *`, `__restrict`) a load stays behind a store;
+    only two direct named-object accesses at disjoint (object, offset) reorder. A target hoisting a load over a store accesses both
+    objects directly; one keeping source order where ours reorders has a pointer on one side. THE GCC UNION TELL DOES NOT PORT.
+    A stack struct whose address is passed out behaves as a named object (a pointer to it is propagated back).
+  - a short local copied to another short re-extends and spills to a 2-byte slot; an enum local assigned a constant spills to a
+    16-byte slot unextended -- edge types at 16-byte slots, stored bare, are enums.
+  - a saved register holding a short's sign-extension, used for an int parameter and stored back to a short field, is an `int`
+    local. A local array nothing reads leaves no frame bytes in MW. A pointer whose address is computed after a counter's zero is
+    initialised after `int i = 0;`.
 - **Tells from the GCC Medius code, round 81** (dmemessage 0x61F920 byte-exact, rewritten from the target: a failure with no callback
   falls through into the join, the report's return inside `if (data_0067C5B8 != 0)`. rt_frag 0x645290 13 to 2 (`d = pSlot->nSeq &
   63; d = (d - nIndex) & SEQ; if (d - 1 < 0x0FFFFFFE)`), 0x645380 62 to 18, registers only (nSlot 6857 before nExpect 6122; 720
