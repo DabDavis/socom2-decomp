@@ -978,14 +978,22 @@ extern DmeUpdateStructure NetStructureList[16];
 
 /* an object's update (SOCOM 1's RemoteObjectUpdate's caller, 0x61ED48): for an object not live here the message's length is
  * walked; otherwise each field in it is copied to both copies of the data, its time stamped, the class told */
-/* OPEN (round 26b): first draft, 8 long (d=137), shape incomplete. */
+/* GCC round 76 (open since round 26b, 51 structural): both walks share one set of locals (pStruct s5, nField s2, pField
+ * s1 -- the registers say so), every failure is one `goto fail` to a block inside the live record's null test, the
+ * field byte counted between the two field tests (the second test's slot), i stepped last; the live walk computes
+ * both destinations before the first copy and steps p before nLength. */
 int func_0061ED48(int nConnection, int nUnused, unsigned int nClient, unsigned char *pMsg)
 {
     char *pObject = 0;
     unsigned int nIndex;
     int nLength;
     unsigned char *p;
-    unsigned int i;
+    unsigned int i = 0;
+    DmeUpdateStructure *pStruct;
+    unsigned char nField;
+    DmeUpdateField *pField;
+    int nOff;
+    char *pDst1, *pDst2;
 
     if (pMsg == 0)
         return -1;
@@ -996,53 +1004,49 @@ int func_0061ED48(int nConnection, int nUnused, unsigned int nClient, unsigned c
     nIndex = *(unsigned short *)(pMsg + 2);
     nLength = 4;
     p = pMsg + 4;
-    i = 0;
     if (NetObjectStatus[nIndex] != 2) {
-        DmeUpdateStructure *pStruct = &NetStructureList[pMsg[0]];
-
+        pStruct = &NetStructureList[pMsg[0]];
         while (i < pMsg[1]) {
-            unsigned char nField = *p;
-
-            if (nField < pStruct->nFields && pStruct->apFields[nField] != 0) {
-                int nBytes = pStruct->apFields[nField]->nSize * pStruct->apFields[nField]->nCount;
-
-                i++;
-                nLength += nBytes + 1;
-                p += nBytes + 1;
-            } else
-                return -1;
+            nField = *p++;
+            if (nField >= pStruct->nFields)
+                goto fail;
+            nLength++;
+            if ((pField = pStruct->apFields[nField]) == 0)
+                goto fail;
+            p += pField->nSize * pField->nCount;
+            nLength += pField->nSize * pField->nCount;
+            i++;
         }
         return nLength;
     }
     {
         int r = func_00614EC8(&pObject, nIndex);
 
-        if (pObject == 0)
-            return -1;
-        if (r != 0)
+        if (pObject == 0 || r != 0)
             return -1;
     }
-    {
-        DmeUpdateStructure *pStruct = &NetStructureList[*(unsigned char *)pObject];
-
-        if (pStruct == 0)
-            return -1;
-        while (i < pMsg[1]) {
-            unsigned char nField = *p++;
-            DmeUpdateField *pField;
-            int nOff;
-
-            if (nField >= pStruct->nFields || (pField = pStruct->apFields[nField]) == 0)
-                return -1;
-            i++;
-            nOff = pStruct->anOffsets[nField];
-            memcpy(*(char **)(pObject + 0x1C) + nOff, p, pField->nSize * pField->nCount);
-            memcpy(*(char **)(pObject + 0x20) + nOff, p, pField->nSize * pField->nCount);
-            (*(int **)(pObject + 0x34))[nField] = CurrentNetTime;
-            nLength += pField->nSize * pField->nCount + 1;
-            p += pField->nSize * pField->nCount;
-            RemoteObjectUpdate(*(int *)(pObject + 4), *(unsigned short *)(pMsg + 2), nField);
-        }
+    pStruct = &NetStructureList[*(unsigned char *)pObject];
+    if (pStruct == 0) {
+fail:
+        return -1;
+    }
+    while (i < pMsg[1]) {
+        nField = *p++;
+        if (nField >= pStruct->nFields)
+            goto fail;
+        nLength++;
+        if ((pField = pStruct->apFields[nField]) == 0)
+            goto fail;
+        nOff = pStruct->anOffsets[nField];
+        pDst1 = *(char **)(pObject + 0x1C) + nOff;
+        pDst2 = *(char **)(pObject + 0x20) + nOff;
+        memcpy(pDst1, p, pField->nSize * pField->nCount);
+        memcpy(pDst2, p, pField->nSize * pField->nCount);
+        p += pField->nSize * pField->nCount;
+        nLength += pField->nSize * pField->nCount;
+        (*(int **)(pObject + 0x34))[nField] = CurrentNetTime;
+        RemoteObjectUpdate(*(int *)(pObject + 4), *(unsigned short *)(pMsg + 2), nField);
+        i++;
     }
     return nLength;
 }
