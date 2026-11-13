@@ -2066,6 +2066,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEAL, round 73** (0x577BA0 (14 since round 45) and CSealUnit::GetTeamSeals 0x5EA8C0 (0x1B8 of 0x1B0) byte-exact,
+  both by loops rotated by hand. Tried, not committed: 0x57D710 14 to 10 through an inline returning `&seal->m_blends` but 0x57D5E0
+  9 to 22; SetTarget's `if (bit16 && !bit17) mode = 1; else mode = 0;` gives the layout at 0x3B0. AcquireAiAware 0x560B20: igreplay
+  wants the invariant reload (v44) numbered 31.5/32.5 or `ma` at 44.5+; every spelling leaves ma the named v33. AttackTick,
+  0x569E40 and SetTarget share one turret test: the target's false arm an empty `b` into the null arm's zero block (`beq` to
+  true then `b`); a switch keeps the layout but loses the slot fills, `&&` ternaries become values, if/goto invert to `bne`.
+  CAiSDeploy's 12: a `-1` mask colour in CAiMapLoc's bit-field copy. No header change):
+  - A LOOP ROTATED BY HAND, `if (c) { ... do { } while (c); }`, GIVES MW'S GUARD BLOCK: a local declared inside the guard lands
+    after the entry test and is not forwarded (0x577BA0). A walk top-tested with a bottom test is hand-rotated; MW's own `for`
+    enters at the bottom test (GetTeamSeals).
+  - A BY-VALUE INLINE PARAMETER ASSIGNED TO ITSELF (`first = first;`) stays in the frame at the inline's level, the lowest slot
+    (unmodified it is substituted by the caller's temporary; modified otherwise, scalarised to a register).
+  - `out->insert(out->end(), x)` rebuilds end() each pass; `push_back(x)` in an unconditional body hoists it into a saved register.
 - **Tells from OVL1, round 73** (four rows byte-exact: SkbStartDisplay 0x395540 (1 since round 21), SendChatLine 0x281D40 (6),
   zar::CZAR::ReadDirectory 0x258000 (3), CTeamNames::SetupTeamNameEntry 0x2216D0 (2). BitmapReticule::UpdateColor 0x215C10
   0xB40 to 0xB48 of 0xB50, 3 nops off (`CPnt3D tip = CPnt3D::zero, q = CPnt3D::zero;`; GetBarrelPart a real virtual through a
