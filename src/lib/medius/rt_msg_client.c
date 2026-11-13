@@ -2265,7 +2265,7 @@ unsigned char rt_msg_client_process_disconnect_message(rt_msg_client_connection 
                                              unsigned char *pMsg, unsigned int nLength);
 unsigned char func_00637230(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, int nLength);
 unsigned char func_00637438(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength);
-extern unsigned char func_00637510(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, int nType,
+unsigned char func_00637510(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, int nType,
                          unsigned char *pMsg, unsigned int nLength);
 unsigned char func_00637900(rt_msg_client_connection *pConnection, int nUnused1, int nUnused2, unsigned char *pMsg,
                   unsigned int nLength);
@@ -2838,6 +2838,162 @@ unsigned char func_00637438(rt_msg_client_connection *pConnection, int nType, un
         rt_msg_get_ubyte(pMsg + 3, &b3);
         pConnection->pfnCallback(pConnection->nId, b0, b1, b2, b3, nLength - 4, pMsg + 4);
     }
+    return 0;
+}
+
+extern void func_0062EEC0(void *pData, int nLength, void *pDigest, int nDigestLength);
+extern void func_00629A48(unsigned int nAddress, unsigned int nBytes, unsigned char *pOut);
+extern void func_0062EF30(unsigned char *pData, unsigned int nLength, unsigned int nAddress, unsigned int nBytes,
+                          unsigned char *pOut, int nOutLength);
+extern void func_00629AA8(unsigned char *pData, unsigned int nLength, unsigned int nAddress, unsigned int nBytes,
+                          unsigned char *pOut);
+extern int func_0063CD18(unsigned int *pnValue);
+extern int func_0063CDA0(unsigned int *pnValue);
+extern int func_006311E8(unsigned int *pnValue);
+extern int func_0063CE38(unsigned int nArg, unsigned char *pOut, int nMax, unsigned int *pnLength);
+extern unsigned int data_0065562C;
+void func_00638828(void);
+
+/* a message that reads memory and state (0x637510, message type 29, new in SOCOM II): a command
+ * byte and three words; the command and the first two echoed, then by the command a length word
+ * and its data -- up to 499 bytes of memory, a 16-byte digest of a range (two ways, and two more
+ * over the message's own tail), three state words, an address of this object's (its 0x87654321
+ * word, a function), a byte string's address found in a range -- answered as a type-29 message.
+ * Byte-exact (GCC libraries' round 30) with, each measured: the size a running count from the
+ * header's 9 (`nSize = 9` before the switch, `+=` in each case) -- gcse's cprop folds a case's
+ * first add into a constant (the target's `li s0,13/17/29`) but not an add after it, which reads
+ * the first add's result (`addu v1,v1,s0`, `addiu v1,s0,4`; a constant per case folds them all);
+ * the search's index starts at the count (`j = nSize`: the pre-test compares s0); the memory read's
+ * clamp through a local set to 499 first (`?:` and an if compare against 500: `sltiu ...,500`);
+ * a state word's lookup `== 0` with its value first (the fall-through `b` into the default's
+ * store); the mismatch arm first in the search (`beql; movz`). */
+unsigned char func_00637510(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, int nType,
+                  unsigned char *pMsg, unsigned int nLength)
+{
+    unsigned char abMsg[512];
+    unsigned char bCmd;
+    unsigned int nArg1, nArg2, nArg3;
+    unsigned int nValue;
+    unsigned char *p;
+    unsigned short nSize;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (nLength < 13)
+        return 0;
+    rt_msg_get_ubyte(pMsg, &bCmd);
+    rt_msg_get_u4byte(pMsg + 1, &nArg1);
+    rt_msg_get_u4byte(pMsg + 5, &nArg2);
+    rt_msg_get_u4byte(pMsg + 9, &nArg3);
+    rt_msg_set_ubyte(abMsg, bCmd);
+    rt_msg_set_u4byte(abMsg + 1, nArg1);
+    rt_msg_set_u4byte(abMsg + 5, nArg2);
+    p = abMsg + 9;
+    nSize = 9;
+    switch (bCmd) {
+    case 0:
+        {
+            unsigned int n = 499;
+
+            if (nArg3 < 499)
+                n = nArg3;
+            nArg3 = n;
+        }
+        rt_msg_set_u4byte(p, nArg3);
+        memcpy(p + 4, (void *)nArg2, nArg3);
+        nSize += nArg3 + 4;
+        break;
+    case 1:
+        rt_msg_set_u4byte(p, 16);
+        func_0062EEC0((void *)nArg2, nArg3, p + 4, 16);
+        nSize += 20;
+        break;
+    case 2:
+        rt_msg_set_u4byte(p, 16);
+        func_00629A48(nArg2, nArg3, p + 4);
+        nSize += 20;
+        break;
+    case 3:
+        nValue = 0;
+        if (func_0063CD18(&nValue) == 0)
+            rt_msg_set_u4byte(p, nValue);
+        else
+            rt_msg_set_u4byte(p, 0);
+        nSize += 4;
+        break;
+    case 4:
+        nValue = 0;
+        if (func_0063CDA0(&nValue) == 0)
+            rt_msg_set_u4byte(p, nValue);
+        else
+            rt_msg_set_u4byte(p, 0);
+        nSize += 4;
+        break;
+    case 5:
+        rt_msg_set_u4byte(p, 16);
+        func_0062EF30(pMsg + 13, nLength - 13, nArg2, nArg3, p + 4, 16);
+        nSize += 20;
+        break;
+    case 6:
+        rt_msg_set_u4byte(p, 16);
+        func_00629AA8(pMsg + 13, nLength - 13, nArg2, nArg3, p + 4);
+        nSize += 20;
+        break;
+    case 8:
+        rt_msg_set_u4byte(p, 4);
+        rt_msg_set_u4byte(p + 4, (unsigned int)&data_0065562C);
+        nSize += 8;
+        break;
+    case 9:
+        rt_msg_set_u4byte(p, 4);
+        rt_msg_set_u4byte(p + 4, (unsigned int)func_00638828);
+        nSize += 8;
+        break;
+    case 10:
+        nValue = 0;
+        if (func_006311E8(&nValue) == 0)
+            rt_msg_set_u4byte(p, nValue);
+        else
+            rt_msg_set_u4byte(p, 0);
+        nSize += 4;
+        break;
+    case 11:
+        nSize += 4;
+        p += 4;
+        if (func_0063CE38(nArg2, p, 499, &nValue) == 0) {
+            rt_msg_set_u4byte(p - 4, nValue);
+            nSize += nValue;
+        } else
+            rt_msg_set_u4byte(p - 4, 0);
+        break;
+    case 12: {
+        unsigned char *pFound = 0;
+        unsigned int i, j;
+
+        rt_msg_set_u4byte(p, 4);
+        p += 4;
+        nSize += 4;
+        for (i = 0, j = nSize; i < nArg3 && j < nLength; i++, j++) {
+            if (((unsigned char *)nArg2)[i] != pMsg[j]) {
+                j = 13;
+                pFound = 0;
+            } else if (pFound == 0)
+                pFound = (unsigned char *)nArg2 + i;
+        }
+        rt_msg_set_u4byte(p, (unsigned int)pFound);
+        nSize += 4;
+        break;
+    }
+    default:
+        rt_msg_set_u4byte(p, 0);
+        nSize += 4;
+        break;
+    }
+    rt_msg_client_store_msg_in_send_buf(pComm, 29, 0xFFFF, abMsg, nSize, 0);
     return 0;
 }
 
