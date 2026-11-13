@@ -448,8 +448,11 @@ void C2DGlyph::LoadElems(const _zrdr *rdr, int height)
 }
 
 /* CharLayouts: each layout named, its three parts placed, each part's alternates' ids */
-/* OPEN, 46 instructions: registers and the part loop's walkers (the target keeps the parts'
- * name table and the layout's part in s8/s0). */
+/* OPEN, 30 instructions, registers only (round 73, 46 before): the part counter is an INT (the target's
+ * `slti s7,3`), the frame the target's with the placement named (`C2DPlacement pl = ...` puts it above the
+ * name's string temporary, 248 over 232), and jamo declared bare ahead of the place and assigned in the loop
+ * (39 to 38). Left: the place walks in s3 (the target's s0), j s2 (s3) and FindName's walk one lower --
+ * the place declared bare and assigned (37), a part local bare, a named id, a copy of the place: no move. */
 void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rdr, const std::vector<CSaferStr> &jamoNames)
 {
     _zrdr *list = FlatFindTag(rdr, "CharLayouts");
@@ -459,13 +462,16 @@ void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rd
 
         names.push_back(CSaferStr(zrdr_flat_findstring(item, "Name", 0)));
         m_layouts.resize(m_layouts.size() + 1);
+        _zrdr *jamo;
         CJamoPlace *place = m_layouts.back().m_parts;
 
-        for (unsigned int k = 0; k < 3; k++, place++) {
+        for (int k = 0; k < 3; k++, place++) {
             _zrdr *part = FlatFindTag(item, s_hangulParts[k]);
 
-            place->m_place = ReadPlacement(part);
-            _zrdr *jamo = FlatFindTag(part, "Jamo");
+            C2DPlacement pl = ReadPlacement(part);
+
+            place->m_place = pl;
+            jamo = FlatFindTag(part, "Jamo");
 
             for (int j = 0; j < (jamo ? (int)jamo->Count() : 0); j++)
                 place->m_keys.push_back(FindName(jamoNames, jamo->Item(j)->String()));
