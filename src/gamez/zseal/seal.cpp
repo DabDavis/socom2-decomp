@@ -3933,6 +3933,17 @@ static inline bool PushOn()
     return !noWeaponWallPush;
 }
 
+/* the head's height raised by 2, in the SEAL's body (an inline, the name ours: its point a local of its own,
+ * below the function's) */
+static inline float HeadY(CZSealBody *seal)
+{
+    CPnt3D head;
+
+    seal->PartInSpace(seal->m_head, 0, &head, 0);
+    head.y += 2.0f;
+    return head.y;
+}
+
 static inline bool Tiny(float v)
 {
     return fabsf(v) < 0.0005f;
@@ -4070,7 +4081,6 @@ void CZSealBody::PostPreTick(float dT)
         CPnt3D dir;
         CPnt3D side;
         CPnt3D a, b;
-        CPnt3D fire;
 
         if (still) {
             float (*m)[4] = m_node->m_matrix.m_matrix;
@@ -4099,7 +4109,7 @@ void CZSealBody::PostPreTick(float dT)
 
         dir.Scale(1.4f * reach, &dir);
 
-        fire = m_curr_firepos;
+        CPnt3D fire = m_curr_firepos;
 
         float step = theCharacterDynamics.m_stepHeight;
 
@@ -4320,10 +4330,7 @@ void CZSealBody::PostPreTick(float dT)
                 return;
             NodePos(this, from);
             if (m_curr_firept) {
-                CPnt3D head;
-
-                PartInSpace(m_head, 0, &head, 0);
-                from.y += head.y += 2.0f;
+                from.y += HeadY(this);
 
                 CPnt3D z;
                 float (*m)[4] = m_node->m_matrix.m_matrix;
