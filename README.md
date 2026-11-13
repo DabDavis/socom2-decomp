@@ -2066,6 +2066,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit, round 71** (CTTeam::Tick 0x5CEA40, 20 to 0, and CSealUnit::GetMyPointOutAnimStart 0x5E7390, 16 to 0,
+  byte-exact; HandleFireWeapon 0x5BE9A0 at the target's size (0xF00), d=296 to 200, registers only (this, index, w, ammo,
+  shots, t want s5..s0; the 24 orders of four score 209-214); CZKit::Fire 50 to 48. No header change):
+  - A TERNARY INTO A NAMED LOCAL STILL NUMBERS AS ITS OWN TEMPORARY: declare the local ahead of the block and set it by
+    if/else in both arms (`if (param) seal = param->m_seal; else seal = 0;`, the new TASK_SEAL_FIRST macro), and it numbers
+    where declared -- CTTeam 20 to 0 (TASK_SEAL_FIRST on CTTurret, CTRegion, CTCreate changes nothing).
+  - A STORE THROUGH A FLOAT-ARRAY VIEW OF A POINT (`((float *)&p)[k] = v`) is an address CSE does not merge with the member
+    reads: the store goes frame-direct while the loads keep their saved address registers (GetMyPointOutAnimStart).
+  - a float compare's bool tested with no `andi`: each compare its own inline `bool r = a < b; return r;` (KitInReach,
+    KitIdle) joined by `&&` (`ok = a; if (ok) ok = b;`, bool, int, ternaries keep it).
+  - an `unsigned char t = type;` tested in a loop is hoisted as an invariant cast into a high saved register; `int t =
+    (unsigned char)type;` is not. A team test `&` with a cast on one side changes the load order, not the operands; a pointer
+    inline on both sides (KitTeamP) fixes both.
+  - pragmascan: `#pragma opt_propagation off` gives CTTurret::Tick the target's size (0x27C, d=31) -- the 1 shared between `r`
+    and the case compares is propagation's; the spelling still unknown.
 - **Tells from the mechanics, round 70** (four rows byte-exact: CZSealBody::Recoil 0x57B550 (0x1FB8) and the ladder 0x5B1C80 (0x994,
   returns bool) -- both unwritten before -- 0x57DCC0 (6 off since round 53) and 0x5880E0 (its kind 12 is 0x57DCC0's body; one
   fix closed both). Recoil generated from the target: a symbolic walk of the disassembly emitting the Exp vectors and offsets
