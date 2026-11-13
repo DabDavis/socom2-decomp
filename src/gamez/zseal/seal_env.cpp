@@ -2227,12 +2227,15 @@ void CZSealBody::CheckDIShoot(CPnt3D *from, CMatrix *mat)
             PerturbAim(&aim, &eye, &target->m_accuracy);
             SetAimPointW(&aim, 0, false);
             aimed = true;
-            sx = aim.x;
+            /* (the words read through a reference: the x kept for the copy, y and z read again) */
+            const CPnt3D &r = aim;
+
+            sx = r.x;
             hit = 0;
-            sy = aim.y;
+            sy = r.y;
             autoaimed = aimed;
+            sz = r.z;
             KitView(this)->m_aimpt = aim;
-            sz = aim.z;
         }
     }
     KitView(this)->m_autoaimed = autoaimed;
