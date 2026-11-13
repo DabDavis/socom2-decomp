@@ -4962,7 +4962,14 @@ static inline bool PlaceOk(CKitFireBody *fb)
  * hoisted ETYPCON(t) took s5: 225 to 214). Left: this s4, index s3, w s1, ammo s0, shots s5, t s2
  * against the target's s5, s4, s3, s2, s1, s0 -- MW pops t, shots, ammo, w, index, this; the 24
  * declaration orders of w, ammo, shots and t (block top or function top) 209-214; the gun's rounds as
- * an inline member is called, not inlined (0xD10: inline_max_size) */
+ * an inline member is called, not inlined (0xD10: inline_max_size).
+ * Round 79 (the MW lane; 214 to 47, structural 17 to 9, register-only 165 to 38): LobAim's target point
+ * a named local ahead of the call -- the target computes it before GetMuzzleVelocity and reads m_body
+ * again after it for the first argument; written inline MW evaluated the call first and CSE'd one
+ * m_body load into both -- which gave every saved register the target's (this s5); with it the AI's
+ * aim copied through a reference to m_1440 (one m_body load for the three words), and the quaternion
+ * copied whole (`q = m_quat`: the three loads then the three stores, w between). Left: the bound's
+ * `slti` (ours `slt at,a1,zero`), the block-optimization pad, and w / ammo / t one register over. */
 void CZKit::HandleFireWeapon(int index, float a, float b)
 {
     EQUIP_ITEM id = m_item[index]->GetId();
@@ -5142,18 +5149,17 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
 
             v.Normalize();
             CQuat q;
-            const CQuat &from = ((CEntity *)m_body)->m_quat;
-
-            CopyPoint(&q.vec, &from.vec);
-            q.w = from.w;
+            q = ((CEntity *)m_body)->m_quat;
             q.vec.x = -q.vec.x;
             q.vec.y = -q.vec.y;
             q.vec.z = -q.vec.z;
             q.Apply(&v, &dir, 1);
         } else if (KitIsAi((CKitBody *)fb) || ((CKitBody *)m_body)->m_eb8) {
-            dir.x = ((CKitFireBody *)m_body)->m_1440.x;
-            dir.y = ((CKitFireBody *)m_body)->m_1440.y;
-            dir.z = ((CKitFireBody *)m_body)->m_1440.z;
+            const CPnt3D &d = ((CKitFireBody *)m_body)->m_1440;
+
+            dir.x = d.x;
+            dir.y = d.y;
+            dir.z = d.z;
         } else
             return;
         if (!(((CKitFireBody *)m_body)->m_258 & 1))
@@ -5161,8 +5167,11 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
         CZFTSWeapon *w = GetCurItem();
         CZAmmo *ammo = (CZAmmo *)GetCurAmmo();
 
-        if (launcher && KitIsPlayerB((CKitBody *)m_body))
-            LobAim(m_body, &fp, &((CKitBody *)m_body)->m_last_reticule.m_pos, &dir, w->GetMuzzleVelocity());
+        if (launcher && KitIsPlayerB((CKitBody *)m_body)) {
+            const CPnt3D *to = &((CKitBody *)m_body)->m_last_reticule.m_pos;
+
+            LobAim(m_body, &fp, to, &dir, w->GetMuzzleVelocity());
+        }
         int shots = 1;
 
         if (ammo)
