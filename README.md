@@ -2066,6 +2066,12 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC Medius code, round 83** (rt_frag 0x645290 byte-exact: the age test reuses the function's own `d` -- `d =
+  pBuf->nLatest & SEQ; d = (nIndex - d) & 0x40; if (d)`. 0x611180 (13): a global-alloc tie, p 5000 vs nState 4705; one more nState
+  reference flips every register right, but each way of adding one changes the layout. No reconstructions among the Medius rows.
+  SendPacket: the target's `li v1,-1; xor` (not `nor`) means its ifs converted after reload; ours convert in the first jump pass):
+  - A TEMPORARY BETWEEN TWO SETS OF A VARIABLE THAT DIES MORE THAN ONCE CANNOT BE TIED (local-alloc takes only REG_N_DEATHS == 1):
+    to keep a subu off its dying input's register, put input and use in one function-level variable set twice.
 - **Tells from the GCC SDK and recogniser, round 83** (sifcmd.c's sceSifInitCmd 0x1A5C98 (since 11a: the soft-register clear counts
   up to 32, loop.c reverses it, the counter's final 32 is the SIF0 bit stored to D_STAT) and libcdvd.c's 0x18EF70 (the retry count
   cleared before the bind-flag test, the flag cleared at the loop's break) byte-exact. At size: _sceSifCmdIntrHdlr (8), sceCdInit (36;
