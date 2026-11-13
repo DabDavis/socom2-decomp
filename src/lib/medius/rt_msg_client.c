@@ -3476,12 +3476,14 @@ extern int rt_comm_send_to(int nChannelId, char *szAddress, unsigned short nPort
                            unsigned short nLength, unsigned short *pnSent);
 
 /* one piece of a send: a stream channel sends at most 4096 bytes, a datagram channel (kind 1) the
- * whole messages that fit in 584 to its address and port. OPEN (17 words): the target's final
+ * whole messages that fit in 584 to its address and port. The kinds are an else-if chain ending in
+ * `else return 3` (GCC round 75: 17 words to 2 -- the kind test nested in the else arm put nKind in
+ * v1 and filled the `bnez` slot the target leaves a nop; "registers" was the chain's shape). The final
  * `return 0` is a join the nothing-to-send path reaches (`move v0,zero` kept; without one 2.96 folds
  * `if (result) return result; return 0;` into `return result`, 3 words short) -- the label here is a
- * stand-in for SCEA's shape, not known; nKind then takes v1 where the target's is v0, and send_to's
- * channel and port loads come in the other order. The internals' results are unsigned char (no `andi`
- * on any returned result: get_connection, get_valid_connection, get_header and 0x638500 so typed). */
+ * stand-in for SCEA's shape, not known. OPEN (2 words): send_to's channel and port loads come in the
+ * other order. The internals' results are unsigned char (no `andi` on any returned result:
+ * get_connection, get_valid_connection, get_header and 0x638500 so typed). */
 unsigned char func_006385F0(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned int nLength, unsigned short *pnSent)
 {
     unsigned int nSend = 0;
@@ -3500,16 +3502,15 @@ unsigned char func_006385F0(rt_msg_client_comm *pComm, unsigned char *pMsg, unsi
         if (nLength > 4096)
             nSend = 4096;
         nCommResult = rt_comm_send(pComm->nChannelId, pMsg, nSend, pnSent);
-    } else {
-        if (pComm->nKind != 1)
-            return 3;
+    } else if (pComm->nKind == 1) {
         result = func_00638500(pMsg, nLength, 584, &nSend);
         if (result != 0)
             return result;
         if (nSend == 0)
             goto done;
         nCommResult = rt_comm_send_to(pComm->nChannelId, pComm->szAddress, pComm->nPort, pMsg, nSend, pnSent);
-    }
+    } else
+        return 3;
     result = rt_msg_client_map_comm_error(nCommResult);
     if (result != 0)
         return result;
