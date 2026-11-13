@@ -260,6 +260,7 @@
 0x0018E878 _sceCd_scmd_prechk
 0x0018E9E8 func_0018E9E8
 0x0018ED78 sceCdDiskReady
+0x0018EF70 func_0018EF70
 0x0018F178 sceCdRead
 0x0018F358 func_0018F358
 0x0018F428 sceCdGetDiskType
@@ -736,6 +737,7 @@
 0x001A5C50 sceSifGetSreg
 0x001A5C68 sceSifSetSreg
 0x001A5C88 sceSifGetDataTable
+0x001A5C98 sceSifInitCmd
 0x001A5F18 sceSifExitCmd
 0x001A5F50 sceSifSetCmdBuffer
 0x001A5F68 sceSifSetSysCmdBuffer

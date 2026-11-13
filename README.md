@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC SDK and recogniser, round 83** (sifcmd.c's sceSifInitCmd 0x1A5C98 (since 11a: the soft-register clear counts
+  up to 32, loop.c reverses it, the counter's final 32 is the SIF0 bit stored to D_STAT) and libcdvd.c's 0x18EF70 (the retry count
+  cleared before the bind-flag test, the flag cleared at the loop's break) byte-exact. At size: _sceSifCmdIntrHdlr (8), sceCdInit (36;
+  Init_seq volatile in libcdvd.h, every cd_*.c rechecked), _doCSC2 (6), Actual_DP (133). The reconstruction sweep: only sifcmd's
+  handler and mpeg_dec's mpeg2decode parts are copied code; neither needed a rewrite. asrspi_cbResult: GSCALLBACK returning int
+  everywhere merges both notify blocks and loses 5 callbacks -- whatever keeps them apart applies to one call only):
+  - A COUNTER'S FINAL VALUE CAN BE THE CONSTANT: a loop counting up to N, reversed by loop.c, leaves N in the register for a later N.
+  - A CALL INSIDE A RETRY LOOP SHOWS AS HOISTED ADDRESSES (its argument addresses in saved registers before the loop).
+  - a flag cleared at the loop's break, not after it: one reference inside a loop counts twice and reorders global-alloc.
+  - a count tested `blez` where ours says `beqz` has its pseudo set more than once (no nonzero_bits). A load on both the entry and
+    the back edge is PRE: the value read unconditionally each outer iteration. A load made once before a wait loop is a
+    non-volatile field hoisted, only the counter volatile.
 - **Tells from the GCC SDK and recogniser, round 82** (five rows byte-exact: sase_libquan.c's 0x24B028 (since 44a: the codebook walked
   by its own pointer in the for's init list), tty.c's sceTtyHandler 0x1A4E08 and sceTtyWrite 0x1A4FA0 (ps2sdk's reconstruction, open
   since 11a, rewritten from the target and the image's four `TTY:` strings), asrspi_ActivateWords 0x4CAF38 (was m2c's shape: `n ==
