@@ -184,7 +184,7 @@ public:
         return ((CEntity *)this)->GetNode()->GetName();
     }
     /* the barrel's part (the entity's vtable slot +0x88: this view has no table) */
-    CZBodyPart *GetBarrelPart() { return (*(CZBodyPart *(**)(CZSealBody *))(*(char **)this + 0x88))(this); }
+    CZBodyPart *GetBarrelPart();
 
     unsigned char _0[0x14];
     const char *m_name;   // 0x14
@@ -390,6 +390,46 @@ public:
     static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
 };
 
+/* the entity's table as far as the barrel's part (slot +0x88; a view, the names ours): called as
+ * a virtual, through t9, where a function pointer goes through v0 */
+class CBarrelView {
+public:
+    virtual void V08();
+    virtual void V0C();
+    virtual void V10();
+    virtual void V14();
+    virtual void V18();
+    virtual void V1C();
+    virtual void V20();
+    virtual void V24();
+    virtual void V28();
+    virtual void V2C();
+    virtual void V30();
+    virtual void V34();
+    virtual void V38();
+    virtual void V3C();
+    virtual void V40();
+    virtual void V44();
+    virtual void V48();
+    virtual void V4C();
+    virtual void V50();
+    virtual void V54();
+    virtual void V58();
+    virtual void V5C();
+    virtual void V60();
+    virtual void V64();
+    virtual void V68();
+    virtual void V6C();
+    virtual void V70();
+    virtual void V74();
+    virtual void V78();
+    virtual void V7C();
+    virtual void V80();
+    virtual void V84();
+    virtual CZBodyPart *GetBarrelPart();   /* +0x88 */
+};
+inline CZBodyPart *CZSealBody::GetBarrelPart() { return ((CBarrelView *)this)->GetBarrelPart(); }
+
 /* the weapons' timer registration (SOCOM 1's CZWeapon statics; only the current value's pointer)
  * and the timer registered: its value, its maximum, whether it counts up (SOCOM 1's
  * CZWeapon::RegisterTimer(float *, float, bool), 0x3D0060, the same five stores) */
@@ -470,28 +510,6 @@ BitmapReticule::BitmapReticule()
 BitmapReticule::~BitmapReticule()
 {
     binocs_tex = 0;
-}
-
-/* two points zeroed from one copy of the zero (a local two inlines down: the frame holds it below the operators') */
-static inline void ZeroTwoDeep(CPnt3D &a, CPnt3D &b)
-{
-    CPnt3D z(CPnt3D::zero);
-    const CPnt3D *p = &z;
-    CPnt3D *pa = &a;
-    CPnt3D *pb = &b;
-
-    *pa = *p;
-    *pb = *p;
-}
-
-static inline void ZeroTwoMid(CPnt3D &a, CPnt3D &b)
-{
-    ZeroTwoDeep(a, b);
-}
-
-static inline void ZeroTwo(CPnt3D &a, CPnt3D &b)
-{
-    ZeroTwoMid(a, b);
 }
 
 /* a sum one inline down (its frame slot after the differences') */
@@ -592,7 +610,13 @@ public:
 /* the reticle's colours and the name under it (SOCOM 1's UpdateColor, on SOCOM II's friend tests, ammo and health
  * bar): grey when blocked or the weapon can't reach, the no-ammo and ready colours; the seal it is on named in red,
  * green or blue by side, with the clan tag and an ally's health */
-/* OPEN, 28 structural differences and 9 instructions differing in registers alone (0xB40 against
+/* Round 73: OPEN at 0xB48, 3 off -- the two nops below in (1) after mov.s and lwc1 f20 (the `b` before the
+ * arming distance's join not filled from its target in the original: the round-28 block-optimisation lead).
+ * Closed: the frame and the block copy of (2) and the madd.s nop of (1) by the two points INITIALISED from
+ * CPnt3D::zero in one declaration (`CPnt3D tip = CPnt3D::zero, q = ...`: MW shares one temporary for the
+ * repeated struct copy -- the target's 288, copied by block through a2 twice); the barrel's part called as a
+ * virtual (CBarrelView: t9, where the function-pointer view went through v0). Was:
+ * OPEN, 28 structural differences and 9 instructions differing in registers alone (0xB40 against
  * 0xB50; the GPRs and FPRs are right now: `scale` assigned, named and declared ahead of r, g, b, for
  * a `?:` value is a temporary numbered above them, coloured first and taking f20). What differs:
  * (1) three nops short, all between an FPR def ending a block and the label it falls to: `madd.s;
@@ -650,9 +674,8 @@ void BitmapReticule::UpdateColor()
 
         if (di) {
             CPnt3D muzzle;
-            CPnt3D tip, q;
+            CPnt3D tip = CPnt3D::zero, q = CPnt3D::zero;
 
-            ZeroTwo(tip, q);
             seal->m_body.PartInSpace(seal->GetBarrelPart(), &q, &tip, 0);
             seal->m_rot.Apply(&tip, &tip, 1);
             muzzle = AddPos(tip, seal->m_posW);
