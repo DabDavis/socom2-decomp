@@ -2066,6 +2066,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine, OVL1's back half** (three rows byte-exact: CAppCamera::ClipCameraChord 0x29BF70 (0xC38, was
+  0xC48), CPnt3D::Reflect 0x308EF0 (0xD0, was 0xDC), CQuat::Align 0x306D40 (0x288, was 50 instructions off); no include/
+  change. Of the 44 open rows at or above 0x260000 only two have no source -- the cdeque insert 0x286160 and
+  `__sinit_node_main.cpp` 0x4028D0 -- the rest are written, WRONG, most with long OPEN notes):
+  - THE REFERENCE/DIRECT SPLIT: a CPnt3D local read through an inline's reference (`FillV(v, p)`, `LenXZ(v)`, `Dot`)
+    addresses +4 and +8 apart from the local's own accesses; within each form a field read twice gets an address temporary
+    (a saved register), read once folds into the frame. When the target keeps `&local + 8` in a register but stores the
+    assignment frame-relative, move that field's other reads into a reference helper (ClipCameraChord needs both helpers,
+    either alone 0xC40; Align's half-way vector filled through FillV).
+  - Reflect: `r += *this` keeps the components where the dot product loaded them; three `r.x += x` reload them.
+  - the DistToVectors: MW gives the first-declared local the highest frame offset, the target's order c, v1, v2, n, v3, v4
+    (the 4-argument one 126 to 110 off; the 3-argument 0x2F0 of 0x300 -- 576 spellings of the tests, sqrts and fills all
+    store `ab`/`ap` through the tests' address temporaries where the target goes frame-relative; best 0x2F8, d=61). Open
+    too: Particle::CreateVisuals 0x322DF0 (SetPieceVertex's uv and n/d passed every way, d=612 or worse), CMatrix::SetRotate
+    0x3083C0 (14 spellings, 12 instructions or worse).
 - **Tells from the SEALs, round 64** (CZSealBody's PushBlend 0x588BC0 (0xD40) byte-exact from its draft, d=301 to 0 --
   SOCOM 1's `PushBlend__10CZSealBodyF8AnimTypeib`, the row still `func_00588BC0`; CBody::PushBlend 0x28DC90 renamed
   `PushBlend__5CBodyFP16CZSIScriptCommonii`, zbody.h with it, objcmp-proved by address over 672 units; scratch
