@@ -1138,13 +1138,18 @@ int func_006161D0(unsigned int nIndex)
 extern int strcmp(const char *a, const char *b);
 
 /* SOCOM 1's LocalObjectName2Index grown (0x616290): a client's named object by its name, -1 for none.
- * OPEN (8 bytes short): the target tests the name's address for null as computed (`addiu v0,v0,12;
- * beqz v0`, the sum then strcmp's argument); 2.96 here folds `p + 12 != 0` into `p != -12` and keeps
- * -12 in a fifth saved register. */
+ * OPEN (3 words since round 80, 8 bytes short before): the name's address a local, `s = p + 12; if (s != 0
+ * && ...)` -- written inline, 2.96 folds `p + 12 != 0` into `p != -12` and keeps -12 in a fifth saved
+ * register; and the client through a copy, `(pC = pClient)->nObjects` (the target loads pClient into a0 and
+ * copies it to v1 at the entry and the loop's tail, the status-miss path reusing a0 unreloaded: gcse's PRE
+ * register and a copy). Left: at the entry the target loads into a0 (the PRE register) and tests the copy;
+ * here the load is pC's (v1), copied to a0 in the slot. Testing pClient itself loads a0 but tests a0; the
+ * test before or after the copy, the copy in the body or the increment, declaration orders leave it. */
 int func_00616290(char *szName, unsigned int nWorld, unsigned int nClient)
 {
     DmeClient *pClient;
     DmeObject *pObject;
+    DmeClient *pC;
     int i, nIndex;
 
     if (szName == 0)
@@ -1154,13 +1159,15 @@ int func_00616290(char *szName, unsigned int nWorld, unsigned int nClient)
     if (nClient >= DME_MAX_CLIENTS)
         return -1;
     func_006126E8((void **)&pClient, nWorld, nClient);
-    if (pClient == 0)
+    if ((pC = pClient) == 0)
         return -1;
-    for (i = 0; i < pClient->nObjects; i++) {
-        nIndex = i + pClient->nFirstObject;
+    for (i = 0; i < (pC = pClient)->nObjects; i++) {
+        nIndex = i + pC->nFirstObject;
         if (NetObjectStatus[nIndex] == 2) {
+            char *s;
             func_00614EC8((void **)&pObject, nIndex);
-            if ((char *)pObject + 12 != 0 && strcmp((char *)pObject + 12, szName) == 0)
+            s = (char *)pObject + 12;
+            if (s != 0 && strcmp(s, szName) == 0)
                 return nIndex;
         }
     }
@@ -4534,45 +4541,6 @@ int func_006164E0(int nWorld, int nClient)
 extern int dme_pad_619DD8_0;
 extern int dme_pad_619DD8_1;
 extern int dme_pad_619DD8_2;
-extern int dme_pad_619DD8_3;
-extern int dme_pad_619DD8_4;
-extern int dme_pad_619DD8_5;
-extern int dme_pad_619DD8_6;
-extern int dme_pad_619DD8_7;
-extern int dme_pad_619DD8_8;
-extern int dme_pad_619DD8_9;
-extern int dme_pad_619DD8_10;
-extern int dme_pad_619DD8_11;
-extern int dme_pad_619DD8_12;
-extern int dme_pad_619DD8_13;
-extern int dme_pad_619DD8_14;
-extern int dme_pad_619DD8_15;
-extern int dme_pad_619DD8_16;
-extern int dme_pad_619DD8_17;
-extern int dme_pad_619DD8_18;
-extern int dme_pad_619DD8_19;
-extern int dme_pad_619DD8_20;
-extern int dme_pad_619DD8_21;
-extern int dme_pad_619DD8_22;
-extern int dme_pad_619DD8_23;
-extern int dme_pad_619DD8_24;
-extern int dme_pad_619DD8_25;
-extern int dme_pad_619DD8_26;
-extern int dme_pad_619DD8_27;
-extern int dme_pad_619DD8_28;
-extern int dme_pad_619DD8_29;
-extern int dme_pad_619DD8_30;
-extern int dme_pad_619DD8_31;
-extern int dme_pad_619DD8_32;
-extern int dme_pad_619DD8_33;
-extern int dme_pad_619DD8_34;
-extern int dme_pad_619DD8_35;
-extern int dme_pad_619DD8_36;
-extern int dme_pad_619DD8_37;
-extern int dme_pad_619DD8_38;
-extern int dme_pad_619DD8_39;
-extern int dme_pad_619DD8_40;
-extern int dme_pad_619DD8_41;
 /* SOCOM 1's NetOpenDataStream grown (0x619DD8): a free stream slot of this client's block made open, its ring buffer
  * allocated; 21 for a client without a block, 20 for no free slot */
 /* OPEN (round 26b): d=14 with the stream in a one-member struct (a real alias set; a plain pointer's alias word did not
