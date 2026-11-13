@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from CSealCtrl/CSealCtrlAi, round 69** (CSealCtrlAi::OnCommand 0x58FBE0 (0xEC4) byte-exact, unwritten before, the first
+  row of seal_command.cpp (defined last there; the vtable's slot 0x84 now names it, as the target). AttackTick 0x563E10 (0xED4)
+  at size and frame, 1 instruction off: the target leaves a nop in the turret test's `b` to the shared null block, here filled
+  with `move a2,zero`; ~40 spellings (closest `if (e) return type != 3 ? 0 : e; return 0;`; a switch inside `if (e)` gives the
+  block structure exactly but every slot empty). zseal.h, objcmp --by-address per commit: CSealUnit's m_8 (UNIT_FORMATION),
+  m_unit_num 0x58, m_seals and m_escortees (std::list at 0x64, 0x70), m_a4, EscorteeJoinUnit; CSealCtrl::m_4c; CZKit's
+  CurMagHasAmmo, HasSniperRifle; CSealCtrlAi's OnCommand. func_005658D0 pinned auto_inline off):
+  - AN ENTITY WALK THROUGH A `const CEntityList &` WITH AN INITIALISED const_iterator keeps the iterator copies in memory (base
+    then wrapper, through $f0, for begin() and each end()); every non-const spelling is scalarised.
+  - a `||` value needing its own bool comes from an inline returning `a || b` (the `daddiu 1` in the slot, then `andi` into a
+    second bool); in place MW merges them. One bool per join.
+  - a lookup's locals moved into an inline sit below the function's own (OnCommand's order cell takes the lowest slot).
+  - AttackTick's six saved registers by declaring every local first in reverse register order (62 to 11).
+  - `!m_aware.m_value` gives `c.eq value,zero` (`== 0.0f` gives `zero,value`). The clock through `*(volatile float
+    *)&data_004365C0` puts it in f2, the elapsed in f1. `type != 3 ? 0 : e` gives the `beq` to the turret arm. The aim cone
+    `(1 - t) * a + t * b` (zseal.h's Lerp orders the mula operands the other way: a local LerpW).
 - **Tells from CSealCtrl/CSealCtrlAi, round 68** (CSealCtrlAi::PreTick 0x56DE10 (0x1064) and LadderClimbTick 0x56AF50 (0xDB4,
   SOCOM 1's, PreTick's mode-7 arm) byte-exact, both unwritten before, 7,704 bytes; CSealCtrlAi::Tick 0x56FD00 (0x1010) at size
   and frame, 640 to 29 off: the entry's courage/threat/product in f2/f3/f4 (here f4/f2/f3; igreplay found one placement, all
