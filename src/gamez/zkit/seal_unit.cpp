@@ -3209,14 +3209,15 @@ extern "C" bool func_005EC230(CZSealBody *from, CZSealBody *seal, CNodeAction *n
  * OnActionButton and CAiSAction::Tick ask it; the name ours). The SEAL's cell taken by reference
  * first (the target computes its address into s0 right after GetSealCtrlAi), the bit through a
  * ternary (the target's sltu).
- * OPEN, 1 instruction (0x1B0 and 18 structural before round 75, read as code): the callers declare it
+ * Byte-exact since round 76 (0x1B0 and 18 structural before round 75, read as code): the callers declare it
  * `unsigned int` (seal_control.cpp, seal_aistate.cpp) and the target's `li s1,1` is an int's -- the
  * result an unsigned int; the door test through an inline (IsDoorAct: GetType's ternary keeps its
  * labels, the `b` to the join unfilled -- round 74's extra-level tell); the closest direction a
  * local (the target reloads `act` after GetClosestDir: the call first); the range test a `goto` to
- * the shared `return r` (its block the target's, `bc1t` straight to it). Left: the type test's
- * `return r` still folds r's 0 into its delay slot (`move v0,zero`; the target's `nop`, its `b` a
- * cross-jumped copy of `return r`). Before: the type and range tests' early returns -- the target jumps from both
+ * the shared `return r` (its block the target's, `bc1t` straight to it); the type test `{ r = 0; goto
+ * done; }` (round 76) -- the arm's dead store keeps it a block of its own, so its `beqz` hops a `b`
+ * to the shared return with both slots empty, where `return r` folded r's 0 into the slot (`move
+ * v0,zero`) and a bare `goto done` inverts into one `bnez`. Before: the type and range tests' early returns -- the target jumps from both
  * to the shared `return r` (move v0,s1), MW folds r's false into a `return 0` of their own; and the
  * result, the action and the SEAL's cell take s2/s0/s1 where the target has s1/s2/s0. Tried: one
  * nested if (0x17C), `(bool)` and `!= 0` for the bit (0x1A8), the cell read in place (0x19C), the
@@ -3242,8 +3243,10 @@ unsigned int CanUseDoorAction(CZSealBody *seal, CNodeAction *a, float range)
         return 0;
     static float minRange = 0.5f;
 
-    if (a->m_type)
-        return r;
+    if (a->m_type) {
+        r = 0;
+        goto done;
+    }
     if (range < minRange)
         goto done;
     CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi();
