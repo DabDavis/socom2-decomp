@@ -1645,6 +1645,159 @@ void CSealCtrl::SensorTick(float dT)
     m_targetThreat.m_goal = sum;
 }
 
+/* a request off the free list, set up done for an entity and put on the used list (OVL2 0x5C9830,
+ * GetRequest's copy; 0x5CC100 and 0x5CC0D0, unwritten out-of-line copies: the set-up and the list's
+ * push_back) */
+extern "C" CDiPool::dir *func_005C9830(CDiPool::CDirList *free);
+extern "C" void func_005CC100(CDiPool::dir *d, CEntity *e, int x);
+extern "C" void func_005CC0D0(CDiPool::CDiList *used, CDiPool::dir **d);
+
+/* the AI's reaction to a target it lost track of, and to a friend's AI (OVL2 0x565110, 0x560B20 --
+ * seal_ai.cpp's range, unwritten; the names unknown) */
+extern "C" void func_00565110(CSealCtrlAi *ai, int kind, void *target, int x);
+extern "C" void func_00560B20(CSealCtrlAi *ai, CSealCtrlAi *other, int x);
+/* the glance on the AI's frame slice (OVL2 0x558640, seal_ai.cpp's) and the pickups' sighting (0x5CB870,
+ * this unit's) */
+extern "C" void func_00558640(CSealCtrlAi *ai);
+extern "C" void func_005CB870(CSealCtrlAi *ai);
+
+/* the AI sensing's limits (OVL2 data, read as variables): the wait between reactions to a stale target,
+ * the odds of one by the training, the CQB reach, the reach a SEAL counts as near, a Navy SEAL's call
+ * reach; and the reaction forced (bss, a byte) */
+extern float data_0064FF80;
+extern float data_006509F8;
+extern float data_00650A00;
+extern float data_00650A08;
+extern float data_00650A10;
+extern "C" unsigned char data_0066B7C8;
+
+/* a state as the CQB attack, or 0 (a ternary, as SensorSeal; the name ours) */
+static inline CAiSCQBAttack *AsCQBAttack(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_CQBATTACK ? (CAiSCQBAttack *)s : 0;
+}
+
+/* a done request for an entity taken and queued, and the frame's count of them stepped (inlines, the
+ * names ours: two levels, as the target lays the request's slot under the chance's -- in place or one
+ * level, above it) */
+static inline void Request2(CEntity *e)
+{
+    CDiPool::dir *d = func_005C9830(&_diPool.m_free);
+
+    func_005CC100(d, e, 0);
+    func_005CC0D0(&_diPool.m_used, &d);
+}
+
+static inline void Request1(CEntity *e)
+{
+    Request2(e);
+    _diPool.m_34++;
+}
+
+/* the AI's sensing frame (OVL2 0x5CBA20; SOCOM 1's CSealCtrlAi::SensorPreTick, CSealCtrlAi::PreTick's
+ * call, rewritten; written from the target): a ray requested while the frame's budget lasts and the attack asks for one; a
+ * target the AI's own target is not holding and not seen for 3 seconds, after the wait, makes a
+ * non-Navy SEAL react (forced, or by the training's odds); the events, the slice's glance and the
+ * pickups ticked; the sensing record set; each living target: the nearest enemy's range kept, the AI's
+ * own target found; a SEAL in reach marks the SEAL to collide with it and take altitude; an enemy SEAL
+ * seen whose ray is not fresh and that is not invincible starts a CQB attack within reach (with the
+ * stack's flag 2, not already attacking, when the SEAL can and the push takes), else a Navy SEAL with
+ * the no-shoot bit calls out a visible one in reach; a friend's AI is told; an enemy not perceived
+ * fades as the base's. The AI's target dropped when it was not among them. A friend's AI through
+ * CZSealBody's GetSealCtrlAi (one inline level more: the target's unfilled slot and padded join); the
+ * stale-target test as OnSetTargetVisible's; the perception into a bool local (the andi); the
+ * distance's limit after the target test's call */
+void CSealCtrlAi::SensorPreTick(float dT)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    bool react;
+
+    if (AttackTick(dT, _diPool.m_8 - _diPool.m_34 > 0))
+        Request1(seal);
+    react = true;
+    if (func_0060A850(m_67c)) {
+        bool held = func_0060A850(m_67c) && (m_6a8 & 0x200);
+
+        if (!held)
+            react = ((CAiTarget *)m_67c)->GetTimeSinceLastSighting() > 3.0f;
+        else
+            react = false;
+    }
+    if (!react && !IsNavySeal() && !(func_005750C0(m_770) <= data_0064FF80)) {
+        if (data_0066B7C8 || SensorChance(data_006509F8 * m_aiParams.training))
+            func_00565110(this, 255, m_67c, 0);
+        m_770 = func_005750B0();
+    }
+    EventTick(dT);
+    func_00558640(this);
+    func_005CB870(this);
+    _sensing.m_entity = seal;
+    _sensing.m_params = &m_aiParams;
+    _sensing.m_eye_valid = false;
+
+    CTargetList &targets = seal->m_targets;
+    bool have = func_0060A850(m_67c);
+    float nearest = 1000000.0f;
+    bool found = false;
+
+    for (CTargetList::iterator t = targets.begin(); t != targets.end(); t++) {
+        CEntity *te = t->m_ent;
+
+        if (!te || !te->m_isAlive)
+            continue;
+        bool enemy = !((te->m_team & seal->m_team) != 0);
+        float dist = t->m_distSq;
+
+        if (enemy && dist < nearest) {
+            nearest = dist;
+            m_6ec = t->GetRange();
+        }
+        if (have && !found)
+            found = *(CEntity **)m_67c == te;
+        static float hearing = CAiEvent::GetEventRange((CAiEvent::EVENT)0) * CAiEvent::GetEventRange((CAiEvent::EVENT)0);
+        CZSealBody *s = SensorSeal(te);
+        CSealCtrlAi *ai = s ? s->GetSealCtrlAi() : 0;
+
+        if (s && dist <= data_00650A08) {
+            seal->m_check_player_collision = 1;
+            seal->m_get_new_altitude = 1;
+        }
+        if (enemy) {
+            if (s && !(seal->m_noshoot ? true : false) && (t->m_flags & 0x200) && !(t->m_flags & 2)
+                && !(s->m_invincible ? true : false)) {
+                if (dist < data_00650A00 && (m_stateStack.m_14 & 2) && !AiStateIs(AI_STATE_CQBATTACK)
+                    && seal->CanUseCQB(s) && PushAiState(AI_STATE_CQBATTACK, 0)) {
+                    CAiSCQBAttack *cqb = AsCQBAttack(GetAiState());
+
+                    cqb->m_target = s;
+                    cqb->m_active = 1;
+                }
+            } else if (IsNavySeal() && (seal->m_noshoot ? true : false) && dist <= data_00650A10
+                       && (t->m_flags & 0x200))
+                PlayAiSound((CHARACTER_SOUND)5, 1.0f, (CAiEvent::EVENT)1);
+        } else if (ai)
+            func_00560B20(this, ai, 0);
+        if (enemy) {
+            bool seen = _GetTargetPerception(*t);
+
+            if (seen)
+                continue;
+            float rate = _visDecay * Vis(&*t);
+
+            t->m_aware = rate;
+            t->m_visibility = rate * dT + Vis(&*t);
+            CDiPool::dir *d = (CDiPool::dir *)t->m_unk28;
+
+            if (d)
+                d->Drop();
+            t->m_unk28 = 0;
+            OnSetTargetVisible(*t, false, 0);
+        }
+    }
+    if (have && !found)
+        SetTarget(0);
+}
+
 /* a target seen to fall: the AI calls it, "tango down", at full chance (OVL2 0x5C9B10; SOCOM 1's
  * played its sound 18 the same way, through the same slot +0x24) */
 void CSealCtrlAi::NotifyTargetDown(CZSealBody *seal)
