@@ -2066,6 +2066,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI states, round 66** (nothing closed; CAiSBreach::Tick 0x5F2120 (0xFE0) written from the target's own
+  disassembly -- SOCOM 1's demo body 0x2D8000 is unoptimised, an outline only -- d=207 to 8, size exact, 18 off in step 9's one
+  test (the first SEAL's stack has a breach on top): the target computes Is()'s `&&` into a value and tests it unnarrowed
+  (`xor; sltiu; xori; beqz`, the false arm's `move v0,zero` after the true arm's `b`), every spelling here adds `andi 0xff`
+  per arm -- `!Is`, `== false`, `== 0`, `!!`, int inlines, ternaries, `!Empty() &&`, `size() != 0 &&`, GetStateEnum, a stack
+  pointer, the phase folded in -- the list in its OPEN note. ai_states.h declares CAiSBreach's Tick (objcmp: only
+  seal_aistate.cpp). CAiSFollow::Tick 0x5FB1C0 not started: SOCOM 1's Tick is a 0xE8 dispatcher, the logic in
+  `FollowTick__11CSealCtrlAiFf` (0x1F08, demo 0x2DF1C0) and the HandleFollowTick* helpers; a 544-byte frame of CPnt3D temps):
+  - the pushed state's cast assigned twice (`s = s && s->m_state == K ? s : 0;`) branches as the target (`li; beq; move
+    zero`); as an inline `?:` returning the cast it is `sltu; xori; movz`.
+  - two locals with separate lifetimes sharing saved registers: the action's local declared uninitialised ahead of the node
+    pointer gives node s1 and the action s5.
+  - a CAiTimer countdown as an inline taking dT loads the frame time first (`lwc1 m_dT` ahead of the timer's load).
+  - limits 20.0 and 3.0 at 0x650BA8/0x650BB0 read as `extern data_`; a `switch` on the door valve (case 0, case 1); `step = 2`
+    ahead of the hold call 0x560340; `<= 9` on `sltiu at`; the path pointer hoisted ahead of the switch (s7).
 - **Tells from the HUD, round 71** (CZPauseTest::Init 0x202520 (0x1C20) byte-exact, unwritten before -- hud_pausemenu.cpp, from
   round 70's table: the twelve lines, three sounds, the IsSelectable loop, the background, panels, bars, mission name,
   prompts, the third panel's questions, the yes/no boxes, each pushed on the one before, its tail ReInit's body inlined;
