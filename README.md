@@ -2066,6 +2066,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC recogniser, SDK and OVL1 libraries, round 78** (five rows byte-exact, all open since rounds 5a-44a, every note
+  wrong: inet_sock.c's getsockname/getpeername 0x1C46D0, accept 0x1C32A8 and gethostbyname 0x1C48A0, sase_ldpda.c's LPC envelope
+  0x24A5A8 (two copies of k*8, and the asserts naming pfAlpc and pfMaskEnv as the image's strings do), libnetb.c's
+  sceBInetGetBuildTimestamp 0x247050 (since 5a: the month literal ends in an explicit "\0", 38 bytes copied; the pointers assigned
+  after the null test). gethostbyaddr 0x1C4A20: 486 arrangements of its five failure paths, 0x1EC-0x210 of 0x1FC. The round-77
+  declaration-vs-later-assignment move swept over 51 rows (the lane's scratch, build/scratch/gcc2-r78/sweep.out): nothing outright;
+  nearer GetLabel, 0x1C1D40 (right size), sceTtyWrite, _initSeq):
+  - ONE CALL SITE AFTER AN IF/ELSE CAN BE TWO, CROSS-JUMPED: write the shared tail in each arm (it then sits in the join's own
+    block; the scheduler cannot hoist across it and local-alloc reuses the call's dead v0).
+  - AN EXACT TIE IN global-alloc's PRIORITIES (ccdump -f prints `tie`) is broken by a duplicated tail jump2 merges back: one use
+    more to a register, none to the code.
+  - WHICH ERROR PATHS SHARE A CALL IS SET BY jump2's MINIMUM OF TWO MATCHING INSNS: `call; v0 = 0; jump` merges, `call; goto fail`
+    does not. Arms keeping their own `move a0` before the store were each complete before the merge.
+  - A COPY ONE BYTE LONGER THAN THE LITERAL IS AN EXPLICIT "\0" IN IT. A register-only miss can hide a string mismatch (again).
 - **Tells from the Metrowerks rows, round 78** (0x57F530 byte-exact: 0x589900 returns `int` in seal_body.cpp, and with it r, 0x57F530,
   0x57F7D0, 0x57F9C0 and 0x584B00 (`int r = func_00589900(seal); return r;`), all extern "C" so other units keep bool. No open MW row
   has GCC-style asm left. Not closed: the turret test (0x569E40's a0 already holds TakesTargets' `r = false`, so MW drops every
