@@ -1757,6 +1757,9 @@ public:
     bool FireWhenReady(AI_FIREPARAMS &params, float delay);
     /* a grenade's throw worked out (OVL2 0x55E670; SOCOM 1's, by its calls) */
     bool ComputeThrowFireParams(AI_FIREPARAMS &params);
+    /* the reaction bit 7 asks for: courage, a rush, a flight or a surrender (OVL2 0x561550; SOCOM 1's,
+     * by place: Tick's call) */
+    void DoReaction();
     /* the bit 2 at 0x264 set, never for a SEAL whose team has bit 17 or 26 or that holds no item
      * (OVL2 0x56D890: CAiSPlan::Tick and CAiState::Signal call it; the name ours) */
     void SetAiBit2(bool on);

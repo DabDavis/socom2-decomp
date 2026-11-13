@@ -3135,20 +3135,20 @@ extern "C" float data_006502F0;
  * fourth weight's test, a cumulative pick, the cases laid out 3, 2, 1, 0/4, the courage raised through
  * an inline keeping its `1.0f *`, the weight's odds read into a local in the loop (the constants
  * materialised ahead), reaction and fixed declared before the entity, the parameters after it */
-extern "C" void func_00561550(CSealCtrlAi *ai)
+void CSealCtrlAi::DoReaction()
 {
     signed char reaction;
     bool fixed;
-    CEntity *e = ai->m_entity;
+    CEntity *e = this->m_entity;
 
-    if (((const CSealCtrlAi *)ai)->m_aibit7) {
-        SetBit7(ai, false, -1);
-        reaction = ai->m_3e0;
-        AI_PARAMS *params = &ai->m_aiParams;
+    if (((const CSealCtrlAi *)this)->m_aibit7) {
+        SetBit7(this, false, -1);
+        reaction = this->m_3e0;
+        AI_PARAMS *params = &this->m_aiParams;
         fixed = false;
 
         if (reaction == -1) {
-            const float *odds = (const float *)ai->m_3e4;
+            const float *odds = (const float *)this->m_3e4;
             float w[4];
 
             for (int j = 0; j < 4; j++) {
@@ -3189,7 +3189,7 @@ extern "C" void func_00561550(CSealCtrlAi *ai)
 
                 w[1] *= ratio;
                 w[2] *= 1.0f / ratio;
-                if (!func_0060A850(ai->m_67c))
+                if (!func_0060A850(this->m_67c))
                     w[1] = 0.0f;
                 if (ChanceOf(params->surrender))
                     reaction = 3;
@@ -3215,19 +3215,19 @@ extern "C" void func_00561550(CSealCtrlAi *ai)
             fixed = true;
         switch (reaction) {
         case 3:
-            ai->PopToAiState(AI_STATE_SCRIPT, false);
-            if (ai->PushAiState(AI_STATE_SURRENDER, fixed ? 8 : 0)) {
-                CAiState *s = ai->GetAiState();
+            this->PopToAiState(AI_STATE_SCRIPT, false);
+            if (this->PushAiState(AI_STATE_SURRENDER, fixed ? 8 : 0)) {
+                CAiState *s = this->GetAiState();
 
                 s = s && s->m_state == AI_STATE_SURRENDER ? s : 0;
                 s->SetActive(true);
             }
             break;
         case 2:
-            if (ai->PushAiState(AI_STATE_FLEE, 0)) {
-                CAiState *s = ai->GetAiState();
+            if (this->PushAiState(AI_STATE_FLEE, 0)) {
+                CAiState *s = this->GetAiState();
                 CAiSFlee *st = s && s->m_state == AI_STATE_FLEE ? (CAiSFlee *)s : 0;
-                CZSealBody *from = func_00569E40(ai, &ai->m_entity->m_posW, 150.0f);
+                CZSealBody *from = func_00569E40(this, &this->m_entity->m_posW, 150.0f);
 
                 if (from)
                     st->m_60 = (unsigned int)((CSealCtrl *)from->m_control)->m_unit;
@@ -3235,8 +3235,8 @@ extern "C" void func_00561550(CSealCtrlAi *ai)
             }
             break;
         case 1:
-            if (ai->PushAiState(AI_STATE_RUSH, 0)) {
-                CAiState *s = ai->GetAiState();
+            if (this->PushAiState(AI_STATE_RUSH, 0)) {
+                CAiState *s = this->GetAiState();
 
                 s = s && s->m_state == AI_STATE_RUSH ? s : 0;
                 s->SetActive(true);
@@ -3244,7 +3244,7 @@ extern "C" void func_00561550(CSealCtrlAi *ai)
             break;
         case 0:
         case 4:
-            RaiseDecay(ai->m_courage, ai->m_targetThreat.m_value, 1.0f);
+            RaiseDecay(this->m_courage, this->m_targetThreat.m_value, 1.0f);
             break;
         }
     }
@@ -7487,9 +7487,8 @@ extern float data_00650068;
 extern float data_00650070;
 /* a value eased toward a goal at a rate (SOCOM 1's _decay<f>: OVL2 0x5551C0, another unit's copy) */
 float *func_005551C0(float *v, const float *goal, float rate, float dT);
-/* (OVL2 0x5604C0: 0x5605A0 with the kind held; 0x561550, unwritten) */
+/* (OVL2 0x5604C0: 0x5605A0 with the kind held) */
 bool func_005604C0(CSealCtrlAi *ai);
-void func_00561550(CSealCtrlAi *ai);
 }
 
 /* a decay run a frame: exponentially or linearly toward its goal, snapped to it within 0.005 (or
@@ -7596,7 +7595,7 @@ bool CSealCtrlAi::Tick(float dT)
             }
         }
     }
-    func_00561550(this);
+    DoReaction();
     float d;
     float now = seal->m_health;
 
