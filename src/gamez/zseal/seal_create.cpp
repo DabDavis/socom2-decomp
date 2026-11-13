@@ -1,7 +1,8 @@
 /* seal_create.cpp -- the SEAL made and unmade: respawns, the remote SEAL, Create and ReCreate, the
  * gear, the character's model (SOCOM 1's unit, __sinit_seal_create.cpp; SOCOM 1's order from
  * RemoteRespawn to GetSeal). OVL2 0x598B90 (RemoteRespawn, after seal_control.cpp's template
- * tail: DrawFunc<CDynGrenade> at 0x598860) to seal_dyn.cpp (0x59BA80, CharacterDynamics::Load).
+ * tail: DrawFunc<CDynGrenade> at 0x598860) to GetSeal (0x59ACD0; seal_fall.cpp follows, then
+ * seal_dyn.cpp at 0x59BA80).
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
@@ -38,61 +39,6 @@ public:
 };
 
 extern CMission theMission;
-
-extern "C" {
-/* the top blend's representative flagged (seal_body.cpp's, OVL2 0x57B510), the body's top blend and a
- * halfword's bits (seal.cpp's tail copies, 0x555170 and 0x5551A0) */
-bool func_0057B510(CZSealBody *seal);
-void *func_00555170(void *stack);
-bool func_005551A0(unsigned short flags, unsigned short bits);
-/* AnimTypes statics past SOCOM 1's list (OVL1 data 0x3DEF08, 0x3DEF50) */
-extern short data_003DEF08;
-extern short data_003DEF50;
-}
-
-/* the root's height followed: under a flagged anim whose top blend lacks flag 0x20, or anim 46 (an
- * inline: the target builds the answer -- `daddiu 1` / `move zero` -- and then tests it) */
-static inline bool FollowsRoot(CZSealBody *seal)
-{
-    if ((func_0057B510(seal) &&
-         !func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 32)) ||
-        seal->IsCurrentBlend((AnimType)46))
-        return true;
-    return false;
-}
-
-/* the SEAL's altitude moved with its root part against a point: under the 0x3DEF08 anim m_fac eased
- * down to 2.2 first (and there the SEAL lands); under the 0x3DEF50 anim the root held at 11.44; always
- * true (OVL2 0x59B870, new in SOCOM II: 0x57A330 calls it with a point of its own; after GetSeal, before
- * seal_dyn.cpp -- the names ours). The height is 0x41370A3E, one ulp above 11.44f (what `2.2f * 5.2`
- * folds to); the helper's answer an if/return (the `||` of a ternary or a plain return materialises
- * the second call's test, sltu/xori) */
-extern "C" bool func_0059B870(CZSealBody *seal, const CPnt3D *p)
-{
-    CZBodyPart *root = seal->GetRootPart();
-
-    if (seal->IsCurrentBlend((AnimType)data_003DEF08)) {
-        if (seal->m_1360 > 0.0f)
-            return true;
-        seal->m_fac += -seal->m_133c * seal->m_2e0;
-        if (seal->m_fac < 2.2f)
-            seal->m_fac = 2.2f;
-        if (seal->m_bit9)
-            seal->m_alt += p->y - root->m_pos.y;
-        else if (seal->m_fac <= 2.2f) {
-            seal->SetAirborne(false);
-            seal->m_133c = 0.0f;
-        }
-    } else if (seal->IsCurrentBlend((AnimType)data_003DEF50))
-        root->m_pos.y = 11.440001f;
-    else {
-        if (seal->m_bit9)
-            seal->m_alt += p->y - root->m_pos.y;
-        if (FollowsRoot(seal))
-            seal->m_alt += p->y - root->m_pos.y;
-    }
-    return true;
-}
 
 /* a remote SEAL unmade: its node's name dropped, its projectiles and its state cleared, dead, no
  * team, its id invalid, state 8, the team valves refreshed, its squad told (OVL2 0x5998B0; SOCOM
@@ -721,59 +667,6 @@ CZSealBody *CZSealBody::GetSeal(zdb::CNode *node)
             return ex->m_seal;
     }
     return 0;
-}
-
-extern "C" {
-/* the height above the ground a SEAL counts as in the air from (OVL1 bss 0x44C264), the probe for
- * ground under a falling SEAL and the landing's hit taken (seal.cpp's OVL2 0x54A8B0 and 0x5B0C10) */
-extern float data_0044C264;
-bool func_0054A8B0(CZSealBody *seal);
-void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit);
-}
-
-/* whether the SEAL is in the air over a point: in the 0x3DEF08 anim, or with no air bit yet, at the
- * in-air height above the point it is airborne (the landed bit 8 cleared, and under the anim bit 9 set and 10
- * cleared); else, out of a flagged anim and played here, the ground probed when it is 5 above (3
- * prone); a SEAL with bit 9 and not 10 that sinks under the point while m_1360 has run out is set on
- * it -- bits 10 and 8 set, 9 cleared, the landing taken (OVL2 0x59AD30, new in SOCOM II: 0x5B0420
- * calls it; after GetSeal -- the name unknown) */
-extern "C" bool func_0059AD30(CZSealBody *seal, const CPnt3D *pos)
-{
-    float h = data_0044C264;
-
-    if (seal->IsCurrentBlend((AnimType)data_003DEF08) && !(seal->m_alt < pos->y + h)) {
-        seal->SetAirborne(true);
-        seal->SetLanded(false);
-        seal->SetBit9(true);
-        seal->SetBit10(false);
-    }
-    if (!seal->m_airborne) {
-        if (!(seal->m_alt < pos->y + h)) {
-            seal->SetAirborne(true);
-            seal->SetLanded(false);
-            if (!func_0057B510(seal) && !seal->IsRemote())
-                func_0054A8B0(seal);
-        } else if (!func_0057B510(seal) && !seal->IsRemote()) {
-            float d = 5.0f;
-
-            if (seal->m_state == stateProne)
-                d = 3.0f;
-            if (!(seal->m_alt <= pos->y + d))
-                func_0054A8B0(seal);
-        }
-    }
-    if (seal->m_bit9 && !seal->m_bit10) {
-        float y = pos->y;
-
-        if (seal->m_alt < y && seal->m_1360 <= 0.0f) {
-            seal->m_alt = y;
-            seal->SetBit9(false);
-            seal->SetBit10(true);
-            seal->SetLanded(true);
-            func_005B0C10(seal, 0);
-        }
-    }
-    return seal->m_airborne;
 }
 
 /* the body-part commands (new in SOCOM II, ZAnim commands this unit registers at 0x59AC60:
