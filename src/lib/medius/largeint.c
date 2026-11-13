@@ -480,7 +480,9 @@ extern void MULT(LINT *pResult, LINT *a, LINT *b);
 
 /* a to the e mod n by Montgomery products, into a fourth number (round 28b, unwritten before): n must be odd, an even
  * one goes to EMOD, a zero one asserts and gives itself back. nInv = -1/n mod 2^nBits (Hensel), y = a in Montgomery
- * form, z = 1 in it, then the bits of e from the bottom. */
+ * form, z = 1 in it, then the bits of e from the bottom. Round 79, byte-exact: the second `j = 0` follows z's
+ * setting -- before it, sched1 issued nMask's 1 (a pseudo crossing calls, free to move over one) above the call, its
+ * spill store in that call's slot reusing a1. */
 void func_006283F8(LINT *pResult, LINT *a, LINT *e, LINT *n)
 {
     LINT x;
@@ -524,8 +526,8 @@ void func_006283F8(LINT *pResult, LINT *a, LINT *e, LINT *n)
     memcpy(&y, a, sizeof y);
     ShiftLeft(&y, nBits);
     MODIP(&y, n);
-    j = 0;
     lintSetSmallValue(&z, 1);
+    j = 0;
     nMask = 1;
     ShiftLeft(&z, nBits);
     MODIP(&z, n);
