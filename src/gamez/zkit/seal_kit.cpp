@@ -1670,31 +1670,49 @@ static inline CKitTurret *AsTurret(CEntity *e)
 }
 
 /* the cross product through VU0 (CPnt3D::Cross's body without the normalising; the name ours) */
-static inline void KitCross(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+static inline void KitCross(const CPnt3D &a, const CPnt3D &b, CPnt3D &out)
 {
     sceVu0FVECTOR r;
     sceVu0FVECTOR va;
     sceVu0FVECTOR vb;
 
-    va[0] = a->x;
-    va[1] = a->y;
-    va[2] = a->z;
+    va[0] = a.x;
+    va[1] = a.y;
+    va[2] = a.z;
     va[3] = 1.0f;
-    vb[0] = b->x;
-    vb[1] = b->y;
-    vb[2] = b->z;
+    vb[0] = b.x;
+    vb[1] = b.y;
+    vb[2] = b.z;
     vb[3] = 1.0f;
     sceVu0OuterProduct(r, va, vb);
-    out->x = r[0];
-    out->y = r[1];
-    out->z = r[2];
+    out.x = r[0];
+    out.y = r[1];
+    out.z = r[2];
 }
 
-/* a dot product through references (inline; the name ours: the distance and both side tests through it
- * keep the target's address temporaries closer than the products written in place) */
+/* a dot product through references (inline; the name ours: the distance through it, the side tests through
+ * KitDotP -- each form read once folds into the frame, the reference/direct split) */
 static inline float KitDot(const CPnt3D &a, const CPnt3D &b)
 {
     return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/* an entity's node through a reference (inline; the name ours) */
+static inline zdb::CNode *KitNodeR(const CEntity &e)
+{
+    return e.m_node;
+}
+
+/* a float negated through a pointer (inline; the name ours) */
+static inline float KitNegFP(const float *f)
+{
+    return -*f;
+}
+
+/* the same through pointers (inline; the name ours) */
+static inline float KitDotP(const CPnt3D *a, const CPnt3D *b)
+{
+    return a->x * b->x + a->y * b->y + a->z * b->z;
 }
 
 /* the world's tree (inline; the name ours: taken through it, the spilled world numbers after the pickup
@@ -1717,12 +1735,16 @@ CZProjectile *CZKit::FireCur(const CPnt3D *pos, const CPnt3D *vel, const CPnt3D 
  * tracer and flags, the model hung on it rotated along the shot --, the scope's kick, the adrenaline, the
  * pickup by kind, the fire anim on the fire point (a turret's pitch node), the projectile node hidden, the
  * weapon's Fire (a breaching SEAL told of its charge, or the shot's message saved), the stats, the recoil  *
- * OPEN (the kit's round 66), 0x11D8 against 0x11D0, the frame exact: the threat block's address temporaries --
- * the target keeps &fwd.y/&fwd.z in s3/s2 from the cross product's inputs on and reloads the player's node for
- * the forward row, here &player->m_node is held (s2) and &d.y/&d.z (s6/s7) from the distance on (a block-scoped
- * d, a distance inline, pointer negation/flattening inlines all no better); the team test loads the body before
- * the player; FindChild's `move a0` scheduled a word early; ~56 register-only differences (UsesAmmo's item in v0,
- * the target's a0). The item's type an EQUIP_ITEM (an unsigned char local takes a word slot and the frame grows
+ * OPEN (the kit's round 67), 0x11D0, the size and frame exact, 50 instructions off, all register-only: the
+ * threat block's constants (8.26e-7 in f1 then 1.0 in f0 in the target, the other way here -- every spelling of
+ * the scale and its place tried), the team test loads the body before the player, UsesAmmo's item in v0 (the
+ * target's a0; a local copy by pointer, by reference, its answer a local all no better), FindChild's `move a0`
+ * a word early. The round-66 address temporaries are gone by the reference/direct split, one inline kind per
+ * site: the forward row's node through a reference (KitNodeR: read once in that form, `lw 40(s1)` folds
+ * instead of holding &player->m_node), the cross product through references (fwd.y/z read there and by the
+ * negation share s3/s2), the negation through a float pointer (KitNegFP: reads in s3/s2, the z store folded),
+ * the distance through the reference dot, the two side tests through the pointer dot (d.y/z read once in each
+ * form fold into the frame); the scale computed between the y and z negations. The item's type an EQUIP_ITEM (an unsigned char local takes a word slot and the frame grows
  * 16), the ammunition's double test `if (!ammo) { if (!ammo) { ammo = ...; if (!ammo) return 0; } }`, the
  * rotation `SetRotation((const CQuat *)&r)` (the cast keeps the null test), the two turret reads in place
  * (`e ? AsTurret(e) : 0`, then `if (e) { t = AsTurret(e); if (t) ... }`) */
@@ -1748,21 +1770,21 @@ CZProjectile *CZKit::Fire(int index, const CPnt3D *pos, const CPnt3D *vel, const
             CZFTSWeapon *cur = GetItemByIndex(m_selected_item);
 
             if (cur && distSq < cur->m_soundradiusSq) {
-                CPnt3D fwd = *(const CPnt3D *)((CEntity *)player)->m_node->m_matrix.m_matrix[2];
+                CPnt3D fwd = *(const CPnt3D *)KitNodeR(*(CEntity *)player)->m_matrix.m_matrix[2];
                 CPnt3D a = *pos - *at;
                 CPnt3D up = CPnt3D::unit_y;
 
-                KitCross(&fwd, &up, &d);
-                float scale = 1.0f - 8.264463e-7f * distSq;
+                KitCross(fwd, up, d);
 
-                fwd.x = -fwd.x;
-                fwd.y = -fwd.y;
-                fwd.z = -fwd.z;
+                fwd.x = KitNegFP(&fwd.x);
+                fwd.y = KitNegFP(&fwd.y);
+                float scale = 1.0f - 8.264463e-7f * distSq;
+                fwd.z = KitNegFP(&fwd.z);
                 fwd.y = 0.0f;
                 a.y = 0.0f;
                 d.y = 0.0f;
                 CKitFireTarget *t = (CKitFireTarget *)player;
-                float dot = KitDot(a, fwd);
+                float dot = KitDotP(&a, &fwd);
 
                 if (dot < 0.0f) {
                     t->m_threatdir[3] = 1;
@@ -1779,7 +1801,7 @@ CZProjectile *CZKit::Fire(int index, const CPnt3D *pos, const CPnt3D *vel, const
                     t->m_threatscale[6] = 0.0f;
                     t->m_threatangle[6] = 0.0f;
                 }
-                dot = KitDot(a, d);
+                dot = KitDotP(&a, &d);
                 if (dot < 0.0f) {
                     t->m_threatdir[0] = 1;
                     float ang = fabsf(dot);
