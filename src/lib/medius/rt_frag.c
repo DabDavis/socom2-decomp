@@ -11,7 +11,9 @@
  * d = (d - nIndex) & SEQ; if (d - 1 < ...)` -- its load and its `d - 1` then leave v0 (local-alloc
  * ties no temporary to a user variable), and the 0xFFFFFFD constant takes a0, nIndex a3. Left: the
  * latest test's `subu` lands in v0 where the target's is v1, the `andi` in v0 -- d, e, i, nLength,
- * a block, the mask in a variable: none). Round 26b:
+ * a block, the mask in a variable: none. Round 82: 2.96's block_alloc offers combine_regs every input
+ * operand, so the subu would tie to the dying `nLatest & SEQ` unless one of the two is not block-local --
+ * the latest's difference a user variable used once (e), or d itself, still gives subu v0). Round 26b:
  * func_00645528 (the reassembly into the caller's buffer) byte-exact; func_00645380 (the next complete message's
  * length: a walk from the oldest slot over the 0x20000000 start and 0x40000000 end flags) written, open. */
 
