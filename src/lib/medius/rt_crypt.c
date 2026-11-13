@@ -22,7 +22,9 @@
  * IsNullRSAKey's delay slot -- result first, last, or set in each branch all give the same; 62s on
  * master's tools), 0x630DF0 (21 words: KM_Decrypt's body, byte-exact there, with the key master a
  * parameter -- the key master and the data pointer take each other's s1/s2; setting the hash after
- * the null test gives the registers and moves its store, 9). The ciphers' shapes, measured: one
+ * the null test gives the registers and moves its store, 9; round 77 read the priorities: pData 9 refs over
+ * 92 insns (2934) against the key master's 9 over 93 (2903) -- one insn of either's live length decides it; a
+ * key or key-master local, the hash test's operand order and split, `if (nLength) if (nResult == 0)` leave it). The ciphers' shapes, measured: one
  * `return nHeader` with the branches nested (the header lives in s5 from the entry); KM_Decrypt's
  * cases in the order 0xE0000000, 0x80000000, 0x60000000, 0x20000000, 0, then 0x40000000 with the
  * default; its hash check inside `if (nLength != 0 && nResult == 0)` (two guard clauses hoist the

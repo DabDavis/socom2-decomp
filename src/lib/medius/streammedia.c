@@ -1187,8 +1187,9 @@ typedef struct STREAM_CB_DATA {
     void *pData;
 } STREAM_CB_DATA;
 
-/* OPEN (5 words): registers -- the type and a3 take s1/s2 the other way round, and the user
- * data is loaded between the stores in the target. */
+/* Byte-exact (round 77): the callback read into a `void (*)()` local ahead of the stores (an int-returning
+ * one stays d=5). Loaded first, it is live across the user data's load, which takes v1, so the session's
+ * reload takes a1 (a0 is &cb). */
 int func_00644EA0(void *hAudio, int nType, int a2, int a3, int t0)
 {
     STREAM_CB_DATA cb;
@@ -1202,11 +1203,16 @@ int func_00644EA0(void *hAudio, int nType, int a2, int a3, int t0)
     if (pSession->pfnData != 0 && pSession->bEnabled == 1 && pSession->bConnected == 1) {
         if (func_00644A58(nType, &cb.nType) != 0)
             return t0;
-        cb.a2 = a2;
-        cb.a3 = a3;
-        cb.t0 = t0;
-        cb.pData = pSession->pDataData;
-        pSession->pfnData(&cb);
+        {
+            void (*pfn)(STREAM_CB_DATA *);
+
+            pfn = (void (*)(STREAM_CB_DATA *))pSession->pfnData;
+            cb.a2 = a2;
+            cb.a3 = a3;
+            cb.t0 = t0;
+            cb.pData = pSession->pDataData;
+            pfn(&cb);
+        }
     }
     return cb.nResult;
 }
