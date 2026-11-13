@@ -269,6 +269,8 @@ public:
     void SetCurItemByIndex(int index);
     /* the kind of the item in hand (kit.h's; OVL2 0x5C89D0 -- 0x565D30 asks it, the answer unread) */
     EQUIP_ITEM GetCurItemEnum() const;
+    /* the binoculars put in their slot (kit.h's; OVL2 0x5C7450 -- InitAiBrain calls it for an enemy) */
+    void SetupBinocular();
     /* the item made current by its kind, and whether the weapon in hand will fire (kit.h's; OVL2
      * 0x5C8A20, 0x5C0AE0 -- CAiSDeploy::Tick asks both) */
     bool SetCurItemEnum(EQUIP_ITEM item);
