@@ -327,18 +327,37 @@ public:
  * line table puts each helper's code on its caller's one line. GCC-style (operands bound left
  * to right: Transform loads &input before &output; an asm block takes them in the arguments'
  * right-to-left order) */
+#if Z_PORT
+/* the port: vf4-vf7, the matrix's rows COPIED at the load as lqc2 copies them (a later write to
+ * the matrix does not reach the transforms), for the transforms that follow; VU0 state lives
+ * across these inlines within one function, so one copy per unit is enough */
+static float z_vu0_rows[16];
+#endif
 inline void _LoadMatrix(const CMatrix *m)
 {
+#if Z_PORT
+    for (int i = 0; i < 16; i++)
+        z_vu0_rows[i] = ((const float *)m)[i];
+#else
     asm __volatile__(
         "lqc2 $vf4, 0x0(%0)\n"
         "lqc2 $vf5, 0x10(%0)\n"
         "lqc2 $vf6, 0x20(%0)\n"
         "lqc2 $vf7, 0x30(%0)\n"
         : : "r"(m) : "memory");
+#endif
 }
 
 inline void _TransformPointXYZ(const CPnt4D *in, CPnt4D *out)
 {
+#if Z_PORT
+    /* ACC = r0*x; ACC += r1*y; ACC += r2*z; out = ACC + r3*1 (vf0.w), xyz only */
+    const float *r = z_vu0_rows;
+    const float *v = (const float *)in;
+    float *o = (float *)out;
+    for (int i = 0; i < 3; i++)
+        o[i] = r[i] * v[0] + r[4 + i] * v[1] + r[8 + i] * v[2] + r[12 + i];
+#else
     asm __volatile__(
         "lqc2 $vf8, 0(%0)\n"
         "vmulax.xyz $ACC, $vf4, $vf8\n"
@@ -347,10 +366,19 @@ inline void _TransformPointXYZ(const CPnt4D *in, CPnt4D *out)
         "vmaddw.xyz $vf9, $vf7, $vf0\n"
         "sqc2 $vf9, 0(%1)\n"
         : : "r"(in), "r"(out) : "memory");
+#endif
 }
 
 inline void _TransformVectorXYZ(const CPnt4D *in, CPnt4D *out)
 {
+#if Z_PORT
+    /* ACC = r0*x; ACC += r1*y; out = ACC + r2*z, xyz only */
+    const float *r = z_vu0_rows;
+    const float *v = (const float *)in;
+    float *o = (float *)out;
+    for (int i = 0; i < 3; i++)
+        o[i] = r[i] * v[0] + r[4 + i] * v[1] + r[8 + i] * v[2];
+#else
     asm __volatile__(
         "lqc2 $vf8, 0(%0)\n"
         "vmulax.xyz $ACC, $vf4, $vf8\n"
@@ -358,6 +386,7 @@ inline void _TransformVectorXYZ(const CPnt4D *in, CPnt4D *out)
         "vmaddz.xyz $vf9, $vf6, $vf8\n"
         "sqc2 $vf9, 0(%1)\n"
         : : "r"(in), "r"(out) : "memory");
+#endif
 }
 
 /* vectors through the matrix's rotation (no translation), each copied into an aligned vector and
