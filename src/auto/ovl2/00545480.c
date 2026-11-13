@@ -10,7 +10,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 s32 ftsGetPlayer__Fv();                             /* extern */
 s32 func_002C31D0(s32);                             /* extern */
 M2C_UNK func_00544D60(s32, M2C_UNK);                /* extern */
+extern char theNetwork[];
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0045A0C1 (*(u8 *)((char *)&theNetwork + 0x1))   /* theNetwork+0x1 */
+#else
 extern u8 data_0045A0C1;
+#endif
 
 void func_00545480(char *arg0, s32 arg1) {
     s32 var_v0;

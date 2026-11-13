@@ -723,10 +723,10 @@ CZBodyAnimBlend *CZSealBody::StandTurning(float turn)
 extern "C" {
 /* the throttles' easing rates, from and to, for the side and the move throttle (OVL1 bss: SOCOM 1's
  * four small-data floats in the same order) */
-extern float data_0044C294;
-extern float data_0044C298;
-extern float data_0044C29C;
-extern float data_0044C2A0;
+#define data_0044C294 (*(float *)((char *)&::theCharacterDynamics + 0x44))   /* theCharacterDynamics+0x44 */
+#define data_0044C298 (*(float *)((char *)&::theCharacterDynamics + 0x48))   /* theCharacterDynamics+0x48 */
+#define data_0044C29C (*(float *)((char *)&::theCharacterDynamics + 0x4C))   /* theCharacterDynamics+0x4C */
+#define data_0044C2A0 (*(float *)((char *)&::theCharacterDynamics + 0x50))   /* theCharacterDynamics+0x50 */
 }
 
 /* a throttle's nearness to full: one minus the eighth power of what it lacks (inline: the factor of
@@ -4664,7 +4664,9 @@ static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
 
 extern "C" {
 /* the game's clock (OVL1 data, a float -- seal_ai.cpp's) */
-extern float data_004365C0;
+class CMission;
+extern CMission theMission;
+#define data_004365C0 (*(float *)((char *)&::theMission + 0xE0))   /* theMission+0xE0 */
 }
 
 /* CrouchToPickupBuddy's timed call (OVL2 0x579E90, an anim callback: the body, then the buddy) --

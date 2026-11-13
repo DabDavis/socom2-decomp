@@ -8,7 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK SetSnakePathUpdate__10CZSealBodyFbUi(s32, M2C_UNK, M2C_UNK); /* extern */
-extern f32 data_0044C2A4;
+extern char theCharacterDynamics[];
+#define data_0044C2A4 (*(f32 *)((char *)&theCharacterDynamics + 0x54))   /* theCharacterDynamics+0x54 */
 
 void Initalize__9CSealCtrlFv(char *arg0) {
     SC_MEMBER(arg0, f32 *, 0x130) = (f32) data_0044C2A4;

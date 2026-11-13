@@ -10,7 +10,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 extern "C" {
 char *GetSeal__10CZSealBodyFPQ23zdb5CNode();        /* extern */
-extern u8 data_0045A0C1;
+extern char theNetwork[];
+#define data_0045A0C1 (*(u8 *)((char *)&theNetwork + 0x1))   /* theNetwork+0x1 */
 
 bool func_005ACA10(void) {
     bool var_s0;

@@ -41,7 +41,7 @@ extern "C" {
 extern CZLANLobby data_0044FE10;           /* a second lobby: the LAN game's */
 void func_0030E3A0(CZNetwork *net, int arg);
 extern int data_00441470;
-extern char data_00437E30[];               /* the career stats */
+#define data_00437E30 (*(char (*)[])((char *)&::theMission + 0x1950))   /* theMission+0x1950 */ /* the career stats */
 }
 
 /* the radio -- zNetVoice.cpp's CZNetVoice, the voice object CMission::Init makes and keeps at

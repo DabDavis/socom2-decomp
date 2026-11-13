@@ -9,7 +9,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 M2C_UNK PreTick__16CZProjectileListFf(s32);         /* extern */
 M2C_UNK UpdateLocalBomb__11CZBombStateFv();         /* extern */
 s32 func_002A72A0(s32);                             /* extern */
-extern s32 data_00437CE8;
+extern char theMission[];
+#define data_00437CE8 (*(s32 *)((char *)&theMission + 0x1808))   /* theMission+0x1808 */
 extern u8 data_004B52B0;
 extern s32 m_pProjectilelist__8CZWeapon;
 

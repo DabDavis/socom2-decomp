@@ -8,7 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK _free__FPvPCci(s32, M2C_UNK, M2C_UNK);      /* extern */
 M2C_UNK func_0033C350(char *);                      /* extern */
-extern char **data_0049E888;
+extern char m_texmanager__Q23zdb11CTexManager[];
+#define data_0049E888 (*(char ***)((char *)&m_texmanager__Q23zdb11CTexManager + 0x8))   /* m_texmanager__Q23zdb11CTexManager+0x8 */
 
 void ClearAll__Q23zdb15CBatchRelocatorFv(void) {
     s32 temp_a0;

@@ -11,7 +11,8 @@ M2C_UNK Load__17CharacterDynamicsFRC8CRdrFile(M2C_UNK *, s32); /* extern */
 M2C_UNK zrdr_free__FP8CRdrFile(s32);                /* extern */
 s32 zrdr_read__FPCcPCci(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
 extern M2C_UNK data_0044C250;
-extern u8 data_0044C3FC;
+extern char theCharacterDynamics[];
+#define data_0044C3FC (*(u8 *)((char *)&theCharacterDynamics + 0x1AC))   /* theCharacterDynamics+0x1AC */
 extern M2C_UNK data_0065C5F0;
 extern M2C_UNK data_0065C600;
 

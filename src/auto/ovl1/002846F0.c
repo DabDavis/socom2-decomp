@@ -8,7 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK Create__6CValveFPCc10VALVE_TYPE(s32, M2C_UNK); /* extern */
 s32 GetName__6CZAnimFi(s32, u16);                   /* extern */
-extern s32 data_00414BE8;
+extern char ZAnim[];
+#define data_00414BE8 (*(s32 *)((char *)&ZAnim + 0x38))   /* ZAnim+0x38 */
 
 void func_002846F0(char *arg0) {
     Create__6CValveFPCc10VALVE_TYPE(GetName__6CZAnimFi(data_00414BE8, M2C_FIELD(arg0, u16 *, 8)), 2);

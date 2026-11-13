@@ -39,7 +39,12 @@ struct tag_PipeColor {
 };
 /* the colour the tick sets each frame: thePipe + 0x6D0, just past the effect (thezoom.cpp clears
  * its first word) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00488E90 (*(tag_PipeColor *)((char *)&::thePipe + 0x6D0))   /* thePipe+0x6D0 */
+#else
 extern tag_PipeColor data_00488E90;
+#endif
 
 /* a GS register word as its two halves (ours) */
 struct tag_RegWords {

@@ -123,7 +123,9 @@ public:
     unsigned char m_respawns;   // 0xdc
 };
 
-extern CNetGameState *data_00437CE8;
+class CMission;
+extern CMission theMission;
+#define data_00437CE8 (*(CNetGameState **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 
 class CHUD {
 public:

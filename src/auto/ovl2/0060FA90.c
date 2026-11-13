@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 SetAimPointW__10CZSealBodyFPC6CPnt3DPC6CPnt3Db(char * arg0, char * arg1, char * arg2, u8 arg3);
-extern f32 data_003F6504;
-extern f32 data_003F6508;
+#define data_003F6504 (*(f32 *)((char *)&unit_nz__6CPnt3D + 0x4))   /* unit_nz__6CPnt3D+0x4 */
+#define data_003F6508 (*(f32 *)((char *)&unit_nz__6CPnt3D + 0x8))   /* unit_nz__6CPnt3D+0x8 */
 extern f32 unit_nz__6CPnt3D;
 
 s32 func_0060FA90(char *arg0, char *arg1) {

@@ -10,7 +10,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #pragma mpwc_relax on
 s32 CreateString__7CSTableFPCc(char *);             /* extern */
 M2C_UNK Set__11CUIVariableFP5_zrdr(char *, s32);    /* extern */
-extern s32 data_00437EA8;
+#define data_00437EA8 (*(s32 *)((char *)&theUIVarManager + 0x28))   /* theUIVarManager+0x28 */
 extern M2C_UNK theUIVarManager;
 
 void func_00386B80(char *arg0, s32 arg1, s32 arg2, s8 arg3) {

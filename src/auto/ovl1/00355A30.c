@@ -8,7 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK Load__Q23zdb12CGSTexBufferFb(s32, M2C_UNK); /* extern */
-extern s32 *data_0049E888;
+extern char m_texmanager__Q23zdb11CTexManager[];
+#define data_0049E888 (*(s32 **)((char *)&m_texmanager__Q23zdb11CTexManager + 0x8))   /* m_texmanager__Q23zdb11CTexManager+0x8 */
 
 void EndBatchReloc__Q23zdb15CBatchRelocatorCFv(void) {
     Load__Q23zdb12CGSTexBufferFb(*data_0049E888, 1);

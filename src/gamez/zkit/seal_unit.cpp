@@ -1681,7 +1681,9 @@ public:
     void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
 };
 
-extern C2DMessage_Q data_004366A0;
+struct CMissionFireteamView;
+extern CMissionFireteamView theMission;
+#define data_004366A0 (*(C2DMessage_Q *)((char *)&::theMission + 0x1C0))   /* theMission+0x1C0 */
 
 /* the persona's strings (fts_net_persona.cpp's: SOP strings 0x2C3C30, its neighbour 0x2C3B60) */
 class CZPersonaState {
@@ -3024,7 +3026,7 @@ struct CUnitNetGame {
     unsigned char _0[0xd2];
     unsigned char m_d2;   // 0xd2
 };
-extern CUnitNetGame *data_00437CE8;
+#define data_00437CE8 (*(CUnitNetGame **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 
 extern "C" {
 /* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) and the voice

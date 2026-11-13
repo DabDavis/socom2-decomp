@@ -600,7 +600,9 @@ public:
     unsigned char _0[0x111];
     signed char m_111;   // 0x111
 };
-extern CNet111 *data_00437CE8;
+class CMission;
+extern CMission theMission;
+#define data_00437CE8 (*(CNet111 **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 extern "C" float func_005B82D0(CZKit *kit);
 extern "C" bool func_002C30B0(CZSealBody *seal);
 extern "C" bool func_003C5CA0(CZWeapon *w);

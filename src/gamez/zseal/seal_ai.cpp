@@ -586,7 +586,14 @@ bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *target, const
 /* (OVL2 data: how long the AI waits after a grenade before choosing another, read as a variable) */
 extern float data_0064FF80;
 /* (OVL1 data: the game's clock, as this unit reads it) */
+class CMission;
+extern CMission theMission;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C0 (*(float *)((char *)&::theMission + 0xE0))   /* theMission+0xE0 */
+#else
 extern float data_004365C0;
+#endif
 }
 
 /* the grenades the AI chooses by its target's range: the item and the squared ranges it covers (OVL2
@@ -1224,7 +1231,12 @@ extern "C" signed char func_00562960(CSealCtrlAi *ai)
 
 extern "C" {
 /* theNetwork's online byte (OVL1 bss 0x45A0C1, theNetwork + 1: SOCOM 1's network flag at 9) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */
+#else
 extern unsigned char data_0045A0C1;
+#endif
 }
 
 /* the planner a new route takes: a Navy SEAL in state 8 with flag 1 or 0x100 the stealthy one, else the
@@ -1503,7 +1515,12 @@ bool func_00571150(CSealCtrlAi *ai, short sound, SEAL_STATE stance);
 /* (OVL2 data: how long a sound holds before another) */
 extern float data_0064FE50;
 /* (OVL1 data: the game's clock, as this unit reads it) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C0 (*(float *)((char *)&::theMission + 0xE0))   /* theMission+0xE0 */
+#else
 extern float data_004365C0;
+#endif
 }
 
 /* an AI sound made if its priority reaches the controller's alertness band (0x560A60 inlined); once
@@ -4756,7 +4773,12 @@ extern "C" {
 /* the dead AI's times: the corpse's wait before it fades (+0xC) and, with respawns left, before it
  * fades out to respawn (+0x10) (OVL1 data 0x436624, read as a table through a pointer local -- the
  * target keeps its address in s0, a sixth saved register; the names ours) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00436624 (*(float (*)[5])((char *)&::theMission + 0x144))   /* theMission+0x144 */
+#else
 extern float data_00436624[5];
+#endif
 /* the dead SEAL's network state sent (OVL1 0x2BD640, seal_control.cpp's caller's) */
 void func_002BD640(CEntity *e, int n);
 }
@@ -6849,7 +6871,12 @@ extern "C" void func_00556EE0(CAiMap *map, const CAiMapLoc &loc, const CPnt3D *d
 extern "C" void func_002707C0(CZAnim *anim, bool now);
 
 extern "C" {
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C0 (*(float *)((char *)&::theMission + 0xE0))   /* theMission+0xE0 */ /* (OVL1 data: the delay a new stance waits, read as a variable) */
+#else
 extern float data_004365C0;   /* (OVL1 data: the delay a new stance waits, read as a variable) */
+#endif
 /* (OVL2 data: how long after its time at 0x40C the controller stays busy) */
 extern float data_00650000;
 }
@@ -10119,7 +10146,12 @@ extern "C" {
 /* the debug switches' word (OVL1 data 0x436620: 0x2000 hides the AI's SEALs), the aim's mode and point
  * set (OVL2 0x60FB30, the AI states' range), the courage's fall-back (0x570D90, above), the scales'
  * limits and the view cone's widening (OVL2 data 0x64FFF0, 0x64FE58: 0 and 1; 0x64FFE8: 1.3) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00436620 (*(unsigned int *)((char *)&::theMission + 0x140))   /* theMission+0x140 */
+#else
 extern unsigned int data_00436620;
+#endif
 void func_0060FB30(CSealCtrlAi *ai, signed char mode, const CPnt3D *point);
 extern float data_0064FFF0;
 extern float data_0064FE58;

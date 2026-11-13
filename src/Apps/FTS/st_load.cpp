@@ -204,7 +204,9 @@ void func_0030E5A0(void *net, bool arg);
 void ClearRemoteGuyList__11CZSealStateFv();   /* CZSealState::ClearRemoteGuyList */
 void func_002BB1D0();
 
-extern void (*data_0044F3CC)(int);               /* the net error handler */
+class CZOnlineLobby;
+extern CZOnlineLobby theLobby;
+#define data_0044F3CC (*(void (*(*))(int))((char *)&::theLobby + 0x5C))   /* theLobby+0x5C */ /* the net error handler */
 extern void *data_0045B718;
 extern unsigned char data_003DF1A8;
 }

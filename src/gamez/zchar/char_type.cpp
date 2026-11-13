@@ -105,7 +105,9 @@ CCharacterGear *CCharacterGearList::FindGear(const char *name)
 }
 
 /* the record OVL1's 0x437CE8 points at, a character type's name at +300 (unnamed) */
-extern char *data_00437CE8;
+class CMission;
+extern CMission theMission;
+#define data_00437CE8 (*(char **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 
 /* SOCOM 1's KorusGetPackedWeapons (its demo's 0x24AEA0, after UnPack as here) found its type by a
  * fixed name; SOCOM II's by the one at +300 of OVL1's 0x437CE8, through GetByNameMod (inlined) */

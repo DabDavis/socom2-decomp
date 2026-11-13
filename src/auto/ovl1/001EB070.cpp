@@ -75,7 +75,8 @@ extern M2C_UNK data_003E2828;
 extern M2C_UNK data_003E2838;
 extern M2C_UNK data_003E2848;
 extern M2C_UNK data_003E2850;
-extern M2C_UNK data_00437690;
+extern char theMission[];
+#define data_00437690 (*(M2C_UNK *)((char *)&theMission + 0x11B0))   /* theMission+0x11B0 */
 
 bool func_001EB070(s32 arg0, s32 arg1) {
     bool var_s0;

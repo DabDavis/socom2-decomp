@@ -111,12 +111,24 @@ extern "C" {
  * binoculars and the scopes; whether a primary or a secondary may take the starlight scope, and
  * whether each does */
 extern float data_003DC368;
+class CMission;
+extern CMission theMission;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0043666C (*(float *)((char *)&::theMission + 0x18C))   /* theMission+0x18C */
+#define data_00436670 (*(float *)((char *)&::theMission + 0x190))   /* theMission+0x190 */
+#define data_00436674 (*(unsigned char *)((char *)&::theMission + 0x194))   /* theMission+0x194 */
+#define data_00436678 (*(int *)((char *)&::theMission + 0x198))   /* theMission+0x198 */
+#define data_0043667C (*(unsigned char *)((char *)&::theMission + 0x19C))   /* theMission+0x19C */
+#define data_00436680 (*(int *)((char *)&::theMission + 0x1A0))   /* theMission+0x1A0 */
+#else
 extern float data_0043666C;
 extern float data_00436670;
 extern unsigned char data_00436674;
 extern int data_00436678;
 extern unsigned char data_0043667C;
 extern int data_00436680;
+#endif
 }
 
 /* the base fog colour by value (the name ours: SeeFarther copies it out twice) */
@@ -628,8 +640,16 @@ void CameraZoom::SetLensFxAnim(CZAnim *anim)
  * words of thePipe cleared (an inline both callers share; the names ours) */
 extern "C" {
 void func_00270960(CZAnim *anim, bool now);
+class CPipe;
+extern CPipe thePipe;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00488E90 (*(int *)((char *)&::thePipe + 0x6D0))   /* thePipe+0x6D0 */ /* thePipe + 0x6D0 */
+#define data_00488EA0 (*(int *)((char *)&::thePipe + 0x6E0))   /* thePipe+0x6E0 */ /* thePipe + 0x6E0 */
+#else
 extern int data_00488E90;                       /* thePipe + 0x6D0 */
 extern int data_00488EA0;                       /* thePipe + 0x6E0 */
+#endif
 }
 
 static inline void ResetLensColorsOnly()

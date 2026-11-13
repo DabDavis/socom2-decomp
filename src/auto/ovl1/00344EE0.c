@@ -7,7 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 func_00344BF0(s32 arg0, s32 arg1, s32 arg2);
-extern s32 data_0048DC0C;
+extern char m_soundlist__4CSnd[];
+#define data_0048DC0C (*(s32 *)((char *)&m_soundlist__4CSnd + 0x4))   /* m_soundlist__4CSnd+0x4 */
 
 s32 func_00344EE0(s32 arg0) {
     s32 temp_a2;

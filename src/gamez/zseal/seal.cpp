@@ -118,8 +118,16 @@ struct SEAL_STATS_PACKET {
 };
 
 extern "C" {
+class CMission;
+extern CMission theMission;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004364F8 (*(unsigned char *)((char *)&::theMission + 0x18))   /* theMission+0x18 */ /* (OVL1 bss: a game type, 1 sending only two counters) */
+#define data_00437CE8 (*(CNetGameState **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
+#else
 extern unsigned char data_004364F8;   /* (OVL1 bss: a game type, 1 sending only two counters) */
 extern CNetGameState *data_00437CE8;
+#endif
 /* (OVL1, unowned: two tests of a SEAL against the game, both builds' net code) */
 int func_002C31D0(const CZSealBody *seal);
 int func_002C30B0(const CZSealBody *seal);
@@ -1681,7 +1689,12 @@ void func_00545EE0(CZSealBody *seal, int x);
 void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
 void func_005781C0(CZSealBody *seal);
 void func_0059D750(CZSealBody *seal);
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */
+#else
 extern unsigned char data_0045A0C1;
+#endif
 extern int data_003DF148;
 extern int data_003DF150;
 extern int data_003DF158;
@@ -2762,7 +2775,12 @@ extern float data_0064FCA0;
 extern float data_0064FCA8;
 extern float data_0064FCB0;
 extern float data_0064FCB8;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00436650 (*(float *)((char *)&::theMission + 0x170))   /* theMission+0x170 */
+#else
 extern float data_00436650;
+#endif
 }
 
 /* a material's extension as the noise reads it (int_material.cpp's; 0x34: how loud it is underfoot -- the name
@@ -5840,7 +5858,12 @@ public:
 };
 
 extern "C" {
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004366A0 (*(unsigned char (*)[])((char *)&::theMission + 0x1C0))   /* theMission+0x1C0 */
+#else
 extern unsigned char data_004366A0[];
+#endif
 }
 
 /* a remote message played as from an entity (OVL1 0x5E7F20's, the kit's: PlayRemoteMsg__FP7CEntityii) */
@@ -5969,7 +5992,12 @@ void func_003428A0(unsigned int id);
  * too) */
 void func_0030E6E0(void *obj, int a);
 extern void *data_0045B718;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C0 (*(float *)((char *)&::theMission + 0xE0))   /* theMission+0xE0 */
+#else
 extern float data_004365C0;
+#endif
 void func_00545EE0(CZSealBody *seal, int force);
 void func_0059D750(CZSealBody *seal);
 void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);

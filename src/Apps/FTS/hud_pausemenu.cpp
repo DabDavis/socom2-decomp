@@ -786,7 +786,7 @@ void CZPauseTest::OpenPauseMenu()
 
 /* the valve the quit confirmation sets (no row name yet); the word the delete-from-map line clears
  * (no row name yet); the voice object and its modulation (hud_mpinfobox.cpp's data_0045B718) */
-extern CValve *data_0043668C;
+#define data_0043668C (*(CValve **)((char *)&::theMission + 0x1AC))   /* theMission+0x1AC */
 extern float data_003DC418;
 extern void *data_0045B718;
 extern "C" void func_0030E5A0(void *voice, bool off);

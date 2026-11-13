@@ -6,7 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-extern f32 data_004365C0;
+extern char theMission[];
+#define data_004365C0 (*(f32 *)((char *)&theMission + 0xE0))   /* theMission+0xE0 */
 
 f32 func_005750C0(f32 fparg0) {
     return data_004365C0 - fparg0;

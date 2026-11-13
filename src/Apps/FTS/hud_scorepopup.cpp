@@ -47,7 +47,9 @@ public:
     int m_e3score08;   // 0x124
 };
 /* the game (theMission's, no data row yet: the wins come from it) */
-extern CZNetGame *data_00437CE8;
+class CMission;
+extern CMission theMission;
+#define data_00437CE8 (*(CZNetGame **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 int FormatString(char *buf, int size, int id, const char **args, int count);
 const char *GetString(int id);
 
@@ -686,8 +688,8 @@ extern float data_003DC908;
 extern float data_003DC910;
 extern float data_003DC918;
 extern float data_003DC8C8;
-extern int data_00436AA8;
-extern int data_00436AE8;
+#define data_00436AA8 (*(int *)((char *)&::theMission + 0x5C8))   /* theMission+0x5C8 */
+#define data_00436AE8 (*(int *)((char *)&::theMission + 0x608))   /* theMission+0x608 */
 namespace {
 extern float s_fTeamTextTrans;   /* (defined below, with the column's look) */
 }
@@ -1162,7 +1164,7 @@ struct CAbortValve {
     unsigned char _0[4];
     unsigned short m_value;   // 0x4
 };
-extern CAbortValve *data_0043668C;
+#define data_0043668C (*(CAbortValve **)((char *)&::theMission + 0x1AC))   /* theMission+0x1AC */
 /* the pop-ups are on at all (OVL2 bss 0x64FF90; no row yet), and what the opener keeps while one is up */
 extern unsigned char data_0064FF90;
 

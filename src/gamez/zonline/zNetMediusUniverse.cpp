@@ -1204,8 +1204,8 @@ public:
 CZUniversInformationServer data_0044FC60;   /* theAcctDB's server */
 UniverseStatusList data_0044FD50;
 UniverseNewsList data_0044FD70;
-extern char data_0045A14C[];   /* theNetwork's universe server address */
-extern int data_0045A18C;   /* and port */
+#define data_0045A14C (*(char (*)[])((char *)&::theNetwork + 0x8C))   /* theNetwork+0x8C */ /* theNetwork's universe server address */
+#define data_0045A18C (*(int *)((char *)&::theNetwork + 0xCC))   /* theNetwork+0xCC */ /* and port */
 extern CSMGetServerList *data_0044FD98;   /* the 'GetServerList' command's machine */
 
 /* the status list and the news asked for; done when both have come in */

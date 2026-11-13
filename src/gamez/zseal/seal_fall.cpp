@@ -246,7 +246,7 @@ extern "C" float func_0059AFD0(CZSealBody *seal)
 extern "C" {
 /* the height above the ground a SEAL counts as in the air from (OVL1 bss 0x44C264), the probe for
  * ground under a falling SEAL and the landing's hit taken (seal.cpp's OVL2 0x54A8B0 and 0x5B0C10) */
-extern float data_0044C264;
+#define data_0044C264 (*(float *)((char *)&::theCharacterDynamics + 0x14))   /* theCharacterDynamics+0x14 */
 bool func_0054A8B0(CZSealBody *seal);
 void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit);
 }

@@ -65,7 +65,9 @@ extern "C" bool func_0030E540(CZNetVoice *radio);
 extern float data_004A44A0;
 extern float data_004145F0;
 /* the local seal, or so (no data row yet): the icons show only while it is set */
-extern void *data_00437CE8;
+class CMission;
+extern CMission theMission;
+#define data_00437CE8 (*(void **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 
 /* the HUD's owner, as the box reads it: its name and its player's index */
 class CZSealBody {

@@ -16,7 +16,13 @@ M2C_UNK UpdateLocalPersona__14CZPersonaStateFv();   /* extern */
 M2C_UNK func_002C2C20(M2C_UNK);                     /* extern */
 M2C_UNK func_002C2D50(M2C_UNK);                     /* extern */
 M2C_UNK func_0030E5A0(char *, M2C_UNK);             /* extern */
+extern char theMission[];
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00437CE8 (*(s32 *)((char *)&theMission + 0x1808))   /* theMission+0x1808 */
+#else
 extern s32 data_00437CE8;
+#endif
 extern u8 data_00441580;
 extern char *data_0045B718;
 extern u8 theNetwork;

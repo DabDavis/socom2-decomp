@@ -154,7 +154,9 @@ public:
     NET_GAME_TYPE m_type;   // 0x111
 };
 
-extern CZNetGame *data_00437CE8;
+class CMission;
+extern CMission theMission;
+#define data_00437CE8 (*(CZNetGame **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 /* the message kind a message's colour is indexed by (fts_state.h's MSGTYPE) */
 enum MSGTYPE {
     MSGTYPE_PLAYER = 0,
@@ -170,7 +172,7 @@ public:
 };
 
 /* the mission's first message queue (theMission + 0x1C0, hud_main.cpp's m_messages) */
-extern C2DMessage_Q data_004366A0;
+#define data_004366A0 (*(C2DMessage_Q *)((char *)&::theMission + 0x1C0))   /* theMission+0x1C0 */
 
 /* the sound system's */
 class CSnd {

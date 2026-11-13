@@ -6,7 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-extern char **data_0049E888;
+extern char m_texmanager__Q23zdb11CTexManager[];
+#define data_0049E888 (*(char ***)((char *)&m_texmanager__Q23zdb11CTexManager + 0x8))   /* m_texmanager__Q23zdb11CTexManager+0x8 */
 
 void StartBatchReloc__Q23zdb15CBatchRelocatorCFv(void) {
     char *temp_v1;

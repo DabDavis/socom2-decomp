@@ -1609,7 +1609,14 @@ public:
 };
 
 extern CAppCamera *appCamera;
+class CZNetwork;
+extern CZNetwork theNetwork;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */
+#else
 extern unsigned char data_0045A0C1;
+#endif
 
 void PlayRemoteMsg(CEntity *e, int msg, int arg);
 void SaveFireMessage(CZSealBody *seal, const CPnt3D *vel);
@@ -2129,10 +2136,18 @@ struct CKitWorldView {
     unsigned char m_night_mission;   // 0x5dc
 };
 
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00436674 (*(unsigned char *)((char *)&::theMission + 0x194))   /* theMission+0x194 */
+#define data_00436678 (*(int *)((char *)&::theMission + 0x198))   /* theMission+0x198 */
+#define data_0043667C (*(unsigned char *)((char *)&::theMission + 0x19C))   /* theMission+0x19C */
+#define data_00436680 (*(int *)((char *)&::theMission + 0x1A0))   /* theMission+0x1A0 */
+#else
 extern unsigned char data_00436674;
 extern int data_00436678;
 extern unsigned char data_0043667C;
 extern int data_00436680;
+#endif
 
 extern "C" {
 void SetCurZoomState__10CZSealBodyF9ZOOMSTATE(CZSealBody *body, int state);
@@ -2296,7 +2311,12 @@ public:
     unsigned char _0[0xdc];
     unsigned char m_respawns;   // 0xdc
 };
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00437CE8 (*(CKitNetGame **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
+#else
 extern "C" CKitNetGame *data_00437CE8;
+#endif
 
 /* the body off the ground, as a bool (the target materialises the bit: sltu; the name ours) */
 static inline bool Airborne(CKitBody *body)
@@ -2975,7 +2995,12 @@ extern "C" {
 float Weight__9CSequenceFv(void *seq);
 }
 /* (whether the game is online: OVL1 data, the SEALs' name) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */
+#else
 extern unsigned char data_0045A0C1;
+#endif
 
 /* the kit's flag bits set (inline: each store keeps the bool's `andi 1` unfolded, as a setter's
  * argument; the names ours) */
@@ -4698,7 +4723,12 @@ public:
 };
 
 extern CZSealBody *ftsPlayer;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C8 (*(float *)((char *)&::theMission + 0xE8))   /* theMission+0xE8 */
+#else
 extern float data_004365C8;
+#endif
 
 extern "C" void *GetNode__7CEntityFv(CZSealBody *seal);
 

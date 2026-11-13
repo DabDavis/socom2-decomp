@@ -6,7 +6,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-extern u8 data_0045A0C1;
+extern char theNetwork[];
+#define data_0045A0C1 (*(u8 *)((char *)&theNetwork + 0x1))   /* theNetwork+0x1 */
 
 u8 func_005750A0(void) {
     return data_0045A0C1;

@@ -6,7 +6,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+extern char theMission[];
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C0 (*(f32 *)((char *)&theMission + 0xE0))   /* theMission+0xE0 */
+#else
 extern f32 data_004365C0;
+#endif
 
 f32 func_00548050(void *arg0) {
     if (((u64) ((s64) M2C_FIELD(arg0, u8 *, 0xE1) << 0x3B) >> 0x3F) != 0) {

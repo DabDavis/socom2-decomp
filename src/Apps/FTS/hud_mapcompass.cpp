@@ -90,7 +90,9 @@ extern CCompass theCompass;
 
 /* the anchor following who is talking on the radio (a word of theMission's, no name yet), the voice
  * object it asks, the talker's player object by id (no names yet) */
-extern CCompassAnchor *data_00436604;
+class CMission;
+extern CMission theMission;
+#define data_00436604 (*(CCompassAnchor **)((char *)&::theMission + 0x124))   /* theMission+0x124 */
 
 class CZNetVoice {
 public:

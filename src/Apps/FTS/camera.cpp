@@ -28,7 +28,12 @@ static CPnt3D thirdPersonPos(0.0f, 5.2f, 15.0f);
 static CPnt3D thirdPersonPos2(0.0f, 5.2f, 15.0f);
 extern "C" bool func_002C2FD0(CZSealBody *seal);
 CZSealBody *ftsGetPlayer();
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0044C408 (*(CCameraPreset **)((char *)&::theCharacterDynamics + 0x1B8))   /* theCharacterDynamics+0x1B8 */ /* the views' presets */
+#else
 extern "C" CCameraPreset *data_0044C408;          /* the views' presets */
+#endif
 
 /* the tether's file statics (data 0x3DE268-0x3DE28F, after the shake's): SOCOM 1's
  * save_short_tether_length, then -- in the place its Y_FP_OFFSET held -- the rate the short tether
@@ -60,7 +65,12 @@ extern float data_00416028;   /* its y amplitude */
 extern float data_00416208;   /* DeltaRot */
 extern float data_00416210;   /* DeltaAim */
 extern float data_00416218;   /* (SOCOM II's) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0044C404 (*(unsigned int *)((char *)&::theCharacterDynamics + 0x1B4))   /* theCharacterDynamics+0x1B4 */ /* the views' count (their presets follow) */
+#else
 extern unsigned int data_0044C404;   /* the views' count (their presets follow) */
+#endif
 }
 /* mode 1's camera position, its offset and length handed back (SOCOM II's: GetThirdPersonCamPos's
  * shape, not written) */
@@ -1485,8 +1495,16 @@ extern float deathFlashOut2;
 extern float deathFlashHeld2;
 extern float deathFlashIn2;
 extern float deathEndFadeTime;
+class CPipe;
+extern CPipe thePipe;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00488EA0 (*(int *)((char *)&::thePipe + 0x6E0))   /* thePipe+0x6E0 */
+#define data_00488EA8 (*(unsigned long *)((char *)&::thePipe + 0x6E8))   /* thePipe+0x6E8 */
+#else
 extern int data_00488EA0;
 extern unsigned long data_00488EA8;
+#endif
 /* the pad's button state as the game reads it (fts_controller.cpp's) */
 unsigned char func_002C64E0(int func, CPad *pad);
 /* CEntity::GetEntityList's copy, and the list's search by id (ent_main.cpp's: camera.h's list is a plain one) */

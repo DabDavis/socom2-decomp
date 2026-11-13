@@ -74,8 +74,10 @@ struct LANMissionRules {
     unsigned char m_113;   // 0x113
 };
 extern "C" {
-extern char *data_004364FC;
-extern LANMissionRules *data_00437CE8;
+class CMission;
+extern CMission theMission;
+#define data_004364FC (*(char **)((char *)&::theMission + 0x1C))   /* theMission+0x1C */
+#define data_00437CE8 (*(LANMissionRules **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 }
 
 extern "C" {
@@ -279,7 +281,7 @@ void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27
 
 extern "C" {
 int sprintf(char *s, const char *format, ...);
-extern CUIVariable *data_0044F434;   /* the game's name as the menus show it */
+#define data_0044F434 (*(CUIVariable **)((char *)&::theLobby + 0xC4))   /* theLobby+0xC4 */ /* the game's name as the menus show it */
 }
 
 /* a LAN game of the room joined: refused without a mission of ours; the menus' valves set from its

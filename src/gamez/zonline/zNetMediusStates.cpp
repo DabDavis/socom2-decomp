@@ -764,8 +764,10 @@ void func_00621F90(int conn, int clients, void (*cb)(int, int, int));   /* (the 
 void func_002EFA60(int, int, int);   /* its callback */
 void func_002F7C40(void *rules);   /* the game's rules filled in (the lobby unit's) */
 extern int data_0066A838;   /* our performance figure */
-extern char *data_004364FC;
-extern LANMissionRules *data_00437CE8;
+class CMission;
+extern CMission theMission;
+#define data_004364FC (*(char **)((char *)&::theMission + 0x1C))   /* theMission+0x1C */
+#define data_00437CE8 (*(LANMissionRules **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 }
 
 /* the running mission's number, 0 none (the LAN lobby's inline: the && ternary over the pointer in a

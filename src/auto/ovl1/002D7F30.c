@@ -8,8 +8,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 char *__nw__FUi(M2C_UNK);                           /* extern */
 M2C_UNK func_001FEAE0(M2C_UNK *, s32, s32 *, char **); /* extern */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_003F64C4 (*(f32 *)((char *)&zero__6CPnt3D + 0x4))   /* zero__6CPnt3D+0x4 */
+#define data_003F64C8 (*(f32 *)((char *)&zero__6CPnt3D + 0x8))   /* zero__6CPnt3D+0x8 */
+#else
 extern f32 data_003F64C4;
 extern f32 data_003F64C8;
+#endif
 extern f32 zero__6CPnt3D;
 
 /* Warning: Gap in callee-saved word stack region.

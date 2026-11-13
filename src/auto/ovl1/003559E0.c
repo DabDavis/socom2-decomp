@@ -10,7 +10,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 void AddToBatch__Q23zdb15CBatchRelocatorCFPQ23zdb10CTexHandle(char * arg0, char * arg1);
 M2C_UNK Add__Q23zdb11CDynTexListFPQ23zdb10CTexHandleb(char * arg0, char * arg1, u8 arg2);
 M2C_UNK DropChain__Q23zdb12CGSTexBufferFv(char * arg0);
-extern char **data_0049E888;
+extern char m_texmanager__Q23zdb11CTexManager[];
+#define data_0049E888 (*(char ***)((char *)&m_texmanager__Q23zdb11CTexManager + 0x8))   /* m_texmanager__Q23zdb11CTexManager+0x8 */
 
 void AddToBatch__Q23zdb15CBatchRelocatorCFPQ23zdb10CTexHandle(char *arg0, char *arg1) {
     char *temp_s0;

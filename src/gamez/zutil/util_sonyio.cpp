@@ -124,7 +124,7 @@ public:
 };
 /* the package state (SOCOM II's: util_main.cpp's thePackage 0x4A15F8 and its entry opened, 0x4A15FC) */
 extern CPackage thePackage;
-extern PAKENTRY *data_004A15FC;
+#define data_004A15FC (*(PAKENTRY **)((char *)&::thePackage + 0x4))   /* thePackage+0x4 */
 /* the root path, the file suffix (";1" on the CD) and the root's directory */
 extern char data_003E0520[];
 extern char data_004A1750[];

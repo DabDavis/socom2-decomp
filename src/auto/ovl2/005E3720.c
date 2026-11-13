@@ -8,7 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
-extern s32 data_0044D458;
+extern char list__12CAnimAuxData[];
+#define data_0044D458 (*(s32 *)((char *)&list__12CAnimAuxData + 0x8))   /* list__12CAnimAuxData+0x8 */
 
 s32 Get__12CAnimAuxDataFUi(s32 arg0) {
     return *(s32 *)(data_0044D458 + (arg0 * 4));

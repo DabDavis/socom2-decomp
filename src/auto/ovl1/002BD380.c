@@ -7,7 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK NetFreeObject(s32 arg0);
-extern char *data_00437CE8;
+extern char theMission[];
+#define data_00437CE8 (*(char **)((char *)&theMission + 0x1808))   /* theMission+0x1808 */
 
 void RemoveNetSeal__11CZSealStateFib(s32 arg0, s32 arg1) {
     if ((data_00437CE8 != NULL) && ((arg1 != 0) || (M2C_FIELD(data_00437CE8, u8 *, 0x113) == 6))) {

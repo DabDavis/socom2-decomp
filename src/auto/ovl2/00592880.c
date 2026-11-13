@@ -9,7 +9,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK GetMaxXMotion__10CZSealBodyFRfRf(s32, f32 *, M2C_UNK *); /* extern */
 M2C_UNK GetMaxZMotion__10CZSealBodyFRfRf(s32, f32 *, M2C_UNK *); /* extern */
-extern f32 data_0044C290;
+extern char theCharacterDynamics[];
+#define data_0044C290 (*(f32 *)((char *)&theCharacterDynamics + 0x40))   /* theCharacterDynamics+0x40 */
 
 /* Warning: Gap in callee-saved word stack region.
  * Saved: [0x0, 0x10, 0x14], gap at: 0x8. */

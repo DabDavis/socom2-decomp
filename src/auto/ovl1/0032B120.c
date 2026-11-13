@@ -11,7 +11,8 @@ s32 __nw__FUi(M2C_UNK);                             /* extern */
 M2C_UNK func_001FEAE0(M2C_UNK *, M2C_UNK *, M2C_UNK **, s32 *); /* extern */
 s32 func_0032A800(s32);                             /* extern */
 extern M2C_UNK data_004884F0;
-extern M2C_UNK data_004884F4;
+extern char list__Q28Particle6Source[];
+#define data_004884F4 (*(M2C_UNK *)((char *)&list__Q28Particle6Source + 0x4))   /* list__Q28Particle6Source+0x4 */
 
 s32 Create__Q28Particle6SourceFv(void) {
     s32 sp1C;

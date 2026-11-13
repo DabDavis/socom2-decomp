@@ -125,7 +125,7 @@ struct CSealStatsCopy {
 };
 
 extern "C" {
-extern unsigned char data_0045A0C1;
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */
 /* the place a respawning SEAL takes (OVL1 0x2B8100: SOCOM 1's findAlign__FP10CZSealBodyP6CPnt3DP7CMatrix, a
  * kind more), which side it is on (0x2C30B0), and its state told the network (0x2BD640: SOCOM 1's
  * CZSealState::UpdateLocalSeal) */

@@ -201,7 +201,9 @@ extern "C" int strcasecmp(const char *a, const char *b);
 void _free(void *p, const char *file, int line);
 char *_strdup(const char *s, const char *file, int line);
 /* the decals rdr (0x437D00) and a material's index by name (0x2DE9E0) -- not named */
-extern "C" _zrdr *data_00437D00;
+class CMission;
+extern CMission theMission;
+#define data_00437D00 (*(_zrdr **)((char *)&::theMission + 0x1820))   /* theMission+0x1820 */
 namespace zdb {
 /* node_world.h's hit record (a stand-in: that header's decal pools clash with this unit's) */
 struct IntersectStruct {
@@ -887,7 +889,7 @@ void CZWeapon::SetTimer(int i, float t)
 
 /* the mission's timer for the item 152 ("never" when it has none), the entry's otherwise (the
  * mission's word at 0x1864 -- not named) */
-extern "C" float data_00437D44;
+#define data_00437D44 (*(float *)((char *)&::theMission + 0x1864))   /* theMission+0x1864 */
 
 float CZWeapon::GetTimer(int i)
 {

@@ -25,7 +25,9 @@ public:
 extern CZUniversInformationServer data_0044FC60;
 
 /* the lobby's UI event (fts_remote.cpp's declaration) */
-extern "C" void (*data_0044F3C8)(const char *event, const char *arg);
+class CZOnlineLobby;
+extern CZOnlineLobby theLobby;
+#define data_0044F3C8 (*(void (*(*))(const char *event, const char *arg))((char *)&::theLobby + 0x58))   /* theLobby+0x58 */
 
 /* a checksum over a buffer (Medius's, OVL2): the digest written after the buffer and its size */
 struct LobbyChecksum {

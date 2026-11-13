@@ -745,7 +745,7 @@ bool CMission::LoadVehicles()
 extern "C" {
 extern unsigned int data_00440C40;   /* the first vehicle's teams */
 extern char data_0066B010[];   /* (a vehicle's name: the only one taken, when set) */
-extern unsigned char data_0045A0C1;   /* theNetwork's online byte */
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */ /* theNetwork's online byte */
 }
 
 extern "C" bool func_002B2D20(CMission *mission, CVehicleRdrEntry *entry, bool first)

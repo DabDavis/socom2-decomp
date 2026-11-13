@@ -50,10 +50,10 @@ void AddOption(COptionMap *map, const char *name, OptionHandler handler, unsigne
 void SetOptionSource(COptionMap *map, int argc, char **argv, const char *rdrName);
 
 extern "C" {
-extern char data_00408568[0x40];   /* the menu state to start in */
+#define data_00408568 (*(char (*)[0x40])((char *)&::theGame + 0xA8))   /* theGame+0xA8 */ /* the menu state to start in */
 extern char data_0049E2CE;
 extern char data_0049E2CF;
-extern char data_0045A1C8;
+#define data_0045A1C8 (*(char *)((char *)&::theNetwork + 0x108))   /* theNetwork+0x108 */
 extern COptionMap *data_00408B80;   /* the options */
 }
 

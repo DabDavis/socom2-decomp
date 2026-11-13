@@ -22,8 +22,8 @@ public:
 
 extern "C" {
 /* the blink's speed and its angle down (OVL1 data; SOCOM 1's were constants, 1.5 and -0.5925) */
-extern float data_0044C2DC;
-extern float data_0044C2E0;
+#define data_0044C2DC (*(float *)((char *)&::theCharacterDynamics + 0x8C))   /* theCharacterDynamics+0x8C */
+#define data_0044C2E0 (*(float *)((char *)&::theCharacterDynamics + 0x90))   /* theCharacterDynamics+0x90 */
 }
 
 /* a decal a SEAL can leave: its size range and its texture (SOCOM 1's DWARF: CZDecalDef, 0xc
@@ -43,9 +43,11 @@ public:
 /* the map's mission-compromised valve (OVL1 data 0x436688), the message queue (0x4366A0) and the
  * switch for the online game (0x45A0C1) */
 extern "C" {
-extern CValve *data_00436688;
-extern unsigned char data_004366A0[];
-extern unsigned char data_0045A0C1;
+class CMission;
+extern CMission theMission;
+#define data_00436688 (*(CValve **)((char *)&::theMission + 0x1A8))   /* theMission+0x1A8 */
+#define data_004366A0 (*(unsigned char (*)[])((char *)&::theMission + 0x1C0))   /* theMission+0x1C0 */
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */
 }
 
 enum MSGTYPE { MSGTYPE_PLAYER = 0, MSGTYPE_SYSTEM = 1, MSGTYPE_ALERT = 5 };
@@ -1318,7 +1320,7 @@ extern "C" {
 /* the alert a lost ground raises, when the switch is on (OVL1 data 0x3DF1C8, a byte: no row; OVL2
  * 0x5582C0, seal_ai.cpp's) and the landing's test (OVL2 0x59AD30, seal_create.cpp's) */
 extern unsigned char data_003DF1C8;
-extern float data_004365C0;
+#define data_004365C0 (*(float *)((char *)&::theMission + 0xE0))   /* theMission+0xE0 */
 bool func_005582C0(CAiStamp *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount);
 bool func_0059AD30(CZSealBody *seal, const CPnt3D *pos);
 }
@@ -3048,7 +3050,7 @@ void CZSealBody::HandleWeaponEvent(CZProjectile *proj, unsigned int event, void 
 extern "C" {
 /* the decals rdr (OVL1 bss, the weapons' 0x437D00; a material's index by name is
  * CMaterialExArray::ResolveMaterialIndex, zweapon.h's: OVL1 0x2DE9E0) */
-extern _zrdr *data_00437D00;
+#define data_00437D00 (*(_zrdr **)((char *)&::theMission + 0x1820))   /* theMission+0x1820 */
 }
 /* (zrdr.h's, which this unit cannot include beside zanim.h's _zrdr) */
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
@@ -4931,9 +4933,9 @@ extern CPnt3D data_006506D0[];
 void func_005AE980(const CPnt3D *rot, CQuat *dq, CPnt3D *axis);
 /* the eyes' limits: up, down and sideways (OVL1 data; SOCOM 1's were constants, 8, -14 and 17
  * degrees) */
-extern float data_0044C2D0;
-extern float data_0044C2D4;
-extern float data_0044C2D8;
+#define data_0044C2D0 (*(float *)((char *)&::theCharacterDynamics + 0x80))   /* theCharacterDynamics+0x80 */
+#define data_0044C2D4 (*(float *)((char *)&::theCharacterDynamics + 0x84))   /* theCharacterDynamics+0x84 */
+#define data_0044C2D8 (*(float *)((char *)&::theCharacterDynamics + 0x88))   /* theCharacterDynamics+0x88 */
 }
 
 /* the turn from one look rotation to another, and the axis the unit -z swings about under it (SOCOM 1's
@@ -5168,12 +5170,12 @@ extern "C" {
 /* the head's limits: up, down and sideways (OVL1 data 0x44C2C4-0x44C2CC), and the reach under which a
  * look is taken whole -- the ground-plane length looking ahead or behind, and the cosine off -z (OVL1
  * data 0x44C2FC-0x44C304; SOCOM 1's were constants) */
-extern float data_0044C2C4;
-extern float data_0044C2C8;
-extern float data_0044C2CC;
-extern float data_0044C2FC;
-extern float data_0044C300;
-extern float data_0044C304;
+#define data_0044C2C4 (*(float *)((char *)&::theCharacterDynamics + 0x74))   /* theCharacterDynamics+0x74 */
+#define data_0044C2C8 (*(float *)((char *)&::theCharacterDynamics + 0x78))   /* theCharacterDynamics+0x78 */
+#define data_0044C2CC (*(float *)((char *)&::theCharacterDynamics + 0x7C))   /* theCharacterDynamics+0x7C */
+#define data_0044C2FC (*(float *)((char *)&::theCharacterDynamics + 0xAC))   /* theCharacterDynamics+0xAC */
+#define data_0044C300 (*(float *)((char *)&::theCharacterDynamics + 0xB0))   /* theCharacterDynamics+0xB0 */
+#define data_0044C304 (*(float *)((char *)&::theCharacterDynamics + 0xB4))   /* theCharacterDynamics+0xB4 */
 }
 
 /* the head turned toward a direction (none: straight ahead, taken whole), nothing to do when it is the
@@ -5455,7 +5457,7 @@ void CZSealBody::AttemptBombDefuse()
 }
 
 extern "C" {
-extern CNetGameState *data_00437CE8;
+#define data_00437CE8 (*(CNetGameState **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 /* (OVL1, unowned: a test of a SEAL against the game, both builds' net code; seal.cpp's too) */
 int func_002C31D0(const CZSealBody *seal);
 }
@@ -6697,7 +6699,7 @@ extern "C" {
 /* (OVL1 data: a time that holds the landings off while above zero; a static 65535, the ladder index of
  * none, read as a float; the three anims a landing picks from; the pace a soft landing keeps an anim
  * under -- SOCOM 1's guarded statics) */
-extern float data_004365E8;
+#define data_004365E8 (*(float *)((char *)&::theMission + 0x108))   /* theMission+0x108 */
 extern float data_003F3438;
 extern short data_003DEDF0;
 extern short data_003DEE00;
@@ -8272,7 +8274,7 @@ extern "C" {
 extern short data_003DEE00;
 extern short data_003DEDF8;
 extern short data_003DEDF0;
-extern unsigned char data_0045A0C1;
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */
 }
 
 /* a hurt anim for where the SEAL was hit: the stance as for a death (idle, carrying and carried count as
@@ -8439,8 +8441,8 @@ static inline void StopRipple(CZAnim *&anim)
 
 extern "C" {
 /* (OVL1 data: how fast the water's depth slows the SEAL, and the least it slows it to) */
-extern float data_0044C35C;
-extern float data_0044C358;
+#define data_0044C35C (*(float *)((char *)&::theCharacterDynamics + 0x10C))   /* theCharacterDynamics+0x10C */
+#define data_0044C358 (*(float *)((char *)&::theCharacterDynamics + 0x108))   /* theCharacterDynamics+0x108 */
 }
 
 /* the share of a throttle the ground's slope leaves along an axis: the cosine's complement to the

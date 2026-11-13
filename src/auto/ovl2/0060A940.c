@@ -10,8 +10,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 M2C_UNK __ct__7CTargetFv();                         /* extern */
 f32 ceilf(f32);                                     /* extern */
 f32 func_005750D0(M2C_UNK);                         /* extern */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_003F64C4 (*(f32 *)((char *)&zero__6CPnt3D + 0x4))   /* zero__6CPnt3D+0x4 */
+#define data_003F64C8 (*(f32 *)((char *)&zero__6CPnt3D + 0x8))   /* zero__6CPnt3D+0x8 */
+#else
 extern f32 data_003F64C4;
 extern f32 data_003F64C8;
+#endif
 extern f32 data_006510F0;
 extern f32 zero__6CPnt3D;
 

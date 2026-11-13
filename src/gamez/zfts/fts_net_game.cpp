@@ -231,7 +231,7 @@ extern int data_00441340;
 extern int data_00441348;
 extern int data_00441350;
 
-extern unsigned char data_00437DD4;   /* (a byte the version adds 2000 for at 1 and 2) */
+#define data_00437DD4 (*(unsigned char *)((char *)&::theMission + 0x18F4))   /* theMission+0x18F4 */ /* (a byte the version adds 2000 for at 1 and 2) */
 extern unsigned char data_00441580[24];   /* (the mission picks the game sends) */
 void *memcpy(void *dst, const void *src, unsigned int n);
 char *strncpy(char *dst, const char *src, unsigned int n);

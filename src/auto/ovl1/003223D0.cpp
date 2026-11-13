@@ -30,8 +30,15 @@ M2C_UNK DeleteVisuals__Q23zdb5CNodeFv(char * arg0);
 M2C_UNK func_001EEBA0(s32 *, s32);                  /* extern */
 M2C_UNK func_001FE340(s32 *, s32, M2C_UNK, char **); /* extern */
 extern s32 data_0045C440;
+extern char particle_node_free_list__8Particle[];
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0045C444 (*(s32 *)((char *)&particle_node_free_list__8Particle + 0x4))   /* particle_node_free_list__8Particle+0x4 */
+#define data_0045C448 (*(s32 *)((char *)&particle_node_free_list__8Particle + 0x8))   /* particle_node_free_list__8Particle+0x8 */
+#else
 extern s32 data_0045C444;
 extern s32 data_0045C448;
+#endif
 extern char *m_world__Q23zdb6CWorld;
 
 void ReleaseInstance__8ParticleFPQ23zdb5CNode(char *arg0, char *arg1) {

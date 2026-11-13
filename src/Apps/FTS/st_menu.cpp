@@ -123,7 +123,7 @@ void func_001F4DF0(const char *text, const char *who, int a, int b, int c, unsig
 void func_001F5020(const char *text, const char *who, int a, int b, int c, unsigned char d,
                    unsigned char e, MSGTYPE type);
 }
-extern unsigned char data_0044F3D0;
+#define data_0044F3D0 (*(unsigned char *)((char *)&::theLobby + 0x60))   /* theLobby+0x60 */
 
 const char *CMenuStateMenu::GetReaderFileName()
 {
@@ -205,7 +205,7 @@ public:
 };
 
 /* the network's byte at 0x109: whether its configuration is required (the name ours) */
-extern "C" unsigned char data_0045A1C9;
+#define data_0045A1C9 (*(unsigned char *)((char *)&::theNetwork + 0x109))   /* theNetwork+0x109 */
 
 /* the front end set up (OVL1 0x1F4860: SOCOM 1's, grown): skipped straight to the load state when
  * asked; the reader archive opened, the menu strings, the texture buffers, the "ui" world and its
@@ -419,7 +419,7 @@ public:
     CUIVariable *m_chat;   // 0x94
 };
 
-extern CZNetGame *data_00437CE8;
+#define data_00437CE8 (*(CZNetGame **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 
 /* the online lobby's rooms (zonline.h's, which this unit cannot include: fts_state.h's string stand-in
  * and include/string are two std::basic_string -- the layouts here are zonline.h's, only what the

@@ -313,7 +313,9 @@ public:
     float m_58;   // 0x58
 };
 
-extern float data_00436654;
+class CMission;
+extern CMission theMission;
+#define data_00436654 (*(float *)((char *)&::theMission + 0x174))   /* theMission+0x174 */
 extern float data_00650BF8;
 extern float data_00650C00;
 extern "C" bool func_00572D30(CSealCtrlAi *ai, CEntity *e);

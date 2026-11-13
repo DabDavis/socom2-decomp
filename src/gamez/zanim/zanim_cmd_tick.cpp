@@ -1234,7 +1234,14 @@ struct zanim_cmd_timer {
     float value;
 };
 
+class CMission;
+extern CMission theMission;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C8 (*(float *)((char *)&::theMission + 0xE8))   /* theMission+0xE8 */
+#else
 extern float data_004365C8;
+#endif
 
 bool zAnimTimerTick(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -1783,7 +1790,12 @@ public:
     void Add_Message(const char *text, MSGTYPE type, bool centered, int time, float scale);
 };
 
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004366A0 (*(char (*)[])((char *)&::theMission + 0x1C0))   /* theMission+0x1C0 */
+#else
 extern char data_004366A0[];
+#endif
 const char *GetString(int id);   /* 0x361B40 */
 
 bool zAnimMessageTick(_zanim_cmd_hdr *hdr, float *dT)
@@ -2018,7 +2030,14 @@ struct BlurEffect {
     unsigned long alpha;            /* 0x8: a GS ALPHA register */
 };
 
+class CPipe;
+extern CPipe thePipe;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00488EA0 (*(BlurEffect *)((char *)&::thePipe + 0x6E0))   /* thePipe+0x6E0 */
+#else
 extern BlurEffect data_00488EA0;
+#endif
 
 /* BLUR3D: set the blur's level (flag 1) and amount (2), or drive the amount by an expression;
  * its blend from the record's selectors and alpha (4) or an expression (8); over a time */
@@ -2135,7 +2154,12 @@ struct IrisEffect : public CPipeEffect {
     unsigned char b32;
 };
 
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00488E48 (*(IrisEffect *)((char *)&::thePipe + 0x688))   /* thePipe+0x688 */
+#else
 extern IrisEffect data_00488E48;
+#endif
 
 /* IRIS_EFFECT: set the iris effect's fields the flags name, its blend from the record's
  * selectors and alpha (0x8000) or an expression (0x10000), over a time */

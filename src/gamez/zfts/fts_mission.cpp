@@ -744,7 +744,12 @@ void Reset__14CFlashFXVectorFv(void *flashes);
 void ResetDeathCam__10CAppCameraFv(void *camera);
 void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
 extern class CAppCamera *appCamera;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004086A0 (*(unsigned char (*)[])((char *)&::theGame + 0x1E0))   /* theGame+0x1E0 */ /* (a state in theGame, at 0x1E0) */
+#else
 extern unsigned char data_004086A0[];                    /* (a state in theGame, at 0x1E0) */
+#endif
 }
 
 /* the game and the two states a network error reaches (SOCOM 1's CGame and COurGame, only what this
@@ -806,7 +811,14 @@ extern COurGame theGame;
  * st_load.cpp installs */
 void ftsNetworkGameUninit();
 void DMEDisconnectFromGameServer();
+class CZOnlineLobby;
+extern CZOnlineLobby theLobby;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0044F3CC (*(void (*(*))(int))((char *)&::theLobby + 0x5C))   /* theLobby+0x5C */
+#else
 extern void (*data_0044F3CC)(int);
+#endif
 
 /* the mission ended, unless held: completed, the screen and the flashes cleared, the camera's death
  * view reset and the exit state pushed (SOCOM II's, the name ours: SOCOM 1's fade tick did this in
@@ -2715,7 +2727,12 @@ public:
 extern "C" {
 extern void *data_0045B718;
 void func_0030E6E0(void *voice, int arg);
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004086C8 (*(unsigned char (*)[])((char *)&::theGame + 0x208))   /* theGame+0x208 */ /* (a state in theGame, at 0x208) */
+#else
 extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
+#endif
 }
 
 /* the mission's outcome taken (SOCOM 1's CMission::OnMissionComplete; OVL1 0x2A9B30 -- Tick calls it
@@ -4608,7 +4625,12 @@ extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
 void func_00326FB0();
 void func_005781C0(CZSealBody *player);   /* (OVL2) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00488EA0 (*(int *)((char *)&::thePipe + 0x6E0))   /* thePipe+0x6E0 */
+#else
 extern int data_00488EA0;
+#endif
 }
 
 /* the mission over: the common and mission anims stopped, the sounds and the music, the player's

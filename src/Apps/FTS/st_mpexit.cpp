@@ -347,7 +347,12 @@ public:
     int m_128;   // 0x128: zero when the SEALs' team rates first (unproven)
 };
 
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00437CE8 (*(CZNetGame **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
+#else
 extern CZNetGame *data_00437CE8;
+#endif
 
 /* whether the player is on each side (unnamed yet: the network game's team word against the
  * SEALs' and the terrorists' masks) */

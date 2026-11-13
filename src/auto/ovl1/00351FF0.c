@@ -11,7 +11,8 @@ char *Acquire__10CValvePoolFPCc10VALVE_TYPE(M2C_UNK *, s32, s32); /* extern */
 char *GetByName__6CValveFPCc();                     /* extern */
 M2C_UNK func_001FEAE0(M2C_UNK *, M2C_UNK *, M2C_UNK **, char **); /* extern */
 extern M2C_UNK data_0049E800;
-extern M2C_UNK data_0049E804;
+extern char m_list__6CValve[];
+#define data_0049E804 (*(M2C_UNK *)((char *)&m_list__6CValve + 0x4))   /* m_list__6CValve+0x4 */
 extern M2C_UNK data_0049E820;
 
 char *Create__6CValveFPCc10VALVE_TYPE(s32 arg0, s32 arg1) {

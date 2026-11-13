@@ -18,7 +18,8 @@ struct VC_0 {
     virtual M2C_UNK v_1C(M2C_UNK, M2C_UNK, M2C_UNK);
 };
 extern "C" {
-extern char **data_00408564;
+extern char theGame[];
+#define data_00408564 (*(char ***)((char *)&theGame + 0xA4))   /* theGame+0xA4 */
 
 void PlaySelectionSound__Fv(void) {
     if (data_00408564 != NULL) {

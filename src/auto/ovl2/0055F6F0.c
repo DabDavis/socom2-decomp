@@ -7,10 +7,18 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_003F64C4 (*(f32 *)((char *)&zero__6CPnt3D + 0x4))   /* zero__6CPnt3D+0x4 */
+#define data_003F64C8 (*(f32 *)((char *)&zero__6CPnt3D + 0x8))   /* zero__6CPnt3D+0x8 */
+#define data_003F6504 (*(f32 *)((char *)&unit_nz__6CPnt3D + 0x4))   /* unit_nz__6CPnt3D+0x4 */
+#define data_003F6508 (*(f32 *)((char *)&unit_nz__6CPnt3D + 0x8))   /* unit_nz__6CPnt3D+0x8 */
+#else
 extern f32 data_003F64C4;
 extern f32 data_003F64C8;
 extern f32 data_003F6504;
 extern f32 data_003F6508;
+#endif
 extern f32 unit_nz__6CPnt3D;
 extern f32 zero__6CPnt3D;
 

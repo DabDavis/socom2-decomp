@@ -11,7 +11,12 @@ M2C_UNK DereferenceDecals__Q23zdb7CVisualFUi(char * arg0, u32 arg1);
 M2C_UNK RemoveDecal__Q23zdb7CVisualFPQ23zdb6CDecal(char * arg0, char * arg1);
 char *func_003BF3D0(s32);                           /* extern */
 M2C_UNK func_003BF440(s32, char *);                 /* extern */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004B5040 (*(s32 *)((char *)&m_tempPool__Q23zdb6CDecal + 0x10))   /* m_tempPool__Q23zdb6CDecal+0x10 */
+#else
 extern s32 data_004B5040;
+#endif
 extern s32 m_tempPool__Q23zdb6CDecal;
 
 void func_003BF050(char *arg0) {

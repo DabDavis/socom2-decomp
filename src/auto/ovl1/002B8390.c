@@ -10,7 +10,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 M2C_UNK CollectGarbage__13CUIVarManagerFv(M2C_UNK *); /* extern */
 M2C_UNK func_0030FE40(s32);                         /* extern */
 M2C_UNK zNetLeaveAndDisconnect__9CZNetworkFv(M2C_UNK *); /* extern */
-extern u8 data_0045A0C2;
+#define data_0045A0C2 (*(u8 *)((char *)&theNetwork + 0x2))   /* theNetwork+0x2 */
 extern s32 data_0045B718;
 extern M2C_UNK theNetwork;
 extern M2C_UNK theUIVarManager;

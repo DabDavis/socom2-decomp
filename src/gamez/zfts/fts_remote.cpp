@@ -599,7 +599,7 @@ extern ClientConnectArgs data_00440F20;   /* (the arguments handed to the connec
 struct CZNetVoice;
 extern CZNetVoice *data_0045B718;   /* (zNetVoice.cpp's object) */
 }
-extern "C" void (*data_0044F3C8)(const char *event, const char *arg);   /* (the lobby's UI event) */
+#define data_0044F3C8 (*(void (*(*))(const char *event, const char *arg))((char *)&::theLobby + 0x58))   /* theLobby+0x58 */ /* (the lobby's UI event) */
 
 /* the persona state's pending slots and side counts (fts_net_persona.cpp's: a client's slot taken
  * ahead of its persona -- the slot, the side, 1 the terrorists, 2 the SEALs, 3 a spectator, and
@@ -1351,7 +1351,7 @@ struct E3IndexPacket {
     unsigned char flag;   // 0x4
 };
 
-extern "C" void (*data_0044F3C8)(const char *event, const char *arg);   /* (the lobby's UI event) */
+#define data_0044F3C8 (*(void (*(*))(const char *event, const char *arg))((char *)&::theLobby + 0x58))   /* theLobby+0x58 */ /* (the lobby's UI event) */
 
 int E3IndexPacketHandler(int, int, int, void *data)
 {
@@ -2759,7 +2759,7 @@ extern "C" int func_002B7EE0(CZSealBody *self, int type, int count)
 extern "C" int rand();
 
 /* the network game (OVL1 bss 0x437CE8: hud_ammo.cpp's CNetGameState stand-in) */
-extern CZNetGame *data_00437CE8;
+#define data_00437CE8 (*(CZNetGame **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 
 /* the cross product of two points made through VU0 and normalised (CPnt3D::Cross(b, out, true), as
  * seal_control.cpp writes it: inlined here; the name ours) */

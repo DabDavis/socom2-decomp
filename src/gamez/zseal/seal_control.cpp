@@ -53,7 +53,12 @@ template void DrawFunc<CDynGrenade>(LINE_TYPE type, float t0, float t1, unsigned
 extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
 extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00437CE8 (*(CNetGameState **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
+#else
 extern CNetGameState *data_00437CE8;
+#endif
 /* the controllers' switch (OVL1 data 0x3DF1B0, 1 to begin with: SetEnabled below sets it; PreTick, Tick
  * and PostTick each do nothing while it is off -- the name unknown) */
 extern bool data_003DF1B0;
@@ -559,14 +564,24 @@ public:
 
 extern "C" {
 /* the game clock (OVL1 data 0x4365C0, the AI's: seconds) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C0 (*(float *)((char *)&::theMission + 0xE0))   /* theMission+0xE0 */
+#else
 extern float data_004365C0;
+#endif
 /* whether the SEAL holds on (OVL2 0x54F6E0, seal.cpp's) */
 bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool anims);
 /* the altitude's switch (OVL2 bss: a function static) */
 extern bool data_0066B3F8;
 /* (the network: online and on its way -- OVL1 0x45A1CA, theNetwork's byte; its clock less the start,
  * OVL1 0x30CD80) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0045A1CA (*(bool *)((char *)&::theNetwork + 0x10A))   /* theNetwork+0x10A */
+#else
 extern bool data_0045A1CA;
+#endif
 int func_0030CD80(CZNetwork *net);
 extern CZLANLobby data_0044FE10;
 /* the SEAL's fade online (OVL2 0x553DC0, seal.cpp's) and the game left (OVL1 0x2A47B0, fts_mission.cpp's) */
@@ -613,7 +628,12 @@ struct CAbortValve {
     unsigned short m_value;   // 0x4
 };
 
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_0043668C (*(CAbortValve **)((char *)&::theMission + 0x1AC))   /* theMission+0x1AC */
+#else
 extern "C" CAbortValve *data_0043668C;
+#endif
 
 class CCtrlrConfigs {
 public:
@@ -1271,8 +1291,14 @@ extern "C" {
 /* (OVL1, unowned: a SEAL's side in the game, both builds' net code; seal.cpp's too) */
 bool func_002C30B0(const CZSealBody *seal);
 /* the two teams' bomb sites (OVL1 bss, past theMission's mapped size; the names ours) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00437DCC (*(zdb::CNode **)((char *)&::theMission + 0x18EC))   /* theMission+0x18EC */
+#define data_00437DD0 (*(zdb::CNode **)((char *)&::theMission + 0x18F0))   /* theMission+0x18F0 */
+#else
 extern zdb::CNode *data_00437DCC;
 extern zdb::CNode *data_00437DD0;
+#endif
 }
 
 /* the mission, only the time it has left (CMission::GetTimeLeft, OVL1 0x2A6AD0, on theMission, OVL1
@@ -1547,7 +1573,12 @@ extern "C" {
 extern float floorf(float);
 /* the game clock (OVL1 data 0x4365C0, the AI's: seconds), whether the spectators' menu is up (OVL1
  * 0x2C2FA0, the HUD's) and the kit's thrown items cleared (OVL2 0x5B88C0, the kit lane's) */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365C0 (*(float *)((char *)&::theMission + 0xE0))   /* theMission+0xE0 */
+#else
 extern float data_004365C0;
+#endif
 bool func_002C2FA0();
 void func_005B88C0(CZKit *kit);
 }
@@ -2275,7 +2306,13 @@ void func_00546C00(CZSealBody *seal, CZSealBody *other);
 void func_00546210(CZSealBody *seal, CEntity *e);
 void func_00545EE0(CZSealBody *seal, int x);
 void func_0057DCC0(CZSealBody *seal, int x);
+struct CMissionFlagsFC { unsigned char m_bit0 : 1, m_bit1 : 1, m_bit2 : 1; };   /* theMission's flags at 0xFC */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_004365DC (*(CMissionFlagsFC *)((char *)&::theMission + 0xFC))   /* theMission+0xFC */
+#else
 extern struct { unsigned char m_bit0 : 1, m_bit1 : 1, m_bit2 : 1; } data_004365DC;
+#endif
 }
 /* an entity's team bits (an inline, the name ours: read ahead of the `&`, seal_command.cpp's TeamOf) */
 static inline unsigned int TeamBits(const CEntity *e) { return e->m_team; }

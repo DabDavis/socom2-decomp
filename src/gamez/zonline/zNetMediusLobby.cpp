@@ -818,7 +818,7 @@ void CZOnlineLobby::BanSelfFromGame()
     }
 }
 
-extern "C" void (*data_0044F3C8)(const char *msg, int arg);   /* the lobby's message box (the UI's) */
+#define data_0044F3C8 (*(void (*(*))(const char *msg, int arg))((char *)&::theLobby + 0x58))   /* theLobby+0x58 */ /* the lobby's message box (the UI's) */
 extern "C" BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
 
 /* a game of ours asked for, in the lobby proper: its name made unique to the room ("$~" and the

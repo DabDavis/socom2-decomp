@@ -69,8 +69,11 @@ extern "C" int atoi(const char *s);
  * Add_Message (C2DMessage_Q's, 0x2B6530), and the stream held while every stream voice is busy (the
  * sound, its voice and a word; names not known) */
 extern unsigned char data_003DFFD8;
-extern unsigned char data_0045A0C1;
-extern char data_00436B80[];
+class CZNetwork;
+extern CZNetwork theNetwork;
+#define data_0045A0C1 (*(unsigned char *)((char *)&::theNetwork + 0x1))   /* theNetwork+0x1 */
+extern char theMission[];
+#define data_00436B80 (*(char (*)[])((char *)&::theMission + 0x6A0))   /* theMission+0x6A0 */
 /* the HUD's message queue (fts_message.cpp's C2DMessage_Q, SOCOM 1's class): only its add declared,
  * the kind a byte enum (fts_state.h's MSGTYPE; 0 the player's) -- respelled from its placeholder
  * (the world lane's round 31; the game states' round 51 named the row 0x2B6530) */

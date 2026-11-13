@@ -981,7 +981,7 @@ extern "C" int func_002C4810()
 }
 
 /* the menu's event handler (the lobby's: an event's name and its argument) */
-extern "C" bool (*data_0044F3C8)(const char *event, const char *arg);
+#define data_0044F3C8 (*(bool (*(*))(const char *event, const char *arg))((char *)&::theLobby + 0x58))   /* theLobby+0x58 */
 
 /* a persona flagged 0x10000, a null one not (ours) */
 inline bool IsPersonaFlagged(PersonaData *p)

@@ -1255,7 +1255,12 @@ public:
     unsigned char m_respawns;   // 0xdc: the game respawns the dead (the name ours)
 };
 
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00437CE8 (*(CNetGameState **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
+#else
 extern CNetGameState *data_00437CE8;
+#endif
 
 /* the ghost text's local static point and its guard (OVL1 bss; no rows named yet) */
 extern signed char data_00408EF0;

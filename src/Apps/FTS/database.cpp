@@ -216,7 +216,7 @@ public:
 class CRdrFile;
 void zBoneLoadMap(const char *dir, CRdrFile *rdr);
 /* a reader nothing sets (OVL1 bss, read by LoadWorld alone) */
-extern "C" CRdrFile *data_00437D18;
+#define data_00437D18 (*(CRdrFile **)((char *)&::theMission + 0x1838))   /* theMission+0x1838 */
 void FilterAssetLibFolder(const char *name, char *folder);
 void hookupVisuals(zar::CZAR *zar, zdb::CModel *model);
 

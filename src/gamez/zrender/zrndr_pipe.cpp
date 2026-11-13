@@ -568,7 +568,10 @@ void CPipe::RandomizeOverlay()
 /* the light lists (SOCOM 1's BuildLightMapList is likely 0x339660; neither written) and the
  * world's lighting switch (0x3B7130: a byte set and its inverse beside it), and four of the light
  * pass's counts (not named) */
-extern int data_004B4DAC, data_004B4DE4, data_004B4E0C, data_004B4E34;
+#define data_004B4DAC (*(int *)((char *)&::zdb::CVisual::m_specMapList + 0x4))   /* m_specMapList__Q23zdb7CVisual+0x4 */
+#define data_004B4DE4 (*(int *)((char *)&::zdb::CVisual::m_lightMapList + 0x4))   /* m_lightMapList__Q23zdb7CVisual+0x4 */
+#define data_004B4E0C (*(int *)((char *)&::zdb::CVisual::m_shadowMapList + 0x4))   /* m_shadowMapList__Q23zdb7CVisual+0x4 */
+#define data_004B4E34 (*(int *)((char *)&::zdb::CVisual::m_projectedMapList + 0x4))   /* m_projectedMapList__Q23zdb7CVisual+0x4 */
 
 /* SOCOM II's (the name ours): what SOCOM 1's RenderAtom did between its FOV mask and its draw --
  * the fog flag cleared; a bump-mapped node only while the pass allows it; a landmark gets the

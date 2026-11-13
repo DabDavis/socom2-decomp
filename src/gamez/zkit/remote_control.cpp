@@ -108,7 +108,7 @@ public:
     float m_ease_rate;   // 0x118
 };
 
-extern CNetGameEase *data_00437CE8;
+#define data_00437CE8 (*(CNetGameEase **)((char *)&::theMission + 0x1808))   /* theMission+0x1808 */
 
 extern "C" {
 float expf(float);

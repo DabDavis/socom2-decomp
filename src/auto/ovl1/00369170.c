@@ -8,8 +8,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK RenderUiNode__5CPipeFPQ23zdb5CNode(M2C_UNK *, s32); /* extern */
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00488DF0 (*(s32 *)((char *)&thePipe + 0x630))   /* thePipe+0x630 */
+#define data_00488ED1 (*(s8 *)((char *)&thePipe + 0x711))   /* thePipe+0x711 */
+#else
 extern s32 data_00488DF0;
 extern s8 data_00488ED1;
+#endif
 extern M2C_UNK thePipe;
 
 void DrawForeplane__9CGameMenuFv(char *arg0) {

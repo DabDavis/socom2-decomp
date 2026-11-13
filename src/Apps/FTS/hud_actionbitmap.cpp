@@ -308,7 +308,14 @@ void CActionTxtrMachine::TickTransparencyFade(bool b)
 }
 
 /* the mission's own prompt text (theMission + 0x20; empty for none) */
+class CMission;
+extern CMission theMission;
+/* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
+#if Z_PORT
+#define data_00436500 (*(char (*)[])((char *)&::theMission + 0x20))   /* theMission+0x20 */
+#else
 extern char data_00436500[];
+#endif
 
 /* a string id's text (the string table's) */
 const char *GetString(int id);

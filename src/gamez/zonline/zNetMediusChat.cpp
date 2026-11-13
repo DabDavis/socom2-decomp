@@ -514,7 +514,9 @@ MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
 void func_00300670();   /* the Medius library closed */
 void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
 MediusErrorCode MediusSendChatMessage(MediusSendDirectMessageRequest *req);   /* the direct message sent */
-extern char data_00437690[];   /* theMission's message ring (CMission::m_netQueue) */
+class CMission;
+extern CMission theMission;
+#define data_00437690 (*(char (*)[])((char *)&::theMission + 0x11B0))   /* theMission+0x11B0 */ /* theMission's message ring (CMission::m_netQueue) */
 }
 
 extern "C" {
