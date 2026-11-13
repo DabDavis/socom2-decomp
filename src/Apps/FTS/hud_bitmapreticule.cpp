@@ -548,12 +548,16 @@ static inline const char *AllyName(CZSealBody *seal)
     return n;
 }
 
+/* the arming distance read through an inline of its own: the extra inline level's empty blocks keep
+ * the `b` over the else arm and the block ahead of Top unfilled, as the target has them (round 74) */
+static inline float ArmDistOf(CZWeapon *w) { return w->GetArmingDistance(); }
+
 static inline float ArmDist(CZWeapon *w, float d)
 {
     float r;
 
     if (w)
-        r = w->GetArmingDistance();
+        r = ArmDistOf(w);
     else
         r = d;
     return r;
@@ -610,8 +614,9 @@ public:
 /* the reticle's colours and the name under it (SOCOM 1's UpdateColor, on SOCOM II's friend tests, ammo and health
  * bar): grey when blocked or the weapon can't reach, the no-ammo and ready colours; the seal it is on named in red,
  * green or blue by side, with the clan tag and an ally's health */
-/* Round 73: OPEN at 0xB48, 3 off -- the two nops below in (1) after mov.s and lwc1 f20 (the `b` before the
- * arming distance's join not filled from its target in the original: the round-28 block-optimisation lead).
+/* Byte-exact since the OVL1 lane's round 74: the arming distance's call one inline level deeper (ArmDistOf
+ * inside ArmDist) gives the three nops round 73 left -- after mov.s and lwc1 f20, and the `b` before the
+ * arming distance's join not filled from its target. Round 73: OPEN at 0xB48, 3 off.
  * Closed: the frame and the block copy of (2) and the madd.s nop of (1) by the two points INITIALISED from
  * CPnt3D::zero in one declaration (`CPnt3D tip = CPnt3D::zero, q = ...`: MW shares one temporary for the
  * repeated struct copy -- the target's 288, copied by block through a2 twice); the barrel's part called as a
