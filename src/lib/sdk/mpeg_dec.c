@@ -32,9 +32,10 @@
  * for global-alloc); _ipuVdec returns the command word itself (this cc1 truncates DI to HI with an
  * `andi 0xffff`: a mask written before it is a second one).
  *
- * OPEN: _extensionAndUserData (0x11C against 0x128: the target hoists both start
- * codes, 0x1B5 and 0x1B2, into saved registers and tests them at the loop's foot; the `while
- * (a == X || a == Y)` written here keeps only one). */
+ * _extensionAndUserData is byte-exact since GCC round 72a: the extension id clamped by a
+ * conditional expression (`id = id > 10 ? 0 : id`) keeps the GTU against 10 in a register, which
+ * loop.c hoists into s2 -- and with three invariants the loop's foot keeps both start codes in
+ * saved registers (the open note's symptom); `if (id > 10) id = 0` folds to `sltiu 11`, 0x11C. */
 
 #include "libmpeg.h"
 
@@ -1608,8 +1609,7 @@ void _extensionAndUserData(MpegDec *d)
 		if (code == 0x1B5) {
 			_flushBuf(d, 32);
 			id = _nextBit(d, 4);
-			if (id > 10)
-				id = 0;
+			id = id > 10 ? 0 : id;
 			ext[id](d);
 			_nextStartCode(d);
 		} else {
