@@ -5756,12 +5756,17 @@ void CZSealBody::Recoil()
  * callbacks; the homing stepped and let go; posed; the carry's root held; the root's move kept as the
  * velocity in the turns and the step; then the look, the eyes and the blink, the spine's pitch, the
  * recoil, the lean into turns (OVL2 0x57A330; SOCOM 1's Tick_0, its float unread; Tick calls it).
- * OPEN, at size and frame, every call and branch placed: 4 structural (the yaw compared in f1 and reloaded
- * for the positive call, here compared in f12; a nop where the target fills the lean test's delay slot)
- * and ~40 register-only, the overlay loops' saved registers: the first loop's a, script and taken overlay
- * right since the script is declared ahead of the loop (175 to 159), its o1 s4 for s2; the second's a s5,
- * script s4, pool s3, &ov[1] s2 for s3, s2, s5, s4. Tried: got set first, the script's ternary (186), a
- * declared outside, a second script local for the fire pose (171), the loop bodies as inlines (0x11EC) */
+ * OPEN, at size and frame, every call and branch placed: 4 structural, ONE cause -- the yaw compared in f1
+ * and reloaded into f12 for the positive call (here compared in f12 and reused); the three nops after it
+ * are label padding that moves with it -- and 32 register-only: the first loop's o1 s4 for s2 and the
+ * fire-pose script (script's later web) s2 for s4; the second loop's a s5 for s3. One script for both
+ * loops, declared at the top (round 70, 37 to 32: the second loop's script a split web, numbered late,
+ * as igreplay asked). igreplay: the second loop's a wants a number after t's split webs and before
+ * script's (--move 42=81.5 on a dump of this); sharing one `a` between the loops makes its web split,
+ * but numbered ahead of t's, and recolours the rest (323). Tried for the yaw: `>= 0`, `< 0` with the arms
+ * swapped (20), the negation into a local, a copy of yaw, `yaw = -yaw` (6), `0.0f > yaw` (6), a bool, a
+ * switch. Earlier: got set first, the script's ternary (186), a declared outside, a second script local
+ * for the fire pose (171), the loop bodies as inlines (0x11EC) */
 void CZSealBody::Tick_0()
 {
     float z1;
@@ -5773,6 +5778,7 @@ void CZSealBody::Tick_0()
     float pitch;
     float yaw2;
     float pitch2;
+    CZSIScriptCommon *script;
 
     if (!func_00555170(&m_blends))
         return;
@@ -5783,8 +5789,6 @@ void CZSealBody::Tick_0()
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
 
     if (func_005551A0(top->m_flags, 64)) {
-        CZSIScriptCommon *script;
-
         for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = top->m_anims.Next()) {
             ACTIVE_ANIM *ov[2] = {0};
             int i = 0;
@@ -5854,7 +5858,6 @@ void CZSealBody::Tick_0()
                 if (i < 2)
                     ov[i] = o;
             AnimType t = func_0058C9E0(this, (AnimType)a->m_id, m_item);
-            CZSIScriptCommon *script;
 
             if ((short)t == a->m_id)
                 script = 0;
