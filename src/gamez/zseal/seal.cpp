@@ -1674,6 +1674,92 @@ void CZSealBody::UpdateStance()
     }
 }
 
+/* whether the AI drives a SEAL, and whether that AI is awake (inlines, the names ours) */
+static inline bool LodAiDriven(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false;
+}
+
+static inline bool LodAiAwake(const CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+/* (OVL2 data 0x64FC70, 0x64FC78: how many of the targets near enough take the weapon's recoil and lean,
+ * and the footsteps -- the two limits of the frame's walk) */
+extern "C" {
+extern int data_0064FC70;
+extern int data_0064FC78;
+extern bool data_003DF1B0;   /* (the controllers' switch, seal_control.cpp's) */
+}
+
+/* each target SEAL's flags set by its distance, a sleeping AI's left alone: the eyes and the anims within
+ * 8 metres (25 zoomed), the lean and the recoil within 50 for the first few, the footsteps too; not rendered,
+ * the animations off; the SEAL's own, when rendered, all on (SOCOM 1's UpdateLODFlags, between PreTick and
+ * UpdateStance in both builds; OVL2 0x552850: SOCOM II's limits and option new) */
+void CZSealBody::UpdateLODFlags()
+{
+    int nLean = 0;
+    int nStep = 0;
+    CTargetList &targets = m_targets;
+    float sq = 10.0f;
+    sq *= sq;
+    float far = 2500.0f * sq;
+    float mid = 625.0f * sq;
+    float near = 64.0f * sq;
+
+    for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+        CZSealBody *seal = AsSeal(i->m_ent);
+
+        if (!seal)
+            continue;
+        if (LodAiDriven(seal) && !LodAiAwake(seal->GetSealCtrlAi()))
+            continue;
+        bool awake = LodAiDriven(seal) ? LodAiAwake(seal->GetSealCtrlAi()) : true;
+        bool rendered = seal->GetNode()->Rendered(2);
+        float d = i->m_distSq;
+
+        if ((rendered && awake) || !data_003DF1B0) {
+            seal->m_interpolate_animations = true;
+            if (m_kit.IsZoomed()) {
+                if (d < mid)
+                    seal->m_blink_eyes = true;
+            } else if (d < near)
+                seal->m_blink_eyes = true;
+            else
+                seal->m_blink_eyes = false;
+            if (d < far && nLean < data_0064FC70) {
+                nLean++;
+                seal->m_lean_into_turns = true;
+                seal->m_do_weapon_recoil = true;
+            } else {
+                seal->m_lean_into_turns = false;
+                seal->m_do_weapon_recoil = false;
+            }
+        } else {
+            seal->m_blink_eyes = false;
+            seal->m_interpolate_animations = false;
+            seal->m_lean_into_turns = false;
+            seal->m_do_weapon_recoil = false;
+        }
+        if (awake) {
+            if (d < far && nStep < data_0064FC78) {
+                nStep++;
+                seal->m_animate_footsteps = true;
+            } else
+                seal->m_animate_footsteps = false;
+        } else
+            seal->m_animate_footsteps = false;
+    }
+    if (GetNode()->Rendered(2)) {
+        m_blink_eyes = true;
+        m_interpolate_animations = true;
+        m_lean_into_turns = true;
+        m_do_weapon_recoil = true;
+    }
+    m_animate_footsteps = true;
+}
+
 /* a fade of the SEAL's opacity asked for, unless a higher priority's runs: the target and rate kept,
  * the rate turned toward the target, the fade started when the node is not there already (OVL2
  * 0x552780, new in SOCOM II: CSealCtrl::OnDeath and ReCreate ask it; the name unknown) */

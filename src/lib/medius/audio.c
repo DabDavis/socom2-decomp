@@ -148,6 +148,10 @@ extern int func_00626110(GRID *p);
 extern int func_006264C0(GRID *p, void *p1, int n2);
 extern void func_00626410(GRID *p);
 extern void func_00626A38(GRID *p);
+extern int func_006250D0(GRID *p, GRID_HEADER *h, PEER *pFrom, char *pData, int nLen);
+extern int func_006253B8(GRID *p, GRID_HEADER *h, PEER *pFrom, char *pData, int nLen);
+extern int func_00625690(GRID *p, GRID_HEADER *h, PEER *pFrom, char *pData, int nLen);
+extern unsigned short func_0062A160(PEER *p, GRID_HEADER *h, int nSrc);
 
 extern PEER *func_00629EB8(PEER *pList, int nId);
 extern void func_00629E40(PEER **ppList, int nId);
@@ -211,7 +215,7 @@ int func_00610938(AUDIO *pAudio);
 int func_00610668(AUDIO *pAudio, int nNow);
 void func_00612630(AUDIO *pAudio, int nTo);
 int func_006115C0(AUDIO *pAudio, int nType, char *pData, int nFlag);
-int func_00610C20(AUDIO *pAudio, int nFrom, int nPort, char *pBuf, int nLen);
+int func_00610C20(AUDIO *pAudio, int nFrom, int nPort, char *pBuf, unsigned int nLen);
 int func_00610FA0(AUDIO *pAudio, int nTo, GRID_HEADER *h, void *pData, int nLen);
 int func_00611250(AUDIO *pAudio, char *pBuf, int nSize, int *pnFrom, int *pnPort);
 GRID *func_00611388(AUDIO *pAudio, int nId);
@@ -631,6 +635,106 @@ int func_00610AA8(AUDIO *pAudio, int nMaxMembers, int *pnId, const char *szName)
     pAudio->nGrid = info.nId;
     func_0062A0A8(pSelf, info.nId);
     return func_00624830(pAudio->pGrids, pAudio->nId, &h, &info, sizeof(info));
+}
+
+/* 0x610C20: a message from the socket: the peer it came from (by the sender's id when the header's 0x80 is set, else by address), the
+ * length checked, then handed to its group by type. Round 28b, unwritten before. */
+int func_00610C20(AUDIO *pAudio, int nFrom, int nPort, char *pBuf, unsigned int nLen)
+{
+    GRID_HEADER h;
+    int now = func_0062C070();
+    PEER *p;
+    PEER *pSender;
+    GRID *pGrid;
+    int nId;
+    unsigned int nSeen;
+
+    if (nLen < sizeof(h))
+        return -1;
+    memcpy(&h, pBuf, sizeof(h));
+    if (h.nType & 0x80) {
+        h.nType &= 0x7F;
+        memcpy(pBuf, &h, sizeof(h));
+        p = func_00629EB8(pAudio->pPeers, h.nSrc);
+        if (p != 0 && p->nState == 0) {
+            if (p->info.nAddr == nFrom && p->info.nPort == nPort) {
+                p->nState = 2;
+            } else if (p->info.nAddr2 == nFrom && p->info.nPort2 == nPort) {
+                p->nState = 1;
+            } else {
+                p = 0;
+            }
+        }
+    } else {
+        PEER *pFirst = pAudio->pPeers;
+
+        p = pFirst;
+        while (p != 0) {
+            if (p->info.nAddr == nFrom && p->info.nPort == nPort) {
+                if (p->nState == 0)
+                    p->nState = 2;
+                break;
+            }
+            if (p->info.nAddr2 == nFrom && p->info.nPort2 == nPort) {
+                if (p->nState == 0)
+                    p->nState = 1;
+                break;
+            }
+            p = p->pPrev;
+            if (p == pFirst)
+                p = 0;
+        }
+    }
+    if (p == 0)
+        return 0;
+    p->tSent = now;
+    p->nTries = 0;
+    nId = p->info.nId;
+    pSender = func_00629EB8(pAudio->pPeers, h.nSrc);
+    if (pSender == 0)
+        return 0;
+    switch (h.nType) {
+    case 32:
+    case 33:
+    case 34:
+    case 35:
+    case 47:
+    case 48:
+        if (h.nLen != nLen - 12)
+            return -1;
+        break;
+    default:
+        if (h.nLen != nLen - 8)
+            return -1;
+        break;
+    }
+    if (h.nSrc == pAudio->nId)
+        return 0;
+    if (h.nGrid != 0) {
+        if (h.nGrid != pSender->info.nGrid || h.nGrid != pAudio->nGrid) {
+            func_00612630(pAudio, pSender->info.nId);
+            pSender->tSent = now;
+            pSender->nTries++;
+            if (h.nGrid != pAudio->nGrid)
+                return 0;
+        }
+    }
+    pGrid = func_00611388(pAudio, h.nGrid);
+    if (pGrid == 0)
+        return 0;
+    nSeen = func_0062A160(pSender, &h, nId);
+    if (nSeen != 0xFFFF && nSeen != nId) {
+        if (pAudio->x74 != 0)
+            func_006125D0(pAudio, h.nGrid, nId, h.nSrc);
+        return 0;
+    }
+    if (h.nGrid != 0) {
+        if ((unsigned char)(h.nType - 32) < 4 || h.nType == 47)
+            return func_006250D0(pGrid, &h, p, pBuf, nLen);
+        if (h.nType == 48)
+            return func_006253B8(pGrid, &h, p, pBuf, nLen);
+    }
+    return func_00625690(pGrid, &h, p, pBuf, nLen);
 }
 
 /* Sends a message to one peer: its second address below state 2, its first in 0 and 2. */

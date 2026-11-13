@@ -422,11 +422,10 @@ CZSealBody *CZSealBody::Create(const CCharacterType *type, const char *name, CSe
 }
 
 extern "C" {
-/* the SEALs made so far (OVL2 bss 0x66B420), shadows' switch (OVL1 data 0x3DF138, a byte), the gear's own
- * step and the kit's after the items (OVL2 0x58B1A0, 0x5C7830) */
+/* the SEALs made so far (OVL2 bss 0x66B420), shadows' switch (OVL1 data 0x3DF138, a byte) and the
+ * kit's step after the items (OVL2 0x5C7830) */
 extern int data_0066B420;
 extern unsigned char data_003DF138;
-void func_0058B1A0(CZSealBody *seal);
 void func_005C7830(CZKit *kit);
 }
 
@@ -485,7 +484,7 @@ void CZSealBody::PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl)
     for (CCharacterGearList::iterator g = gear.begin(); g != gear.end(); ++g)
         seal->AddItem(*g);
     seal->EnableMPBombGear(false);
-    func_0058B1A0(seal);
+    seal->SetupEyes();
     seal->SetupGear();
 
     CZKit *kit = &seal->m_kit;

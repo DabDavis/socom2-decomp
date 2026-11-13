@@ -312,6 +312,7 @@ public:
     void SetHandFireMode(int mode);
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
+    bool IsZoomed();
     bool IsUsingBinocs();
     /* the reticule's settling, 0 when settled (kit.h's; OVL2 0x5BE990) */
     float GetReticuleSettle();
@@ -2014,11 +2015,16 @@ public:
     SEAL_STATE GetStance(bool flag) const;
     /* a body part made a gear's (SOCOM 1's; OVL2 0x58B040, seal_cfg.cpp) */
     void SetPartAsGear(CZBodyPart *part, class CCharacterGear *gear);
+    /* an anim's aux objects given to the table of parts (SOCOM 1's, which took the anim; OVL2 0x58ACC0,
+     * seal_cfg.cpp) */
+    void ConfigureAuxPartAnim(CZSIScriptCommon *common);
     /* a gear by name, or none (SOCOM 1's; OVL2 0x59A730, seal_create.cpp: `this` unread) */
     CCharacterGear *FindGear(const char *name);
     /* the rifle, pistol and launcher found among the made gears, the launcher's part added (SOCOM 1's;
      * OVL2 0x58B0F0, seal_cfg.cpp) */
     void SetupGear();
+    /* the eyes and their lids made parts (SOCOM 1's; OVL2 0x58B1A0, seal_cfg.cpp) */
+    void SetupEyes();
     /* the MP bomb's gear shown or hidden (SOCOM 1's; OVL2 0x59DF60) */
     void EnableMPBombGear(bool on);
     /* a part added to the anims' parts: a bare one by name (OVL2 0x58B630), or a gear's model attached to
@@ -2194,6 +2200,8 @@ public:
     void SetJoinedUnit(bool on) { m_joined_unit = on; }
     /* the gas and smoke flags set (inlines: a constant true is `daddiu 1 << n`) */
     void SetInGas(bool on) { m_isingas = on; }
+    /* bit 10 of 0x105C set (an inline: PushBlend sets it first and clears it on each refusal) */
+    void SetLimp(bool on) { m_limp = on; }
     void SetInSmoke(bool on) { m_isinsmoke = on; }
     /* bits 9 and 10 of 0x1060 set (inlines: a constant true is `daddiu 1 << n`, a false `(0 & 1) <<
      * n`; the names ours) */
@@ -2246,6 +2254,8 @@ public:
      * seal.cpp) */
     bool SetStance(SEAL_STATE state);
     void UpdateStance();
+    /* each target SEAL's flags set by its distance (SOCOM 1's; OVL2 0x552850, seal.cpp) */
+    void UpdateLODFlags();
     /* the state of the topmost blend not in state 3, else 0 (SOCOM 1's PeekBaseState; OVL2
      * 0x57DC20, seal_body.cpp's -- CalcAimGoal asks it in state 3) */
     unsigned char PeekBaseState();

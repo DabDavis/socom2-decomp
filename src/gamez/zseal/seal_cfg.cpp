@@ -284,6 +284,46 @@ bool CZSealBody::AddItem(const char *name)
     return true;
 }
 
+/* the eyes and their lids: each aux node found made a part, on the head, with its name's id; none, no part
+ * (SOCOM 1's SetupEyes, which hung them on the node's own part; OVL2 0x58B1A0, between SetupGear and the
+ * AddItems in both builds) */
+void CZSealBody::SetupEyes()
+{
+    CNode *node = FindAuxNode("right_eyeball", true);
+
+    if (node) {
+        m_reyeball = NewBodyPart(0, 0);
+        m_reyeball->m_node = node;
+        m_reyeball->m_parent = m_head;
+        m_reyeball->m_id = func_0058CA60("right_eyeball");
+    } else
+        m_reyeball = 0;
+    node = FindAuxNode("left_eyeball", true);
+    if (node) {
+        m_leyeball = NewBodyPart(0, 0);
+        m_leyeball->m_node = node;
+        m_leyeball->m_parent = m_head;
+        m_leyeball->m_id = func_0058CA60("left_eyeball");
+    } else
+        m_leyeball = 0;
+    node = FindAuxNode("right_lid", true);
+    if (node) {
+        m_reyelid = NewBodyPart(0, 0);
+        m_reyelid->m_node = node;
+        m_reyelid->m_parent = m_head;
+        m_reyelid->m_id = func_0058CA60("right_lid");
+    } else
+        m_reyelid = 0;
+    node = FindAuxNode("left_lid", true);
+    if (node) {
+        m_leyelid = NewBodyPart(0, 0);
+        m_leyelid->m_node = node;
+        m_leyelid->m_parent = m_head;
+        m_leyelid->m_id = func_0058CA60("left_lid");
+    } else
+        m_leyelid = 0;
+}
+
 /* the rifle, pistol and launcher found among the made gears, and the launcher's part added to the
  * anims' parts (OVL2 0x58B0F0: SOCOM 1's SetupGear, by its place after SetPartAsGear -- SOCOM 1's found
  * the rifle and the pistol alone) */
@@ -311,6 +351,84 @@ void CZSealBody::SetPartAsGear(CZBodyPart *part, CCharacterGear *gear)
     if (part->m_node)
         part->Orient();
     SetBodyPart(part->m_id, 0);
+}
+
+/* a part's object in the anims' parts, by its id, or none (SOCOM 1's GetObjAnim, out of line there) */
+static inline CObjAnim *FindObjAnim(std::vector<CObjAnim *> &v, int id)
+{
+    typedef std::vector<CObjAnim *>::iterator iter;
+    iter i((CObjAnim **)v.data());
+    iter e((CObjAnim **)v.data() + v.size());
+
+    for (; i != e; ++i) {
+        CObjAnim *o = *i;
+
+        if (id == o->m_part->m_id)
+            return o;
+    }
+    return 0;
+}
+
+/* a part's gear, if it has an object (an inline) */
+static inline CCharacterGear *FindObjGear(std::vector<CObjAnim *> &v, CZBodyPart *part)
+{
+    if (part) {
+        const int id = part->m_id;
+        CObjAnim *oo = FindObjAnim(v, id);
+
+        if (oo)
+            return oo->m_gear;
+        else
+            return 0;
+    } else
+        return 0;
+}
+
+/* a body part by id, none out of range; a script's object of a body part, none out of range (inlines) */
+static inline CZBodyPart *BodyPartOf(CZSealBody *seal, int i)
+{
+    if (i < seal->m_body_parts.size() && i >= 0)
+        return seal->m_body_parts[i];
+    return 0;
+}
+
+static inline CZSIObject *ObjectOf(CZSIScriptCommon *common, int i)
+{
+    if (i >= 0 && i < common->m_objects_for_body.size())
+        return common->m_objects_for_body[i];
+    return 0;
+}
+
+/* an anim's objects past the body's own (the aux parts, four short of the body's objects) given to the
+ * table of parts: an object's part in, the part it replaces made a gear's; no object, the part made a
+ * gear's and its slot emptied (SOCOM 1's ConfigureAuxPartAnim, on the common; OVL2 0x58ACC0, after
+ * ~CObjAnims and before SetPartAsGear in both builds -- PushBlend and PopBlend call it in both) */
+void CZSealBody::ConfigureAuxPartAnim(CZSIScriptCommon *common)
+{
+    if (!common)
+        return;
+    CZBodyPart *obj;
+    for (int i = common->m_nBodyObjects; i < siNumBodyObjects - 4; i++) {
+        CZBodyPart *part = BodyPartOf(this, i);
+        CCharacterGear *gear = FindObjGear(m_obj_anims.m_obj_anims, part);
+
+        if (ObjectOf(common, i)) {
+            int id = ObjectOf(common, i)->m_body_part_id;
+            CObjAnim *o = FindObjAnim(m_obj_anims.m_obj_anims, id);
+
+            if (o)
+                obj = o->m_part;
+            else
+                obj = 0;
+            if (part && part != obj)
+                SetPartAsGear(part, gear);
+            SetBodyPart(i, obj);
+        } else {
+            if (part && gear)
+                SetPartAsGear(part, gear);
+            SetBodyPart(i, 0);
+        }
+    }
 }
 
 /* (an animation set's anims by the item in hand -- SOCOM 1's CAnimsByFP: its two lookups declared

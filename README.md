@@ -2066,6 +2066,12 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Recovered from interrupted lane worktrees** (uncommitted drafts, scored against master and taken only where they gain):
+  the SEALs' round 61 -- CZSealBody's ConfigureAuxPartAnim 0x58ACC0 and SetupEyes 0x58B1A0 byte-exact, UpdateLODFlags
+  0x552850 named and written (SOCOM 1's names and order, see the rows' notes); medius audio.c's 0x610C20 byte-exact with
+  largeint.c's additions. PopBlend's call respelled from the placeholder to the member (code-neutral, seal_body.cpp 127 of
+  133 either way). The other lanes' leftovers (zanim_menu.cpp and include/deque, asr/nbestdp.c, sdk/mpeg_dec.c,
+  hud_scorepopup.cpp) score no better than master and stay in their worktrees.
 - **Tells from the HUD, round 67** (four rows unwritten for 66 rounds, all byte-exact: CPopUpDialog's TickZAnimCmd
   0x36DA20 (0xC2C) and ParseZAnimCmd 0x36E880 (0x1390) with OVL1's c_str copy 0x36E860, and CZActionBitmap::Init 0x21DED0
   (0x1248); zui_2d.cpp 277 of 277, hud_actionbitmap.cpp whole; all SOCOM 1's bodies):

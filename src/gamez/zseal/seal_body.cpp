@@ -16,7 +16,8 @@ public:
     int GetVariantIndex(AnimType type, int kind, int anim);
     /* the variant an anim would take now (anim.cpp's, OVL2 0x5E3E10) */
     int PickVariant(AnimType type, int kind);
-    AnimType BaseAnim(AnimType type);
+    /* (an int: PushBlend narrows the result where it passes it on) */
+    int BaseAnim(AnimType type);
     /* the set's name (out of line here, OVL2 0x578940: this unit emits Find's pieces first, right
      * after 0x5784A0) -- five inline levels high: FITTED, not read off the image (the kit's round 38
      * in anim.cpp, the same chain), the depth the target's Find needs so that its whole tree is over
@@ -235,7 +236,7 @@ extern "C" bool func_0057D710(CZSealBody *seal, short weapon)
 
 extern "C" {
 /* an anim type for an item (OVL2 0x58C820, seal_cfg.cpp's) */
-AnimType func_0058C820(CZSealBody *seal, AnimType type, SEAL_ITEM_BYTE item);
+AnimType func_0058C820(CZSealBody *seal, AnimType type, char item);
 }
 
 /* every blend's anim type taken over to an item -- its type for the item, its anim looked up again (the
@@ -271,7 +272,7 @@ extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item)
             rep->m_anim = anim;
     }
     seal->m_curblend = (AnimType)((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->Representative()->m_id;
-    seal->m_curblend = seal->m_animset->BaseAnim(seal->m_curblend);
+    seal->m_curblend = (AnimType)seal->m_animset->BaseAnim(seal->m_curblend);
 }
 
 /* the state of the topmost blend in state 0, 1 or 2, else 0 (OVL2 0x57DBB0; new in SOCOM II, its
@@ -1558,6 +1559,188 @@ extern "C" bool func_00589900(CZSealBody *seal)
     return true;
 }
 
+extern "C" {
+/* an anim type for the item in hand (OVL2 0x58C960, seal_cfg.cpp's: 0x58C820 with the SEAL's item) */
+AnimType func_0058C960(CZSealBody *seal, AnimType type);
+extern short data_003DEF50;
+extern short data_003DEF00;
+extern short data_003DEEF8;
+extern short data_003DF108;
+extern short data_003DF110;
+extern short data_003DF0E0;
+extern short data_003DF0E8;
+void func_005A7520(void *data, void *arg);
+void func_005A73C0(void *data, void *arg);
+}
+
+void ParentPistolToRThighAsGearCallback(void *data, void *arg);
+void ParentPistolToRHandCallback(void *data, void *arg);
+
+/* an anim pushed on the body: the anim type taken for the item in hand and the weapon; a blend overlay's
+ * overlaid instead; refused while the SEAL may not go on, without a script, or a CQB anim over a CQB anim;
+ * the blends the type replaces popped, the push itself, the body's parts given the anim's aux objects and
+ * a pistol's parenting timed on the pistol's anims, the push told to the network for a SEAL this console
+ * plays unless a kind says not (OVL2 0x588BC0: SOCOM 1's PushBlend, before PopBlend in both builds) */
+extern "C" void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind)
+{
+    seal->SetLimp(true);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+    if (!func_00589900(seal)) {
+        seal->SetLimp(false);
+        return top;
+    }
+    CZSIScriptCommon *common = seal->m_animset->GetScript(func_0058C820(seal, type, seal->m_item));
+
+    if (!common) {
+        seal->SetLimp(false);
+        return top;
+    }
+    CZBodyAnimBlend *blend;
+
+    if (common->m_4a_2) {
+        seal->ClearBlendOverlay();
+        blend = seal->AddBlendOverlay(type);
+    } else {
+        int base = func_0058C960(seal, (AnimType)seal->m_animset->BaseAnim(type));
+        CZSIScriptCommon *script = seal->m_animset->GetScript((AnimType)base, seal->m_weapon_id);
+
+        if (!script) {
+            script = seal->m_animset->GetScript((AnimType)base, 0);
+            if (!script) {
+                seal->SetLimp(false);
+                return top;
+            }
+        }
+        if (top && (seal->IsCurrentBlend((AnimType)AnimTypes::CQB) || seal->IsCurrentBlend((AnimType)AnimTypes::PistolCQB) ||
+                    seal->IsCurrentBlend((AnimType)AnimTypes::CQBVictimFallBackwards) ||
+                    seal->IsCurrentBlend((AnimType)AnimTypes::CQBVictimFallForwards)) &&
+            (base == AnimTypes::CQB || base == AnimTypes::PistolCQB || base == AnimTypes::CQBVictimFallBackwards ||
+             base == AnimTypes::CQBVictimFallForwards)) {
+            seal->SetLimp(false);
+            return top;
+        }
+        if (base == 18 || base == 26 || base == 34)
+            seal->ClearStack(1, true);
+        else if (base == 17) {
+            if (flag)
+                seal->ClearStack(1, true);
+            else
+                seal->ClearStack(2, true);
+        } else if (base == 25) {
+            if (flag)
+                seal->ClearStack(1, true);
+            else
+                seal->ClearStack(2, true);
+        } else if (base == 19)
+            seal->ClearStack(2, true);
+        else if (base == 35 || base == 36)
+            seal->ClearStack(1, true);
+        else if (base == 33)
+            seal->ClearStack(2, true);
+        else if (base == data_003DEF50 || base == data_003DEF60)
+            seal->ClearStack(1, true);
+        else if (base == AnimTypes::StepUp || base == 42 || base == AnimTypes::ClimbMedium) {
+            if (seal->m_state == 0)
+                seal->ClearStack(1, true);
+            else {
+                seal->ClearStack(2, true);
+                seal->m_desiredState = (SEAL_STATE)1;
+            }
+        } else if (base == data_003DEF00 || base == data_003DEEF8)
+            seal->ClearStack(1, true);
+        blend = ((CBody *)seal)->PushBlend(script, base, state);
+        if (!blend) {
+            seal->SetLimp(false);
+            return 0;
+        }
+        seal->m_curblend = (AnimType)seal->m_animset->BaseAnim((AnimType)blend->m_animType);
+        if (flag)
+            blend->ReverseDir();
+        seal->ConfigureAuxPartAnim(common);
+        if (seal->IsCurrentBlend((AnimType)data_003DEF50))
+            seal->BodySetState(5);
+        else if (seal->IsCurrentBlend((AnimType)data_003DEEF0) || seal->IsCurrentBlend((AnimType)data_003DEEE8))
+            seal->m_root->SetActive(false);
+        else if (seal->IsCurrentBlend((AnimType)53)) {
+            if (flag) {
+                blend->m_callback.m_func = ParentPistolToRThighAsGearCallback;
+                blend->m_callback.m_tfrac = 0.72f;
+                blend->m_callback.m_userdata = 0;
+            } else {
+                blend->m_callback.m_func = ParentPistolToRHandCallback;
+                blend->m_callback.m_tfrac = 0.72f;
+                blend->m_callback.m_userdata = 0;
+            }
+        } else if (seal->IsCurrentBlend((AnimType)54)) {
+            if (flag) {
+                blend->m_callback.m_func = ParentPistolToRThighAsGearCallback;
+                blend->m_callback.m_tfrac = 0.82f;
+                blend->m_callback.m_userdata = 0;
+            } else {
+                blend->m_callback.m_func = ParentPistolToRHandCallback;
+                blend->m_callback.m_tfrac = 0.82f;
+                blend->m_callback.m_userdata = 0;
+            }
+        } else if (seal->IsCurrentBlend((AnimType)55)) {
+            if (flag) {
+                blend->m_callback.m_func = ParentPistolToRThighAsGearCallback;
+                blend->m_callback.m_tfrac = 0.62f;
+                blend->m_callback.m_userdata = 0;
+            } else {
+                blend->m_callback.m_func = ParentPistolToRHandCallback;
+                blend->m_callback.m_tfrac = 0.62f;
+                blend->m_callback.m_userdata = 0;
+            }
+        } else if (seal->IsCurrentBlend((AnimType)data_003DF0E0)) {
+            if (flag) {
+                blend->m_callback.m_func = func_005A7520;
+                blend->m_callback.m_tfrac = 0.27f;
+                blend->m_callback.m_userdata = 0;
+            } else {
+                blend->m_callback.m_func = func_005A73C0;
+                blend->m_callback.m_tfrac = 0.27f;
+                blend->m_callback.m_userdata = 0;
+            }
+        } else if (seal->IsCurrentBlend((AnimType)data_003DF0E8)) {
+            if (flag) {
+                blend->m_callback.m_func = ParentPistolToRHandCallback;
+                blend->m_callback.m_tfrac = 0.13f;
+                blend->m_callback.m_userdata = 0;
+            } else {
+                blend->m_callback.m_func = ParentPistolToRThighAsGearCallback;
+                blend->m_callback.m_tfrac = 0.13f;
+                blend->m_callback.m_userdata = 0;
+            }
+        } else if (seal->IsCurrentBlend((AnimType)data_003DF108)) {
+            if (flag) {
+                blend->m_callback.m_func = func_005A7520;
+                blend->m_callback.m_tfrac = 0.5f;
+                blend->m_callback.m_userdata = 0;
+            } else {
+                blend->m_callback.m_func = func_005A73C0;
+                blend->m_callback.m_tfrac = 0.5f;
+                blend->m_callback.m_userdata = 0;
+            }
+        } else if (seal->IsCurrentBlend((AnimType)data_003DF110)) {
+            if (flag) {
+                blend->m_callback.m_func = ParentPistolToRHandCallback;
+                blend->m_callback.m_tfrac = 0.4f;
+                blend->m_callback.m_userdata = 0;
+            } else {
+                blend->m_callback.m_func = ParentPistolToRThighAsGearCallback;
+                blend->m_callback.m_tfrac = 0.4f;
+                blend->m_callback.m_userdata = 0;
+            }
+        }
+    }
+    if (theNetwork.m_9) {
+        if (!seal->IsRemote() && !kind)
+            func_002BBAF0(seal->m_id, type, state, flag, 0);
+    }
+    return blend;
+}
+
 /* the top blend, in anim 46, made to play backwards from state 5 with its flag 0x20 set, and the push
  * told to the network for a SEAL this console plays (OVL2 0x57F5B0, new in SOCOM II) */
 extern "C" CZBodyAnimBlend *func_0057F5B0(CZSealBody *seal)
@@ -2131,7 +2314,6 @@ extern "C" bool func_00580360(CZSealBody *seal, float t)
 extern "C" {
 /* the weapon's anim set taken (0x58ACC0), its stance's look put back (0x5B3890), a landing's end (0x5B1890), a
  * blend's flag set (0x58A920) */
-void func_0058ACC0(CZSealBody *seal, CZSIScriptCommon *anim);
 void func_005B3890(CEntity *seal, int x);
 void func_005B1890(CZSealBody *seal);
 extern short data_003DEF00;
@@ -2195,8 +2377,8 @@ CZBodyAnimBlend *CZSealBody::PopBlend()
         m_curblend = (AnimType)-1;
         return 0;
     }
-    func_0058ACC0(this, b->Representative()->m_anim);
-    m_curblend = m_animset->BaseAnim((AnimType)b->m_animType);
+    ConfigureAuxPartAnim(b->Representative()->m_anim);
+    m_curblend = (AnimType)m_animset->BaseAnim((AnimType)b->m_animType);
     if (b->m_state == 3)
         BodySetState(3);
     rep = b->Representative();

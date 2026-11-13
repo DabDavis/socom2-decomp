@@ -10287,8 +10287,10 @@
 0x0058AC50 swap__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>FRQ23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>
 0x0058AC90 clear__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv
 0x0058ACA0 __ct__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv
+0x0058ACC0 ConfigureAuxPartAnim__10CZSealBodyFP16CZSIScriptCommon
 0x0058B040 SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear
 0x0058B0F0 SetupGear__10CZSealBodyFv
+0x0058B1A0 SetupEyes__10CZSealBodyFv
 0x0058B630 AddItem__10CZSealBodyFPCc
 0x0058B790 AddItem__10CZSealBodyFP14CCharacterGear
 0x0058B960 AddDIPolys__10CZSealBodyFv
@@ -11548,6 +11550,7 @@
 0x00610788 func_00610788
 0x00610938 func_00610938
 0x00610AA8 func_00610AA8
+0x00610C20 func_00610C20
 0x00610FA0 func_00610FA0
 0x006110D8 func_006110D8
 0x00611250 func_00611250

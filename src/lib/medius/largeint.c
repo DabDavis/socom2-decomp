@@ -472,3 +472,118 @@ void lintPrime(LINT *pPrime, unsigned int nBits)
         }
     } while (!bFound);
 }
+
+extern void func_00628390(LINT *p, unsigned int nBits);        /* drops everything from bit nBits up */
+extern void func_006290B8(LINT *a, LINT *b, unsigned int nBits);       /* largeint_asm.s: the add, bit-limited */
+extern void func_006291D8(LINT *a, LINT *b, unsigned int nBits);       /* the subtract, bit-limited */
+extern void MULT(LINT *pResult, LINT *a, LINT *b);
+
+/* a to the e mod n by Montgomery products, into a fourth number (round 28b, unwritten before): n must be odd, an even
+ * one goes to EMOD, a zero one asserts and gives itself back. nInv = -1/n mod 2^nBits (Hensel), y = a in Montgomery
+ * form, z = 1 in it, then the bits of e from the bottom. */
+void func_006283F8(LINT *pResult, LINT *a, LINT *e, LINT *n)
+{
+    LINT x;
+    LINT y;
+    LINT nInv;
+    LINT z;
+    unsigned int nBits = lintGetBits(n);
+    unsigned int nMask;
+    unsigned int nExpBits = lintGetBits(e);
+    unsigned int i, j;
+
+    if (IsZero(n)) {
+#line 975 "/public/work/dev/rt_crypt/src/LargeInt.c"
+        assert(0);
+        memcpy(pResult, n, sizeof *pResult);
+        return;
+    }
+    if (IsEven(n)) {
+#line 985 "/public/work/dev/rt_crypt/src/LargeInt.c"
+        assert(0);
+        EMOD(pResult, a, e, n);
+        return;
+    }
+    lintSetSmallValue(&nInv, 0);
+    j = 0;
+    lintSetSmallValue(&z, 1);
+    i = 0;
+    while (i + j < nBits) {
+        if (lintGetBit(&z, j)) {
+            if (j != 0) {
+                ShiftRight(&z, j);
+                i += j;
+                j = 0;
+            }
+            lintSetBit(&nInv, i);
+            func_006290B8(&z, n, nBits - i);
+        } else {
+            j++;
+        }
+    }
+    memcpy(&y, a, sizeof y);
+    ShiftLeft(&y, nBits);
+    MODIP(&y, n);
+    j = 0;
+    lintSetSmallValue(&z, 1);
+    nMask = 1;
+    ShiftLeft(&z, nBits);
+    MODIP(&z, n);
+    for (i = 0; i < nExpBits; i++) {
+        if (i != 0) {
+            MULT(&x, &y, &y);
+            y = x;
+            func_00628390(&y, nBits);
+            MULT(&y, &y, &nInv);
+            func_00628390(&y, nBits);
+            MULT(&y, &y, n);
+            if (lintGetBit(&y, nBits - 1) || lintGetBit(&x, nBits - 1)) {
+                ShiftRight(&y, nBits);
+                ShiftRight(&x, nBits);
+                func_006290B8(&y, &x, nBits);
+                lintIncrement(&y, 1);
+            } else {
+                ShiftRight(&y, nBits);
+                ShiftRight(&x, nBits);
+                func_006290B8(&y, &x, nBits);
+            }
+            if (IsNotSmaller(&y, n))
+                func_006291D8(&y, n, nBits);
+            nMask <<= 1;
+            if (nMask == 0) {
+                nMask = 1;
+                j++;
+            }
+        }
+        if (nMask & e->d[j]) {
+            MULT(&x, &z, &y);
+            z = x;
+            func_00628390(&z, nBits);
+            MULT(&z, &z, &nInv);
+            func_00628390(&z, nBits);
+            MULT(&z, &z, n);
+            if (lintGetBit(&z, nBits - 1) || lintGetBit(&x, nBits - 1)) {
+                ShiftRight(&z, nBits);
+                ShiftRight(&x, nBits);
+                func_006290B8(&z, &x, nBits);
+                lintIncrement(&z, 1);
+            } else {
+                ShiftRight(&z, nBits);
+                ShiftRight(&x, nBits);
+                func_006290B8(&z, &x, nBits);
+            }
+            if (IsNotSmaller(&z, n))
+                func_006291D8(&z, n, nBits);
+        }
+    }
+    x = z;
+    func_00628390(&z, nBits);
+    MULT(&z, &z, &nInv);
+    func_00628390(&z, nBits);
+    MULT(&z, &z, n);
+    lintAddIP(&z, &x);
+    ShiftRight(&z, nBits);
+    if (IsNotSmaller(&z, n))
+        lintSubIP(&z, n);
+    memcpy(pResult, &z, sizeof z);
+}
