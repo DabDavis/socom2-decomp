@@ -2066,6 +2066,29 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from CZSealBody, round 69** (the CZSealBody constructor 0x553EA0 (0x119C) byte-exact, unwritten before, SOCOM 1's as the
+  outline; 0x5483D0 (0x15F8), open since round 68; 0x5550C0 and 0x5550B0 renamed __defctor__Q23zdb11DiIntersectFv and
+  __ct__8CObjAnimFv, from source now, four drafts dropped; data.txt 0x669240 OVL2's copy of CNodeEx's vtable. PostPreTick
+  0x54AA30 not reached: SOCOM 1's is an empty 8-byte stub, no outline; a 1,357-line m2c draft in the lane's scratch
+  (build/scratch/body-r69/ppt_m2c.c). zseal.h, objcmp --by-address over 672 units (only seal.cpp, by the constructor):
+  padding named from the constructor's stores -- SOCOM 1's m_recoilParam, m_look_dir, m_formation_dir,
+  m_saved_formation_dir, m_formation_clock, m_MaxFollowerDistance(Next), m_prev_nodeaction, m_threatdir/scale/angle,
+  m_anim_handled, m_detonation_countdown, m_skel_root; 0x1100 an IntersectStruct m_1100 (m_111c its node), 0x1170 CLookItem
+  m_lookitem, 0x1300 CCrouchedRun m_crouch, 0x1090 CSealHold, CSealEx held as m_sealEx, 0x21c's flags `unsigned int`
+  bit-fields; constructors for CSeqBase, CSealShock, CSealClimb, CAccuracy, CSealStats. node_world.h: IntersectStruct's
+  constructor clears the polygon and node, DiIntersect takes `(int n = 8)` -- zwep_projectile.cpp's HandleDetonateExplosion
+  drops its two hand clears; proved by the full check):
+  - a member initialiser writing a bit-field uses word RMWs (`lw`/`sw`), the body `lbu`/`sb` on the same bits (so 0x21c's are
+    `unsigned int`). A member's own constructor zeroes through the member's address (`sw zero,16(s1)`), not `this`: a class.
+  - a float read with `lwc1` from OVL1 data and converted at run time is a variable (data_003F3430 1.09, data_003F3438 65535.0).
+  - `bool r = a > b; return r;` in an inline gives `c.le; bc1f` into `li 1 / move 0` (in place: `bc1t; xori`; returning the
+    compare directly shrinks the frame by 16) -- 0x5483D0's flags.
+  - an inline's locals take the low slots (the wall slide over references: s/t at 296/280, 121 to 50 structural).
+    `CPnt3D(p.x, p.y, p.z)` loads z, y, x. A probe in place makes its hit a named local; through an inline the hit and the
+    walk pointer swap s0/s1.
+  - `n > 2` gives `slti at`, `>=` `slti v0`. `Dot(d, d)` folds d.y's zero store frame-direct into the branch's slot. An
+    unsigned counter gives `sltiu`. Round 68's "carried" test was inverted: 0x59AFD0 is called when not carried or when the
+    carry anim plays.
 - **Tells from CSealCtrl/CSealCtrlAi, round 69** (CSealCtrlAi::OnCommand 0x58FBE0 (0xEC4) byte-exact, unwritten before, the first
   row of seal_command.cpp (defined last there; the vtable's slot 0x84 now names it, as the target). AttackTick 0x563E10 (0xED4)
   at size and frame, 1 instruction off: the target leaves a nop in the turret test's `b` to the shared null block, here filled
