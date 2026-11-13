@@ -3920,7 +3920,6 @@ extern short data_003DEC58;
 }
 extern unsigned char noWeaponWallPush;
 
-/* whether a float is all but none (an inline, the name ours) */
 /* whether a blend still runs (an inline, the name ours: the call's bool negated as a value) */
 static inline bool Running(CZBodyAnimBlend *b, float dT)
 {
@@ -3962,9 +3961,11 @@ static inline float Raise(CPnt3D &p)
     return p.y;
 }
 
-static inline bool Tiny(float v)
+/* whether a point is all but none, each word under 0.0005 across (an inline, the name ours: as CPnt3D's
+ * operator==, the first two tests' bools made and tested, the last branched on) */
+static inline bool IsTiny(const CPnt3D &v)
 {
-    return fabsf(v) < 0.0005f;
+    return fabsf(v.x) < 0.0005f && fabsf(v.y) < 0.0005f && fabsf(v.z) < 0.0005f;
 }
 
 /* whether an AI SEAL's body keeps its probes: the flag word's bit 0 and the AI's own (an inline, the
@@ -4026,8 +4027,7 @@ void CZSealBody::PostPreTick(float dT)
 
     bool still = false;
 
-    if (Tiny(m_f44.x) && Tiny(m_f44.y) && Tiny(m_f44.z))
-        still = true;
+    still = IsTiny(m_f44);
     fabsf(m_23c);
 
     bool nopush = false;
