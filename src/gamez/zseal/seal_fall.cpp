@@ -161,6 +161,88 @@ extern "C" void func_0059B440(CZSealBody *seal, zdb::IntersectStruct *hit, float
     }
 }
 
+/* the body's bits set through setters: a constant true is `daddiu 1 << n`, a false `(0 & 1) << n`
+ * (the names ours; zseal.h's SetLanded, SetBit9 and the like have the same shape) */
+static inline void SetUsedVelY(CZSealBody *seal, bool on) { seal->m_used_vel_y = on; }
+static inline void SetFixSkelY(CZSealBody *seal, bool on) { seal->m_fix_skel_y = on; }
+static inline void SetBit8(CZSealBody *seal, bool on) { seal->m_bit8 = on; }
+
+/* the SEAL's altitude for the frame: under the 0x3DEF08 anim, or with bit 9, the one it has (landed
+ * with bit 9 under the anim). Under a flagged top blend -- not anim 36 past a fifth of the way, nor
+ * anim 44 with its blend's flag 0x20 -- the velocity's step from the node's height, the root part's
+ * height added once the first time unless the root is followed, the root then held at 11.487 (at most
+ * that when followed), the velocity bit set. Else the velocity bit cleared, and a skeleton to fix
+ * once: the root's height dropped to the altitude's place under m_fac and the node moved there (the
+ * root's drop handed back when it is already lower); landed once on the ground (OVL2 0x59AFD0, new in
+ * SOCOM II; the names ours). The height is 0x4137CAC0, one ulp under 11.487f: `1.1487f * 10.0f` folded */
+extern "C" float func_0059AFD0(CZSealBody *seal)
+{
+    if (seal->IsCurrentBlend((AnimType)data_003DEF08)) {
+        if (seal->m_bit9)
+            seal->SetLanded(true);
+        return seal->m_alt;
+    }
+    if (seal->m_bit9)
+        return seal->m_alt;
+    if (func_0057B510(seal)) {
+        if ((seal->IsCurrentBlend((AnimType)36) &&
+             !(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_tfrac <= 0.2f)) ||
+            (seal->IsCurrentBlend((AnimType)44) &&
+             func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 32))) {
+            SetUsedVelY(seal, false);
+            return seal->m_alt;
+        }
+
+        float y = seal->m_velM.y * seal->m_2e0;
+        CZBodyPart *root = seal->GetRootPart();
+
+        if (!seal->m_used_vel_y) {
+            if ((seal->IsCurrentBlend((AnimType)46) &&
+                 func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 32)) ||
+                FollowsRoot(seal))
+                y += seal->m_posW.y;
+            else
+                y = root->m_pos.y + (y + seal->m_posW.y) - 1.1487f * 10.0f;
+        } else
+            y += seal->m_posW.y;
+        if (FollowsRoot(seal)) {
+            if (!(root->m_pos.y <= 1.1487f * 10.0f))
+                root->m_pos.y = 1.1487f * 10.0f;
+        } else
+            root->m_pos.y = 1.1487f * 10.0f;
+        SetUsedVelY(seal, true);
+        return y;
+    }
+    SetUsedVelY(seal, false);
+    if (seal->m_fix_skel_y) {
+        CZBodyPart *root = seal->GetRootPart();
+
+        SetFixSkelY(seal, false);
+        SetBit8(seal, true);
+
+        float d = seal->m_fac - root->m_pos.y;
+
+        if (d < seal->m_alt) {
+            root->m_pos.y = seal->m_fac - seal->m_alt;
+
+            CPnt3D saved = seal->GetRootPart()->m_saved_pos;
+
+            saved.y = root->m_pos.y;
+            seal->GetRootPart()->m_saved_pos = saved;
+
+            CPnt3D pos = seal->m_posW;
+
+            pos.y = seal->m_alt;
+            seal->GetNode()->SetPosition(&pos);
+            return seal->m_alt;
+        }
+        return d;
+    }
+    if (!seal->m_airborne)
+        seal->SetLanded(true);
+    return seal->m_alt;
+}
+
 extern "C" {
 /* the height above the ground a SEAL counts as in the air from (OVL1 bss 0x44C264), the probe for
  * ground under a falling SEAL and the landing's hit taken (seal.cpp's OVL2 0x54A8B0 and 0x5B0C10) */
