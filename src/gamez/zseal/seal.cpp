@@ -4071,6 +4071,7 @@ void CZSealBody::PostPreTick(float dT)
         bool prone = IsCurrentBlend((AnimType)26) || IsCurrentBlend((AnimType)27) || roll || strafe ||
                      m_state == stateProne;
         float reach, rise;
+        float step;
 
         if (prone && m_velR.y != 0.0f)
             roll = true;
@@ -4127,7 +4128,8 @@ void CZSealBody::PostPreTick(float dT)
 
         CPnt3D fire = m_curr_firepos;
 
-        float step = theCharacterDynamics.m_stepHeight;
+        step = theCharacterDynamics.m_stepHeight;
+
         float zero;
 
 
