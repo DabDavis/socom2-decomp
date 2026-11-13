@@ -694,10 +694,19 @@ enum MENU_STATE {
     stateLast = 6
 };
 
+class CHUD;
+
 class CZActionBitmap : public C2DBitmap {
 public:
+    void Init(CHUD *parent, C2DFont *pFont);
     void UnInit();
     void HudTick(MENU_STATE menustate);
+    /* a child listed (inline, the name ours: the icons' lists a level deeper than the prompt's and
+     * the timer's) */
+    void AddIcon(C2D *icon) { push_back(icon); }
+
+    unsigned char _80[0xa4 - 0x80];
+    CHUD *m_parent;   // 0xa4
 };
 
 /* the HUD's map (hud_newhudmap.h's CZNewHudMap: only its full-screen flag) */
@@ -720,6 +729,129 @@ public:
 };
 
 extern CHUD *theHUD;
+
+extern "C" void func_0021F120();
+
+/* one action's icon set up and listed (a macro: the index folds into each address, which an inline's
+ * parameter leaves to a common subexpression held in a saved register) */
+#define DEFINE_ICON(id, tex, colorset, name) \
+    g_arrActionTxtrs[id].m_texhandle = tex; \
+    g_arrActionTxtrs[id].m_action_id = id; \
+    g_arrActionTxtrs[id].m_colorset = colorset; \
+    g_arrActionTxtrs[id].m_2DBitmap.Reset(); \
+    g_arrActionTxtrs[id].m_2DBitmap.Off(); \
+    g_arrActionTxtrs[id].m_2DBitmap.m_fade_enable = 1; \
+    AddIcon(&g_arrActionTxtrs[id].m_2DBitmap); \
+    strcpy(g_arrActionTxtrs[id].m_name, name)
+
+/* the asset manager's list of what the libraries hold (znode.h's) */
+namespace zdb {
+class CAssetList {
+public:
+    CTexHandle *GetTexHandle(const char *name);
+};
+class CAssetMgr {
+public:
+    static CAssetList m_assets;
+};
+}
+
+/* the icons' colours set, the bitmap off and nearly opaque, its list emptied, the actions' textures
+ * looked up (the five that may be missing the first's instead), the 22 icons set up and listed, the
+ * prompt loaded when there is a font, the timer's bar and background set up, the HUD kept (SOCOM 1's
+ * CZActionBitmap::Init, 0x3D5E40 there, 18 icons). Byte-exact (the HUD's round 67) with three shapes,
+ * each measured:
+ *   - the textures declared C-style with the first one last: it is defined first and takes s0, which
+ *     needs a number above every other (igreplay: --move x=51.5, the only single move);
+ *   - the last look-up through a temporary, its test on the temporary (`bnez v0` in the target, the
+ *     named local moved to fp ahead of the five tests): tested through `hold`, s6/s7/fp rotate;
+ *   - THE ICONS AS A MACRO whose list goes through an inline wrapper: a literal index folds into each
+ *     address at parse time, so each virtual call rebuilds its address (lui a0; addiu a0), where an
+ *     inline's index parameter leaves `&g[id] + 16` to a common subexpression in a saved register; and
+ *     push_back one level down gives the frame its order -- the prompt's and the timer's two
+ *     arguments at the top (level 0), clear's three, then the icons' 22 (level 1) */
+void CZActionBitmap::Init(CHUD *parent, C2DFont *pFont)
+{
+    zdb::CTexHandle *climb, *slide, *talk, *dropbomb, *mpbomb, *knife, *restrain, *pickup1, *pickup2, *closecombat, *conceal, *mount, *dismount, *c4, *dance, *follow, *hold, *x, *t;
+
+    func_0021F120();
+    Off();
+    SetTrans(127.0f);
+    clear();
+
+    x = zdb::CAssetMgr::m_assets.GetTexHandle("action_x.tif");
+    climb = zdb::CAssetMgr::m_assets.GetTexHandle("action_climb.tif");
+    slide = zdb::CAssetMgr::m_assets.GetTexHandle("action_slide.tif");
+    talk = zdb::CAssetMgr::m_assets.GetTexHandle("action_talk.tif");
+    dropbomb = zdb::CAssetMgr::m_assets.GetTexHandle("action_drop_MP_bomb.tif");
+    mpbomb = zdb::CAssetMgr::m_assets.GetTexHandle("action_MP_bomb.tif");
+    knife = zdb::CAssetMgr::m_assets.GetTexHandle("action_knife.tif");
+    restrain = zdb::CAssetMgr::m_assets.GetTexHandle("action_restrain.tif");
+    pickup1 = zdb::CAssetMgr::m_assets.GetTexHandle("action_pickup_item1.tif");
+    pickup2 = zdb::CAssetMgr::m_assets.GetTexHandle("action_pickup_item2.tif");
+    closecombat = zdb::CAssetMgr::m_assets.GetTexHandle("action_close_combat.tif");
+    conceal = zdb::CAssetMgr::m_assets.GetTexHandle("action_conceal_body.tif");
+    mount = zdb::CAssetMgr::m_assets.GetTexHandle("action_mount_turret.tif");
+    dismount = zdb::CAssetMgr::m_assets.GetTexHandle("action_dismount_turret.tif");
+    c4 = zdb::CAssetMgr::m_assets.GetTexHandle("action_place_c4.tif");
+    dance = zdb::CAssetMgr::m_assets.GetTexHandle("action_victory_dance.tif");
+    follow = zdb::CAssetMgr::m_assets.GetTexHandle("action_escortee.tif");
+    t = zdb::CAssetMgr::m_assets.GetTexHandle("action_escortee.tif");
+    hold = t;
+
+    if (!c4)
+        c4 = x;
+    if (!dance)
+        dance = x;
+    if (!dropbomb)
+        dropbomb = x;
+    if (!follow)
+        follow = x;
+    if (!t)
+        hold = x;
+    DEFINE_ICON(0, x, 1, "UNKNOWN");
+    DEFINE_ICON(16, slide, 1, "LADDER SLIDE");
+    DEFINE_ICON(1, x, 1, "ACTION");
+    DEFINE_ICON(2, climb, 1, "CLIMB");
+    DEFINE_ICON(3, talk, 1, "TALK");
+    DEFINE_ICON(4, pickup1, 1, "TAKE");
+    DEFINE_ICON(5, pickup2, 1, "TAKE");
+    DEFINE_ICON(6, dropbomb, 1, "DROP BOMB");
+    DEFINE_ICON(7, mpbomb, 1, "PRESS AND HOLD   ");
+    DEFINE_ICON(8, conceal, 1, "PICKUP BODY");
+    DEFINE_ICON(9, conceal, 1, "DROP BODY");
+    DEFINE_ICON(10, knife, 0, "KNIFE ATTACK");
+    DEFINE_ICON(11, restrain, 0, "RESTRAIN");
+    DEFINE_ICON(12, closecombat, 0, "RIFLE BUTT");
+    DEFINE_ICON(13, x, 1, "UNDEFINED");
+    DEFINE_ICON(18, c4, 0, "PLACE C4 CHARGE");
+    DEFINE_ICON(17, x, 0, "SATCHEL");
+    DEFINE_ICON(19, mount, 1, "USE TURRET");
+    DEFINE_ICON(20, dismount, 1, "DISMOUNT TURRET");
+    DEFINE_ICON(21, dance, 1, "VICTORY DANCE");
+    DEFINE_ICON(14, follow, 1, "FOLLOW!");
+    DEFINE_ICON(15, hold, 1, "HOLD POSITION");
+    if (pFont) {
+        ActionTxtrMachine_HUD.ActionString().Load(0.9f, "ACTION ICON", pFont, 306.0f, 358.0f, true);
+        ActionTxtrMachine_HUD.ActionString().Off();
+        ActionTxtrMachine_HUD.ActionString().SetTrans(0.0f);
+        *(PNT4D *)ActionTxtrMachine_HUD.m_action_string.m_color = CHUD::m_hud_textcolor;
+        push_back(&ActionTxtrMachine_HUD.ActionString());
+    }
+    ActionTxtrMachine_HUD.TimerBkgrd().SetHasTexture(false);
+    ActionTxtrMachine_HUD.TimerBkgrd().SetColor(0.0f, 0.0f, 0.0f);
+    ActionTxtrMachine_HUD.TimerBkgrd().SetPos(BOMBTIMER_BKGRD_POSX1, BOMBTIMER_BKGRD_POSY1, BOMBTIMER_BKGRD_POSX2,
+                                              BOMBTIMER_BKGRD_POSY2);
+    ActionTxtrMachine_HUD.TimerBkgrd().SetTrans(0.0f);
+    push_back(&ActionTxtrMachine_HUD.TimerBkgrd());
+    ActionTxtrMachine_HUD.TimerImage().SetHasTexture(false);
+    ActionTxtrMachine_HUD.TimerImage().SetColor(timer_color.x, timer_color.y, timer_color.z);
+    ActionTxtrMachine_HUD.TimerImage().SetPos(BOMBTIMER_IMAGE_POSX1, BOMBTIMER_IMAGE_POSY1,
+                                              BOMBTIMER_IMAGE_POSX1 + BOMBTIMER_IMAGE_WIDTH, BOMBTIMER_IMAGE_POSY2);
+    ActionTxtrMachine_HUD.TimerImage().SetTrans(0.0f);
+    push_back(&ActionTxtrMachine_HUD.TimerImage());
+    m_parent = parent;
+}
 
 /* the prompt let go of, every entry's bitmap clear and off. The string through a reference: on
  * the static itself MW calls C2DString's functions directly, where the target goes through the
