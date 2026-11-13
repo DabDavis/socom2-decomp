@@ -312,7 +312,7 @@ unsigned char CZSealBody::PeekBaseState()
 extern "C" {
 void func_002BBAF0(unsigned int obj, unsigned int anim, int slot, bool on, int time);
 void *func_00588BC0(CZSealBody *seal, AnimType type, int state, bool flag, int kind);
-bool func_00589900(CZSealBody *seal);
+int func_00589900(CZSealBody *seal);
 void *func_00555170(void *v);
 unsigned short func_0058A920(unsigned short flags, unsigned short bits, bool on);
 }
@@ -1548,7 +1548,7 @@ static inline bool InMoveAnim(CZSealBody *seal)
  * stunned in one of four anims (a dead SEAL's top blend then put in state 8); not in a dead top blend
  * outside state 10 unless in a move's anims; not alive in the anim of 0x3DEAD8 (OVL2 0x589900, new in
  * SOCOM II; the name unknown -- 0x57E130, 0x57F7D0 and 0x57DDF0 ask it) */
-extern "C" bool func_00589900(CZSealBody *seal)
+extern "C" int func_00589900(CZSealBody *seal)
 {
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
 
@@ -1840,7 +1840,7 @@ void CZSealBody::GetPutativeFirePointW(bool thrown, bool toss, CPnt3D &out)
 }
 
 /* 0x57F7D0's twin, word for word (OVL2 0x57F9C0, new in SOCOM II: 0x5B2620 asks both in turn) */
-extern "C" bool func_0057F9C0(CZSealBody *seal)
+extern "C" int func_0057F9C0(CZSealBody *seal)
 {
     if (seal->IsRemote())
         return false;
@@ -2651,7 +2651,7 @@ CZBodyAnimBlend *CZSealBody::ClearStack(unsigned int count, bool prone)
 
 /* whether a SEAL this console plays, out of the anim of 0x3DEAE0 and neither its state nor its top
  * blend's 5, can go on as 0x589900 says (OVL2 0x57F7D0, new in SOCOM II) */
-extern "C" bool func_0057F7D0(CZSealBody *seal)
+extern "C" int func_0057F7D0(CZSealBody *seal)
 {
     if (seal->IsRemote())
         return false;
@@ -2665,40 +2665,27 @@ extern "C" bool func_0057F7D0(CZSealBody *seal)
 }
 
 /* whether a SEAL this console plays, in anim 45, can go on as 0x589900 says (OVL2 0x57F530, new in
- * SOCOM II).
- * OPEN, 7 instructions: the target lays the anim test's false return right after it (`bnez v0` to
- * the call's block, which follows); MW puts the call first and the false block last. Tried: the
- * test positive with the call inside, an else, a ternary, `== false`, `||` and `&&` joins of both
- * tests, a result local. Round 53 (build/scratch/seal-r53/v_f530*.py): the test through an inline
- * `return IsCurrentBlend(45) ? true : false;` gives the target's LAYOUT (bnez to the call, the false
- * block after it) but adds the bool's `andi` and drops the label's pad (5); an if-form IsRemote, an
- * if-set inline, nested ifs, a goto and `bool r` returns are worse (7-0x94). Round 55: `!= true` and a
- * switch on the test (either case) are worse (0x80, 0x90; build/scratch/seal-r55/v_f530.py). Round 56
- * (build/scratch/seal-r56/v_f530*.py): the WHOLE body as an inline `return Go45(seal);` gives the
- * target's code word for word -- the layout and the pad nop before the call -- plus one `andi` on the
- * call's result (0x80, d=4); every if-return inline of the test alone (bool, int or unsigned char, true
- * or false first) is 5 off with the `andi` on IsCurrentBlend's result, and the pad then comes free (the
- * extra word lands the call block on its 8-byte boundary) -- so the layout is an inline's, and only
- * the inline's masking of a bool call result is wrong; else / else-if / block forms, `while`, `== 0`,
- * `return 0`, a bool local, the kit's round-57 `ok` chain (9) and an `&&` join (0x70) don't move it.
- * Round 57 (build/scratch/seal-r57/v_f530*.py): explicit gotos (`goto call;` after the test, the false
- * return between) are laid out the plain function's way too (7) -- so it is MW's branch optimiser
- * inverting a branch over the return block, not the front end's if-return pairing; a label before the
- * call's return and the call through an inline wrapper (7), a `== false` ternary (0x80), the whole-body
- * inline typed int or unsigned char, or the outer typed int (0x84), and the tests as an inline
- * returning the SEAL or 0 (0x94) are no better; the kit's CSE-off pragma round the body is 0x88.
- * Round 77 (build/scratch/mw-r77/v_f530*.py): round 76's dead-store arm gives the LAYOUT -- `bool r = false;` and BOTH
- * tests `{ r = false; goto done; }`, `r = func_00589900(seal); done: return r;` -- word for word but the call's result
- * then takes an `andi` (r bool or int, `!= false`, `(bool)`, `r = r`: 0x80, d=4); `return func_00589900(seal);` there
- * leaves a `b` over the empty done block instead (0x80, d=4); the IsRemote test alone dead-stored, or `return r` in the
- * arms, falls back to the 7. */
-extern "C" bool func_0057F530(CZSealBody *seal)
+ * SOCOM II). Byte-exact since the MW round 78: round 76's dead-store arm (`int r = false;`, both tests
+ * `{ r = false; goto done; }`, `r = func_00589900(seal); done: return r;`) gives the layout word for word
+ * (rounds 53-77: the plain if-returns are 7 off, every inline and goto spelling no nearer), and the
+ * `andi` the call's result took is gone with 0x589900 returning int (a BOOL) in this unit and r an int,
+ * this function int too. 0x57F7D0, 0x57F9C0 and 0x584B00 return its answer, so they are int as well
+ * (as bool they normalise it with `sltu`; their callers in other units still declare bool). */
+extern "C" int func_0057F530(CZSealBody *seal)
 {
-    if (seal->IsRemote())
-        return false;
-    if (!seal->IsCurrentBlend((AnimType)45))
-        return false;
-    return func_00589900(seal);
+    int r = false;
+
+    if (seal->IsRemote()) {
+        r = false;
+        goto done;
+    }
+    if (!seal->IsCurrentBlend((AnimType)45)) {
+        r = false;
+        goto done;
+    }
+    r = func_00589900(seal);
+done:
+    return r;
 }
 
 /* whether one of three anim types is the blend on top (OVL2 0x588080; new in SOCOM II, its name
@@ -2969,10 +2956,10 @@ static inline bool ShallowWater(CZSealBody *seal, float depth)
 
 /* whether the SEAL may break into its run: not in that anim's blend, carrying nobody, in no water
  * deeper than 2, not changing weapons, moving at 30 or more, and as 0x589900 allows (OVL2 0x584B00, new
- * in SOCOM II: CSealCtrl::PreTick, 0x552D60 and 0x609190 ask it; the name unknown). 0x589900 tested
- * and true returned, as 0x57E130 does: returning its answer puts the call's argument in the speed test's
- * delay slot */
-extern "C" bool func_00584B00(CZSealBody *seal)
+ * in SOCOM II: CSealCtrl::PreTick, 0x552D60 and 0x609190 ask it; the name unknown). With 0x589900 an int
+ * (0x57F530), its answer through a local `int r = ...; return r;` (`return f();` puts the call's argument
+ * in the speed test's delay slot; the bool-era `if (!f()) return false; return true;` becomes `sltu`) */
+extern "C" int func_00584B00(CZSealBody *seal)
 {
     if (seal->IsCurrentBlend((AnimType)data_003DEF08))
         return false;
@@ -2984,9 +2971,8 @@ extern "C" bool func_00584B00(CZSealBody *seal)
         return false;
     if (seal->m_velM.x * seal->m_velM.x + seal->m_velM.y * seal->m_velM.y + seal->m_velM.z * seal->m_velM.z < 900.0f)
         return false;
-    if (!func_00589900(seal))
-        return false;
-    return true;
+    int r = func_00589900(seal);
+    return r;
 }
 
 /* whether the SEAL counts: not a remote SEAL with bit 9 of 0x1060 set (OVL2 0x57DFE0, new in SOCOM
