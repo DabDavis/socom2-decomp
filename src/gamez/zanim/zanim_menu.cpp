@@ -1647,6 +1647,9 @@ inline bool ChatHasText(const char *s)
  * or, in the LAN lobby, on the game's chat unless the Medius lobby asked; `to` the recipient's UI
  * variable (RECIP_UIVAR, UIChatParse), else a line opening `/w "player" message` gives the player and
  * the message; a whisper without an end to its name is told its usage.
+ * Byte-exact since round 73: the null test folded into the self-assigning ternary, `text = var && var->type == 3 ?
+ * var->String() : text;` -- the `&&`'s false arm and the type's both reach the join holding text (the empty arm
+ * the target lays first), where `if (var) text = ... ? ... : text;` nests a second join. Was:
  * OPEN, 6 instructions at the target's size (0x400), all in the argument variable's test: the target
  * lays it `beq a0,v1,A; nop; b L; nop; A: bne a0,v1,L; move s2,zero; lw s2,4(v0); L:` -- the ternary's
  * empty arm first, no pad at A -- where this form lays `bne a0,v1,L; nop; bne a0,v1,B; move s2,zero; lw
@@ -1671,8 +1674,7 @@ void SendChatLine(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby)
     const char *text = ArgName(hdr);
     CUIVariable *var = theUIVarManager.Find(text);
 
-    if (var)
-        text = var->type == 3 ? var->String() : text;
+    text = var && var->type == 3 ? var->String() : text;
     var = 0;
     if (((UIChatCmd *)hdr)->m_recip_uivar[0])
         var = theUIVarManager.Find(((UIChatCmd *)hdr)->m_recip_uivar);
