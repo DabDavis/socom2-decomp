@@ -2463,6 +2463,278 @@ void CAiSGoto::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+extern "C" {
+/* the goto's helpers: the route dropped (OVL2 0x5628F0, SOCOM 1's ClearRoute), the squad's point-out
+ * state (0x5E7690, SOCOM 1's CSealUnit::UpdatePointOutState) and its turn and hand signal (0x5E7580,
+ * 0x5E7390, seal_unit.cpp's), the pursuit's target set (0x5668F0), a throttle for a speed (0x592910,
+ * SOCOM 1's CSealCtrl::GetThrottleFromSpeed) -- by their names or addresses */
+void func_005628F0(CSealCtrlAi *ai);
+void func_005E7690(CSealUnit *unit);
+bool GetMyPointOutTurnDir__9CSealUnitFP10CZSealBodyPP6CPnt3D(CSealUnit *unit, CZSealBody *seal, CPnt3D **dir);
+bool GetMyPointOutAnimStart__9CSealUnitFP10CZSealBody(CSealUnit *unit, CZSealBody *seal);
+void func_005668F0(CSealCtrlAi *ai, CZSealBody *seal);
+CZSealBody *func_00569E40(CSealCtrlAi *ai, const CPnt3D *pos, float range);
+float GetThrottleFromSpeed__9CSealCtrlFfi(CSealCtrl *ctrl, float speed, int axis);
+void func_00560340(CSealCtrlAi *ai, CAiState *state, bool b);
+}
+/* the player (zfts's) */
+CZSealBody *ftsGetPlayer();
+extern "C" {
+}
+
+/* the squad's point-out under way (its byte at 9) and its word at 0x70 (views; the names ours) */
+struct CAiUnitView {
+    unsigned char _0[9];
+    unsigned char m_pointing;   // 0x9
+    unsigned char _a[0x70 - 0xa];
+    int m_70;   // 0x70
+};
+
+/* a SEAL's word at 0x518, measured against the followers' limits (a view; the name ours) */
+struct CAiSealView518 {
+    unsigned char _0[0x518];
+    int m_518;   // 0x518
+};
+
+/* the goto's limits on the player's distance -- under the first two the calls are said again, past
+ * the next three each is said, the last ends the goto -- the throttle's scale and floor, and the
+ * followers' limits (OVL2 data) and whether the first two were said (OVL2 bss) */
+extern float data_0064FDC0;
+extern float data_0064FDC8;
+extern float data_0064FDD0;
+extern float data_00650B38;
+extern float data_00650B40;
+extern int data_00650B48;
+extern int data_00650B50;
+extern int data_00650B58;
+extern int data_00650B60;
+extern int data_00650B68;
+extern int data_00650B70;
+extern int data_00650B78;
+extern bool data_0066B9E8;
+extern bool data_0066B9F0;
+
+/* two cells' x and y distances summed (seal_aifollow.cpp's FollowCellDist; the name ours) */
+static inline int GotoCellDist(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
+
+    return dx + dy;
+}
+
+static inline const CAiMapLoc &GotoPathFirst(CAiPathBytes *p)
+{
+    return **(CAiMapLoc **)&p->_a0;
+}
+
+static inline const CAiMapLoc *GotoPathFirstP(CAiPathBytes *p)
+{
+    return *(CAiMapLoc **)&p->_a0;
+}
+
+/* whether the route arrived (inline; the name ours) */
+static inline bool GotoArrived(CAiPathBytes *path)
+{
+    return !(path->m_9c == 0) && path->m_state == 4;
+}
+
+/* a goto's frame (OVL2 0x5F4470; SOCOM 1's grown): teleported (flag 0x80); for the squad's point-out
+ * (flag 8) the SEAL turns and signals; the speed and stance by flags 2, 4/0x10 and 1; then the route
+ * set (0), planned (1), walked (2) -- flag 0x40 done within m_58 cells of the route's end, flag 8
+ * keeping pace with the player and calling to him --, a pursuit pushed at the end (4) or the end (3) */
+int CAiSGoto::Tick(CSealCtrlAi *ai)
+{
+    STEP step;
+    bool slow;
+    bool done;
+    CPnt3D c4;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (m_flags & 0x80) {
+        CPnt3D c;
+
+        func_005628F0(ai);
+        if (AiMaps.GetCellCenter(m_cell, &c))
+            seal->TeleportTo(&c, &seal->m_quat);
+        return 1;
+    }
+    step = (STEP)m_phase;
+
+    if (m_flags & 8) {
+        CSealUnit *unit = ai->m_unit;
+
+        func_005E7690(unit);
+        if (((CAiUnitView *)unit)->m_pointing) {
+            CPnt3D *dir = 0;
+
+            if (GetMyPointOutTurnDir__9CSealUnitFP10CZSealBodyPP6CPnt3D(ai->m_unit, seal, &dir) &&
+                ai->SetLookDirW((AI_LOOK)3, dir, true)) {
+                ai->ModifyLookFlags(1, 0);
+                ai->SetLookTimer(10.0f);
+            }
+            if (GetMyPointOutAnimStart__9CSealUnitFP10CZSealBody(ai->m_unit, seal))
+                seal->DoHandSignal((SEAL_HANDSIGNAL)5);
+            ai->SetAiMode((AI_MODE)1);
+            func_00570F90(ai, 0.0f);
+            return 1;
+        }
+        ai->SetAiMode((AI_MODE)3);
+    } else if (m_flags & 2) {
+        m_6c = data_0064FDC0;
+        ai->SetStanceDelayed((SEAL_STANCE)1, -1.0f);
+    } else if ((m_flags & 4) || (m_flags & 0x10)) {
+        m_6c = data_0064FDC8;
+        ai->SetStanceDelayed((SEAL_STANCE)1, -1.0f);
+    } else if (m_flags & 1) {
+        m_6c = data_0064FDD0;
+        ai->SetStanceDelayed((SEAL_STANCE)2, -1.0f);
+    }
+    CAiPathBytes *path = &ai->m_path;
+
+    switch (step) {
+    case STEP_0:
+        ai->SetAiMode((AI_MODE)2);
+        if (m_flags & 0x20) {
+            CAiMap::DIR dir;
+            const CAiMapLoc &here = seal->m_mapLocValid;
+
+            if (!AiMaps.GetMapByIndex(here.m_mapid)->FindCoverLoc(here, &m_pos, m_cell, dir, 5))
+                m_cell = CAiMapLoc::invalid;
+        }
+        if (ai->SetRoute(m_cell)) {
+            step = STEP_1;
+            func_00560340(ai, this, true);
+        } else {
+            SetFlags(0, 0x100);
+            func_00560340(ai, this, false);
+            step = STEP_3;
+        }
+        break;
+    case STEP_1: {
+        unsigned char st = path->m_state;
+
+        if (!(st == 1 || st == 2 || st == 3)) {
+            bool ok = !(path->m_9c == 0) && st == 4;
+
+            if (ok) {
+                func_00560340(ai, this, true);
+                ai->SetAiMode((AI_MODE)3);
+                func_00570F90(ai, m_6c);
+                ((CAiPath *)path)->RebuildLegs(&AiMaps, true);
+                step = STEP_2;
+            } else {
+                SetFlags(0, 0x100);
+                func_00560340(ai, this, false);
+                step = STEP_3;
+            }
+        }
+        break;
+    }
+    case STEP_2:
+        if (m_flags & 1)
+            ai->SetStanceDelayed((SEAL_STANCE)2, -1.0f);
+        if ((m_flags & 0x40) && GotoArrived(path)) {
+            const CAiMapLoc *end = GotoPathFirstP(path);
+            const CAiMapLoc &here = seal->m_mapLocValid;
+
+            if ((unsigned int)GotoCellDist(*end, here) <= m_58) {
+                func_005628F0(ai);
+                step = STEP_3;
+            }
+        } else if (func_005629B0(ai))
+            step = STEP_3;
+        else if (m_flags & 8) {
+            slow = false;
+            done = false;
+            CZSealBody *player = ftsGetPlayer();
+            CAiMapLoc goal(m_cell);
+            CAiMapLoc mine(seal->m_mapLocValid);
+            CAiMapLoc his(player->m_mapLocValid);
+            int d = GotoCellDist(mine, his);
+
+            int dm = GotoCellDist(goal, mine);
+            int dh = GotoCellDist(goal, his);
+
+            if (dm < dh) {
+                if (d < data_00650B50)
+                    data_0066B9E8 = false;
+                if (d < data_00650B60)
+                    data_0066B9F0 = false;
+                if (data_00650B48 < d) {
+                    if (!data_0066B9E8) {
+                        ai->PlayAiSound((CHARACTER_SOUND)1, 1.0f, CAiEvent::AIE_NONE);
+                        data_0066B9E8 = true;
+                    }
+                    slow = true;
+                } else
+                    slow = false;
+                if (data_00650B58 < d && !data_0066B9F0) {
+                    ai->PlayAiSound((CHARACTER_SOUND)2, 1.0f, CAiEvent::AIE_NONE);
+                    data_0066B9F0 = true;
+                }
+                if (data_00650B68 < d) {
+                    ai->PlayAiSound((CHARACTER_SOUND)0, 1.0f, CAiEvent::AIE_NONE);
+                    done = true;
+                }
+            }
+            if (!slow) {
+                CSealCtrl *pc = (CSealCtrl *)player->m_control;
+                float speed = pc->GetSpeedFromThrottle(pc->m_throttle[0], 0);
+                float t = GetThrottleFromSpeed__9CSealCtrlFfi(ai, speed * data_00650B38, 0);
+
+                if (t < data_00650B40)
+                    t = data_00650B40;
+                func_00570F90(ai, t);
+            } else
+                func_00570F90(ai, 0.0f);
+            if (done) {
+                SetFlags(0, 0x100);
+                func_00560340(ai, this, false);
+                step = STEP_3;
+            }
+        }
+        if (seal->m_followers > 0) {
+            if (((CAiSealView518 *)seal)->m_518 < (((CAiUnitView *)ai->m_unit)->m_70 ? data_00650B78 : data_00650B70)) {
+                if (!(m_flags & 8))
+                    func_00570F90(ai, m_6c);
+            } else
+                func_00570F90(ai, 0.0f);
+        }
+        break;
+    case STEP_4: {
+        CZSealBody *target = 0;
+
+        if (AiMaps.GetCellCenter(m_cell, &c4))
+            target = func_00569E40(ai, &c4, m_74);
+        if (!target || !ai->PushAiState(AI_STATE_PURSUE, 0)) {
+            ai->PlayAiSound((CHARACTER_SOUND)3, 1.0f, CAiEvent::AIE_NONE);
+            step = STEP_0;
+            SetFlags(0, 0x100);
+        } else {
+            func_005668F0(ai, target);
+            CAiState *s = ai->GetAiState();
+
+            s = s && s->m_state == AI_STATE_PURSUE ? s : 0;
+            s->SetFlags(2, 4);
+            s->SetActive(true);
+        }
+        break;
+    }
+    case STEP_3:
+        if (m_flags & 0x100)
+            step = STEP_4;
+        else {
+            if (m_flags & 0x400)
+                ai->PlayAiSound((CHARACTER_SOUND)83, 1.0f, CAiEvent::AIE_NONE);
+            SetActive(false);
+        }
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
+}
+
 /* the pickup gone for, its network id kept to check it still stands, and the flags (OVL2
  * 0x5F5520; the name ours) */
 void CAiSPickup::SetPickup(CPickup *p, unsigned int flags)

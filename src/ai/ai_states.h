@@ -528,6 +528,7 @@ class CAiSGoto : public CAiState {
 public:
     CAiSGoto() : CAiState(AI_STATE_GOTO) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x3C and +0x40 (the names ours, by slot) */
     virtual bool Virtual3C(CSealCtrlAi *ai) { return !(m_flags & 4); }
     virtual bool Virtual40() { return true; }
