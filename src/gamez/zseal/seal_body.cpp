@@ -5397,3 +5397,413 @@ extern "C" void *func_005880E0(CZSealBody *seal, AnimType type, int state, bool 
     }
     return 0;
 }
+
+extern "C" {
+/* the overlay anims' pick by the weapon (OVL2 0x58C9E0, 0x58C970, seal_cfg.cpp's), the restrained set's
+ * own posing (OVL2 0x585CD0, below), the root's move kept (OVL2 0x59B870, seal_fall.cpp's), the pose
+ * (OVL2 0x577EA0, seal_anim.cpp's), the homing's two steps (OVL2 0x5B2D20, 0x5B3340, seal_env.cpp's),
+ * an anim's turn by a yaw (OVL2 0x577BA0, seal_anim.cpp's), the velocity's scale (OVL2 data) */
+AnimType func_0058C9E0(CZSealBody *seal, AnimType type, char kind);
+AnimType func_0058C970(CZSealBody *seal, AnimType type, char item);
+CZBodyAnimBlend *func_00585CD0(CZSealBody *seal);
+bool func_0059B870(CZSealBody *seal, const CPnt3D *p);
+void func_00577EA0(CZSealBody *seal);
+float func_005B2D20(CZSealBody *seal, float *cosOut);
+float func_005B3340(CZSealBody *seal, float *cosOut);
+void func_00577BA0(CZSealBody *seal, CZSIScriptCommon *script, unsigned int f0, unsigned int f1, float t);
+extern float data_0064FC80;
+}
+void GetFractionalRotations(const CPnt3D *v, float *a, float *b);
+
+/* the top blend's fraction as the tick began, the throttle kept beside the two eased ones, and the
+ * root's place the tick before (padding in zseal.h, read through these; the names ours) */
+static inline float &TickT0(CZSealBody *seal)
+{
+    return *(float *)((char *)seal + 0xfa8);
+}
+
+static inline float &Prev250(CZSealBody *seal)
+{
+    return *(float *)((char *)seal + 0x250);
+}
+
+struct CRootPrevView {
+    unsigned char _0[0x14c0];
+    CPnt3D m_14c0;
+};
+#define RootPrev(seal) (((CRootPrevView *)(seal))->m_14c0)
+
+/* whether the SEAL carries (or is carried) under a homing (an inline: its bool materialised) */
+static inline bool CarryHoming(CZSealBody *seal)
+{
+    if (seal->m_carry && ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_homing.m_blend)
+        return true;
+    return false;
+}
+
+/* the carry let go of both ways (an inline; the name ours) */
+static inline void DropCarry(CZSealBody *seal)
+{
+    if (seal->m_carry) {
+        seal->m_carry->m_carry = 0;
+        seal->m_carry = 0;
+    }
+}
+
+/* the SEAL animated for the tick: the throttles kept, the overlay stepped; every anim of the top blend
+ * given its overlay for the weapon (and, the weapon up, its fire pose over it); the top blend run --
+ * synched (2), propagated and slid (3), else propagated (the restrained set posed) and the velocity taken
+ * from it, held to the quadrant's limits and scaled, the throttles' own when jumping; stunned still; the
+ * callbacks; the homing stepped and let go; posed; the carry's root held; the root's move kept as the
+ * velocity in the turns and the step; then the look, the eyes and the blink, the spine's pitch, the
+ * recoil, the lean into turns (OVL2 0x57A330; SOCOM 1's Tick_0, its float unread; Tick calls it).
+ * OPEN, at size and frame, every call and branch placed: 4 structural (the yaw compared in f1 and reloaded
+ * for the positive call, here compared in f12; a nop where the target fills the lean test's delay slot)
+ * and ~50 register-only, the two overlay loops' saved registers (the target: a s2, the pool s3, the
+ * script s4, the overlay taken s5 in the first; a s3, the script s2, the pool s5 in the second) */
+void CZSealBody::Tick_0()
+{
+    float z1;
+    float z2;
+    float x1;
+    float x2;
+    float c;
+    float yaw;
+    float pitch;
+    float yaw2;
+    float pitch2;
+
+    if (!func_00555170(&m_blends))
+        return;
+    m_prevx = m_244;
+    m_prevz = m_240;
+    Prev250(this) = m_23c;
+    func_00579EF0(this);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (func_005551A0(top->m_flags, 64)) {
+        for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = top->m_anims.Next()) {
+            ACTIVE_ANIM *ov[2] = {0};
+            int i = 0;
+
+            for (ACTIVE_ANIM *o = a->m_overlay; o; o = o->m_overlay, i++)
+                if (i < 2)
+                    ov[i] = o;
+            AnimType t = func_0058C9E0(this, (AnimType)a->m_id, m_item);
+            CZSIScriptCommon *script;
+
+            if ((short)t == a->m_id)
+                script = 0;
+            else
+                script = m_animset->GetScript(t);
+            ACTIVE_ANIM *got;
+
+            if (script) {
+                if (ov[0]) {
+                    ov[0]->Clear();
+                    ov[0]->m_anim = script;
+                    got = ov[0];
+                    ov[0] = 0;
+                } else
+                    got = ActiveAnimPool()->GetActiveAnim(script, -1);
+            } else
+                got = 0;
+            if (script)
+                top->AddOverlay(a, got, 1.0f);
+            else
+                a->m_overlay = 0;
+            float w = m_wep_seq.Weight();
+
+            if (!(w <= 0.0f) && m_animset != data_0044D408) {
+                ACTIVE_ANIM *base = script ? got : a;
+
+                t = func_0058C820(this, (AnimType)a->m_id, 1);
+                t = func_0058C970(this, t, m_item);
+                script = m_animset->GetScript(t);
+                if (script) {
+                    ACTIVE_ANIM *n;
+
+                    if (ov[0]) {
+                        ov[0]->Clear();
+                        ov[0]->m_anim = script;
+                        n = ov[0];
+                        ov[0] = 0;
+                    } else if (ACTIVE_ANIM *o1 = ov[1]) {
+                        o1->Clear();
+                        o1->m_anim = script;
+                        n = ov[1];
+                        ov[1] = 0;
+                    } else
+                        n = ActiveAnimPool()->GetActiveAnim(script, -1);
+                    top->AddOverlay(base, n, w);
+                } else
+                    base->m_overlay = 0;
+            }
+            if (ov[0])
+                ActiveAnimPool()->PutBack(ov[0]);
+            if (ov[1])
+                ActiveAnimPool()->PutBack(ov[1]);
+        }
+    } else {
+        for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = top->m_anims.Next()) {
+            ACTIVE_ANIM *ov[2] = {0};
+            int i = 0;
+
+            for (ACTIVE_ANIM *o = a->m_overlay; o; o = o->m_overlay, i++)
+                if (i < 2)
+                    ov[i] = o;
+            AnimType t = func_0058C9E0(this, (AnimType)a->m_id, m_item);
+            CZSIScriptCommon *script;
+
+            if ((short)t == a->m_id)
+                script = 0;
+            else
+                script = m_animset->GetScript(t);
+            ACTIVE_ANIM *got;
+
+            if (script) {
+                if (ov[0]) {
+                    ov[0]->Clear();
+                    ov[0]->m_anim = script;
+                    got = ov[0];
+                    ov[0] = 0;
+                } else
+                    got = ActiveAnimPool()->GetActiveAnim(script, -1);
+            } else
+                got = 0;
+            if (script)
+                top->AddOverlay(a, got, 1.0f);
+            else
+                a->m_overlay = 0;
+            if (ov[0])
+                ActiveAnimPool()->PutBack(ov[0]);
+            if (ov[1])
+                ActiveAnimPool()->PutBack(ov[1]);
+        }
+    }
+
+    float t0 = top->m_tfrac;
+
+    TickT0(this) = t0;
+    switch (top->m_ctrl) {
+    case 2:
+        top->Synch();
+        m_velM = CPnt3D::zero;
+        break;
+    case 3:
+        top->Propagate(m_2e0, true);
+        top->Synch();
+        top->GetVelocity(&m_velM);
+        if (Held1090(this))
+            Slide(Held1090(this));
+        top->m_ctrl = 0;
+        break;
+    default:
+        if (m_animset == data_0044D410 && IsCurrentBlend((AnimType)1))
+            func_00585CD0(this);
+        else
+            top->Propagate(m_2e0, true);
+        if (m_carry) {
+            if (CBody::m_state == 10 || IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints) ||
+                IsCurrentBlend((AnimType)AnimTypes::Stabbed))
+                top->m_tfrac = ((CZBodyAnimBlend *)func_00555170(&m_carry->m_blends))->m_tfrac;
+        }
+        top->Synch();
+        top->GetVelocity(&m_velM);
+        if (m_f68 != -99.0f) {
+            float f6c = m_f6c;
+            float nx = 0.0f;
+            float nz = nx;
+
+            switch (m_quadrant) {
+            case 0:
+                if (!(m_velM.x < 0.0f)) {
+                    nx = m_velM.x * m_f68;
+                    nz = m_velM.x * f6c;
+                    if (!(m_f64 < 0.0f))
+                        nz = -nz;
+                }
+                break;
+            case 1:
+                if (m_velM.z <= 0.0f) {
+                    nx = m_velM.z * m_f68;
+                    nz = m_velM.z * f6c;
+                    if (!(m_f60 < 0.0f))
+                        nx = -nx;
+                }
+                break;
+            case 2:
+                if (m_velM.x < 0.0f) {
+                    nx = m_velM.x * m_f68;
+                    nz = m_velM.x * f6c;
+                    if (m_f64 < 0.0f)
+                        nz = -nz;
+                }
+                break;
+            case 3:
+                if (!(m_velM.z <= 0.0f)) {
+                    nx = m_velM.z * m_f68;
+                    nz = m_velM.z * f6c;
+                    if (m_f60 < 0.0f)
+                        nx = -nx;
+                }
+                break;
+            }
+            m_velM.x = nx;
+            m_velM.z = nz;
+            m_f68 = -99.0f;
+            m_f6c = -99.0f;
+        }
+        if (IsCurrentBlend((AnimType)data_003DEAE8)) {
+            static float zero_x = 0.0f;
+            static float zero_z = 0.0f;
+            bool xs = _close_enough(m_244, zero_x, data_003F3428);
+            bool zs = _close_enough(m_240, zero_z, data_003F3428);
+
+            if (!xs || !zs) {
+                SmoothXZThrottles(m_244, m_240);
+                m_prevx = m_244;
+                m_prevz = m_240;
+                GetMaxXMotion(x1, x2);
+                GetMaxZMotion(z1, z2);
+                if (!(m_244 < 0.0f))
+                    m_velM.x = m_244 * x2;
+                else
+                    m_velM.x = m_244 * x1;
+                if (!(m_240 < 0.0f))
+                    m_velM.z = -m_240 * z1;
+                else
+                    m_velM.z = -m_240 * z2;
+            }
+        }
+        m_velM.Scale(data_0064FC80, &m_velM);
+        break;
+    }
+    if (m_am_stunned) {
+        m_velM = CPnt3D::zero;
+        m_velR = CPnt3D::zero;
+    }
+    float t1 = top->m_tfrac;
+
+    if (top->m_callback.m_func && top->IsTriggerTime(top->m_callback.m_tfrac, t0, t1))
+        RunCallback(&top->m_callback, this);
+    top->CallbackTick(this, t0, t1);
+    m_overlay.CallbackTick(this, m_2e0);
+    if (IsCurrentBlend((AnimType)data_003DEAE0))
+        m_velM = CPnt3D::zero;
+    if (top->m_homing.m_blend) {
+        if (func_005551A0(top->m_flags, 64)) {
+            CHoming *h = &top->m_homing;
+            float len = func_005B2D20(this, &c);
+
+            if (!(len <= 30.0f)) {
+                h->Reset();
+                DropCarry(this);
+            } else if (h->m_1c > 45) {
+                if (((const CZBodyAnimBlend *)top)->m_callback.m_func)
+                    RunCallback(&top->m_callback, this);
+                else {
+                    unsigned char kept = h->m_2c;
+
+                    h->Reset();
+                    if (!kept)
+                        DropCarry(this);
+                }
+            } else if (!(c <= 0.993f) && len < 1.0f) {
+                if (((const CZBodyAnimBlend *)top)->m_callback.m_func)
+                    RunCallback(&top->m_callback, this);
+                else {
+                    unsigned char kept = h->m_2c;
+
+                    h->Reset();
+                    if (!kept)
+                        DropCarry(this);
+                }
+            }
+        } else
+            func_005B3340(this, 0);
+    }
+    func_00577EA0(this);
+    if (CarryHoming(this)) {
+        CZBodyPart *root = GetRootPart();
+
+        root->m_pos.x = 0.0f;
+        root->m_pos.z = 0.0f;
+        m_velM = CPnt3D::zero;
+    }
+    if (m_carry && (CBody::m_state == 10 || IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints) ||
+                    IsCurrentBlend((AnimType)AnimTypes::Stabbed)))
+        return;
+    CZBodyPart *root = GetRootPart();
+    CPnt3D prev = RootPrev(this);
+
+    RootPrev(this) = root->m_pos;
+    if (IsCurrentBlend((AnimType)data_003DEAE0))
+        root->m_rot = CQuat::identity;
+    if (IsCurrentBlend((AnimType)16) || IsCurrentBlend((AnimType)21) || IsCurrentBlend((AnimType)28) ||
+        IsCurrentBlend((AnimType)AnimTypes::BuddyCarryStep)) {
+        if (m_was_turning) {
+            CPnt3D d;
+
+            prev.Sub(&RootPrev(this), &d);
+            d.Scale(1.0f / m_2e0, &d);
+            m_velM = d;
+        } else
+            m_velM = CPnt3D::zero;
+        m_was_turning = true;
+    } else
+        m_was_turning = false;
+    root->m_pos.x = 0.0f;
+    root->m_pos.z = 0.0f;
+    func_0059B870(this, &prev);
+    if (!m_animate_me)
+        return;
+    if (top->m_state != 8) {
+        float w = m_wep_seq.Weight();
+
+        if (m_animset == data_0044D408)
+            w = 1.0f;
+        if ((w == 0.0f || !m_look.m_done) && CanHeadLook()) {
+            m_look.LookTick(m_2e0);
+            if (CBody::m_state == 2) {
+                GetFractionalRotations(GetLookDir(), &yaw, &pitch);
+                if (IsCurrentBlend((AnimType)26)) {
+                    CZSIScriptCommon *s = m_animset->GetScript((AnimType)82);
+
+                    if (!(yaw < 0.0f))
+                        func_00577BA0(this, s, 1, 2, yaw);
+                    else
+                        func_00577BA0(this, s, 1, 0, -yaw);
+                }
+            } else {
+                GetFractionalRotations(GetLookDir(), &yaw2, &pitch2);
+                ApplyLookAnim(yaw2, pitch2);
+            }
+        }
+        if (m_blink_eyes ? true : false) {
+            if (w == 0.0f || !m_eyelook.m_done) {
+                m_eyelook.LookTick(m_2e0);
+                ApplyEyeLookAnim();
+            }
+            if (m_blink.m_nextT <= 0.0f) {
+                m_blink.Blink(1);
+                m_blink.m_nextT = 6.0f * (4.656613e-10f * (float)rand());
+            }
+            m_blink.BlinkTick(m_2e0);
+            ApplyBlinkAnim();
+        }
+        if (!(w <= 0.0f) && CanPitch())
+            PitchAnim(&m_aim_goal);
+    }
+    Recoil();
+    if ((m_lean_into_turns ? true : false) && m_spinelo && !m_airborne && m_velR.y != 0.0f && m_velM.z != 0.0f) {
+        CQuat q;
+        CQuat r;
+
+        q.MakeZRot(m_velR.y * (-0.000375f * m_velM.z));
+        CQuat *rot = &m_spinelo->m_rot;
+
+        q.Mul(rot, &r);
+        r.Normalize(rot);
+    }
+}

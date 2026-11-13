@@ -2538,6 +2538,10 @@ public:
      * OVL2 0x587A30 and 0x587C20 not written yet, 0x587E00), and how fast it moves (SOCOM 1's; OVL2
      * 0x58A820) -- seal_body.cpp's */
     bool CanPitch();
+    /* the SEAL animated for the tick (SOCOM 1's Tick_0 took the step; OVL2 0x57A330) and the weapon's recoil
+     * on the arms (SOCOM 1's; OVL2 0x57B550) -- seal_body.cpp's */
+    void Tick_0();
+    void Recoil();
     /* the spine bent toward the aim's goal (SOCOM 1's took the goal second; OVL2 0x5ACA70, seal_env.cpp) */
     void PitchAnim(CPnt3D *goal);
     /* an overlay anim pushed over the blends, the top blend returned, and the overlays it sets for the
