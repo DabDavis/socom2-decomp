@@ -363,11 +363,10 @@ static float s_tcmConfDecay = 0.5f;
  * the clocks, the pulse, the columns' fade to the menu's mode, the tree; offline with the recogniser
  * running or asked for a context, the microphone meter placed, its colour flashed by the last result's
  * confidence and fading; otherwise the meter fading out.
- * OPEN, 2 instructions (round 65): the column's rate arm opens `lui at; lwc1 f3,0(v1); lwc1 f2,rate(at)` in the
- * target, `lwc1 f3,0(v1); lui at; lwc1 f2,rate(at)` here: every register agrees, the longer path from the direction's
- * load keeps it first. Tried, none moves the lui ahead: the column through a pointer, a reference or a walker (an
- * indexed store lets the rate's load be hoisted out of the loop, which the target does not); step, product, direction
- * or rate in a local, plain or const (const or a cast rate only renumbers: 5) */
+ * Byte-exact since the HUD's round 71: the column's rate arm `v = cur; v += rate * step;` -- the compound add puts
+ * the rate's `lui at` ahead of the direction's load (`v = cur + rate * step`, open from round 65 at 2 instructions,
+ * schedules it after; the column through a pointer, a reference or a walker, step, product, direction or rate in a
+ * local, plain or const, the add's operands swapped, all left it there) */
 void CTCM::Update(float dt)
 {
     Layout(dt);
@@ -391,8 +390,10 @@ void CTCM::Update(float dt)
 
         if (m_mode.m_mode == 0)
             v = 0.0f;
-        else
-            v = cur + s_tcmColumnRate * (dt * c.m_dir);
+        else {
+            v = cur;
+            v += s_tcmColumnRate * (dt * c.m_dir);
+        }
         if (!(v <= 1.0f))
             v = 1.0f;
         else if (v < 0.0f)
