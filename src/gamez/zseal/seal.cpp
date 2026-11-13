@@ -3272,7 +3272,7 @@ extern AnimSet *data_0044D410;
  * none when its node is clear (inlines, the names ours) */
 static inline zdb::IntersectStruct *Hit1100(CZSealBody *seal)
 {
-    return seal->m_111c ? (zdb::IntersectStruct *)((char *)seal + 0x1100) : 0;
+    return seal->m_1100.m_node ? (zdb::IntersectStruct *)((char *)seal + 0x1100) : 0;
 }
 
 static inline zdb::IntersectStruct *Hit1120(CZSealBody *seal)

@@ -2653,7 +2653,9 @@ public:
      * toward them; the names ours) */
     float m_prevx;   // 0x248
     float m_prevz;   // 0x24c
-    unsigned char _250[0x258 - 0x250];
+    /* two values the constructor sets, 0 and -1 (Tick_0 stores a float to the first; the names ours) */
+    float m_250;   // 0x250
+    int m_254;   // 0x254
     /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
      * (seal.cpp; the name ours) */
     unsigned char m_258_0 : 1;   // 0x258
@@ -2720,7 +2722,10 @@ public:
     std::vector<zdb::CNode *> m_deallocList;   // 0x368
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
-    unsigned char _376[0x37c - 0x376];
+    unsigned char _376[0x378 - 0x376];
+    /* the recoil's parameter (SOCOM 1's m_recoilParam, 0x308 right after m_desiredPeek as here:
+     * the constructor zeroes it, Recoil 0x57B550 reads and writes it) */
+    float m_recoilParam;   // 0x378
     CObjAnims m_obj_anims;   // 0x37c (SOCOM 1's 0x30c)
     /* the items worn as gear, by SOCOM 1's SEAL_ITEM (1 the rifle, 2 the pistol, 4 the launcher;
      * AimWeapon aims along 1, 2 and 4): the part SetPartAsGear makes of each and the gear (SOCOM 1's
@@ -2742,18 +2747,31 @@ public:
     /* a wait PreTick runs down by the time step, held at 0 (the name ours) */
     float m_424;   // 0x424
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
-    unsigned char _42c[0x434 - 0x42c];
+    /* two words the constructor zeroes between the AI event and the snake path (0x555900 and
+     * 0x5658D0 read the first; the names ours) */
+    int m_42c;   // 0x42c
+    int m_430;   // 0x430
     CAiPath m_snakePath;   // 0x434: (SOCOM 1's 0x384)
-    unsigned char _438[0x504 - 0x434 - sizeof(CAiPath)];
+    /* the follow parameters (SOCOM 1's DWARF names, 0x420-0x459 there, 0xbc on: UpdateFollowParams
+     * 0x5FC970 keeps them -- seal_aifollow.cpp's view; the constructor sets the three directions to
+     * unit_nz) */
+    CPnt3D m_look_dir;   // 0x4dc
+    CPnt3D m_formation_dir;   // 0x4e8
+    CPnt3D m_saved_formation_dir;   // 0x4f4
+    unsigned char _500[0x504 - 0x500];
     CPnt3D m_504;   // 0x504: where the SEAL last stood on a cell it can walk (UpdateAiMapLoc; the name ours)
-    unsigned char _510[0x514 - 0x510];
+    int m_formation_clock;   // 0x510 (SOCOM 1's 0x454)
     /* (SOCOM 1's m_follow_params_are_current and m_saved_formation_dir_is_valid, 0x458/0x459:
      * InvalidateFollowParams clears them -- the kit lane, round 19) */
     unsigned char m_follow_params_are_current;   // 0x514
     unsigned char m_saved_formation_dir_is_valid;   // 0x515
-    unsigned char _516[0x520 - 0x516];
+    unsigned char _516[0x518 - 0x516];
+    /* the followers' furthest distance, and the next frame's (SOCOM 1's 0x158/0x15c: UpdateFollowParams
+     * rolls the second into the first) */
+    int m_MaxFollowerDistance;   // 0x518
+    int m_MaxFollowerDistanceNext;   // 0x51c
     int m_followers;   // 0x520: how many follow this SEAL (the name ours)
-    unsigned char _524[0x528 - 0x524];
+    float m_524;   // 0x524: a time CSealCtrl::PreTick runs and clears (the name ours)
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
     class AnimSet *m_530;   // 0x530: the set 0x58C600 binds, kept with m_default_animset (the name ours)
@@ -2784,7 +2802,9 @@ public:
      * 0x5A88C0 refuses while one is) */
     CZSealBody *m_carry;   // 0xeac
     struct CAdrenaline *m_adrenaline;   // 0xeb0 (SOCOM 1's 0xdac: Adrenaline returns it)
-    unsigned char _eb4[0xeb8 - 0xeb4];
+    /* (SOCOM 1's m_prev_nodeaction, 0xdb0 right after m_adrenaline as here: both constructors zero
+     * it last before UpdateAimParams) */
+    class CNodeAction *m_prev_nodeaction;   // 0xeb4
     /* the entity the SEAL works -- a turret when its type is 3 (0x543200-0x5433C0); 0x5A8850 tests
      * it first (the name ours) */
     CEntity *m_eb8;   // 0xeb8
@@ -2808,7 +2828,11 @@ public:
      * names ours) */
     int m_ef4;   // 0xef4
     int m_ef8;   // 0xef8
-    unsigned char _efc[0xf40 - 0xefc];
+    /* the threat's directions, scales and angles (SOCOM 1's DWARF, 0xde9-0xe2f there, after the
+     * probes' count as here; CZKit::Fire sets them, the constructor zeroes them) */
+    unsigned char m_threatdir[4];   // 0xefc
+    float m_threatscale[8];   // 0xf00
+    float m_threatangle[8];   // 0xf20
     /* whether the SEAL ticks after its move (PrePostTick does nothing without it; the name ours) */
     unsigned char m_f40;   // 0xf40
     unsigned char _f41[0xf44 - 0xf41];
@@ -2825,7 +2849,8 @@ public:
      * crouched move keeps its two weights there) */
     float m_f68;   // 0xf68
     float m_f6c;   // 0xf6c
-    unsigned char _f70[0xf74 - 0xf70];
+    unsigned char m_anim_handled;   // 0xf70 (SOCOM 1's 0xe50, right before m_weapon_state: both constructors set 1)
+    unsigned char _f71[0xf74 - 0xf71];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
     /* an item the anim choice falls back on with no base blend (0x58C820 copies it with lb, tests it
@@ -2841,7 +2866,8 @@ public:
     /* how long, online, the SEAL's network life has not been 1 (up): past 20 s it is ended
      * (0x543F70 runs it by the time step at 0x2e0; the name ours) */
     float m_f7c;   // 0xf7c
-    unsigned char _f80[0xf84 - 0xf80];
+    /* (SOCOM 1's m_detonation_countdown, 0xe5c after m_item: zeroed by both constructors) */
+    class CZProjectile *m_detonation_countdown;   // 0xf80
     float m_f84;   // 0xf84: the mass a blast's throw is divided by (0x57E770; the name ours)
     float m_waterdepth;   // 0xf88 (SOCOM 1's 0xe70, by its use: in water a SEAL crouches only up to 8.5
                           // deep, 0x5857E0, and goes prone only up to 2, Prone)
@@ -2959,15 +2985,20 @@ public:
     /* a wall's hit the SEAL holds to (new in SOCOM II: held while its node is set -- 0x5B3890 drops
      * it once the SEAL strays, faces off it or the ledge is out of reach; the name ours) */
     zdb::IntersectStruct m_1090;   // 0x1090
-    unsigned char _10b0[0x10d0 - 0x10b0];
+    /* two points kept with the wall's hit (0x5B0D30 sets them; the constructor zeroes both, then the
+     * hit's node again; the names ours) */
+    CPnt3D m_10b0;   // 0x10b0
+    CPnt3D m_10bc;   // 0x10bc
+    unsigned char _10c8[0x10d0 - 0x10c8];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
     unsigned char _10d4[0x10e0 - 0x10d4];
     /* the last weapon hit (SOCOM 1's m_wephit, an IntersectStruct * at 0xf84; SOCOM II holds it:
      * HandleDamage takes this + 0x10E0 when its node is set, HandleWepHit clears the node) */
     zdb::IntersectStruct m_wephit;   // 0x10e0
-    unsigned char _1100[0x111c - 0x1100];
-    /* zeroed when the SEAL lands out of state 2, and when the ground is lost (0x5B0420; the name ours) */
-    int m_111c;   // 0x111c
+    /* a hit the step is held to while its node is set -- the node cleared when the SEAL lands out of
+     * state 2, and when the ground is lost (0x5B0420); the constructor clears its polygon and node (the
+     * name ours) */
+    zdb::IntersectStruct m_1100;   // 0x1100
     /* a wall's hit the step is held to while its node is set (ComputeNextPosition hands it to 0x54A3D0;
      * the name ours) */
     zdb::IntersectStruct m_1120;   // 0x1120
@@ -2977,7 +3008,12 @@ public:
      * seal_weapon.cpp's view names it so too) */
     CSeqMember m_wep_seq;   // 0x1160
     CSeqMember m_1170;   // 0x1170 (a sequence ~CZSealBody clears; the name ours)
-    unsigned char _1180[0x1190 - 0x1180];
+    /* the binoculars', the goggles' and the item's parts (SOCOM 1's CLookItem, a CSequence and these three,
+     * its m_lookitem: SOCOM II holds it at 0x1170, the constructor zeroes the three) */
+    CZBodyPart *m_binocs;   // 0x1180
+    CZBodyPart *m_nvg;   // 0x1184
+    CZBodyPart *m_lookitem_item;   // 0x1188
+    unsigned char _118c[0x1190 - 0x118c];
     /* the head's look, the eyes' and the lids' blink (SOCOM 1's m_look, m_eyelook, m_blink were
      * pointers at 0xf90-0xf98; SOCOM II's are held: GetLookDir returns this + 0x11A0, SetLookDir
      * hands this + 0x1190 on, the eyes and lids align to 0x1210 and 0x1280) */
@@ -2989,7 +3025,7 @@ public:
      * SOCOM II holds it, as the looks; StandTurning starts it) */
     CTurnInPlace m_turnip;   // 0x12f0
     CSeqMember m_1300;   // 0x1300 (a sequence ~CZSealBody clears; the name ours)
-    unsigned char _1310[0x1314 - 0x1310];
+    float m_crouch_wt;   // 0x1310 (SOCOM 1's CCrouchedRun::m_wt: m_1300 is its m_crouch, zeroed with it)
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
      * (the names ours) */
     struct CSealShock {
@@ -3060,7 +3096,7 @@ public:
     zdb::CNode *m_curr_aimpt;   // 0x14ac
     CPnt3D m_curr_firepos;   // 0x14b0 (SOCOM 1's 0x1110, m_aim_dir's 0x3a0 on as here)
     zdb::CNode *m_curr_firept;   // 0x14bc
-    unsigned char _14c0[0x14cc - 0x14c0];
+    CPnt3D m_skel_root;   // 0x14c0 (SOCOM 1's 0x1120, after m_curr_firept as here)
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
     short m_14ce;   // 0x14ce: zeroed by each Tick (the name ours)
     int m_14d0;   // 0x14d0: the hits a dying SEAL has shown (WeaponHitAnim; the name ours)

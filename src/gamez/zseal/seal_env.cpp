@@ -1347,7 +1347,7 @@ extern "C" void func_005B0420(CZSealBody *seal)
                 seal->m_node->SetPosition(((const CPnt3D &)p).x, ((const CPnt3D &)p).y, ((const CPnt3D &)p).z);
                 seal->m_alt = y;
                 if (seal->m_state != 2)
-                    seal->m_111c = 0;
+                    seal->m_1100.m_node = 0;
             }
             if (CZSealBody::GetSeal(hit->m_node))
                 seal->m_last_altitude.m_pos = hit->m_pos;
@@ -1365,7 +1365,7 @@ extern "C" void func_005B0420(CZSealBody *seal)
             seal->m_1340 = 0.0f;
             seal->m_node->SetPosition(seal->m_last_altitude.m_pos.x, seal->m_last_altitude.m_pos.y, seal->m_last_altitude.m_pos.z);
             seal->UpdatePosW();
-            seal->m_111c = 0;
+            seal->m_1100.m_node = 0;
         } else {
             CPnt3D norm(seal->m_last_altitude.m_norm);
             float y = seal->m_last_altitude.m_pos.y;
