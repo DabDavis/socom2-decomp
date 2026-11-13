@@ -527,7 +527,11 @@ extern "C" void func_003B1DD0(void *arg)
         DIntr();
         zSysFifoPause();
         *ZV_VIF1_FBRST = 8;
+#if Z_PORT
+        Z_EE_SYNC();
+#else
         asm volatile { sync }
+#endif
         while (*ZV_VIF1_STAT & 0xC00)
             ;
         u_long imr = sceGsPutIMR(sceGsGetIMR() | 0x200);
@@ -844,10 +848,18 @@ void zvid_SetVideoMode(_zvid_mode mode, bool reset)
     if (reset) {
         sceGsSyncV(0);
         *GS_PMODE = 0;
+#if Z_PORT
+        Z_EE_SYNC();
+#else
         asm volatile { sync }
+#endif
         sceGsResetGraph(0, data_004A43C8, data_004A43D0, data_004A43CC);
         *GS_PMODE = 0;
+#if Z_PORT
+        Z_EE_SYNC();
+#else
         asm volatile { sync }
+#endif
     }
     sceGsSetDefDBuff(&data_004A4180, zVid.psm, zVid.renderWidth, zVid.renderHeight, 2, 58, 1);
     zSysTimerInit();
@@ -1380,10 +1392,18 @@ void zVid_Swap(bool flip, bool restore)
         } else {
             *GS_PMODE = 0x62;
         }
+#if Z_PORT
+        Z_EE_SYNC();
+#else
         asm volatile { sync }
+#endif
     } else if (zVid.flag90) {
         *GS_PMODE = 96;
+#if Z_PORT
+        Z_EE_SYNC();
+#else
         asm volatile { sync }
+#endif
     }
     if (restore) {
         zSysFifoEnable(1);

@@ -1019,6 +1019,25 @@ bool CVisual::VuDetailMap(_word128 **cursor, unsigned int tag, tag_DETAIL_PARAMS
 
 /* a point scaled by the static's xyz and offset by its w, in VU0 (the zdb world's 0x339DE0 calls
  * it; new in SOCOM II, not named) */
+#if Z_PORT
+/* the port: vmul.xyz p = in * s; vaddw.xyz p += s.w; w is in's (s is CVisual::m_lensScale, the
+ * address the asm's `la` names). in read whole before the store */
+extern "C" void func_003B5A10(_word128 *in, _word128 *out)
+{
+    const float *s = (const float *)&CVisual::m_lensScale;
+    float p[4];
+    int k;
+
+    for (k = 0; k < 4; k++)
+        p[k] = ((const float *)in)[k];
+    for (k = 0; k < 3; k++)
+        p[k] = p[k] * s[k];
+    for (k = 0; k < 3; k++)
+        p[k] = p[k] + s[3];
+    for (k = 0; k < 4; k++)
+        ((float *)out)[k] = p[k];
+}
+#else
 extern "C" asm void func_003B5A10(_word128 *in, _word128 *out)
 {
     la v1, data_004B4D30
@@ -1029,12 +1048,44 @@ extern "C" asm void func_003B5A10(_word128 *in, _word128 *out)
     jr ra
     sqc2 vf7, 0(a1)
 }
+#endif
 
 /* a point through a matrix's rotation first when the flag (0x4B4A68) is up, then scaled and offset
  * as 0x3B5A10 does (new in SOCOM II, not named). The address's `la` sits in the branch's delay
  * slot, so its lui lands there as the target's does */
 extern "C" unsigned char data_004B4A68;
 
+#if Z_PORT
+/* the port: with the flag up, ACC = m*x; += m*y; += m*z; p.xyz = ACC + m*m.z (the one quadword m,
+ * each lane of it scaled by in's x, y, z and its own z, as the broadcasts read); then, either way,
+ * vmul.xyz p *= s; vaddw.xyz p += s.w; w is in's */
+extern "C" void func_003B59A0(_word128 *in, _word128 *m, _word128 *out)
+{
+    const float *s = (const float *)&CVisual::m_lensScale;
+    float p[4], r[4];
+    int k;
+
+    for (k = 0; k < 4; k++)
+        p[k] = ((const float *)in)[k];
+    if (data_004B4A68) {
+        for (k = 0; k < 4; k++)
+            r[k] = ((const float *)m)[k];
+        float x = p[0], y = p[1], z = p[2];
+        for (k = 0; k < 3; k++) {
+            float acc = r[k] * x;
+            acc = acc + r[k] * y;
+            acc = acc + r[k] * z;
+            p[k] = acc + r[k] * r[2];
+        }
+    }
+    for (k = 0; k < 3; k++)
+        p[k] = p[k] * s[k];
+    for (k = 0; k < 3; k++)
+        p[k] = p[k] + s[3];
+    for (k = 0; k < 4; k++)
+        ((float *)out)[k] = p[k];
+}
+#else
 extern "C" asm void func_003B59A0(_word128 *in, _word128 *m, _word128 *out)
 {
     .set noreorder
@@ -1064,6 +1115,7 @@ done:
     jr ra
     nop
 }
+#endif
 
 /* the projected map's pass: the first map's texture select, its position in model space, its
  * projection into model space and the colour (SOCOM II's; the name ours). Pinned: fifteen statements
@@ -1184,6 +1236,26 @@ bool CVisual::VuLightMap(_word128 **cursor, unsigned int tag)
             CPnt4D *m = !mesh ? &CVisual::m_lightTint[0] : &CVisual::m_lightTint[2];
             _word128 *c = &q[2];
 
+#if Z_PORT
+            /* ACC = m*c.x; += m*c.y; += m*c.z; c.xyz = ACC + m*m.z, c.w kept (func_003B59A0's
+             * tint, in place) */
+            {
+                float *cc = (float *)c;
+                const float *r = (const float *)m;
+                float x = cc[0], y = cc[1], z = cc[2], o[3];
+                int k;
+
+                for (k = 0; k < 3; k++) {
+                    float acc = r[k] * x;
+                    acc = acc + r[k] * y;
+                    acc = acc + r[k] * z;
+                    o[k] = acc + r[k] * r[2];
+                }
+                cc[0] = o[0];
+                cc[1] = o[1];
+                cc[2] = o[2];
+            }
+#else
             asm volatile {
                 lqc2 vf7, 0(c)
                 lqc2 vf4, 0(m)
@@ -1193,6 +1265,7 @@ bool CVisual::VuLightMap(_word128 **cursor, unsigned int tag)
                 vmaddz.xyz vf7, vf4, vf4z
                 sqc2 vf7, 0(c)
             }
+#endif
         }
         q += 3;
         *cursor = q;
@@ -1552,6 +1625,23 @@ bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c);
  * quadword loaded as two doublewords) */
 static inline void VertexToPoint(CPnt4D *t, CPnt3D *out, _word128 *v)
 {
+#if Z_PORT
+    /* lq + pextlh/psllw/psraw: the quadword's four low halfwords sign-extended to words;
+     * vitof4.xyzw: each over 16; the translation's quadword (ld 8 / pcpyld / ld 0: all of it) and
+     * vadd.xyz; the whole register stored, its w (the fourth short over 16) over the 4 bytes after
+     * the point, as the sqc2 does */
+    const short *s = (const short *)v;
+    const float *tt = (const float *)t;
+    float f[4];
+    int k;
+
+    for (k = 0; k < 4; k++)
+        f[k] = z_vu0_itof(s[k], 4);
+    for (k = 0; k < 3; k++)
+        f[k] = f[k] + tt[k];
+    for (k = 0; k < 4; k++)
+        ((float *)out)[k] = f[k];
+#else
     asm __volatile__ (
         "lq $1, 0(%0)\n"
         "pextlh %0, $0, $1\n"
@@ -1566,6 +1656,7 @@ static inline void VertexToPoint(CPnt4D *t, CPnt3D *out, _word128 *v)
         "vadd.xyz $vf1, $vf1, $vf2\n"
         "sqc2 $vf1, 0(%1)\n"
         : : "r"(v), "r"(out), "r"(t) : "memory");
+#endif
 }
 
 /* a vertex of a view's triangle made an add-on point: its position (the block's scale 1 by VU0,

@@ -131,12 +131,21 @@ int CDIPoly::GetAltitude(DiIntersect *di)
     CPnt3D e;
     CPnt4D *pnts = m_pnts;
 
+#if Z_PORT
+    /* the first three points into vf4-vf6 and the plane's micro program at 0x70 started (left
+     * running here: the next VU0 access waits for it; the port's runs to its end) */
+    z_vu0_lqc2(4, &pnts[0]);
+    z_vu0_lqc2(5, &pnts[1]);
+    z_vu0_lqc2(6, &pnts[2]);
+    z_vu0_callms(0x70);
+#else
     asm volatile {
         lqc2 vf4, 0(pnts)
         lqc2 vf5, 16(pnts)
         lqc2 vf6, 32(pnts)
         vcallms 0x70
     }
+#endif
     int i = m_flags.m_ptcount - 1;
 
     p.x = di->m_MTail.x;
@@ -191,6 +200,16 @@ bool CDIPoly::GetIntersect(DiIntersect *di)
     CPnt4D *last = p + n - 1;
     float w, z;
 
+#if Z_PORT
+    /* the edge (last, first) into vf4/vf5, the micro program at 0x10 run, its hit (vf29) into the
+     * slot; the hit's word at 12 against a zero */
+    z_vu0_lqc2(4, last);
+    z_vu0_lqc2(5, p);
+    z_vu0_callms(0x10);
+    z_vu0_sqc2(29, is);
+    w = ((float *)is)[3];
+    z = 0.0f;
+#else
     asm volatile {
         lqc2 vf4, 0(last)
         lqc2 vf5, 0(p)
@@ -200,10 +219,25 @@ bool CDIPoly::GetIntersect(DiIntersect *di)
         lwc1 w, 12(is)
         mtc1 zero, z
     }
+#endif
     if (z == w)
         return 0;
     do {
         p++;
+#if Z_PORT
+        /* vadd.xyz vf4, vf5, vf0: the edge's start is the last end (vf4.w kept); the next point
+         * into vf5, the program at 0x20 run, the hit (vf29) and the plane's normal (vf3, a whole
+         * quadword over the CPnt3D) out */
+        z_vu0.vf[4][0] = z_vu0.vf[5][0] + 0.0f;
+        z_vu0.vf[4][1] = z_vu0.vf[5][1] + 0.0f;
+        z_vu0.vf[4][2] = z_vu0.vf[5][2] + 0.0f;
+        z_vu0_lqc2(5, p);
+        z_vu0_callms(0x20);
+        z_vu0_sqc2(29, is);
+        z_vu0_sqc2(3, norm);
+        w = ((float *)is)[3];
+        z = 0.0f;
+#else
         asm volatile {
             vadd.xyz vf4, vf5, vf0
             lqc2 vf5, 0(p)
@@ -214,6 +248,7 @@ bool CDIPoly::GetIntersect(DiIntersect *di)
             lwc1 w, 12(is)
             mtc1 zero, z
         }
+#endif
         if (z == w)
             return 0;
     } while (--n);
@@ -244,10 +279,16 @@ void DiIntersect::LoadTipAndTail()
     tail = CPnt4D(m_MTail.x, m_MTail.y, m_MTail.z, 1.0f);
     SetMaskW(tail, (BackfaceMask)CDI::m_backface_mask);
     tip = CPnt4D(m_MTip.x, m_MTip.y, m_MTip.z, 1.0f);
+#if Z_PORT
+    /* VU0 state the polygon and box programs read later: the tip in vf1, the tail in vf2 */
+    z_vu0_lqc2(1, &tip);
+    z_vu0_lqc2(2, &tail);
+#else
     asm __volatile__ (
         "lqc2 $vf1, 0(%1)\n"
         "lqc2 $vf2, 0(%0)\n"
         : : "r"(&tail), "r"(&tip) : "memory");
+#endif
 }
 
 /* the polygon's edges whose height range holds the point's (each edge from the previous point, up
@@ -309,6 +350,18 @@ int CDI::GetEdgeIntersects(CPnt3D *p, CPnt3D *hi, CPnt3D *lo)
 }
 
 /* (hand-written VU0 code, an asm function: the points' pointer at 0x10, three quadwords) */
+#if Z_PORT
+/* the port: m_pnts (0x10)'s first three points into vf4-vf6, the plane's program at 0x70 run */
+void CDI::LoadPlaneVU0()
+{
+    CPnt4D *p = m_pnts;
+
+    z_vu0_lqc2(4, &p[0]);
+    z_vu0_lqc2(5, &p[1]);
+    z_vu0_lqc2(6, &p[2]);
+    z_vu0_callms(0x70);
+}
+#else
 asm void CDI::LoadPlaneVU0()
 {
     lw v1, 16(a0)
@@ -319,6 +372,7 @@ asm void CDI::LoadPlaneVU0()
     jr ra
     nop
 }
+#endif
 
 /* the polygon's normal from its first three points, normalised on VU0 (SOCOM 1's) */
 void CDI::SetEdgeVecsAndNorm()
@@ -379,6 +433,17 @@ bool CDIBBox::GetIntersect(DiIntersect *di)
     CPnt3D *norm = &is->m_norm;
     float w, z;
 
+#if Z_PORT
+    /* the corners into vf3/vf4 (the segment is vf1/vf2's, LoadTipAndTail's), the box program at
+     * 0x30 run, its hit (vf10) and normal (vf30, a whole quadword) into the slot */
+    z_vu0_lqc2(3, plo);
+    z_vu0_lqc2(4, phi);
+    z_vu0_callms(0x30);
+    z_vu0_sqc2(10, is);
+    z_vu0_sqc2(30, norm);
+    w = ((float *)is)[3];
+    z = 0.0f;
+#else
     asm volatile {
         lqc2 vf3, 0(plo)
         lqc2 vf4, 0(phi)
@@ -390,6 +455,7 @@ bool CDIBBox::GetIntersect(DiIntersect *di)
         lwc1 w, 12(is)
         mtc1 zero, z
     }
+#endif
     if (z == w)
         return 0;
     return 1;

@@ -703,6 +703,19 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                                         IntersectStruct *is = &d->m_Intersects[cnt];
                                         CPnt3D *norm = &is->m_norm;
 
+#if Z_PORT
+                                        /* the stack's top matrix into vf4-vf7, the hit and its normal into vf27/vf26, the micro program
+                                         * at 0x80 run (the qmtc2.i waits), both back as whole quadwords */
+                                        z_vu0_lqc2(4, m->m_matrix[0]);
+                                        z_vu0_lqc2(5, m->m_matrix[1]);
+                                        z_vu0_lqc2(6, m->m_matrix[2]);
+                                        z_vu0_lqc2(7, m->m_matrix[3]);
+                                        z_vu0_lqc2(27, is);
+                                        z_vu0_lqc2(26, norm);
+                                        z_vu0_callms(0x80);
+                                        z_vu0_sqc2(27, is);
+                                        z_vu0_sqc2(26, norm);
+#else
                                         asm {
                                             .set noreorder
                                             lqc2 vf4, 0(m)
@@ -716,6 +729,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                                             sqc2 vf27, 0(is)
                                             sqc2 vf26, 0(norm)
                                         }
+#endif
                                         d->m_Intersects[cnt].m_node = node;
                                         d->m_Intersects[cnt].m_poly = p;
                                         d->m_Cnt++;
@@ -734,6 +748,19 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                                         IntersectStruct *is = &d->m_Intersects[cnt];
                                         CPnt3D *norm = &is->m_norm;
 
+#if Z_PORT
+                                        /* the stack's top matrix into vf4-vf7, the hit and its normal into vf27/vf26, the micro program
+                                         * at 0x80 run (the qmtc2.i waits), both back as whole quadwords */
+                                        z_vu0_lqc2(4, m->m_matrix[0]);
+                                        z_vu0_lqc2(5, m->m_matrix[1]);
+                                        z_vu0_lqc2(6, m->m_matrix[2]);
+                                        z_vu0_lqc2(7, m->m_matrix[3]);
+                                        z_vu0_lqc2(27, is);
+                                        z_vu0_lqc2(26, norm);
+                                        z_vu0_callms(0x80);
+                                        z_vu0_sqc2(27, is);
+                                        z_vu0_sqc2(26, norm);
+#else
                                         asm {
                                             lqc2 vf4, 0(m)
                                             lqc2 vf5, 16(m)
@@ -746,6 +773,7 @@ void CGrid::NodeGetIntersectBatch(CNode *node, DiIntersect **di, int n)
                                             sqc2 vf27, 0(is)
                                             sqc2 vf26, 0(norm)
                                         }
+#endif
                                         d->m_Intersects[cnt].m_node = node;
                                         d->m_Intersects[cnt].m_poly = p;
                                         d->m_Cnt++;
@@ -860,6 +888,19 @@ void CGrid::NodeGetIntersect(CNode *node, DiIntersect *di)
                                 IntersectStruct *is = &di->m_Intersects[n];
                                 CPnt3D *norm = &is->m_norm;
 
+#if Z_PORT
+                                /* the stack's top matrix into vf4-vf7, the hit and its normal into vf27/vf26, the micro program
+                                 * at 0x80 run (the qmtc2.i waits), both back as whole quadwords */
+                                z_vu0_lqc2(4, m->m_matrix[0]);
+                                z_vu0_lqc2(5, m->m_matrix[1]);
+                                z_vu0_lqc2(6, m->m_matrix[2]);
+                                z_vu0_lqc2(7, m->m_matrix[3]);
+                                z_vu0_lqc2(27, is);
+                                z_vu0_lqc2(26, norm);
+                                z_vu0_callms(0x80);
+                                z_vu0_sqc2(27, is);
+                                z_vu0_sqc2(26, norm);
+#else
                                 asm {
                                     .set noreorder
                                     lqc2 vf4, 0(m)
@@ -873,6 +914,7 @@ void CGrid::NodeGetIntersect(CNode *node, DiIntersect *di)
                                     sqc2 vf27, 0(is)
                                     sqc2 vf26, 0(norm)
                                 }
+#endif
                                 di->m_Intersects[n].m_poly = d;
                                 di->m_Intersects[n].m_node = node;
                                 di->m_Cnt++;

@@ -582,11 +582,18 @@ void CGrid::gridGetGridXandZIndex(int *ix, int *iz, float x, float z)
 
     p[0] = m_InvCellDim * (x - m_origin.x);
     p[2] = m_InvCellDim * (z - m_origin.z);
+#if Z_PORT
+    /* vftoi0.xyzw in place: each lane truncated toward zero (VU0's saturation); x and z are the
+     * lanes read (y and w were never written: their stale words unused) */
+    ((int *)p)[0] = z_vu0_ftoi(p[0], 0);
+    ((int *)p)[2] = z_vu0_ftoi(p[2], 0);
+#else
     asm volatile {
         lqc2 vf3, 0(p)
         vftoi0.xyzw vf3, vf3
         sqc2 vf3, 0(p)
     }
+#endif
     if (((int *)p)[0] < 0)
         *ix = 0;
     else

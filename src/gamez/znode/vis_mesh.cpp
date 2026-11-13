@@ -340,10 +340,14 @@ int CMesh::ApplyDecal(CMatrix *mtw, unsigned int index, float size, CPnt3D *norm
     }
     if (nt)
         AddDecal((void *)nt, tex, size);
+#if Z_PORT
+    (void)nt;   /* the branch to the next instruction: no operation, a use of nt for MW */
+#else
     asm {   /* a read of nt at no cost: see above */
         beq nt, nt, L1
         L1:
     }
+#endif
     func_003BEA60();
     return count;
 }
