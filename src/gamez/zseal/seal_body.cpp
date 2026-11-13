@@ -252,7 +252,7 @@ AnimType func_0058C820(CZSealBody *seal, AnimType type, char item);
  * returning the stack's address (22: its temporary s3), the member indexed straight (0x10C). Round 53:
  * `#pragma opt_strength_reduction off` (0x58A470's fix) changes nothing here (9, or 0x10C plain); the
  * stack a block-local of the loop, or declared bare and set in it, loses the entry (0x108) */
-extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item)
+extern "C" void func_0057D5E0(CZSealBody *seal, char item)
 {
     if (seal->IsCurrentBlend((AnimType)AnimTypes::SwapRifle))
         return;
