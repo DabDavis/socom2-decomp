@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEAL, round 74** (the squad voice 0x5EAF20, open since round 44, byte-exact: a local copy of SOCOM 1's Rfloat
+  (UnitRfloat; zkit.h cannot be included there, its CZNetwork is redefined) with the odds read through `const float &c = chance`,
+  and `int r = rand(); i = r % (n + 1);` under an if/else. Measured, nothing else moved: AcquireAiAware (ma would have to be a
+  temporary made after loop invariants -- numbering alone in the simplify sweep), AttackTick's AsTurretOf (0xECC/0xEC4 every way),
+  0x555420, CAiSUseVehicle::Tick (igreplay: the SEAL only at 42.5), Tick_0 (igreplay searched all 192,721 placements of its two
+  movers: none -- the shape, not a numbering), AnimSet::Load, 0x559580 (the s7 is the CSE of MAP_DIRCOUNT::m_loc's empty
+  constructor loop), ImpactFront, UpdateLODFlags (all 23 the prologue's constant order 2500, 10, 625, 64), CTCreate/Region/Turret,
+  0x57D5E0, ValidateRoutes; variants in the lane's scratch, build/scratch/seal-r74/):
+  - A CHANCE KEPT IN THE FRAME, ITS ADDRESS IN A SAVED REGISTER ACROSS rand(), needs both Rfloat's operator and a `const float &`
+    to the by-value odds (Rfloat alone, or the reference over a plain draw, keeps it in f20).
+  - rand() TAKEN INTO A LOCAL BEFORE THE `%` keeps the zero arm's `b` slot empty and pads the join; `rand() % (n + 1)` in place
+    lets MW fill the slot whatever the test's shape.
 - **Tells from the GCC code, round 74** (eight rows byte-exact, every one with an OPEN note from rounds 19a-27b: nelly 0x251748, audio
   0x60FC90, streammedia 0x644D20, 0x6450B0, 0x6448A0, 0x6437E0, dmelocal 0x6164E0, rt_udp 0x63E5E8; 0x619DD8 re-padded (42
   `dme_pad_619DD8_*` declarations: dmelocal.c's stale alias word flipped it); rt_udp 0x63EBA0 33 to 10 (the five argument tests one
