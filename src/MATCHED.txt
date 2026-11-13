@@ -10984,6 +10984,7 @@
 0x005D96F0 __ct__Q23std32vector<Pv,Q23std13allocator<Pv>>Fv
 0x005D9710 Tick__7CTGroupFP14_zanim_cmd_hdrPf
 0x005D9840 Begin__7CTGroupFP14_zanim_cmd_hdr
+0x005D9E70 Parse__7CTGroupFP5_zrdr
 0x005DAF50 func_005DAF50
 0x005DB350 End__6CTGotoFP14_zanim_cmd_hdr
 0x005DB510 Tick__6CTGotoFP14_zanim_cmd_hdrPf
@@ -11233,6 +11234,7 @@
 0x005F4170 GetStatus__10CAiSScriptCFv
 0x005F41F0 ActivateSequence__10CAiSScriptFPCcUi
 0x005F4360 func_005F4360
+0x005F4470 Tick__8CAiSGotoFP11CSealCtrlAi
 0x005F5010 OnSignal__8CAiSGotoFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F51A0 func_005F51A0
 0x005F52D0 Tick__10CAiSPickupFP11CSealCtrlAi

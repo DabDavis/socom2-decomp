@@ -2066,6 +2066,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 64** (two rows byte-exact, both unwritten before, 7,280 bytes: CTGroup::Parse
+  0x5D9E70 (0x10D4, seal_tasks.cpp: the 2K stream CTGroup::Begin reads, through a new inline TaskPut -- the value whole if it
+  fits, else what fits and the room used up -- and an inline CTGroup::Create; the file-local CTGroup's pad byte 0xb is `_b`
+  then `float m_c` 0xC, 10.0 by Parse) and CAiSGoto::Tick 0x5F4470 (0xB9C, SOCOM 1's; ai_states.h declares it, objcmp-proved:
+  only seal_aistate.cpp differs, the vtable's slot 0x10 now the goto's own Tick, as the target)):
+  - SPILL SLOTS: each spilled local its own 16-byte slot in declaration order; a pointer set straight from a call's v0 sits at
+    slot+12, through an inline's return at slot+0, whatever the type -- Parse's block pointer reached the target's 208 only
+    through Create.
+  - Parse: one counter shared by the members' two loops, the position tag kept in `t`; every item read by an unsigned index
+    (`j * 2`, `j * 2 + 1`); the 4-byte pad into a named `aligned` (a `?:` adds a `b`).
+  - NOP DELAY SLOTS: the target leaves fall-through slots empty only with `s = s && s->m_state == K ? s : 0;`, the failure arm
+    first; a plain `if (!s || ...) s = 0;` fills them.
+  - `f(a) < f(b)` as one expression computes the right first; named locals restore left-first. Passing values through inline
+    accessors straight into a call numbers them after the inline's own temporaries (`igreplay --move 41=45.5` predicted it).
+  - Tick: the step, two flags and the pursuit point at the top; the speed and stance constants OVL2 data (data_0064FDC0/C8/D0);
+    the arrival test one `&&` value (no `andi`); the player's speed in a local before the multiply (`mul.s f12,f0,f1`).
+  - next unwritten: CSealUnit::IssueCommand 0x5E8E10, Tick 0x5E8060, AllowCommand 0x5EE7F0; CAiSFollow::Tick 0x5FB1C0,
+    CAiSBreach::Tick 0x5F2120, CSealCtrlAi::PreTick 0x5CCCD0, 0x5C5340 (CZKit::Fire); SOCOM 1 bodies for CAiSAction::Tick
+    0x5EFA50, CAiSRush::Tick 0x602E30, CAiSPathRecover::Tick 0x603950, CAiSEvent::Tick 0x604CE0, CAiSShotAt::Tick 0x6089F0.
+    0x60FC90 is GCC library code (`sd` saves), not the kit's.
 - **Tells from the GCC libraries, round 30** (three rows byte-exact, all unwritten before, 10,028 bytes: DynProgAccNBestOptSil
   0x4ED6E0 (0x198C, `static` as NoOptSil); libusbkb's Read result handler 0x1BEFF8 (0x574, MAIN's last unwritten GCC row:
   bytes +0x08..+0x90 of the state at 0x1E41C0 are the last packet read, Sony's 0x88-byte USBKBDATA_t); rt_msg_client.c's
