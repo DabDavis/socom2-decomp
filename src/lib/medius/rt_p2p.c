@@ -45,7 +45,15 @@
  * Round 78: the RTL already has the argument's load (397) before the pointer's (399); combine folds it into
  * the a1 set, which stays glued to the call. `n = nLocal;` above the test (a local loaded before the
  * branch) gives the `beq; lw a1` and the jalr's nop exactly, but gcse's PRE then reuses n for
- * func_0063C3D0's argument -- a reload after the callback, and that call's `lw a2` leaves the jal slot). */
+ * func_0063C3D0's argument -- a reload after the callback, and that call's `lw a2` leaves the jal slot).
+ * Round 79: the PRE shape cannot be the target's -- its join holds `move a0` and `lw a2` alone, and sched2 issues
+ * the load first (priority 2+call) unless a second load holds the one memory unit at t0; the plain source's join
+ * (`lw a1; move a0 | lw a2`) is the target's word for word once reorg steals the arm's own `lw a1` into the `beq`
+ * slot non-annulled and relax_delay_slots skips the join's identical first insn (0x2F8). So the miss is the arm alone:
+ * its argument load must issue before the callback pointer's. Both loads tie on priority, register weight (each
+ * sets one register, neither base dies) and dependants; LUID decides, and combine has put the argument's load at the
+ * a1 set's place, after the pointer (volatile on the pointer's load does not stop the fold). The local in an inner
+ * block (PRE sees through it), `({ })`, comma, `*&`, `(*p->pfn)` and a pointer copy all leave it. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern char *strncpy(char *dst, const char *src, unsigned int n);

@@ -12,9 +12,14 @@
  * Shapes, each measured: a receive's length clamp is passed as the ternary itself to a libnetb
  * parameter that is an unsigned short (2.96's `xori v0,v0,0` before the movz, the clamp in the
  * argument register; a clamped local, int or short, re-extends); the started flag's 1 is reused
- * for every `= 1`/`return 1` that follows its test. OPEN: rt_comm_platform2_receive_from (41s: the
- * target's flags sit below the port in the frame, 32 against 36, and the count is kept in a0 before
- * s0 -- declaring the port first, the count short, or flags an array all miss). */
+ * for every `= 1`/`return 1` that follows its test. OPEN: rt_comm_platform2_receive_from (2 words since
+ * round 79, 41s before: the flags `volatile` -- a stack slot at its declaration, below the port whose slot
+ * the call's `&` assigns later; declaration order and arrays move nothing -- and the count received in a
+ * temporary `n` copied to nReceived at the join, n then reused for the address conversion's result, which
+ * keeps gcse's cprop from folding the copy away (a0, then s0). Left: `sh zero` (*pnReceived = 0) issues
+ * after the clamp's xori where the target has it before: sched2's t0 holds sltiu and `li v1,4096`, the
+ * store's equal priority losing on LUID to the li that sched1 placed first; the target's store reached
+ * t0 beside sltiu, so sched1 put it ahead of the li. Four clamp spellings, the clamp hoisted, leave it). */
 
 extern unsigned char data_006555C8;     /* started */
 extern char data_006555D0[];            /* the interface's address, dotted */
@@ -348,9 +353,10 @@ int rt_comm_platform2_receive_from(int s, char *szAddress, unsigned short *pnPor
                                    unsigned short nLength, unsigned short *pnReceived)
 {
     sceInetAddress addr;
-    int flags = 0;
+    volatile int flags = 0;
     unsigned short nPort;
     int nReceived;
+    int n;
 
     if (data_006555C8 != 1)
         return 5;
@@ -365,16 +371,18 @@ int rt_comm_platform2_receive_from(int s, char *szAddress, unsigned short *pnPor
     if (pnReceived == 0)
         return 2;
     *pnReceived = 0;
-    nReceived = sceBInetRecvFrom(gSifMClientData, gNetBuf, s, pData, (nLength > 4096) ? 4096 : nLength, &flags,
+    n = sceBInetRecvFrom(gSifMClientData, gNetBuf, s, pData, (nLength > 4096) ? 4096 : nLength, &flags,
                                  &addr, &nPort, 2);
-    if (nReceived < 0) {
-        if (nReceived != -500)
+    if (n < 0) {
+        if (n != -500)
             return 1;
-        nReceived = 0;
+        n = 0;
     }
+    nReceived = n;
     if (nReceived > 0) {
         *pnPort = nPort;
-        if (sceBInetAddress2IP(szAddress, &addr) != 0)
+        n = sceBInetAddress2IP(szAddress, &addr);
+        if (n != 0)
             return 1;
     }
     *pnReceived = nReceived;

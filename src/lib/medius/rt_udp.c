@@ -102,16 +102,21 @@ typedef struct RT_UDP_CONN {
     int nKMID;                          /* 0x8C: the peer's key-manager id */
 } RT_UDP_CONN;                          /* 0x90 */
 
+/* the shared-channel index: an enum in both structures (round 79: 0x63DD18's copies need its own alias set --
+ * the options' nShared load issues above the nConns store and the endpoint's store below the x10 and
+ * nBufSize loads, which an int field forbids; 8 and up: an endpoint of its own) */
+typedef enum RT_UDP_SHARED { RT_UDP_SHARED_NONE = 8 } RT_UDP_SHARED;
+
 typedef struct RT_UDP_OPTIONS {
     unsigned short nPort;               /* 0x00 */
-    unsigned int nShared;               /* 0x04 */
+    RT_UDP_SHARED nShared;              /* 0x04 */
     unsigned int nConns;                /* 0x08 */
     unsigned int nMaxPacket;            /* 0x0C */
     int x10;                            /* 0x10 */
     int nBufSize;                       /* 0x14 */
     int x18;                            /* 0x18 */
     int x1C;                            /* 0x1C */
-    void *pfnCallback;                  /* 0x20 */
+    void (*pfnCallback)(struct RT_UDP *pUdp, int nConn, int nEvent, int nError, void *pUser); /* 0x20 */
     void *pUser;                        /* 0x24 */
 } RT_UDP_OPTIONS;                       /* 0x28 */
 
@@ -131,7 +136,7 @@ typedef struct RT_UDP {
     unsigned char x44;                  /* 0x44 */
     unsigned char bResolving;           /* 0x45 */
     unsigned short nPort;               /* 0x46 */
-    unsigned int nShared;               /* 0x48: below 8 one of the shared channels */
+    RT_UDP_SHARED nShared;              /* 0x48: below 8 one of the shared channels */
     void (*pfnCallback)(struct RT_UDP *pUdp, int nConn, int nEvent, int nError, void *pUser); /* 0x4C */
     void *pUser;                        /* 0x50 */
 } RT_UDP;                               /* 0x54 */
@@ -326,6 +331,11 @@ char *func_0063DD08(void)
     return gszVersion;
 }
 
+/* an endpoint created from its options (0x63DD18). Round 79, byte-exact: the allocation is a `while` loop's test
+ * (the front end's rotated loop puts the call after the body, as the target lays it out: the callback test jumps
+ * forward to it, its failure falls into `result = 9`), the second allocation's failure a `break`; the fields stored
+ * through pUdp itself (a register copy `p` keeps one more pseudo), pUser last, the options' callback typed as the
+ * endpoint's (a void * load issues ahead of the x10 store), nShared an enum (above). */
 int func_0063DD18(RT_UDP **ppUdp, RT_UDP_OPTIONS *pOptions)
 {
     RT_UDP *pUdp = 0;
@@ -338,43 +348,40 @@ int func_0063DD18(RT_UDP **ppUdp, RT_UDP_OPTIONS *pOptions)
         return 1;
     if (pOptions->pfnCallback == 0)
         return 1;
-    if (rt_memory_allocate_init_zero((void **)&pUdp, sizeof(RT_UDP)) != 0) {
-        result = 9;
-        goto fail;
+    while (rt_memory_allocate_init_zero((void **)&pUdp, sizeof(RT_UDP)) == 0) {
+        pUdp->nConns = pOptions->nConns;
+        pUdp->nShared = pOptions->nShared;
+        pUdp->x30 = pOptions->x10;
+        pUdp->nBufSize = pOptions->nBufSize;
+        pUdp->nPort = pOptions->nPort;
+        pUdp->pfnCallback = pOptions->pfnCallback;
+        pUdp->nMaxPacket = pOptions->nMaxPacket;
+        pUdp->x3C = pOptions->x18;
+        pUdp->x40 = pOptions->x1C;
+        pUdp->pUser = pOptions->pUser;
+        if (pUdp->nConns == 0)
+            pUdp->nConns = 1;
+        if (pUdp->x30 == 0)
+            pUdp->x30 = 4096;
+        if (pUdp->nBufSize == 0)
+            pUdp->nBufSize = 4096;
+        if (pUdp->nMaxPacket == 0)
+            pUdp->nMaxPacket = 1438;
+        if (pUdp->x3C == 0)
+            pUdp->x3C = 30;
+        if (rt_memory_allocate_init_zero((void **)&pUdp->pConns, pUdp->nConns * sizeof(RT_UDP_CONN)) != 0)
+            break;
+        if (func_006313D8(&pUdp->buf, pUdp->nBufSize) != 0) {
+            result = 10;
+            goto fail;
+        }
+        result = func_00641E30(pUdp);
+        if (result != 0)
+            goto fail;
+        *ppUdp = pUdp;
+        return 0;
     }
-    pUdp->nConns = pOptions->nConns;
-    pUdp->nShared = pOptions->nShared;
-    pUdp->x30 = pOptions->x10;
-    pUdp->nBufSize = pOptions->nBufSize;
-    pUdp->nPort = pOptions->nPort;
-    pUdp->pfnCallback = pOptions->pfnCallback;
-    pUdp->nMaxPacket = pOptions->nMaxPacket;
-    pUdp->pUser = pOptions->pUser;
-    pUdp->x3C = pOptions->x18;
-    pUdp->x40 = pOptions->x1C;
-    if (pUdp->nConns == 0)
-        pUdp->nConns = 1;
-    if (pUdp->x30 == 0)
-        pUdp->x30 = 4096;
-    if (pUdp->nBufSize == 0)
-        pUdp->nBufSize = 4096;
-    if (pUdp->nMaxPacket == 0)
-        pUdp->nMaxPacket = 1438;
-    if (pUdp->x3C == 0)
-        pUdp->x3C = 30;
-    if (rt_memory_allocate_init_zero((void **)&pUdp->pConns, pUdp->nConns * sizeof(RT_UDP_CONN)) != 0) {
-        result = 9;
-        goto fail;
-    }
-    if (func_006313D8(&pUdp->buf, pUdp->nBufSize) != 0) {
-        result = 10;
-        goto fail;
-    }
-    result = func_00641E30(pUdp);
-    if (result != 0)
-        goto fail;
-    *ppUdp = pUdp;
-    return 0;
+    result = 9;
 fail:
     func_0063DEA0(pUdp);
     return result;
@@ -883,7 +890,13 @@ int func_0063ECC8(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nL
 
 /* the receive's peek (0x63EF38): 0x63ECC8 without taking the message off its ring */
 /* OPEN (round 26b): 0x23C against 0x20C: written with the two reliable arms apart they do not cross-jump; the single
- * `if` form hoists `li 6`, which the target does not. */
+ * `if` form hoists `li 6`, which the target does not. Round 79: the right size -- the single `if` and the walk a
+ * goto loop (no loop notes, so loop.c's invariant motion leaves `li 6` in the body, s4 unused, as the target); left:
+ * the -2 path's memcpy is not cross-jumped into the walk's (the target's `b` to its `jal`, whose slot then stays a
+ * nop): jump2's label case (minimum 1) first moves each arm's `v0 = 0` onto the none path's, which falls into the
+ * epilogue, leaving the two arms one matching insn (the call) where the pair case needs two. 0x63ECC8 lays out the
+ * same way: every `return 0` merged onto its second arm's, the walk's exit a `b` to it -- in both the target's none
+ * path does not fall into the epilogue at jump2. */
 int func_0063EF38(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nLength, unsigned int *pnReceived)
 {
     RT_UDP_HEADER header;
@@ -917,23 +930,23 @@ int func_0063EF38(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nL
         return 4;
     if (func_00631B10(&pConn->recv, &pMsg) != 0)
         return 10;
-    while (pMsg != 0) {
+    if (pMsg == 0)
+        goto none;
+next:
+    {
         if (func_00631E70(pMsg) != 0) {
             memcpy(&header, func_00631E58(pMsg), sizeof header);
-            if ((*(unsigned int *)&header & 6) == 6 || (header.nType & 4)) {
-                if (header.nSeq == pConn->nRecvSeq + 1 || pConn->nRecvSeq == 0) {
-                    *pnReceived = header.nLength < nLength ? header.nLength : nLength;
-                    memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
-                    return 0;
-                }
-            } else {
+            if (!((*(unsigned int *)&header & 6) == 6 || (header.nType & 4)) || header.nSeq == pConn->nRecvSeq + 1 || pConn->nRecvSeq == 0) {
                 *pnReceived = header.nLength < nLength ? header.nLength : nLength;
                 memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
                 return 0;
             }
         }
         pMsg = func_00631E88(pMsg);
+        if (pMsg != 0)
+            goto next;
     }
+none:
     *pnReceived = 0;
     return 0;
 }
