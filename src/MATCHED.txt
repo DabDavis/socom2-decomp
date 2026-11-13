@@ -856,6 +856,7 @@
 0x001AC290 iProbeTLBEntry
 0x001AC2A0 ExpandScratchPad
 0x001AC2B0 InitTLB
+0x001AC2F0 InitTLB32MB
 0x001AC500 _kTLBException
 0x001AC640 _kExitTLBHandler
 0x001AC740 _kDebugException
@@ -1075,6 +1076,7 @@
 0x001BBD90 _getpic
 0x001BBF00 _decodeOrSkipFrame
 0x001BC018 _decodeOrSkip
+0x001BC060 _decodeOrSkipField
 0x001BC1C0 _sceMpegFlush
 0x001BC228 _initSeqAgain
 0x001BC238 _lastFrame
@@ -8767,6 +8769,7 @@
 0x004E4458 ControlDelayBlock
 0x004E4550 InitDelayBlock
 0x004E4628 AllocateBacktrace@dpgenuw
+0x004E47F8 InitViterbi@dpgenuw
 0x004E4A40 InitDpGenUw
 0x004E4B60 SendResultUserWords
 0x004E4DC0 DynProgUserWords
@@ -8961,7 +8964,9 @@
 0x00501E20 NormE_Processing
 0x00501F38 FlushPitchCombiner
 0x00502298 ProcessPitchCombiner
+0x00502658 PitchCombinerReset
 0x005028F0 ControlPitchCombiner
+0x00502A08 InitPitchCombiner
 0x00502F10 ConstructPitchCombiner
 0x00502F50 spline2
 0x00503410 Lin_2_Log
@@ -8983,6 +8988,7 @@
 0x005053C8 ConstructStationarity
 0x00505408 ControlStationarity
 0x00505480 Subsampler_Process
+0x00505730 Subsampler_CheckImpulseResponse
 0x005058A8 Subsampler_Init
 0x00505BF0 Subsampler_Reset
 0x00505CC8 Subsampler_Free
@@ -9111,6 +9117,7 @@
 0x0050ACF0 qQueueNbrElements
 0x0050AD28 qCheckDeQueueOne
 0x0050AED8 SetAndControlQSizes
+0x0050B2C0 ConstructBlock
 0x0050B5C0 ConstructQueue
 0x0050B928 DestructQueue
 0x0050BB48 ConstructArchitecture
@@ -9125,6 +9132,7 @@
 0x0050CDA0 tosDestruct
 0x0050CDE8 _tosErrorLog
 0x0050CE40 _tosWarningLog
+0x0050CE98 tosBaseBlockConstruct
 0x0050CFB0 tosBaseBlockDestruct
 0x0050D180 tosBaseBlockIdleProcess
 0x0050D188 tosBaseBlockStopInputQueues
@@ -9133,6 +9141,7 @@
 0x0050D360 _tosGetProfileU32
 0x0050D460 _tosGetProfileFloat
 0x0050D558 DisabledProcess
+0x0050D560 fastallo_AllocateMemoryFromChunk
 0x0050D678 fastallo_Init
 0x0050D6C8 fastallo_Terminate
 0x0050D810 critsec_GetVersion

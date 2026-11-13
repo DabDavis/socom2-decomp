@@ -2066,6 +2066,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC recogniser and SDK, round 75** (nine rows byte-exact: pitchcomb.c's PitchCombinerReset 0x502658 and
+  InitPitchCombiner 0x502A08, tos.c's tosBaseBlockConstruct 0x50CE98 and ConstructBlock 0x50B2C0, InitViterbi@dpgenuw 0x4E47F8,
+  mpeg_api.c's _decodeOrSkipField 0x1BC060, tlbfunc.c's InitTLB32MB 0x1AC2F0, fastallo_AllocateMemoryFromChunk 0x50D560,
+  Subsampler_CheckImpulseResponse 0x505730. EIGHT OF THE NINE OPEN NOTES WERE MISDIAGNOSED: sched1's dying-store rank was a
+  volatile view, an int-stored count and a statement order; argument-register copies were the counters' types and nesting; "the
+  cells' loop unrolled by five" was the chunk walk; "every spelling" never tried a plain `if`; loop.c's giv placement was the
+  loop's shape; p's register was a field read with no local; "which copy cross-jumping keeps" was the number of `err = 1` copies.
+  Not committed: sceSifMUnBindRpc (2,880 store-order variants, 4 at best), libnetb_udp_init_buffer, InitPitchDP (size right,
+  35 off), 0x2487E8, 0x251A98, nbestdp's InitViterbi):
+  - STORES IN EXACT SOURCE ORDER UNDER GCC ARE A VOLATILE VIEW TOO (`volatile T *v = p;` stores through v, reads through p); a
+    store left plain before the view can keep its value in another register.
+  - `x = A; if (c) x = B;` if-converts to a `movn` from a register holding the constant (`c ? B : A`, `c ? 1 : 0` branch or sltu).
+  - AN `lhu` FOLLOWED BY AN `andi` OF IT is a field read at each use with no local (CSE keeps the HImode load for HImode work and
+    a zero-extended copy for compares and indexes; any `unsigned short` local loses it).
+  - a field read into an `int` local before a test, shifted inside it, puts the extension in the branch's slot and the shift
+    after. A counter narrowed at each use (`andi` before the bump) is an `int` passed to a narrower parameter; a reader's count
+    not reloaded after `counts[k]--` is the pre-decrement's own value.
+  - GCC TOO: a loop's first value computed after its entry test is hand-rotated `if (c) { init; do {} while (c); }`.
+  - SEVERAL `err = 1; goto done` COPIES are cross-jumped into one block and lift err's priority (one `fail:` label threads every
+    goto to the end). `% 2 == 1` keeps `li 1; beq` (`(x & 1) == 1` folds to bnez). A stray `i = 0` before a loop that sets it
+    lets CSE share one zero, and the entry test reads that register (`sltu`) instead of `beqz` on the count.
 - **Tells from the SEAL, round 74** (the squad voice 0x5EAF20, open since round 44, byte-exact: a local copy of SOCOM 1's Rfloat
   (UnitRfloat; zkit.h cannot be included there, its CZNetwork is redefined) with the odds read through `const float &c = chance`,
   and `int r = rand(); i = r % (n + 1);` under an if/else. Measured, nothing else moved: AcquireAiAware (ma would have to be a
