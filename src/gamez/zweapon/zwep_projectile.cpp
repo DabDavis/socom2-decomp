@@ -1279,10 +1279,8 @@ void CZProjectile::HandleDetonateExplosion()
                             if (di->m_Intersects[j].m_node && di->m_Intersects[j].m_node &&
                                 (di->m_Intersects[j].m_node->m_socom2_a1 & 4) &&
                                 !a->m_node->m_socom2_a1_bits.bit3) {
-                                IntersectStruct t;
+                                IntersectStruct t;   // (its constructor clears the polygon and the node)
 
-                                t.m_poly = 0;
-                                t.m_node = 0;
                                 again = true;
                                 searching = false;
                                 memcpy(&t, &di->m_Intersects[i], sizeof(IntersectStruct));

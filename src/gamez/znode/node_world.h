@@ -217,6 +217,8 @@ public:
 
 /* a hit along a ray (SOCOM 1's DWARF) */
 struct IntersectStruct {
+    IntersectStruct() : m_poly(0), m_node(0) {}
+
     CPnt3D m_pos;   // 0x0
     CDI *m_poly;   // 0xc
     CPnt3D m_norm;   // 0x10
@@ -238,7 +240,7 @@ struct IntersectStruct {
  * bytes further on -- camera.h has the same; 0x4C bytes, the size CWorld's constructor news) */
 class DiIntersect {
 public:
-    DiIntersect(int n);
+    DiIntersect(int n = 8);
     ~DiIntersect();
     /* the hit mask, its low bit forced on, or every bit for none (new in SOCOM II; the name ours) */
     void SetMask(unsigned int mask);
