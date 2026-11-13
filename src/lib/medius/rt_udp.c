@@ -820,7 +820,13 @@ int func_0063EBA0(RT_UDP *pUdp, char *szAddress, unsigned short nPort, void *pDa
 }
 
 /* receives one datagram: from the endpoint's own list (-2: a sender's address before the header)
- * or a connection's -- a reliable one only in sequence -- and frees its message */
+ * or a connection's -- a reliable one only in sequence -- and frees its message. Round 80, byte-exact (and
+ * 0x63EF38 with it): the connection's range test the function's last statement, `if (nConn < nConns) { ... }
+ * return 1;` -- written as an early `return 1`, if-conversion hoists `v0 = 1` above the test and the count's
+ * temporary takes v1 where the target's takes v0 (the `li v0,1` in the target's slot is reorg's, stolen from
+ * the block at the end); and that `v0 = 1`, the last insn before the return label at jump2, leaves the label
+ * case nothing to take from the arms' `v0 = 0`, so the pair case cross-jumps the -2 arm's free (its own
+ * `return 0`) into the second walk arm's. The walk a plain `while`. */
 int func_0063ECC8(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nLength,
                   unsigned int *pnReceived)
 {
@@ -845,58 +851,49 @@ int func_0063ECC8(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nL
             *pnReceived = header.nLength < nLength ? header.nLength : nLength;
             memcpy(pData, (char *)func_00631E58(pMsg) + sizeof(RT_UDP_ADDR) + sizeof header, *pnReceived);
             func_00631748(&pUdp->buf, pMsg);
-        } else
-            *pnReceived = 0;
-        return 0;
-    }
-    if (nConn >= pUdp->nConns)
-        return 1;
-    pConn = &pUdp->pConns[nConn];
-    if (pConn->nState != 12)
-        return 4;
-    if (func_00631B10(&pConn->recv, &pMsg) != 0)
-        return 10;
-    if (pMsg == 0) {
+            return 0;
+        }
         *pnReceived = 0;
         return 0;
     }
-    for (;;) {
-        if (func_00631E70(pMsg) != 0) {
-            memcpy(&header, func_00631E58(pMsg), sizeof header);
-            if ((*(unsigned int *)&header & 6) == 6 || (header.nType & 4)) {
-                if (header.nSeq == pConn->nRecvSeq + 1 || pConn->nRecvSeq == 0) {
+    if (nConn < pUdp->nConns) {
+        pConn = &pUdp->pConns[nConn];
+        if (pConn->nState != 12)
+            return 4;
+        if (func_00631B10(&pConn->recv, &pMsg) != 0)
+            return 10;
+        while (pMsg != 0) {
+            if (func_00631E70(pMsg) != 0) {
+                memcpy(&header, func_00631E58(pMsg), sizeof header);
+                if ((*(unsigned int *)&header & 6) == 6 || (header.nType & 4)) {
+                    if (header.nSeq == pConn->nRecvSeq + 1 || pConn->nRecvSeq == 0) {
+                        *pnReceived = header.nLength < nLength ? header.nLength : nLength;
+                        memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
+                        func_00631748(&pConn->recv, pMsg);
+                        pConn->nRecvSeq = header.nSeq;
+                        if (pConn->nRecvSeq == -1)
+                            pConn->nRecvSeq = 0;
+                        return 0;
+                    }
+                } else {
                     *pnReceived = header.nLength < nLength ? header.nLength : nLength;
                     memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
                     func_00631748(&pConn->recv, pMsg);
-                    pConn->nRecvSeq = header.nSeq;
-                    if (pConn->nRecvSeq == -1)
-                        pConn->nRecvSeq = 0;
                     return 0;
                 }
-            } else {
-                *pnReceived = header.nLength < nLength ? header.nLength : nLength;
-                memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
-                func_00631748(&pConn->recv, pMsg);
-                return 0;
             }
+            pMsg = func_00631E88(pMsg);
         }
-        pMsg = func_00631E88(pMsg);
-        if (pMsg == 0) {
-            *pnReceived = 0;
-            return 0;
-        }
+        *pnReceived = 0;
+        return 0;
     }
+    return 1;
 }
 
 /* the receive's peek (0x63EF38): 0x63ECC8 without taking the message off its ring */
-/* OPEN (round 26b): 0x23C against 0x20C: written with the two reliable arms apart they do not cross-jump; the single
- * `if` form hoists `li 6`, which the target does not. Round 79: the right size -- the single `if` and the walk a
- * goto loop (no loop notes, so loop.c's invariant motion leaves `li 6` in the body, s4 unused, as the target); left:
- * the -2 path's memcpy is not cross-jumped into the walk's (the target's `b` to its `jal`, whose slot then stays a
- * nop): jump2's label case (minimum 1) first moves each arm's `v0 = 0` onto the none path's, which falls into the
- * epilogue, leaving the two arms one matching insn (the call) where the pair case needs two. 0x63ECC8 lays out the
- * same way: every `return 0` merged onto its second arm's, the walk's exit a `b` to it -- in both the target's none
- * path does not fall into the epilogue at jump2. */
+/* Round 80, byte-exact: 0x63ECC8's shape (two reliable arms apart, a `while` walk, the range test last, `return 1`
+ * after it). The loop notes it needs (the head and the continue point aligned to 8: the target's two lone nops) and
+ * `li 6` stays in the body all the same; the round-79 goto loop was standing in for the missing cross-jump. */
 int func_0063EF38(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nLength, unsigned int *pnReceived)
 {
     RT_UDP_HEADER header;
@@ -919,36 +916,38 @@ int func_0063EF38(RT_UDP *pUdp, unsigned int nConn, void *pData, unsigned int nL
             memcpy(&header, (char *)func_00631E58(pMsg) + sizeof(RT_UDP_ADDR), sizeof header);
             *pnReceived = header.nLength < nLength ? header.nLength : nLength;
             memcpy(pData, (char *)func_00631E58(pMsg) + sizeof(RT_UDP_ADDR) + sizeof header, *pnReceived);
-        } else
-            *pnReceived = 0;
+            return 0;
+        }
+        *pnReceived = 0;
         return 0;
     }
-    if (nConn >= pUdp->nConns)
-        return 1;
-    pConn = &pUdp->pConns[nConn];
-    if (pConn->nState != 12)
-        return 4;
-    if (func_00631B10(&pConn->recv, &pMsg) != 0)
-        return 10;
-    if (pMsg == 0)
-        goto none;
-next:
-    {
-        if (func_00631E70(pMsg) != 0) {
-            memcpy(&header, func_00631E58(pMsg), sizeof header);
-            if (!((*(unsigned int *)&header & 6) == 6 || (header.nType & 4)) || header.nSeq == pConn->nRecvSeq + 1 || pConn->nRecvSeq == 0) {
-                *pnReceived = header.nLength < nLength ? header.nLength : nLength;
-                memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
-                return 0;
+    if (nConn < pUdp->nConns) {
+        pConn = &pUdp->pConns[nConn];
+        if (pConn->nState != 12)
+            return 4;
+        if (func_00631B10(&pConn->recv, &pMsg) != 0)
+            return 10;
+        while (pMsg != 0) {
+            if (func_00631E70(pMsg) != 0) {
+                memcpy(&header, func_00631E58(pMsg), sizeof header);
+                if ((*(unsigned int *)&header & 6) == 6 || (header.nType & 4)) {
+                    if (header.nSeq == pConn->nRecvSeq + 1 || pConn->nRecvSeq == 0) {
+                        *pnReceived = header.nLength < nLength ? header.nLength : nLength;
+                        memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
+                        return 0;
+                    }
+                } else {
+                    *pnReceived = header.nLength < nLength ? header.nLength : nLength;
+                    memcpy(pData, (char *)func_00631E58(pMsg) + sizeof header, *pnReceived);
+                    return 0;
+                }
             }
+            pMsg = func_00631E88(pMsg);
         }
-        pMsg = func_00631E88(pMsg);
-        if (pMsg != 0)
-            goto next;
+        *pnReceived = 0;
+        return 0;
     }
-none:
-    *pnReceived = 0;
-    return 0;
+    return 1;
 }
 
 int func_0063F148(RT_UDP *pUdp, unsigned char b)
