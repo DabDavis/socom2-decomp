@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine, OVL1's back half, round 2** (`__sinit_node_main.cpp` 0x4028D0 byte-exact -- node_main.cpp defines
+  CLight::m_tick_list and CNode::m_deferred_visuals -- and ~list<CVisual *> 0x3177C0 from source, its draft dropped;
+  ~CTickLightList 0x317820 now emitted there, 6 off -- the target inlines the deleter's clear four this-tests deep, here
+  clear is generated a round later and called; its draft still matches, so it is "not lost"; an explicit destructor every
+  way, __MSL_VECTOR_DESTROY_LEVEL and __MSL_POD_DTOR_ARGS tried. cdeque<const void *>::insert 0x286160 (0x868) written in
+  include/deque behind `__MSL_CDEQUE_INSERT`, which only zanim_menu.cpp defines -- the target's size, 456 instructions off
+  in registers (igreplay --greedy: 119 of 144 nodes, 71 after moving `v` v40->131.5 and ob's position v64->130.5; ~25
+  spellings in include/deque's OPEN note); proved gated and ungated over every hand-written unit (11,932 of 12,193 each),
+  kept gated since ungated adds eleven dead "elsewhere" copies and a WRONG line in zrndr_pipe.cpp, whose span covers it):
+  - a reference bound to a ternary with an rvalue arm (`const value_type &v = inside ? value_type(x) : x`) materialises a
+    frame temporary, both arms loading x and the fills re-reading it; a plain value folds the test (0x818 vs 0x868).
+  - a cdeque member the image inlines `__recommend` into must be generated in the tail, after it; an explicit
+    specialisation moves `__recommend` early and push_back 0x2858B0 inlines it too (a REGRESSION).
+  - the sweep of the 42 WRONG rows closed nothing: SkbWrapText (3: locals assigned twice), Create3Sided (0x5EC of 0x5E4),
+    ReadMaterials (10, frame slots), CBits::Resize 0x307B40 (the first unrolled clear loop needs s5; no OPEN note before)
+    tried; the rest's OPEN notes already cover the three tells.
 - **Tells from the HUD, round 69** (hudTickScorePopup 0x22BE20 (0xDC4, the 992-byte frame) byte-exact, unwritten before -- the
   interrupted lane's hud_scorepopup.cpp draft, 1 word off (`lbu` vs `lb`); the name ours, SOCOM 1's by place and body.
   CMPWeaponSel::ClearSlot 0x23ECA0 (0x1250, name ours: SetSlot's first call, the leaving weapon taking its companion items)

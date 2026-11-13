@@ -8432,6 +8432,7 @@
 0x004026C0 __sinit_zmath_pnt3d.cpp
 0x00402750 __sinit_zmath_pnt4d.cpp
 0x00402800 __sinit_zNetDme.cpp
+0x004028D0 __sinit_node_main.cpp
 0x00402940 __sinit_node_shadow.cpp
 0x00402960 __sinit_node_util.cpp
 0x00402990 __sinit_node_world.cpp
