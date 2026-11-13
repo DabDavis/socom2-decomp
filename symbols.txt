@@ -10209,7 +10209,7 @@
 0x00563BB0 0x8 func_00563BB0  # OVL2
 0x00563BC0 0x8 func_00563BC0  # OVL2
 0x00563BD0 0x23C FireWhenReady__11CSealCtrlAiFR13AI_FIREPARAMSf  # OVL2; s1:calls
-0x00563E10 0xED4 func_00563E10  # OVL2
+0x00563E10 0xED4 AttackTick__11CSealCtrlAiFfb  # OVL2; s1:order by hand (ctrl lane, round 68): SOCOM 1's AttackTick__11CSealCtrlAiFfb (0x1298 there), right after FireWhenReady in both builds; (float, bool) as SOCOM 1's -- a1 kept in s7, and the spray's 0x5659E0 and WillFireWeapon first as AttackTick's
 0x00564CF0 0x28 func_00564CF0  # OVL2
 0x00564D20 0x3E4 func_00564D20  # OVL2
 0x00565110 0x348 func_00565110  # OVL2
@@ -10231,7 +10231,7 @@
 0x00567690 0x1AC func_00567690  # OVL2
 0x00567840 0xA4 StopThrottles__11CSealCtrlAiFb  # OVL2; ours (new in SOCOM II): CSealCtrlAi::OnCommand and CAiSSuspended::OnSignal call it; SetThrottle (slot 0x20) with 0 for axes 1, 2, 0, 3, then unless the flag is set the four throttles at 8-0x14 zeroed in the same order -- the SEAL lane, round 9
 0x005678F0 0x10 SetThrottle__11CSealCtrlAiFUif  # OVL2; slot 0x20 of __vt__11CSealCtrlAi (CEntityCtrl's SetThrottle slot); a float array at 0x254 indexed
-0x00567900 0x1C24 func_00567900  # OVL2
+0x00567900 0x1C24 PathFollowTick__11CSealCtrlAiFf  # OVL2; s1:order by hand (ctrl lane, round 68): SOCOM 1's PathFollowTick__11CSealCtrlAiFf (0x1368 there), right after SetThrottle's place in both builds; CSealCtrlAi::PreTick's mode-3 arm calls it with dT as SOCOM 1's PreTick does
 0x00569530 0x14 func_00569530  # OVL2
 0x00569550 0x344 func_00569550  # OVL2
 0x005698A0 0x1F4 func_005698A0  # OVL2

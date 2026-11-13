@@ -6225,10 +6225,9 @@ extern unsigned char data_00650090;
 extern unsigned char data_0066B1A8;
 /* the AI's sensing frame (OVL2 0x5CBA20, the kit lane's range: CSealCtrlAi's own SensorPreTick) */
 void SensorPreTick__11CSealCtrlAiFf(CSealCtrlAi *ai, float dT);
-/* (OVL2 0x56C550, 0x56AF50, 0x567900, unwritten; 0x5FAE70, 0x5FD3E0, seal_aifollow.cpp's; 0x60F760,
+/* (OVL2 0x56C550, unwritten; 0x5FAE70, 0x5FD3E0, seal_aifollow.cpp's; 0x60F760,
  * seal_aivehicle.cpp's) */
 void func_0056C550(CSealCtrlAi *ai, float dT);
-void func_00567900(CSealCtrlAi *ai, float dT);
 void func_005FAE70(CSealCtrlAi *ai, float dT);
 bool func_005FD3E0(CSealCtrlAi *ai, CEntity *e);
 void func_0060F760(CSealCtrlAi *ai);
@@ -6389,7 +6388,7 @@ bool CSealCtrlAi::PreTick(float dT)
         break;
     case 3:
         if (follow)
-            func_00567900(this, dT);
+            PathFollowTick(dT);
         else
             CreepTick(dT, walk);
         func_0056A760(this, 0, true);

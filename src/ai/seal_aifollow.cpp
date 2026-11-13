@@ -1400,8 +1400,6 @@ int CAiSFollow::Tick(CSealCtrlAi *ai)
 extern "C" {
 /* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) */
 bool func_005750A0(void);
-/* the AI's move toward its goal (OVL2 0x567900, the SEALs' seal_ai.cpp: unnamed) */
-void func_00567900(CSealCtrlAi *ai, float dT);
 /* a byte of OVL2 bss that keeps the duck off (seal_ai.cpp's: GetDuckStance tests it too) */
 extern unsigned char data_0066B038;
 }
@@ -1456,7 +1454,7 @@ extern "C" void func_005FAE70(CSealCtrlAi *ai, float dT)
             bool r = MasterSees(f, ai, true);
 
             if (r) {
-                func_00567900(ai, dT);
+                ai->PathFollowTick(dT);
                 f->m_6c &= ~2;
             } else if (f->SetHideLook(ai)) {
                 hide = true;
