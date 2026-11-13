@@ -3284,7 +3284,9 @@ extern int data_0044AF78;
 
 /* a delayed probe from a point to another, the SEAL's node its own and characters not hit -- the
  * height kept when m_1340 is set -- or none when the fifty are spent (OVL2 0x54F410, new in SOCOM
- * II: PostPreTick 0x54AA30 asks it 31 times; the name unknown) */
+ * II: PostPreTick 0x54AA30 asks it 31 times; the name unknown). Pinned out of line: deferred inlining
+ * had expanded 13 of the 31 into PostPreTick (3711 instructions against 2811) */
+#pragma auto_inline off
 extern "C" bool func_0054F410(CZSealBody *seal, const CPnt3D *from, CPnt3D *to)
 {
     if (seal->m_1340 != 0.0f)
@@ -3299,6 +3301,7 @@ extern "C" bool func_0054F410(CZSealBody *seal, const CPnt3D *from, CPnt3D *to)
     data_0044AF78++;
     return true;
 }
+#pragma auto_inline reset
 
 /* whether a hit stops the SEAL: a node's, not of kind 1; on a slope too steep to stand on, unless its
  * edge drops less than 4 under a SEAL that is not prone; on a flatter one, only kind 0 -- the kind is
@@ -3905,6 +3908,670 @@ extern "C" bool func_0054D620(CZSealBody *seal, float back, float ahead, float r
     if (hit0 || hit1)
         return true;
     return false;
+}
+
+extern "C" {
+/* a word of flags built all set (OVL1 0x44D4D0, fts_ovl2statics.cpp's s_sealBodyFlags: bit 0 lets an AI
+ * SEAL's body probe) and the forward probe's stretch on a crouched or standing SEAL moving (OVL2 data) */
+extern int data_0044D4D0;
+extern float data_0064FCE8;
+/* anim types the generated AnimSet setup looks up (OVL1 0x3DEAD8 and 0x3DEC58: seal_body.cpp's and anim.cpp's) */
+extern short data_003DEAD8;
+extern short data_003DEC58;
+}
+extern unsigned char noWeaponWallPush;
+
+/* whether a blend still runs (an inline, the name ours: the call's bool negated as a value) */
+static inline bool Running(CZBodyAnimBlend *b, float dT)
+{
+    return !b->IsDone(dT);
+}
+
+/* whether the weapon wall push is on (an inline, the name ours: the switch negated as a value) */
+static inline bool PushOn()
+{
+    return !noWeaponWallPush;
+}
+
+/* the head's height raised by 2, in the SEAL's body (an inline, the name ours: its point a local of its own,
+ * below the function's) */
+static inline float HeadY(CZSealBody *seal)
+{
+    CPnt3D head;
+
+    seal->PartInSpace(seal->m_head, 0, &head, 0);
+    head.y += 2.0f;
+    return head.y;
+}
+
+/* a point turned about (an inline, the name ours: its words read through a const view, so they load from
+ * the frame while the stores keep their addresses) */
+static inline void Negate(CPnt3D &v)
+{
+    const CPnt3D &r = v;
+
+    v.x = -r.x;
+    v.y = -r.y;
+    v.z = -r.z;
+}
+
+/* a point raised by 2, the new height given back (an inline, the name ours) */
+static inline float Raise(CPnt3D &p)
+{
+    p.y += 2.0f;
+    return p.y;
+}
+
+/* whether a point is all but none, each word under 0.0005 across (an inline, the name ours: as CPnt3D's
+ * operator==, the first two tests' bools made and tested, the last branched on) */
+static inline bool IsTiny(const CPnt3D &v)
+{
+    return fabsf(v.x) < 0.0005f && fabsf(v.y) < 0.0005f && fabsf(v.z) < 0.0005f;
+}
+
+/* whether an AI SEAL's body keeps its probes: the flag word's bit 0 and the AI's own (an inline, the
+ * name ours) */
+static inline bool AiProbes(CZSealBody *seal)
+{
+    CSealCtrlAi *ai = ((CSealCtrl *)seal->m_control)->GetSealCtrlAi();
+
+    return (data_0044D4D0 & 1) && (ai->m_268 & 1);
+}
+
+/* the node's place in the world (an inline, the name ours) */
+static inline void NodePos(CZSealBody *seal, CPnt3D &p)
+{
+    float (*m)[4] = seal->m_node->m_matrix.m_matrix;
+
+    p.x = m[3][0];
+    p.y = m[3][1];
+    p.z = m[3][2];
+}
+
+/* a part's spot reached from a point: the spot in the SEAL's body turned onto the world by the node, a
+ * push added, and a delayed probe registered to it (an inline, the name ours) */
+static inline bool ProbePart(CZSealBody *seal, CZBodyPart *part, const CPnt3D *off, zdb::CNode *node,
+                             const CPnt3D &from, CPnt3D &to, const CPnt3D &push)
+{
+    seal->PartInSpace(part, off, &to, 0);
+    node->m_matrix.Transform(&to, 1);
+    to.Add(&push, &to);
+    return func_0054F410(seal, &from, &to);
+}
+
+/* the delayed probes ahead of the step (OVL2 0x54AA30, slot 0x1C, new in SOCOM II: SOCOM 1's PostPreTick is
+ * empty): the ammunition near the SEAL cleaned up; unless dead, carrying under a stab or restraint, an AI
+ * held off, or standing still with nothing to finish -- or under anim 0x3DEAD8 -- the probes are counted
+ * from the delayed set's count (m_ef4, m_ef8): along the push from the spine and from the head, hands and
+ * feet while a top anim holds or finishes, else ahead along the push, from the head, and either side --
+ * the prone and rolling SEAL's tilted by the ground. Out of probes, it stops at once.
+ * Open (round 70): at the target's frame, 4 instructions short, every call, branch, slot and register placed
+ * but the facing row's: the target loads m_node again in the still and strafe arms (and pads two `b`s with a
+ * nop), where IRO_CommonSubs here reuses pos's load of it (igdump: `*(this + 40)` computed at the pos, reused
+ * in both arms) -- a volatile or const view, inline wrappers, pos through an inline, in each arm or each
+ * stance arm, a label, all leave the reuse or worsen. The level (0.0f in f20) is a variable: the constant
+ * spelled leaves f20 to the step and the frame's FPRs one short */
+void CZSealBody::PostPreTick(float dT)
+{
+    CPickup::iterator it = CPickup::GetFirst();
+    CPickup *p;
+
+    while ((p = CPickup::GetNext(it, &m_posW, 20.0f, CPickup::PU_AMMO)) != 0)
+        CPickup::CleanupAmmoPickup(p);
+    m_254 = -1;
+    m_258_0 = true;
+
+    bool top = func_00588030(this);
+    bool notdone = false;
+    bool done = func_00587FE0(this) && SealTop(this);
+
+    if (done && Running(SealTop(this), dT))
+        notdone = true;
+
+    bool held = IsCurrentBlend((AnimType)8) || IsCurrentBlend((AnimType)9) || top;
+
+    m_ef8 = 0;
+
+    bool still = false;
+
+    still = IsTiny(m_f44);
+    fabsf(m_23c);
+
+    bool nopush = false;
+
+    if (IsPlayer() && PushOn())
+        nopush = true;
+
+    bool check = true;
+    bool halt = false;
+    float wt = m_wep_seq.Weight();
+
+    if (m_state == stateDead)
+        check = false;
+    else if (m_carry) {
+        if (m_state == stateCarried || IsCurrentBlend((AnimType)AnimTypes::Stabbed) ||
+            IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints))
+            check = false;
+    } else if (!nopush) {
+        if (IsAi() && !AiProbes(this)) {
+            check = false;
+            halt = false;
+        } else if (still && !notdone && wt == 0.0f)
+            check = false;
+    }
+    if (IsCurrentBlend((AnimType)data_003DEAD8)) {
+        check = true;
+        halt = false;
+    }
+    if (!check) {
+        if (halt)
+            m_f44 = CPnt3D::zero;
+        else
+            m_bit8 = true;
+        m_ef4 = -1;
+    } else if (IsCurrentBlend((AnimType)AnimTypes::ClimbOver) ||
+               (IsCurrentBlend((AnimType)46) && func_005551A0(SealTop(this)->m_flags, 32))) {
+        m_ef4 = -1;
+    } else if (!func_0057B510(this) || held || IsCurrentBlend((AnimType)36)) {
+        bool strafe = IsCurrentBlend(AnimTypes::ProneRStrafe) || IsCurrentBlend(AnimTypes::ProneLStrafe);
+        bool roll = IsCurrentBlend((AnimType)data_003DEC58);
+        bool prone = IsCurrentBlend((AnimType)26) || IsCurrentBlend((AnimType)27) || roll || strafe ||
+                     m_state == stateProne;
+        float reach, rise;
+        float step;
+
+        if (prone && m_velR.y != 0.0f)
+            roll = true;
+        switch (GetStance(true)) {
+        case stateCrouch:
+            reach = 3.5f;
+            rise = 15.0f;
+            break;
+        case stateProne:
+            if (prone) {
+                reach = 8.0f;
+                rise = 6.0f;
+            } else {
+                reach = 3.5f;
+                rise = 19.1f;
+            }
+            break;
+        case stateStand:
+        default:
+            reach = 3.5f;
+            rise = 19.1f;
+            break;
+        }
+
+        CPnt3D *pos = (CPnt3D *)m_node->m_matrix.m_matrix[3];
+        CPnt3D dir;
+        CPnt3D side;
+        CPnt3D a, b;
+
+        if (still) {
+            float (*m)[4] = m_node->m_matrix.m_matrix;
+
+            dir.x = m[2][0];
+            dir.y = m[2][1];
+            dir.z = m[2][2];
+            dir = dir * -1.0f;
+        } else if (strafe) {
+            float (*m)[4] = m_node->m_matrix.m_matrix;
+
+            dir.x = m[2][0];
+            dir.y = m[2][1];
+            dir.z = m[2][2];
+            Negate(dir);
+        } else
+            dir = m_f44;
+        dir.Normalize();
+
+        const CPnt3D &d = dir;
+        float nx = d.x;
+        float ny = d.y;
+        float nz = d.z;
+
+        dir.Scale(1.4f * reach, &dir);
+
+        CPnt3D fire = m_curr_firepos;
+
+        step = theCharacterDynamics.m_stepHeight;
+
+        /* the side's height, kept: the tests and points after read it from f20 */
+        float level;
+
+        if (still || strafe) {
+            side.x = -dir.z;
+            level = 0.0f;
+            side.y = level;
+            side.z = dir.x;
+        } else {
+            side.x = -m_f44.z;
+            level = 0.0f;
+            side.y = level;
+            side.z = m_f44.x;
+        }
+        side.Normalize();
+        if (strafe) {
+            side.Scale(reach, &side);
+            a = side * 0.3f;
+            b = side * 1.2f * 1.3f;
+        } else {
+            side.Scale(reach, &side);
+            a = side * 0.3f;
+            b = side * 1.2f;
+        }
+        if (prone) {
+            step = 0.5f * rise;
+            b.Scale(0.5f, &b);
+        }
+
+        CPnt3D fwd = dir * 1.1f;
+        CPnt3D from, to;
+
+        m_ef4 = data_0044AF78;
+        m_ef8 = 0;
+        m_bit8 = true;
+
+        bool stopped = SealTop(this)->m_state == 8;
+
+        if (top) {
+            if (!m_carry) {
+                CPnt3D push = m_f44;
+
+                if (push.y < level) {
+                    push.y += m_2e0 * (theCharacterDynamics.m_gravity * m_2e0);
+                    if (push.y > level)
+                        push.y = level;
+                }
+                push = push + dir;
+
+                zdb::CNode *node = m_node;
+
+                PartInSpace(m_spinelo, 0, &from, 0);
+                node->m_matrix.Transform(&from, 1);
+                to = from + push;
+                if (!func_0054F410(this, &from, &to))
+                    return;
+
+                CPnt3D h0(2.25f, 0.0f, 0.0f);
+
+                if (!ProbePart(this, m_head, &h0, node, from, to, push))
+                    return;
+
+                CPnt3D h1(2.25f, level, -4.0f);
+
+                if (!ProbePart(this, m_head, &h1, node, from, to, push))
+                    return;
+
+                CPnt3D h2(2.25f, level, 4.0f);
+
+                if (!ProbePart(this, m_head, &h2, node, from, to, push))
+                    return;
+
+                CPnt3D hand(2.0f, 0.0f, 0.0f);
+
+                if (m_lhand) {
+                    if (!ProbePart(this, m_lhand, &hand, node, from, to, push))
+                        return;
+                } else {
+                    CPnt3D arm(4.5f, 0.0f, 0.0f);
+
+                    if (!ProbePart(this, m_lforearm, &arm, node, from, to, push))
+                        return;
+                }
+                if (!ProbePart(this, m_rhand, &hand, node, from, to, push))
+                    return;
+
+                CPnt3D foot(1.1f, 0.0f, 0.0f);
+
+                if (m_lfoot) {
+                    if (!ProbePart(this, m_lfoot, &foot, node, from, to, push))
+                        return;
+                } else {
+                    CPnt3D calf(4.5f, 0.0f, 0.0f);
+
+                    if (!ProbePart(this, m_lcalf, &calf, node, from, to, push))
+                        return;
+                }
+                if (m_rfoot) {
+                    if (!ProbePart(this, m_rfoot, &foot, node, from, to, push))
+                        return;
+                } else {
+                    CPnt3D calf(4.5f, 0.0f, 0.0f);
+
+                    if (!ProbePart(this, m_rcalf, &calf, node, from, to, push))
+                        return;
+                }
+            }
+        } else if (stopped || notdone) {
+            if (!m_carry) {
+                CPnt3D push = m_f44;
+
+                if (push.y < level) {
+                    push.y += m_2e0 * (theCharacterDynamics.m_gravity * m_2e0);
+                    if (push.y > level)
+                        push.y = level;
+                }
+                push = push + dir;
+
+                zdb::CNode *node = m_node;
+
+                PartInSpace(m_spinelo, 0, &from, 0);
+                node->m_matrix.Transform(&from, 1);
+
+                CPnt3D h0(2.25f, 0.0f, 0.0f);
+
+                if (!ProbePart(this, m_head, &h0, node, from, to, push))
+                    return;
+
+                CPnt3D hand(2.0f, 0.0f, 0.0f);
+
+                if (m_lhand) {
+                    if (!ProbePart(this, m_lhand, &hand, node, from, to, push))
+                        return;
+                } else {
+                    CPnt3D arm(4.5f, 0.0f, 0.0f);
+
+                    if (!ProbePart(this, m_lforearm, &arm, node, from, to, push))
+                        return;
+                }
+                if (!ProbePart(this, m_rhand, &hand, node, from, to, push))
+                    return;
+
+                CPnt3D foot(1.1f, 0.0f, 0.0f);
+
+                if (m_lfoot) {
+                    if (!ProbePart(this, m_lfoot, &foot, node, from, to, push))
+                        return;
+                } else {
+                    CPnt3D calf(4.5f, 0.0f, 0.0f);
+
+                    if (!ProbePart(this, m_lcalf, &calf, node, from, to, push))
+                        return;
+                }
+                if (m_rfoot) {
+                    if (!ProbePart(this, m_rfoot, &foot, node, from, to, push))
+                        return;
+                } else {
+                    CPnt3D calf(4.5f, 0.0f, 0.0f);
+
+                    if (!ProbePart(this, m_rcalf, &calf, node, from, to, push))
+                        return;
+                }
+            }
+        } else if (!nopush) {
+            NodePos(this, from);
+            to = from + m_f44 + dir;
+            from.y += step;
+            to.y += step;
+            if (!func_0054F410(this, &from, &to))
+                return;
+        } else {
+            CPnt3D lean;
+
+            if (prone) {
+                CQuat q = m_quat;
+
+                q.vec.x = -q.vec.x;
+                q.vec.y = -q.vec.y;
+                q.vec.z = -q.vec.z;
+                q.Apply(&m_f44, &lean, 1);
+                if (strafe || lean.x * lean.x + lean.z * lean.z < 0.001f)
+                    lean.z = -1.0f;
+                lean.y = level;
+                lean.Normalize();
+            }
+            if ((m_state == stateCrouch || m_state == stateStand) && m_velM.z > 0.01f)
+                fwd = fwd * data_0064FCE8;
+            else if (m_state == stateCrouch && !m_21c_bit2 && m_velM.z < level)
+                fwd = fwd * data_0064FCE8;
+            NodePos(this, from);
+            if (strafe) {
+                CPnt3D s(-dir.z, 0.0f, dir.x);
+
+                s.Normalize();
+                s.Scale(5.0f, &s);
+                if (m_velM.x < 0.0f) {
+                    Negate(s);
+                }
+                to = from + s + m_f44;
+                from.y += step;
+                to.y += step;
+            } else {
+                to = from + fwd + m_f44;
+                from.y += step;
+                to.y += step;
+            }
+            if (roll) {
+                CPnt3D d = to;
+
+                d.Sub(&from, &d);
+                m_260.Apply(&d, &to, 1);
+                to.Add(&from, &to);
+            }
+            if (prone)
+                to.y += func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+            if (!func_0054F410(this, &from, &to))
+                return;
+            NodePos(this, from);
+            if (m_curr_firept) {
+                from.y += HeadY(this);
+
+                CPnt3D z = *(CPnt3D *)m_node->m_matrix.m_matrix[2];
+
+                float lim = strafe ? -0.2f : level;
+
+                if (z.x * nx + z.y * ny + z.z * nz >= lim && !still)
+                    to = from + dir;
+                else {
+                    CPnt3D f = fire * 1.1f;
+
+                    if ((func_005551A0(SealTop(this)->m_flags, 64) && m_wep_seq.LinearWeight() > level &&
+                         m_state != stateClimbLadder) ||
+                        m_state == stateProne || IsCurrentBlend((AnimType)17) || IsCurrentBlend((AnimType)19) ||
+                        IsCurrentBlend((AnimType)25)) {
+                        z.Scale(z.x * f.x + z.y * f.y + z.z * f.z, &z);
+                        to = from + z;
+                    } else
+                        to = from + dir;
+                }
+                to.Add(&m_f44, &to);
+            } else {
+                CPnt3D head;
+
+                PartInSpace(m_head, 0, &head, 0);
+                from.y += Raise(head);
+                to = from + dir;
+                to.Add(&m_f44, &to);
+            }
+            if (roll) {
+                CPnt3D d = to;
+
+                d.Sub(&from, &d);
+                m_260.Apply(&d, &to, 1);
+                to.Add(&from, &to);
+            }
+            if (prone)
+                to.y += func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+            if (!func_0054F410(this, &from, &to))
+                return;
+
+            CZSealBody *carry = m_state == stateCarrying ? m_carry : 0;
+
+            if (carry && func_0054E760(this, &from, &to)) {
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+
+            /* the left side */
+            if (!prone) {
+                from = *pos + a;
+                to = *pos + b + dir + m_f44;
+                from.y += step;
+                to.y += step;
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+
+            CPnt3D la = a * 1.3f;
+
+            if (prone && !strafe && !roll) {
+                from = *pos + la - dir;
+                to = *pos + la + dir + m_f44;
+                from.y += step;
+                to.y += step;
+
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
+
+                from.y -= h;
+                to.y += h;
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+            if (strafe) {
+                if (m_velM.x >= level) {
+                    from = *pos + a - dir;
+                    to = *pos + la + dir + m_f44;
+                } else {
+                    from = *pos - a - dir;
+                    to = *pos - la + dir + m_f44;
+                }
+                from.y += step;
+                to.y += step;
+
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
+
+                from.y -= h;
+                to.y += h;
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+            if (roll) {
+                bool up = true;
+
+                if (m_260.vec.y >= level) {
+                    up = false;
+                    from = *pos + a + dir;
+                    to = *pos + b - dir + m_f44;
+                } else {
+                    from = *pos + a - dir;
+                    to = *pos + b + dir + m_f44;
+                }
+                from.y += step;
+                to.y += step;
+
+                CPnt3D d = to;
+
+                d.Sub(&from, &d);
+                m_260.Apply(&d, &to, 1);
+                to.Add(&from, &to);
+
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
+
+                if (up) {
+                    from.y -= h;
+                    to.y += h;
+                } else {
+                    from.y += h;
+                    to.y -= h;
+                }
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+
+            /* the right side */
+            if (!prone) {
+                from = *pos - a;
+                to = *pos - b + dir + m_f44;
+                from.y += step;
+                to.y += step;
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+
+            CPnt3D ra = a * 1.3f;
+
+            if (prone && !strafe && !roll) {
+                from = *pos - ra - dir;
+                to = *pos - ra + dir + m_f44;
+                from.y += step;
+                to.y += step;
+
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
+
+                from.y -= h;
+                to.y += h;
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+            if (strafe) {
+                if (m_velM.x >= level) {
+                    from = *pos + a + dir;
+                    to = *pos + ra - dir + m_f44;
+                } else {
+                    from = *pos - a + dir;
+                    to = *pos - ra - dir + m_f44;
+                }
+                from.y += step;
+                to.y += step;
+
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
+
+                from.y += h;
+                to.y -= h;
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+            if (roll) {
+                bool up = true;
+
+                if (m_260.vec.y >= level) {
+                    from = *pos - a - dir;
+                    to = *pos - b + dir + m_f44;
+                } else {
+                    up = false;
+                    from = *pos - a + dir;
+                    to = *pos - b - dir + m_f44;
+                }
+                from.y += step;
+                to.y += step;
+
+                CPnt3D d = to;
+
+                d.Sub(&from, &d);
+                m_260.Apply(&d, &to, 1);
+                to.Add(&from, &to);
+
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
+
+                if (up) {
+                    from.y -= h;
+                    to.y += h;
+                } else {
+                    from.y += h;
+                    to.y -= h;
+                }
+                if (!func_0054F410(this, &from, &to))
+                    return;
+            }
+        }
+        m_ef8 = data_0044AF78 - m_ef4;
+    }
+    if (func_0057B510(this))
+        m_bit8 = true;
 }
 
 /* the push off a wall: a step of r from the point into the hit's plane, against its normal and at the
