@@ -62,16 +62,14 @@ static int ControlPitchDP(PITCHDP *p, unsigned char cmd);
 static void InitJumpFactors(PITCHDP *p);
 static int InitPitchDP(PITCHDP *p);
 
-/* OPEN (0x430 against 0x404): the loop nest is the target's -- the previous column's
- * maximum over p->cells/p->ncols reloaded per column, the threshold max - max / thresh, the bins
- * within maxjump, the inner loop unrolled by four -- but the target keeps one more value live
- * across the loops (s0-s6 saved, a 64-byte frame; here s0-s5, 48). Round 14c: the target loads
- * jf[j] ONCE per bin (`lw v1,0(t8)`, t8 walking jf) and walks &jf[j][k] and &rows[k] as pointers
- * stepped by 4 (the unrolled copies at 0, 4, 8, 12), where this source reloads jf[j] after every
- * store (no strict aliasing) and indexes by k. `float *f = jf[j];` after hi is set gives the one
- * load (0x420, 264 words against 257) but still indexes f[k] and rows[k]: k as int, unsigned
- * short, j and t as int, and the max loop's `c += stride` (the target's step is the stride
- * local, not p->ncols reloaded) do not bring the strength reduction. */
+/* OPEN (right size since GCC round 83, 133 words, registers and the inner loop's float schedule;
+ * was 0x430): the bins' inner loop walks &jf[j][lo] and &rows[lo] as pointers in the for's init
+ * list (the target's t1/t0 stepped by 4, 16 per unrolled turn), jf[j] itself indexed -- loop.c's
+ * reduced giv (`move t8,s6` placed after the invariant inits); the max loop steps by a local read
+ * from p->ncols at every column, which GCSE's PRE carries on the back edge with p->cells (the
+ * target's `bnezl ...; lhu t0,62(a0)` and the reload block the first entry jumps past). Left: the
+ * column pointer c takes a0 (p moved to t8), the target's a3; src->score is reloaded per bin in
+ * the target. Round 14c's notes: `float *f = jf[j];` indexed was 0x420. */
 static void Actual_DP(PITCHDP *p, unsigned int nbins, unsigned int ncols)
 {
     unsigned short stride = p->ncols;
@@ -83,15 +81,19 @@ static void Actual_DP(PITCHDP *p, unsigned int nbins, unsigned int ncols)
     unsigned short i, prev, lo, hi;
     float max, thr, score;
     CELL *c, *src, *dst;
+    float *f;
+    CELL **r;
+    unsigned short n;
 
     for (t = 1; t < ncols; t++) {
         prev = t - 1;
         max = 0;
         c = &p->cells[prev];
+        n = p->ncols;
         for (i = 0; i < p->nbins; i++) {
             if (max < c->score)
                 max = c->score;
-            c += p->ncols;
+            c += n;
         }
         thr = max - max / p->thresh;
         for (j = 0; j < nbins; j++) {
@@ -103,10 +105,10 @@ static void Actual_DP(PITCHDP *p, unsigned int nbins, unsigned int ncols)
                 hi = nbins - 1;
                 if (nbins - j >= maxjump)
                     hi = j + maxjump;
-                for (k = lo; k < hi; k++) {
-                    if (jf[j][k] > 0) {
-                        dst = &rows[k][t];
-                        score = src->score + jf[j][k] * dst->value;
+                for (k = lo, f = jf[j] + lo, r = rows + lo; k < hi; k++, f++, r++) {
+                    if (*f > 0) {
+                        dst = &(*r)[t];
+                        score = src->score + *f * dst->value;
                         if (dst->score < score) {
                             dst->score = score;
                             dst->back = j;
