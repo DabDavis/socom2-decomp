@@ -236,7 +236,9 @@ static inline void *LoadAlloc(unsigned int size)
  * swapped for a buffer over it (SOCOM 1's, grown: SOCOM 1's copied a static zero tail, SOCOM II's
  * clears it -- a brace-initialised struct is MW's null-tested byte loop, as func_002642F0's PNT4D;
  * its key buffer's reserve, 0x2597B0, is byte-exact from here).
- * OPEN, 3 words (the target's size; 47 instructions before the engine core's round 27): the seek's and
+ * Byte-exact since round 73: the two tests one `ok = seek != -1 && read == sizeof(tail);` (round 72's
+ * tell: `go = A && B` keeps A's bool unmasked and puts the andi in the branch's slot, the join unpadded).
+ * Was: OPEN, 3 words (the target's size; 47 instructions before the engine core's round 27): the seek's and
  * the read's results reach `ok` through an `andi` where this converts (sltu s0,zero,v0) -- the target
  * computes them in v0, branches on v0, narrows into s0 in the slot -- and the join of the two tests
  * takes no pad nop there. Tried: int, unsigned char, const bool and enum holders, explicit casts,
@@ -262,14 +264,7 @@ bool CZAR::ReadDirectory(int dir, unsigned int mode)
             m_modified = 1;
             m_pFile->fseek(0, 0);
         } else {
-            int e = m_pFile->fseek(0, 0) != -1;
-
-            ok = e;
-            if (e) {
-                int e2 = m_pFile->fread(&tail, sizeof(tail)) == sizeof(tail);
-
-                ok = e2;
-            }
+            ok = m_pFile->fseek(0, 0) != -1 && m_pFile->fread(&tail, sizeof(tail)) == sizeof(tail);
             if (ok) {
                 ok = tail.version == 0x20002;
                 if (ok) {
