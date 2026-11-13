@@ -6,9 +6,12 @@
  * in use and 64 slots of 512 bytes, each a sequence word, a length and up to 504 bytes, indexed by
  * the sequence's low six bits; sequences are 29-bit, compared modulo 2^29.
  * Byte-exact: the create (every slot cleared again after the zeroed allocation, the buffer pointer
- * reloaded from its stack slot after each store) and the destroy. OPEN: func_00645290 (13 words: the
- * slot index taken first gives the target's order of the parameter copies; the sequence's 29 bits
- * land in a0 where the target reuses a3, nLength's register once copied to s2). Round 26b:
+ * reloaded from its stack slot after each store) and the destroy. OPEN: func_00645290 (2 words since
+ * GCC round 81, 13 before: the age test through a user variable written in two steps, `d = nSeq & 63;
+ * d = (d - nIndex) & SEQ; if (d - 1 < ...)` -- its load and its `d - 1` then leave v0 (local-alloc
+ * ties no temporary to a user variable), and the 0xFFFFFFD constant takes a0, nIndex a3. Left: the
+ * latest test's `subu` lands in v0 where the target's is v1, the `andi` in v0 -- d, e, i, nLength,
+ * a block, the mask in a variable: none). Round 26b:
  * func_00645528 (the reassembly into the caller's buffer) byte-exact; func_00645380 (the next complete message's
  * length: a walk from the oldest slot over the 0x20000000 start and 0x40000000 end flags) written, open. */
 
@@ -63,17 +66,20 @@ void func_00645290(RT_FRAG_BUF *pBuf, unsigned int nSeq, void *pData, unsigned i
     unsigned int i = nSeq & (RT_FRAG_SLOTS - 1);
     unsigned int nIndex = nSeq & RT_FRAG_SEQ;
     RT_FRAG_SLOT *pSlot;
+    unsigned int d;
 
     if (pBuf == 0)
         return;
     pSlot = &pBuf->aSlots[i];
     if (pSlot->nLength != 0) {
-        if ((((pSlot->nSeq & (RT_FRAG_SLOTS - 1)) - nIndex) & RT_FRAG_SEQ) - 1 < 0x0FFFFFFE)
+        d = pSlot->nSeq & (RT_FRAG_SLOTS - 1);
+        d = (d - nIndex) & RT_FRAG_SEQ;
+        if (d - 1 < 0x0FFFFFFE)
             return;
         pSlot->nLength = 0;
         pBuf->nCount--;
     }
-    if ((nSeq & 0x40000000) && ((nIndex - (pBuf->nLatest & RT_FRAG_SEQ)) & 0x40))
+    if ((nSeq & 0x40000000) && ((d = nIndex - (pBuf->nLatest & RT_FRAG_SEQ)) & 0x40))
         pBuf->nLatest = nSeq;
     pSlot->nSeq = nSeq;
     if (nLength == 0)
