@@ -2066,6 +2066,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEAL AI, round 71** (seven rows byte-exact, 13,736 bytes: CSealCtrl::TickAimPitch 0x594600 (2 off: `short two =
+  2; if (data_0066B3D8 == two)`), CSealCtrlAi::SetAiMode 0x56CBF0, and unwritten before -- the fire set-up after a weapon
+  change 0x565D30 (0x7BC), InitAiBrain 0x573130 (0xA4C), the glance on ai_slice1 0x558640 (0x438; 0x558AA0 returns int,
+  pinned auto_inline off), the throttles run toward their goals 0x56C550 (0x698). zseal.h, objcmp: m_6c0 split from _6ac,
+  CZKit's GetCurItemEnum() const and SetupBinocular(). Still unwritten here: 0x558AE0 (0x49C), 0x560B20 (0x5E4), 0x561550
+  (0x63C) -- m2c drafts in the lane's scratch -- and 0x5605A0; ScanTick 0x600550 (zkit/seal_look.cpp). Pop / PopTo /
+  CAiSBreach's Is(): ~40 more spellings, none drop the `andi` -- the optimiser log lowers `&&` as `r = A; if (r) r = B;`
+  where the target has an explicit false arm MW folds away every time (peephole off reaches 0xAC with extra `andi`s).
+  AttackTick and is_goal: one unfilled slot each; labels do not stop the fill. pragmascan: 0 hits):
+  - A DEAD TEST SURVIVES WHEN IT IS A CALL: an auto-inlined free function expands after dead-code removal, so a test nothing
+    reads stays (SetAiMode's 0x5629B0); written out or as `inline`, MW drops the pure term.
+  - `a >= b ? x : y` gives `c.lt.s a,b; bc1t` to the second arm (`a < b ? y : x`, `!(a < b) ? x : y` give `bc1f`).
+  - `int old = t->IsEmpty();` masks once at the def (a bool or byte holder masks at each use). `CAiMap::DIR face = best;` puts
+    the `andi` after the first call (an `unsigned char` holder at the def).
+  - an approach inline holding `float &t` from its top and returning t keeps the pointer in a saved register on both arms.
+    FPRs follow declaration order. AN INLINE RESULT NUMBERS AFTER INLINE LOCALS (`CZSealBody *seal = SealOf(ai)` s0, a named
+    local s1). A 16-byte global copied with lq/sq: `CPnt4D scale = data_006500D0;`.
 - **Tells from the kit, round 71** (CTTeam::Tick 0x5CEA40, 20 to 0, and CSealUnit::GetMyPointOutAnimStart 0x5E7390, 16 to 0,
   byte-exact; HandleFireWeapon 0x5BE9A0 at the target's size (0xF00), d=296 to 200, registers only (this, index, w, ammo,
   shots, t want s5..s0; the 24 orders of four score 209-214); CZKit::Fire 50 to 48. No header change):
