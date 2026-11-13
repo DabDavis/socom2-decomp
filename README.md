@@ -2066,6 +2066,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 66** (CAiSPursue::Tick 0x559930 (0xE28) byte-exact, unwritten before, SOCOM 1's body in
+  seal_ai.cpp; CAiSHold::Tick 0x6060C0 (0x6D8), 16 off since the kit's round 61, byte-exact through ai_states.h alone:
+  CAiState::SetFlags sets its dirty bit by `*(volatile unsigned int *)&m_flags |= 0x80000000;` -- objcmp over 672 units: only
+  seal_airesponse.cpp (Hold) and seal_ai.cpp (Pursue; Grenade's open Tick d=210 to 197) differ; seal_ai.cpp no longer emits a
+  copy of CAiState::Tick 0x5F81D0. CAiSDeploy::Tick still 12: `igreplay --want 116=v1 --movers 116` finds 0 of 609
+  placements -- the -1's neighbours hold no v0 or v1, so v0 always wins; v1 needs something coloured v0 live across its
+  definition, an intermediate-code shape, not an order of locals):
+  - THE DIRTY BIT'S READ IS NEVER A COMMON SUBEXPRESSION: the target reloads m_flags for SetFlags after any test of the word
+    (`lw a2,44(s4)`); only a volatile view on the first `|=` does it (a reference, pointer, int view, bit-field, `x = x | c`
+    all reuse the test's load; all three lines volatile reorders the ternaries, 27 off).
+  - a bit-field test is `lbu` plus shifts, never `lw; andi`: an `andi 6` test is a plain `&` on the word.
+  - Pursue's step 0: `if (m_flags & 6) step = 1; else if (ai->m_718 > 0) { step = 1; if (!(m_flags & 6)) SetLook(!held); }
+    else SetLook(!held);` (`||`, `&&`, nested ifs 8 short). `SetLook(bool)` is `SetFlags(look ? PF_LOOK : PF_COVER, look ?
+    PF_COVER : PF_LOOK)` with a byte enum (the `andi 0xff` per ternary). Short arms first.
+  - step 5: `ok` before `last`, `ok = true;` ahead of `const CAiMapLoc &at = seal->m_mapLocValid;`, `SameCell(cell, at)` --
+    the reference gives `addiu a0,s1,232`. `float t = Rfloat(a, b); m_time = t + clock;` keeps add.s's operands.
+  - 0x650478-0x650490 (2.0, 1.0, 1.75, AI_LOOK 6) Pursue's function-local statics; 0x64FDB8 (25000) the route's search limit.
+    m2c drafts of CZSealBody::Tick 0x550EF0, 0x56FD00 and 0x54F7E0 in the lane's scratch, not started.
 - **Tells from the AI states, round 66** (nothing closed; CAiSBreach::Tick 0x5F2120 (0xFE0) written from the target's own
   disassembly -- SOCOM 1's demo body 0x2D8000 is unoptimised, an outline only -- d=207 to 8, size exact, 18 off in step 9's one
   test (the first SEAL's stack has a breach on top): the target computes Is()'s `&&` into a value and tests it unnarrowed
