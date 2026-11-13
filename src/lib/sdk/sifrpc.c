@@ -333,7 +333,8 @@ static void *_sceRpcGetFPacket2(sceSifRpcState *d, int rid)
 	return (char *)d->client_table + rid * 64;
 }
 
-/* OPEN, 9 words: the bind case's three copies are scheduled here as the loads first (buff's above
+/* Byte-exact as written (checked GCC r80: the note below predates the match). Was OPEN, 9 words:
+ * the bind case's three copies are scheduled here as the loads first (buff's above
  * serve's store), and the switch's two branches to the join are plain where the target's are
  * likely ones; the target keeps every load after the store before it. Not strict aliasing (without
  * it, 22 words and the wrong size), not the reply packet's field types (void, int, a struct
