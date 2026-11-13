@@ -783,20 +783,14 @@ int tcmSelectTeam(CZSealBody *player, int team)
     return 1;
 }
 
-/* OPEN, 4 instructions short (0x170 vs 0x174): the code is the target's but its registers --
- * the target keeps the player in s4, r in s2 and the narrowed member in s1, and passes that
- * member to CanOrder with no re-extension, where any unsigned char or byte enum local gets an
- * andi (or a sign extension for a signed char parameter) at the call; an int parameter there
- * is what tcmUpdateTeamCommand's lb needs. Tried: unsigned char, signed char, char and a byte
- * enum for the local and CanOrder's member parameter, the else block first or last. Round 56's
- * replay (igdump, igreplay --nb): the player takes s4 in the target, so a fifth saved-register
- * holder interferes with it there -- here the player's neighbours are r, m and unit only (caption,
- * the target's s3, is born after the player's last use): the original keeps the player live
- * longer, or numbers something else there. Round 62: igreplay --want 32=s4,34=s2,35=s1 over every
- * placement of r, m and caption (54,872): none -- no numbering gives it, the graph needs an edge. Round 65: the edge is a read of
- * the player while caption lives -- `asm { beq player, player, L1; L1: }` (the weapons' round 40's no-code read) at the return gives
- * the size and the frame, 10 off: an int member (`int m = (unsigned char)member`, the compare through a KEY cast) passes it with no andi,
- * but the player then takes s3 and caption s4, and the virtual call's arguments go a0, a1, a2 where the target's go a2, a1, a0 */
+/* the PLAYER/TEAM member items' test: the member made current; unless it is the player's own slot, the
+ * squad asked whether it takes the order (its AllowCommand, zseal.h's slot 0xC -- CanOrder here), and
+ * for member 1 the node captioned from the squad's action (OVL1 0x230050).
+ * (byte-exact since the MW lane's round 80, open since round 23: the member handed to the squad is the
+ * PARAMETER narrowed again, `(TCM_MEMBER)member` -- CSE'd with m's own `andi`, so it is passed as the
+ * target's s1 with no re-extension and the player stays live across it (s4); passing the local m
+ * re-extends it at the call (an `andi` at the int parameter), and every register, the frame and the
+ * size followed from that one argument -- rounds 56-65's missing interference was the argument) */
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;
@@ -807,7 +801,7 @@ int tcmUpdateTeamMember(CZSealBody *player, int member)
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4) {
-            bool ok = unit->CanOrder(player, m, 0);
+            bool ok = unit->CanOrder(player, (TCM_MEMBER)member, 0);
 
             if (ok) {
                 r = 0;
