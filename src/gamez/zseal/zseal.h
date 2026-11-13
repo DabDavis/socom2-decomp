@@ -1970,7 +1970,7 @@ public:
     ZOOMSTATE IncrZoomState();
     void SetCurZoomState(ZOOMSTATE zs);
     /* a remote SEAL brought back, and the local SEAL's respawn (SOCOM 1's; OVL2 0x598B90, 0x5994A0,
-     * seal_create.cpp's range: Virtual8C calls them) */
+     * seal_create.cpp's range: PostMortemPreTick calls them) */
     void RemoteRespawn(bool b);
     void DoRespawn();
     /* the SEAL's stats (OVL2 0x545890: the stats events reach a teammate's through it, by member
@@ -2064,6 +2064,7 @@ public:
 
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
+    virtual void PreTick(float dT);                                         /* +0x14 */
     virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
     virtual void UpdateAiMapLoc();                                          /* +0x48 */
@@ -2089,7 +2090,9 @@ public:
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
      * primary pointer (Destroy's state set reads +0x90) */
     virtual CZBodyPart *GetRootPart() const;                                /* +0x88 */
-    virtual void Virtual8C();                                               /* +0x8C (0x547350) */
+    /* +0x8C (0x547350): the dead SEAL's tick (SOCOM 1's PostMortemPreTick, which PreTick called in the
+     * same place with the time step -- `mov.s f12` ahead of the call; the step unused) */
+    virtual void PostMortemPreTick(float dT);
     /* the lens node deleted (OVL2 0x599820, seal_create.cpp's) */
     void DeleteCameraEffectsNode();
     virtual void BodySetState(int state);                                   /* +0x90 */
@@ -2701,7 +2704,8 @@ public:
     /* the clock when the altitude was last taken over (DetachBody 0x579220 stores the game's clock;
      * new in SOCOM II, the name ours) */
     float m_420;   // 0x420
-    unsigned char _424[0x428 - 0x424];
+    /* a wait PreTick runs down by the time step, held at 0 (the name ours) */
+    float m_424;   // 0x424
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
     unsigned char _42c[0x434 - 0x42c];
     CAiPath m_snakePath;   // 0x434: (SOCOM 1's 0x384)
@@ -2820,7 +2824,7 @@ public:
     int m_fc4;   // 0xfc4: the killer's id HandleKiller keeps (the name ours)
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
     unsigned char _fcc;
-    /* the spectator's next and previous SEAL asked for (new in SOCOM II: Virtual8C walks to them;
+    /* the spectator's next and previous SEAL asked for (new in SOCOM II: PostMortemPreTick walks to them;
      * the names ours) */
     unsigned char m_spectate_next;   // 0xfcd
     unsigned char m_spectate_prev;   // 0xfce
@@ -2989,7 +2993,7 @@ public:
     float m_135c;   // 0x135c: the wait before another jump (0x57E1B0 sets 0.4; the name ours)
     float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
     float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
-    unsigned char _1368[0x136c - 0x1368];
+    float m_1368;   // 0x1368: a player's throttles are scaled by it (PreTick; the name ours)
     /* the ripples while the surface is just over the SEAL and while it wades, and the node they play
      * at (SOCOM 1's 0xfd8, 0xfdc, 0xfe0: HandleWater's) */
     CZAnim *m_belowwateranim;   // 0x136c

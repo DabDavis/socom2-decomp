@@ -363,7 +363,7 @@ static inline void SetDeathPending(CZSealBody *seal, bool b)
  * the answer unused); online a respawn asked for brought about -- the node made inactive while it is
  * still drawn -- and, out of the menus, the spectator walked to the next or previous SEAL (of the
  * team unless the player may not watch); offline only the respawn */
-void CZSealBody::Virtual8C()
+void CZSealBody::PostMortemPreTick(float dT)
 {
     if (m_1060_bit12) {
         func_005A0040(this);
@@ -1778,6 +1778,228 @@ extern "C" void func_00552780(CZSealBody *seal, unsigned char priority, float ta
             seal->m_fading = true;
         }
     }
+}
+
+/* SOCOM 1's CAiTimer as the controller's weapon timer is read here: an Rfloat-shaped period (its
+ * operator float inline, an early return and the random factor through a local) and the countdown,
+ * restarted and run out (an infinite one left as drawn). Each inline works through a local copy of
+ * `this`: the target keeps the timer's base in s1 across rand() -- the range's first read folded off
+ * the controller -- and takes it again for the run-out's store; on `this` itself MW bases the
+ * accesses on the range's and the countdown's own addresses */
+struct WEP_PERIOD {
+    operator float() const
+    {
+        if (m_range == 0.0f)
+            return m_min;
+        float r = 4.656613e-10f * (float)rand();
+
+        return m_min + m_range * r;
+    }
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+struct WEP_TIMER {
+    void Restart()
+    {
+        WEP_TIMER *t = this;
+
+        t->m_timer = t->m_period;
+    }
+    void RunOut()
+    {
+        WEP_TIMER *t = this;
+
+        if (t->m_timer != CAiTimer::infinite)
+            t->m_timer = 0.0f;
+    }
+
+    WEP_PERIOD m_period;   // 0x0
+    float m_timer;   // 0x8
+};
+
+extern "C" {
+/* the SEAL's delayed ground probes' count (seal.cpp's below), the climb's tick (OVL2 0x5B1570, seal_env.cpp's),
+ * the network-life watch (OVL2 0x543F70, below), the base anim's step (OVL2 0x57D810, seal_body.cpp's), the
+ * ladder let go (OVL2 0x59D750) and the ground probe reset (OVL2 0x5B0410, seal_env.cpp's range) */
+extern int data_0044AF78;
+void func_005B1570(CZSealBody::CSealClimb *climb, CZSealBody *seal);
+void func_00543F70(CZSealBody *seal);
+void func_0057D810(CZSealBody *seal);
+void func_0059D750(CZSealBody *seal);
+void func_005B0410(CZSealBody *seal);
+/* (four anim types the generated AnimSet setup looks up: "180" and the ladder slide's three) */
+extern short data_003DEAE0;
+extern short data_003DEF40;
+extern short data_003DEF50;
+extern short data_003DEF60;
+}
+
+/* the top blend (the unit's pinned copy of the stack's Top, 0x555170; an inline, the name ours) */
+static inline CZBodyAnimBlend *SealTop(CZSealBody *seal)
+{
+    return (CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends);
+}
+
+static inline void ScaleBy(float &v, const float &s) { v *= s; }
+/* the tick before the move: a wait run down; the time step kept; the opacity's fade run; the camera's SEAL's LOD
+ * flags; dead (or ended, or respawning online) the controller's post-mortem tick, the rumble (unless remote) and
+ * the SEAL's own; else the controller's PreTick, then -- when it asks -- the climb, the network-life watch, a carry
+ * dropped that strays past 30, the stance, base step and weapons (not dead), the throttles taken from the
+ * controller (the carrier's when carried), and zeroed wherever the body cannot move, the weapon hit handled and
+ * the ground probe reset (OVL2 0x551EC0, slot 0x14; SOCOM 1's, with the fade, the wait and the climb new) */
+void CZSealBody::PreTick(float dT)
+{
+    m_424 -= dT;
+    if (m_424 < 0.0f)
+        m_424 = 0.0f;
+    m_2e0 = dT;
+    m_fix_skel_y = false;
+    m_animate_me = true;
+    m_bit14 = false;
+    if (m_fading) {
+        float op = GetNode()->m_Opacity;
+
+        op += m_fade_rate * dT;
+        if ((m_fade_rate > 0.0f && op >= m_fade_target) || (m_fade_rate < 0.0f && op <= m_fade_target)) {
+            op = m_fade_target;
+            m_fading = false;
+            m_fade_priority = 0;
+        }
+        GetNode()->m_Opacity = op;
+    }
+    data_0044AF78 = 0;
+    if (appCamera->m_bc == this)
+        UpdateLODFlags();
+
+    CSealCtrl *ctrl = (CSealCtrl *)m_control;
+
+    if (!ctrl)
+        return;
+    if (m_state == stateDead || m_1060_bit13 || (theNetwork.m_9 && m_needs_respawn)) {
+        ctrl->PostMortemPreTick(dT);
+        if (!IsRemote())
+            ctrl->TickRumbler(dT);
+        PostMortemPreTick(dT);
+        return;
+    }
+    m_1060_bit11 = false;
+    m_doPostTick = ctrl->PreTick(dT);
+    if (m_state == stateCarried && m_carry)
+        ctrl = (CSealCtrl *)m_carry->m_control;
+    if (!m_doPostTick)
+        return;
+    func_005B1570(&m_climb, this);
+    func_00543F70(this);
+    if (m_carry) {
+        CPnt3D d;
+
+        m_posW.Sub(&m_carry->m_posW, &d);
+        if (!(d.x * d.x + d.y * d.y + d.z * d.z <= 900.0f)) {
+            if (SealTop(this)->m_homing.m_blend) {
+                SealTop(this)->Homing()->Reset();
+                if (m_carry) {
+                    m_carry->m_carry = 0;
+                    m_carry = 0;
+                }
+            } else if (SealTop(m_carry)->m_homing.m_blend) {
+                SealTop(m_carry)->Homing()->Reset();
+                if (m_carry) {
+                    m_carry->m_carry = 0;
+                    m_carry = 0;
+                }
+            } else {
+                bool attached = true;
+
+                if (GetRootPart()->m_parent == 0 && m_carry->GetRootPart()->m_parent == 0)
+                    attached = false;
+
+                if (attached) {
+                    if (GetRootPart()->m_parent) {
+                        m_carry->ClearToBase(false);
+                        DetachBody();
+                    } else {
+                        m_carry->DetachBody();
+                        ClearToBase(false);
+                    }
+                } else {
+                    if (GetRootPart()->m_parent)
+                        m_carry->ClearToBase(false);
+                    else
+                        ClearToBase(false);
+                    if (m_carry) {
+                        m_carry->m_carry = 0;
+                        m_carry = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    bool dead = SealTop(this)->m_state == stateDead;
+
+    if (!dead) {
+        UpdateStance();
+        func_0057D810(this);
+        WeaponsTick(dT);
+    }
+    m_23c = ctrl->m_throttle[2];
+    m_240 = ctrl->m_throttle[0];
+    m_244 = ctrl->m_throttle[1];
+    if (IsPlayer()) {
+        ScaleBy(m_23c, m_1368);
+        ScaleBy(m_240, m_1368);
+        ScaleBy(m_244, m_1368);
+    }
+    if (!(m_f7c <= 4.0f)) {
+        m_23c = 0.0f;
+        m_240 = 0.0f;
+        m_244 = 0.0f;
+        SetWeaponState((WEAPON_STATE)2);
+        if (ctrl) {
+            ((WEP_TIMER *)&ctrl->m_wep_state)->Restart();
+            ((WEP_TIMER *)&ctrl->m_wep_state)->RunOut();
+        }
+        m_wep_seq.Clear();
+        m_action_jump = false;
+    }
+    if (dead || m_eb8 || m_am_stunned || m_state == stateInAir ||
+        IsCurrentBlend((AnimType)AnimTypes::BuddyCarryPickup) ||
+        IsCurrentBlend((AnimType)AnimTypes::BuddyCarriedPickup)) {
+        m_23c = 0.0f;
+        m_240 = 0.0f;
+        m_244 = 0.0f;
+    }
+    if (m_carry && (SealTop(this)->m_homing.m_blend ||
+                    SealTop(m_carry)->m_homing.m_blend)) {
+        m_23c = 0.0f;
+        m_244 = 0.0f;
+    }
+    if (IsCurrentBlend((AnimType)data_003DEAE0)) {
+        m_23c = 0.0f;
+        m_240 = 0.0f;
+        m_244 = 0.0f;
+    } else {
+        CZBodyAnimBlend *top = SealTop(this);
+
+        bool ladder = m_state == stateClimbLadder || (top && top->m_state == stateClimbLadder) ||
+                      IsCurrentBlend((AnimType)46) || (IsCurrentBlend((AnimType)data_003DEF50) ||
+                      IsCurrentBlend((AnimType)data_003DEF60) || IsCurrentBlend((AnimType)data_003DEF40));
+
+        if (ladder) {
+            m_23c = 0.0f;
+            m_244 = 0.0f;
+        } else
+            func_0059D750(this);
+    }
+    if (m_state == stateCarried || m_state == stateCarrying)
+        m_244 = 0.0f;
+    if (!CanTurn())
+        m_23c = 0.0f;
+    if (m_wephit.m_node ? &m_wephit : 0)
+        HandleWepHit();
+    func_005B0410(this);
 }
 
 /* the SEAL's own AI event: an entity event that never expires, heard only close by, where the SEAL
@@ -3224,45 +3446,6 @@ void func_0059D750(CZSealBody *seal);
 AnimType func_005A0950(CZSealBody *seal, DAMAGE_LOCATION loc, SEAL_STATE state);
 void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
 }
-
-/* SOCOM 1's CAiTimer as the controller's weapon timer is read here: an Rfloat-shaped period (its
- * operator float inline, an early return and the random factor through a local) and the countdown,
- * restarted and run out (an infinite one left as drawn). Each inline works through a local copy of
- * `this`: the target keeps the timer's base in s1 across rand() -- the range's first read folded off
- * the controller -- and takes it again for the run-out's store; on `this` itself MW bases the
- * accesses on the range's and the countdown's own addresses */
-struct WEP_PERIOD {
-    operator float() const
-    {
-        if (m_range == 0.0f)
-            return m_min;
-        float r = 4.656613e-10f * (float)rand();
-
-        return m_min + m_range * r;
-    }
-
-    float m_min;   // 0x0
-    float m_range;   // 0x4
-};
-
-struct WEP_TIMER {
-    void Restart()
-    {
-        WEP_TIMER *t = this;
-
-        t->m_timer = t->m_period;
-    }
-    void RunOut()
-    {
-        WEP_TIMER *t = this;
-
-        if (t->m_timer != CAiTimer::infinite)
-            t->m_timer = 0.0f;
-    }
-
-    WEP_PERIOD m_period;   // 0x0
-    float m_timer;   // 0x8
-};
 
 /* online, a SEAL whose network life is not up for more than 20 s ended: killed while alive (DEATH_MAX),
  * its hold, body, overlay, ladder and climb let go, unstunned, the weapon in state 2, the controller's
