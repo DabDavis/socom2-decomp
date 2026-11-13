@@ -4349,12 +4349,7 @@ void CZSealBody::PostPreTick(float dT)
             if (m_curr_firept) {
                 from.y += HeadY(this);
 
-                CPnt3D z;
-                float (*m)[4] = m_node->m_matrix.m_matrix;
-
-                z.x = m[2][0];
-                z.y = m[2][1];
-                z.z = m[2][2];
+                CPnt3D z = *(CPnt3D *)m_node->m_matrix.m_matrix[2];
 
                 float lim = strafe ? -0.2f : zero;
 
