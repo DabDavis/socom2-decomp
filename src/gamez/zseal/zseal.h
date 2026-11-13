@@ -1110,7 +1110,12 @@ public:
     /* when each kind of AI event was last made (SOCOM 1's m_event_time[15], 0x1c0: CreateAiEvent) --
      * one per SOCOM II kind, AIE_MAX 13: the constructor clears 52 bytes */
     float m_event_time[CAiEvent::AIE_MAX];   // 0x1c8
-    unsigned char _1fc[0x221 - 0x1fc];
+    /* where the SEAL's console last said it was and how it faced (CRemoteCtrl::PreTick eases the
+     * body toward both: SOCOM 1's at the same offsets; the names ours) */
+    CPnt3D m_net_pos;   // 0x1fc
+    unsigned char _208[0x210 - 0x208];
+    CQuat m_net_quat;   // 0x210
+    unsigned char _220;
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
     unsigned char _222[0x224 - 0x222];
     /* the hot-swap times (SOCOM 1's m_hotswapL1 and m_hotswapL2, the same offsets: the constructor

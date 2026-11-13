@@ -54,7 +54,8 @@ extern "C" const float data_00650AD8;   /* 0.0f, the fade's floor (a file consta
  * the jump, read here -- the name ours) */
 struct AI_NET_STATE {
     bool m_jump;   // 0x0
-    unsigned char _1[3];
+    unsigned char _1[2];
+    unsigned char m_opacity : 4;   // 0x3: the body's opacity in fifteenths (15: hidden? the name ours)
 };
 
 /* jumping, as the other console says -- only while in a vehicle's seat? (OVL2 0x5E6A50; SOCOM
@@ -97,6 +98,145 @@ bool CRemoteCtrl::AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data)
         break;
     }
     return ok;
+}
+
+/* the network game (OVL1 bss 0x437CE8, the HUD lane's reading): only the rate the remote SEALs ease
+ * toward the sent position by (SOCOM 1's at 0xe0; the view and the name ours) */
+class CNetGameEase {
+public:
+    unsigned char _0[0x118];
+    float m_ease_rate;   // 0x118
+};
+
+extern CNetGameEase *data_00437CE8;
+
+extern "C" {
+float expf(float);
+/* whether the SEAL's top blend is 8 or 9 (OVL2 0x587F50, the SEAL lane's row; the name ours) */
+bool func_00587F50(CZSealBody *seal);
+/* the firepoint (OVL2 0x5DF370, seal_weapon.cpp's) */
+bool GetFP__10CZSealBodyFR6CPnt3D(CZSealBody *seal, CPnt3D &fp);
+/* the kit's current item fired (SOCOM 1's CZKit::FireCur; OVL2 0x5C6510) */
+CZProjectile *func_005C6510(CZKit *kit, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
+}
+
+/* the remote SEAL moved toward where its console last said it was: snapped when far off or a
+ * floor away, eased by a factor taken once per network tick otherwise; its opacity and the shots
+ * it was told of played out (OVL2 0x5E6400; SOCOM 1's PreTick, 0x2CE310 in the demo, with the
+ * collision bits, the far snap's altitude reset and the turret's firepoint new). Byte-exact (the
+ * kit's round 63, unwritten before): `node` declared first and assigned at the GetNode gives the
+ * target's saved registers (this s4, node s3, seal s2, pos s1 -- declared at its use, node and pos
+ * swap); the eased factor read ahead of the two throttles gives its load in the first branch's slot;
+ * the aim negated through a `const CPnt3D &` keeps its first reads frame-direct and only the stores
+ * through the address common subexpressions (a1 y, a2 z), as the target; the sqrt ahead of the aim's
+ * copy; the quaternion copied by the implicit assignment (a member-wise vec/w pair interleaves) */
+bool CRemoteCtrl::PreTick(float dT)
+{
+    static int s_time = 0;
+    static float s_ease;
+    zdb::CNode *node;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CPnt3D *pos = &m_net_pos;
+    float y = m_net_pos.y;
+    float rate = data_00437CE8->m_ease_rate;
+
+    seal->m_check_player_collision = true;
+    seal->m_get_new_altitude = false;
+    if (s_time != theNetwork.zNetGetTime()) {
+        s_time = theNetwork.zNetGetTime();
+        s_ease = expf(-dT * rate);
+    }
+
+    AI_NET_STATE s;
+    unsigned int state = m_ai_net_state;
+
+    memcpy(&s, &state, sizeof(s));
+    node = seal->GetNode();
+
+    if (node) {
+        node->SetActive(s.m_opacity != 15);
+        node->m_Opacity = 1.0f - s.m_opacity / 15.0f;
+    }
+
+    CPnt3D p;
+    CPnt3D d;
+
+    pos->Sub(&seal->m_posW, &d);
+    if (d.x * d.x + d.y * d.y + d.z * d.z > 1000.0f) {
+        seal->TeleportTo(pos, &m_net_quat);
+    } else {
+        if (fabsf(y - seal->m_posW.y) > 5.0f) {
+            seal->m_bit8 = true;
+            seal->GetNode()->SetPosition(pos->x, 0.25f + pos->y, pos->z);
+            seal->UpdatePosW();
+            seal->ResetAltitude(0.25f + pos->y);
+            seal->m_last_altitude.m_pos = CPnt3D::zero;
+            seal->m_last_altitude.m_norm = CPnt3D::zero;
+            seal->m_last_altitude.m_poly = 0;
+            seal->m_last_altitude.m_node = 0;
+            seal->m_last_altitude.m_pos = *pos;
+            seal->m_last_altitude.m_norm = CPnt3D::unit_y;
+            if (seal->m_alt < seal->m_posW.y)
+                seal->m_alt = seal->m_posW.y;
+        }
+
+        float t = s_ease;
+        float tx = m_throttle[0];
+        float tz = m_throttle[1];
+
+        if (tx == 0.0f && tz == 0.0f)
+            t = 1.0f;
+
+        seal->m_posW.Interp(pos, t, &p);
+        if (func_00587F50(seal))
+            p.y = y;
+        seal->GetNode()->SetPosition(p.x, p.y, p.z);
+        seal->UpdatePosW();
+    }
+
+    float t = 2.0f * s_ease;
+
+    if (t > 1.0f)
+        t = 1.0f;
+    else if (t < 0.0f)
+        t = 0.0f;
+
+    CQuat q;
+
+    seal->m_quat.SlerpFaster(&m_net_quat, t, &q);
+    seal->m_quat = q;
+
+    float pitch = *(float *)&seal->m_228;
+    float c = sqrtf(1.0f - pitch * pitch);
+    CPnt3D aim = *(const CPnt3D *)seal->m_node->m_matrix.m_matrix[2];
+
+    const CPnt3D &ca = aim;
+
+    aim.x = -ca.x;
+    aim.y = -ca.y;
+    aim.z = -ca.z;
+    aim.x *= c;
+    aim.z *= c;
+    aim.y = pitch;
+
+    CPnt3D dir(0.0f, pitch, -c);
+
+    seal->AimWeapon();
+    seal->SetAimDirR(&dir, false);
+    if (seal->m_224) {
+        seal->m_224--;
+
+        CPnt3D fp;
+
+        if (seal->m_eb8) {
+            seal->m_eb8->Virtual60(&fp);
+            seal->m_eb8->Virtual68(&aim);
+            func_005C6510(&seal->m_kit, &fp, &aim, &m_entity->m_velW);
+        } else if (GetFP__10CZSealBodyFR6CPnt3D(seal, fp)) {
+            func_005C6510(&seal->m_kit, &fp, &aim, &m_entity->m_velW);
+        }
+    }
+    return true;
 }
 
 /* (OVL2 0x5E6980) */
