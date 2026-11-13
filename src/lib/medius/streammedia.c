@@ -929,8 +929,9 @@ int func_006447C0(int nWorld, int nClient)
     return 0;
 }
 
-/* OPEN (wrong size, 0x120 against 0x11C): the peer description's seven fields and the frame;
- * not diagnosed further. */
+/* a client's addresses to the voice library. GCC round 74a (open since written, 0x120 against 0x11C):
+ * the voice library is handed the peer description itself (`move a1,sp`), not the info
+ * func_00644610 fills from it -- the info's address was the one live across the call, in s0. */
 int func_006448A0(STREAM_CLIENT *pClient)
 {
     STREAM_PEER peer;
@@ -966,7 +967,7 @@ int func_006448A0(STREAM_CLIENT *pClient)
     result = func_00644610(&peer, &info);
     if (result != 0)
         return result;
-    result = func_006451E0(func_0062BED8(pSession->hAudio, &info), 42);
+    result = func_006451E0(func_0062BED8(pSession->hAudio, &peer), 42);
     if (result != 0)
         return result;
     pMember->bTalking = bValid;
