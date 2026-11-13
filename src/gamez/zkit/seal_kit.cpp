@@ -3956,15 +3956,18 @@ void CZKit::PickupAmmo(CZFTSWeapon *w, CZAmmo *ammo, int *rounds)
 /* whether a weapon or ammunition pickup can be taken: a weapon the kit holds tops it up, a new one needs a slot (two
  * for a weapon of two slots); ammunition must suit a weapon held with room for it (OVL2 0x5BA770, new in SOCOM II:
  * 0x5BB990's test -- the name ours).
- * OPEN, registers only (0x4C8 against 0x4C0, the size off by two delay slots that follow the colouring; the kit's round 61):
- * the walk's registers, the target's cursor a0, i t0, item t1, r a3, count a2 against item a0, i t1, r t0, count a3, cursor a2.
- * The -1 of the first test and of GetPickupSlot(-1) is one temporary -- s3 in the target, shared with `ammo`; coloured after
- * every volatile, so numbered low. Tried without gain: a const -1 holder, an unsigned enum holder, a named id, and GetId()
- * here, which closed PickupAmmo and HasPickupSlot (kept: `(EQUIP_ITEM)w->m_ID`) */
+ * OPEN, registers only, 55 (the kit's round 61; round 76: the size right and the walk's registers, 2 structural and 75
+ * register-only to 0 and 55, with GetId() in BOTH reads of the weapon's id -- the 255 test's and FindItemWithAmmo's
+ * argument; either alone is 4 structural). Left: the -1 of the first test and of GetPickupSlot(-1), one temporary -- s3 in
+ * the target, shared with `ammo`, v0 here. igreplay (build/scratch/struct-r76/ig_cp.jsonl): that node (v98, made at the
+ * first test) renumbered anywhere from 104.5 to 117.5 -- after GetPickupSlot's first count load, before the hoisted case
+ * constants -- gives every register; as if the -1 were made by the loop-invariant pass. Tried: a const -1 holder, an
+ * unsigned enum holder, a named id; round 76: `slot = -1; slot = GetPickupSlot(slot)`, an else, the type named, slot2 a
+ * ternary, `i == -1` wrapping the slot code (13 structural), build/scratch/struct-r76/v_cp*.py */
 bool CZKit::CanPickup(CZFTSWeapon *w, void *ammo, int count)
 {
-    if (w && w->m_ID != 255) {
-        int i = FindItemWithAmmo((EQUIP_ITEM)w->m_ID);
+    if (w && w->GetId() != 255) {
+        int i = FindItemWithAmmo((EQUIP_ITEM)w->GetId());
 
         if (i != -1)
             return CanAddAmmo(i, count);
