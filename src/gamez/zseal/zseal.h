@@ -554,6 +554,8 @@ public:
     static CSealUnit *GetUnitByTeam(unsigned int team);
     /* a SEAL taken into the squad (OVL2 0x5EE250, the kit lane's seal_unit.cpp) */
     void SealJoinUnit(CZSealBody *seal);
+    /* an escorted SEAL taken into the squad (OVL2 0x5EE160, the kit lane's seal_unit.cpp) */
+    void EscorteeJoinUnit(CZSealBody *seal);
     /* the squad's SEALs counted, with its sub-squads' to a depth (OVL2 0x5ED9B0, the kit lane's: const, round 45) */
     int GetSealCount(int depth) const;
     CZSealBody *GetSealByIndex(int index, int depth);
@@ -584,10 +586,16 @@ public:
      * its first caller, inlines itself eight times; a caller inlines it once -- the name ours) */
     CSealUnit *GetTop() { return m_parent ? m_parent->GetTop() : this; }
 
-    unsigned char _8[0x5c - 0x8];
+    /* the formation (seal_unit.cpp's m_8, an enum it loads with lb) and the squad's number (its
+     * m_unit_num) -- CSealCtrlAi::OnCommand's follow reads both */
+    UNIT_FORMATION m_8;   // 0x8
+    unsigned char _9[0x58 - 0x9];
+    unsigned int m_unit_num;   // 0x58
     unsigned int m_mask;   // 0x5c: the squad's bit, 1 << (number & 31) (new in SOCOM II; the name ours)
     CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
-    unsigned char _64[0x9c - 0x64];
+    /* the squad's SEALs, the leader first (seal_unit.cpp's slist m_seals) */
+    std::list<CZSealBody *> m_seals;   // 0x64
+    unsigned char _70[0x9c - 0x70];
     /* the squad's current order: its kind a byte at 8 (a kill by the local player under order 19
      * counts twice: 0x545290; the names ours) */
     struct CSealUnitOrder {
@@ -1577,6 +1585,8 @@ public:
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);
     virtual void UpdateViewCone();
+    /* an order taken (slot 0x84, SOCOM 1's; OVL2 0x58FBE0, seal_command.cpp's) */
+    virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     /* the kit's weapon picked for a fire mode's hint, whether one was (SOCOM 1's; OVL2 0x563470, the
      * SEALs' row -- the kit lane's CTFireMode::Begin calls it) */
     bool ChooseWeapon(CAiWepHint &hint);

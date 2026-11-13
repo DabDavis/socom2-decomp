@@ -607,3 +607,297 @@ void CZSealBody::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool
         break;
     }
 }
+
+extern "C" {
+/* the helpers the AI's order handler calls (OVL2 0x555900, 0x5628F0, 0x564D20: seal_ai.cpp's; 0x5EBB50,
+ * seal_unit.cpp's; 0x5F0180, 0x5F0830, 0x5FD010: the states') */
+CAiState *func_00555900(CSealCtrlAi *ai, unsigned char kind, unsigned int flags);
+void func_005628F0(CSealCtrlAi *ai);
+bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *target, const CPnt3D *from,
+    unsigned int flags);
+void func_005EBB50(void *data, CSealCtrlAi *ai);
+void func_005F0180(CAiSAction *s, CSealCtrlAi *ai, CNodeAction *na, int mode);
+bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
+void func_005FD010(CAiSFollow *s, CSealCtrlAi *ai, CZSealBody *master);
+}
+/* a radio message sent to the other consoles (OVL2 0x5E7F20; hud_tcmcmds.cpp declares it alike) */
+void PlayRemoteMsg(CEntity *from, int msg, int flags);
+
+/* whether a cell's map lets it be walked (an inline, the name ours) */
+static inline bool Traversable(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? map->IsTraversable(loc) : false;
+}
+
+/* an escort or a hostage: team bit 17 or 18 (an inline, the name ours: the team read at each test) */
+static inline bool Escort(CZSealBody *s)
+{
+    return (s->m_team & 0x20000) || (s->m_team & 0x40000);
+}
+
+static inline bool OrderCenter(CSealUnit *unit, CZSealBody *other, CPnt3D *center)
+{
+    CAiMapLoc loc;
+    bool r = func_0058F230(unit, other, (void *)2, &loc);
+
+    if (r)
+        r = AiMaps.GetCellCenter(loc, center) != 0;
+    return r;
+}
+
+/* an order taken (SOCOM 1's CSealCtrlAi::OnCommand; slot 0x84 of its table, OVL2 0x58FBE0) */
+void CSealCtrlAi::OnCommand(CZSealBody *other, FT_COMMAND cmd, void *data, bool b)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    if (other)
+        other->GetSealCtrlAi();
+    CSealUnit *unit = m_unit;
+
+    switch (cmd) {
+    case 2:
+        if (other) {
+            EQUIP_ITEM item = (EQUIP_ITEM)255;
+
+            switch ((unsigned char)data) {
+            case 1:
+                unit->GetData(&item, 4);
+                break;
+            default:
+                item = func_0058F190(data);
+                break;
+            }
+            bool ok = func_00564D20(this, item, &other->m_1458, &other->m_posW, 8);
+            CAiState *s = GetAiState();
+
+            s = s && s->m_state == AI_STATE_DEPLOY ? s : 0;
+            if (!ok || !s || !s->m_active)
+                PlayAiSound((CHARACTER_SOUND)56, 1.0f, CAiEvent::AIE_NONE);
+        }
+        break;
+    case 18:
+        if (m_stateStack.m_10 & 2) {
+            CAiState *s = FindAiState(AI_STATE_SCRIPT);
+
+            s = s && s->m_state == AI_STATE_SCRIPT ? s : 0;
+            if (s && func_005F4360(s, "on_pullout") && PopToAiState(AI_STATE_SCRIPT, false))
+                ((CAiSScript *)s)->ActivateSequence("on_pullout", 11);
+        }
+        break;
+    case 3:
+    case 6:
+        m_aibit16 = cmd == 6;
+        m_aibit17 = false;
+        break;
+    case 20:
+        m_aibit17 = true;
+        break;
+    case 14:
+        m_aibit16 = false;
+        m_aibit17 = false;
+    case 5:
+    case 17:
+        func_005628F0(this);
+        StopThrottles(true);
+        ClearAiState(false);
+        if (func_00555900(this, cmd == 17 ? 1 : 2, 0)) {
+            CAiState *s = GetAiState();
+
+            s = s && s->m_state == AI_STATE_HOSTAGE ? s : 0;
+            if (s)
+                ((CAiSHostage *)s)->SetCaptor(other, false);
+        } else if (!PopToAiState(AI_STATE_SURRENDER, false)) {
+            if (SetAiState(AI_STATE_HOLD, 0)) {
+                CAiState *s = GetAiState();
+                CAiSHold *h = (CAiSHold *)(s && s->m_state == AI_STATE_HOLD ? s : 0);
+
+                if (cmd == 14) {
+                    CPnt3D center;
+
+                    h->SetFlags(0x20, 0);
+                    if (OrderCenter(unit, other, &center)) {
+                        h->m_pos = center;
+                        h->m_cell = other->m_mapLocValid;
+                        h->SetFlags(0x30, 0);
+                    }
+                }
+            }
+            if (cmd == 17)
+                SetStanceDelayed((SEAL_STANCE)2, -1.0f);
+        }
+        if (seal->m_team & 0x20000) {
+            PlayAiSound((CHARACTER_SOUND)55, 1.0f, CAiEvent::AIE_NONE);
+            CSealUnit::GetUnitByTeam(17)->SealJoinUnit(seal);
+        } else if (seal->m_team & 0x40000) {
+            PlayAiSound((CHARACTER_SOUND)55, 1.0f, CAiEvent::AIE_NONE);
+            CSealUnit::GetUnitByTeam(18)->SealJoinUnit(seal);
+        } else if (cmd != 17)
+            SetStanceDelayed((SEAL_STANCE)1, -1.0f);
+        break;
+    case 19:
+        if (IsNavySeal()) {
+            if (!AiStateIs(AI_STATE_HOLD))
+                OnCommand(other, (FT_COMMAND)5, 0, false);
+            CAiState *s = GetAiState();
+            CAiSHold *h = (CAiSHold *)(s && s->m_state == AI_STATE_HOLD ? s : 0);
+
+            if (h) {
+                SetStanceDelayed((SEAL_STANCE)1, -1.0f);
+                h->m_cell = other->m_mapLocValid;
+                h->SetFlags(0x80, 0);
+                h->m_pos = other->m_1458;
+                h->SetFlags(0x10, 0);
+                static CPnt3D side(10.0f, 0.0f, 7.0f);
+                bool found = false;
+                CMatrix *m = (CMatrix *)other->m_node;
+                CPnt3D pos;
+                CAiMapLoc loc;
+
+                m->Transform(&side, &pos, 1);
+                if (AiMaps.GetLocation(&pos, loc) && Traversable(loc))
+                    found = true;
+                else {
+                    side.x = -side.x;
+                    m->Transform(&side, &pos, 1);
+                    if (AiMaps.GetLocation(&pos, loc) && Traversable(loc))
+                        found = true;
+                }
+                if (found)
+                    func_005F0830(this, &loc, 5, -1, -1);
+                const CEntityList &list = CEntity::m_list;
+
+                for (CEntityList::const_iterator i = list.begin(); i != list.end(); ++i)
+                    (*i)->m_UnitsSeenBy &= ~(other->m_team | seal->m_team);
+            }
+        }
+        break;
+    case 4:
+        if (other) {
+            bool following = AiStateIs(AI_STATE_FOLLOW);
+            CSealUnit *ounit = ((CSealCtrl *)other->m_control)->m_unit;
+            bool esc = Escort(seal);
+            bool join = esc;
+
+            if (esc) {
+                bool j;
+
+                if (func_005750A0())
+                    j = unit != ounit;
+                else
+                    j = unit->m_unit_num == 17 || unit->m_unit_num == 18;
+                join = j;
+            }
+            if (join) {
+                following = false;
+                if (ounit) {
+                    ounit->EscorteeJoinUnit(seal);
+                    unit = m_unit;
+                    PlayAiSound((CHARACTER_SOUND)55, 1.0f, CAiEvent::AIE_NONE);
+                    if (func_005750A0())
+                        PlayRemoteMsg(other, 43, 0);
+                }
+            }
+            ClearAiState(false);
+            if (AiStateIs(AI_STATE_FOLLOW) || PushAiState(AI_STATE_FOLLOW, 0)) {
+                CAiState *s = GetAiState();
+                CAiSFollow *f = (CAiSFollow *)(s && s->m_state == AI_STATE_FOLLOW ? s : 0);
+
+                func_005FD010(f, this, other);
+                f->SetFormation(unit->m_8, 0);
+                bool leader = unit->m_seals.front() == seal;
+
+                f->SetBit2(following && cmd != 7 || b || !leader);
+                CAiState::Signal(&m_stateStack, (CAiState::SIGNAL)7, this);
+            }
+        }
+        break;
+    case 23: {
+        CAiMapLoc loc;
+
+        if (func_0058F230(unit, other, (void *)2, &loc)) {
+            ClearAiState(false);
+            if (PushAiState(AI_STATE_HOLD, 0)) {
+                CAiState *h = GetAiState();
+
+                h->SetBit2(true);
+                h->SetActive(true);
+                if (PushAiState(AI_STATE_GOTO, 0)) {
+                    CAiState *s = GetAiState();
+                    CAiSGoto *g = (CAiSGoto *)(s && s->m_state == AI_STATE_GOTO ? s : 0);
+
+                    g->m_cell = loc;
+                    g->SetFlags(0x100, 0);
+                    g->SetActive(true);
+                }
+            }
+        }
+        break;
+    }
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13: {
+        CAiMapLoc loc;
+
+        if (func_0058F230(unit, other, data, &loc)) {
+            ClearAiState(false);
+            if (PushAiState(AI_STATE_HOLD, 0)) {
+                CAiState *h = GetAiState();
+
+                h->SetBit2(true);
+                h->SetActive(true);
+                if (PushAiState(AI_STATE_GOTO, 0)) {
+                    CAiState *s = GetAiState();
+                    CAiSGoto *g = (CAiSGoto *)(s && s->m_state == AI_STATE_GOTO ? s : 0);
+
+                    g->m_cell = loc;
+                    g->SetActive(true);
+                    switch (cmd) {
+                    case 10:
+                        g->SetFlags(0x402, 0);
+                        break;
+                    case 11:
+                        g->SetFlags(0x401, 0);
+                        h->SetFlags(0x200, 0);
+                        break;
+                    case 9:
+                        g->SetFlags(0x404, 0);
+                        break;
+                    case 13:
+                        g->SetFlags(8, 0);
+                        break;
+                    case 12:
+                        g->SetFlags(0x410, 0);
+                        break;
+                    }
+                }
+            }
+        }
+        break;
+    }
+    case 1: {
+        CNodeAction *na = func_00591380(seal, other, (unsigned int)data);
+
+        if (na && other && PushAiState(AI_STATE_ACTION, 0)) {
+            CAiState *s = GetAiState();
+
+            func_005F0180((CAiSAction *)(s && s->m_state == AI_STATE_ACTION ? s : 0), this, na, -1);
+        }
+        break;
+    }
+    case 16: {
+        void *p = unit->GetDataPtr();
+
+        if (p)
+            func_005EBB50(p, this);
+        break;
+    }
+    case 27:
+    case 28:
+        SetSleeping(cmd == 28);
+        break;
+    }
+}
