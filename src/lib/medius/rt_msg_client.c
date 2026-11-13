@@ -2773,19 +2773,18 @@ extern unsigned char func_00635E60(rt_msg_client_connection *pConnection, rt_msg
 
 /* the second channel's address (type 24, SOCOM II's; round 16b): a datagram connection's second
  * channel takes the server's 16-byte address and its port, is marked its own and opened (0x635E60);
- * the connection then waits in state 6.
- * OPEN (40 words, 1 long, registers): the target forms `pMsg + 16` straight into a0 after the port's
- * length test and gives s1 to the port's address after it (pMsg dead there: no conflict), conn s2 and
- * nLength s3; here sched1 births the address pseudo first (`&pComm->nPort`, used again by the zero
- * test), so pMsg -- stepped in place, as here, or summed at the call -- conflicts with it; the
- * cursor and argument spellings tried are build/scratch/gcc/v_7318.c. The state change's result goes
- * through a guard (its `return f()` was a sibling call). */
+ * the connection then waits in state 6. The port's cursor is a second local formed BEFORE the length
+ * test (GCC round 75): global-alloc gives it a0 itself, so pMsg dies at the memcpy and the port's
+ * address takes its register (pMsg stepped in place lives on into the call; summed at the call,
+ * sched1 births the address first). The state change's result goes through a guard (its
+ * `return f()` was a sibling call). */
 unsigned char func_00637318(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength)
 {
     rt_msg_client_comm *pComm;
     unsigned int nOffset = 0;
     unsigned int nKind;
     unsigned char result;
+    unsigned char *pData;
 
     if (data_00655614 != 1)
         return 5;
@@ -2802,11 +2801,11 @@ unsigned char func_00637318(rt_msg_client_connection *pConnection, int nType, un
     if (nLength < nOffset + 16)
         return 1;
     memcpy(pComm->szAddress, pMsg, 16);
-    pMsg += 16;
+    pData = pMsg + 16;
     nOffset += 16;
     if (nOffset + 1 >= nLength)
         return 1;
-    if (rt_msg_get_u2byte(pMsg, &pComm->nPort) != 0)
+    if (rt_msg_get_u2byte(pData, &pComm->nPort) != 0)
         return 7;
     if (pComm->nPort == 0)
         return 1;
