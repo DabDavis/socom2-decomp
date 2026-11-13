@@ -175,6 +175,7 @@ public:
 class CAiSDeploy : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     /* slots 0x24 and 0x3C of its table, both false (OVL2 0x575BE0, 0x575BD0: the tail's stubs) */
     virtual bool CanAttack() const { return false; }
     virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
@@ -188,17 +189,17 @@ public:
     CPnt3D m_58;   // 0x58
     CPnt3D m_64;   // 0x64
     /* what signal 4 resets (the names ours; 0x564D20 puts the item at 0x70) */
-    unsigned int m_70;   // 0x70
+    unsigned int m_70;   // 0x70: the item to deploy (Tick reads its low byte)
     CAiMapLoc m_74;   // 0x74: a cell, the invalid one when reset
-    unsigned char _78[0x7c - 0x78];
-    unsigned char m_7c;   // 0x7c: 2 when reset
+    CAiMapLoc m_78;   // 0x78: a cell whose named anim plays as the charge goes off (Tick's step 8)
+    SEAL_STANCE m_7c;   // 0x7c: the stance to deploy in (2, prone, when reset)
     unsigned char _7d[0x80 - 0x7d];
-    unsigned int m_80;   // 0x80
-    unsigned int m_84;   // 0x84
+    CZWeapon *m_80;   // 0x80: the item's weapon (Tick looks it up each time)
+    CZProjectile *m_84;   // 0x84: the round once out (its fuse and its 0x98 set by Tick)
     float m_88;   // 0x88: a wait 0x564D20 sets for a launcher's round (the name ours)
-    unsigned int m_8c;   // 0x8c
+    float m_8c;   // 0x8c: the throw's power, kept within 0 and 0.25 under flag 0x80
     float m_timer;   // 0x90: a weapon timer (CZWeapon::ClearTimer clears it)
-    unsigned int m_94;   // 0x94
+    float m_94;   // 0x94: the time spent walking to the deploy point (Tick, step 2)
     unsigned int m_98;   // 0x98
 };
 
@@ -1058,7 +1059,7 @@ void CAiSDeploy::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_timer = 0.0f;
         m_8c = 0;
         *(unsigned int *)&m_74 = *(unsigned int *)&CAiMapLoc::invalid;
-        m_7c = 2;
+        m_7c = STANCE_PRONE;
         break;
     case SIGNAL_0:
         break;
@@ -5144,7 +5145,7 @@ extern "C" bool func_0055ECC0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
         p->m_lookDirW.x = d.x;
         p->m_lookDirW.y = ((const CPnt3D &)d).y;
         p->m_lookDirW.z = dz;
-        p->m_68 = 0;
+        p->m_68 = STANCE_STAND;
         ModifyFireFlags(p, 0x8000000, 0);
         ModifyFireFlags(p, 0x2900000, 0);
     }
@@ -6762,6 +6763,467 @@ extern "C" bool func_00565460(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *po
         }
     }
     return r;
+}
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* the timed charge's delay, 16 seconds (OVL2 0x5C91A0, the kit lane's range: OVL1 data 0x3DF1D8 read) */
+extern "C" float func_005C91A0();
+
+/* how many cells apart two cells are (CellSteps, below) */
+static inline int CellSteps(const CAiMapLoc &a, const CAiMapLoc &b);
+
+/* whether the SEAL can deploy the item: always item 11; with flag 0x20 given it with a round
+ * (0x5657C0), else holding it with a round left (SOCOM 1's CAiSDeploy::CanDeployItem, out of line
+ * there, inline here; the AI passed for the kit) */
+static inline bool CanDeployItem(const CAiState *s, CSealCtrlAi *ai, unsigned char item, unsigned int id)
+{
+    bool ok;
+
+    if (id == 11)
+        ok = true;
+    else if (s->m_flags & 0x20)
+        ok = func_005657C0(ai, (EQUIP_ITEM)item, 1);
+    else
+        ok = HasGrenadeRounds(ai, (EQUIP_ITEM)item, 1);
+    return ok;
+}
+
+/* a rocket's item (RocketId's cases, its argument a word: the item's byte goes in as it is) */
+static inline bool RocketItem(unsigned int id)
+{
+    switch (id) {
+    case 152:
+    case 153:
+    case 151:
+        return true;
+    }
+    return false;
+}
+
+/* whether the stamp holds any of the bits asked, and the time since it, none while it holds none
+ * (inlines; the names ours) */
+static inline bool StampHas(const CAiStamp &s, unsigned int mask)
+{
+    return (s.m_8 & mask) != 0;
+}
+
+static inline float StampAge(const CAiStamp &s)
+{
+    const float *t = &s.m_time;
+
+    return s.m_8 == 0 ? 0.0f : theMission.m_time - *t;
+}
+
+/* the deploy's tick (OVL2 0x55D120, slot 0x10; SOCOM 1's Tick__10CAiSDeployFfP11CSealCtrlAi without
+ * its dT or its Debug lines). The item's weapon looked up, its reach in cells and squared; the cell of
+ * the point to deploy at. Step 0 sets single fire and, the item at hand, goes on to 1: deployed at
+ * once from where the SEAL stands when in reach and in sight of the cell (3), else a plan pushed to
+ * the deploy cell (the step then 10: the plan's state runs above this one). Step 2 walks there: once
+ * the path is done 3 (or 6, out of sight); on the way, 3 once in reach. 6 deploys from where it ends
+ * or gives up; 3 readies the item and its fire parameters (4); 4 fires once ready (5); 5 pulls the
+ * trigger, a time set (7) -- item 11 a timer of its own instead (8); 8 waits it out, plays the cell's
+ * named anim (9); 7 sets the round's fuse (9); 9 and 10 put the weapon away and end */
+/* a SEAL's kit and its position (inlines; the names ours) */
+static inline CZKit *KitOf(CZSealBody *s)
+{
+    return &s->m_kit;
+}
+
+static inline CPnt3D *PosOf(CEntity *e)
+{
+    return &e->m_posW;
+}
+
+/* a names table's end as the data plus the count read through the const size() (seal_tasks.cpp's
+ * TaskTargetsEnd for the target lists: a walk keeps the data from its entry test and re-reads only
+ * the count each pass) */
+static inline CAiMap::names::iterator NamesEnd(CAiMap::names &l)
+{
+    CAiMap::name *const p = l.data_ + l.size();
+
+    return CAiMap::names::iterator(p);
+}
+
+int CAiSDeploy::Tick(CSealCtrlAi *ai)
+{
+    static float s_wait = 0.3f;
+    static float s_power_max = 0.25f;
+    static float s_power_min = 0.0f;
+
+    STEP step = (STEP)m_phase;
+    CPnt3D *aim = &m_64;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    CAiMapLoc loc(CAiMapLoc::invalid);
+    CPnt3D *point = &m_58;
+    CZKit *kit = KitOf(seal);
+    CPnt3D *pos = PosOf(seal);
+    unsigned char item = m_70;
+    unsigned int id = item;
+    AI_FIREPARAMS *fire = &ai->m_fire;
+    const CAiMapLoc *at = &seal->m_mapLocValid;
+    bool launcher = LauncherId((EQUIP_ITEM)item);
+    bool rocket = RocketItem(id);
+    int range;
+    float rangeSq;
+
+    m_80 = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)item);
+    range = 1000;
+    rangeSq = 160000.0f;
+    if (m_80) {
+        if (launcher) {
+            range = 60;
+            rangeSq = 360000.0f;
+        } else {
+            float r = m_80->GetEffectiveRange();
+
+            rangeSq = r * r;
+            range = (int)(r / 10.0f);
+        }
+    }
+    if (range == 0 && id == 11)
+        range = 50;
+    bool located = AiMaps.GetLocation(point, loc);
+    CPnt3D d = *pos - m_58;
+    float distSq = d.x * d.x + d.y * d.y + d.z * d.z;
+    int steps = CellSteps(*at, loc);
+
+    switch (step) {
+    case STEP_0:
+        kit->SetCurFireMode((FIREMODE)1);
+        if (!CanDeployItem(this, ai, item, id)) {
+            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, CAiEvent::AIE_NONE);
+            step = (STEP)10;
+            break;
+        }
+        m_98 = 0;
+        m_94 = 0;
+    case STEP_1:
+        if (!(m_flags & 0x40) && range >= steps && located) {
+            CAiMapLoc hit;
+
+            if (AiMaps.CanSeeLine(*at, loc, &hit) || hit == loc) {
+                func_00560340(ai, this, true);
+                step = STEP_3;
+                break;
+            }
+        }
+        step = (STEP)10;
+        if (func_005F0830(ai, &m_74, 0, 2, 6)) {
+            ai->SetAiMode((AI_MODE)3);
+            func_00560340(ai, this, true);
+            ai->PlayAiSound((CHARACTER_SOUND)12, 1.0f, CAiEvent::AIE_NONE);
+            if (ai->m_stance == STANCE_PRONE && ai->m_stance_asked != STANCE_CROUCH) {
+                float delay = -1.0f;
+
+                if (delay == -1.0f) {
+                    float r = 4.656612873e-10f * (float)rand();
+
+                    delay = 0.25f + (1.2f - 0.25f) * r;
+                }
+                ai->m_stance_asked = STANCE_CROUCH;
+                ai->m_280 = delay;
+            }
+        } else
+            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, CAiEvent::AIE_NONE);
+        break;
+    case STEP_2:
+        if (PathIdle(ai)) {
+            step = STEP_3;
+            if (id != 152) {
+                CAiMapLoc hit;
+
+                if (!located || !(AiMaps.CanSeeLine(*at, loc, &hit) || hit == loc))
+                    step = STEP_6;
+            }
+        } else if (m_flags & 0x40) {
+            if (StampHas(ai->m_stamp, ~0u)) {
+                if (!(StampAge(ai->m_stamp) <= s_wait))
+                    SetFlags(0, 0x40);
+            }
+        } else {
+            m_94 += m_dT;
+            if (StampHas(ai->m_stamp, 4)) {
+                float age = StampAge(ai->m_stamp);
+
+                if (id == 152 && steps < 3 && !(age <= s_wait))
+                    step = STEP_3;
+            }
+            if (step == STEP_2) {
+                if (!(m_94 <= 30.0f) || (!(m_94 <= 20.0f) && id != 152)) {
+                    if (steps < 4) {
+                        func_00560340(ai, this, true);
+                        step = STEP_3;
+                    } else
+                        step = STEP_6;
+                }
+            }
+            if (step == STEP_2) {
+                if (!(m_94 <= 6.0f) && steps < 4 && id != 152) {
+                    func_00560340(ai, this, true);
+                    step = STEP_3;
+                } else {
+                    bool clear = AiMaps.CanSeeLine(*at, loc, 0);
+
+                    if (!clear) {
+                        bool was = seal->GetNode()->m_active;
+
+                        seal->GetNode()->SetActive(false);
+                        CPnt3D from;
+
+                        seal->GetPutativeFirePointW(launcher, false, from);
+                        from.y += 20.0f;
+                        CPnt3D to = m_58;
+                        CPnt3D dir = to - from;
+                        zdb::IntersectStruct *hit = zdb::CWorld::m_world->GetIntersect(&from, &to);
+
+                        if (hit) {
+                            CPnt3D at_hit = hit->m_pos;
+                            CPnt3D back = from - at_hit;
+
+                            float l1 = Dot(dir, dir);
+                            float l2 = Dot(back, back);
+
+                            if (l1 / l2 < 1.11f)
+                                clear = true;
+                        } else
+                            clear = true;
+                        seal->GetNode()->SetActive(was);
+                    }
+                    if (!(rangeSq < distSq) && located && clear) {
+                        ResetPath(ai);
+                        ai->SetAiMode((AI_MODE)4);
+                        func_00560340(ai, this, true);
+                        step = STEP_3;
+                    }
+                }
+            }
+        }
+        break;
+    case STEP_6:
+        if (range > 10 && id != 11) {
+            func_00560340(ai, this, true);
+            step = STEP_3;
+        } else {
+            ai->PlayAiSound((CHARACTER_SOUND)50, 1.0f, CAiEvent::AIE_NONE);
+            step = (STEP)10;
+        }
+        break;
+    case STEP_3:
+        if (!CanDeployItem(this, ai, item, id) || !kit->SetCurItemEnum((EQUIP_ITEM)item) || (fire->m_flags & 0x4000000)) {
+            step = (STEP)10;
+            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, CAiEvent::AIE_NONE);
+        } else {
+            if (!launcher && !rocket)
+                seal->SetWeaponState((WEAPON_STATE)1);
+            func_0055F3B0(fire, kit, point, aim, 0);
+            if (m_flags & 4)
+                ModifyFireFlags(fire, 1, 0);
+            ModifyFireFlags(fire, 0, 0x30);
+            if (m_7c == STANCE_NONE)
+                ModifyFireFlags(fire, 0x10, 0);
+            else if (m_7c == STANCE_CROUCH)
+                ModifyFireFlags(fire, 0x20, 0);
+            if (func_0055F0A0(ai, fire)) {
+                ai->SetAiMode((AI_MODE)4);
+                if (fire->m_flags & 0x8000000)
+                    ai->SetStance(fire->m_68);
+                step = STEP_4;
+                ai->m_774 = *point;
+            } else {
+                step = (STEP)10;
+                ai->PlayAiSound((CHARACTER_SOUND)50, 1.0f, CAiEvent::AIE_NONE);
+            }
+        }
+        if (step != STEP_4)
+            break;
+    case STEP_4:
+        ai->SetAiMode((AI_MODE)4);
+        ((CZSealBody *)ai->m_entity)->m_desiredStance = m_7c;
+        ai->m_stance_timer.Set(5.0f);
+        if (ai->FireWhenReady(*fire, m_dT))
+            step = STEP_5;
+        else if (!(fire->m_flags & 0x200000) || !(fire->m_timeout <= 5.0f)) {
+            step = (STEP)10;
+            DropAim(*fire);
+        }
+        if (step != STEP_5)
+            break;
+    case STEP_5:
+        if (id != 11) {
+            m_8c = *(float *)&fire->_44[0x54 - 0x44];
+            ai->SetTrigger(true, *(float *)&fire->_44[0x50 - 0x44]);
+            if (!kit->WillFireWeapon()) {
+                step = (STEP)10;
+                DropAim(*fire);
+            } else if (launcher) {
+                step = STEP_7;
+                m_time = 4.0f + ai->m_stateStack.m_timer;
+            } else {
+                step = STEP_7;
+                m_time = 3.0f + ai->m_stateStack.m_timer;
+            }
+        } else {
+            step = STEP_8;
+            float delay = func_005C91A0();
+
+            m_time = delay + ai->m_stateStack.m_timer;
+            m_timer = 0.0f;
+            ai->PlayAiSound((CHARACTER_SOUND)8, 1.0f, CAiEvent::AIE_NONE);
+            CZWeapon::RegisterTimer(&m_timer, func_005C91A0(), true);
+        }
+        break;
+    case STEP_8:
+        m_timer += m_dT;
+        if (!(ai->m_stateStack.m_timer < m_time)) {
+            /* (ai_maps.h's AiMaps.m_names[3], zseal.h's stand-in holding no members) */
+            CAiMap::names &names = *(CAiMap::names *)((char *)&AiMaps + 0x60);
+
+            for (CAiMap::names::iterator n = names.begin(); n != NamesEnd(names); n++) {
+                if (CellSteps(n->m_loc, m_78) == 0) {
+                    CZAnim *anim = ZAnim.GetAnim(n->m_name, 0);
+
+                    if (anim)
+                        anim->Activate(0);
+                    break;
+                }
+            }
+            float t = ai->m_stateStack.m_timer;
+            float over = t - m_time;
+
+            step = STEP_9;
+            m_time = (1.0f - over) + t;
+            ai->PlayAiSound((CHARACTER_SOUND)9, 1.0f, CAiEvent::AIE_NONE);
+            break;
+        }
+    case STEP_7:
+        if (ai->m_stateStack.m_timer < m_time && !m_84)
+            break;
+        if (launcher) {
+            if (m_84) {
+                if (m_flags & 0x80) {
+                    _saturate(&m_8c, s_power_min, s_power_max);
+                    m_84->m_98 = m_8c;
+                }
+                if (m_flags & 0x10) {
+                    m_84->m_time = m_88;
+                    m_time = (m_flags & 8) ? 0.0f : m_88 + ai->m_stateStack.m_timer;
+                } else {
+                    float t = m_84->m_time;
+
+                    if (id == 122)
+                        t = 3.0f;
+                    m_time = (m_flags & 8) ? 0.0f : t + ai->m_stateStack.m_timer;
+                }
+            }
+        } else if (m_84 && (m_flags & 0x10)) {
+            m_84->m_time = m_88;
+            m_time = 0.0f;
+        }
+        func_00560280(ai, item, (CHARACTER_SOUND)-1);
+        step = STEP_9;
+        break;
+    case STEP_9:
+        if (!(ai->m_stateStack.m_timer < m_time) && !seal->IsThrowing(false)) {
+            seal->SetWeaponState((WEAPON_STATE)2);
+            SetActive(false);
+        }
+        break;
+    case (STEP)10:
+        seal->SetWeaponState((WEAPON_STATE)2);
+        SetActive(false);
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
 }
 
 /* the grenade state's tick (OVL2 0x55AC20, slot 0x10; SOCOM 1's Tick__11CAiSGrenadeFfP11CSealCtrlAi
