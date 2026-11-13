@@ -17,7 +17,7 @@ public:
     struct BAND {
         float m_min;   // 0x0
         float m_max;   // 0x4
-        short m_type;   // 0x8
+        AnimType m_type;   // 0x8 (an AnimType: read as one, MixAnims loads the set ahead of it)
     } m_band[4];
 };
 
@@ -640,20 +640,16 @@ static inline float Factor(CZSIScriptCommon *a)
  * speed's rate; none, the nearest band's end anim at the edge's rate (negated for a reversed speed);
  * two, weighed between them by where the speed lies, the unused one put back. The anims taken
  * (RTList<ACTIVE_ANIM>::Remove: its OVL2 copy 0x58D190 in this unit's tail, byte-exact).
- * OPEN, 6 instructions (the MW lane's round 81: 245 to 6, every register and spill slot the target's):
- * the blendable test `m_type > -1 ? blendable : 0` (round 80's tell: the target's `slti; movn`, where
- * `< 0 ? 0 :` branches); the anim id an `int id` (FindAnim's argument, kept in s6 and stored to m_id --
- * the extra saved register that spills the list to 252), its pool's blend taken first; the edge types
- * AnimType, the max's copied from the min's (as shorts each copy took a sign-extension and maxType a
- * 2-byte slot: an AnimType assigned a constant spills to a 16-byte one, 224 and 208); maxEnd declared
- * ahead of minEnd and the band's type declared outside the walk (the FPR and GPR numbering); the first
- * script's factor in a float local; the walk's counter initialised ahead of the pool (the pool's
- * address after `i = 0`). Left (4): the frame (304 against 272: 32 bytes above `taken` that SOCOM 1's
- * 256-byte frame has too -- `taken[9..12]` gives it, not committed; an unused local array is
- * dropped), and the first GetScript's argument read ahead of the set (the target reads the set
- * first; (int), (short) and int/short locals, band[0], a set local and an inline accessor with a
- * body change nothing). Round 33: the edge types set through an inline taking a short reference, or through `*&`,
- * change nothing (MW folds both); the blendable test as an if-assign loses 6 */
+ * Byte-exact (the MW lane's round 82; 245 to 4 in round 81): the blendable test `m_type > -1 ? blendable :
+ * 0` (round 80's tell: the target's `slti; movn`, where `< 0 ? 0 :` branches); the anim id an `int id`
+ * (FindAnim's argument, kept in s6 and stored to m_id -- the extra saved register that spills the list to
+ * 252), its pool's blend taken first; the edge types AnimType, the max's copied from the min's (an AnimType
+ * assigned a constant spills to a 16-byte slot, 224 and 208); maxEnd declared ahead of minEnd and the
+ * band's type declared outside the walk; the walk's counter initialised ahead of the pool. Round 82: the
+ * band's type is an AnimType FIELD, not a short cast to one -- the first GetScript then loads the set
+ * ahead of its argument (as a short cast, ahead of the set; `*(AnimType *)&band->m_type` was the probe
+ * that showed it); and `taken` twelve entries (the frame's 32 bytes above it: 304, SOCOM 1's 256 too) --
+ * a used array's bound is its frame bytes, nine to twelve give 304. */
 int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float scale, float wt)
 {
     if (wt <= 0.0f)
@@ -672,15 +668,15 @@ int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float sca
     maxType = minType;
     float maxEnd = hi;
     float minEnd = lo;
-    ACTIVE_ANIM *taken[4];
-    float f = m_animset->GetScript((AnimType)band->m_type)->m_1c;
+    ACTIVE_ANIM *taken[12];
+    float f = m_animset->GetScript(band->m_type)->m_1c;
     float s = 100.0f * speed * f;
     AnimType type;
     int i = 0;
     CActiveAnimPool *pool = &m_active_anim_pool;
 
     for (; i < 4; i++, band++) {
-        type = (AnimType)band->m_type;
+        type = band->m_type;
 
         if (type == -1)
             break;
