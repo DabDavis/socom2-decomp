@@ -1722,6 +1722,13 @@ static inline zdb::CWorld *KitWorld()
     return zdb::CWorld::m_world;
 }
 
+/* an entity's team through a pointer (inline: in the remote-message test both sides through it put the
+ * player's in v1, first in the `and`, as the target -- the kit's round 71; the name ours) */
+static inline unsigned int KitTeamP(const CEntity *e)
+{
+    return e->m_team;
+}
+
 /* the selected item fired (OVL2 0x5C6510; SOCOM 1's FireCur) */
 CZProjectile *CZKit::FireCur(const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v)
 {
@@ -1737,9 +1744,10 @@ CZProjectile *CZKit::FireCur(const CPnt3D *pos, const CPnt3D *vel, const CPnt3D 
  * weapon's Fire (a breaching SEAL told of its charge, or the shot's message saved), the stats, the recoil  *
  * OPEN (the kit's round 67), 0x11D0, the size and frame exact, 50 instructions off, all register-only: the
  * threat block's constants (8.26e-7 in f1 then 1.0 in f0 in the target, the other way here -- every spelling of
- * the scale and its place tried), the team test loads the body before the player, UsesAmmo's item in v0 (the
+ * the scale and its place tried; the kit's round 71: through an inline, by value, by reference, `-k + 1`, `k` named, 48
+ * each), UsesAmmo's item in v0 (the
  * target's a0; a local copy by pointer, by reference, its answer a local all no better), FindChild's `move a0`
- * a word early. The round-66 address temporaries are gone by the reference/direct split, one inline kind per
+ * a word early (48 since the kit's round 71: the remote-message team test through KitTeamP on both sides). The round-66 address temporaries are gone by the reference/direct split, one inline kind per
  * site: the forward row's node through a reference (KitNodeR: read once in that form, `lw 40(s1)` folds
  * instead of holding &player->m_node), the cross product through references (fwd.y/z read there and by the
  * negation share s3/s2), the negation through a float pointer (KitNegFP: reads in s3/s2, the z store folded),
@@ -1847,7 +1855,7 @@ CZProjectile *CZKit::Fire(int index, const CPnt3D *pos, const CPnt3D *vel, const
         case 127:
         case 126:
         case 121:
-            if (!KitIsPlayerB((CKitBody *)body) && (((CEntity *)ftsGetPlayer__Fv())->m_team & ((CEntity *)body)->m_team))
+            if (!KitIsPlayerB((CKitBody *)body) && (KitTeamP((CEntity *)ftsGetPlayer__Fv()) & KitTeamP((CEntity *)body)))
                 PlayRemoteMsg((CEntity *)body, 38, 0);
             break;
         case 154:
