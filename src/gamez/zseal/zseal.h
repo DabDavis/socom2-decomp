@@ -2325,6 +2325,8 @@ public:
     bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);
     /* the aim point's place, when there is one (SOCOM 1's; OVL2 0x5DF3E0) */
     bool GetAP(CPnt3D &pos);
+    /* the fire point's place (SOCOM 1's; OVL2 0x5DF370) */
+    bool GetFP(CPnt3D &pos);
     /* the shot's check along the view, the reticule's hits kept (SOCOM 1's; OVL2 0x5AA6E0, seal_env.cpp) */
     void CheckDIShoot(CPnt3D *from, CMatrix *mat);
     /* the aim's direction brought up to date from the aim's or fire point, in the body's frame, and the goal set; a
@@ -2536,6 +2538,8 @@ public:
      * OVL2 0x587A30 and 0x587C20 not written yet, 0x587E00), and how fast it moves (SOCOM 1's; OVL2
      * 0x58A820) -- seal_body.cpp's */
     bool CanPitch();
+    /* the spine bent toward the aim's goal (SOCOM 1's took the goal second; OVL2 0x5ACA70, seal_env.cpp) */
+    void PitchAnim(CPnt3D *goal);
     /* an overlay anim pushed over the blends, the top blend returned, and the overlays it sets for the
      * moving reloads and weapon changes (SOCOM 1's, in its order before CanPitch; OVL2 0x587780,
      * 0x587760, 0x587740, 0x5876B0, 0x587670 -- seal_body.cpp's) */

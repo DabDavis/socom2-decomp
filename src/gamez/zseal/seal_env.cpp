@@ -3399,6 +3399,172 @@ extern "C" void func_005AC620(CZSealBody *seal, float dT)
     }
 }
 
+/* a cross product through VU0 (an inline, the name ours) */
+static inline void CrossVU0(const CPnt3D &a, const CPnt3D &b, CPnt3D *out)
+{
+    sceVu0FVECTOR c;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = a.x;
+    va[1] = a.y;
+    va[2] = a.z;
+    va[3] = 1.0f;
+    vb[0] = b.x;
+    vb[1] = b.y;
+    vb[2] = b.z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(c, va, vb);
+    out->x = c[0];
+    out->y = c[1];
+    out->z = c[2];
+}
+
+/* a point turned round in place through two references (an inline: the loads keep the fields' address
+ * registers, the stores fold to sp offsets -- NegateInto's the other way; the name ours) */
+static inline void NegRef(const CPnt3D &in, CPnt3D &out)
+{
+    out.x = -in.x;
+    out.y = -in.y;
+    out.z = -in.z;
+}
+
+/* the anim set the SEALs share (OVL1 bss 0x44D408) */
+extern AnimSet *data_0044D408;
+
+/* the spine bent toward the aim: the aim's direction taken into the body's frame -- from the aim
+ * point, or the fire point, to the frame's aim (m_1464), which a player's fire point too near a
+ * wall puts back to the last frame's or pulls in front of him; an AI with no valid aim point, or a
+ * remote SEAL, bends to the goal as it is -- then the low and high spine turned toward it by 0.1
+ * and 0.4 of the weapon's weight (OVL2 0x5ACA70; SOCOM 1's PitchAnim, its second half the same,
+ * its first new; Tick_0 hands it the aim's goal) */
+void CZSealBody::PitchAnim(CPnt3D *goal)
+{
+    if (CBody::m_state == 2)
+        return;
+    float w = m_wep_seq.Weight();
+
+    if (m_animset == data_0044D408)
+        w = 1.0f;
+    if (w <= 0.0f)
+        return;
+    CPnt3D dir = *goal;
+    CQuat inv = m_quat;
+
+    Negate(inv.vec.x);
+    Negate(inv.vec.y);
+    Negate(inv.vec.z);
+    if (!((m_control ? ((CSealCtrl *)m_control)->IsAi() : false) && !m_aim_point_valid) && !IsRemote()) {
+        CPnt3D ap;
+        CPnt3D fp;
+        bool got = GetAP(ap);
+        bool gotfp = false;
+
+        if (!got) {
+            if (m_kit.CurWeaponIsM203Mode())
+                gotfp = GetFirepointPos(fp, "firepoint_203");
+            else
+                gotfp = GetFP(fp);
+            if (gotfp)
+                ap = fp;
+        }
+        if (got || gotfp) {
+            CPnt3D at = m_1464;
+
+            if (IsPlayer() && m_curr_firept) {
+                CPnt3D d = m_posW;
+
+                d.y += m_root->m_pos.y;
+                d.Sub(&at, &d);
+                float dot = Dot(*(const CPnt3D *)m_node->m_matrix.m_matrix[2], d);
+                bool ahead = dot > 1.0f;
+
+                if (Dot(d, d) < 900.0f && ahead) {
+                    CPnt3D fire = m_curr_firepos;
+
+                    fire.Add(&m_posW, &fire);
+                    fire.Sub(&at, &fire);
+                    NegRef(fire, fire);
+                    unsigned char norm = m_have_aim_norm;
+
+                    if (norm && !(m_1470.y < theCharacterDynamics.m_maxSlopeCos)) {
+                        if (!(Dot(*(const CPnt3D *)m_node->m_matrix.m_matrix[2], fire) <= 0.7f)) {
+                            m_1464 = m_prev_1464;
+                            at = m_prev_1464;
+                        }
+                    } else if (norm && m_1470.y < theCharacterDynamics.m_maxSlopeCos) {
+                        CPnt3D back = *(const CPnt3D *)m_node->m_matrix.m_matrix[2];
+
+                        NegRef(back, back);
+                        float reach = Dot(m_curr_firepos, back);
+
+                        reach *= 1.06f;
+
+                        back.Scale(reach, &back);
+                        if (!(reach <= dot)) {
+                            m_1464 = m_prev_1464;
+                            at = m_prev_1464;
+                        }
+                        d = m_posW;
+                        d.y += m_root->m_pos.y;
+                        d.Sub(&at, &d);
+                        if (!(reach <= Dot(*(const CPnt3D *)m_node->m_matrix.m_matrix[2], d))) {
+                            back.Add(&m_posW, &back);
+                            back.Add(&m_root->m_pos, &back);
+                            m_1464 = back;
+                            at = back;
+                            m_258_0 = false;
+                        }
+                    }
+                }
+            }
+            dir = at - ap;
+            inv.Apply(&dir, &dir, 1);
+            dir.Normalize();
+        }
+        if (Dot(dir, CPnt3D::unit_nz) <= 0.0f && (m_control ? ((CSealCtrl *)m_control)->IsAi() : false))
+            dir = *goal;
+    }
+
+    CQuat lo;
+    CQuat hi;
+
+    PartInSpace(m_spinelo, 0, 0, &lo);
+    Negate(lo.vec.x);
+    Negate(lo.vec.y);
+    Negate(lo.vec.z);
+    PartInSpace(m_spinehi, 0, 0, &hi);
+    Negate(hi.vec.x);
+    Negate(hi.vec.y);
+    Negate(hi.vec.z);
+    CPnt3D lofwd;
+    CPnt3D hifwd;
+
+    lo.Apply(&CPnt3D::unit_nz, &lofwd, 1);
+    hi.Apply(&CPnt3D::unit_nz, &hifwd, 1);
+    CQuat lorot = m_spinelo->m_rot;
+    CQuat hirot = m_spinehi->m_rot;
+    CPnt3D d;
+    CPnt3D axis;
+    CPnt3D turn;
+    CQuat q;
+    CQuat m;
+    CQuat m2;
+
+    lo.Apply(&dir, &d, 1);
+    CrossVU0(lofwd, d, &axis);
+    axis.Scale(0.1f * w, &turn);
+    q.Exp(&turn);
+    lorot.Mul(&q, &m);
+    m_spinelo->m_rot = m;
+    hi.Apply(&dir, &d, 1);
+    CrossVU0(hifwd, d, &axis);
+    axis.Scale(0.4f * w, &turn);
+    q.Exp(&turn);
+    hirot.Mul(&q, &m2);
+    m_spinehi->m_rot = m2;
+}
+
 extern "C" {
 /* the kill credited to its shooter (OVL2 0x547AA0, seal.cpp's) and the death's kind kept, the victim
  * struck down (OVL2 0x547A90, seal.cpp's: the word at 0xFC0, then 0x547860) */
@@ -4773,27 +4939,6 @@ void func_005AE980(const CPnt3D *rot, CQuat *dq, CPnt3D *axis);
 extern float data_0044C2D0;
 extern float data_0044C2D4;
 extern float data_0044C2D8;
-}
-
-/* a cross product through VU0 (an inline, the name ours) */
-static inline void CrossVU0(const CPnt3D &a, const CPnt3D &b, CPnt3D *out)
-{
-    sceVu0FVECTOR c;
-    sceVu0FVECTOR va;
-    sceVu0FVECTOR vb;
-
-    va[0] = a.x;
-    va[1] = a.y;
-    va[2] = a.z;
-    va[3] = 1.0f;
-    vb[0] = b.x;
-    vb[1] = b.y;
-    vb[2] = b.z;
-    vb[3] = 1.0f;
-    sceVu0OuterProduct(c, va, vb);
-    out->x = c[0];
-    out->y = c[1];
-    out->z = c[2];
 }
 
 /* the turn from one look rotation to another, and the axis the unit -z swings about under it (SOCOM 1's
