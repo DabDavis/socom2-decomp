@@ -528,7 +528,6 @@ bool CVisual::GetChainData()
  * its fourth argument gone: no SOCOM II caller sets a3). The scale's byte in a variable of its own
  * pads the else label (MW's 8-byte label padding) */
 extern "C" unsigned char data_004B4A60;
-extern "C" float m_GlobalLightScale__Q23zdb7CVisual;
 
 void CVisual::NodeSetup(CNode *atom, CNode *node, CMatrix *m)
 {
@@ -539,9 +538,9 @@ void CVisual::NodeSetup(CNode *atom, CNode *node, CMatrix *m)
         signed char s = atom->m_socom2_a0;
 
         if (s < 0)
-            m_GlobalLightScale__Q23zdb7CVisual = 1.0f;
+            CVisual::m_GlobalLightScale = 1.0f;
         else
-            m_GlobalLightScale__Q23zdb7CVisual = (1.0f / 127.0f) * s;
+            CVisual::m_GlobalLightScale = (1.0f / 127.0f) * s;
         CVisual::m_applyLocalLights = !node->m_clutter;
     } else {
         m_lightingEnable = false;
@@ -589,7 +588,7 @@ extern "C" void func_003B6B20(CNode *node, int n, float scale)
     bool lit = CVisual::m_lightingEnable;
 
     if (lit && CVisual::m_customGlobalLightIdx != -1)
-        m_GlobalLightScale__Q23zdb7CVisual = (1.0f / 127.0f) * CVisual::m_customGlobalLightIdx;
+        CVisual::m_GlobalLightScale = (1.0f / 127.0f) * CVisual::m_customGlobalLightIdx;
     else
         data_004B4AD8->u32[0] = 0;
     if (lit && CVisual::m_applyLocalLights && CVisual::m_local_light_cnt) {
@@ -657,14 +656,12 @@ extern "C" _word128 *func_003B6870(_word128 *q, CNode *node)
     return q + 13;
 }
 
-/* the object header's statics: its second quadword (0x4B4D30, 0x3B5A10's scale and offset), the
+/* the object header's statics: its second quadword (CVisual::m_lensScale, 0x4B4D30: 0x3B5A10's scale and offset), the
  * clip word (SOCOM 1's m_fovClipWord), the light scales (SOCOM 1's m_GlobalLightScale and
  * m_AmbientLightScale), the fog switch and the landmark flag (SOCOM 1's m_fogEnable,
  * m_landmarkFlag), the default fog plane and vector (SOCOM 1's NoAltFogBottomV/NoAltFogVectorV)
  * and the packet's cursor quadword (0x3B6820's) */
-extern "C" _word128 data_004B4D30;
 extern "C" unsigned int data_004B4E58;
-extern "C" float m_GlobalLightScale__Q23zdb7CVisual;
 extern "C" float data_003E1480;
 extern "C" unsigned char data_004B4A58;
 extern "C" _word128 *data_004B4AD8;
@@ -691,13 +688,13 @@ struct VU_HEAD_FLAGS {
  * are 0x3B5F20's now) */
 _word128 *CVisual::VuObjectSetup(_word128 *p)
 {
-    p[1] = data_004B4D30;
+    p[1] = *(_word128 *)&m_lensScale;
     if (m_1c == -2)
         p->u32[0] = 63;
     else
         p->u32[0] = data_004B4E58 >> 8;
     if (m_flags & 0x40)
-        p->f32[1] = m_GlobalLightScale__Q23zdb7CVisual;
+        p->f32[1] = CVisual::m_GlobalLightScale;
     else
         p->f32[1] = 0;
     if (m_flags & 0x20)
@@ -767,7 +764,8 @@ _word128 *CVisual::VuExecuteState0(_word128 *p)
 }
 
 /* the VU packet's statics (new in SOCOM II, not named): the cursor and the packet's start in the
- * scratchpad, and the scale and offset 0x3B5A10 applies (0x4B4AD8, 0x4B4AE0, 0x4B4D30) */
+ * scratchpad, and the scale and offset 0x3B5A10 applies (0x4B4AD8, 0x4B4AE0, 0x4B4D30 -- that one is
+ * CVisual::m_lensScale, which C code here reads by name; only the asm functions' `la` keep the address) */
 extern "C" _word128 *data_004B4AD8;
 extern "C" _word128 *data_004B4AE0;
 extern "C" _word128 data_004B4D30;
@@ -785,8 +783,6 @@ extern "C" _word128 *func_003B6820()
     return data_004B4AD8 + 1;
 }
 
-/* the projected map's colour (SOCOM II's, not named) */
-extern "C" float data_004B4EE0[4];
 
 /* a projected map: its projection, its node and its texture (SOCOM II's; the names ours) */
 struct CProjectedMap {
@@ -1089,10 +1085,10 @@ bool CVisual::VuProjectedMap(_word128 **cursor, unsigned int tag)
     map->m_tex->CopyTextureSelect(q);
     CVisual::m_WorldToModel.Transform((CPnt4D *)map->m_node->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
     sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_projection.m_matrix, CVisual::m_ModelToWorld->m_matrix);
-    q[11].f32[0] = data_004B4EE0[0];
-    q[11].f32[1] = data_004B4EE0[1];
-    q[11].f32[2] = data_004B4EE0[2];
-    q[11].f32[3] = data_004B4EE0[3];
+    q[11].f32[0] = m_projectedColor.x;   /* (the projected map's colour) */
+    q[11].f32[1] = m_projectedColor.y;
+    q[11].f32[2] = m_projectedColor.z;
+    q[11].f32[3] = m_projectedColor.w;
     *cursor = q + 12;
     return true;
 }

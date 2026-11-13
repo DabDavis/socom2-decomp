@@ -656,11 +656,11 @@ void hudResetPopupTriggers()
         g_vecTriggersByMap[i]->m_done = false;
 }
 
-/* the message pop-ups' common look (OVL1 .data, by address: its margins 10, 20 and 20 and the
- * backdrop's opacity 1, 8 bytes apart; the forced-open time in bss) */
-extern float data_003DC8B8;
-extern float data_003DC8B0;
-extern float data_003DC8A8;
+/* the message pop-ups' common look (OVL1 .data: its margins 10, 20 and 20 -- defined below, with the
+ * pop-up's draw -- and the backdrop's opacity 1, 8 bytes apart, by address; the forced-open time in bss) */
+extern float s_fPopupTextY;
+extern float s_fPopupTextX;
+extern float s_fPopupMargin;
 extern float data_003DC8C0;
 extern float data_0040F618;
 
@@ -668,9 +668,9 @@ extern float data_0040F618;
  * the backdrop's opacity, the forced-open time and the opening and closing sounds */
 void hudReadPopupCommon(_zrdr *rdr)
 {
-    zrdr_findreal(rdr, "TopMargin", &data_003DC8B8, 1);
-    zrdr_findreal(rdr, "LeftMargin", &data_003DC8B0, 1);
-    zrdr_findreal(rdr, "BottomMargin", &data_003DC8A8, 1);
+    zrdr_findreal(rdr, "TopMargin", &s_fPopupTextY, 1);
+    zrdr_findreal(rdr, "LeftMargin", &s_fPopupTextX, 1);
+    zrdr_findreal(rdr, "BottomMargin", &s_fPopupMargin, 1);
     g_strPopup2 = zrdr_findstring(rdr, "PromptText");
     zrdr_findreal(rdr, "BackgroundOpacity", &data_003DC8C0, 1);
     zrdr_findreal(rdr, "ForceOpenTime", &data_0040F618, 1);
@@ -688,7 +688,9 @@ extern float data_003DC918;
 extern float data_003DC8C8;
 extern int data_00436AA8;
 extern int data_00436AE8;
-extern float data_003DC8F8;
+namespace {
+extern float s_fTeamTextTrans;   /* (defined below, with the column's look) */
+}
 extern int data_0040F628;
 extern int data_0040F630;
 extern int data_0040F638;
@@ -737,7 +739,7 @@ void hudTurnOnScorePopup()
     }
     g_strHeader.Load(1.0f, "GAME DETAILS", font, 0.0f, 0.0f, false);
     g_strHeader.SetPos((int)(10.0f + data_0040F640), (int)(20.0f + data_0040F650));
-    g_strHeader.m_color[3] = data_003DC8F8;
+    g_strHeader.m_color[3] = s_fTeamTextTrans;
     SetupSpectatorBox();
     g_bmpBoxOverlay.Off();
     g_oSeals2Ds.SetupTeam(data_0040F638, 32.0f, 32.0f, 64.0f, 0xEC69, &CZNetGame::GetE3ScoreTeam00, true);
@@ -809,8 +811,10 @@ extern int data_0040F620;
 /* the seconds since the score pop-up was rebuilt, the layout's two floats (.data; no names yet) and
  * the pad's pop-up button (SOCOM 1's CCtrlrConfigs::GetButtonState, as hud_weaponsel.cpp's) */
 extern float data_00412E78;
-extern float data_003DC8D0;
-extern float data_003DC900;
+namespace {
+extern float s_fRowScale;   /* (defined below, with the column's look) */
+extern float s_fRowTrans;
+}
 extern float data_003DC940;
 extern float data_003DC948;
 extern "C" unsigned char func_002C64E0(int func, CPad *pad);
@@ -866,9 +870,9 @@ void hudTickScorePopup(CPad *pad, MENU_STATE menustate, float dT)
 
             float y = 25.0f + data_0040F650 + data_003DC940;
 
-            g_strTeamLabel0.Load(data_003DC8D0, text, font, 24.0f, y, true);
+            g_strTeamLabel0.Load(s_fRowScale, text, font, 24.0f, y, true);
             g_strTeamLabel0.SetColor(115.0f, 115.0f, 115.0f);
-            g_strTeamLabel0.m_color[3] = data_003DC900;
+            g_strTeamLabel0.m_color[3] = s_fRowTrans;
             {
                 int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
 
@@ -890,10 +894,10 @@ void hudTickScorePopup(CPad *pad, MENU_STATE menustate, float dT)
             }
             var = theUIVarManager.Find("GAMENAMEVAR");
             strcpy(text, var ? var->GetString() : "UNKNOWN");
-            g_strTeamLabel1.Load(data_003DC8D0, "???", font, 24.0f, y + data_003DC948, true);
+            g_strTeamLabel1.Load(s_fRowScale, "???", font, 24.0f, y + data_003DC948, true);
             g_strTeamLabel1.Format(text);
             g_strTeamLabel1.SetColor(115.0f, 115.0f, 115.0f);
-            g_strTeamLabel1.m_color[3] = data_003DC900;
+            g_strTeamLabel1.m_color[3] = s_fRowTrans;
             {
                 int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
 
@@ -934,9 +938,9 @@ void hudTickScorePopup(CPad *pad, MENU_STATE menustate, float dT)
                     name = "SUPPRESSION";
                     break;
                 }
-                g_strTeamLabel2.Load(data_003DC8D0, name, font, 24.0f, y + 2.0f * data_003DC948, true);
+                g_strTeamLabel2.Load(s_fRowScale, name, font, 24.0f, y + 2.0f * data_003DC948, true);
                 g_strTeamLabel2.SetColor(115.0f, 115.0f, 115.0f);
-                g_strTeamLabel2.m_color[3] = data_003DC900;
+                g_strTeamLabel2.m_color[3] = s_fRowTrans;
                 {
                     int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
 
@@ -960,9 +964,9 @@ void hudTickScorePopup(CPad *pad, MENU_STATE menustate, float dT)
         } else {
             float y = 25.0f + data_0040F650 + data_003DC940;
 
-            g_strTeamLabel0.Load(data_003DC8D0, "LAN game", font, 24.0f, y, true);
+            g_strTeamLabel0.Load(s_fRowScale, "LAN game", font, 24.0f, y, true);
             g_strTeamLabel0.SetColor(115.0f, 115.0f, 115.0f);
-            g_strTeamLabel0.m_color[3] = data_003DC900;
+            g_strTeamLabel0.m_color[3] = s_fRowTrans;
             {
                 int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
 
@@ -988,10 +992,10 @@ void hudTickScorePopup(CPad *pad, MENU_STATE menustate, float dT)
             if (!game)
                 game = "GAME TYPE ERROR";
             strcpy(text, game);
-            g_strTeamLabel1.Load(data_003DC8D0, "???", font, 24.0f, y + data_003DC948, true);
+            g_strTeamLabel1.Load(s_fRowScale, "???", font, 24.0f, y + data_003DC948, true);
             g_strTeamLabel1.Format(text);
             g_strTeamLabel1.SetColor(115.0f, 115.0f, 115.0f);
-            g_strTeamLabel1.m_color[3] = data_003DC900;
+            g_strTeamLabel1.m_color[3] = s_fRowTrans;
             {
                 int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
 
@@ -1032,9 +1036,9 @@ void hudTickScorePopup(CPad *pad, MENU_STATE menustate, float dT)
                     name = "SUPPRESSION";
                     break;
                 }
-                g_strTeamLabel2.Load(data_003DC8D0, name, font, 24.0f, y + 2.0f * data_003DC948, true);
+                g_strTeamLabel2.Load(s_fRowScale, name, font, 24.0f, y + 2.0f * data_003DC948, true);
                 g_strTeamLabel2.SetColor(115.0f, 115.0f, 115.0f);
-                g_strTeamLabel2.m_color[3] = data_003DC900;
+                g_strTeamLabel2.m_color[3] = s_fRowTrans;
                 {
                     int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
 
@@ -1318,12 +1322,12 @@ namespace {
 /* the column's look (OVL1 .data, 8 apart; the names ours) */
 static float s_fRowTop = 38.0f;
 static float s_fRowSpacing = 16.8f;
-static float s_fRowScale = 0.8f;
+float s_fRowScale = 0.8f;   /* (no `static`: declared extern above; the namespace makes it internal) */
 static float s_fTeamTextScale = 1.0f;
 static int s_iNameX = 70;
 static int s_iScoreColumns = 175;
-static float s_fTeamTextTrans = 90.0f;
-static float s_fRowTrans = 110.0f;
+float s_fTeamTextTrans = 90.0f;
+float s_fRowTrans = 110.0f;
 static float s_fBombX = 200.0f;
 static float s_fBombSize = 16.0f;
 static float s_fBombDY = 12.0f;

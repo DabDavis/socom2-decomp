@@ -4911,23 +4911,23 @@ void CZSealBody::SetHudHitFlag()
     m_hudwashit = true;
 }
 
-extern "C" {
 /* the look anims: four sources (OVL2 data: each a table of rotations), what each is built into -- the
  * turns between them (SOCOM 1's dQlookhead and its three fellows) -- and the axes ApplyLookAnim reads
- * (SOCOM 1's Rlookhead and its fellows; OVL1 bss), the head's, then up the spine, and their builder
- * (OVL2 0x5AE980, below; the name unknown) */
+ * (SOCOM 1's Rlookhead and its fellows; OVL1 bss: fts_ovl2statics.cpp defines all eight), the head's,
+ * then up the spine, and their builder (OVL2 0x5AE980, below; the name unknown) */
+extern CQuat dQlookhead[12];
+extern CQuat dQlookneck[12];
+extern CQuat dQlookspinehi[12];
+extern CQuat dQlookspinelo[12];
+extern CPnt3D Rlookhead[12];
+extern CPnt3D Rlookneck[12];
+extern CPnt3D Rlookspinehi[12];
+extern CPnt3D Rlookspinelo[12];
+extern "C" {
 extern CPnt3D data_00650820[];
 extern CPnt3D data_006507B0[];
 extern CPnt3D data_00650740[];
 extern CPnt3D data_006506D0[];
-extern CQuat data_0044C7A0[];
-extern CQuat data_0044C860[];
-extern CQuat data_0044C920[];
-extern CQuat data_0044C9E0[];
-extern CPnt3D data_0044CAA0[];
-extern CPnt3D data_0044CB30[];
-extern CPnt3D data_0044CBC0[];
-extern CPnt3D data_0044CC50[];
 void func_005AE980(const CPnt3D *rot, CQuat *dq, CPnt3D *axis);
 /* the eyes' limits: up, down and sideways (OVL1 data; SOCOM 1's were constants, 8, -14 and 17
  * degrees) */
@@ -5027,10 +5027,10 @@ void GetLookQuat(CPnt3D *table, float yaw, float pitch, CQuat *q)
 /* the look anims built, the head's and up the spine (OVL2 0x5AE6A0; SOCOM 1's) */
 void CZSealBody::InitLookAnims()
 {
-    func_005AE980(data_00650820, data_0044C7A0, data_0044CAA0);
-    func_005AE980(data_006507B0, data_0044C860, data_0044CB30);
-    func_005AE980(data_00650740, data_0044C920, data_0044CBC0);
-    func_005AE980(data_006506D0, data_0044C9E0, data_0044CC50);
+    func_005AE980(data_00650820, dQlookhead, Rlookhead);
+    func_005AE980(data_006507B0, dQlookneck, Rlookneck);
+    func_005AE980(data_00650740, dQlookspinehi, Rlookspinehi);
+    func_005AE980(data_006506D0, dQlookspinelo, Rlookspinelo);
 }
 
 /* the head turned toward a direction when it may turn (OVL2 0x5AE640; SOCOM 1's, the look held) */
@@ -5389,19 +5389,19 @@ void CZSealBody::ApplyLookAnim(float yaw, float pitch)
     CQuat q;
     CQuat r;
 
-    GetLookQuat(data_0044CAA0, yaw, pitch, &q);
+    GetLookQuat(Rlookhead, yaw, pitch, &q);
     part->m_rot.Mul(&q, &r);
     part->m_rot = r;
     part = part->m_parent;
-    GetLookQuat(data_0044CB30, yaw, pitch, &q);
+    GetLookQuat(Rlookneck, yaw, pitch, &q);
     part->m_rot.Mul(&q, &r);
     part->m_rot = r;
     part = part->m_parent;
-    GetLookQuat(data_0044CBC0, yaw, pitch, &q);
+    GetLookQuat(Rlookspinehi, yaw, pitch, &q);
     part->m_rot.Mul(&q, &r);
     part->m_rot = r;
     part = part->m_parent;
-    GetLookQuat(data_0044CC50, yaw, pitch, &q);
+    GetLookQuat(Rlookspinelo, yaw, pitch, &q);
     part->m_rot.Mul(&q, &r);
     part->m_rot = r;
 }
