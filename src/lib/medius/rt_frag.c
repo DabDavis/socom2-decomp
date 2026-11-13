@@ -92,13 +92,13 @@ void func_00645290(RT_FRAG_BUF *pBuf, unsigned int nSeq, void *pData, unsigned i
 }
 /* the next complete message's length (0x645380): from the oldest sequence's slot -- or, when that does not start a message,
  * the next slot flagged 0x20000000 past it -- over consecutive fragments to one flagged 0x40000000 */
-/* OPEN (GCC round 81: 62 words to 18, registers only): the count a variable of its own (j: nSlot or n as the counter
- * gives the search's break path i's equality with nSlot, recomputing the slot's address from nSlot), the slot's
- * sequence a temporary (`n & SEQ` written at each use: the store takes the and's register), x00 stored before
+/* Byte-exact since GCC round 82 (62 words to 18 in round 81, registers only): the count a variable of its own (j: nSlot
+ * or n as the counter gives the search's break path i's equality with nSlot, recomputing the slot's address from nSlot),
+ * the slot's sequence a temporary (`n & SEQ` written at each use: the store takes the and's register), x00 stored before
  * nExpect, nSlot computed before the nCount test (the target's slot), the walk's length and sequence locals of the
- * block, nSeq declared after pSlot (pSlot wins their 30000 tie for v1). Left: nSlot (8 refs over 35, 6857) is
- * allocated before nExpect (10 over 49, 6122) and takes a2; the target's order is nExpect a2, the search's base
- * copy a2, nSlot a3 -- 720 declaration orders, the counter's three spellings, the arm inverted: none. */
+ * block, nSeq declared after pSlot (pSlot wins their 30000 tie for v1). The last 18: `nExpect++` written in each arm
+ * (jump2 cross-jumps the start arm's copy back onto the other's), so nExpect has four loop-weighted refs more (14 over
+ * 51, 8235) and is allocated before nSlot (6857), taking a2 -- written once at the body's end it lost by 6122. */
 unsigned int func_00645380(RT_FRAG_BUF *pBuf)
 {
     unsigned int nFirst = 0;
@@ -145,6 +145,7 @@ unsigned int func_00645380(RT_FRAG_BUF *pBuf)
             nFirst = nSeq;
             nTotal = pSlot->nLength;
             nExpect = nFirst & RT_FRAG_SEQ;
+            nExpect++;
         } else {
             if (nTotal == 0 || (nLength = pSlot->nLength) == 0 || nExpect != (nSeq & RT_FRAG_SEQ)) {
                 nTotal = 0;
@@ -153,8 +154,8 @@ unsigned int func_00645380(RT_FRAG_BUF *pBuf)
             nTotal += nLength;
             if (nSeq & 0x40000000)
                 break;
+            nExpect++;
         }
-        nExpect++;
     }
     if (j == RT_FRAG_SLOTS)
         nTotal = 0;
