@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from OVL1's GCC libraries, round 1** (22 of the 26 unmatched rows in 0x243000-0x258000 are written, WRONG; of the four
+  with no source the radix-4 FFT 0x251C80 (0x418) is byte-exact in the new sase_fft4cfg.c -- the codec's CPU path when VU0 is
+  off (the dispatcher 0x251B78 calls it when 0x1D55A0's flag is clear), its twiddles from the VU0 version's 2016-byte table
+  data_003EB088 (+384 floats for 256 points, +480 for 64), its bit reversal func_00252290's code again; libtran's forward and
+  inverse FFT passes 0x24DBB8 and 0x24DFB8 written in the new sase_libtran.c at the target's size, structure, spill slots and
+  every integer register right, 60 and 66 words off in float registers alone -- ~1,900 role assignments and 500 load-first
+  forms tried (best 47); the target's FPRs look like global pseudos shared between the passes and the twiddle loops (the
+  pass's sum r and the twiddle's ti both f7). The fast log2 0x2517D8 still unwritten; 0x24E5B0 36, 24 orders tried):
+  - each point's values into variables first (summed straight from the arrays, 37 words off); the six twiddles into variables
+    before any store (through pfW they reload after every store, may alias).
+  - an initialiser before an `if` stops jump threading: `nGroups = 1` ahead of `if (size == 256)` keeps the second size test.
+  - a reused loop variable drags its register across the function (the bit reversal's carry sharing the chunk counter took
+    t5; its own variable takes v1). `4 * q * (nGroups - 1)` puts q first in the mult.
+  - each element through its own pointer set from pfBase in the body gives `addiu a0,s0,8` per iteration and stores in
+    source order (`pfBase[2]` folds offsets and reorders). Spill slots follow declaration order. `i = 3; i <= log2N` (slti 3).
+    Counting down (`k > 0`) gives blez then bgtz, sharing s1 with the twiddle loops; counting up is reversed into blez/bnez.
 - **Tells from the kit, round 67** (CSealUnit::IssueCommand 0x5E8E10 (0x1640) byte-exact, 50 to 0; CZKit::Fire 0x5C5340 at the
   target's size, d=280 to 49, frame and slots right, 50 register-only off: the threat block's two constants swapped (the target
   8.26e-7 in f1, 1.0 in f0), the team test's body before player, UsesAmmo's item in v0 for a0, FindChild's `move a0` a word
