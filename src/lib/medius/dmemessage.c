@@ -888,7 +888,9 @@ int func_0061E300(int nConnection, int nUnused, int nClient, DmePingMsg *pMsg)
 
 /* every client of a joining world has answered (0x61F920): the first client ready becomes the session master -- this one,
  * when it is that client, marks itself joined, runs the joins and greets the rest */
-/* OPEN (round 26b): first draft, 0x18 long (d=125), shape incomplete. 0x61F518 calls it with three more arguments; its prologue keeps only the first. */
+/* GCC round 81 (open since round 26b): rewritten from the target -- a callback-less failure falls through into the join
+ * (the report's `return` inside its test; the target's beqz lands in the join arm), the joined client and the entry each
+ * through a local (one load for both stores), the entry's fields stored 6 then 10 (the scheduler swaps them). */
 void func_0061F920(unsigned int nWorld, int nClient, int nValue1, int nValue2)
 {
     DmeJoinFailure report;
@@ -930,15 +932,23 @@ void func_0061F920(unsigned int nWorld, int nClient, int nValue1, int nValue2)
             ((void (*)(DmeJoinFailure *))data_0067C5B8)(&report);
             data_0067C5B8 = 0;
             data_006511A0 = 0;
+            return;
         }
-        return;
     }
-    pWorld->apClients[nMaster]->nState = 5;
-    pWorld->apClients[nMaster]->nValue = 1;
+    {
+        DmeClientInfo *pC = pWorld->apClients[nMaster];
+
+        pC->nState = 5;
+        pC->nValue = 1;
+    }
     func_0061C998(nWorld, nMaster);
     func_00613FD0(nWorld, -1);
-    *(unsigned short *)(pEntry + 10) = 0;
-    *(unsigned short *)(pEntry + 6) = 0;
+    {
+        char *p = pEntry;
+
+        *(unsigned short *)(p + 6) = 0;         /* nFirstObject */
+        *(unsigned short *)(p + 10) = 0;        /* nFirstStream */
+    }
     data_0065117C = 1;
     MyClientJoins(nWorld, nMaster);
     func_006189C8(nWorld, 1);
