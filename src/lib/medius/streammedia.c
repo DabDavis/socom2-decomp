@@ -404,35 +404,39 @@ int func_00643790(void)
     return 0;
 }
 
-/* OPEN (20 words, the right size): the 21 default stores schedule in another order than the
- * target's (1, 0, 9, 10, 2..8, 11..20 there); 17 source orders tried -- offset order, grouped by
- * value, each constant's last use first -- past ccperm's reach (21 statements). */
+/* the default parameters. GCC round 74a (open since written, 20 words; 17 source orders tried): the
+ * 21 stores issue in source order exactly, the three constants' li after the first store -- stores
+ * sched1 may not reorder, through a volatile view (2.96 never moves a volatile MEM). Plain, sched1
+ * hoists each constant's last store by register weight (an[6], an[7], an[8], then an[20]). */
 int func_006437E0(STREAM_PARAMS *pParams)
 {
+    volatile int *an;
+
     if (pParams == 0)
         return 23;
     memset(pParams, 0, sizeof(*pParams));
-    pParams->an[1] = 0;
-    pParams->an[0] = 1;
-    pParams->an[9] = 16;
-    pParams->an[10] = 8000;
-    pParams->an[2] = 1;
-    pParams->an[3] = 1;
-    pParams->an[4] = 0;
-    pParams->an[5] = 1;
-    pParams->an[6] = 16;
-    pParams->an[7] = 8000;
-    pParams->an[8] = 1;
-    pParams->an[11] = 0;
-    pParams->an[12] = 0;
-    pParams->an[13] = 0;
-    pParams->an[14] = 0;
-    pParams->an[15] = 0;
-    pParams->an[16] = 0;
-    pParams->an[17] = 0;
-    pParams->an[18] = 0;
-    pParams->an[19] = 0;
-    pParams->an[20] = 0;
+    an = pParams->an;
+    an[1] = 0;
+    an[0] = 1;
+    an[9] = 16;
+    an[10] = 8000;
+    an[2] = 1;
+    an[3] = 1;
+    an[4] = 0;
+    an[5] = 1;
+    an[6] = 16;
+    an[7] = 8000;
+    an[8] = 1;
+    an[11] = 0;
+    an[12] = 0;
+    an[13] = 0;
+    an[14] = 0;
+    an[15] = 0;
+    an[16] = 0;
+    an[17] = 0;
+    an[18] = 0;
+    an[19] = 0;
+    an[20] = 0;
     return 0;
 }
 
