@@ -197,7 +197,10 @@ static inline void SetTextColor(C2DString *s)
 /* a teammate's name upper-cased and loaded, placed right-aligned on its row (BLUDSHOT's smaller and a
  * line lower), its order coloured and off, its dot off; both listed when asked (SOCOM 1's, the
  * flag SOCOM II's). The scale is 0.9f * 0.95f (0x3F5AE147; 0.855f rounds to ...148).
- * OPEN, 2 instructions: SetPos's arguments are scheduled differently -- the target loads the 510
+ * Byte-exact since round 73: the width read through StringLength (a free inline taking the string):
+ * an operand read through an inline WITH AN ARGUMENT carries round 38's `hascall`, so the subtraction
+ * generates it first -- the 510 then loaded ahead of y's constants and the movz after the row's operands.
+ * Was: OPEN, 2 instructions: SetPos's arguments are scheduled differently -- the target loads the 510
  * into a1 ahead of the y expression's constants and does the `bludshot ? 2 : 1` movz after the row's
  * operands, where MW here does the movz first and loads 510 into v0 after it, leaving a nop before
  * the sub.s (and, two words on, a label pad after the second push_back). Tried: x or y (int or
@@ -208,6 +211,12 @@ static inline void SetTextColor(C2DString *s)
  * further off (d 50) 
  * Round 65's tries, all no closer (0x2A4 or more): const x, const float x, a const 510, an enum offset, a const offset,
  * const y, const ix and iy, a const row. */
+/* a string's measured width (ours: an inline with an argument, SetupTeamNameEntry's note) */
+static inline float StringLength(const C2DString &s)
+{
+    return s.m_length;
+}
+
 void CTeamNames::SetupTeamNameEntry(int index, CZSealBody *seal, bool add)
 {
     if (!seal)
@@ -230,7 +239,7 @@ void CTeamNames::SetupTeamNameEntry(int index, CZSealBody *seal, bool add)
     if (bludshot)
         strName.m_scale = s_bludshotscale;
     strName.UpdatePos();
-    strName.SetPos((int)(510.0f - strName.m_length), (int)(RowY(index) - (bludshot ? 2 : 1)));
+    strName.SetPos((int)(510.0f - StringLength(strName)), (int)(RowY(index) - (bludshot ? 2 : 1)));
     SetTextColor(&strName);
     if (add) {
         push_back(&strName);
