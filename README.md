@@ -2066,6 +2066,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the body mechanics, round 69** (four rows byte-exact: PitchAnim 0x5ACA70 (0x98C), the two halves of SOCOM 1's
+  HomingTick 0x5B2D20 (0x61C, Tick_0's call for a blend flagged 64) and 0x5B3340 (0x544, otherwise) -- all unwritten before --
+  and CheckDIShoot 0x5AA6E0 (3 off since round 68). Tick_0 0x57A330 (0x11D8) at size and frame, every call and branch placed,
+  4 structural (the yaw compared in f1 and reloaded into f12 for the positive call; a nop where the target fills the lean
+  test's slot) and ~155 register-only in the two overlay loops (o1 s4 for s2; the second loop wants a s3, script s2, the pool
+  s5, &ov[1] s4; igreplay's space too big). 0x5880E0 (0x9C8, the switch PushBlendAnimPacketHandler calls with the packet's
+  time, each case the SEAL's own step inlined) 6 off: kind 12 is 0x57DCC0's body and inherits its miss (the weapon a2 and set
+  a0 before the type's global a1). Not started: Recoil 0x57B550 (97 Exp calls on literal lui/ori vectors and a stance/item
+  switch -- best generated from the target by a script), the ladder 0x5B1C80 (vector-iterator loops, iterators on the stack).
+  zseal.h declarations only (GetFP, PitchAnim, Tick_0, Recoil), objcmp per change):
+  - CheckDIShoot closed by reading the words through a reference local (`const CPnt3D &r = aim`), z before the copy: the struct
+    copy reuses x and reloads y and z (what 420 statement orders could not).
+  - `bool b = dot > 1.0f;` gives `c.le; bc1f; li 1 / move 0` (negated: `xori`). `if (a && b) return true; return false;` the
+    branchy bool, `? true : false` the `sltu`. `m_1c > 45` `slti at` (`>= 46`, `!(< 46)` `slti v0`).
+  - `Dot(d, d)` reuses the dot's loads (field by field reloads). A negation through two references `(in, out)` loads through
+    the fields' address registers and stores to sp offsets. `x = Dot(..); x *= k;` orders the multiply's operands.
+  - `float s = quadW(t); s = sqrtf(s);` keeps sqrt.s in f0 and the mov.s to f12. A TransformVectors call wrapped in its own
+    inline puts its VU0 temporaries below every other inline's. Locals declared first take the top slots.
+  - an int switched as `(unsigned char)kind` masks for the jump table, passes on whole; MW lays arms out in source order; a
+    three-case `beq` chain lists its cases in reverse. `ACTIVE_ANIM *ov[2] = {0}` zeroes byte by byte behind a null test.
+    A bit-field read into an `unsigned char` keeps the `andi`. `(m_control ? ->IsAi() : false)` drops the header inline's nop.
 - **Tells from CZSealBody, round 69** (the CZSealBody constructor 0x553EA0 (0x119C) byte-exact, unwritten before, SOCOM 1's as the
   outline; 0x5483D0 (0x15F8), open since round 68; 0x5550C0 and 0x5550B0 renamed __defctor__Q23zdb11DiIntersectFv and
   __ct__8CObjAnimFv, from source now, four drafts dropped; data.txt 0x669240 OVL2's copy of CNodeEx's vtable. PostPreTick
