@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC Medius code, round 79** (rt_udp 0x63DD18 (0x1CC of 0x184: the first allocation a `while` loop's test, the second's
+  failure a `break`, fields through pUdp directly, nShared an enum and pfnCallback the endpoint's function-pointer type, pUser last)
+  and largeint 0x6283F8 (the second `j = 0;` after lintSetSmallValue) byte-exact. rt_comm_platform2_receive_from 41 to 2 (`volatile
+  flags`; the count through a temporary reused for the address conversion), 0x63EF38 at size (the walk a `goto` loop). Notes
+  rewritten: 0x63C170 (the plain source but the argument's load before the callback pointer's), 0x62F818 (`result = -3;` twice
+  plus `result = 0;` per branch gives size and layout -- not vendor code, uncommitted), RCEncrypt (parameter copies already right),
+  0x63ACA0 (two loads' order before the loop)):
+  - A CALL LAID OUT AFTER THE CODE IT GUARDS, REACHED BY A FORWARD BRANCH AND BRANCHING BACK ON SUCCESS, IS A `while` LOOP'S TEST
+    (GCC puts the test below the body); a failure exit inside it is a `break`.
+  - A LOAD ISSUED AHEAD OF A STORE OF THE SAME BASE TYPE MEANS THE FIELDS ARE TYPED APART: an enum has its own alias set; a
+    function-pointer field does not alias a `void *` one.
+  - A LOOP CONSTANT KEPT INSIDE THE LOOP IS A `goto` LOOP (no loop notes, no hoist into a saved register).
+  - a field read into a temporary and copied to another register is a copy GCC could not propagate: reuse the temporary later. A
+    constant store in an earlier call's slot is a variable living across calls: assign the neighbouring statement after the call.
+    A slot below an address-taken one is a variable slotted at its declaration (`volatile`). A `beq` whose target skips an
+    instruction identical to its slot: the slot came from inside the `if` -- read the miss as that block's code.
 - **Tells from the GCC SDK, round 79** (nothing closed; the socket layer's allocator 0x1C1CD0-0x1C20D8 moved out of inet_sock.c into the
   new src/lib/sdk/inet_heap.c, `ee-gcc2.9-991111-01-dtls13010 -O2 -G0 -fno-strict-aliasing` (the flag unit-wide on inet_sock.c loses
   10 rows): 0x1C1D40 (allocate) and 0x1C1E90 (release) now at size (28 and 6 off), 0x1C2028 (set-up) 34 to 23. Stale notes:
