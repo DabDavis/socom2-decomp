@@ -19,6 +19,7 @@
  * of their image order (-inline deferred). */
 
 #include "hud_weaponsel.h"
+#include "../../gamez/zinput/zinput.h"
 #include "../../gamez/zrdr/zrdr.h"
 
 #include <string.h>
@@ -39,7 +40,9 @@ public:
     int GetE3ScoreTeam00() const { return m_e3score00; }
     int GetE3ScoreTeam08() const { return m_e3score08; }
 
-    unsigned char _0[0x120];
+    unsigned char _0[0x111];
+    signed char m_gametype;   // 0x111: the game's type, 1 to 5 (the pop-up's details)
+    unsigned char _112[0x120 - 0x112];
     int m_e3score00;   // 0x120
     int m_e3score08;   // 0x124
 };
@@ -150,6 +153,8 @@ public:
 class CHUD {
 public:
     void On();
+
+    static CZSealBody *GetHUDOwner();
 
     unsigned char _0[0x498];
     C2DFont *m_myfont;   // 0x498
@@ -395,6 +400,15 @@ public:
     bool HasItemWithAmmo(EQUIP_ITEM item);
 };
 
+/* what is under its reticule (a node: its name) */
+struct CObjUnderReticule {
+    /* inline: the compare loads it before the record name's c_str(), as CTriggerSource's */
+    const char *GetName() { return m_name; }
+
+    unsigned char _0[0x90];
+    const char *m_name;   // 0x90
+};
+
 class CZSealBody {
 public:
     unsigned char _0[0x14];
@@ -405,7 +419,9 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x544 - 0xe2];
+    unsigned char _e2[0x3dc - 0xe2];
+    CObjUnderReticule *m_reticuleObject;   // 0x3dc
+    unsigned char _3e0[0x544 - 0x3e0];
     CSealStats m_stats[2];   // 0x544
     unsigned char _5d4[0x5e0 - 0x5d4];
     CZKit m_kit;   // 0x5e0
@@ -769,6 +785,313 @@ bool hudIsScorePopupOn()
     return theNetwork.m_bNetwork ? data_0040F608 : false;
 }
 
+/* the sound the pop-up opens with (zsnd.h's: found by name, played through slot +0x1C) */
+class CSndPopup {
+public:
+    virtual ~CSndPopup();
+    virtual void Slot0C();
+    virtual void Slot10();
+    virtual void Slot14();
+    virtual void Slot18();
+    virtual void Play(int a, int b, int c);   // +0x1C
+};
+/* (a view of CSnd, by its own static's name) */
+class CSnd {
+public:
+    static CSndPopup *GetSoundByName(const char *name);
+};
+
+/* what the opener keeps while a message pop-up is up: the menu state it took over and the time it has
+ * been up (the opener zeroes the time as an int) */
+extern signed char data_0040F610;
+extern int data_0040F620;
+
+/* the seconds since the score pop-up was rebuilt, the layout's two floats (.data; no names yet) and
+ * the pad's pop-up button (SOCOM 1's CCtrlrConfigs::GetButtonState, as hud_weaponsel.cpp's) */
+extern float data_00412E78;
+extern float data_003DC8D0;
+extern float data_003DC900;
+extern float data_003DC940;
+extern float data_003DC948;
+extern "C" unsigned char func_002C64E0(int func, CPad *pad);
+
+/* the UI variables (zui.h's: the name's value as a string, when it is one) */
+class CUIVariable : public _zrdr {
+public:
+    const char *GetString() const { return type == 3 ? string : 0; }
+};
+
+void hudTurnOffScorePopup();
+
+class CUIVarManager {
+public:
+    CUIVariable *Find(const char *name);
+};
+extern CUIVarManager theUIVarManager;
+
+class CZLANLobby {
+public:
+    bool IsActive();
+};
+extern CZLANLobby data_0044FE10;   /* the LAN lobby */
+
+/* the pop-up's tick (SOCOM 1's hudTickScorePopup, 0x421DF0 there: up, the select button's rise or a
+ * forced close takes it down, and it is rebuilt each second; down, in a network game, the button's
+ * fall opens it, and SOCOM II's game details are laid out, each shortened to fit); a message pop-up's
+ * time counted, cross then closing it past its minimum and giving the menu state back, its items
+ * deleted, its sound played; or, with none up, this map's object under the owner's reticule opening
+ * its message once. Byte-exact (round 69, from an interrupted lane's draft): the saved menu state is
+ * given back as `(MENU_STATE &)data_0040F610` -- a reference cast reads the signed byte with `lb`,
+ * every value cast (int, short, a local, a signed enum) narrows it to `lbu` */
+void hudTickScorePopup(CPad *pad, MENU_STATE menustate, float dT)
+{
+    if (data_0040F608) {
+        data_00412E78 += dT;
+        if (menustate != MENU_STATE_NONE || func_002C64E0(12, pad) == KEY_RISING)
+            hudTurnOffScorePopup();
+        else if (data_00412E78 > 1.0f) {
+            hudTurnOnScorePopup();
+            data_00412E78 = 0.0f;
+        }
+    } else if (theNetwork.m_bNetwork && menustate == MENU_STATE_NONE && func_002C64E0(12, pad) == KEY_FALLING) {
+        C2DFont *font = theHUD->GetFont();
+
+        hudTurnOnScorePopup();
+        char text[512];
+
+        if (!data_0044FE10.IsActive()) {
+            CUIVariable *var = theUIVarManager.Find("MEDIUS_LOBBY_NAME");
+
+            strcpy(text, var ? var->GetString() : "UNKNOWN");
+
+            float y = 25.0f + data_0040F650 + data_003DC940;
+
+            g_strTeamLabel0.Load(data_003DC8D0, text, font, 24.0f, y, true);
+            g_strTeamLabel0.SetColor(115.0f, 115.0f, 115.0f);
+            g_strTeamLabel0.m_color[3] = data_003DC900;
+            {
+                int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
+
+                g_strTeamLabel0.UpdatePos();
+                if (g_strTeamLabel0.GetLength() > width) {
+                    do {
+                        char buf[64];
+
+                        strcpy(buf, g_strTeamLabel0.m_string + g_strTeamLabel0.m_firstCharPos);
+
+                        int n = strlen(buf);
+
+                        buf[n - 2] = '-';
+                        buf[n - 1] = 0;
+                        ((C2DString *)&g_strTeamLabel0)->SetString(buf, true);
+                        g_strTeamLabel0.UpdatePos();
+                    } while (g_strTeamLabel0.GetLength() > width);
+                }
+            }
+            var = theUIVarManager.Find("GAMENAMEVAR");
+            strcpy(text, var ? var->GetString() : "UNKNOWN");
+            g_strTeamLabel1.Load(data_003DC8D0, "???", font, 24.0f, y + data_003DC948, true);
+            g_strTeamLabel1.Format(text);
+            g_strTeamLabel1.SetColor(115.0f, 115.0f, 115.0f);
+            g_strTeamLabel1.m_color[3] = data_003DC900;
+            {
+                int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
+
+                g_strTeamLabel1.UpdatePos();
+                if (g_strTeamLabel1.GetLength() > width) {
+                    do {
+                        char buf[64];
+
+                        strcpy(buf, g_strTeamLabel1.m_string + g_strTeamLabel1.m_firstCharPos);
+
+                        int n = strlen(buf);
+
+                        buf[n - 2] = '-';
+                        buf[n - 1] = 0;
+                        ((C2DString *)&g_strTeamLabel1)->SetString(buf, true);
+                        g_strTeamLabel1.UpdatePos();
+                    } while (g_strTeamLabel1.GetLength() > width);
+                }
+            }
+            {
+                unsigned char type = data_00437CE8 ? data_00437CE8->m_gametype : 0;
+                const char *name = "GAMETYPE ERROR02";
+
+                switch (type) {
+                case 1:
+                    name = "BREACH";
+                    break;
+                case 2:
+                    name = "DEMOLITION";
+                    break;
+                case 3:
+                    name = "ESCORT";
+                    break;
+                case 4:
+                    name = "EXTRACT";
+                    break;
+                case 5:
+                    name = "SUPPRESSION";
+                    break;
+                }
+                g_strTeamLabel2.Load(data_003DC8D0, name, font, 24.0f, y + 2.0f * data_003DC948, true);
+                g_strTeamLabel2.SetColor(115.0f, 115.0f, 115.0f);
+                g_strTeamLabel2.m_color[3] = data_003DC900;
+                {
+                    int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
+
+                    g_strTeamLabel2.UpdatePos();
+                    if (g_strTeamLabel2.GetLength() > width) {
+                        do {
+                            char buf[64];
+
+                            strcpy(buf, g_strTeamLabel2.m_string + g_strTeamLabel2.m_firstCharPos);
+
+                            int n = strlen(buf);
+
+                            buf[n - 2] = '-';
+                            buf[n - 1] = 0;
+                            ((C2DString *)&g_strTeamLabel2)->SetString(buf, true);
+                            g_strTeamLabel2.UpdatePos();
+                        } while (g_strTeamLabel2.GetLength() > width);
+                    }
+                }
+            }
+        } else {
+            float y = 25.0f + data_0040F650 + data_003DC940;
+
+            g_strTeamLabel0.Load(data_003DC8D0, "LAN game", font, 24.0f, y, true);
+            g_strTeamLabel0.SetColor(115.0f, 115.0f, 115.0f);
+            g_strTeamLabel0.m_color[3] = data_003DC900;
+            {
+                int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
+
+                g_strTeamLabel0.UpdatePos();
+                if (g_strTeamLabel0.GetLength() > width) {
+                    do {
+                        char buf[64];
+
+                        strcpy(buf, g_strTeamLabel0.m_string + g_strTeamLabel0.m_firstCharPos);
+
+                        int n = strlen(buf);
+
+                        buf[n - 2] = '-';
+                        buf[n - 1] = 0;
+                        ((C2DString *)&g_strTeamLabel0)->SetString(buf, true);
+                        g_strTeamLabel0.UpdatePos();
+                    } while (g_strTeamLabel0.GetLength() > width);
+                }
+            }
+            CUIVariable *var = theUIVarManager.Find("GAMENAMEVAR");
+            const char *game = var ? var->GetString() : "UNKNOWN";
+
+            if (!game)
+                game = "GAME TYPE ERROR";
+            strcpy(text, game);
+            g_strTeamLabel1.Load(data_003DC8D0, "???", font, 24.0f, y + data_003DC948, true);
+            g_strTeamLabel1.Format(text);
+            g_strTeamLabel1.SetColor(115.0f, 115.0f, 115.0f);
+            g_strTeamLabel1.m_color[3] = data_003DC900;
+            {
+                int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
+
+                g_strTeamLabel1.UpdatePos();
+                if (g_strTeamLabel1.GetLength() > width) {
+                    do {
+                        char buf[64];
+
+                        strcpy(buf, g_strTeamLabel1.m_string + g_strTeamLabel1.m_firstCharPos);
+
+                        int n = strlen(buf);
+
+                        buf[n - 2] = '-';
+                        buf[n - 1] = 0;
+                        ((C2DString *)&g_strTeamLabel1)->SetString(buf, true);
+                        g_strTeamLabel1.UpdatePos();
+                    } while (g_strTeamLabel1.GetLength() > width);
+                }
+            }
+            {
+                unsigned char type = data_00437CE8 ? data_00437CE8->m_gametype : 0;
+                const char *name = "GAMETYPE ERROR02";
+
+                switch (type) {
+                case 1:
+                    name = "BREACH";
+                    break;
+                case 2:
+                    name = "DEMOLITION";
+                    break;
+                case 3:
+                    name = "ESCORT";
+                    break;
+                case 4:
+                    name = "EXTRACT";
+                    break;
+                case 5:
+                    name = "SUPPRESSION";
+                    break;
+                }
+                g_strTeamLabel2.Load(data_003DC8D0, name, font, 24.0f, y + 2.0f * data_003DC948, true);
+                g_strTeamLabel2.SetColor(115.0f, 115.0f, 115.0f);
+                g_strTeamLabel2.m_color[3] = data_003DC900;
+                {
+                    int width = (int)((data_0040F648 - data_0040F640) - 24.0f);
+
+                    g_strTeamLabel2.UpdatePos();
+                    if (g_strTeamLabel2.GetLength() > width) {
+                        do {
+                            char buf[64];
+
+                            strcpy(buf, g_strTeamLabel2.m_string + g_strTeamLabel2.m_firstCharPos);
+
+                            int n = strlen(buf);
+
+                            buf[n - 2] = '-';
+                            buf[n - 1] = 0;
+                            ((C2DString *)&g_strTeamLabel2)->SetString(buf, true);
+                            g_strTeamLabel2.UpdatePos();
+                        } while (g_strTeamLabel2.GetLength() > width);
+                    }
+                }
+            }
+        }
+    }
+    if (data_0040E480) {
+        (float &)data_0040F620 += dT;
+        if (pad->m_state[PAD_CROSS] == KEY_RISING && (float &)data_0040F620 > data_0040F618) {
+            pad->SetButtonState(PAD_CROSS, KEY_UP);
+            data_0040E480 = false;
+            CHUD::GetHUDOwner()->m_ctrl->SetMenuState((MENU_STATE &)data_0040F610, false);
+            for (int i = 0; i < g_vecPopupItems.size(); i++)
+                delete g_vecPopupItems[i];
+            g_vecPopupItems.~vector();
+            new (&g_vecPopupItems) std::vector<C2D *>;
+
+            CSndPopup *snd = CSnd::GetSoundByName(g_strPopup1.c_str());
+
+            if (snd)
+                snd->Play(1, 0, 255);
+        }
+    } else {
+        for (int i = 0; i < g_vecTriggersByMap.size(); i++) {
+            CMessageTriggerByMap *t = g_vecTriggersByMap[i];
+
+            if (!strcasecmp(t->m_map.c_str(), GetDatabase())) {
+                CObjUnderReticule *obj = CHUD::GetHUDOwner()->m_reticuleObject;
+
+                if (obj && !strcasecmp(t->m_name.c_str(), obj->GetName())) {
+                    CMessageTriggerByMap *t = g_vecTriggersByMap[i];
+
+                    if (!t->m_done && hudOpenPopup(&t->m_message))
+                        t->m_done = true;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 /* the message keyed by this name shown, once */
 void hudTriggerPopup(const char *name)
 {
@@ -818,21 +1141,6 @@ void hudTurnOffScorePopup()
         theHUD->On();
 }
 
-/* the sound the pop-up opens with (zsnd.h's: found by name, played through slot +0x1C) */
-class CSndPopup {
-public:
-    virtual ~CSndPopup();
-    virtual void Slot0C();
-    virtual void Slot10();
-    virtual void Slot14();
-    virtual void Slot18();
-    virtual void Play(int a, int b, int c);   // +0x1C
-};
-/* (a view of CSnd, by its own static's name) */
-class CSnd {
-public:
-    static CSndPopup *GetSoundByName(const char *name);
-};
 /* reco.cpp's */
 class CReco {
 public:
@@ -853,8 +1161,6 @@ struct CAbortValve {
 extern CAbortValve *data_0043668C;
 /* the pop-ups are on at all (OVL2 bss 0x64FF90; no row yet), and what the opener keeps while one is up */
 extern unsigned char data_0064FF90;
-extern signed char data_0040F610;
-extern int data_0040F620;
 
 /* the pop-up's layout: the text's inset and the bottom margin (.data, the names ours) */
 float s_fPopupMargin = 20.0f;

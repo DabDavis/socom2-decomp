@@ -2075,7 +2075,7 @@
 0x0022BB30 0x10C hudTurnOffScorePopup__Fv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call right after CZPlayerMapItem::MissionEndCleanup, as SOCOM 1's; the same shape: a flag byte cleared, then two loops wiping string arrays, 45 entries where SOCOM 1 had 27)
 0x0022BC40 0x110 hudTriggerPopup__FP14CTriggerSource  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record for this map (GetDatabase) and the object's name (+0x20) opened once through 0x22B4A0; the names ours)
 0x0022BD50 0xC8 hudTriggerPopup__FPCc  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record named so opened once through 0x22B4A0; a ZAnim command (0x2AE340) passes it an anim's name; the name ours)
-0x0022BE20 0xDC4 func_0022BE20  # OVL1
+0x0022BE20 0xDC4 hudTickScorePopup__FP4CPad10MENU_STATEf  # OVL1; ours (the OVL1 front lane, round 69: hud_scorepopup.cpp -- the score pop-up's tick, SOCOM 1's hudTickScorePopup by place and body: rebuilt each second, the button's fall opening it with SOCOM II's three dash-truncated game-detail strings; the message pop-up's time and close; the map's reticule-object triggers)
 0x0022CBF0 0x20 hudIsScorePopupOn__Fv  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's g_bOn, 0x40F608, read only in a network game; the name ours)
 0x0022CC10 0x558 hudTurnOnScorePopup__Fv  # OVL1; by hand (the HUD lane, round 65: hud_scorepopup.cpp -- SOCOM 1's hudTickScorePopup 0x421DF0 has this inline, the frame, SetupBackgroundBox, SetupTeam twice; the name ours, after hudTurnOffScorePopup)
 0x0022D170 0x8 GetE3ScoreTeam08__9CZNetGameCFv  # OVL1; s1:order by hand (the HUD lane, round 65: SOCOM 1's at 0x4220B0, the same place, lw 0x124 -- the PTMF 0x3DC930 hud_scorepopup.cpp's 0x22CC10 passes)
