@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC code, round 74** (eight rows byte-exact, every one with an OPEN note from rounds 19a-27b: nelly 0x251748, audio
+  0x60FC90, streammedia 0x644D20, 0x6450B0, 0x6448A0, 0x6437E0, dmelocal 0x6164E0, rt_udp 0x63E5E8; 0x619DD8 re-padded (42
+  `dme_pad_619DD8_*` declarations: dmelocal.c's stale alias word flipped it); rt_udp 0x63EBA0 33 to 10 (the five argument tests one
+  `||` chain; left: a global-alloc near-tie, pData 1428 vs nTotal 1304, and `beqz; nop` for `beqzl`). SIX NOTES WERE MISDIAGNOSED:
+  0x60FC90 "registers" was control flow, 0x644D20 "1 materialised once" was nesting, 0x6448A0 "not diagnosed" a wrong argument,
+  0x6450B0 "registers" a slot reload, 0x6437E0 "past ccperm's reach" stores pinned in source order, 0x6164E0's bnezl the tail's
+  shape. rt_circ_buf_is_wrapped 16 to 2 with a contrived flag, not committed (the lane's scratch, rcb_flag.c)):
+  - A RETURN VALUE IN A SLOT WITH THE TESTED VALUE OUT OF v0 IS A SEPARATE GUARD: `if (n == 0) return 0;` puts the return before
+    the test (v0 live across it, n in v1). A `1` the next compares reuse from v0 comes from nested ifs, not guards.
+  - AN ADDRESS-TAKEN POINTER NOT RELOADED AFTER AN INT STORE was read into a local copy: `{ T *p = pSession; p->a = ...; }`.
+  - STORES IN EXACT SOURCE ORDER, THE CONSTANTS' `li` AFTER THE FIRST STORE, ARE A VOLATILE VIEW (plain, the first scheduling
+    pass moves each constant's dying store up by register weight).
+  - a shared tail reached by `beqzl; b tail; lw` is a second copy of the tail with its own return, merged by cross-jumping after
+    reload (a goto gives `bnezl`). A `fail:` label inside `if (r != 0) {...}` with `return 0` after it puts success last. A
+    chain falling off the end one test deeper than its values leaves a dead `c.lt.s` before `jr ra`.
+  - READ AN ARGUMENT'S REGISTER BEFORE FITTING THE CODE AROUND IT (`move a1,sp` passed the filled struct, not the output).
 - **Tells from OVL1, round 74** (OnIsEquipmentSelected 0x280790 (long open), BitmapReticule::UpdateColor 0x215C10 (3 nops) and
   CZNewHudMap::GetScrollPermissions 0x20AAC0 (27 structural) byte-exact; CAiEvent::GetNextEvent 0x50EA50 at size (0x1A4), 8 off: the
   target computes the bit block's mask first, here the word. Tried: HandleOpenPad (volatile reads fix the load order but the two
