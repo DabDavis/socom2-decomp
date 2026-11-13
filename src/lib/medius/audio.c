@@ -640,6 +640,13 @@ int func_00610AA8(AUDIO *pAudio, int nMaxMembers, int *pnId, const char *szName)
     return func_00624830(pAudio->pGrids, pAudio->nId, &h, &info, sizeof(info));
 }
 
+#if Z_PORT
+/* the port: a prototype for the call below (C89 declares it implicitly, int-returning, and the
+ * definition's short parameters then conflict; on the PS2 the implicit declaration is kept, as a
+ * prototype changes how the shorts are passed) */
+void func_006125D0(AUDIO *pAudio, short n1, int nTo, short n2);
+#endif
+
 /* 0x610C20: a message from the socket: the peer it came from (by the sender's id when the header's 0x80 is set, else by address), the
  * length checked, then handed to its group by type. Round 28b, unwritten before. */
 int func_00610C20(AUDIO *pAudio, int nFrom, int nPort, char *pBuf, unsigned int nLen)

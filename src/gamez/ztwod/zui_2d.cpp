@@ -5184,10 +5184,16 @@ public:
     zdb::CTexHandle *m_tex;   // 0xb8
 };
 
+#if Z_PORT
+}   /* the port: a global class's member is defined outside the anonymous namespace (MW allows it inside) */
+#endif
 inline void ListItem::MakeImage(int w, int h, zdb::CTexHandle *tex)
 {
     m_impl = new CListItemImageTypeImpl(w, h, tex);
 }
+#if Z_PORT
+namespace {
+#endif
 
 /* a list item of several columns (SOCOM 1's CListItemArrayTypeImpl, table 0x407B90; 0x14 bytes): an
  * item per column out of the reader's array of strings, each slot walking them -- through the

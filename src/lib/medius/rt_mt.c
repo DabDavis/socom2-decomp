@@ -29,6 +29,9 @@ extern MTState data_00655638;           /* SOCOM 1's gMT */
 extern char data_00665608[];            /* the 64 characters randomMTSetCharArray draws from */
 
 extern void setNewSeed_platform(unsigned long seed);
+#if Z_PORT
+void setNewSeed(uint32 seed);   /* the port: called before its definition (implicit in C89 here) */
+#endif
 
 void seedMT(uint32 seed)
 {
