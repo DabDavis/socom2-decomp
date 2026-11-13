@@ -213,11 +213,12 @@ void CEntity::CountAwareness()
  * whole list (clear() puts their temporaries in other frame slots); InSlice's test returns true or
  * false (the jump form the target materialises), the next start's modulo an if/else (its label
  * padded as the target's).
- * OPEN, 28 instructions, registers only: (1) the first inner walk's end -- the target computes the
- * sentinel once per outer pass into s2 and tests it twice; written in the test MW rematerialises it
- * at both tests, taken into any local MW hoists it out of the outer loop, whose preheader then lands
- * after the function's end, the loop entered with a `b` (the zdb world round 6's unexplained shape is
- * a loop invariant MW hoisted); (2) the slice loop's entity, last and count trade s0/s1/s3 -- the
+ * OPEN, 20 instructions, registers only (28 and 3 structural before round 75): (1) closed in round
+ * 75 -- the first inner walk's end, computed once per outer pass into s2 and tested twice, is a
+ * local declared INSIDE a hand-rotated walk's guard (`if (j != end()) { iterator je = end(); do ...
+ * while (++j != je); }`: no loop to hoist it out of until the do), the outer walk rotated by hand too
+ * (its iterator then numbered after je: s1 against je's s2 -- igreplay wanted je below it or it
+ * after je); (2) the slice loop's entity, last and count trade s0/s1/s3 -- the
  * target's colouring wants in < count < size < last < entity in MW's numbering, where the scalarised
  * CRobin makes size and count inliner temporaries (setup's arguments, right to left), last a
  * scalariser one and the entity a named local numbered before them all (as a CSE temporary, (*it)->
@@ -226,16 +227,26 @@ void CEntity::CountAwareness()
 void CEntity::UpdateTargetList(bool b)
 {
     if (m_target_rem.size()) {
-        for (CEntityList::iterator it = m_list.begin(); it != m_list.end(); ++it) {
-            CEntity *e = *it;
+        CEntityList::iterator it = m_list.begin();
 
-            e->UpdateAiMapLoc();
+        if (it != m_list.end())
+            do {
+                CEntity *e = *it;
 
-            CTargetList &targets = e->m_targets;
+                e->UpdateAiMapLoc();
 
-            for (CEntityList::iterator j = m_target_rem.begin(); j != m_target_rem.end(); ++j)
-                targets.RemoveTarget(*j);
-        }
+                CTargetList &targets = e->m_targets;
+
+            CEntityList::iterator j = m_target_rem.begin();
+
+            if (j != m_target_rem.end()) {
+                CEntityList::iterator je = m_target_rem.end();
+
+                do {
+                    targets.RemoveTarget(*j);
+                } while (++j != je);
+            }
+            } while (++it != m_list.end());
         CEntityList::iterator re = m_target_rem.end();
 
         for (CEntityList::iterator j = m_target_rem.begin(); j != re; ++j)
