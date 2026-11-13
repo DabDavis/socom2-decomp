@@ -7906,6 +7906,86 @@ static inline void StopRipple(CZAnim *&anim)
     }
 }
 
+extern "C" {
+/* (OVL1 data: how fast the water's depth slows the SEAL, and the least it slows it to) */
+extern float data_0044C35C;
+extern float data_0044C358;
+}
+
+/* the share of a throttle the ground's slope leaves along an axis: the cosine's complement to the
+ * ground's normal when the axis leans into it, none past straight against it (an inline, the name ours) */
+static inline float SlopeShare(const CPnt3D &norm, const CPnt3D &v)
+{
+    float d = Dot(norm, v);
+
+    if (d <= -1.0f)
+        return 0.0f;
+    if (d < 0.0f)
+        return sqrtf(1.0f - d * d);
+    return 1.0f;
+}
+
+/* the throttles slowed by the water's depth (down to its least) and turned down on a slope, each by its
+ * axis -- the body's x for the first, its -z for the second, each flipped for a negative throttle --
+ * squared; none in the air (OVL2 0x5B56C0, between HandleWater and SealProcessAltitude where SOCOM 1 had
+ * GetTerrainMotionFactor, which returned one factor; the name unknown) */
+extern "C" void func_005B56C0(CZSealBody *seal, float *z, float *x)
+{
+    CPnt3D v;
+
+    if (seal->m_airborne)
+        return;
+    float f = 1.0f;
+
+    if (seal->m_waterdepth > 0.0f) {
+        f -= seal->m_waterdepth * data_0044C35C;
+        if (f < data_0044C358)
+            f = data_0044C358;
+    }
+    if (f < 0.0f || f > 1.0f)
+        f = 1.0f;
+    bool zs = _close_enough(*z, 0.0f, data_003F3428);
+
+    if (!zs) {
+        float s = 1.0f;
+
+        if (*z > 0.0f) {
+            TransformVectors(&seal->m_node->m_matrix, &CPnt3D::unit_x, &v, 1);
+            s = SlopeShare(seal->m_last_altitude.m_norm, v);
+        } else if (*z < 0.0f) {
+            CPnt3D a = CPnt3D::unit_x;
+            Negate(a.x);
+            Negate(a.y);
+            Negate(a.z);
+            TransformVectors(&seal->m_node->m_matrix, &a, &v, 1);
+            s = SlopeShare(seal->m_last_altitude.m_norm, v);
+        }
+        s *= s;
+        if (s > 1.0f)
+            s = 1.0f;
+        *z *= s;
+    }
+    bool xs = _close_enough(*x, 0.0f, data_003F3428);
+
+    if (!xs) {
+        float s = 1.0f;
+
+        if (*x > 0.0f) {
+            TransformVectors(&seal->m_node->m_matrix, &CPnt3D::unit_nz, &v, 1);
+            s = SlopeShare(seal->m_last_altitude.m_norm, v);
+        } else if (*x < 0.0f) {
+            TransformVectors(&seal->m_node->m_matrix, &CPnt3D::unit_z, &v, 1);
+            s = SlopeShare(seal->m_last_altitude.m_norm, v);
+        }
+        s *= s;
+        if (s > 1.0f)
+            s = 1.0f;
+        *x *= s;
+    }
+    *z *= f;
+    *x *= f;
+}
+
 /* a hit's water entered: the SEAL's box against the surface -- wading (the surface between its feet
  * and its top) the big ripples by the gait, the small ones stopped, and a fall's splash on landing;
  * just under the surface (within 10 over its top) the small ripples, the big ones stopped; the depth
