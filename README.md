@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC Medius code, round 78** (rt_circ_buf_is_wrapped 0x62C908 (since 4b: `int bValid = cb != 0;` at the
+  declaration, stored in the one arm; the three clearing tests one `||`), rt_msg_client_iget_buffer_status 0x634328 (nSendSize
+  declared after nRecvSize: 2 of 24 orders) and rt_crypt 0x630DF0 (since 8b: KM_Decrypt's dead 0x80000000 re-check arm kept inside
+  the outer test) byte-exact. Notes extended: 0x63C170 (combine folds the argument's load into the a1 set glued to the call; a
+  local above the test fixes the slot but PRE reuses it later), 0x6385F0 (sched1's register weight: pComm dies on the port's
+  load), 0x62F818 (the jump pass if-converts `result = -3` before GCSE, whose constant propagation then deletes the arms' zeros)):
+  - A FRAME THAT KEEPS AN UNUSED LOCAL'S BYTES IS A DEAD ARM THAT USED IT: write the arm (a sibling's, under a test excluding it);
+    deleted after expansion it still leaves its join, splitting the block and changing the schedule and live lengths.
+  - AN INITIALISED DECLARATION IS AN INSTRUCTION IN DECLARATION ORDER: reorder declarations to move one variable's start.
+  - A STORED CONSTANT 1 FORMED AS `sltu rd,zero,rp` IN A GUARD'S SLOT IS A FLAG `p != 0` COMPUTED BEFORE THE GUARD (inside the
+    arm CSE folds it to 1).
+  - an address in the frame after a call waits one cycle on the call through $1 (clobbered); a constant argument issues ahead.
 - **Tells from the GCC recogniser, SDK and OVL1 libraries, round 78** (five rows byte-exact, all open since rounds 5a-44a, every note
   wrong: inet_sock.c's getsockname/getpeername 0x1C46D0, accept 0x1C32A8 and gethostbyname 0x1C48A0, sase_ldpda.c's LPC envelope
   0x24A5A8 (two copies of k*8, and the asserts naming pfAlpc and pfMaskEnv as the image's strings do), libnetb.c's

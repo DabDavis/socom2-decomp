@@ -12175,6 +12175,7 @@
 0x0062C7D8 rt_circ_buf_get_avail_nowrap
 0x0062C828 rt_circ_buf_get_start_used_ptr
 0x0062C898 rt_circ_buf_get_start_avail_ptr
+0x0062C908 rt_circ_buf_is_wrapped
 0x0062C958 rt_comm_get_version_string_ptr
 0x0062C968 rt_comm_get_build_timestamp
 0x0062CAC0 rt_comm_startup
@@ -12280,6 +12281,7 @@
 0x00630690 KM_Encrypt
 0x00630938 func_00630938
 0x00630B90 KM_Decrypt
+0x00630DF0 func_00630DF0
 0x00631008 func_00631008
 0x006311E8 func_006311E8
 0x00631388 func_00631388
@@ -12354,6 +12356,7 @@
 0x00634170 rt_msg_client_isend_target
 0x00634270 rt_msg_client_isend_client_set
 0x00634278 func_00634278
+0x00634328 rt_msg_client_iget_buffer_status
 0x00634508 func_00634508
 0x00634550 func_00634550
 0x00634598 rt_msg_client_iget_host_by_name
