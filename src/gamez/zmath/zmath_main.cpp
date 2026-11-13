@@ -127,11 +127,12 @@ extern "C" void func_00307700(sceVu0FVECTOR zd, sceVu0FVECTOR p, sceVu0FMATRIX o
     sceVu0CameraMatrix(out, p, zd, yd);
 }
 
-/* OPEN, 2 instructions off: a segment (a, b) against box through the VU0 microprogram at
- * 0x30; out[3] comes back 1.0 on a hit. The target loads out[3] before materialising the
- * 1.0f; MW (which schedules inline asm instruction by instruction) hoists the constant
- * here, and no statement order (tools/perm.py, 30,800 variants), comparison form or asm
- * qualifier has moved it. */
+/* A segment (a, b) against box through the VU0 microprogram at 0x30; out[3] comes back 1.0
+ * on a hit. The VU0 sequence is a Metrowerks-syntax `asm { .set noreorder ... .set reorder }`
+ * block naming the C variables (`this` through a copy): the target loads out[3] before
+ * materialising the 1.0f, which a GCC-style `asm __volatile__ (...)` lets MW's scheduler
+ * hoist past (2 off through 30,800 statement orders, round 77: a noreorder block is a
+ * scheduling barrier; without `.set noreorder` the block is 19 off). */
 int CBBox::GetIntersect(CPnt4D *pa, CPnt4D *pb, CPnt4D *pout, CPnt4D *pout2, bool flag)
 {
     sceVu0FVECTOR vmin;
@@ -156,18 +157,21 @@ int CBBox::GetIntersect(CPnt4D *pa, CPnt4D *pb, CPnt4D *pout, CPnt4D *pout2, boo
     else
         *w = 0;
     out[3] = 0.0f;
-    asm __volatile__ (
-        "qmtc2.i %0, $vf0\n"
-        "lqc2 $vf1, 0(%1)\n"
-        "lqc2 $vf2, 0(%2)\n"
-        "lqc2 $vf3, 0(%3)\n"
-        "lqc2 $vf4, 0(%4)\n"
-        "vcallms 0x30\n"
-        "qmtc2.i %0, $vf0\n"
-        "sqc2 $vf10, 0(%5)\n"
-        "sqc2 $vf30, 0(%6)\n"
-        "qmtc2.i %0, $vf0\n"
-        : : "r"(this), "r"(a), "r"(b), "r"(pmin), "r"(pmax), "r"(out), "r"(out2) : "memory");
+    CBBox *self = this;
+    asm {
+        .set noreorder
+        qmtc2.i self, vf0
+        lqc2 vf1, 0(a)
+        lqc2 vf2, 0(b)
+        lqc2 vf3, 0(pmin)
+        lqc2 vf4, 0(pmax)
+        vcallms 0x30
+        qmtc2.i self, vf0
+        sqc2 vf10, 0(out)
+        sqc2 vf30, 0(out2)
+        qmtc2.i self, vf0
+        .set reorder
+    }
     if (out[3] == 1.0f)
         return 1;
     return 0;
