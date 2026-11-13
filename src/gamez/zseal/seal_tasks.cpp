@@ -313,6 +313,33 @@ template <class T> inline T *TaskBlock(_zanim_cmd_hdr *hdr)
 }
 
 #define TASK_SEAL(T) TASK_SEAL_AS(T, (T *)hdr)
+/* the same find with the end tested on the argument itself, no bool between (CTMove::Begin's) */
+#define TASK_SEAL_PLAIN(T)                                                  \
+    int index = ((TASK_HDR *)hdr)->m_param;                                 \
+    unsigned int type = ai_cmdid[2];                                        \
+    T *cmd = (T *)hdr;                                                      \
+    CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;                      \
+    int i;                                                                  \
+    _zanim_cmd_hdr *found;                                                  \
+                                                                            \
+    if (!list) {                                                            \
+        found = 0;                                                          \
+        goto found_it;                                                      \
+    }                                                                       \
+    for (i = 0;; i++) {                                                     \
+        _zanim_cmd_hdr *p = list->GetCmd(i);                                \
+                                                                            \
+        if (!p)                                                             \
+            break;                                                          \
+        if (p->data_type == type && index-- == 0) {                         \
+            found = p;                                                      \
+            goto found_it;                                                  \
+        }                                                                   \
+    }                                                                       \
+    found = 0;                                                              \
+found_it:                                                                   \
+    TASK_PARAM *param = found ? (TASK_PARAM *)found : 0;                    \
+    CZSealBody *seal = param ? param->m_seal : 0
 #define TASK_SEAL_AS(T, BLOCK)                                              \
     unsigned int type = ai_cmdid[2];                                        \
     int index = ((TASK_HDR *)hdr)->m_param;                                 \
@@ -1178,16 +1205,54 @@ struct CTLookAt : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
-/* a scripted AI group (ai_group.cpp's class, OVL2 0x60C190-0x60EDFF: its Find by id, 0x60E460) */
+/* a scripted AI group (ai_group.cpp's class, OVL2 0x60C190-0x60EDFF: its Find by id, 0x60E460, and
+ * what CTGroup::Begin builds one with -- ai_group.cpp's declarations) */
 class CAiGroup {
 public:
+    /* a camera point: a position and how to read it (ai_group.cpp's) */
+    struct campoint {
+        CPnt3D m_pos;   // 0x0
+        unsigned int m_flags;   // 0xc
+    };
+
     static CAiGroup *Find(int id);
+    static CAiGroup *Create(int n, int steps);
+    bool AddMember(CSealCtrlAi *ai);
+    void SetMemberLoc(unsigned int i, const CAiMapLoc &loc);
+    void AddStep(unsigned int n);
+    void EndStep();
+    void AddCamera(const campoint &from, const campoint &to, float time);
+    void AddSound(const char *name, float time);
+    void AddSound(int member, const char *name, float time);
+    void AddZAnim(int member, const char *name, float time);
+    void AddAnim(int member, short anim, float length, float time);
+    void Start();
+    /* (ai_group.cpp's inlines) */
+    void SetFlag(unsigned int f, unsigned int on) { SetFlags(on ? f : 0, on ? 0 : f); }
+    void SetFlags(unsigned int set, unsigned int clear)
+    {
+        m_flags &= ~clear;
+        m_flags |= set;
+    }
+
+    unsigned int m_flags;   // 0x0
+    int m_id;   // 0x4
+    CAiMapLoc m_goal;   // 0x8
 };
 
-/* ai::GROUP (SOCOM II's) */
+/* ai::GROUP (SOCOM II's): the members' names, their cells, then each step's actions -- a stream
+ * Parse writes and Begin reads back (the names ours) */
 struct CTGroup : TASK_HDR {
-    unsigned char _8[0x14 - 0x8];
+    unsigned char m_count;   // 0x8: the members
+    unsigned char m_steps;   // 0x9
+    unsigned char m_haslocs : 1;   // 0xa bit 0: a cell for each member follows the names
+    unsigned char m_flag4 : 1;   // bit 1: the group's flag 4
+    unsigned char m_flag8 : 1;   // bit 2: the group's flag 8
+    unsigned char _a3 : 5;
+    unsigned char _b[0x10 - 0xb];
+    CAiMapLoc m_goal;   // 0x10: the group's goal cell
     unsigned int m_14;   // 0x14: the group's id (CAiGroup::Find's), 0 once ended
+    char m_data[4];   // 0x18: the stream
 
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);    /* (RegisterCommands' handlers, unwritten) */
@@ -2743,6 +2808,141 @@ extern "C" bool func_005DAF50(TASK_GROUPPOS *out, _zrdr *r, unsigned int flags)
     return ok;
 }
 
+/* the group built from the block's stream: its members by name (the SEALs the AI drives), their
+ * cells, the flags; each step's actions -- a member's sound, anim or ZAnim, a camera move, the
+ * group's sound, each with an optional time (flag 0x10000) and the anim an optional length (0x20000)
+ * -- and the group started (OVL2 0x5D9840; SOCOM II's command, the AI asked for and unused). A ZAnim
+ * falls through into the camera move: the target's own missing break. Byte-exact (the kit's round
+ * 63, unwritten before): the members' count read through a const view in the first loop (a plain
+ * read is CSE'd into the cells' loop, which the target reads again; a const cast at the read makes
+ * the count's address an invariant in s0); the step's count a one-element array `= { 0 }` (the
+ * target's byte-zero loop with its count before the address's null test); each read's `p += 4`
+ * before the call that takes the value (the add in the call's slot); the time zeroed after the
+ * flags' copy, the anim's length declared ahead of the anim (its swc1 first, from an f0 the switch
+ * shares); IsAi as a ternary on the controller (zseal.h's inline over `r` leaves out the `b; andi`);
+ * SetFlag over a (bool) of each bit (the sltu); Create takes the steps too (a1 set for the call) */
+void CTGroup::Begin(_zanim_cmd_hdr *hdr)
+{
+    TASK_SEAL(CTGroup);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    CAiGroup *g = CAiGroup::Create(cmd->m_count, cmd->m_steps);
+
+    if (!g)
+        return;
+
+    const char *p = cmd->m_data;
+
+    cmd->m_14 = g->m_id;
+    g->m_goal = cmd->m_goal;
+    const CTGroup &c = *cmd;
+
+    for (int i = 0; i < c.m_count; i++) {
+        const char *name = p;
+
+        p += strlen(p) + 1;
+        CEntity *e = CEntity::GetEntityList().GetEntity(name);
+        CZSealBody *s = (CZSealBody *)(e && e->m_type == CEntity::ENT_TYPE_SEAL ? e : 0);
+
+        if (s && (s->m_control ? ((CSealCtrl *)s->m_control)->IsAi() : false))
+            g->AddMember(SealAi(s));
+    }
+    if (cmd->m_haslocs) {
+        for (int i = 0; i < cmd->m_count; i++) {
+            CAiMapLoc loc;
+
+            memcpy(&loc, p, 4);
+            p += 4;
+            g->SetMemberLoc(i, loc);
+        }
+    }
+    g->SetFlag(4, (bool)cmd->m_flag4);
+    g->SetFlag(8, (bool)cmd->m_flag8);
+    for (int step = 0; step < cmd->m_steps; step++) {
+        unsigned int n[1] = { 0 };
+
+        memcpy(&n[0], p, 4);
+        p += 4;
+        g->AddStep(n[0]);
+        for (unsigned int j = 0; j < n[0]; j++) {
+            unsigned int flags = 0;
+
+            memcpy(&flags, p, 4);
+            float time = 0.0f;
+
+            p += 4;
+            switch (flags & 0xff00) {
+            case 0x200: {
+                const char *name = p;
+
+                p += strlen(p) + 1;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                g->AddSound((unsigned char)flags, name, time);
+                break;
+            }
+            case 0x100: {
+                float length = 0.0f;
+                int anim = 0;
+
+                memcpy(&anim, p, 4);
+                p += 4;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                if (flags & 0x20000) {
+                    memcpy(&length, p, 4);
+                    p += 4;
+                }
+                g->AddAnim((unsigned char)flags, (short)anim, length, time);
+                break;
+            }
+            case 0x500: {
+                const char *name = p;
+
+                p += strlen(p) + 1;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                g->AddZAnim((unsigned char)flags, name, time);
+            }
+            case 0x300: {
+                CAiGroup::campoint from;
+                CAiGroup::campoint to;
+
+                from.m_flags = 0;
+                to.m_flags = 0;
+                memcpy(&from, p, 16);
+                memcpy(&to, p + 16, 16);
+                p += 32;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                g->AddCamera(from, to, time);
+                break;
+            }
+            case 0x400: {
+                const char *name = p;
+
+                p += strlen(p) + 1;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                g->AddSound(name, time);
+                break;
+            }
+            }
+        }
+        g->EndStep();
+    }
+    g->Start();
+}
+
 /* running until the group is gone (OVL2 0x5D9710) */
 bool CTGroup::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -3202,6 +3402,172 @@ void CTMacro::Begin(_zanim_cmd_hdr *hdr)
 
     if (seal ? SealAi(seal) : 0)
         cmd->m_anim = ZAnim.GetAnim(cmd->m_name.m_str, 0);
+}
+
+/* the index'th SEAL argument's SEAL, the handlers' find as an inline (the name ours) */
+inline CZSealBody *TaskSealAt(int n)
+{
+    unsigned int type = ai_cmdid[2];
+    int index = n;
+    CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;
+    int i;
+    _zanim_cmd_hdr *found;
+
+    if (!list) {
+        found = 0;
+        goto found_it;
+    }
+    for (i = 0;; i++) {
+        _zanim_cmd_hdr *p = list->GetCmd(i);
+        if (!p)
+            break;
+        if (p->data_type == type && index-- == 0) {
+            found = p;
+            goto found_it;
+        }
+    }
+    found = 0;
+found_it:
+    TASK_PARAM *param = found ? (TASK_PARAM *)found : 0;
+
+    return param ? param->m_seal : 0;
+}
+
+/* a direction made a unit vector across the ground, left as it is when it has no length there (the
+ * name ours) */
+static inline void NormalizeXZ(CPnt3D &v)
+{
+    float len = sqrtf(v.x * v.x + v.z * v.z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        v.x = ((const CPnt3D &)v).x * inv;
+        v.z = ((const CPnt3D &)v).z * inv;
+    }
+}
+
+/* whether a point is not another (the name ours) */
+static inline bool PntDiffers(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x != b.x || a.y != b.y || a.z != b.z;
+}
+
+/* the move set as the SEAL's goal: to a node's point, offset back toward the SEAL and facing it
+ * (kind 1); to a point of the SEAL's own frame (2); beside another SEAL -- its frame's point facing
+ * away from it, or the line from the SEAL to it (3); facing along another SEAL's direction (4); the
+ * AI told to move, and the task blocking while it does (OVL2 0x5D5D00; SOCOM 1's, 0x2B9C90 in the
+ * demo, the matrices now Transform's). Byte-exact (the kit's round 63, unwritten before): the find
+ * TASK_SEAL_PLAIN -- the end tested on the argument itself (the target branches on a0, no sltu/xori
+ * bool) and the index declared before the type, the list before the counter (type s2, index s3,
+ * counter s0, list s1); the second and third finds TaskSealAt, the list before the counter too, into
+ * ONE `other` declared at the top (the fourth kind's other in s0 across no call); the ground
+ * normalise an inline over a reference whose scaling reads through a const view (the target reloads
+ * x and z after the divide); the far SEAL's line from it through a pointer local (a1 set before
+ * a0); the timer's two words chained off the static (one load); dir negated member by member (a
+ * constructed temporary takes 16 more bytes of frame) */
+void CTMove::Begin(_zanim_cmd_hdr *hdr)
+{
+    TASK_SEAL_PLAIN(CTMove);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
+
+    if (!seal || !ctrl)
+        return;
+
+    CPnt3D dir;
+    CPnt3D pos;
+    int mode = 0;
+    CZSealBody *other;
+
+    switch (cmd->m_kind) {
+    case 0:
+        break;
+    case 1: {
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->m_node, false);
+
+        if (node) {
+            CMatrix m;
+
+            if (node->BuildMTW(m)) {
+                CPnt3D d(0.0f, 0.0f, 0.0f);
+
+                m.Transform(&cmd->m_pos, &pos, 1);
+                seal->m_posW.SubXZ(&pos, &d);
+                d.y = 0.0f;
+                NormalizeXZ(d);
+                dir.x = -d.x;
+                dir.y = -d.y;
+                dir.z = -d.z;
+                d.Scale(cmd->m_dist, &d);
+                pos.Add(&d, &pos);
+                mode = 3;
+            }
+        }
+        break;
+    }
+    case 3: {
+        other = TaskSealAt(cmd->m_node);
+
+        if (other) {
+            CPnt3D d(0.0f, 0.0f, 0.0f);
+
+            if (PntDiffers(cmd->m_pos, CPnt3D::zero)) {
+                other->m_node->m_matrix.Transform(&cmd->m_pos, &pos, 1);
+                pos.SubXZ(&other->m_posW, &d);
+                d.y = 0.0f;
+                NormalizeXZ(d);
+                dir.x = -d.x;
+                dir.y = -d.y;
+                dir.z = -d.z;
+            } else {
+                const CPnt3D *mine = &seal->m_posW;
+
+                other->m_posW.SubXZ(mine, &d);
+                NormalizeXZ(d);
+                dir = d;
+                d.Scale(cmd->m_dist, &d);
+                other->m_posW.Add(&d, &pos);
+            }
+            mode = 3;
+        }
+        break;
+    }
+    case 2:
+        cmd->m_pos.Scale(cmd->m_dist, &pos);
+        seal->m_node->m_matrix.Transform(&pos, 1);
+        mode = 1;
+        break;
+    case 4: {
+        other = TaskSealAt(cmd->m_node);
+
+        if (other) {
+            CPnt3D d(0.0f, 0.0f, 0.0f);
+
+            TransformVectors(&other->m_node->m_matrix, &cmd->m_dir, &d, 1);
+            NormalizeXZ(d);
+            mode = 2;
+            dir = d;
+        }
+        break;
+    }
+    }
+    if (mode) {
+        static float timeout = 0.4f;
+        CSealCtrl *sc = (CSealCtrl *)seal->m_control;
+        CSealCtrlAi *sai = sc->GetSealCtrlAi();
+
+        sc->SetGoalPos(GOAL_MOVE, (mode & 1) ? &pos : 0, 3.0f);
+        sc->SetGoalDir(GOAL_MOVE, (mode & 2) ? &dir : 0, false);
+        sc->m_goal_timer.m_min = sc->m_goal_timer.m_timer = timeout;
+        sc->m_goal_timer.m_range = 0.0f;
+        sc->m_goal_tolerance = 1.0f;
+        if (sai) {
+            sai->SetAiMode((AI_MODE)5);
+            cmd->m_blocking = 1;
+        } else
+            cmd->SetBlocking(false);
+    }
 }
 
 /* running, when blocking, while the AI moves to its goal (OVL2 0x5D5B40) */

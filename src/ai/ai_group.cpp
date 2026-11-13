@@ -326,8 +326,9 @@ public:
      * its end (0x60D310: not virtual -- delete calls it with 1) */
     CAiGroup();
     ~CAiGroup();
-    /* a group for `n` members made and listed, its flag 1 the default (OVL2 0x60E610) */
-    static CAiGroup *Create(int n);
+    /* a group for `n` members made and listed, its flag 1 the default (OVL2 0x60E610); the steps
+     * unused (CTGroup::Begin passes its step count in a1) */
+    static CAiGroup *Create(int n, int steps);
     /* every step stopped and dropped, the group's ZAnim restarted, every member let go (OVL2
      * 0x60D280; the name ours) */
     void Abort();
@@ -482,7 +483,7 @@ static bool TickGroup(CAiGroup *g)
 }
 
 /* (OVL2 0x60E610) */
-CAiGroup *CAiGroup::Create(int n)
+CAiGroup *CAiGroup::Create(int n, int steps)
 {
     CAiGroup *g = new CAiGroup;
 
