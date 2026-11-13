@@ -210,22 +210,23 @@ static __inline__ unsigned char RegisterOutputQueue(TOSBLOCK *b, TOS *t, TOSQUEU
 }
 
 /* a block's n-th input queue and its reader id: set and the reader opened (10); with no block the
- * reader disabled (8), the scheduler's through the host's callback. A 1 is a failure. */
+ * reader disabled (8), the scheduler's through the host's callback. A 1 is a failure. The block
+ * tested `!= 0` with the no-block case the else (GCC round 75: ConstructBlock lays it last). */
 static __inline__ unsigned char RegisterInputQueue(TOSBLOCK *b, TOS *t, TOSQUEUE *q, unsigned short n,
                                                    unsigned short reader)
 {
-    if (b == 0) {
-        if (q != 0 && qQueueControl(q, 8, reader, 0) == 0)
-            return 1;
-        return 0;
-    }
-    if (b == (TOSBLOCK *)t) {
-        if (((TOS *)b)->cb.input_queue((TOS *)b, q, reader) != 0)
-            return 1;
+    if (b != 0) {
+        if (b == (TOSBLOCK *)t) {
+            if (((TOS *)b)->cb.input_queue((TOS *)b, q, reader) != 0)
+                return 1;
+        } else {
+            b->inputs[n].q = q;
+            b->inputs[n].reader = reader;
+            if (q != 0 && qQueueControl(q, 10, reader, 0) == 0)
+                return 1;
+        }
     } else {
-        b->inputs[n].q = q;
-        b->inputs[n].reader = reader;
-        if (q != 0 && qQueueControl(q, 10, reader, 0) == 0)
+        if (q != 0 && qQueueControl(q, 8, reader, 0) == 0)
             return 1;
     }
     return 0;
@@ -234,18 +235,19 @@ static __inline__ unsigned char RegisterInputQueue(TOSBLOCK *b, TOS *t, TOSQUEUE
 /* block i built: its id's constructor, its output queues (QueueWriters' entries naming it), its
  * input queues (QueueReaders'), each reader numbered down from the queue's count of readers, then
  * its init; a 1 on any failure. tosGetQueuePtr is called out of line: its body comes later.
- * OPEN (148 words, 2 short since round 27c's callback tests): the walks, tests and calls are the
- * target's, but the output count is
- * kept in s3 and narrowed at each use there (`andi v1,s3,0xff` before the bump) where 2.96 copies
- * it into the inline's argument registers here, and the readers' and writers' saved registers
- * trade places (s5/s6). Its definition here is what tosCallControlFunc needed (below). */
+ * Byte-exact since GCC round 75: both counters are ints, narrowed at each use (`andi v1,s3,0xff`
+ * before the bump), the reader count the decrement's own value (`unsigned char c = --counts[k]`,
+ * not reloaded), and RegisterInputQueue nests the block's cases under `b != 0`, the no-block case
+ * last (its block was laid out last: the 4 missing words). OPEN from round 27c to 74, read as
+ * "2.96 copies the count into the inline's argument registers" and the saved registers' trade.
+ * Its definition here is what tosCallControlFunc needed (below). */
 static unsigned char ConstructBlock(TOS *t, unsigned char id, int i)
 {
     TOSPROC *p = t->procs;
-    unsigned short nin = 0;
+    int nin = 0;
     TOSBLOCK *b;
     unsigned char *w, *r, *counts;
-    unsigned char nout;
+    int nout;
 
     while (p->id != id)
         p++;
@@ -265,8 +267,9 @@ static unsigned char ConstructBlock(TOS *t, unsigned char id, int i)
     for (r = t->readers; r[0] != 0xFF; r += 2) {
         unsigned char k = r[0] - t->queuebase;
 
-        counts[k]--;
-        if (r[1] == id && RegisterInputQueue(b, t, t->queues[k], nin++, counts[k])) {
+        unsigned char c = --counts[k];
+
+        if (r[1] == id && RegisterInputQueue(b, t, t->queues[k], nin++, c)) {
             heap_Free(t->heap, counts);
             return 1;
         }
@@ -838,10 +841,10 @@ unsigned char tosInit(TOS *t, void *heap, TOSCB *cb, struct PROFILE *profiles, v
 __inline__ unsigned char _tosErrorLog(TOSLOG *log, unsigned short code)
 {
     TOS *t = log->tos;
-    int code32 = log->block << 16 | code;
+    int blk = log->block;
 
     if (t->error == 0)
-        t->error = code32;
+        t->error = blk << 16 | code;
     if (t->cb.error_cb != 0)
         t->cb.error_cb(t, t->error);
     return code;
@@ -860,13 +863,13 @@ unsigned char _tosWarningLog(TOSLOG *log, unsigned short code)
 }
 
 /* a block allocated with its queue tables and data (size rounded to words) after it; a failed
- * allocation is the scheduler's error 2. OPEN (16 words): _tosErrorLog is inlined here in the
- * target (the log record still built on the stack, so the logger is a public __inline__ -- its
- * own copy stays byte-exact so), but the target computes the code inside the `error == 0` test
- * where this inlining computes it before (computing it inside in the logger's source breaks the
- * logger, 22 words), and keeps the outputs' address in a1 for the stores that follow. Round 39c: an
- * `extern __inline__` logger computing inside the test, the real one below the constructor (round 37c's trick),
- * is 38s (the stack record goes), the stores in reverse 25. */
+ * allocation is the scheduler's error 2. _tosErrorLog is inlined here (the log record still built
+ * on the stack, so the logger is a public __inline__). Byte-exact since GCC round 75: the logger
+ * reads the block id into an int before the test and shifts inside it (its own copy matches
+ * either way; the target's andi sits in the test's slot, the shift after), and the stores after
+ * `b->outputs` go through a volatile view (source order; outputs plain keeps it in a1 past the
+ * state's 1). OPEN from round 37c to 74 as "the code computed inside the test breaks the logger"
+ * (that was the whole expression inside, 22 words) and the outputs' register. */
 TOSBLOCK *tosBaseBlockConstruct(TOS *tos, unsigned char id, unsigned char ninputs, unsigned char noutputs,
                                 TOSFUNC process, TOSFUNC init, TOSFUNC control, unsigned int size)
 {
@@ -885,15 +888,19 @@ TOSBLOCK *tosBaseBlockConstruct(TOS *tos, unsigned char id, unsigned char ninput
         return 0;
     }
     b->outputs = inputs + ninputs;
-    b->state = 1;
-    b->tos = tos;
-    b->id = id;
-    b->ninputs = ninputs;
-    b->noutputs = noutputs;
-    b->init = init;
-    b->control = control;
-    b->process = (TOSPROCFN)process;
-    b->inputs = inputs;
+    {
+        volatile TOSBLOCK *v = b;
+
+        v->state = 1;
+        v->tos = tos;
+        v->id = id;
+        v->ninputs = ninputs;
+        v->noutputs = noutputs;
+        v->init = init;
+        v->control = control;
+        v->process = (TOSPROCFN)process;
+        v->inputs = inputs;
+    }
     return b;
 }
 
