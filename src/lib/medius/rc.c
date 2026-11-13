@@ -14,12 +14,12 @@
  * target zero-extends the swapped byte with an `andi` -- a promoted QImode copy); the counters
  * cleared i, j, then n (one order of six, tools/ccperm.py), as RCEncrypt stores them; the salt
  * indexed off its own stack slot, `((unsigned char *)&nSalt)[k]` (a pointer local keeps sp in a
- * register). OPEN: RCEncrypt (15 words) and RCDecrypt (36): every instruction in its place but the
- * registers -- the target's temporaries sit one register on from these (the parameters' copies in
- * t4/t6/t7 here t3/t5/t6, &S[i] in a0, the swapped byte in a1, &S[j] in v1); the feedback read
- * before the store (encrypt: S[c] loaded ahead of the pData store, so `j += S[c]` comes first), the
- * in-place `^=`, the standard `S[i] + S[j]` index, declaration orders and a block-scoped swap all
- * leave it so. */
+ * register). RCEncrypt and RCDecrypt byte-exact since GCC round 82 (15 and 36 words before, registers
+ * only): the reloaded S[i] of the output index is a variable of its own, `u = S[i]; ... S[(unsigned
+ * char)(u + t)]`. Written inline the reload is a MEM operand beside t's register, and expand_binop
+ * ("make the first operand a register") swaps the commutative sum to (plus t S[i]) -- local-alloc then
+ * ties the sum to t's dying register, where the target ties it to the reload's. As a register u stays
+ * first, and every temporary moves one register on to the target's. */
 
 typedef struct RCState {
     unsigned int n;                     /* 0x00: the bytes ciphered */
@@ -100,6 +100,7 @@ void RCEncrypt(RCState *pState, unsigned char *pData, unsigned int nLength)
     unsigned int n;
     unsigned char t;
     unsigned char c;
+    unsigned char u;
 
     for (n = 0; n < nLength; n++) {
         i += 5;
@@ -109,7 +110,8 @@ void RCEncrypt(RCState *pState, unsigned char *pData, unsigned int nLength)
         S[j] = t;
         c = pData[n];
         j += S[c];
-        pData[n] = c ^ S[(unsigned char)(S[i] + t)];
+        u = S[i];
+        pData[n] = c ^ S[(unsigned char)(u + t)];
     }
     pState->i = i;
     pState->j = j;
@@ -123,6 +125,7 @@ void RCDecrypt(RCState *pState, unsigned char *pData, unsigned int nLength)
     unsigned char *S = pState->state;
     unsigned int n;
     unsigned char t;
+    unsigned char u;
 
     for (n = 0; n < nLength; n++) {
         i += 5;
@@ -130,7 +133,8 @@ void RCDecrypt(RCState *pState, unsigned char *pData, unsigned int nLength)
         t = S[i];
         S[i] = S[j];
         S[j] = t;
-        pData[n] ^= S[(unsigned char)(S[i] + t)];
+        u = S[i];
+        pData[n] ^= S[(unsigned char)(u + t)];
         j += S[pData[n]];
     }
     pState->i = i;

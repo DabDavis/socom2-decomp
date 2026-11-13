@@ -15,7 +15,9 @@
  * memset puts the offset first in every one of thirteen spellings. OPEN: func_0063C8A0 (32: registers -- the target keeps nRow in a1 and moves pnCol to t3, here
  * both move: n (pseudo 88, 5 refs over 11 insns) takes a1 before nRow (4 over 37) is allocated, where
  * the target's n is a copy in a3 of the count loaded into a0; thirteen spellings of the count update
- * -- an assignment in the test, the index form, post-increments -- compile alike). The init
+ * -- an assignment in the test, the index form, post-increments -- compile alike; round 82: the target's
+ * `addu t1,v1,a3` puts the offset first, which `(unsigned int *)(nRow * 4 + (unsigned int)gpTableCounts)` gives
+ * and every pointer spelling does not -- still 32, the registers unmoved). The init
  * func_0063C700 (open since round 14b) is byte-exact since round 23b as guard clauses (round 14b's
  * rule: each `return 1`/`return 2` hoisted into v0, the bounds tests two guards -- an `||` gives the
  * second its own block) with the buffer size UNSIGNED: the allocator's `unsigned long` size is a zero
