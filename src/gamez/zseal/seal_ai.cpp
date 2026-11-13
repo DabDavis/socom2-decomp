@@ -2635,6 +2635,7 @@ extern "C" bool func_0056D530(const CAiMap::region *r, unsigned int team)
 /* the sleep check's turn (OVL2 0x56D2B0, new in SOCOM II: the fifth frame slice, by the entity's id):
  * a SEAL with a region and a team falls asleep when no live one of the team stands in it, and wakes
  * when one does; one without them, on its turn, widens the window by one (the name unknown) */
+#pragma auto_inline off
 extern "C" void func_0056D2B0(CSealCtrlAi *ai)
 {
     int id = ai->m_entity->m_id;
@@ -2649,6 +2650,7 @@ extern "C" void func_0056D2B0(CSealCtrlAi *ai)
         ai->SetSleeping(!in);
     }
 }
+#pragma auto_inline reset
 
 
 /* the leg to walk: with a planned path's points, from the cell to the path's last point -- both
@@ -4783,6 +4785,13 @@ extern "C" bool func_0055EAA0(CSealCtrlAi *ai, AI_FIREPARAMS *p, bool clear)
 class CAiTarget {
 public:
     void SetTarget(CTarget *t);
+    /* (SOCOM 1's; OVL2 0x60A460, 0x60A590 -- ai_target.cpp's) */
+    void Tick(CEntity *e, float dT);
+    float GetTimeSinceLastSighting() const;
+
+    CEntity *m_entity;   // 0x0
+    unsigned char _4[0x58 - 0x4];
+    CPnt3D m_lastPos;   // 0x58: where the target was last seen
 };
 
 /* a squad's sound (OVL2 0x5EAF20, the kit lane's seal_unit.cpp) */
@@ -5965,6 +5974,213 @@ extern "C" {
 /* a rescue credited to a SEAL's stats -- its counter 14 and three points to its score (OVL2 0x545480,
  * seal.cpp's span: the SEAL in a1, which both callers hand it) */
 void func_00545480(CSealStats *stats, CZSealBody *seal);
+}
+
+extern "C" {
+/* the AI pre-tick's switches (OVL2 data 0x64FF90, 0x650078-0x650090 and bss 0x66B1A8, bytes; the names
+ * ours) */
+extern unsigned char data_0064FF90;
+extern unsigned char data_00650078;
+extern unsigned char data_00650080;
+extern unsigned char data_00650088;
+extern unsigned char data_00650090;
+extern unsigned char data_0066B1A8;
+/* the AI's sensing frame (OVL2 0x5CBA20, the kit lane's range: CSealCtrlAi's own SensorPreTick) */
+void SensorPreTick__11CSealCtrlAiFf(CSealCtrlAi *ai, float dT);
+/* (OVL2 0x56C550, 0x56AF50, 0x567900, unwritten; 0x5FAE70, 0x5FD3E0, seal_aifollow.cpp's; 0x60F760,
+ * seal_aivehicle.cpp's) */
+void func_0056C550(CSealCtrlAi *ai, float dT);
+void func_0056AF50(CSealCtrlAi *ai, float dT);
+void func_00567900(CSealCtrlAi *ai, float dT);
+void func_005FAE70(CSealCtrlAi *ai, float dT);
+bool func_005FD3E0(CSealCtrlAi *ai, CEntity *e);
+void func_0060F760(CSealCtrlAi *ai);
+/* the alert record's tick (OVL2 0x556370, below) */
+bool func_00556370(CSealCtrlAi *ai, float dT);
+}
+
+/* dozing or asleep (bits 9 and 8: SOCOM 1's m_snoozing and m_sleeping), materialised (the name ours) */
+static inline bool IsDozing(const CSealCtrlAi *ai)
+{
+    return (ai->m_aibit9 ? true : false) || (ai->m_aibit8 ? true : false);
+}
+
+/* a slice's window widened by one when the number takes its turn (the name ours) */
+static inline void Widen(CAiSlice &s, int id)
+{
+    if (s.Has(id))
+        s.SetSize(s.m_size + 1, s.m_total);
+}
+
+/* the AI's pre-tick (OVL2 0x56DE10, slot 0x0C): the tick's time and its inverse kept; a suspended AI
+ * runs its states alone; a dead one widens its slices and keeps its spray; an asleep or dozing one
+ * only hears; else the target, the look, the sensing, the states and the mode's movement */
+bool CSealCtrlAi::PreTick(float dT)
+{
+    int id;
+    bool lost;
+    bool walk;
+    bool follow;
+    bool alert;
+    AI_MODE mode;
+    bool collide;
+    CZSealBody *seal;
+    bool alt;
+
+    data_0066B0F8 = dT;
+    data_0066B100 = dT > 0.0f ? 1.0f / dT : 0.0f;
+    seal = (CZSealBody *)m_entity;
+    id = seal->m_id;
+
+    if (AiStateIs(AI_STATE_SUSPENDED)) {
+        StateTick(dT);
+        bool awake = !((bool)m_aibit9 || (bool)m_aibit8);
+
+        if (awake || !aiEnabled) {
+            Widen(ai_slice0, id);
+            Widen(ai_slice1, id);
+            Widen(ai_slice4, id);
+            seal->m_1060_bit11 = 1;
+            bool r = !aiEnabled && data_0064FF90;
+
+            if (r && data_00650078)
+                r = seal->GetNode()->m_active;
+            return r;
+        }
+    }
+    bool dead = !(seal->m_isAlive ? true : false);
+
+    if (dead) {
+        Widen(ai_slice0, id);
+        Widen(ai_slice1, id);
+        Widen(ai_slice4, id);
+        func_005659E0(this, dT);
+        return true;
+    }
+    bool awake = !((bool)m_aibit9 || (bool)m_aibit8);
+
+    if (!awake) {
+        if (data_00650080 && seal->GetNode()->m_active) {
+            Dump();
+            if (data_00650088)
+                data_00650080 = 0;
+        }
+        if (IsSleeping()) {
+            aiSleepingCount++;
+            func_0056D2B0(this);
+        } else {
+            Widen(ai_slice4, id);
+            aiSnoozingCount++;
+        }
+        EventTick(dT);
+        Widen(ai_slice0, id);
+        Widen(ai_slice1, id);
+        return false;
+    }
+    func_0056D2B0(this);
+    seal->m_check_player_collision = 0;
+    seal->m_get_new_altitude = 0;
+    aiActiveCount++;
+    m_410 = seal->m_posW;
+    ((CAiTarget *)m_67c)->Tick(seal, dT);
+    seal->InvalidateFollowParams();
+    UpdateViewCone();
+    lost = true;
+
+    if (func_0060A850(m_67c)) {
+        if (!TargetHeld(this))
+            lost = ((CAiTarget *)m_67c)->GetTimeSinceLastSighting() > 5.0f;
+        else
+            lost = false;
+    }
+    if (!lost) {
+        float t = ((CAiTarget *)m_67c)->GetTimeSinceLastSighting();
+
+        if (TargetHeld(this) || t < 2.0f)
+            SetLookPosW((AI_LOOK)7, &((CAiTarget *)m_67c)->m_entity->m_posW);
+        else
+            SetLookPosW((AI_LOOK)7, &((CAiTarget *)m_67c)->m_lastPos);
+    } else
+        ClearLook((AI_LOOK)7);
+    m_aibit4 = 0;
+    if (((const CSealCtrlAi *)this)->m_aibit19 ? true : false) {
+        SensorPreTick__11CSealCtrlAiFf(this, dT);
+        m_aibit20 = 1;
+    } else {
+        m_aibit20 = 0;
+        seal->m_check_player_collision = 0;
+        seal->m_get_new_altitude = 0;
+    }
+    walk = true;
+    follow = true;
+    alert = func_00556370(this, dT);
+
+    StateTick(dT);
+    mode = m_3f4;
+
+    if (alert) {
+        mode = (AI_MODE)4;
+        walk = false;
+    } else if (IsNavySeal()) {
+        if (AiStateIs(AI_STATE_PURSUE) || AiStateIs(AI_STATE_TARGET)) {
+            if (!func_005FD3E0(this, ftsGetPlayer())) {
+                follow = false;
+                walk = false;
+            }
+        }
+    }
+    switch ((unsigned char)mode) {
+    case 0:
+        break;
+    case 2:
+        bool creep = m_goal_type == 1 && ((bool)m_goal_dir_valid || (bool)m_goal_pos_valid);
+
+        if (creep)
+            CreepTick(dT, false);
+        func_0056A760(this, 0, true);
+        break;
+    case 5:
+        SlideTick(dT);
+        break;
+    case 1:
+        func_00567690(this, dT, walk);
+        func_0056A760(this, 0, true);
+        break;
+    case 4:
+        CreepTick(dT, walk);
+        func_0056A760(this, 0, true);
+        break;
+    case 3:
+        if (follow)
+            func_00567900(this, dT);
+        else
+            CreepTick(dT, walk);
+        func_0056A760(this, 0, true);
+        break;
+    case 6:
+        func_005FAE70(this, dT);
+        func_0056A760(this, 0, true);
+        break;
+    case 7:
+        func_0056AF50(this, dT);
+        break;
+    case 8:
+        break;
+    }
+    *(float *)&m_3f8 += dT;
+    collide = data_0066B1A8 || seal->m_check_player_collision;
+    alt = data_00650090 && IsNavySeal() && seal->m_get_new_altitude;
+
+    if ((seal->m_bit13 ? true : false) || func_0054F6E0(seal, true, true, true) || seal->m_eb8)
+        collide = false;
+    if (seal->m_carry || seal->m_state == 2 || seal->m_state == 8)
+        alt = false;
+    seal->m_check_player_collision = collide;
+    seal->m_get_new_altitude = alt;
+    func_0056C550(this, dT);
+    if (m_aibit20 ? true : false)
+        func_0060F760(this);
+    return true;
 }
 
 extern "C" {

@@ -1393,7 +1393,8 @@ public:
     float m_404;   // 0x404 (zeroed by the constructor; the names from here to 0x7a4 ours)
     float m_408;   // 0x408: scales the anger a killer of the team raises (OnDeath; the name ours)
     float m_40c;   // 0x40c: a time on the game's clock 0x572190 measures from (the name ours)
-    unsigned char _410[0x41c - 0x410];
+    /* the SEAL's position as the AI's frame began (PreTick 0x56DE10 copies it; the name ours) */
+    CPnt3D m_410;   // 0x410
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
      * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
@@ -1528,6 +1529,8 @@ public:
     /* the AI's frame: the scan, the fudge velocities, the alertness's decays and band (OVL2 0x56FD00,
      * seal_ai.cpp's) */
     virtual bool Tick(float dT);
+    /* the AI's pre-tick: suspended, dead, asleep, else awake (OVL2 0x56DE10, seal_ai.cpp's) */
+    virtual bool PreTick(float dT);
     /* the sightings, the stance, the rescue and the alertness's score (OVL2 0x56F970, seal_ai.cpp's) */
     virtual bool PostTick(float dT);
     virtual bool SlideTick(float dT);
