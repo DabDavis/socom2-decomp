@@ -2358,12 +2358,10 @@ static inline void ZeroThrottles(CSealCtrlAi *ai)
  * 7 while still on top are refused; leaving 7 puts the AI-map collision back, and for 3 the path's next point
  * deployed; entering each mode rests the throttles or sets its own (OVL2 0x56CBF0; SOCOM 1's with the top test,
  * modes 7 and the path's point new).
- * OPEN, 6 instructions and the branch offsets past them (0x18 short): leaving mode 3 the target evaluates a test
- * whose result nothing uses -- the held 4 materialised, then `(state - 1) < 3` with its `sltiu at; beqz at`, an
- * empty arm `b J; nop` (SOCOM 1's had a body there). A dead bool, an empty inline or `if (0)` in the arm drop the
- * second term (here, everything else byte-exact). `int x = (a || b) ? 1 : 0` keeps it at the right size but MW then
- * stops putting `li` and the stack's address in the delay slots before them, all through the function (102 off);
- * `{}` or `(void)0` do the same and drop the term. */
+ * Leaving mode 3 the target evaluates a test whose result nothing uses -- the held 4 materialised, the range's
+ * `sltiu at; beqz at`, an empty arm `b J; nop`: SOCOM 1's body gone, its test the free test 0x5629B0 CALLED --
+ * auto-inlined late (deferred), after the dead code went, so it stays; written out in place (or as the
+ * IsState4Held inline) MW drops the range term, 6 short. */
 void CSealCtrlAi::SetAiMode(AI_MODE mode)
 {
     AI_MODE old;
@@ -2387,7 +2385,7 @@ void CSealCtrlAi::SetAiMode(AI_MODE mode)
         {
             bool on = false;
 
-            if (IsState4Held(this) || (unsigned int)(m_path.m_state - 1) < 3)
+            if (!func_005629B0(this))
                 on = true;
         }
         break;
