@@ -3061,6 +3061,196 @@ extern "C" void func_00561B90(CSealCtrlAi *ai, bool now)
 }
 
 extern "C" {
+int rand(void);
+/* the nearest enemy SEAL within a range of a point (OVL2 0x569E40, defined below) */
+CZSealBody *func_00569E40(CSealCtrlAi *ai, const CPnt3D *pos, float range);
+}
+
+/* a random value from lo up to hi, lo itself for none between (Rfloat(lo, hi - lo)'s operator float,
+ * whose class is defined further down: written out here, inline) and a chance taken by value read
+ * through a reference (Chance's shape) -- the names ours */
+static inline float PickBetween(float lo, float hi)
+{
+    float range = hi - lo;
+
+    if (range == 0.0f)
+        return lo;
+    float r = 4.656613e-10f * (float)rand();
+
+    return lo + range * r;
+}
+
+/* whether two entities share no team (an inline; the name ours) */
+static inline int Foes(const CEntity *a, const CEntity *b)
+{
+    return (a->m_team & b->m_team) == 0;
+}
+
+/* a decay's value raised to another past it (by a scale), unless it stands at 42 (an inline: the
+ * scale kept as a multiply; the name ours) */
+static inline void RaiseDecay(CAiDecay &d, float v, float k)
+{
+    if (!(v <= k * d.m_value) && data_0064FE48 != d.m_value)
+        d.m_value = v;
+}
+
+static inline bool ChanceOf(float chance)
+{
+    const float &c = chance;
+
+    return PickBetween(0.0f, 1.0f) <= c;
+}
+
+/* bit 7 set or cleared (0x561E20's body without its Navy SEAL test; an inline, the name ours) */
+static inline bool SetBit7(CSealCtrlAi *ai, bool on, signed char c)
+{
+    bool cleared = !on && ai->m_aibit7 != 0;
+
+    ai->m_aibit7 = on;
+    if (ai->m_aibit7) {
+        memset(ai->m_3e4, 0, sizeof(ai->m_3e4));
+        ai->m_3e0 = c;
+    } else if (cleared)
+        ai->m_courage.m_value = ai->m_courage.m_goal;
+    return ai->m_aibit7;
+}
+
+/* the reaction's two squared ranges (OVL2 data 0x6502D8, 0x6502F0: 300 and 200 squared, read as
+ * variables) */
+extern "C" float data_006502D8;
+extern "C" float data_006502F0;
+
+/* the reaction to bit 7 (the no-ammo state's): the bit cleared (0x561E20 with -1), then the byte at
+ * 0x3E0 decides -- -1 for one chosen: four weights from the floats at 0x3E4 (a quarter of one more
+ * each), the SEALs among the entity's targets within 300 counted friend and foe at each nearer one
+ * (the friends from one), none foe reacting 0; the fourth weight halved with a lone friend and a foe
+ * within 200, else none; the second scaled by friends over foes, the third by its inverse, the second
+ * none without a target; surrender by the AI's own odds (3), else a weighted pick -- 0 or 4 the
+ * courage raised to the threat (unless it stands at 42), 1 a rush, 2 a flight from the nearest enemy
+ * SEAL within 150 (its squad kept), 3 a surrender after a pop to the script state (flag 8 when the
+ * byte gave it) (OVL2 0x561550: SOCOM 1's DoReaction by place, CSealCtrlAi::Tick's call; the name
+ * ours). Byte-exact from the first draft's shape by: bit 7 tested through a const view (a plain test is
+ * CSE'd into the inline's `cleared`, the target reloads the byte), `cleared` as `!on && bit != 0`, the
+ * team test through an inline taking the entities (its `&e->m_team` hoisted), the else arm first in the
+ * fourth weight's test, a cumulative pick, the cases laid out 3, 2, 1, 0/4, the courage raised through
+ * an inline keeping its `1.0f *`, the weight's odds read into a local in the loop (the constants
+ * materialised ahead), reaction and fixed declared before the entity, the parameters after it */
+extern "C" void func_00561550(CSealCtrlAi *ai)
+{
+    signed char reaction;
+    bool fixed;
+    CEntity *e = ai->m_entity;
+
+    if (((const CSealCtrlAi *)ai)->m_aibit7) {
+        SetBit7(ai, false, -1);
+        reaction = ai->m_3e0;
+        AI_PARAMS *params = &ai->m_aiParams;
+        fixed = false;
+
+        if (reaction == -1) {
+            const float *odds = (const float *)ai->m_3e4;
+            float w[4];
+
+            for (int j = 0; j < 4; j++) {
+                float o = odds[j];
+
+                w[j] = 0.25f * (1.0f + o);
+            }
+            float nearest[2] = { 1e8f, 1e8f };
+            CZSealBody *seal[2] = { 0 };
+            int count[2] = { 1, 0 };
+            CTargetList &targets = e->m_targets;
+
+            for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+                CZSealBody *s = AsSeal(i->m_ent);
+
+                if (s) {
+                    float d = i->m_distSq;
+
+                    if (!(d <= data_006502D8))
+                        break;
+                    int foe = Foes(e, s);
+
+                    if (d < nearest[foe]) {
+                        nearest[foe] = d;
+                        seal[foe] = s;
+                        count[foe]++;
+                    }
+                }
+            }
+            if (!count[1])
+                reaction = 0;
+            else {
+                if (!(count[0] < 2 && nearest[1] <= data_006502F0))
+                    w[3] = 0.0f;
+                else
+                    w[3] *= 0.5f;
+                float ratio = (float)count[0] / (float)count[1];
+
+                w[1] *= ratio;
+                w[2] *= 1.0f / ratio;
+                if (!func_0060A850(ai->m_67c))
+                    w[1] = 0.0f;
+                if (ChanceOf(params->surrender))
+                    reaction = 3;
+                else {
+                    float sum = 0.0f;
+
+                    for (int j = 0; j < 4; j++)
+                        sum += w[j];
+                    float pick = PickBetween(0.0f, sum);
+
+                    float acc = 0.0f;
+
+                    for (int k = 0; k < 4; k++) {
+                        acc += w[k];
+                        if (pick < acc) {
+                            reaction = k;
+                            break;
+                        }
+                    }
+                }
+            }
+        } else
+            fixed = true;
+        switch (reaction) {
+        case 3:
+            ai->PopToAiState(AI_STATE_SCRIPT, false);
+            if (ai->PushAiState(AI_STATE_SURRENDER, fixed ? 8 : 0)) {
+                CAiState *s = ai->GetAiState();
+
+                s = s && s->m_state == AI_STATE_SURRENDER ? s : 0;
+                s->SetActive(true);
+            }
+            break;
+        case 2:
+            if (ai->PushAiState(AI_STATE_FLEE, 0)) {
+                CAiState *s = ai->GetAiState();
+                CAiSFlee *st = s && s->m_state == AI_STATE_FLEE ? (CAiSFlee *)s : 0;
+                CZSealBody *from = func_00569E40(ai, &ai->m_entity->m_posW, 150.0f);
+
+                if (from)
+                    st->m_60 = (unsigned int)((CSealCtrl *)from->m_control)->m_unit;
+                st->SetActive(true);
+            }
+            break;
+        case 1:
+            if (ai->PushAiState(AI_STATE_RUSH, 0)) {
+                CAiState *s = ai->GetAiState();
+
+                s = s && s->m_state == AI_STATE_RUSH ? s : 0;
+                s->SetActive(true);
+            }
+            break;
+        case 0:
+        case 4:
+            RaiseDecay(ai->m_courage, ai->m_targetThreat.m_value, 1.0f);
+            break;
+        }
+    }
+}
+
+extern "C" {
 /* whether the SEAL can take a stance where it stands (OVL2 0x562C80, defined below: an int the
  * caller makes a bool) */
 bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance);
