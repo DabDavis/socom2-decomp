@@ -4415,7 +4415,9 @@ void CZSealBody::PostPreTick(float dT)
                 from.y += step;
                 to.y += step;
 
-                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to) * 0.5f;
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
 
                 from.y -= h;
                 to.y += h;
@@ -4433,7 +4435,9 @@ void CZSealBody::PostPreTick(float dT)
                 from.y += step;
                 to.y += step;
 
-                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to) * 0.5f;
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
 
                 from.y -= h;
                 to.y += h;
@@ -4460,7 +4464,9 @@ void CZSealBody::PostPreTick(float dT)
                 m_260.Apply(&d, &to, 1);
                 to.Add(&from, &to);
 
-                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to) * 0.5f;
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
 
                 if (up) {
                     from.y -= h;
@@ -4491,7 +4497,9 @@ void CZSealBody::PostPreTick(float dT)
                 from.y += step;
                 to.y += step;
 
-                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to) * 0.5f;
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
 
                 from.y -= h;
                 to.y += h;
@@ -4509,7 +4517,9 @@ void CZSealBody::PostPreTick(float dT)
                 from.y += step;
                 to.y += step;
 
-                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to) * 0.5f;
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
 
                 from.y += h;
                 to.y -= h;
@@ -4536,7 +4546,9 @@ void CZSealBody::PostPreTick(float dT)
                 m_260.Apply(&d, &to, 1);
                 to.Add(&from, &to);
 
-                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to) * 0.5f;
+                float h = func_0054ECD0(&GetRootPart()->m_node->m_matrix, &lean, &from, &to);
+
+                h *= 0.5f;
 
                 if (up) {
                     from.y -= h;
