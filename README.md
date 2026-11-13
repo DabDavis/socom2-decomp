@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks rows, round 79** (nothing closed; a source-mistake sweep over every open MW row. CHangulFont::LoadCharLayouts
+  0x35B9D0 30 to 24: A WRONG TAG -- each part's list looked up as "Jamo" where the image's string at 0x3F89A0 is "Styles" (found by
+  `scdiff -v` over all 108 WRONG rows; the other four content mismatches were jump tables or shifted pairs). CZKit::HandleFireWeapon
+  0x5BE9A0 214 to 27 at size: LobAim's target point a local computed before the call (the target evaluates it before
+  GetMuzzleVelocity and reloads m_body), the aim through a reference, the quaternion copied whole, t after shots. Call lists: every
+  difference an MSL inline level, an overlay copy or a slot fill. Lead: tcmUpdateTeamMember's stand-in CanOrder sits at slot 0xC,
+  zseal.h's AllowCommand(CZSealBody*, FT_COMMAND, void*). MixAnims' three 16-byte slots are allocator spills, not a dead arm):
+  - A REGISTER-ONLY ROW CAN HOLD A WRONG TAG: run `scdiff -v` and read every content-checked string.
+  - AN ARGUMENT THE TARGET COMPUTES BEFORE A CALL IN THE SAME ARGUMENT LIST IS A LOCAL TAKEN AHEAD OF IT (inline, MW makes the call
+    first and shares one load between both arguments).
+  - a local igreplay wants numbered after a later-declared one is declared after it, the earlier use reading the expression
+    itself. A struct copy (all loads, then all stores) is `a = b`, not a field-by-field inline.
 - **Tells from the GCC Medius code, round 78** (rt_circ_buf_is_wrapped 0x62C908 (since 4b: `int bValid = cb != 0;` at the
   declaration, stored in the one arm; the three clearing tests one `||`), rt_msg_client_iget_buffer_status 0x634328 (nSendSize
   declared after nRecvSize: 2 of 24 orders) and rt_crypt 0x630DF0 (since 8b: KM_Decrypt's dead 0x80000000 re-check arm kept inside
