@@ -121,19 +121,23 @@ char *sceBInetGetVersionStringPtr(void)
     return data_003DCFC0;
 }
 
-/* OPEN (83 words, the frame 144 for 160): the target keeps six registers (the stamp's address
- * too) and copies the month table first; the order of the work is the target's. */
+/* GCC round 78 (open since round 5a, the frame 144 for 160): the month table's literal ends in
+ * an explicit "\0" -- 38 bytes copied, the image's `lb v1,37` -- and the date and time pointers
+ * are assigned after the null test, not at their declarations: born after it, the time's
+ * pointer overlaps the stamp's address and takes its own saved register (six, as the target). */
 int sceBInetGetBuildTimestamp(char *buf, int len)
 {
-    char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
+    char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec\0";
     char mon[16];
     char stamp[32];
-    const char *date = "Aug 20 2003";                   /* __DATE__ and __TIME__ when it was built */
-    const char *time = "15:15:35";
+    const char *date;                   /* __DATE__ and __TIME__ when it was built */
+    const char *time;
     int m;
 
     if (buf == 0)
         return -512;
+    date = "Aug 20 2003";
+    time = "15:15:35";
     sprintf(mon, "%.3s", date);
     m = (strstr(months, mon) - months) / 3 + 1;
     sprintf(stamp, "%.2d.%.2d.%.4s.%.2s.%.2s.%.2s", m, atoi(date + 4), date + 7, time, time + 3, time + 6);
