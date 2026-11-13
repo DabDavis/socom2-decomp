@@ -6199,3 +6199,9 @@ void CZSealBody::UpdateHostileAnchor()
         m_hostile_anchor = 0;
     }
 }
+
+/* The unit inlines to depth 8 at its end, as zanim_cmd_tick.cpp does for OVL1's copy (0x262550): OVL2's
+ * out-of-line zdb::CNode::GetBBox (0x541510, `ovl-copy:`) holds seven self-copies and then a call, where
+ * the flags' level 5 gives four. A pragma acts through its state at the unit's end (deferred inlining):
+ * objcmp against the unit without it -- GetBBox alone differs. */
+#pragma inline_depth(8)
