@@ -2879,6 +2879,237 @@ extern "C" zdb::IntersectStruct *func_0054E430(CZSealBody *seal)
 }
 
 extern "C" {
+/* the wall hit the step is measured against kept, or none (OVL2 0x5B0C70, seal_env.cpp's range), the side the
+ * step takes against a wall (OVL2 0x549F30, below; not written), the step's other checks (OVL2 0x54EDF0, above;
+ * not written), the anim tests ComputeNextPosition asks (OVL2 0x57B510, 0x587FE0, 0x587F10, 0x588030: seal_env.cpp
+ * and seal_body.cpp's) and the step held to a wall (OVL2 0x54A3D0, below) */
+void func_005B0C70(CZSealBody *seal, zdb::IntersectStruct *hit);
+bool func_00549F30(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit);
+void func_0054EDF0(CZSealBody *seal, float dT);
+bool func_0057B510(CZSealBody *seal);
+bool func_00587FE0(CZSealBody *seal);
+bool func_00587F10(CZSealBody *seal);
+bool func_00588030(CZSealBody *seal);
+bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit);
+bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit, float step);
+bool func_00549C30(CZSealBody *seal, const CPnt3D *offset, zdb::IntersectStruct *hit);
+extern short data_003DEF08;
+extern AnimSet *data_0044D410;
+}
+
+/* the two hits the step is held to (0x1100 and 0x1120: an IntersectStruct each, its node the word at +0x1C), or
+ * none when its node is clear (inlines, the names ours) */
+static inline zdb::IntersectStruct *Hit1100(CZSealBody *seal)
+{
+    return seal->m_111c ? (zdb::IntersectStruct *)((char *)seal + 0x1100) : 0;
+}
+
+static inline zdb::IntersectStruct *Hit1120(CZSealBody *seal)
+{
+    return seal->m_1120.m_node ? &seal->m_1120 : 0;
+}
+
+/* the point's words copied one by one (an inline: SOCOM 1's PNT3D::operator=, whose out-of-line copies
+ * its builds call) */
+static inline void CopyPnt(CPnt3D &to, const CPnt3D &from)
+{
+    to.x = from.x;
+    to.y = from.y;
+    to.z = from.z;
+}
+
+/* where the step takes the SEAL (an inline, the name ours: its sum a temporary of its own, copied out) */
+static inline CPnt3D NextPos(CZSealBody *seal)
+{
+    return seal->m_posW + seal->m_f44;
+}
+
+/* a push run down flat by a step: an axis the step would carry past zero stopped, else the step taken off (an
+ * inline over the points, the name ours: the step's words read through the reference at each use -- written out
+ * in place, &d.z is kept in a register) */
+static inline void RunDown(CPnt3D &v, const CPnt3D &d)
+{
+    if ((v.x > 0.0f && !(d.x <= v.x)) || (v.x < 0.0f && d.x < v.x))
+        v.x = 0.0f;
+    else
+        v.x = v.x - d.x;
+    if ((v.z > 0.0f && !(d.z <= v.z)) || (v.z < 0.0f && d.z < v.z))
+        v.z = 0.0f;
+    else
+        v.z = v.z - d.z;
+}
+
+/* the length across the ground (an inline, the name ours: through it the point's x stays loaded for the
+ * scaling and its z is read again; written in place, &d.z is kept in a register) */
+static inline float LenXZ(const CPnt3D *p)
+{
+    return sqrtf(p->x * p->x + p->z * p->z);
+}
+
+/* the frame's move: the top blend's motion (anim 19's set to 8 a loop, either way) and the controller's fudges
+ * taken into the velocities; the turn applied to the next quaternion; held by a landing anim, the move straight
+ * down at m_133c; the world velocity and the step; the step pinned, or carried by the push m_1350 (the push run
+ * down by 150 a second flat when not airborne), the step's checks, the gunner's place, online the player
+ * collision, the step held to the two hits, and the player's step against the nearest solid wall across it
+ * (OVL2 0x54D9A0, slot 0x28; SOCOM 1's ComputeNextPosition opened the same way) */
+void CZSealBody::ComputeNextPosition(float dT)
+{
+    CPnt3D half;
+    CZBodyAnimBlend *blend = SealTop(this);
+
+    m_258_1 = false;
+    func_005B0C70(this, 0);
+    if (IsCurrentBlend((AnimType)19)) {
+        CPnt3D v = CPnt3D::zero;
+        float t = blend->Representative()->m_anim->LoopTime();
+
+        if (func_005551A0(blend->m_flags, 32))
+            v.z = -8.0f / t;
+        else
+            v.z = 8.0f / t;
+        blend->m_dpos = v;
+    }
+    m_velM.Add(&blend->m_dpos, &m_velM);
+    blend->m_dpos = CPnt3D::zero;
+    m_velR.Add(&blend->m_drot, &m_velR);
+    blend->m_drot = CPnt3D::zero;
+
+    CSealCtrl *ctrl = (CSealCtrl *)m_control;
+
+    m_velM.Add(&ctrl->m_fudge_velM, &m_velM);
+    ctrl->m_fudge_velM = CPnt3D::zero;
+    m_velR.Add(&ctrl->m_fudge_velR, &m_velR);
+    ctrl->m_fudge_velR = CPnt3D::zero;
+    if (!func_0057B510(this)) {
+        m_f50 = m_velM.y;
+        if (blend && !func_005551A0(blend->m_flags, 0x40)) {
+            m_velW.y = 0.0f;
+            m_velM.y = 0.0f;
+        }
+    }
+    m_next_quat = m_quat;
+
+    CQuat q;
+    CQuat r;
+
+    m_velR.Scale(0.5f * dT, &half);
+    q.Exp(&half);
+    m_260 = q;
+    q.Mul(&m_next_quat, &r);
+    r.Normalize(&m_next_quat);
+
+    bool top = func_00588030(this);
+    bool done = func_00587FE0(this) && SealTop(this);
+
+    if (done)
+        SealTop(this)->IsDone(dT);
+
+    bool held = IsCurrentBlend((AnimType)8) || IsCurrentBlend((AnimType)9) || top;
+
+    if (held || IsCurrentBlend((AnimType)data_003DEF08)) {
+        m_velM.x = 0.0f;
+        m_velM.y = -m_133c;
+        m_velM.z = 0.0f;
+    }
+    m_next_quat.Apply(&m_velM, &m_next_velw, 1);
+    m_next_velw.Add(&ctrl->m_fudge_velW, &m_next_velw);
+    ctrl->m_fudge_velW = CPnt3D::zero;
+    m_next_velw.Scale(dT, &m_f44);
+    if (m_animate_footsteps ? true : false)
+        func_0054EA80(this);
+    if (m_airborne || held || IsCurrentBlend((AnimType)data_003DEF08) || func_00587F10(this)) {
+        m_next_velw.x = m_1350.x;
+        m_next_velw.z = m_1350.z;
+        m_f44.x += m_1350.x * dT;
+        m_f44.z += m_1350.z * dT;
+        if (!m_airborne && !held) {
+            CPnt3D d = m_1350;
+            float len = LenXZ(&d);
+
+            if (len != 0.0f) {
+                float inv = 1.0f / len;
+
+                d.x *= inv;
+                d.z *= inv;
+            }
+            d.Scale(150.0f * m_2e0, &d);
+            RunDown(m_1350, d);
+        }
+    }
+    if (!IsCurrentBlend((AnimType)AnimTypes::ClimbOver))
+        func_0054EDF0(this, dT);
+    if (m_animset != data_0044D410) {
+        m_gunner_pos = NextPos(this);
+    }
+    if (theNetwork.m_9)
+        func_0054F7E0(this, dT);
+    if (Hit1100(this)) {
+        CPnt3D p = NextPos(this);
+
+        if (m_state == stateProne) {
+            CPnt3D up;
+            float (*m)[4] = m_node->m_matrix.m_matrix;
+
+            up.x = m[2][0];
+            up.y = m[2][1];
+            up.z = m[2][2];
+
+            up.Normalize();
+            zdb::IntersectStruct *hit = Hit1100(this);
+            float f = fabsf(8.0f * Dot(up, hit->m_norm));
+
+            if (f < 7.0f)
+                f = 7.0f;
+            func_0054A6D0(this, &p, Hit1100(this), f);
+        } else
+            func_0054A6D0(this, &p, Hit1100(this), 6.0f);
+    }
+    if (Hit1120(this)) {
+        CPnt3D p = NextPos(this);
+
+        func_0054A3D0(this, &p, Hit1120(this));
+    }
+    if (IsPlayer() && m_1340 == 0.0f && m_animset != data_0044D410) {
+        CPnt3D a, b;
+
+        if (func_0054E8F0(this, &a, &b)) {
+            bool active = GetNode()->m_active;
+
+            GetNode()->SetActive(false);
+            zdb::IntersectStruct *best = 0;
+            zdb::DiIntersect *di = zdb::CWorld::m_world->GetIntersects(&a, &b);
+            float bestd = 10000000.0f;
+
+            for (int i = 0; i < di->m_Cnt; i++) {
+                zdb::IntersectStruct *is = &di->m_Intersects[i];
+                CMaterialEx *m = MaterialEx(is->GetMaterial());
+
+                if (!m || (!m->IsVolumetric() && !m->IsLiquid())) {
+                    CPnt3D v;
+
+                    is->m_pos.Sub(&a, &v);
+                    float d = v.x * v.x + v.y * v.y + v.z * v.z;
+
+                    if (d < bestd) {
+                        bestd = d;
+                        best = is;
+                    }
+                }
+            }
+            GetNode()->SetActive(active);
+            if (best) {
+                CPnt3D p = NextPos(this);
+
+                m_258_1 = func_00549F30(this, &p, best);
+                p = NextPos(this);
+                func_00549C30(this, &p, best);
+                func_005B0C70(this, best);
+            }
+        }
+    }
+}
+
+extern "C" {
 /* the SEAL's ground hit kept, its point, normal and node -- or none (OVL2 0x5B0C10, seal_env.cpp's) */
 void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit);
 }
@@ -2930,14 +3161,6 @@ static inline void PushOut(float &cur, float v)
     }
 }
 
-/* the point's words copied one by one (an inline: SOCOM 1's PNT3D::operator=, whose out-of-line copies
- * its builds call) */
-static inline void CopyPnt(CPnt3D &to, const CPnt3D &from)
-{
-    to.x = from.x;
-    to.y = from.y;
-    to.z = from.z;
-}
 
 extern "C" {
 /* (seal_env.cpp's: two rays' hits at once; the hit taken as the SEAL's ground) */
@@ -3011,6 +3234,7 @@ extern "C" bool func_0054D620(CZSealBody *seal, float back, float ahead, float r
  * = step;`) is coalesced into the parameter and made at entry, MW then scheduling it into the test's
  * delay slot; the cast makes the copy an expression, kept where it is written -- the target's `mov.s`
  * just before the `neg.s`, the hit's copy in the delay slot, both alignment pads following */
+#pragma auto_inline off
 extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit, float step)
 {
     if (!hit->m_node)
@@ -3033,6 +3257,7 @@ extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
     }
     return true;
 }
+#pragma auto_inline reset
 
 /* a switch that turns the weapon's wall push-out off -- never written, so off (OVL2 bss 0x66B000: 0x549C30
  * and 0x549F30 give up at it, 0x5483D0 and PostPreTick test it; the name ours). The steepest wall normal
@@ -3537,6 +3762,7 @@ static inline void PushOut(float &cur, float v, bool &moved)
  * without the named depth's or the comma's extra copy (`r * (1.3f - (float)t)` matches too). Rounds
  * 51-54 tried the depth named, `(t, 1.3f - t) * r`, a variable limit, inlines, `-t + 1.3f`, `+r`, `/ 1.0f`
  * and every operand order (build/scratch/seal-r51..r54/v_3d*.py, seal-r55/v_3d2.py) */
+#pragma auto_inline off
 extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)
@@ -3574,6 +3800,7 @@ extern "C" bool func_0054A3D0(CZSealBody *seal, const CPnt3D *pos, zdb::Intersec
         func_005B0BB0(seal, 0);
     return true;
 }
+#pragma auto_inline reset
 
 /* the SEAL shown again, whole: its node opaque and active, the state sent with it, and order 31 given
  * to team 24's squad (OVL2 0x543B90, new in SOCOM II: CMPExitState::UnInit calls it for the player

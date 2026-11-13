@@ -2065,6 +2065,7 @@ public:
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
     virtual void PreTick(float dT);                                         /* +0x14 */
+    virtual void ComputeNextPosition(float dT);                             /* +0x28 */
     virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
     virtual void UpdateAiMapLoc();                                          /* +0x48 */
@@ -2628,7 +2629,13 @@ public:
     /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
      * (seal.cpp; the name ours) */
     unsigned char m_258_0 : 1;   // 0x258
-    unsigned char _259[0x270 - 0x259];
+    /* bit 1: what 0x549F30 says of the wall ComputeNextPosition finds the player's step against,
+     * cleared as it starts (the name ours) */
+    unsigned char m_258_1 : 1;
+    unsigned char _259[0x260 - 0x259];
+    /* the frame's turn as a quaternion (ComputeNextPosition keeps the Exp of half the turn; the name
+     * ours) */
+    CQuat m_260;   // 0x260
     /* (a member array of one: ~CZSealBody's __destroy_arr; the name ours) */
     zdb::DiIntersect m_270[1];   // 0x270
     /* a point the wall's approach is measured from (0x5B4B40; the name ours) */
@@ -2775,7 +2782,7 @@ public:
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
-    unsigned char _f50[0xf54 - 0xf50];
+    float m_f50;   // 0xf50: the move's height speed, kept as ComputeNextPosition clears it (the name ours)
     /* the gunner's place on the turret (0x585CD0 puts it there each frame anim 1 plays; the name ours) */
     CPnt3D m_gunner_pos;   // 0xf54
     /* the crouched move's throttles as CrouchMoveControl 0x582D10 last took them (the names ours) */
@@ -2928,7 +2935,10 @@ public:
     unsigned char _1100[0x111c - 0x1100];
     /* zeroed when the SEAL lands out of state 2, and when the ground is lost (0x5B0420; the name ours) */
     int m_111c;   // 0x111c
-    unsigned char _1120[0x1160 - 0x1120];
+    /* a wall's hit the step is held to while its node is set (ComputeNextPosition hands it to 0x54A3D0;
+     * the name ours) */
+    zdb::IntersectStruct m_1120;   // 0x1120
+    unsigned char _1140[0x1160 - 0x1140];
     /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
      * seal_weapon.cpp's view names it so too) */
     CSeqMember m_wep_seq;   // 0x1160
