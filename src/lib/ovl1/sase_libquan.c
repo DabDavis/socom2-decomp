@@ -1,6 +1,6 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G8 */
 /* Nellymoser's encoder, libquan.c (OVL1 0x24B028-0x24C1F0): the scalar quantiser's nearest
- * codeword (0x24B720) and the 2-D squared distance (0x24C000, OPEN), asserting as the codec does
+ * codeword (0x24B720) and the 2-D squared distance (0x24C000), asserting as the codec does
  * (file and line by `#line`, as in sase_encsc.c). The set's quantiser 0x24B028 (OPEN) and its decoder 0x24B2F8 (GCC round 44a).
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
@@ -66,20 +66,22 @@ int func_0024B720(const float *pfCodeBook, int iLength, float fValue)
 	return iBest;
 }
 
-/* OPEN (11 words, right size): the squared distance of two 2-D points. The target loads pfIn[0],
- * pfRef[0], pfIn[1], then subtracts and loads pfRef[1]; here both schedulers start with the [1]
- * pair whatever the source order -- five spellings (either difference first, one expression, the
- * squares apart, stepped pointers) give the same 11 words and a loop 33s: a priority, not the
- * order (tools/ccdump.py's .sched/.sched2 ready lists are the next thing to read). */
+/* the squared distance of two 2-D points (GCC round 77; open since round 34a): one difference
+ * variable reused for both axes -- its second assignment must wait for the first square to read it,
+ * so sched1 takes the [0] pair's loads and square first, as the target does. With two difference
+ * variables both schedulers start with the [1] pair whatever the source order (the last use of
+ * each pointer has the smaller register weight). */
 float func_0024C000(const float *pfIn, const float *pfRef)
 {
-	float fD0, fD1;
+	float fDiff, fDist;
 
 #line 892 "../../SaseEncVad/source/libquan.c"
 	assert((pfIn != NellyNull) && (pfRef != NellyNull));
-	fD0 = pfIn[0] - pfRef[0];
-	fD1 = pfIn[1] - pfRef[1];
-	return fD0 * fD0 + fD1 * fD1;
+	fDiff = pfIn[0] - pfRef[0];
+	fDist = fDiff * fDiff;
+	fDiff = pfIn[1] - pfRef[1];
+	fDist += fDiff * fDiff;
+	return fDist;
 }
 
 /* the scalar codebook's entry, an index past the end read as entry 0 */
