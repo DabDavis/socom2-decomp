@@ -647,10 +647,12 @@ static inline float Factor(CZSIScriptCommon *a)
  * AnimType, the max's copied from the min's (as shorts each copy took a sign-extension and maxType a
  * 2-byte slot: an AnimType assigned a constant spills to a 16-byte one, 224 and 208); maxEnd declared
  * ahead of minEnd and the band's type declared outside the walk (the FPR and GPR numbering); the first
- * script's factor in a float local. Left: the frame (304 against 272: 32 bytes above `taken` that
- * SOCOM 1's 256-byte frame has too -- `taken[12]` gives it, not committed), the first GetScript's
- * argument read ahead of the set (the target reads the set first) and the pool's address one slot
- * earlier. Round 33: the edge types set through an inline taking a short reference, or through `*&`,
+ * script's factor in a float local; the walk's counter initialised ahead of the pool (the pool's
+ * address after `i = 0`). Left (4): the frame (304 against 272: 32 bytes above `taken` that SOCOM 1's
+ * 256-byte frame has too -- `taken[9..12]` gives it, not committed; an unused local array is
+ * dropped), and the first GetScript's argument read ahead of the set (the target reads the set
+ * first; (int), (short) and int/short locals, band[0], a set local and an inline accessor with a
+ * body change nothing). Round 33: the edge types set through an inline taking a short reference, or through `*&`,
  * change nothing (MW folds both); the blendable test as an if-assign loses 6 */
 int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float scale, float wt)
 {
@@ -673,11 +675,11 @@ int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float sca
     ACTIVE_ANIM *taken[4];
     float f = m_animset->GetScript((AnimType)band->m_type)->m_1c;
     float s = 100.0f * speed * f;
+    AnimType type;
+    int i = 0;
     CActiveAnimPool *pool = &m_active_anim_pool;
 
-    AnimType type;
-
-    for (int i = 0; i < 4; i++, band++) {
+    for (; i < 4; i++, band++) {
         type = (AnimType)band->m_type;
 
         if (type == -1)
