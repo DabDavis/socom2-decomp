@@ -2066,6 +2066,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 64** (CZSealBody's PushBlend 0x588BC0 (0xD40) byte-exact from its draft, d=301 to 0 --
+  SOCOM 1's `PushBlend__10CZSealBodyF8AnimTypeib`, the row still `func_00588BC0`; CBody::PushBlend 0x28DC90 renamed
+  `PushBlend__5CBodyFP16CZSIScriptCommonii`, zbody.h with it, objcmp-proved by address over 672 units; scratch
+  build/scratch/seal-r64/, v6's `split`):
+  - A LOCAL ASSIGNED TWICE NUMBERS LATE: `int base = BaseAnim(type); base = func_0058C960(seal, (AnimType)base);` puts base
+    in s3 above the parameters (flag s0, type s1, seal s2); one initialiser numbers it as a named local (s0, the rest one
+    higher). igreplay showed the cut: base after every ClearStack copy's temporaries (about v78). Try it on any
+    register-only miss with a named local too low.
+  - `((CBody *)seal)->PushBlend(...)` adds a `beqz` on the SEAL; `seal->CBody::PushBlend(...)` does not.
+  - parameter types from what is passed on: the target hands the state and base on with no narrowing or extension, where MW
+    narrows an int to char and re-extends a `char` (or signed byte enum) parameter -- so (CZSIScriptCommon *, int, int),
+    the body storing them with `sh`/`sb` regardless; the flag a bool.
+  - looked at, no new idea: TickAimPitch 0x594600 (2), 0x57F530 (7), 0x559580 (3, scheduling), 0x550A80 (0x3C8 of 0x3D0).
 - **Tells from the SEALs, round 63** (four rows byte-exact, all unwritten before: the side a found cell faces 0x55FA90 and a
   throw from outside at a point inside 0x555C50 (seal_ai.cpp), the fall stepped against the ground's hit 0x59B440 and the
   frame's altitude 0x59AFD0 in the new seal_fall.cpp, whole with 0x59AD30 and 0x59B870 moved in; CAiSGrenade gains m_85 and
