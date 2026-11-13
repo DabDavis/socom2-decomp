@@ -2066,6 +2066,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 65** (nothing closed; CAiSDeploy::Tick 0x55D120 (0x1288) written in seal_ai.cpp -- SOCOM 1's body
+  without dT and its Debug/Output lines, CanDeployItem an inline -- size, frame, spill slots and every register right, 12
+  instructions off in the first block: the target builds the y-field mask (`li v1,-1; dsll32 v1,v1,0`) in v1 in the prologue
+  ahead of the 0x7ffff half, here the -1 lands in v0 and cannot hoist; 120 orders of the top block and five spellings of
+  `loc` tried, the best order step, aim, seal, loc, point, kit, pos. CAiSDeploy gains m_78 (a cell), m_7c SEAL_STANCE, m_80
+  CZWeapon *, m_84 CZProjectile *, m_8c and m_94 floats; m_70 stays a word (signal 4 and 0x564D20 store it with `sw`).
+  zseal.h, objcmp-proved over 672 units: CZKit::SetCurItemEnum and WillFireWeapon declared, AI_FIREPARAMS::m_68 a SEAL_STANCE
+  (read with `lb`). CAiSGrenade::Tick 0x55AC20 with accessor inlines gets self, cells and close in the target's slots, but
+  `training` folds into 228(s3) where the target spills a pointer at 176 -- 77 to 163 structural, nothing committed):
+  - ONE BYTE, TWO TYPES: `unsigned char item = m_70; unsigned int id = item;` share one register -- compares through id no
+    `andi`, calls through item unmasked; either type alone masks one side.
+  - INLINE RESULTS NUMBER LATE: kit and pos through one-line accessor inlines (KitOf, PosOf) number after a switch inline's
+    result even when declared before it; named locals always number before every temporary.
+  - the names walk's end through seal_tasks.cpp's TaskTargetsEnd form (`data_ + size()` in an inline): the data pointer kept
+    from the entry test, only the count re-read (`lw a3,4(a1)`).
+  - `const float *t = &s.m_time; return s.m_8 == 0 ? 0.0f : theMission.m_time - *t;` keeps &stamp in a register loaded before
+    the clock. `float delay = -1.0f; if (delay == -1.0f) delay = Rfloat...` orders the stance store. `float l1 = Dot(dir,dir);
+    float l2 = Dot(back,back); if (l1 / l2 < 1.11f)` (24 other spellings miss). `float over = t - m_time; m_time = (1.0f -
+    over) + t;` keeps add.s's operand order (inline, MW swaps them). `step = 10;` before PlayAiSound puts `li s2,10` in the
+    jalr slot (after, MW threads the branch past the next step test).
 - **Tells from the AI states, round 65** (four Ticks byte-exact, all unwritten before, SOCOM 1's bodies: CAiSAction 0x5EFA50
   (0x730, seal_aistate.cpp), CAiSShotAt 0x6089F0 (0x798), CAiSRush 0x602E30 (0x860), CAiSEvent 0x604CE0 (0x8C8, all three
   seal_airesponse.cpp); CAiSPathRecover::Tick 0x603950 written, 0x9F0 of 0x9E8, d=87, only the exits loop -- the target
