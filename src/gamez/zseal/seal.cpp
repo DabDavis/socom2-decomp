@@ -5718,7 +5718,15 @@ extern "C" void func_00547860(CZSealBody *victim)
 /* the entity the SEAL works as a turret, if it is one */
 static inline CTurret *AsTurret(CEntity *e)
 {
-    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+    bool is = false;
+
+    if (e) {
+        bool t = e->m_type == CEntity::ENT_TYPE_TURRET;
+
+        if (t)
+            is = true;
+    }
+    return is ? (CTurret *)e : 0;
 }
 
 inline CTurret *CZSealBody::GetTurret(CEntity *e)
@@ -5923,9 +5931,11 @@ CPnt3D *func_00539E90(CPnt3D *p, const CPnt3D *src);
  * 0x546210 boards it offline; the name unknown).
  * OPEN, 0x5F4 against 0x5FC (round 53, unwritten before; every call, constant and block the target's):
  * (1) the turret tests -- the target MATERIALISES `e->m_type == 3` (`xori; sltiu; beqz`, then the
- * triangle `daddiu 1`) in all three (the platform's, the boarding's and HasThermal's inlined one), as
- * the UI's round-31 function-wide mode does, where AsTurret here (and in 0x546210 / 0x545EE0, which
- * match) branches `li 3; bne` -- an IsTurretEnt bool inline under the ternary lengthens it (0x604);
+ * triangle `daddiu 1`) in all three: AsTurret's test into a bool local set true under `if (t)` (round 71:
+ * 42 to 25 structural, every other row of the unit unchanged). Left there: the inlined HasThermal's
+ * entity -- the target copies e into a0 ahead of the `if (!e)` (its parameter kept, coalesced with
+ * GetTurret's `v`, the ternary's e arm empty: `beqz; nop; b; nop`), here propagated and copied in the
+ * arm (the call through a cast, a local, the turret, GetTurret's parameter reassigned, a reference: no);
  * (2) the saved registers: the SEAL s4, the entity s3, ok s2 in the target, s2 / s1 / s0 here. Right:
  * the matrix read (GetPosW) before the unit_nz copy, TransformVectors (VU0) in place, the position
  * through CNode::GetPosition (the copy stored through one pointer), the homing's five points through
