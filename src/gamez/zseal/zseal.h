@@ -223,6 +223,11 @@ class CZItemStash;
 /* the SEAL's kit: its weapons and gear (SOCOM 1's CZKit, 0x87c bytes there; only its start here) */
 class CZKit {
 public:
+    /* made, set up, and given its SEAL (SOCOM 1's; OVL2 0x5C8190, 0x5C7E00, 0x5BE020 -- kit.h's: the
+     * SEAL's constructor calls all three) */
+    CZKit();
+    void Init();
+    void SetBody(class CZSealBody *body);
     /* the kit's frame, and the mode the hand was last given (kit.h's; OVL2 0x5C0FD0, 0x5C4960) */
     void Tick(float dT);
     /* the scope's settle ticked by the adrenaline's targets (kit.h's; OVL2 0x5B9280) */
@@ -1862,9 +1867,18 @@ struct CAdrenaline {
 };
 
 /* how far a SEAL's aim strays, sideways and up, and the random part's scale (SOCOM 1's DWARF,
- * 0xc bytes) */
+ * 0xc bytes; made as SOCOM 1's: the scale from tanf(0) first -- MAIN's tanf, not folded) */
+extern "C" float tanf(float);
+
 class CAccuracy {
 public:
+    CAccuracy()
+    {
+        m_factor = 0.707f * tanf(0.0f);
+        m_factorX = 0.0f;
+        m_factorY = 0.0f;
+    }
+
     float m_factorX;   // 0x0 (SOCOM 1's FactorX)
     float m_factorY;   // 0x4 (FactorY)
     float m_factor;   // 0x8 (Factor)
@@ -1875,6 +1889,7 @@ public:
  * counters by halfword offset, as the events step them (seal.cpp) */
 class CSealStats {
 public:
+    CSealStats() { Reset(); }
     /* every counter zeroed (SOCOM 1's Reset; OVL2 0x545200, seal.cpp's, between the Incr* counters and
      * Kill as SOCOM 1's: CZSealBody's constructor calls it for both of the SEAL's stats, as SOCOM 1's
      * does, SetRoundStatUiVars for its defaults, CMPExitState::UnInit for a round's -- the game states'
@@ -1912,12 +1927,36 @@ public:
  * this-tests, two for a plain sequence member, one more per derived class; the name ours) */
 class CSeqBase : public CSequence {
 public:
+    CSeqBase() { Clear(); }
     ~CSeqBase() { Clear(); }
 };
 
 class CSeqMember : public CSeqBase {
 public:
     ~CSeqMember() {}
+};
+
+/* the binoculars', the goggles' and the item's parts with their envelope (SOCOM 1's DWARF: CLookItem :
+ * CSequence, 0x1c bytes, m_binocs, m_nvg, m_item -- its m_lookitem a pointer; SOCOM II's SEAL holds it at
+ * 0x1170, the constructor zeroing the three through the member's own address) */
+class CLookItem : public CSeqBase {
+public:
+    CLookItem() : m_binocs(0), m_nvg(0), m_item(0) {}
+    ~CLookItem() {}
+
+    CZBodyPart *m_binocs;   // 0x10
+    CZBodyPart *m_nvg;   // 0x14
+    CZBodyPart *m_item;   // 0x18
+};
+
+/* the crouched run's weight (SOCOM 1's DWARF: CCrouchedRun : CSequence, 0x14 bytes, m_wt; its m_crouch
+ * a pointer, SOCOM II's SEAL holds it at 0x1300) */
+class CCrouchedRun : public CSeqBase {
+public:
+    CCrouchedRun() : m_wt(0.0f) {}
+    ~CCrouchedRun() {}
+
+    float m_wt;   // 0x10
 };
 
 class CLook : public CSeqBase {
@@ -1955,6 +1994,18 @@ public:
 
     int m_org;   // 0x70 (SOCOM 1's 0x80)
     float m_nextT;   // 0x74
+};
+
+/* a SEAL's node extension: the SEAL the node belongs to (SOCOM 1's CSealEx, seal_ex.cpp's -- its RTTI
+ * 0x65C238 and table 0x669570 OVL2 data, OnWeaponHit 0x5B8260; CZSealBody::GetSeal casts a node's
+ * extension to it; the SEAL holds one at 0xea0) */
+class CSealEx : public zdb::CNodeEx {
+public:
+    /* (the SEAL's constructor makes its own: CNodeEx's table, then this one's, then the SEAL) */
+    CSealEx(CZSealBody *seal) : m_seal(seal) {}
+    virtual int OnWeaponHit(zdb::CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
+
+    CZSealBody *m_seal;   // 0x4
 };
 
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
@@ -2625,13 +2676,14 @@ public:
     /* the SEAL whose node 0x3DC holds, kept while bit 0 of 0x21C is set (0x5AA620, the radio menu's
      * toggle; the names ours) */
     CZSealBody *m_cachedReticuleSeal;   // 0x218 (SOCOM 1's DWARF names, 0x174/0x178 there)
-    unsigned char m_useCachedReticuleSeal : 1;   // 0x21c
-    unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
+    unsigned int m_useCachedReticuleSeal : 1;   // 0x21c
+    unsigned int m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
                                                // flag at 0xde8 bit 0; the name ours)
-    unsigned char m_21c_bit2 : 1;   // bit 2: a crouch 0x58A720 reports as a stand (the name ours)
-    unsigned char m_fading : 1;   // bit 3: the node's opacity heads for m_fade_target (0x552780)
-    unsigned char _21c_bits : 4;
-    unsigned char _21d[0x220 - 0x21d];
+    unsigned int m_21c_bit2 : 1;   // bit 2: a crouch 0x58A720 reports as a stand (the name ours)
+    unsigned int m_fading : 1;   // bit 3: the node's opacity heads for m_fade_target (0x552780)
+    /* bits 4-11, cleared by the constructor's body with lhu/sh (the name ours) */
+    unsigned int m_21c_4 : 8;
+    unsigned int _21c_bits : 20;
     /* (zeroed as the SEAL is made: PostCreateSeal; the names ours) */
     unsigned char m_220;   // 0x220
     unsigned char _221[0x224 - 0x221];
@@ -2794,8 +2846,8 @@ public:
     unsigned char _5e4[0xe9c - 0x5e4];
     /* (inside the kit: zeroed as a launcher is picked up -- PickupItem; the name ours) */
     int m_e9c;   // 0xe9c
-    /* the SEAL's node extension (a CSealEx, declared below; SOCOM 1's: PostCreateSeal gives it to the node) */
-    unsigned char m_ex[0xea8 - 0xea0];   // 0xea0
+    /* the SEAL's node extension (SOCOM 1's m_sealEx, 0xd9c: PostCreateSeal gives it to the node) */
+    CSealEx m_sealEx;   // 0xea0
     /* the camera on the player (SOCOM 1's 0xda4: ReCreate sets it; the name ours) */
     class CAppCamera *m_camera;   // 0xea8
     /* the body carried (SOCOM 1's m_carry, 0xda8 -- right before m_adrenaline in both builds;
@@ -3007,12 +3059,7 @@ public:
     /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
      * seal_weapon.cpp's view names it so too) */
     CSeqMember m_wep_seq;   // 0x1160
-    CSeqMember m_1170;   // 0x1170 (a sequence ~CZSealBody clears; the name ours)
-    /* the binoculars', the goggles' and the item's parts (SOCOM 1's CLookItem, a CSequence and these three,
-     * its m_lookitem: SOCOM II holds it at 0x1170, the constructor zeroes the three) */
-    CZBodyPart *m_binocs;   // 0x1180
-    CZBodyPart *m_nvg;   // 0x1184
-    CZBodyPart *m_lookitem_item;   // 0x1188
+    CLookItem m_lookitem;   // 0x1170 (SOCOM 1's m_lookitem, a CLookItem * at 0xf8c)
     unsigned char _118c[0x1190 - 0x118c];
     /* the head's look, the eyes' and the lids' blink (SOCOM 1's m_look, m_eyelook, m_blink were
      * pointers at 0xf90-0xf98; SOCOM II's are held: GetLookDir returns this + 0x11A0, SetLookDir
@@ -3024,11 +3071,16 @@ public:
     /* the turn in place's timing (SOCOM 1's m_turnip, a CTurnInPlace * at 0xf9c right after m_blink:
      * SOCOM II holds it, as the looks; StandTurning starts it) */
     CTurnInPlace m_turnip;   // 0x12f0
-    CSeqMember m_1300;   // 0x1300 (a sequence ~CZSealBody clears; the name ours)
-    float m_crouch_wt;   // 0x1310 (SOCOM 1's CCrouchedRun::m_wt: m_1300 is its m_crouch, zeroed with it)
+    CCrouchedRun m_crouch;   // 0x1300 (SOCOM 1's m_crouch, a CCrouchedRun * at 0xfa0)
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
      * (the names ours) */
     struct CSealShock {
+        CSealShock()
+        {
+            m_1314 = CPnt3D::zero;
+            m_1320 = 0.0f;
+            m_1324 = 0.0f;
+        }
         ~CSealShock()
         {
             m_1314 = CPnt3D::zero;
@@ -3043,6 +3095,11 @@ public:
     /* the SEAL's hold on a ladder: a flag, the ladder's index, a state (1 and 3 hold it) -- new in
      * SOCOM II (0x5B14E0 lets go of it; the names ours) */
     struct CSealClimb {
+        CSealClimb()
+        {
+            m_state = 0;
+            m_active = 0;
+        }
         ~CSealClimb()
         {
             m_state = 0;
@@ -3107,16 +3164,6 @@ inline void *CSealCtrlAi::GetSelect()
 {
     return ((CZSealBody *)m_entity)->m_select;
 }
-
-/* a SEAL's node extension: the SEAL the node belongs to (SOCOM 1's CSealEx, seal_ex.cpp's -- its RTTI
- * 0x65C238 and table 0x669570 OVL2 data, OnWeaponHit 0x5B8260; CZSealBody::GetSeal casts a node's
- * extension to it) */
-class CSealEx : public zdb::CNodeEx {
-public:
-    virtual int OnWeaponHit(zdb::CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
-
-    CZSealBody *m_seal;   // 0x4
-};
 
 /* the character's dynamics: its physics, its aim and look limits, its cameras, read once from its
  * .rdr (SOCOM 1's DWARF: CharacterDynamics, 0x1bc bytes -- SOCOM II's Load writes every member at

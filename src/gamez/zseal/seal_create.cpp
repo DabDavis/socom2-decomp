@@ -411,7 +411,7 @@ void CZSealBody::PostCreateSeal(CZSealBody *seal, CSealCtrl *ctrl)
 
     zdb::CNode *node = seal->GetNode();
 
-    node->SetNodeEx((zdb::CNodeEx *)seal->m_ex, true);
+    node->SetNodeEx(&seal->m_sealEx, true);
     {
         CBoxInit t(CPnt3D(-12.0f, 0.0f, -14.0f), CPnt3D(12.0f, 20.0f, 14.0f));
 

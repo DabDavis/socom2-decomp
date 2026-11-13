@@ -4941,7 +4941,6 @@ bool CZSealBody::SetEyeLookDir(float pitch, float yaw, float rate)
  * 1's, CZSealBody's constructor calls it for its two looks) */
 CLook::CLook()
 {
-    Clear();
     m_curr_dir.x = 0.0f;
     m_curr_dir.y = 0.0f;
     m_curr_dir.z = -1.0f;
