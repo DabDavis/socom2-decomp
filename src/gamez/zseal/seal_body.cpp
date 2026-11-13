@@ -520,18 +520,35 @@ void CZSealBody::SetMovingChangeToPistol(ACTIVE_ANIM *a)
     SetOverlay(m_overlay, a, trig, 0.0f, 6);
 }
 
+/* the cut-in test (an inline: each arm's bool set by if/else; the name ours) */
+static inline bool CutIn(bool back, float t, float x)
+{
+    bool r;
+
+    if (back) {
+        if (t < 1.0f - x)
+            r = true;
+        else
+            r = false;
+    } else {
+        if (t > x)
+            r = true;
+        else
+            r = false;
+    }
+    return r;
+}
+
 /* whether the SEAL's anim may be cut short: not when the top blend is done, its representative anim
  * holds, the SEAL carries a body in anim 17, or -- for the AI -- in anims 100, 99, 25, 19, 17 and the
  * pistol's stand to prone; else as the last overlay of the top blend's first anim says, the blend's time
  * against the anim's cut-in point (from the end when the blend's flag 0x20 is set) (OVL2 0x587C20;
  * SOCOM 1's CanInterrupt, between CanHeadLook and CanTurn in both builds -- SOCOM 1's AI anims 103 and
  * 102).
- * OPEN, 0x1CC against 0x1DC: the switch gives the target's descending compare chain and its closing `b`,
- * the result-variable IsAi its `andi` at the join; left: the carry and pistol tests' `move v0,zero` sits
- * in the target's conditional branch's delay slot (ours in the `b`'s), the loop's two arms assign a bool
- * (`daddiu`, the `andi` to r at the join) and the target numbers back in s0 and r in s2 (ours the other
- * way). Tried: the cut-in test through an inline bool helper (if/return or a ternary) and as nested
- * if/else assignments */
+ * Byte-exact in round 71 (0x1CC of 0x1DC before): the switch gives the target's descending compare chain and
+ * its closing `b`; the AI test as the ternary (the null path joins at the `andi`; zseal.h's result-variable IsAi
+ * joins after it); the cut-in as an inline bool whose two arms each set r by if/else (`daddiu`, the `andi` at
+ * the loop's join); the result declared first (r s2, back s0) */
 bool CZSealBody::CanInterrupt()
 {
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
@@ -544,7 +561,7 @@ bool CZSealBody::CanInterrupt()
         return false;
     if (id == 17 && m_carry)
         return false;
-    if (IsAi()) {
+    if (m_control ? ((CSealCtrl *)m_control)->IsAi() : false) {
         switch (id) {
         case 17:
         case 19:
@@ -556,14 +573,14 @@ bool CZSealBody::CanInterrupt()
         if (id == AnimTypes::PistolStand2Prone)
             return false;
     }
+    bool r = false;
     bool back = func_005551A0(top->m_flags, 32);
     float t = top->m_tfrac;
-    bool r = false;
 
     for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
         float x = a->m_anim->m_30;
 
-        r = back ? t < 1.0f - x : t > x;
+        r = CutIn(back, t, x);
     }
     return r;
 }
