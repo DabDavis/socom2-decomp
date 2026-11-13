@@ -2066,6 +2066,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the last unwritten rows, round 73** (seven of the ten rows with no source byte-exact: DoReaction__11CSealCtrlAiFv
+  0x561550 (the demo's 0x2604E0, called from CSealCtrlAi::Tick), HandleSliding__10CZSealBodyFf 0x54EDF0 (SOCOM 1's demo 0x254130),
+  HandleEvent's corpse reaction 0x558AE0, the step's wall check 0x549F30, and three OVL2 initialisers named by their stores:
+  `__sinit_seal_control.cpp` 0x668BE0 (FLASHBANG_DOT = cosf(75 deg)), `__sinit_seal_weapon.cpp` 0x668F30 (SOCOM 1's LOCAL
+  nullAimPoint, three -9999999s; data.txt 0x66B7F0, ai_cmdid shrunk to 0x10 and seal_tasks.cpp's `int ai_cmdid[4]`),
+  `__sinit_seal_aistate.cpp` 0x668F60 (`CAiSUnknown _unknown`; ai_states.h gains its constructor). 0x55E670 renamed
+  ComputeThrowFireParams__11CSealCtrlAiFR13AI_FIREPARAMS with its source and callers. Left with no source: seal_ailines.cpp's
+  initialiser 0x668FB0 (round 42: the one spelling that copies the colour right loses a function), 0x5605A0 (parked since round
+  59: writing it cost three rows), the codec's fast log2 0x2517D8. Each rename and header change objcmp-proved by address):
+  - AN INITIALISER ROW IS FOUND BY ITS STORES: the data address it writes names the unit; the demo's initialisers carry the same
+    stores in the same ctors order.
+  - `PNT2D p = {0}` and `T *a[2] = {0}` give MW's byte-zero loop (`beqz` on the address, eight `sb zero`, two nops).
+  - a bit test that is also an inline's `cleared = !on && bit` is CSE'd into a bool; through a const view of the controller the
+    target reloads the byte. `held = f() != 0` on a bool-returning call adds an `andi` (`f() && (flags & 0x200)` matches). A
+    ternary passed straight to SetEvent is re-expanded at every use; a named local evaluates it once.
+  - `w[j] = 0.25f * (1.0f + odds[j])` schedules its constants late; odds[j] read into a loop local first matches. `1.0f * x` in
+    place folds away; through an inline's parameter it is kept (`mul.s` by 1.0).
+  - DoReaction: `igreplay --want ... --movers` called for `reaction` and `fixed` declared before the entity, the parameters
+    after it: 61 register-only to 0. A same-unit helper with one caller is inlined the moment that caller is written (0x54F330
+    pinned auto_inline off). Float `if (n.x && n.z)` puts the zero in f0 (every `!= 0.0f` spelling in f1).
 - **Tells from the SEAL, round 73** (0x577BA0 (14 since round 45) and CSealUnit::GetTeamSeals 0x5EA8C0 (0x1B8 of 0x1B0) byte-exact,
   both by loops rotated by hand. Tried, not committed: 0x57D710 14 to 10 through an inline returning `&seal->m_blends` but 0x57D5E0
   9 to 22; SetTarget's `if (bit16 && !bit17) mode = 1; else mode = 0;` gives the layout at 0x3B0. AcquireAiAware 0x560B20: igreplay
