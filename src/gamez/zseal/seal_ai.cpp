@@ -5798,7 +5798,14 @@ static inline bool CanAttackTarget(CSealCtrlAi *ai, CEntity *e)
  * forms, build/scratch/struct-r76/v_att2.py). Round 76: structdiff's "1" hid two branch targets
  * (4 differing words): the pursuit's and the end's `AiBit16 && NotBit17` threaded the bit-16 test's
  * false branch past the join's `beqz`, where the target lands on it -- Bit16OnlyT's self-assigning
- * ternary keeps the join (Bit16Only's if-form adds an `andi` there) */
+ * ternary keeps the join (Bit16Only's if-form adds an `andi` there). Round 77 (build/scratch/mw-r77/v_tur*.py,
+ * v_st*.py, ~70 more): the three rows are ONE shape -- [beqz e -> Z][beq kind -> T][F: b Z][T: t = e; b J][Z: t = 0][J]
+ * (SetTarget's has t in e's register, so T's copy vanishes and F falls into Z) -- with the conditional slots filled
+ * from their targets and J unpadded (an expression's). In SetTarget `if (!t || kind != TURRET) t = 0;` (any if/goto
+ * spelling) gives that layout exactly but pads J (a statement label landing at 4 mod 8: +8); the nested ternary keeps an
+ * inner join, so F gets its own `t = 0` block instead of Z's; `&&` in a ?: condition materialises (sltu/movz) inside
+ * CanAttack's switch; a single-case switch with `default: goto null` gives the layout with every slot empty and J
+ * padded; gotos over a dead `t = 0` arm fold (0xECC) */
 bool CSealCtrlAi::AttackTick(float dT, bool b)
 {
     CAiState *state;
