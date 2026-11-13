@@ -2186,7 +2186,10 @@ _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
  * into a caller local ahead of it, a do-while(0) around the find, a dead `ctrl` ternary before or
  * after the AI, `r` set under a test of the AI or `ai ? true : true`, an if over the anim: 0x274
  * each (an `if (!ai) r = true;` 0x28C) -- likely an inline's exit label (the AI core's round-22
- * rand rule) whose inline is still unknown */
+ * rand rule) whose inline is still unknown. The kit's round 71: `#pragma opt_propagation off` gives
+ * the target's size (0x27C, d=31: the case compares' fresh `li` back -- the 1 shared with `r` is
+ * propagation's); `r` an int (d=28), the AI by if/else (d=23), `seal ? true : true`, the turret
+ * declared ahead, TASK_SEAL_FIRST: all 0x274 */
 bool CTTurret::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTTurret);
