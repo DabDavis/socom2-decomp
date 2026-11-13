@@ -17,11 +17,10 @@
  * its argument in place (`valid &= 7`) and copies the 64-byte entry with a constant-size memcpy
  * from the caller's bytes (GCC's unaligned block move both sides), the table pointer stored after.
  *
- * OPEN: sceMcWrite (12 words, all in the head split): the target computes the unaligned head as
- *   ((buff - 1) & 0xFFFFFFF0) - (buff - 16), keeping buff - 16 as its own term (addiu; subu), where
- *   every spelling tried here (int, u_int, char * arithmetic, the head in a local, the three fields
- *   spelt out in ps2sdk's order) has combine reassociate it into X + 16 - buff, and the base
- *   pointer then takes a1 for a2. */
+ * sceMcWrite (GCC round 77, open before at 12 words): buff - 16 is a value of
+ *   its own, set before the head is computed from it -- written in one expression, fold reassociates
+ *   it into X + 16 - buff at the tree level, before RTL -- and each arm stores size, origin, buffer,
+ *   ps2sdk's order (the other orders swap the short arm's last two stores). */
 
 typedef unsigned int u_int;
 typedef unsigned short u_short;
@@ -346,7 +345,7 @@ int sceMcRead(int fd, void *buff, int size)
 
 int sceMcWrite(int fd, const void *buff, int size)
 {
-	int ret;
+	int ret, base, head;
 	u_int i;
 
 	if (mcClientID.serve == 0)
@@ -355,13 +354,15 @@ int sceMcWrite(int fd, const void *buff, int size)
 		return -200;
 	sifParamOrd.fd = fd;
 	if (size < 17) {
+		sifParamOrd.size = 0;
 		sifParamOrd.origin = size;
 		sifParamOrd.buffer = 0;
-		sifParamOrd.size = 0;
 	} else {
-		sifParamOrd.origin = (((u_int)buff - 1) & 0xFFFFFFF0) - ((u_int)buff - 16);
-		sifParamOrd.buffer = (char *)buff + sifParamOrd.origin;
-		sifParamOrd.size = size - sifParamOrd.origin;
+		base = (int)buff - 16;
+		head = (((int)buff - 1) & 0xFFFFFFF0) - base;
+		sifParamOrd.size = size - head;
+		sifParamOrd.origin = head;
+		sifParamOrd.buffer = (char *)buff + head;
 	}
 	for (i = 0; i < sifParamOrd.origin; i++)
 		sifParamOrd.data[i] = ((const u_char *)buff)[i];
