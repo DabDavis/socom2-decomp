@@ -7,7 +7,7 @@
  * it. Names are SOCOM 1's by position (s1:order: SOCOM II's object is SOCOM 1's in the same order,
  * rt_circ_buf_is_valid gone), create and destroy s1:exact.
  *
- * Byte-exact: all but is_wrapped. The stores' orders are ccperm's; a test whose else-block the
+ * Byte-exact: all (is_wrapped since round 78). The stores' orders are ccperm's; a test whose else-block the
  * target carries in a branch-likely's delay slot is written inverted, as the vendor did
  * (get_used_nowrap: `if (nUsed != 0) {...} else *p = 0;`).
  * Round 14b: SCEA's room and count tests are POSITIVE tests around the body with the error in an
@@ -20,8 +20,8 @@
  * the block is not hoisted and n gets v0 (rt_list.c's own guard-clause function 0x631FD8 keeps the
  * v1: the vendor wrote both). free and use normalise after the if/else; store's wrap counts the
  * used bytes before setting the end; copy's two cases are an if/else joining at one return.
- * OPEN: is_wrapped (16: the target stores a 1 materialised as `sltu a2,zero,a0` -- cb != 0 --
- * hoisted into the first guard's delay slot, and tests nStart != 0 with a bnezl; no source yet). */
+ * Round 78: is_wrapped (open since 4b, 16 off) -- its stored 1 is a flag `bValid = cb != 0` set at the
+ * declaration, before the guard tests cb, and the three clearing tests one `||` chain (the bnezl). */
 
 typedef struct rt_circ_buf {
     unsigned int nStart;                /* 0x00: the first used byte */
@@ -345,19 +345,20 @@ int rt_circ_buf_get_start_avail_ptr(rt_circ_buf *cb, char **ppStart)
     return RT_CIRC_BUF_OK;
 }
 
+/* round 78: the 1 stored is `sltu a2,zero,a0` formed in the first guard's slot -- a flag `cb != 0` computed
+ * before the guard and stored in the one arm that sets it; the three clearing tests are one `||` chain (as
+ * separate `else if`s the arms do not share the clearing store) */
 int rt_circ_buf_is_wrapped(rt_circ_buf *cb, unsigned char *pbWrapped)
 {
+    int bValid = cb != 0;
+
     if (cb == 0)
         return RT_CIRC_BUF_ERR_INVALID;
     if (pbWrapped == 0)
         return RT_CIRC_BUF_ERR_INVALID;
-    if (cb->nStart < cb->nEnd)
+    if (cb->nStart < cb->nEnd || cb->nUsed == 0 || cb->nStart == 0)
         *pbWrapped = 0;
-    else if (cb->nUsed == 0)
-        *pbWrapped = 0;
-    else if (cb->nStart != 0)
-        *pbWrapped = 1;
     else
-        *pbWrapped = 0;
+        *pbWrapped = bValid;
     return RT_CIRC_BUF_OK;
 }
