@@ -2066,6 +2066,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks rows, round 78** (0x57F530 byte-exact: 0x589900 returns `int` in seal_body.cpp, and with it r, 0x57F530,
+  0x57F7D0, 0x57F9C0 and 0x584B00 (`int r = func_00589900(seal); return r;`), all extern "C" so other units keep bool. No open MW row
+  has GCC-style asm left. Not closed: the turret test (0x569E40's a0 already holds TakesTargets' `r = false`, so MW drops every
+  explicit zero arm; SetTarget's `b Z` is MW cross-jumping a false arm's `zero; b J` onto Z), CZSIObject::Read (13), GetArg,
+  0x57D5E0 (`func_00555170(stack)` at the tail 9 to 8, not committed)):
+  - A BOOL CALL RESULT THAT TAKES AN `andi` WHERE THE TARGET HAS NONE IS THE CALLEE'S VIEW: declare it and its definition `int` in
+    the unit; every function returning its answer becomes `int` too (or gains a `sltu`).
+  - AN EXHAUSTED PERMUTATION THAT FAILED TO BUILD WAS NEVER TRIED (round 77's int view died on "illegal function overloading": the
+    definition was not changed with the declaration).
+  - MW drops an explicit zero arm when its register already holds zero; a target that keeps such moves did not have the zero there.
+    MW cross-jumps an arm `zero; b J` identical to a block falling into J into a `b` to that block.
 - **Tells from the GCC Medius code, round 77** (dmemessage 0x61F518 (the six report stores permuted: 3 of 720 orders match --
   nWorld, nClient, pClient, nState, nUser, nData), streammedia 0x644EA0 (the data callback read into a `void (*pfn)(STREAM_CB_DATA
   *)` local before the four stores) and audio 0x6115C0 (the send's length `h.nLen` read back, not `n & 0xFFFF`) byte-exact; four
