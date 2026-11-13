@@ -4751,27 +4751,88 @@ void CZSealBody::SetHudHitFlag()
 }
 
 extern "C" {
-/* the look anims: four sources (OVL2 data), what each is built into and the turn tables ApplyLookAnim
- * reads (OVL1 bss) -- the head's, then up the spine -- and their builder (OVL2 0x5AE980, not written
- * yet; the names unknown) */
-extern unsigned char data_00650820[];
-extern unsigned char data_006507B0[];
-extern unsigned char data_00650740[];
-extern unsigned char data_006506D0[];
-extern unsigned char data_0044C7A0[];
-extern unsigned char data_0044C860[];
-extern unsigned char data_0044C920[];
-extern unsigned char data_0044C9E0[];
+/* the look anims: four sources (OVL2 data: each a table of rotations), what each is built into -- the
+ * turns between them (SOCOM 1's dQlookhead and its three fellows) -- and the axes ApplyLookAnim reads
+ * (SOCOM 1's Rlookhead and its fellows; OVL1 bss), the head's, then up the spine, and their builder
+ * (OVL2 0x5AE980, below; the name unknown) */
+extern CPnt3D data_00650820[];
+extern CPnt3D data_006507B0[];
+extern CPnt3D data_00650740[];
+extern CPnt3D data_006506D0[];
+extern CQuat data_0044C7A0[];
+extern CQuat data_0044C860[];
+extern CQuat data_0044C920[];
+extern CQuat data_0044C9E0[];
 extern CPnt3D data_0044CAA0[];
 extern CPnt3D data_0044CB30[];
 extern CPnt3D data_0044CBC0[];
 extern CPnt3D data_0044CC50[];
-void func_005AE980(void *src, void *anim, CPnt3D *table);
+void func_005AE980(const CPnt3D *rot, CQuat *dq, CPnt3D *axis);
 /* the eyes' limits: up, down and sideways (OVL1 data; SOCOM 1's were constants, 8, -14 and 17
  * degrees) */
 extern float data_0044C2D0;
 extern float data_0044C2D4;
 extern float data_0044C2D8;
+}
+
+/* a cross product through VU0 (an inline, the name ours) */
+static inline void CrossVU0(const CPnt3D &a, const CPnt3D &b, CPnt3D *out)
+{
+    sceVu0FVECTOR c;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = a.x;
+    va[1] = a.y;
+    va[2] = a.z;
+    va[3] = 1.0f;
+    vb[0] = b.x;
+    vb[1] = b.y;
+    vb[2] = b.z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(c, va, vb);
+    out->x = c[0];
+    out->y = c[1];
+    out->z = c[2];
+}
+
+/* the turn from one look rotation to another, and the axis the unit -z swings about under it (SOCOM 1's
+ * ComputeDeltaLookQuat__FR6CPnt3DR6CPnt3DP5CQuatP6CPnt3D, out of line there; inlined in SOCOM II) */
+static inline void ComputeDeltaLookQuat(const CPnt3D &from, const CPnt3D &to, CQuat *dq, CPnt3D *axis)
+{
+    CQuat qa;
+    CQuat qb;
+
+    QFromRot(&qa, &from);
+    QFromRot(&qb, &to);
+    Negate(qa.vec.x);
+    Negate(qa.vec.y);
+    Negate(qa.vec.z);
+    qa.Mul(&qb, dq);
+    CPnt3D z = CPnt3D::unit_nz;
+    CPnt3D r;
+
+    dq->Apply(&z, &r, 1);
+    CrossVU0(z, r, axis);
+}
+
+/* one look anim's twelve turns between its rotations and their axes (OVL2 0x5AE980, new in SOCOM II:
+ * InitLookAnims calls it for each of its four tables, SOCOM 1's InitLookAnims calling
+ * ComputeDeltaLookQuat 48 times in the same order; the name unknown) */
+extern "C" void func_005AE980(const CPnt3D *rot, CQuat *dq, CPnt3D *axis)
+{
+    ComputeDeltaLookQuat(rot[1], rot[2], &dq[0], &axis[0]);
+    ComputeDeltaLookQuat(rot[5], rot[2], &dq[1], &axis[1]);
+    ComputeDeltaLookQuat(rot[4], rot[5], &dq[2], &axis[2]);
+    ComputeDeltaLookQuat(rot[4], rot[1], &dq[3], &axis[3]);
+    ComputeDeltaLookQuat(rot[1], rot[0], &dq[4], &axis[4]);
+    ComputeDeltaLookQuat(rot[3], rot[0], &dq[5], &axis[5]);
+    ComputeDeltaLookQuat(rot[4], rot[3], &dq[6], &axis[6]);
+    ComputeDeltaLookQuat(rot[7], rot[8], &dq[7], &axis[7]);
+    ComputeDeltaLookQuat(rot[5], rot[8], &dq[8], &axis[8]);
+    ComputeDeltaLookQuat(rot[4], rot[7], &dq[9], &axis[9]);
+    ComputeDeltaLookQuat(rot[7], rot[6], &dq[10], &axis[10]);
+    ComputeDeltaLookQuat(rot[3], rot[6], &dq[11], &axis[11]);
 }
 
 /* a look anim's turn for a yaw and a pitch: half of each angle's size about the table's axis for its
