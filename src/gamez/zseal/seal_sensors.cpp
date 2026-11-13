@@ -1245,6 +1245,227 @@ void CSealCtrlAi::EnemyCallout(CEntity *e, CEntity *player)
     PlayAiSound(snd, 1.0f, CAiEvent::AIE_UNKNOWN);
 }
 
+/* the perception's range bands (ai_perception.cpp's class: only the static setter here) */
+class CAiPerception {
+public:
+    static void SetMaxRange(float range);
+};
+
+/* a target's worth to an entity, and how well a viewer sees a target through its finished ray
+ * (ai_target.cpp's 0x60B7F0 and 0x60AA20) */
+extern "C" float func_0060B7F0(const CEntity *self, const CTarget *t);
+extern "C" float func_0060AA20(void *viewer, zdb::DiIntersect *di, CTarget *t);
+
+/* the sensing's limits: the reach the perception's bands stop at, the visibility a ray's sighting
+ * is held within and the visibility seen at (OVL2 data, read as variables) */
+extern float data_00650A48;
+extern float data_00650990;
+extern float data_00650998;
+extern float data_0065099C;
+
+/* a request registered with the world, its result taken (the request dropped, its DiIntersect handed
+ * back) and how long it waited (inlines: ai_target.cpp's 0x60AFA0 has the same three; the names ours) */
+static inline bool SensorDirRegistered(const CDiPool::dir *d)
+{
+    return d == 0 ? false : d->m_state == 4;
+}
+
+static inline zdb::DiIntersect *SensorDirTake(CDiPool::dir *d)
+{
+    if (d && d->m_state == 4) {
+        d->m_state = 1;
+        return d->m_index >= 0 ? &_diPool.m_pool[d->m_index] : 0;
+    }
+    return 0;
+}
+
+static inline float SensorDirAge(const CDiPool::dir *d)
+{
+    return d ? d->m_age : 0.0f;
+}
+
+/* the entity as a SEAL, or 0 (a ternary: the zero's arm falls through, the SEAL's joins after it; an
+ * inline, the name ours) */
+static inline CZSealBody *SensorSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* the entity as a turret, or 0 (a ternary, as SensorSeal; the name ours) */
+static inline CSensorTurret *SensorTurret(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CSensorTurret *)e : 0;
+}
+
+/* a turret flagged 2 and not 0x10 (an inline; the name ours): the first bit a named bool, then `r &&`
+ * -- the target computes it in v0 and narrows it into the result in the branch's delay slot (an
+ * if-assigned bool, a ternary, early returns all land it straight in the result or pad the join) */
+static inline bool TurretSensed(const CSensorTurret *t)
+{
+    bool r = t->Bit2();
+
+    return r && !t->Bit10();
+}
+
+/* Perceivable as SensorTick has it: the turret through the ternary cast and TurretSensed (an inline;
+ * the name ours) */
+static inline bool SensorPerceivable(CEntity *e, bool ai)
+{
+    bool r = false;
+
+    if (e && e->m_isAlive) {
+        if (e->m_type == CEntity::ENT_TYPE_SEAL)
+            r = true;
+        else if (e->m_type == CEntity::ENT_TYPE_TURRET)
+            r = TurretSensed(SensorTurret(e));
+        else if (e->m_type == 4)
+            r = !ai;
+    }
+    return r;
+}
+
+/* two entities sharing a team, materialised (an inline; the name ours: through it, the address of the
+ * SEAL's mask is hoisted out of the walk and spilled, as the target's) */
+static inline bool SameTeam(const CEntity *a, const CEntity *b)
+{
+    return (a->m_team & b->m_team) != 0;
+}
+
+/* a side's threat: its largest, scaled up when it outnumbers the other side, plus its mean (an
+ * inline; the name ours): the largest copied into the result first and the mean added as a ternary
+ * (the target's `b` over the else arm the allocator empties) */
+static inline float SideThreat(float most, float sum, int n, int other)
+{
+    float r = most;
+    int k = other < n ? n / (other + 1) + 1 : 1;
+
+    r *= k;
+    r += n > 0 ? sum / n : most;
+    return r;
+}
+
+/* the targets' frame (OVL2 0x5C9B30; SOCOM 1's CSealCtrl::SensorTick, CSealCtrl::PostTick's and the
+ * AI's SensorTick's call, rewritten in SOCOM II): the perception's reach set to the view range (1000 at
+ * least); each target: one not of a kind there is to perceive is lost; else a seen enemy flagged 0x200
+ * counted, its worth (0x60B7F0) summed and the largest kept -- of the enemies seen or heard (0x100,
+ * 0x400), of those in sight (the best taken as the target), of the rest -- and a friend's (negative)
+ * likewise while the AI is not stunned; a finished ray's visibility (0x60AA20) blended in by the time it
+ * waited, held within the limits, seen at the threshold -- a hidden SEAL never. The threat the sides'
+ * sums, at least 0. Every local declared first (the saved registers: best s8, targets s7, the entity
+ * s6, the counts s4/s3, the target's entity s2, friendly s1, the walk s0 -- the entity declared before
+ * the list), the floats assigned after the parameters' address. One of each pair of the target's
+ * reads and writes of a field through `(*t).` (spelled alike, MW keeps the field's address in a saved
+ * register across the calls; the target reloads off the walk). The friends' sum added in a second
+ * statement (in one expression MW works out the friends first) */
+void CSealCtrl::SensorTick(float dT)
+{
+    CTarget *best;
+    int nEnemies;
+    int nFriends;
+    CEntity *e;
+    CTargetList *targets;
+    CEntity *te;
+    bool friendly;
+    CTargetList::iterator t;
+    float most;
+    float sumEnemy;
+    float least;
+    float sumFriend;
+    float seenBest;
+    float unseenBest;
+    float threat;
+    AI_PARAMS *params;
+
+    e = m_entity;
+    GetSealCtrlAi();
+    m_targetSum = 0;
+    params = &m_aiParams;
+    most = 0.0f;
+    targets = &e->m_targets;
+    nEnemies = 0;
+    nFriends = 0;
+    best = 0;
+    sumEnemy = 0.0f;
+    least = 0.0f;
+    sumFriend = 0.0f;
+    seenBest = 0.0f;
+    unseenBest = 0.0f;
+    CAiPerception::SetMaxRange(ai::_max(data_00650A48, params->visual_range));
+    for (t = targets->begin(); t != targets->end(); t++) {
+        te = t->m_ent;
+        if (!te)
+            continue;
+        friendly = SameTeam(e, te);
+        if (!SensorPerceivable(te, IsAi()))
+            OnSetTargetVisible(*t, false, 0);
+        else {
+            if (((*t).m_flags & 0x200) && !friendly)
+                m_targetSum++;
+            threat = func_0060B7F0(e, &*t);
+            if (!friendly && !(threat < 0.0f)) {
+                unsigned int flags = t->m_flags;
+
+                if ((flags & 0x100) || (flags & 0x400)) {
+                    nEnemies++;
+                    sumEnemy += threat;
+                    if (threat > most)
+                        most = threat;
+                }
+                if (flags & 0x200) {
+                    if (threat >= seenBest) {
+                        seenBest = threat;
+                        best = &*t;
+                    }
+                } else if (threat >= unseenBest)
+                    unseenBest = threat;
+            }
+            if (friendly && threat < 0.0f && IsAi()
+                && !(GetSealCtrlAi()->m_stateStack.m_10 & (1 << AI_STATE_STUNRESPONSE))) {
+                sumFriend += threat;
+                nFriends++;
+                if (threat < least)
+                    least = threat;
+            }
+        }
+        CDiPool::dir *d = (CDiPool::dir *)t->m_unk28;
+
+        if (SensorDirRegistered(d)) {
+            (*t).m_unk28 = 0;
+            zdb::DiIntersect *di = SensorDirTake(d);
+
+            if (di) {
+                float age = SensorDirAge(d);
+                CSensing s;
+
+                s.m_entity = e;
+                s.m_params = params;
+                s.m_eye_valid = false;
+                float x = func_0060AA20(&s, di, &*t);
+                float v = x * age + t->m_visibility;
+
+                _saturate(&v, data_00650998, data_0065099C);
+                bool seen = v >= data_00650990;
+
+                t->m_aware = x;
+                (*t).m_visibility = v;
+                CZSealBody *seal = SensorSeal(t->m_ent);
+
+                if (seal && (seal->m_invisible ? true : false))
+                    seen = false;
+                OnSetTargetVisible(*t, seen, di);
+            }
+        }
+    }
+    if (best)
+        SetTarget(best);
+    float sum = SideThreat(most, sumEnemy, nEnemies, nFriends);
+
+    sum += SideThreat(least, sumFriend, nFriends, nEnemies);
+    if (sum < 0.0f)
+        sum = 0.0f;
+    m_targetThreat.m_goal = sum;
+}
+
 /* a target seen to fall: the AI calls it, "tango down", at full chance (OVL2 0x5C9B10; SOCOM 1's
  * played its sound 18 the same way, through the same slot +0x24) */
 void CSealCtrlAi::NotifyTargetDown(CZSealBody *seal)
