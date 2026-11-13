@@ -2714,25 +2714,17 @@ bool CZSealBody::CanUseCQB(CZSealBody *victim)
 /* the death a CQB attack gives its victim: from behind or in front, by the attacker's offset against
  * the victim's facing, flattened (OVL2 0x5A9420; SOCOM 1's FindDeathAnimTypeCQB, after CanUseRestraint
  * in both builds, the same arithmetic).
- * OPEN, 10 instructions (the size right since round 23): the target loads both nodes before the
- * facing's three stores (the last in the call's delay slot); MW here loads this node after them. The
- * negation is NegateInto(&fwd, &fwd) -- the out-parameter form folds the loads into sp offsets and keeps
- * only &fwd.y in a register, as the target. Tried since: the nodes in locals (either order), the
- * positions in pointer locals, the offset computed first, both points assigned, GetNode(). Before: the
- * offset computed first, the facing assigned after it, y through a pointer, Negate(fwd.y). Round 39:
- * CanUseRestraint/CanUseCQB/CanUseKnife share the shape and matched with the Sub's `this` (the victim's
- * position) a pointer local declared before the facing -- here the Sub's `this` is this SEAL's own
- * position, and that local (pointer, reference, node pointer, either order, an inline helper taking
- * the facing by value and both points by reference) still loads after the stores: 10 every time.
- * Round 56 (igdump --pcode): the pre-colouring code already has this node's load after the facing's
- * stores, so its register falls free (v0) -- the target's v1/a3 need the load among the facing's
- * loads; this SEAL's position first through a pointer, a reference pair, both nodes in locals (either
- * order) and the facing assigned after the pointer: 10 each (build/scratch/seal-r56/v_cqb.py). SOCOM 1's
- * own code (0x299900) has the target's order with the facing and the Sub's slots swapped. */
+ * Byte-exact in round 71 (10 off since round 23): both nodes read first through volatile views, so
+ * their loads stay at their statements, ahead of the facing's stores (the target's v1/a3); every plain,
+ * const, pointer or reference spelling let MW sink this node's load after the stores. The negation is
+ * NegateInto(&fwd, &fwd) -- the out-parameter form folds the loads into sp offsets. SOCOM 1's own code
+ * (0x299900) has the target's order with the facing and the Sub's slots swapped. */
 AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 {
-    CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
-    CPnt3D d = *(const CPnt3D *)m_node->m_matrix.m_matrix[3] - *(const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
+    zdb::CNode *vn = ((volatile CZSealBody *)victim)->m_node;
+    zdb::CNode *mn = ((volatile CZSealBody *)this)->m_node;
+    CPnt3D fwd(*(const CPnt3D *)vn->m_matrix.m_matrix[2]);
+    CPnt3D d = *(const CPnt3D *)mn->m_matrix.m_matrix[3] - *(const CPnt3D *)vn->m_matrix.m_matrix[3];
 
     NegateInto(&fwd, &fwd);
     fwd.y = 0.0f;
