@@ -1755,6 +1755,8 @@ public:
     bool InStance(SEAL_STANCE stance, bool fromState);
     /* the weapon fired once ready (OVL2 0x563BD0; SOCOM 1's) */
     bool FireWhenReady(AI_FIREPARAMS &params, float delay);
+    /* a grenade's throw worked out (OVL2 0x55E670; SOCOM 1's, by its calls) */
+    bool ComputeThrowFireParams(AI_FIREPARAMS &params);
     /* the bit 2 at 0x264 set, never for a SEAL whose team has bit 17 or 26 or that holds no item
      * (OVL2 0x56D890: CAiSPlan::Tick and CAiState::Signal call it; the name ours) */
     void SetAiBit2(bool on);

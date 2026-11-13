@@ -4968,7 +4968,6 @@ static inline CEntity *TargetOf(CSealCtrlAi *ai)
     return *(CEntity **)ai->m_67c;
 }
 
-extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p);
 
 /* a shot asked for by the fire parameters (flags 0x4000000 and 0x40000) taken: flag 4 with a target
  * aims at the target's spot and speed first; either way the aim (0x55E670) fires when ready, and
@@ -4983,9 +4982,9 @@ extern "C" bool func_0055EAA0(CSealCtrlAi *ai, AI_FIREPARAMS *p, bool clear)
         if ((p->m_flags & 4) && func_0060A850(ai->m_67c)) {
             p->m_targetPos = TargetOf(ai)->m_posW;
             p->m_targetVel = TargetOf(ai)->m_velW;
-            if (func_0055E670(ai, p))
+            if (ai->ComputeThrowFireParams(*p))
                 ai->FireWhenReady(*p, 0.0f);
-        } else if (func_0055E670(ai, p))
+        } else if (ai->ComputeThrowFireParams(*p))
             ai->FireWhenReady(*p, 0.0f);
         if (clear) {
             p->m_flags &= ~0x4000000;
@@ -5848,7 +5847,7 @@ extern "C" bool func_0055F0A0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
         bool done;
 
         if (flags & 0x40000) {
-            done = func_0055E670(ai, p);
+            done = ai->ComputeThrowFireParams(*p);
             ai->SetTrigger(false);
             ai->SetTrigger(false);
         } else if (flags & 0x80000) {
@@ -5954,20 +5953,20 @@ struct CThrowView {
  * statics by the throw's kind, flags 0x10 and 0x20): false out of reach or with no flight; else the
  * throw vector (the flat direction over the time, or by the fixed scale under flag 1, and the upward
  * speed), its power (the reach's share, at least the abort threshold), the aim straight ahead, the
- * stance cleared, the time, and flags 0x0E100000. Written from the target (the round 72 SEALs; the name
- * kept: its callers 0x55EAA0 and 0x55F0A0 are the AI lane's): the reach's record through a throw_params
+ * stance cleared, the time, and flags 0x0E100000. Written from the target (the round 72 SEALs; renamed
+ * with its callers 0x55EAA0 and 0x55F0A0 in round 73, objcmp same by address): the reach's record through a throw_params
  * pointer (s3), the abort threshold declared ahead of the share and read after it (its slot above),
  * `dy >= 0 ? 10 + dy : 10`; the floats declared first, vy, reach, dy, t, len (f23, f22, f21 shared by
  * dy and t, f20) -- the time an if/else into a named local: as a ternary its front-end temporary is
  * numbered after every named local, popped first and takes f20 (igdump) */
-extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
+bool CSealCtrlAi::ComputeThrowFireParams(AI_FIREPARAMS &params)
 {
     float vy;
     float reach;
     float dy;
     float t;
     float len;
-    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    CZSealBody *seal = (CZSealBody *)m_entity;
     static CPnt3D hand(3.5f, 19.3f, 3.9f);
     static CPnt3D hand_left(7.8f, 10.13f, -5.31f);
     static CPnt3D hand_under(-8.83f, 11.47f, -6.48f);
@@ -5975,15 +5974,15 @@ extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     CPnt3D from;
     CPnt3D target;
 
-    if (p->m_flags & 0x10)
+    if (params.m_flags & 0x10)
         off = &hand_under;
-    else if (p->m_flags & 0x20)
+    else if (params.m_flags & 0x20)
         off = &hand_left;
     ((CMatrix *)seal->m_node)->Transform(off, &from, 1);
-    target = p->m_targetPos;
-    if (p->m_flags & 2)
-        CAi::Extrapolate(&p->m_targetPos, &p->m_targetVel, 1.5f, &target);
-    if (!ai->IsNavySeal()) {
+    target = params.m_targetPos;
+    if (params.m_flags & 2)
+        CAi::Extrapolate(&params.m_targetPos, &params.m_targetVel, 1.5f, &target);
+    if (!IsNavySeal()) {
         PNT2D noise = { 0 };
 
         noise.x = data_006503E0;
@@ -6000,8 +5999,8 @@ extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     d.y = 0.0f;
     len = d.Normalize();
 
-    p->m_dist = len;
-    p->m_lookDirW = d;
+    params.m_dist = len;
+    params.m_lookDirW = d;
     CharacterDynamics::throw_params *tp = &seal->GetDynamics()->m_throw_params;
     reach = tp->max_distance_stand;
 
@@ -6019,19 +6018,19 @@ extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     else
         t = t2;
 
-    d.Scale(p->m_flags & 1 ? data_006503F0 : len / t, &d);
+    d.Scale(params.m_flags & 1 ? data_006503F0 : len / t, &d);
     d.y = vy;
-    ((CThrowView *)p)->m_throwVec = d;
+    ((CThrowView *)&params)->m_throwVec = d;
     float least;
     float share = len / reach;
 
     least = tp->m_abort_threshold;
 
-    ((CThrowView *)p)->m_throwPower = ai::_max(least, share);
-    p->m_aimDirM = CPnt3D::unit_nz;
-    p->m_68 = (SEAL_STANCE)0;
-    ((CThrowView *)p)->m_54 = t;
-    ModifyFireFlags(p, 0xE100000, 0);
+    ((CThrowView *)&params)->m_throwPower = ai::_max(least, share);
+    params.m_aimDirM = CPnt3D::unit_nz;
+    params.m_68 = (SEAL_STANCE)0;
+    ((CThrowView *)&params)->m_54 = t;
+    ModifyFireFlags(&params, 0xE100000, 0);
     return true;
 }
 #pragma auto_inline reset

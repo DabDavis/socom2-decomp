@@ -10146,7 +10146,7 @@
 0x0055D120 0x1288 Tick__10CAiSDeployFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0055E3B0 0x2AC OnSignal__10CAiSDeployFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand (the SEALs, round 30): slot 0x8 of __vt__10CAiSDeploy, SOCOM 1's OnSignal__10CAiSDeployFQ28CAiState6SIGNALP11CSealCtrlAi; unwritten
 0x0055E660 0x8 CanPushAiState__10CAiSDeployF8AI_STATEP11CSealCtrlAi  # OVL2; by hand (the SEALs, round 30): slot 0x1C of __vt__10CAiSDeploy -- s1vtables proposed the base's name (blocked): CAiSDeploy's own override; unwritten
-0x0055E670 0x430 func_0055E670  # OVL2
+0x0055E670 0x430 ComputeThrowFireParams__11CSealCtrlAiFR13AI_FIREPARAMS  # OVL2; by hand (the map's last rows, round 73): SOCOM 1's ComputeThrowFireParams(AI_FIREPARAMS &) by its calls and body; source and callers 0x55EAA0/0x55F0A0 respelled together (objcmp same by address)
 0x0055EAA0 0x138 func_0055EAA0  # OVL2
 0x0055EBE0 0xDC func_0055EBE0  # OVL2
 0x0055ECC0 0x3DC func_0055ECC0  # OVL2
