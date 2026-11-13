@@ -109,6 +109,276 @@ void func_0024DA70(float *pfInOut, int log2N, int iFlags)
 	}
 }
 
+#define TWIDDLE_TABLE_SIZE (TWIDDLE_PERIOD / 4 + 1)
+
+/* the forward passes of the N-point complex FFT (log2N = the driver's log2N - 1), decimation in
+ * time after the bit reversal (GCC lane OVL1 round 1, unwritten before; m2c refused it, "unsupported
+ * wide integer operation"): the two first stages written out -- W = 1, then W = 1 and -j -- then
+ * stage by stage with the twiddles read as the real split reads them (the cosine backwards from the
+ * quarter-wave table's end, the sine forwards: 0x1D5574/0x1D5570, $gp words), the index rising
+ * through the first half of each group and falling through the second, TWIDDLE_TABLE_SIZE checked
+ * unsigned (sltiu 130: a sizeof's quotient). Read off the target:
+ *  - each element through its own pointer, set from pfBase in the body (`addiu a0,s0,8` each
+ *    iteration, the stores in the source's order: four pointers may alias); written pfBase[2] the
+ *    offsets fold into the loads and the stores reorder, written pfInOut[j + 2] they fold too;
+ *  - the pass counters count down (`k > 0`: blez, then bgtz) and share one variable with the twiddle
+ *    loops' (both in s1); the group loop counts up (dbra: blez, then bnez); the stage loop is
+ *    `i = 3; i <= log2N` (slti 3 -- from 2, `2 < log2N`, the 2 is loaded into a register);
+ *  - the declaration order is the spill slots' (span 4, nGroups 8, the stage counter 12); iWStep set
+ *    first gives it t0 and the string's %hi a3, as the target has them.
+ * OPEN (60 words, the integer side exact): the FP registers alone -- the target's are those of global
+ * pseudos shared between the passes and the twiddle loops (the pass's sum r and the twiddle's ti both
+ * f7, its diff r, the sine and tr f4); 1,900 role assignments of the float variables swept
+ * (build/scratch/ovl1gcc-r1/gen_*.py), 47 words at best, none a shape a vendor would write. */
+void func_0024DBB8(float *pfInOut, int log2N)
+{
+	int N = 1 << log2N;
+	int iSpan, iWIndex, iWStep, nGroups, i, j, k;
+	float *pfBase, *pfAr, *pfAi, *pfBr, *pfBi;
+	const float *pfSin, *pfCos;
+	float fR, fI, fTr, fTi, fC, fS;
+
+#line 910 "../../SaseEncVad/source/libtran.c"
+	assert(pfInOut != NellyNull);
+	assert(N >= 4);
+	assert(N <= TWIDDLE_PERIOD/2);
+	assert(log2N >= 2);
+	pfBase = pfInOut;
+	for (k = N >> 1; k > 0; k--) {
+		pfAr = pfBase;
+		pfAi = pfBase + 1;
+		pfBr = pfBase + 2;
+		pfBi = pfBase + 3;
+		fR = *pfAr + *pfBr;
+		fTr = *pfAr - *pfBr;
+		fI = *pfAi + *pfBi;
+		fTi = *pfAi - *pfBi;
+		*pfBr = fTr;
+		*pfAr = fR;
+		*pfBi = fTi;
+		*pfAi = fI;
+		pfBase += 4;
+	}
+	pfBase = pfInOut;
+	for (k = N >> 2; k > 0; k--) {
+		pfAr = pfBase;
+		pfAi = pfBase + 1;
+		pfBr = pfBase + 4;
+		pfBi = pfBase + 5;
+		fR = *pfAr + *pfBr;
+		fTr = *pfAr - *pfBr;
+		fI = *pfAi + *pfBi;
+		fTi = *pfAi - *pfBi;
+		*pfBr = fTr;
+		*pfAr = fR;
+		*pfBi = fTi;
+		*pfAi = fI;
+		pfBase += 2;
+		pfAr = pfBase;
+		pfAi = pfBase + 1;
+		pfBr = pfBase + 4;
+		pfBi = pfBase + 5;
+		fR = *pfAr + *pfBi;
+		fTr = *pfAr - *pfBi;
+		fI = *pfAi - *pfBr;
+		fTi = *pfAi + *pfBr;
+		*pfBr = fTr;
+		*pfAr = fR;
+		*pfBi = fTi;
+		*pfAi = fI;
+		pfBase += 6;
+	}
+	iWStep = 64;
+	nGroups = N >> 3;
+	iSpan = 4;
+	pfCos = data_001D5574;
+	iWIndex = 0;
+	pfSin = data_001D5570;
+	for (i = 3; i <= log2N; i++) {
+		pfBase = pfInOut;
+		for (j = 0; j < nGroups; j++) {
+			for (k = iSpan >> 1; k > 0; k--) {
+				fC = pfCos[-iWIndex];
+				fS = pfSin[iWIndex];
+				pfAr = pfBase;
+				pfAi = pfBase + 1;
+				pfBr = pfBase + (iSpan << 1);
+				pfBi = pfBr + 1;
+				fR = *pfBr;
+				fI = *pfBi;
+				fTi = fR * fS - fI * fC;
+				fTr = fR * fC + fI * fS;
+				fR = *pfAr;
+				fI = *pfAi;
+				*pfBr = fR - fTr;
+				*pfAr = fTr + fR;
+				*pfBi = fI + fTi;
+				*pfAi = fI - fTi;
+				pfBase += 2;
+#line 1039 "../../SaseEncVad/source/libtran.c"
+				assert(iWIndex <= TWIDDLE_TABLE_SIZE);
+				iWIndex += iWStep;
+			}
+			for (k = iSpan >> 1; k > 0; k--) {
+				fC = pfCos[-iWIndex];
+				fS = pfSin[iWIndex];
+				pfAr = pfBase;
+				pfAi = pfBase + 1;
+				pfBr = pfBase + (iSpan << 1);
+				pfBi = pfBr + 1;
+				fR = *pfBr;
+				fI = *pfBi;
+				fTi = fR * fS + fI * fC;
+				fTr = fR * fC - fI * fS;
+				fR = *pfAr;
+				fI = *pfAi;
+				*pfBr = fR + fTr;
+				*pfAr = fR - fTr;
+				*pfBi = fI + fTi;
+				*pfAi = fI - fTi;
+				pfBase += 2;
+#line 1069 "../../SaseEncVad/source/libtran.c"
+				assert(iWIndex <= TWIDDLE_TABLE_SIZE);
+				assert(iWIndex >= 0);
+				iWIndex -= iWStep;
+			}
+			pfBase += iSpan << 1;
+		}
+		iWStep >>= 1;
+		iSpan <<= 1;
+		nGroups >>= 1;
+	}
+}
+
+/* the inverse passes: the forward passes conjugated (W = 1 and +j, the twiddle products' signs
+ * swapped), the table index checked at each group's second half and pfBase against the data's end
+ * there (`sltu` against pfInOut + 2N hoisted). Read off the target: N lives to that assert, so it is
+ * spilled (slot 20), and the declaration order is again the slots' -- iWStep 4, iSpan 8, nGroups 12,
+ * the stage counter 16, N 20 (declared after them); the pass counters count up here (dbra: blez,
+ * then bnez) where the forward passes' count down; the stage's updates in the order span, step,
+ * groups. OPEN (66 words, the integer side exact): the FP registers, as the forward passes'. */
+void func_0024DFB8(float *pfInOut, int log2N)
+{
+	int iWStep, iSpan, nGroups, i, N = 1 << log2N;
+	int iWIndex, j, k;
+	float *pfBase, *pfAr, *pfAi, *pfBr, *pfBi;
+	const float *pfSin, *pfCos;
+	float fR, fI, fTr, fTi, fC, fS;
+
+#line 1153 "../../SaseEncVad/source/libtran.c"
+	assert(pfInOut != NellyNull);
+	assert(N >= 4);
+	assert(N <= TWIDDLE_PERIOD);
+	assert(log2N >= 2);
+	pfBase = pfInOut;
+	for (k = 0; k < (N >> 1); k++) {
+		pfAr = pfBase;
+		pfAi = pfBase + 1;
+		pfBr = pfBase + 2;
+		pfBi = pfBase + 3;
+		fR = *pfAr + *pfBr;
+		fTr = *pfAr - *pfBr;
+		fI = *pfAi + *pfBi;
+		fTi = *pfAi - *pfBi;
+		*pfBr = fTr;
+		*pfAr = fR;
+		*pfBi = fTi;
+		*pfAi = fI;
+		pfBase += 4;
+	}
+	pfBase = pfInOut;
+	for (k = 0; k < (N >> 2); k++) {
+		pfAr = pfBase;
+		pfAi = pfBase + 1;
+		pfBr = pfBase + 4;
+		pfBi = pfBase + 5;
+		fR = *pfAr + *pfBr;
+		fTr = *pfAr - *pfBr;
+		fI = *pfAi + *pfBi;
+		fTi = *pfAi - *pfBi;
+		*pfBr = fTr;
+		*pfAr = fR;
+		*pfBi = fTi;
+		*pfAi = fI;
+		pfBase += 2;
+		pfAr = pfBase;
+		pfAi = pfBase + 1;
+		pfBr = pfBase + 4;
+		pfBi = pfBase + 5;
+		fR = *pfAr - *pfBi;
+		fTr = *pfAr + *pfBi;
+		fI = *pfAi + *pfBr;
+		fTi = *pfAi - *pfBr;
+		*pfBr = fTr;
+		*pfAr = fR;
+		*pfBi = fTi;
+		*pfAi = fI;
+		pfBase += 6;
+	}
+	iWStep = 64;
+	iSpan = 4;
+	iWIndex = 0;
+	nGroups = N >> 3;
+	pfCos = data_001D5574;
+	pfSin = data_001D5570;
+	for (i = 3; i <= log2N; i++) {
+		pfBase = pfInOut;
+		for (j = 0; j < nGroups; j++) {
+			for (k = iSpan >> 1; k > 0; k--) {
+				fC = pfCos[-iWIndex];
+				fS = pfSin[iWIndex];
+				pfAr = pfBase;
+				pfAi = pfBase + 1;
+				pfBr = pfBase + (iSpan << 1);
+				pfBi = pfBr + 1;
+				fR = *pfBr;
+				fI = *pfBi;
+				fTi = fR * fS + fI * fC;
+				fTr = fR * fC - fI * fS;
+				fR = *pfAr;
+				fI = *pfAi;
+				*pfBr = fR - fTr;
+				*pfAr = fTr + fR;
+				*pfBi = fI - fTi;
+				*pfAi = fTi + fI;
+				pfBase += 2;
+#line 1287 "../../SaseEncVad/source/libtran.c"
+				assert(iWIndex <= TWIDDLE_TABLE_SIZE);
+				iWIndex += iWStep;
+			}
+			for (k = iSpan >> 1; k > 0; k--) {
+#line 1294 "../../SaseEncVad/source/libtran.c"
+				assert(pfBase <= (pfInOut + (N << 1)));
+				fC = pfCos[-iWIndex];
+				fS = pfSin[iWIndex];
+				pfAr = pfBase;
+				pfAi = pfBase + 1;
+				pfBr = pfBase + (iSpan << 1);
+				pfBi = pfBr + 1;
+				fR = *pfBr;
+				fI = *pfBi;
+				fTi = fR * fS - fI * fC;
+				fTr = fR * fC + fI * fS;
+				fR = *pfAr;
+				fI = *pfAi;
+				*pfBr = fR + fTr;
+				*pfAr = fR - fTr;
+				*pfBi = fI - fTi;
+				*pfAi = fTi + fI;
+				pfBase += 2;
+#line 1317 "../../SaseEncVad/source/libtran.c"
+				assert(iWIndex <= TWIDDLE_TABLE_SIZE);
+				assert(iWIndex >= 0);
+				iWIndex -= iWStep;
+			}
+			pfBase += iSpan << 1;
+		}
+		iSpan <<= 1;
+		iWStep >>= 1;
+		nGroups >>= 1;
+	}
+}
+
 /* the real-input split after the forward passes (GCC round 37a, unwritten before): the N/2-point
  * complex FFT in pfInOut[0..N-1] made the spectrum of N real samples in pfInOut[0..N+1] -- Numerical
  * Recipes' realft unpacking, the twiddles stepping TWIDDLE_PERIOD / N through the quarter-wave table
