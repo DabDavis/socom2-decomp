@@ -4,8 +4,7 @@
  * thread, the power-off callback, the search, the N- and S-command pre-checks, sync, init and
  * disk-ready. Prebuilt with the SDK's ee-gcc 2.9-991111-01, the dtls13010 build (README "The GCC
  * front"). Names are SOCOM 1's (s1:exact and the demo's globals, data.txt; libcdvd.h). OPEN:
- * sceCdInit, sceCdDiskReady, the newer 0x18EF70 and the accessor func_0018E9E8 (each diagnosed in
- * place). The functions appear in the target's order, which is the demo's but for the accessor. */
+ * sceCdInit and the accessor func_0018E9E8 (each diagnosed in place). The functions appear in the target's order, which is the demo's but for the accessor. */
 
 #include "libcdvd.h"
 
@@ -605,9 +604,10 @@ int sceCdDiskReady(int mode)
 
 /* The newer disk-ready call (the demo lacks it; strfile.cpp calls it): its own semaphore and server
  * 0x8000059C over the old call's client and request, falling back to the old call after 17 binds
- * that find no server. OPEN (0x1FC against 0x204, 8 structural words, 16 register-only): the
- * target computes the client's %hi on both paths of the bind test (lazy code motion's placement,
- * `b; lui s5` and `lui s5` at the join) where this compile hoists it into the test's delay slot. */
+ * that find no server. Byte-exact since GCC round 83 (open: "lazy code motion's placement" of the
+ * client's %hi): the count cleared BEFORE the bind-flag test (the target's `bgez; move s1,zero`) and
+ * the flag cleared inside the loop at its break, as sceCdDiskReady does -- a reference in a loop
+ * counts twice, lifting the flag's %hi from s6 to s3 and the rest after it. */
 int func_0018EF70(int mode)
 {
 	int i;
@@ -620,8 +620,8 @@ int func_0018EF70(int mode)
 	if (data_001CA870 != PollSema(data_001CA870))
 		return mode != 8 ? 6 : -1;
 	sceSifInitRpc(0);
+	n = 0;
 	if (_scmd_dr_bind < 0) {
-		n = 0;
 		while (1) {
 			if (sceSifBindRpc(&cddr, 0x8000059C, 0) < 0) {
 				if (SCE_CD_debug > 0)
@@ -631,8 +631,10 @@ int func_0018EF70(int mode)
 					;
 				continue;
 			}
-			if (cddr.serve != 0)
+			if (cddr.serve != 0) {
+				_scmd_dr_bind = 0;
 				break;
+			}
 			if (n >= 17) {
 				SignalSema(data_001CA870);
 				return sceCdDiskReady(mode);
@@ -642,7 +644,6 @@ int func_0018EF70(int mode)
 				;
 			n++;
 		}
-		_scmd_dr_bind = 0;
 	}
 	_dr_mode = mode;
 	sceSifWriteBackDCache(&_dr_mode, 4);
