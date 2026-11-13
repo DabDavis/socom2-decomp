@@ -10405,9 +10405,9 @@
 0x00579EA0 0x44 func_00579EA0  # OVL2
 0x00579EF0 0x114 func_00579EF0  # OVL2
 0x0057A010 0x320 func_0057A010  # OVL2
-0x0057A330 0x11D8 func_0057A330  # OVL2
+0x0057A330 0x11D8 Tick_0__10CZSealBodyFv  # OVL2; s1:order by hand (ctrl lane, round 68): SOCOM 1's Tick_0__10CZSealBodyFf (0xCEC there), after BlendOverlayPreTick's place in both builds; the same callees (ApplyBlinkAnim, ApplyEyeLookAnim, ApplyLookAnim, CallbackTick, LookTick, the overlays, Recoil); SOCOM II drops SOCOM 1's float (dT is never read: f12 untouched before its first set), so the name is Tick_0__10CZSealBodyFv, not the demo's ...Ff
 0x0057B510 0x38 func_0057B510  # OVL2
-0x0057B550 0x1FB8 func_0057B550  # OVL2
+0x0057B550 0x1FB8 Recoil__10CZSealBodyFv  # OVL2; s1:order by hand (ctrl lane, round 68): SOCOM 1's Recoil__10CZSealBodyFv (0x20A8 there), after UseVelY's place (0x57B510) in both builds; the same CQuat Exp/Mul/Normalize chain (97 Exp calls against SOCOM 1's 100), called once from 0x57A330 as SOCOM 1's Tick_0 calls Recoil
 0x0057D510 0x30 func_0057D510  # OVL2
 0x0057D540 0xA0 func_0057D540  # OVL2
 0x0057D5E0 0x124 func_0057D5E0  # OVL2
