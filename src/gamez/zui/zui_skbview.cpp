@@ -20,7 +20,7 @@
  * preheader after the return) -- SkbSetKeyTextures 0x395140 and SkbForgetDisplay 0x396F30 (open since
  * rounds 21 and 11), SkbShowKeyRows 0x394520, SkbReadUiParams 0x397070 and SkbPrepDisplay 0x3958D0
  * byte-exact, SkbScaling 0x396EC0 and SkbTwoEdits 0x396F10 from drafts; SkbStartDisplay 0x395540
- * written, OPEN (8 bytes long, below).
+ * written (byte-exact since round 73).
  * Round 21: the scaling step SkbScale 0x394DA0 (its state an unsigned char, tested `== 0` first: `!`
  * re-extends the byte for the next test; the t >= 1 block written as the if's body, the return 0
  * after it) and SkbLoadUiParams 0x3943E0 (from zui_hangul.cpp), byte-exact.
@@ -1310,7 +1310,7 @@ struct SKBTOGGLE {
  * the plain background's keys shown, the caption given cap 1's look, the caret (bitmap 1) sized and
  * hidden, the scaling up started, and the three toggles sized, placed at their rectangles and hidden
  * (0x395540; ShowSkb calls it with the font; the name ours).
- * OPEN, 1 instruction: the legend's `mul.s $f0,$f0,$f1` (1.0 times the width, the 1.0 in f0) comes
+ * Byte-exact since round 73 (the width through SkbRectWidth, above). Was OPEN, 1 instruction: the legend's `mul.s $f0,$f0,$f1` (1.0 times the width, the 1.0 in f0) comes
  * out `mul.s $f0,$f1,$f0`: written `t * w` MW numbers the 1.0 before the width and colours the
  * width into f0, written `w * t` (as below) the registers are the target's and the operands
  * swapped -- the target wants the 1.0 first in the product but numbered after the width (tried: the
@@ -1339,13 +1339,20 @@ struct SKBTOGGLE {
  * its width operand carries hascall although no call survives in its code. 14 casts and spellings of
  * the operands and product move nothing (4 off or 1 off: build/scratch/ui/v_ssd1.py); what sets the
  * flag without leaving a call is not found (the pass that computes it is not among the sources). */
+/* a rectangle's width, through an inline taking the rectangle (ours). Round 73: the width operand
+ * read through an inline WITH AN ARGUMENT is round 38's `hascall` -- the product then generates the
+ * width first and reads `t * w` (`mul.s f0,f0,f1`), which the plain member read, an argumentless
+ * inline returning it (int or float) and every round-24 spelling do not give */
+static inline int SkbRectWidth(const CSkbRect &r)
+{
+    return r.m_size[0];
+}
+
 /* the legend (bitmap 3) placed slid in by t, a fraction of its width (ours: the 1.0f a caller
- * passes is still multiplied; the width written first gives the target's registers -- the 1.0 then
- * numbered after it, so coloured first into f0 -- with the product's operands the wrong way round,
- * the one instruction SkbStartDisplay misses on) */
+ * passes is still multiplied) */
 static inline void SkbPlaceLegend(CSoftKeyboard *skb, float t)
 {
-    s_bmp3.m_node->SetPosition((float)skb->m_6c - (float)s_rect.m_size[0] * t, 0.0f, 0.0f);
+    s_bmp3.m_node->SetPosition((float)skb->m_6c - (float)SkbRectWidth(s_rect) * t, 0.0f, 0.0f);
 }
 
 /* a node put at a place raised by dy (ours: the 0.0f a caller passes is still added) */
