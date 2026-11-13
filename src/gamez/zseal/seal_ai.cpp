@@ -3847,7 +3847,10 @@ struct CTurretFlags {
 /* the entity as a turret, if it is one (an inline, the name ours) */
 static inline CTurretFlags *AsTurretFlags(CEntity *e)
 {
-    return e ? (TypeOf(e) == CEntity::ENT_TYPE_TURRET ? (CTurretFlags *)e : 0) : 0;
+    CTurretFlags *t = (CTurretFlags *)e;
+
+    t = t ? (TypeOf(e) != CEntity::ENT_TYPE_TURRET ? 0 : t) : t;
+    return t;
 }
 
 /* the AI's bit 16 set without bit 17 (an inline, the name ours) */
@@ -3863,7 +3866,10 @@ static inline bool Bit16Only(CSealCtrlAi *ai)
 }
 static inline bool NotBit16Only(CSealCtrlAi *ai)
 {
-    return !(AiBit16(ai) && !AiBit17(ai));
+    int r = AiBit16(ai);
+
+    r = r ? AiBit17(ai) ^ 1 : r;
+    return r ^ 1;
 }
 
 /* whether the SEAL may lie down where it stands (inline helpers, the names ours): its cell holds an
@@ -4016,7 +4022,15 @@ static inline bool TakesTargets(CSealCtrlAi *ai, CEntity *e)
  * when the AI drives it, on no team the entity is on, while the entity takes targets. The targets
  * are kept nearest first, so the first past the range ends the walk (OVL2 0x569E40, new in SOCOM
  * II: 0x561550 and CAiSGoto::Tick ask it; the names ours).
- * OPEN, 23 instructions (the size right; round 50 -- 24 with round 49's `r2 = range; r2 *= r2`, whose
+ * OPEN, 3 instructions (23 to 3 in round 72: AsTurretFlags and NotBit16Only as SELF-ASSIGNING
+ * TERNARIES -- `t = t ? (TypeOf(e) != TURRET ? 0 : t) : t;` and `int r = AiBit16(ai); r = r ?
+ * AiBit17(ai) ^ 1 : r; return r ^ 1;` -- the bit test now the target's `sltu; beqz; ... xori` value and
+ * one `xori` at the join; a bool r renormalises with sltu, `!r` and `r == false` too). Left: the
+ * turret test's zero moves -- the target's null arm and false arm each `move a0,zero` (the null one
+ * in the `beqz`'s slot, the true arm's `move a0,s4` in the `beq`'s), where the self-assigning form
+ * keeps nops there and moves s4 for the false arm; `: 0` in either arm, `== TURRET ? t : 0`, the
+ * single-case switch, if/return and if-assign forms are 0x2D4-0x2DC.
+ * History (round 50, 24 with round 49's `r2 = range; r2 *= r2`, whose
  * second operand MW propagates back to $f12: the parameter squared in place, `range *= range`, gives
  * the target's `mul.s $f20,$f20,$f20`). Right: the kind read through a
  * reference-returning inline (TypeOf: its address hoisted into s0, the kind reused by the turret
