@@ -2066,6 +2066,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEAL body, round 71** (six rows byte-exact: CZSealBody::PostPreTick 0x54AA30 (0x2BEC, 4 short since round 70),
+  PostCheckDIDown 0x5AF930 (~27), FindDeathAnimTypeCQB 0x5A9420 (10 since round 23), CanInterrupt 0x587C20, 0x550A80 (open since
+  written), 0x55C870 (since round 62). Tick_0 0x57A330 154 to 23, structural 4 to 0 (the yaw reloaded through `*(const float
+  *)&yaw`; `(vy = m_velR.y, vz = m_velM.z, vy != 0.0f) && vz != 0.0f` puts vz's load in the bc1t slot), the loops' registers
+  left. 0x5463C0 42 to 25 structural (AsTurret's `e->m_type == 3` through a bool set under an `if`); 0x5B3890 16 to 5
+  (registers: igreplay wants dx after d.y's CSE temporary); 0x57D5E0 back to 9 at size (its parameter `char` again: SEAL_ITEM_BYTE
+  added a sign extension). No header change; pragmascan 0 hits):
+  - A VOLATILE VIEW PINS A LOAD AT ITS STATEMENT: `T *p = ((volatile C *)this)->m;` keeps the load where written, so later
+    plain reads in other arms are not CSE'd onto it (PostPreTick's m_node) and a load is not sunk past stores (CQB's nodes);
+    the same view on the arms' reads alone was ignored. On a bit-field test (`((volatile E *)e)->field`) the insert's RMW
+    loads the word again (0x550A80).
+  - `return (bool &)c = true;` gives the fresh `daddiu v0,zero,1` after the char's `li; sb` (a plain char assignment adds
+    `sltu`) -- 0x55C870, open since round 62.
+  - `m_control ? ((CSealCtrl *)m_control)->IsAi() : false` joins its null path at the `andi`; zseal.h's result-variable IsAi()
+    joins after it (a 1-word miss in PostPreTick and CanInterrupt both).
+  - `bool t = a == k; if (t) is = true;` in an inline gives the materialised `==` then a `daddiu 1` triangle. An if/else bool
+    inline (`if (c) r = true; else r = false;` per arm) gives `daddiu` and the `andi` at the join.
+  - a comma expression `(a = x, b = y, a != 0.0f) && b != 0.0f` loads both in the first test's block, the second load in the
+    branch's slot. The const view `((const C *)p)->m` forces a reload into a call argument after a compare (FallLanding).
 - **Tells from the SEAL AI, round 71** (seven rows byte-exact, 13,736 bytes: CSealCtrl::TickAimPitch 0x594600 (2 off: `short two =
   2; if (data_0066B3D8 == two)`), CSealCtrlAi::SetAiMode 0x56CBF0, and unwritten before -- the fire set-up after a weapon
   change 0x565D30 (0x7BC), InitAiBrain 0x573130 (0xA4C), the glance on ai_slice1 0x558640 (0x438; 0x558AA0 returns int,
