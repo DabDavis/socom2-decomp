@@ -205,7 +205,10 @@ float func_00251700(float x)                    /* a frequency warp (the .lit4 c
  * optimiser hoists the then-arm's conversion above the test instead (`cvt.w.s; mfc1` before the
  * c.lt.s, its +1 in the slot) in every arm order, the ternary, a goto and a float copy of fX feeding
  * both arms (d=33); one conversion after the merge through a float t folds `(i + 1) + 126` to `+ 127`
- * and turns the test into c.le.s (d=37). */
+ * and turns the test into c.le.s (d=37). Round 79 (build/scratch/gcc2-r79/vexp2.py): the 16-byte frame
+ * is an addressable local in a dead arm -- `if (0) { long t[2]; ... }` anywhere in the body gives it
+ * (the right size, d=32) and changes no instruction: `if (0)` is gone before RTL, so it leaves no
+ * join; the arm the target lost was dead only after expansion. */
 float func_00251850(float fX)
 {
     union { float f; long l; } m;
