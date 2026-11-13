@@ -3944,6 +3944,24 @@ static inline float HeadY(CZSealBody *seal)
     return head.y;
 }
 
+/* a point turned about (an inline, the name ours: its words read through a const view, so they load from
+ * the frame while the stores keep their addresses) */
+static inline void Negate(CPnt3D &v)
+{
+    const CPnt3D &r = v;
+
+    v.x = -r.x;
+    v.y = -r.y;
+    v.z = -r.z;
+}
+
+/* a point raised by 2, the new height given back (an inline, the name ours) */
+static inline float Raise(CPnt3D &p)
+{
+    p.y += 2.0f;
+    return p.y;
+}
+
 static inline bool Tiny(float v)
 {
     return fabsf(v) < 0.0005f;
@@ -4095,9 +4113,7 @@ void CZSealBody::PostPreTick(float dT)
             dir.x = m[2][0];
             dir.y = m[2][1];
             dir.z = m[2][2];
-            dir.x = -dir.x;
-            dir.y = -dir.y;
-            dir.z = -dir.z;
+            Negate(dir);
         } else
             dir = m_f44;
         dir.Normalize();
@@ -4112,15 +4128,18 @@ void CZSealBody::PostPreTick(float dT)
         CPnt3D fire = m_curr_firepos;
 
         float step = theCharacterDynamics.m_stepHeight;
+        float zero;
 
 
         if (still || strafe) {
             side.x = -dir.z;
-            side.y = 0.0f;
+            zero = 0.0f;
+            side.y = zero;
             side.z = dir.x;
         } else {
             side.x = -m_f44.z;
-            side.y = 0.0f;
+            zero = 0.0f;
+            side.y = zero;
             side.z = m_f44.x;
         }
         side.Normalize();
@@ -4151,10 +4170,10 @@ void CZSealBody::PostPreTick(float dT)
             if (!m_carry) {
                 CPnt3D push = m_f44;
 
-                if (push.y < 0.0f) {
+                if (push.y < zero) {
                     push.y += m_2e0 * (theCharacterDynamics.m_gravity * m_2e0);
-                    if (push.y > 0.0f)
-                        push.y = 0.0f;
+                    if (push.y > zero)
+                        push.y = zero;
                 }
                 push = push + dir;
 
@@ -4171,12 +4190,12 @@ void CZSealBody::PostPreTick(float dT)
                 if (!ProbePart(this, m_head, &h0, node, from, to, push))
                     return;
 
-                CPnt3D h1(2.25f, 0.0f, -4.0f);
+                CPnt3D h1(2.25f, zero, -4.0f);
 
                 if (!ProbePart(this, m_head, &h1, node, from, to, push))
                     return;
 
-                CPnt3D h2(2.25f, 0.0f, 4.0f);
+                CPnt3D h2(2.25f, zero, 4.0f);
 
                 if (!ProbePart(this, m_head, &h2, node, from, to, push))
                     return;
@@ -4220,10 +4239,10 @@ void CZSealBody::PostPreTick(float dT)
             if (!m_carry) {
                 CPnt3D push = m_f44;
 
-                if (push.y < 0.0f) {
+                if (push.y < zero) {
                     push.y += m_2e0 * (theCharacterDynamics.m_gravity * m_2e0);
-                    if (push.y > 0.0f)
-                        push.y = 0.0f;
+                    if (push.y > zero)
+                        push.y = zero;
                 }
                 push = push + dir;
 
@@ -4291,12 +4310,12 @@ void CZSealBody::PostPreTick(float dT)
                 q.Apply(&m_f44, &lean, 1);
                 if (strafe || lean.x * lean.x + lean.z * lean.z < 0.001f)
                     lean.z = -1.0f;
-                lean.y = 0.0f;
+                lean.y = zero;
                 lean.Normalize();
             }
             if ((m_state == stateCrouch || m_state == stateStand) && m_velM.z > 0.01f)
                 fwd = fwd * data_0064FCE8;
-            else if (m_state == stateCrouch && !m_21c_bit2 && m_velM.z < 0.0f)
+            else if (m_state == stateCrouch && !m_21c_bit2 && m_velM.z < zero)
                 fwd = fwd * data_0064FCE8;
             NodePos(this, from);
             if (strafe) {
@@ -4305,9 +4324,7 @@ void CZSealBody::PostPreTick(float dT)
                 s.Normalize();
                 s.Scale(5.0f, &s);
                 if (m_velM.x < 0.0f) {
-                    s.x = -s.x;
-                    s.y = -s.y;
-                    s.z = -s.z;
+                    Negate(s);
                 }
                 to = from + s + m_f44;
                 from.y += step;
@@ -4339,14 +4356,14 @@ void CZSealBody::PostPreTick(float dT)
                 z.y = m[2][1];
                 z.z = m[2][2];
 
-                float lim = strafe ? -0.2f : 0.0f;
+                float lim = strafe ? -0.2f : zero;
 
                 if (z.x * nx + z.y * ny + z.z * nz >= lim && !still)
                     to = from + dir;
                 else {
                     CPnt3D f = fire * 1.1f;
 
-                    if ((func_005551A0(SealTop(this)->m_flags, 64) && m_wep_seq.LinearWeight() > 0.0f &&
+                    if ((func_005551A0(SealTop(this)->m_flags, 64) && m_wep_seq.LinearWeight() > zero &&
                          m_state != stateClimbLadder) ||
                         m_state == stateProne || IsCurrentBlend((AnimType)17) || IsCurrentBlend((AnimType)19) ||
                         IsCurrentBlend((AnimType)25)) {
@@ -4360,7 +4377,7 @@ void CZSealBody::PostPreTick(float dT)
                 CPnt3D head;
 
                 PartInSpace(m_head, 0, &head, 0);
-                from.y += head.y += 2.0f;
+                from.y += Raise(head);
                 to = from + dir;
                 to.Add(&m_f44, &to);
             }
@@ -4409,7 +4426,7 @@ void CZSealBody::PostPreTick(float dT)
                     return;
             }
             if (strafe) {
-                if (m_velM.x >= 0.0f) {
+                if (m_velM.x >= zero) {
                     from = *pos + a - dir;
                     to = *pos + la + dir + m_f44;
                 } else {
@@ -4429,7 +4446,7 @@ void CZSealBody::PostPreTick(float dT)
             if (roll) {
                 bool up = true;
 
-                if (m_260.vec.y >= 0.0f) {
+                if (m_260.vec.y >= zero) {
                     up = false;
                     from = *pos + a + dir;
                     to = *pos + b - dir + m_f44;
@@ -4485,7 +4502,7 @@ void CZSealBody::PostPreTick(float dT)
                     return;
             }
             if (strafe) {
-                if (m_velM.x >= 0.0f) {
+                if (m_velM.x >= zero) {
                     from = *pos + a + dir;
                     to = *pos + ra - dir + m_f44;
                 } else {
@@ -4505,7 +4522,7 @@ void CZSealBody::PostPreTick(float dT)
             if (roll) {
                 bool up = true;
 
-                if (m_260.vec.y >= 0.0f) {
+                if (m_260.vec.y >= zero) {
                     from = *pos - a - dir;
                     to = *pos - b + dir + m_f44;
                 } else {
