@@ -6273,10 +6273,10 @@ bool CSealCtrlAi::Tick(float dT)
         m_780 = m_78c = m_798 = CPnt3D::zero;
     if (!data_0045A0C1) {
         float range = m_courage.m_value;
-        float lim = data_00650060 * range;
         float threat = m_targetThreat.m_value;
+        float lim = data_00650060 * range;
 
-        if (!IsNavySeal() && !m_aibit7 && !(seal->m_team & 0x4000000)) {
+        if (!(m_navyseal ? true : false) && !m_aibit7 && !(seal->m_team & 0x4000000)) {
             bool go = false;
             bool fixed = data_0064FE40 == m_aiParams.courage;
 
@@ -6292,7 +6292,7 @@ bool CSealCtrlAi::Tick(float dT)
                 go = b;
             }
             if (go) {
-                bool flee = !m_navyseal && !StackBusy(m_stateStack);
+                bool flee = !((const CSealCtrlAi *)this)->IsNavySeal() && !StackBusy(m_stateStack);
 
                 if (flee) {
                     m_aibit7 = !m_navyseal;
