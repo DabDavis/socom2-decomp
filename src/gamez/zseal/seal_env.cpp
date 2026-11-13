@@ -6525,13 +6525,15 @@ static inline void FallLanding(CZSealBody *seal, const float &speed)
         if (held < 0.0f)
             seal->m_1364 = speed;
         if (seal->m_1364 > 0.0f)
-            seal->HandleFallingDamage(seal->m_1364);
+            seal->HandleFallingDamage(((const CZSealBody *)seal)->m_1364);
         seal->m_1364 = 0.0f;
         func_005804E0(seal);
     } else {
         if (held < 0.0f)
             seal->m_1364 = speed;
-        ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->Representative()->m_script_wt = 3.0f;
+        ACTIVE_ANIM *rep = ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->Representative();
+
+        rep->m_script_wt = 3.0f;
         seal->m_1350 = CPnt3D::zero;
     }
 }
@@ -6542,7 +6544,11 @@ static inline void FallLanding(CZSealBody *seal, const float &speed)
  * air keeps its velocity (a jump's or a fall's step taken), one come down lands -- a fall's anim, a hurt
  * state's drop, the climbs' and the drop's ends, else a landing -- and, with a polygon under it, the
  * material, the shadow's light and the visual's inside flag taken (OVL2 0x5AF930; SOCOM 1's
- * PostCheckDIDown, after HandleLanding: CZSealBody::Tick's three throttles) */
+ * PostCheckDIDown, after HandleLanding: CZSealBody::Tick's three throttles). Byte-exact in round 71
+ * (~27 off before): FallLanding's damage call reads the held speed again through a const view (MW kept
+ * the compare's f12), its anim hold through a representative local (the 3.0f then stored from a GPR
+ * after the calls, not hoisted to f20 ahead of them), the airborne bit into an `unsigned char` (`andi`;
+ * a bool `sltu`), the node into a local before the shade's store (the int is stored by `sb` unextended) */
 bool CZSealBody::PostCheckDIDown(float &x, float &y, float &z)
 {
     if (HoldsNoProbe(this))
@@ -6606,7 +6612,7 @@ bool CZSealBody::PostCheckDIDown(float &x, float &y, float &z)
                 m_1350 = m_velW;
             }
         } else {
-            bool air = m_airborne;
+            unsigned char air = m_airborne;
 
             if (!air && !grounded) {
                 if (IsCurrentBlend((AnimType)data_003DEED8) || IsCurrentBlend((AnimType)data_003DEED0))
@@ -6671,8 +6677,9 @@ bool CZSealBody::PostCheckDIDown(float &x, float &y, float &z)
             light = AiMaps.GetInterpolatedShadow(m_mapLoc, &m_posW, data_0066B470);
         _saturate(&light, 0.0f, 1.0f);
         int shade = (int)(127.0f * (1.0f - light));
+        zdb::CNode *node = GetNode();
 
-        GetNode()->m_socom2_a0 = shade;
+        node->m_socom2_a0 = shade;
     } else {
         zdb::CNode *node = GetNode();
 
