@@ -2523,14 +2523,17 @@ static inline int GotoCellDist(const CAiMapLoc &a, const CAiMapLoc &b)
     return dx + dy;
 }
 
-static inline const CAiMapLoc &GotoPathFirst(CAiPathBytes *p)
-{
-    return **(CAiMapLoc **)&p->_a0;
-}
-
+/* the route's first point and the SEAL's cell, each through an inline (their returned values are
+ * temporaries numbered after the distance's: as named locals the SEAL's cell address and the x
+ * distance swap a1/a2; the names ours) */
 static inline const CAiMapLoc *GotoPathFirstP(CAiPathBytes *p)
 {
     return *(CAiMapLoc **)&p->_a0;
+}
+
+static inline const CAiMapLoc *GotoSealCell(CZSealBody *s)
+{
+    return &s->m_mapLocValid;
 }
 
 /* whether the route arrived (inline; the name ours) */
@@ -2542,7 +2545,14 @@ static inline bool GotoArrived(CAiPathBytes *path)
 /* a goto's frame (OVL2 0x5F4470; SOCOM 1's grown): teleported (flag 0x80); for the squad's point-out
  * (flag 8) the SEAL turns and signals; the speed and stance by flags 2, 4/0x10 and 1; then the route
  * set (0), planned (1), walked (2) -- flag 0x40 done within m_58 cells of the route's end, flag 8
- * keeping pace with the player and calling to him --, a pursuit pushed at the end (4) or the end (3) */
+ * keeping pace with the player and calling to him --, a pursuit pushed at the end (4) or the end (3).
+ * Byte-exact (the kit's round 64, unwritten before): the pursuit's failure arm first and the pushed
+ * state kept by `s = s && s->m_state == K ? s : 0` -- with an if, no block optimisation, and the
+ * target's fall-through delay slots (left nops) fill; the step, the two flags and the pursuit's point
+ * declared at the top (the registers and the two points' slots); the speed and stance constants
+ * OVL2 data, not literals; the cover search's cell a const reference; the arrival `ok` one `&&`
+ * (no andi); the distances compared through named locals (as an expression MW computes the right
+ * side first); the player's speed into a local before the product (`mul.s f12,f0,f1`) */
 int CAiSGoto::Tick(CSealCtrlAi *ai)
 {
     STEP step;
@@ -2635,10 +2645,7 @@ int CAiSGoto::Tick(CSealCtrlAi *ai)
         if (m_flags & 1)
             ai->SetStanceDelayed((SEAL_STANCE)2, -1.0f);
         if ((m_flags & 0x40) && GotoArrived(path)) {
-            const CAiMapLoc *end = GotoPathFirstP(path);
-            const CAiMapLoc &here = seal->m_mapLocValid;
-
-            if ((unsigned int)GotoCellDist(*end, here) <= m_58) {
+            if ((unsigned int)GotoCellDist(*GotoPathFirstP(path), *GotoSealCell(seal)) <= m_58) {
                 func_005628F0(ai);
                 step = STEP_3;
             }
