@@ -5247,3 +5247,153 @@ extern "C" void func_005781C0(CZSealBody *seal)
             seal->SetPartAsGear(seal->m_item_gear[2].m_part, seal->m_item_gear[2].m_gear);
     }
 }
+
+extern "C" {
+/* the ladder's climb taken or let go (OVL2 0x5B1C80, seal_env.cpp's), the two damage anims' pushes
+ * (OVL2 0x5A2390, 0x5A2490) and the fall's (OVL2 0x5A21B0, seal_env.cpp's) */
+void func_005B1C80(CZSealBody *seal, int ladder);
+CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type);
+CZBodyAnimBlend *func_005A21B0(CZSealBody *seal);
+}
+
+/* a push the network told of played on a SEAL another console plays: kind 0 the anim pushed as it
+ * came, every other kind the same steps the SEAL's own console took, each one's body inlined -- the
+ * jumps (1, 2, 3, 9), into the air (4), the ladder (5, 6, 7, 8), the moves (10, 11, 17, 18), the
+ * variant (12), the damage anims (14, 15), the blast's stand (16), the ladder's start backwards (19,
+ * 20), the fall (21); 0 back but for kind 0 (OVL2 0x5880E0, new in SOCOM II: fts_remote.cpp's
+ * PushBlendAnimPacketHandler calls it with the packet's anim, slot, flag and time; the name ours).
+ * OPEN, 6 instructions (the size right): kind 12 is 0x57DCC0's body, and its two AnimSet calls keep
+ * that row's open miss -- the target loads the weapon (a2) and the set (a0) before the type's global
+ * (a1). Everything else matches: kind masked at the switch but passed on whole to 0x588BC0 (an int
+ * switched as `(unsigned char)kind`), 0x57F3E0's body written out (called, MW does not inline it), the
+ * cases in the target's order (12, 14, 15 before 10, 11) */
+extern "C" void *func_005880E0(CZSealBody *seal, AnimType type, int state, bool flag, int kind)
+{
+    switch ((unsigned char)kind) {
+    case 0:
+        return func_00588BC0(seal, type, state, flag, kind);
+    case 1:
+        seal->ClearToBase(false);
+        JumpPush(seal);
+        break;
+    case 2:
+        func_00588BC0(seal, (AnimType)8, 6, 0, 13);
+        seal->m_1360 = 0.1f;
+        seal->m_135c = 0.4f;
+        seal->m_1364 = theCharacterDynamics.m_jumpFactor * (-0.4f * theCharacterDynamics.m_gravity);
+        seal->SetBit9(true);
+        seal->SetBit10(false);
+        seal->m_1350 = seal->m_velW;
+        func_00588B40(seal, 2);
+        break;
+    case 3:
+        func_0057E050(seal);
+        break;
+    case 4:
+        func_0057E540(seal);
+        break;
+    case 5:
+        seal->m_climb.m_up = 0;
+        func_005B1C80(seal, state);
+        break;
+    case 6:
+        seal->m_climb.m_up = 1;
+        func_005B1C80(seal, state);
+        break;
+    case 7: {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+        int n = 12;
+        CBodyAnimBlendStack *stack = &seal->m_blends;
+
+        while (BlendCount(stack) > 1 && n > 0) {
+            b = seal->PopBlend();
+            n--;
+        }
+        if (n <= 0)
+            b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        else {
+            if (b)
+                b->m_ctrl = 0;
+            seal->m_desiredStance = STANCE_PRONE;
+        }
+        func_00588BC0(seal, (AnimType)data_003DEF50, 5, 0, 13);
+        func_00588BC0(seal, (AnimType)data_003DEF40, 5, 0, 13);
+        seal->BodySetState(5);
+        func_00588B40(seal, 7);
+        break;
+    }
+    case 8:
+        seal->ClearStack(1, true);
+        func_00588BC0(seal, (AnimType)data_003DEF50, 5, 0, 13);
+        seal->BodySetState(5);
+        seal->SetBit9(true);
+        seal->SetBit10(false);
+        seal->m_alt = seal->m_posW.y;
+        func_00588B40(seal, 8);
+        break;
+    case 9:
+        func_0057DF20(seal);
+        break;
+    case 12:
+        func_0057DCC0(seal, state);
+        break;
+    case 14:
+        func_005A2490(seal, type);
+        break;
+    case 15:
+        func_005A2390(seal, type);
+        break;
+    case 10:
+        func_005807D0(seal, false, state);
+        break;
+    case 11:
+        func_005807D0(seal, true, state);
+        break;
+    case 16: {
+        int st = state;
+
+        seal->ClearToBase(false);
+        if (!seal->IsRemote()) {
+            if (seal->m_isAlive)
+                st = 2;
+            else {
+                st = 8;
+                func_005A2490(seal, func_005A0950(seal, 3, 2));
+            }
+        }
+        if (seal->m_isAlive) {
+            CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DECE0, st, 0, 13);
+
+            b->m_flags = func_0058A920(b->m_flags, 2, true);
+            if (theNetwork.m_9 && !seal->IsRemote())
+                func_002BBAF0(seal->m_id, 34, st, false, 16);
+        }
+        break;
+    }
+    case 17:
+        func_005805B0(seal, false, state);
+        break;
+    case 18:
+        func_005805B0(seal, true, state);
+        break;
+    case 19: {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+        if (seal->IsCurrentBlend((AnimType)46)) {
+            b->m_flags = func_0058A920(b->m_flags, 0x20, true);
+            b->m_state = 5;
+            b->m_quitT = 0.0f;
+            b->Representative()->SetPlayback(-1.0f);
+        }
+        func_00588B40(seal, 20);
+        break;
+    }
+    case 20:
+        func_0057F5B0(seal);
+        break;
+    case 21:
+        func_005A21B0(seal);
+        break;
+    }
+    return 0;
+}
