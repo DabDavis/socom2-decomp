@@ -3284,7 +3284,8 @@ extern int data_0044AF78;
 
 /* a delayed probe from a point to another, the SEAL's node its own and characters not hit -- the
  * height kept when m_1340 is set -- or none when the fifty are spent (OVL2 0x54F410, new in SOCOM
- * II: PostPreTick 0x54AA30 asks it 31 times; the name unknown) */
+ * II: PostPreTick 0x54AA30 asks it 31 times; the name unknown). Pinned out of line: deferred inlining
+ * had expanded 13 of the 31 into PostPreTick (3711 instructions against 2811) */
 #pragma auto_inline off
 extern "C" bool func_0054F410(CZSealBody *seal, const CPnt3D *from, CPnt3D *to)
 {
@@ -4003,7 +4004,13 @@ static inline bool ProbePart(CZSealBody *seal, CZBodyPart *part, const CPnt3D *o
  * held off, or standing still with nothing to finish -- or under anim 0x3DEAD8 -- the probes are counted
  * from the delayed set's count (m_ef4, m_ef8): along the push from the spine and from the head, hands and
  * feet while a top anim holds or finishes, else ahead along the push, from the head, and either side --
- * the prone and rolling SEAL's tilted by the ground. Out of probes, it stops at once */
+ * the prone and rolling SEAL's tilted by the ground. Out of probes, it stops at once.
+ * Open (round 70): at the target's frame, 4 instructions short, every call, branch, slot and register placed
+ * but the facing row's: the target loads m_node again in the still and strafe arms (and pads two `b`s with a
+ * nop), where IRO_CommonSubs here reuses pos's load of it (igdump: `*(this + 40)` computed at the pos, reused
+ * in both arms) -- a volatile or const view, inline wrappers, pos through an inline, in each arm or each
+ * stance arm, a label, all leave the reuse or worsen. The level (0.0f in f20) is a variable: the constant
+ * spelled leaves f20 to the step and the frame's FPRs one short */
 void CZSealBody::PostPreTick(float dT)
 {
     CPickup::iterator it = CPickup::GetFirst();
@@ -4130,6 +4137,7 @@ void CZSealBody::PostPreTick(float dT)
 
         step = theCharacterDynamics.m_stepHeight;
 
+        /* the side's height, kept: the tests and points after read it from f20 */
         float level;
 
         if (still || strafe) {
