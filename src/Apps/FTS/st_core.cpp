@@ -608,9 +608,13 @@ bool CCinematicState::Init()
             }
         }
         *GIF_MODE &= ~4;
+#if Z_PORT
+        Z_EE_SYNC();
+#else
         asm volatile {
             sync
         }
+#endif
         u_long128 *buf = zBoneMotionRdrBuffer();
         zBoneMotionRdrSize();
         CVideo::WriteGsMemory(0x2400, buf, 0x1c0000);
@@ -790,9 +794,13 @@ void CCinematicState::UnInit()
         }
         zVid.m_7c = 0;
         *(volatile unsigned int *)0x10003010 |= 4;
+#if Z_PORT
+        Z_EE_SYNC();
+#else
         asm volatile {
             sync
         }
+#endif
     }
     if (m_moviename)
         _free(m_moviename, 0, 0);
@@ -1045,9 +1053,13 @@ bool CCoreState::Tick(float dT)
 void CCoreState::UnInit()
 {
     *(volatile unsigned int *)0x10003010 &= ~4;
+#if Z_PORT
+    Z_EE_SYNC();
+#else
     asm volatile {
         sync
     }
+#endif
     CVideo::MaxFrameRate(-1);
     CVideo::Fade(1.0f, 0, 0, 0);
     zVid.m_91 = 1;

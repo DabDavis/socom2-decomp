@@ -355,17 +355,30 @@ int InterruptFromVIF1(int cause)
                     *(volatile unsigned int *)0x1000A020 = 0;
                     *(volatile unsigned int *)0x1000A030 = (unsigned int)c->m_load->m_chainp & 0x0FFFFFFF;
                     *(volatile unsigned int *)0x1000A000 = 325;
+#if Z_PORT
+                    Z_EE_SYNC();
+#else
                     asm volatile { sync }
+#endif
                 }
             }
             if (c->m_signal)
                 c->m_signal->UpdateTextureSelects();
             *(volatile unsigned int *)0x10003C10 = 8;
+#if Z_PORT
+            Z_EE_SYNC();
+#else
             asm volatile { sync }
+#endif
         }
     }
+#if Z_PORT
+    Z_EE_SYNC();
+    Z_EE_EI();   /* the handler's return: the platform's dispatcher */
+#else
     asm volatile { sync }
     asm volatile { ei }
+#endif
     return 0;
 }
 

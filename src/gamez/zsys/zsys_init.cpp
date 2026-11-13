@@ -453,7 +453,11 @@ void zSysReset()
     zSys.sprPacketEnd[0] = (u_long128 *)0x70001F20;
     zSys.sprPacketEnd[1] = (u_long128 *)0x70003E50;
     zSys.sprPx = 0;
+#if Z_PORT
+    Z_EE_SYNC();
+#else
     asm volatile { sync }
+#endif
     zSysFifoInit();
 }
 

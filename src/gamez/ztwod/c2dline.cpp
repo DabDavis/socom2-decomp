@@ -375,6 +375,16 @@ void Draw2DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
         float *fa = (float *)&a;
         float *fb = (float *)&b;
 
+#if Z_PORT
+        /* vftoi4.xy (12.4 fixed point) and vftoi0.w of each end; the z lane is a stale word the asm
+         * stores and the code below overwrites (left as it was here) */
+        pa[0] = z_vu0_ftoi(fa[0], 4);
+        pa[1] = z_vu0_ftoi(fa[1], 4);
+        pa[3] = z_vu0_ftoi(fa[3], 0);
+        pb[0] = z_vu0_ftoi(fb[0], 4);
+        pb[1] = z_vu0_ftoi(fb[1], 4);
+        pb[3] = z_vu0_ftoi(fb[3], 0);
+#else
         asm volatile {
             lqc2 vf3, 0(fa)
             vftoi4.xy vf4, vf3
@@ -385,6 +395,7 @@ void Draw2DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
             sqc2 vf4, 0(pa)
             sqc2 vf6, 0(pb)
         }
+#endif
     }
     ia[2] = 1000000000;
     ib[2] = 1000000000;

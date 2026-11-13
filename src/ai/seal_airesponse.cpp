@@ -1858,10 +1858,14 @@ extern "C" CAiState::STEP func_006067A0(CAiSHold *h, CSealCtrlAi *ai)
                     *p = t->m_velW.y;
                     p = &vel.z;
                     *p = t->m_velW.z;
+#if Z_PORT
+                    (void)p;   /* the branch to the next instruction: no operation, a use of p for MW */
+#else
                     asm {
                         beq p, p, L1
                     L1:
                     }
+#endif
                     {
                         HoldGuard &g = guard;
 

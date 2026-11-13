@@ -696,7 +696,11 @@ void CGSTexBuffer::UpdateTextureSelects()
         h->m_gsAddr = addr;
         m_nextAddress = tex->UpdateTextureSelect(old, m_nextAddress);
     }
+#if Z_PORT
+    Z_EE_SYNC();
+#else
     asm volatile { sync }
+#endif
 }
 
 /* the TEX0 register's texture and palette addresses rewritten -- the texture's where it was at the

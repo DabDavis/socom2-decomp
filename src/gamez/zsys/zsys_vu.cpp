@@ -29,10 +29,19 @@ int InterruptFromVIF0(int cause)
     if (cause == 4) {
         m_running = 0;
         *VIF0_FBRST = 8;
+#if Z_PORT
+        Z_EE_SYNC();
+#else
         asm volatile { sync }
+#endif
     }
+#if Z_PORT
+    Z_EE_SYNC();
+    Z_EE_EI();   /* the handler's return: the platform's dispatcher */
+#else
     asm volatile { sync }
     asm volatile { ei }
+#endif
     return 0;
 }
 
@@ -87,6 +96,27 @@ void zSysVu0Save(int n)
     u_long128 *vi = ctx->vi;
 
     DIntr();
+#if Z_PORT
+    /* vf1-vf31 into the context (sqc2), then vi1-vi15 four to a quadword through vf1 (vmfir: each a
+     * 16-bit integer sign-extended into its lane's word); vf1 is left holding the last group, vi13-15
+     * and vi12 in w, as the asm leaves it */
+    {
+        int r, k;
+
+        for (r = 1; r < 32; r++)
+            z_vu0_sqc2(r, &ctx->vf[r - 1]);
+        for (k = 0; k < 4; k++) {
+            int l;
+
+            for (l = 0; l < 4 && 4 * k + l < 15; l++) {
+                int iv = (short)z_vu0.vi[4 * k + l + 1];
+
+                ((int *)z_vu0.vf[1])[l] = iv;
+            }
+            z_vu0_sqc2(1, &vi[k]);
+        }
+    }
+#else
     asm volatile {
         sqc2 vf1, 0(ctx)
         sqc2 vf2, 16(ctx)
@@ -140,6 +170,7 @@ void zSysVu0Save(int n)
         sqc2 vf1, 48(vi)
         nop
     }
+#endif
     EIntr();
 }
 
@@ -150,6 +181,22 @@ void zSysVu0Restore(int n)
     u_long128 *vi = ctx->vi;
 
     DIntr();
+#if Z_PORT
+    /* vi1-vi15 from the context through vf1 (vmtir: each lane's low 16 bits), then vf1-vf31 */
+    {
+        int r, k;
+
+        for (k = 0; k < 4; k++) {
+            int l;
+
+            z_vu0_lqc2(1, &vi[k]);
+            for (l = 0; l < 4 && 4 * k + l < 15; l++)
+                z_vu0.vi[4 * k + l + 1] = ((unsigned int *)z_vu0.vf[1])[l] & 0xFFFF;
+        }
+        for (r = 1; r < 32; r++)
+            z_vu0_lqc2(r, &ctx->vf[r - 1]);
+    }
+#else
     asm volatile {
         lqc2 vf1, 0(vi)
         vmtir vi1, vf1x
@@ -203,5 +250,6 @@ void zSysVu0Restore(int n)
         lqc2 vf31, 480(ctx)
         nop
     }
+#endif
     EIntr();
 }

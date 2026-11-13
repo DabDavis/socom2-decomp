@@ -70,7 +70,11 @@ void zSysFifoPause()
 {
     s_fifoPaused = true;
     *D1_CHCR &= 0xfeff;
+#if Z_PORT
+    Z_EE_SYNC();
+#else
     asm volatile { sync }
+#endif
     s_d1Chcr = *D1_CHCR;
     s_d1Tadr = *D1_TADR;
     s_d1Qwc = *D1_QWC;
@@ -90,21 +94,33 @@ void zSysFifoResume(bool restart)
     *D1_CHCR = s_d1Chcr;
     if (restart)
         *D1_CHCR |= 0x100;
+#if Z_PORT
+    Z_EE_SYNC();
+#else
     asm volatile { sync }
+#endif
 }
 
 void zSysFifoInit()
 {
     *D_RBOR = (unsigned int)mfifoBase;
     *D_RBSR = 0x7FFF0;
+#if Z_PORT
+    Z_EE_SYNC();
+#else
     asm volatile { sync }
+#endif
 }
 
 void zSysFifoDisable()
 {
     sceGsSyncPath(0, 0);
     D_CTRL_F->MFD = 0;
+#if Z_PORT
+    Z_EE_SYNC();
+#else
     asm volatile { sync }
+#endif
 }
 
 void zSysFifoEnable(unsigned int mode)
@@ -134,7 +150,11 @@ void zSysFifoEnable(unsigned int mode)
         zSysFifoDisable();
         break;
     }
+#if Z_PORT
+    Z_EE_SYNC();
+#else
     asm volatile { sync }
+#endif
 }
 
 u_long128 *zSysSprGetPacket(u_long128 **end)
