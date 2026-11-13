@@ -653,7 +653,9 @@ static inline CSealUnit *TopOf(CSealUnit *u)
  * after them and the push_backs last (and loop 1's iterator in v1 for a3). Wrapping the walks' erase
  * in an inline (by value, by reference, returning the wrapper or the base iterator, or assigning
  * through a reference) moves the erases a pass deeper but never level with the push_backs; an
- * explicit conversion or the base iterator spelled out changes nothing */
+ * explicit conversion or the base iterator spelled out changes nothing. The kit's round 67: erase and
+ * push_back together in one inline (the iterator by value, by reference, the result a local) grows the
+ * body or 25 -> 58+; `erase(i++)` 0x10 short; push_back before the erase 35 or worse */
 void CSealUnit::Tick(float dT)
 {
     int alive = 0;
