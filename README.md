@@ -2066,6 +2066,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI map, round 1** (a near-miss sweep of OVL2 0x50E000-0x540000 with this session's levers; nothing closed --
+  none of the eight targets has a movz/movn. CAiMap::GetCellRepelParams 0x5169B0 41 to 18 off: the FPRs and the modulo's
+  registers right, left the n/v frame slots (n at 272 above v at 256 in the target) and `CPnt3D::zero`'s address register
+  (v1, here v0). Tried and unchanged, each in its OPEN note or the scratch: UpdateNameTables 0x52B820 (5), ValidateRoutes
+  0x52F4A0 (27), InsertPathLoc 0x526810 (66), plan_legcomplete 0x5273C0 (the dead `?:` deleted whole every way); GetNextEvent
+  0x50EA50 (same nop slots, no movz), ~CAiPath 0x5281B0 (level 6), remove_if 0x50F670 (include/algorithm) not attempted):
+  - FPRs BY DECLARATION ORDER: the later a float local is declared, the lower its FPR (vz f20, vy f21, half f22); `half`
+    declared uninitialised ahead of vy/vz and assigned where it was gives the colours (with its initialiser there the
+    multiply moves up).
+  - `CAiCell *ncell = 0;` declared first in the loop gives `move v0,zero`'s place and MW's `andi s0,v1,0x0` in the signed
+    modulo's negative arm (nd as `unsigned char` the same).
+  - frame slots are not declaration order alone: the loop's 4-byte nloc at 300 sits above the function-scope centre at 288;
+    read counts do not move n/v either.
 - **Tells from the SEALs, round 65** (nothing closed; CAiSDeploy::Tick 0x55D120 (0x1288) written in seal_ai.cpp -- SOCOM 1's body
   without dT and its Debug/Output lines, CanDeployItem an inline -- size, frame, spill slots and every register right, 12
   instructions off in the first block: the target builds the y-field mask (`li v1,-1; dsll32 v1,v1,0`) in v1 in the prologue
