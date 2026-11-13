@@ -452,7 +452,13 @@ void C2DGlyph::LoadElems(const _zrdr *rdr, int height)
  * `slti s7,3`), the frame the target's with the placement named (`C2DPlacement pl = ...` puts it above the
  * name's string temporary, 248 over 232), and jamo declared bare ahead of the place and assigned in the loop
  * (39 to 38). Left: the place walks in s3 (the target's s0), j s2 (s3) and FindName's walk one lower --
- * the place declared bare and assigned (37), a part local bare, a named id, a copy of the place: no move. */
+ * the place declared bare and assigned (37), a part local bare, a named id, a copy of the place: no move.
+ * Round 79 (the MW lane): a SOURCE MISTAKE under the register miss -- each part's list is its "Styles"
+ * (the target's 0x3F89A0, LoadJamo's tag), not "Jamo" (scdiff -v: CONTENT-MISMATCH, hidden while the
+ * registers differ); and j declared bare beside the styles list (30 to 24). Left: the place in s2
+ * (the target's s0), FindName's result and string one lower -- igreplay wants the place numbered after
+ * FindName's temporaries (v41 to 47.5+); a layout reference with GetPart(k), the place indexed, a
+ * shared bare place: no move (strength reduction takes any named base as its induction variable). */
 void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rdr, const std::vector<CSaferStr> &jamoNames)
 {
     _zrdr *list = FlatFindTag(rdr, "CharLayouts");
@@ -462,7 +468,8 @@ void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rd
 
         names.push_back(CSaferStr(zrdr_flat_findstring(item, "Name", 0)));
         m_layouts.resize(m_layouts.size() + 1);
-        _zrdr *jamo;
+        _zrdr *styles;
+        int j;
         CJamoPlace *place = m_layouts.back().m_parts;
 
         for (int k = 0; k < 3; k++, place++) {
@@ -471,10 +478,10 @@ void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rd
             C2DPlacement pl = ReadPlacement(part);
 
             place->m_place = pl;
-            jamo = FlatFindTag(part, "Jamo");
+            styles = FlatFindTag(part, "Styles");
 
-            for (int j = 0; j < (jamo ? (int)jamo->Count() : 0); j++)
-                place->m_keys.push_back(FindName(jamoNames, jamo->Item(j)->String()));
+            for (j = 0; j < (styles ? (int)styles->Count() : 0); j++)
+                place->m_keys.push_back(FindName(jamoNames, styles->Item(j)->String()));
         }
     }
 }
