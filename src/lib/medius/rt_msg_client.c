@@ -1065,12 +1065,11 @@ unsigned char func_00634278(unsigned char *pbSent, char *szAddress, unsigned sho
  * summed, and each as a percentage of the rings' sizes (at most 100; 1 when a ring has none).
  * The receive percentage is POSITIVE with its error in an else (round 14b's rule): with the guard,
  * loop.c's exit-block move (find_and_verify_loops) puts the loop's `return 21` block after that
- * guard's barrier, here after the last statement, as the target. OPEN (10 words, registers only;
- * round 77 re-read: the earlier s1/s2 story is gone): the counter i (7 refs, loop-weighted, over 54 insns:
- * 2592) outranks nSendSize (9 over 106: 2547) for s3, the target the other way round. `i = 0;` above the
- * connection's test lengthens i and gives every register (d=5), but its `move` then fills the call's slot
- * where the target keeps `move a1,sp` and sets i after the test; i one insn longer (55: 2545) flips it.
- * int i, while/for/do spellings, the sums' orders, nSendSize zeroed later all leave it. */
+ * guard's barrier, here after the last statement, as the target. Round 78 (open since round 77's re-read,
+ * 10 words, registers only): the counter i (2592) outranked nSendSize (9 refs over 106 insns: 2547) for s3;
+ * the declarations' initialisers are insns in declaration order, so nSendSize declared after nRecvSize is
+ * born one insn later and its range shortens: it takes s3 as the target (2 of the four register sums' 24
+ * declaration orders match, both nRecvSize then nSendSize first). */
 unsigned char rt_msg_client_iget_buffer_status(unsigned short nConnection, unsigned int *pnSendUsed,
                                      unsigned int *pnRecvUsed, unsigned int *pnSendPercent,
                                      unsigned int *pnRecvPercent)
@@ -1078,13 +1077,13 @@ unsigned char rt_msg_client_iget_buffer_status(unsigned short nConnection, unsig
     unsigned int nSendBytes = 0;
     unsigned int nRecvBytes = 0;
     rt_msg_client_connection *pConnection = 0;
+    unsigned int nRecvSize = 0;
     unsigned int nSendSize = 0;
     unsigned int nRecvUsed = 0;
-    unsigned int nRecvSize = 0;
+    unsigned int nSendUsed = 0;
     rt_msg_client_comm *pComm;
     unsigned int i;
     unsigned char result;
-    unsigned int nSendUsed = 0;
 
     if (data_00655614 != 1)
         return 5;
@@ -3487,7 +3486,8 @@ extern int rt_comm_send_to(int nChannelId, char *szAddress, unsigned short nPort
  * `return 0` is a join the nothing-to-send path reaches (`move v0,zero` kept; without one 2.96 folds
  * `if (result) return result; return 0;` into `return result`, 3 words short) -- the label here is a
  * stand-in for SCEA's shape, not known. OPEN (2 words): send_to's channel and port loads come in the
- * other order. The internals' results are unsigned char (no `andi` on any returned result:
+ * other order (round 78: equal priority and dependents; sched1 takes the port's load for INSN_REG_WEIGHT --
+ * pComm's REG_DEAD lands on it, the last of the argument loads in RTL order). The internals' results are unsigned char (no `andi` on any returned result:
  * get_connection, get_valid_connection, get_header and 0x638500 so typed). */
 unsigned char func_006385F0(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned int nLength, unsigned short *pnSent)
 {

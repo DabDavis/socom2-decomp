@@ -20,11 +20,10 @@
  * OPEN: func_0062F818 (8 bytes short:
  * the target sets the result to 0 inside each of the three branches, a copy 2.96 here sinks into
  * IsNullRSAKey's delay slot -- result first, last, or set in each branch all give the same; 62s on
- * master's tools), 0x630DF0 (21 words: KM_Decrypt's body, byte-exact there, with the key master a
- * parameter -- the key master and the data pointer take each other's s1/s2; setting the hash after
- * the null test gives the registers and moves its store, 9; round 77 read the priorities: pData 9 refs over
- * 92 insns (2934) against the key master's 9 over 93 (2903) -- one insn of either's live length decides it; a
- * key or key-master local, the hash test's operand order and split, `if (nLength) if (nResult == 0)` leave it). The ciphers' shapes, measured: one
+ * master's tools; round 78: the jump pass's early if-conversion makes `result = -3` a conditional move
+ * before gcse, whose cprop then carries the arms' zeros into it and deletes them -- the target's
+ * conversion came after gcse; a switch, an inline, a copy, six test spellings leave it) (0x630DF0 byte-exact since round 78: KM_Decrypt's dead
+ * 0x80000000 re-check arm kept, below). The ciphers' shapes, measured: one
  * `return nHeader` with the branches nested (the header lives in s5 from the entry); KM_Decrypt's
  * cases in the order 0xE0000000, 0x80000000, 0x60000000, 0x20000000, 0, then 0x40000000 with the
  * default; its hash check inside `if (nLength != 0 && nResult == 0)` (two guard clauses hoist the
@@ -818,8 +817,11 @@ int KM_Decrypt(int nKMID, int nClientID, unsigned int nHeader, void *pData, int 
     return nResult;
 }
 
-/* KM_Decrypt's body over a key master and key chain already found (new in SOCOM II; its second key
- * pair is declared and never used -- the frame keeps its 128 bytes) */
+/* KM_Decrypt's body over a key master and key chain already found (new in SOCOM II). Its second key
+ * pair is used only in KM_Decrypt's 0x80000000 re-check arm, kept here though the outer test admits
+ * only 0xE0000000: the arm is dead and deleted, but its join leaves the second hash call a block of
+ * its own (its `addiu a2` frame address no longer waits on the re-check call) and the frame its 128
+ * bytes. Round 78, open since round 8b (21 words: the key master and the data pointer's s1/s2 too). */
 int func_00630DF0(KeyMaster *pKM, KeyChain *pKC, unsigned int nHeader, void *pData, int nLength)
 {
     RSAKey pub;
@@ -871,7 +873,11 @@ int func_00630DF0(KeyMaster *pKM, KeyChain *pKC, unsigned int nHeader, void *pDa
         func_0062EEC0(pData, nLength, &nHash, 4);
         nHash = (nHash & 0x1FFFFFFF) | (nHeader & 0xE0000000);
         if (nHeader != nHash && (nHeader & 0xE0000000) == 0xE0000000) {
-            func_00631008(pData, pKM->pLocalPublicKey);
+            if ((nHeader & 0xE0000000) == 0x80000000) {
+                KM_GetSoftwareKeyPair(&pub2, &priv2);
+                func_00631008(pData, &pub2);
+            } else
+                func_00631008(pData, pKM->pLocalPublicKey);
             func_0062EEC0(pData, nLength, &nHash, 4);
             nHash = (nHash & 0x1FFFFFFF) | (nHeader & 0xE0000000);
         }
