@@ -2371,6 +2371,8 @@ public:
     /* the aim and fire points found once, by name, and their positions taken (SOCOM 1's; OVL2
      * 0x5DF450, seal_weapon.cpp -- the kit lane) */
     void UpdateAimParams();
+    /* the weapon's wait begun (OVL2 0x5DFFC0, seal_weapon.cpp's -- the constructor calls it) */
+    void WepWaitOn();
     /* the aim at a point, with its surface normal, or none (SOCOM 1's; OVL2 0x5DF4E0, seal_weapon.cpp
      * -- the kit lane) */
     bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);
@@ -3036,11 +3038,14 @@ public:
     unsigned char _1084[0x1090 - 0x1084];
     /* a wall's hit the SEAL holds to (new in SOCOM II: held while its node is set -- 0x5B3890 drops
      * it once the SEAL strays, faces off it or the ledge is out of reach; the name ours) */
-    zdb::IntersectStruct m_1090;   // 0x1090
-    /* two points kept with the wall's hit (0x5B0D30 sets them; the constructor zeroes both, then the
-     * hit's node again; the names ours) */
-    CPnt3D m_10b0;   // 0x10b0
-    CPnt3D m_10bc;   // 0x10bc
+    /* (with two points kept with it -- 0x5B0D30 sets them: the constructor clears the hit, copies
+     * zero into both, then clears the hit's node again, its body's; the names ours) */
+    struct CSealHold : zdb::IntersectStruct {
+        CSealHold() : m_from(CPnt3D::zero), m_to(CPnt3D::zero) { m_node = 0; }
+
+        CPnt3D m_from;   // 0x20
+        CPnt3D m_to;   // 0x2c
+    } m_1090;   // 0x1090
     unsigned char _10c8[0x10d0 - 0x10c8];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
     unsigned char _10d4[0x10e0 - 0x10d4];
