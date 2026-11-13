@@ -326,6 +326,201 @@ extern "C" void func_005F0180(CAiSAction *s, CSealCtrlAi *ai, CNodeAction *na, i
     }
 }
 
+/* what the AI's line walk carries and hands back (seal_ai.cpp's SEAL_LINEWALK, 0x56A130's: a copy of
+ * its layout and inline constructor; the names seal_ai.cpp's) */
+struct SEAL_LINEWALK {
+    SEAL_LINEWALK()
+        : m_blocked(0), _1(0), m_met(0), m_metid(CEntity::invalidId), m_8(false), m_restrained(false),
+          m_dist(30.0f), m_to(CAiMapLoc::invalid), m_28(0), m_ai(0), m_30(true)
+    {
+    }
+
+    unsigned char m_blocked;   // 0x0
+    unsigned char _1;
+    unsigned char m_met;   // 0x2: an entity in the way
+    unsigned int m_metid;   // 0x4
+    bool m_8;   // 0x8
+    bool m_restrained;   // 0x9
+    CAiMapLoc m_metloc;   // 0xc
+    float m_dist;   // 0x10
+    float m_scale;   // 0x14
+    CAiMapLoc m_to;   // 0x18
+    CPnt3D m_back;   // 0x1c
+    float m_28;   // 0x28
+    CSealCtrlAi *m_ai;   // 0x2c
+    bool m_30;   // 0x30
+};
+
+extern "C" {
+/* the controller's: the state's hold on its settings (0x560340), its stop within a range (0x5621F0),
+ * whether its route ran out (0x5629B0), its look's agreement (0x600CF0), the action's end reached
+ * (0x56C010), its line walk (0x56A130, seal_ai.cpp's) -- the SEAL lane's rows -- and the AI maps'
+ * action on a cell (ai_maps.h's, OVL2 0x52D8B0, by its name) */
+void func_00560340(CSealCtrlAi *ai, CAiState *state, bool b);
+void func_005621F0(CSealCtrlAi *ai, float range);
+bool func_005629B0(CSealCtrlAi *ai);
+float func_00600CF0(CSealCtrlAi *ai);
+void func_0056C010(CSealCtrlAi *ai);
+bool func_0056A130(CSealCtrlAi *ai, const CAiMapLoc &to, SEAL_LINEWALK *w, float dist);
+CAiMap::action *GetCellAction__7CAiMapsFRC9CAiMapLoc(CAiMaps *maps, const CAiMapLoc &loc);
+}
+
+/* the door's anim index for a SEAL at an action (seal_unit.cpp's, OVL2 0x5EC4E0: unsigned, as
+ * seal_control.cpp declares it -- passed on with no narrowing) */
+unsigned int CanUseDoorAction(CZSealBody *seal, CNodeAction *action, float f);
+
+/* two points differ when any coordinate does (inline: materialised x, then y, then z) */
+static inline bool operator!=(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x != b.x || a.y != b.y || a.z != b.z;
+}
+
+/* the action's tries at its cell, and the look's agreement it waits on (OVL2 data) */
+extern int data_00650BE0;
+extern float data_00650BE8;
+
+/* the action's frame (OVL2 0x5EFA50; SOCOM 1's grown): over once the state is off, has no action
+ * or its valve stands as wanted; a point to step to first (0, 1); the route to the action's cell
+ * (2, 3), its look (4, 5), the action taken (6) and waited on (7); 8 the end, 9 a failure */
+int CAiSAction::Tick(CSealCtrlAi *ai)
+{
+    STEP step;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (!m_active || !m_58)
+        return m_done = AI_DONE;
+    CValve *valve = m_58->m_valve;
+
+    step = (STEP)m_phase;
+    if (!valve || m_5c == ((CActionValveView *)valve)->m_4)
+        return m_done = AI_DONE;
+    switch (step) {
+    case STEP_0:
+        step = (m_flags & 2) ? STEP_6 : STEP_2;
+        if (m_60 != CPnt3D::zero) {
+            ai->SetGoalPos(GOAL_MOVE, &m_60, 1.0f);
+            ai->m_goal_timer.m_timer = 0.25f;
+            ai->m_goal_timer.m_min = 0.25f;
+            ai->m_goal_timer.m_range = 0.0f;
+            ai->SetAiMode((AI_MODE)5);
+            step = STEP_1;
+        }
+        break;
+    case STEP_1: {
+        bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+        if (!has || ai->m_goal_type != GOAL_MOVE)
+            step = (m_flags & 2) ? STEP_6 : STEP_2;
+        break;
+    }
+    case STEP_2:
+        if (m_6c < data_00650BE0 && ai->SetRoute(m_74)) {
+            unsigned char st = ai->m_path.m_state;
+
+            step = (st == 1 || st == 2 || st == 3) ? STEP_3 : STEP_4;
+            func_00560340(ai, this, true);
+            if (m_70 == m_74)
+                func_005621F0(ai, 10.0f);
+        } else
+            step = STEP_9;
+        break;
+    case STEP_3: {
+        CAiPathBytes *path = &ai->m_path;
+        unsigned char st = path->m_state;
+
+        if (!(st == 1 || st == 2 || st == 3)) {
+            bool ok = !(path->m_9c == 0) && st == 4;
+
+            if (ok) {
+                ai->SetAiMode((AI_MODE)3);
+                step = STEP_4;
+                ((CAiPath *)path)->PrintPath("dbg_path");
+            } else
+                step = STEP_9;
+        }
+        break;
+    }
+    case STEP_4:
+        if (func_005629B0(ai)) {
+            step = STEP_6;
+            if (!(m_flags & 0x10)) {
+                bool ok = false;
+                CAiMap::action *act = GetCellAction__7CAiMapsFRC9CAiMapLoc(&AiMaps, m_70);
+
+                if (act) {
+                    CAiMap::DIR dir = (CAiMap::DIR)act->m_direction;
+
+                    if (dir != 8)
+                        ok = ai->SetLookDirW((AI_LOOK)3, dir);
+                    else
+                        ok = ai->SetLookPosW((AI_LOOK)3, m_70);
+                }
+                if (ok) {
+                    ai->SetLookTimer(0.45f);
+                    ai->ModifyLookFlags(1, 0);
+                } else
+                    step = STEP_5;
+            }
+        } else if (m_7c == 1) {
+            CAiPathBytes *path = &ai->m_path;
+            bool ok = !(path->m_9c == 0) && path->m_state == 4;
+
+            if (ok) {
+                const CAiMapLoc &last = (*(CAiMapLoc **)&path->_a0)[((int)path->m_9c - 1) * 2];
+
+                if (last == m_70)
+                    func_0056C010(ai);
+            }
+        }
+        break;
+    case STEP_5:
+        if (ai->m_look_mode == 3) {
+            if (!(func_00600CF0(ai) < data_00650BE8))
+                step = STEP_6;
+        } else
+            step = STEP_6;
+        break;
+    case STEP_6:
+        ai->SetAiMode((AI_MODE)4);
+        if (!(m_flags & 2)) {
+            SEAL_LINEWALK w;
+
+            if (func_0056A130(ai, m_74, &w, 2.0f) && w.m_met) {
+                m_6c++;
+                step = STEP_2;
+            }
+        }
+        if (step == STEP_6) {
+            ai->ClearGoal(GOAL_NONE);
+            unsigned int idx = 0;
+
+            if (m_flags & 1)
+                idx = CanUseDoorAction(seal, m_58, 1.0f);
+            if (m_58->ExecuteAction(seal, idx)) {
+                step = STEP_7;
+                m_84 = (int)m_58->m_10;
+                m_78 = m_58->_3e;
+            } else
+                step = STEP_8;
+        }
+        break;
+    case STEP_7:
+        if ((unsigned int)m_78 < m_58->_3e)
+            step = STEP_8;
+        break;
+    }
+    if (step == STEP_8)
+        SetActive(false);
+    else if (step == STEP_9) {
+        func_00560340(ai, this, false);
+        SetActive(false);
+    }
+    if (step != m_phase)
+        ai->m_stateStack.SetFlags(1, 0);
+    UpdatePhase(step);
+    return Result();
+}
+
 /* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0; byte-exact in the
  * kit lane's round 33: Pursuable's result local zeroed ahead of the tests, set by the call's test
  * with a self-assigning else arm -- without it MW if-converts the test into an sltu on the call's

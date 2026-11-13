@@ -611,6 +611,8 @@ public:
     /* +0x08 (0x5F0470) */
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x5EFA50) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanScan() const;
