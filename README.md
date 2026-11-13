@@ -2066,6 +2066,28 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 63** (four rows byte-exact, all unwritten before: the side a found cell faces 0x55FA90 and a
+  throw from outside at a point inside 0x555C50 (seal_ai.cpp), the fall stepped against the ground's hit 0x59B440 and the
+  frame's altitude 0x59AFD0 in the new seal_fall.cpp, whole with 0x59AD30 and 0x59B870 moved in; CAiSGrenade gains m_85 and
+  m_94, SEAL_LINEWALK's m_28 a float, CCellGather a constructor, seal_fall.cpp its own CMaterialEx view with
+  m_foot_step_offset +0x38 -- no include/ change):
+  - A CALLEE INLINED IN ONE CALLER AND CALLED IN ANOTHER MEANS TWO UNITS: 0x59B440 calls GetSeal out of line where
+    seal_create.cpp's body-part ticks inline it; under `-inline deferred` a unit inlines it into every caller, a pragma
+    around the caller does nothing, one around GetSeal costs the ticks -- so 0x59AD30-0x59BA7F is its own unit.
+  - FOLDED CONSTANTS ONE ULP OFF: 0x42C43334 is `9.81f * 10.0f`, not 98.1f; 0x4137CAC0 is `1.1487f * 10.0f` (gravity times
+    ten: 1 m = 10 units).
+  - `bool b = c ? 1 : 0;` over a float compare gives `bc1t; li 1; move zero; andi 0xff`; `ok = A() && B()` keeps the bool
+    call's `sltu`, an if-chain drops it. An inline's `if (p) { E *e = f(); return e; } return 0;` leaves an unthreaded `b;
+    nop` at the join (a ternary, if/else or direct return thread it). `if (!(t <= 0)) return;` branches to the epilogue.
+  - a member initialiser `m_loc(CAiMapLoc::invalid)` copies a bitfield struct field by field, an assignment one word.
+    Constant-argument bit setters as local inlines give `daddiu 1<<n` / `(0&1)<<n`.
+  - declaration order sets the saved registers: 0x59B440's `bool top;` above the blend pointer (s0/s1), 0x555C50's map
+    ahead of the direction (s0/s5), 0x56A2E0's three bools at the top (register misses 99 to 45).
+  - open: 0x55C870, the grenade dodge's look and throw (0x428 of 0x42C, every register right: the target returns a fresh
+    `daddiu v0,zero,1` after m_85's `li v0,1; sb`; a bool local, an inline returning true, int, per-arm `r = true`, bool m_85,
+    `opt_propagation off` all tried; and &dir.y/&dir.z scheduled the other way); 0x56A2E0, the line walk's callback (size
+    exact, 8 structural, 45 register-only: the target's `move v0,zero` in the branch's own slot then `b; nop`; loc.x/start.x
+    in a0/v1, all 24 local orders tried).
 - **Tells from the kit and AI states, round 63** (four rows byte-exact, all unwritten before, 6,620 bytes: CRemoteCtrl::PreTick
   0x5E6400, CSealCtrlSquirm::PreTick 0x5FE880, CTMove::Begin 0x5D5D00, CTGroup::Begin 0x5D9840; 0x60E610 renamed
   Create__8CAiGroupFii -- Begin passes the step count in a1, ai_group.cpp's Create takes it unused and stays exact. Headers,
