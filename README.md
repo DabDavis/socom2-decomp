@@ -2066,6 +2066,16 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks rows, round 82** (CZSealBody::MixAnims 0x58BDF0 byte-exact: CBlendable::BAND::m_type declared `AnimType`
+  (not short cast to it), `taken[12]`. The direct-vs-pointer aliasing sweep over the 55 open rows with 1-30 structural differences:
+  only two load/store-order misses (CreateSinglePlayerUnits' flag `sb`, 0x559580's `dc` stores), neither caused by aliasing; the
+  rest scheduling or structural):
+  - AN ENUM-TYPED FIELD PASSED TO A MEMBER CALL IS LOADED AFTER `this`; THE SAME FIELD AS A SHORT CAST TO THE ENUM BEFORE IT -- probe
+    with `*(Enum *)&field`.
+  - 32 frame bytes above a used local array are its bound (9-12 entries give 304; 8 does not).
+  - MW never hoists a global's load over an earlier constant store to another global (round 81's "direct accesses reorder" does not
+    cover a store with nothing to wait on). 0x559580's `addiu s7,sp,216` is `&dc.m_loc`, left by CAiMapLoc's empty constructor loop
+    (IRO removes the loop, its start address survives as a CSE).
 - **Tells from the Metrowerks rows, round 81** (nothing closed; CZSealBody::MixAnims 0x58BDF0 245 to 4, at size, every register and
   spill slot right: `m_type > -1 ? blendable : 0` (slti; movn), `int id = type;` (the extra saved register that spills the list),
   minType/maxType `AnimType` set `(AnimType)-1; maxType = minType;`, maxEnd before minEnd, `int i = 0;` before the pool pointer;
