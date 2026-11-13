@@ -514,7 +514,7 @@ int asrspi_UswGetNbrRecsNeeded(ASRSPI *e, int *n)
     return err;
 }
 
-/* R until asrspi_ActivateWords is the right size (above): its code is byte-exact */
+/* byte-exact with its relocations since asrspi_ActivateWords is the right size (GCC round 82) */
 int asrspi_OpenEngine(SAFEH rsrc, int mode, ASRSPI **out)
 {
     RSRC *r;
@@ -767,7 +767,7 @@ int asrspi_GetParamList(ASRSPI *e, PARAM *list, unsigned int n)
 }
 
 /* the index of a word in the active list, -1 when it is not there */
-static __inline__ unsigned int FindWord(int *words, unsigned int count, unsigned int id)
+static __inline__ unsigned int FindWord(unsigned int id, int *words, unsigned int count)
 {
     unsigned int k;
 
@@ -810,12 +810,11 @@ int asrspi_GetActiveWords(ASRSPI *e, int *ids, unsigned int *count)
     return 0;
 }
 
-/* OPEN (0x600 against 0x5A0, 24 words long): m2c's shape -- the ids checked against the
- * context's word count and counted absent (FindWord, unrolled by four as the target's), a new list
- * of the old words and the absent ids, or every word of the context for n == -1; the target's
- * structure is the same, its exits share more code (not yet measured). Until it is the right
- * size, asrspi_OpenEngine reads R: g_APIRecogCallBacks is checked by content, each callback at the
- * same distance from OpenEngine as in the target, and this function lies between. */
+/* the ids checked against the context's word count and counted absent (FindWord, unrolled by four
+ * as the target's), a new list of the old words and the absent ids, or every word of the context
+ * for n == -1 (GCC round 82; open since m2c's draft, 0x600 against 0x5A0): the n == -1 arm is the
+ * `if`'s then-arm, laid out first, and FindWord takes the id first (the second loop loads ids[i]
+ * ahead of the list's base). */
 int asrspi_ActivateWords(ASRSPI *e, unsigned int *ids, unsigned int n)
 {
     int *words, *list;
@@ -838,7 +837,18 @@ int asrspi_ActivateWords(ASRSPI *e, unsigned int *ids, unsigned int n)
     nbr = 0;
     if (e->ctxv2.data)
         nbr = e->ctxv2.GetNbrWord(&e->ctxv2);
-    if (n != (unsigned int)-1) {
+    if (n == (unsigned int)-1) {
+        if (e->ctxv2.data) {
+            added = nbr;
+            list = heap_Alloc(e->heap, (added + count) * 4);
+            if (list == 0) {
+                ENGINE_LEAVE(e);
+                return 0x8004002F;
+            }
+            for (i = 0; i < nbr; i++)
+                list[i] = i;
+        }
+    } else {
         if (casrGetActiveWords(e->casr, &words, &count) != 0) {
             ENGINE_LEAVE(e);
             return ConvErr(e, casrGetLastError(e->casr));
@@ -850,7 +860,7 @@ int asrspi_ActivateWords(ASRSPI *e, unsigned int *ids, unsigned int n)
                 ENGINE_LEAVE(e);
                 return 0x80040018;
             }
-            if (FindWord(words, count, ids[i]) == (unsigned int)-1)
+            if (FindWord(ids[i], words, count) == (unsigned int)-1)
                 added++;
         }
         list = 0;
@@ -866,17 +876,8 @@ int asrspi_ActivateWords(ASRSPI *e, unsigned int *ids, unsigned int n)
             list[i] = words[i];
         added = 0;
         for (i = 0; i < n; i++)
-            if (FindWord(words, count, ids[i]) == (unsigned int)-1)
+            if (FindWord(ids[i], words, count) == (unsigned int)-1)
                 list[count + added++] = ids[i];
-    } else if (e->ctxv2.data) {
-        added = nbr;
-        list = heap_Alloc(e->heap, (added + count) * 4);
-        if (list == 0) {
-            ENGINE_LEAVE(e);
-            return 0x8004002F;
-        }
-        for (i = 0; i < nbr; i++)
-            list[i] = i;
     }
     if (casrSetActiveWords(e->casr, list, count + added) != 0) {
         heap_Free(e->heap, list);
@@ -929,7 +930,7 @@ int asrspi_DeActivateWords(ASRSPI *e, unsigned int *ids, unsigned int n)
             ENGINE_LEAVE(e);
             return 0x80040018;
         }
-        j = FindWord(words, count, ids[i]);
+        j = FindWord(ids[i], words, count);
         if (j != (unsigned int)-1)
             words[j] = -1;
     }

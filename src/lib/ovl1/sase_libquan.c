@@ -310,9 +310,10 @@ extern const QuanCB *const data_001D5558[2];
 
 /* the coefficient set's vector quantiser: the set less its mean (one of two, by the midpoint), then each of six 2-D
  * subvectors less its prediction quantised, the first four by the two-stage search, the last two by the codebook's
- * nearest word, and the quantised value put back. The last two's codebook pointers are an 8-byte array indexed [i - 4]: its
- * giv's start is one `la` (no temporary), its size known. OPEN (GCC round 44a, 3 words): the walk's `move s1,v1` follows the
- * `la` in the target; here it precedes it, whatever the order of the four initialisers. */
+ * nearest word, and the quantised value put back. The last two's codebook pointers are an 8-byte array walked by its own
+ * pointer from element -4, stepped every pass (GCC round 82; open since 44a, 3 words): indexed [i - 4] it is a giv of i,
+ * whose `la` loop.c inserts at the loop's start AFTER the walk's `pfX = afX` copy -- the target's `la` comes before the copy,
+ * so the pointer is a biv initialised in the for's own init list, between i and pfX. */
 void func_0024B028(float *pfCoef, int *piIndices, int iOrder, float fMid)
 {
 	float afX[SUB_VECTORS * SUB_DIMENSION];
@@ -325,6 +326,7 @@ void func_0024B028(float *pfCoef, int *piIndices, int iOrder, float fMid)
 	int i, iIndex;
 	int iOff;
 	int *piInd;
+	const QuanCB *const *ppCB;
 
 #line 100 "../../SaseEncVad/source/libquan.c"
 	assert(iOrder == (SUB_VECTORS*SUB_DIMENSION));
@@ -346,7 +348,7 @@ void func_0024B028(float *pfCoef, int *piIndices, int iOrder, float fMid)
 		afX[i] = pfCoef[i] - pfMean[i];
 	piInd = piIndices;
 	iOff = 0;
-	for (i = 0, pfX = afX; i < SUB_VECTORS; i++) {
+	for (i = 0, ppCB = data_001D5558 - 4, pfX = afX; i < SUB_VECTORS; i++) {
 		func_0024BE70(afX, iOff, ppPred[i], afPred, SUB_DIMENSION);
 		iOff += 2;
 		pfX[0] -= afPred[0];
@@ -356,12 +358,13 @@ void func_0024B028(float *pfCoef, int *piIndices, int iOrder, float fMid)
 			func_0024BA48(piInd, pfX, SUB_DIMENSION, pVQ->iStage1Size, pVQ->pfStage1CB, pVQ->pfRotScaleCB, pVQ->iStage2Size,
 				      pVQ->pfStage2InCellCB, pVQ->pfStage2OutCellCB, pVQ->iNumOutCell, pVQ->piIndexOfStage2OutCell);
 		} else {
-			iIndex = func_0024B8B0(pfX, data_001D5558[i - 4]->pfCodeBook, data_001D5558[i - 4]->iEntries);
+			iIndex = func_0024B8B0(pfX, (*ppCB)->pfCodeBook, (*ppCB)->iEntries);
 			piInd[1] = 0;
 			piInd[0] = iIndex;
-			func_0024B990(iIndex, data_001D5558[i - 4]->pfCodeBook, data_001D5558[i - 4]->iEntries, pfX);
+			func_0024B990(iIndex, (*ppCB)->pfCodeBook, (*ppCB)->iEntries, pfX);
 		}
 		piInd += 2;
+		ppCB++;
 		*pfX++ += afPred[0];
 		*pfX++ += afPred[1];
 	}

@@ -605,15 +605,14 @@ int gsapi_GetVersion(char *buf, int size)
 
 /* a language file, with or without its 16-byte header (74 18 09 00); the engines' defaults then
  * taken from a parameter block -- read through a pointer the vendor never sets: the target loads
- * the set mask from address 8 and the values from 12 on (the block's +8 and +12). OPEN (37 words,
- * the right size): the copy loop's source pointer starts at 12 in the target (`li a3,12`, loads
- * at 0(a3)) -- a giv whose base was a register at loop time and 0 only later -- where here the
- * null pointer is known first and 12 becomes the loads' displacement; a local value pointer,
- * walking pointers, a temporary and the pointer set to 0 in both header branches
- * (build/scratch/gcc/r10c/gsapi.c, -DL=2..8) do not give it. */
+ * the set mask from address 8 and the values from 12 on (the block's +8 and +12). The values are
+ * read through their own pointer, set from the block after the mask and stepped every pass, set
+ * or not (GCC round 82; open since 10c, 37 words: indexed `p->value[i]` the 12 folds into the
+ * loads' displacement, the target's `li a3,12` and loads at 0(a3) are this biv's). */
 int gsapi_LanguageLoadBuffer(unsigned char *buf, void *params)
 {
     CTXPARAMS *p = 0;
+    unsigned int *v;
     unsigned int set;
     int i;
 
@@ -632,9 +631,11 @@ int gsapi_LanguageLoadBuffer(unsigned char *buf, void *params)
     InitDefaultParams();
     if (params != 0) {
         set = p->set;
+        v = (unsigned int *)p->value;
         for (i = 0; i < 18; i++) {
             if (set & 1)
-                gGSAPI.params[i] = p->value[i];
+                gGSAPI.params[i] = *v;
+            v++;
             set >>= 1;
         }
     }
