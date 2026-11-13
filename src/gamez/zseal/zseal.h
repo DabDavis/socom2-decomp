@@ -493,6 +493,10 @@ public:
     bool GetLocation(const char *name, CAiMapLoc &loc);
     /* the grid steps between two cells (ai_maps.h's; OVL2 0x52C320) */
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
+    /* how a cell pushes a point away: the direction and its length, the cell that pushes (ai_maps.h's; OVL2
+     * 0x516F10) */
+    bool GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
+                            CAiMapLoc &cell);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
     /* the cell's boundary bits, and the link between two cells (ai_maps.cpp's) */
@@ -2783,7 +2787,12 @@ public:
     unsigned char m_action_display_on;   // 0xed8 (SOCOM 1's 0xdc8)
     unsigned char _ed9[0xee0 - 0xed9];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xf40 - 0xee4];
+    unsigned char _ee4[0xef4 - 0xee4];
+    /* the SEAL's run of the delayed ground probes: the first and how many (0x5483D0 reads the hits; the
+     * names ours) */
+    int m_ef4;   // 0xef4
+    int m_ef8;   // 0xef8
+    unsigned char _efc[0xf40 - 0xefc];
     /* whether the SEAL ticks after its move (PrePostTick does nothing without it; the name ours) */
     unsigned char m_f40;   // 0xf40
     unsigned char _f41[0xf44 - 0xf41];
@@ -2946,7 +2955,8 @@ public:
     /* a wall's hit the step is held to while its node is set (ComputeNextPosition hands it to 0x54A3D0;
      * the name ours) */
     zdb::IntersectStruct m_1120;   // 0x1120
-    unsigned char _1140[0x1160 - 0x1140];
+    /* a wall's hit 0x5483D0 holds the SEAL to when no probe hits (the name ours) */
+    zdb::IntersectStruct m_1140;   // 0x1140
     /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
      * seal_weapon.cpp's view names it so too) */
     CSeqMember m_wep_seq;   // 0x1160

@@ -3754,6 +3754,394 @@ extern "C" bool func_005499E0(CZSealBody *seal)
 
 
 extern "C" {
+/* the probes' hits gathered for the SEAL's step: each probe's nearest and the probe's index, 64 at most
+ * (OVL2 bss 0x66AAD0; the names ours) */
+struct CProbeHit {
+    zdb::IntersectStruct *m_hit;   // 0x0
+    int m_index;   // 0x4
+};
+extern CProbeHit data_0066AAD0[64];
+/* the alert's reach for a wall's hit, the repel's range and the push's longest (OVL2 data 0x64FD10, 0x64FD18,
+ * 0x64FD20) */
+extern float data_0064FD10;
+extern float data_0064FD18;
+extern float data_0064FD20;
+/* the weapon wall push-out switch (OVL2 bss 0x66B000, never written) */
+extern unsigned char noWeaponWallPush;
+/* an alert record raised at a point (OVL2 0x5582B0, seal_ai.cpp's tail call to 0x5582C0) and at a cell
+ * (OVL2 0x558030, seal_ai.cpp's) */
+void func_005582B0(CAiStamp *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount);
+bool func_00558030(CAiStamp *a, CSealCtrlAi *ai, const CAiMapLoc *loc, bool flag, float amount);
+/* the ground's height under the SEAL (OVL2 0x59AFD0, seal_fall.cpp's), whether a hit is a climb's kind
+ * (OVL2 0x59D9F0, seal_env.cpp's), the wall hit taken (OVL2 0x5B0D30) and let go (OVL2 0x5B3890) */
+float func_0059AFD0(CZSealBody *seal);
+bool func_0059D9F0(zdb::IntersectStruct *hit);
+void func_005B0D30(CZSealBody *seal, const zdb::IntersectStruct *hit, CPnt3D *a, CPnt3D *b);
+void func_005B3890(CZSealBody *seal, int drop_now);
+bool func_00587F50(CZSealBody *seal);
+extern CPnt3D data_0066ACD0;
+}
+
+/* the hit the SEAL holds to when no probe hits (an inline, the name ours) */
+static inline zdb::IntersectStruct *Hit1140(CZSealBody *seal)
+{
+    return seal->m_1140.m_node ? &seal->m_1140 : 0;
+}
+
+/* the move stopped: the turn undone, the step none (an inline, the name ours) */
+static inline void StopStep(CZSealBody *seal)
+{
+    seal->m_next_quat = seal->m_quat;
+    seal->m_f44 = CPnt3D::zero;
+}
+
+/* a probe from one point to another with the SEAL's node off (an inline, the name ours) */
+static inline zdb::IntersectStruct *ProbeOff(CZSealBody *seal, const CPnt3D *from, const CPnt3D *to)
+{
+    bool active = seal->GetNode()->m_active;
+
+    seal->GetNode()->SetActive(false);
+    zdb::IntersectStruct *hit = zdb::CWorld::m_world->GetIntersect(from, to);
+
+    seal->GetNode()->SetActive(active);
+    return hit;
+}
+
+/* whether a hit is a climb's: a climbable kind, or a ladder's (kind 2) (an inline, the name ours) */
+static inline bool Climbable(zdb::IntersectStruct *hit)
+{
+    bool climb = func_0059D9F0(hit);
+    CDIType type = (CDIType)hit->m_poly->m_flags.m_appflags;
+
+    if ((type & 7) == 2)
+        climb = true;
+    return climb;
+}
+
+/* OPEN (the body lane, round 68): at the target's size (0x15F8) and frame (688), every call and branch in place,
+ * ~170 structural differences left -- the temporaries' slots (the operator results 344/312), the step's and the
+ * normals' address forms (the target recomputes &step.y and &step.z in v0 at each use and keeps &nrm.y/&nrm.z in
+ * s1/s0 -- through a reference inline, as ComputeNextPosition's RunDown/LenXZ, untried here), the moved and turning
+ * flags (the target branches c.le/bc1f into li 1/move 0; every spelling tried here -- `!(a <= b)`, ternaries,
+ * if/else, inline returns -- gives c.le/bc1t and an xori, or c.lt/bc1t) and the register choice across the loops.
+ * the step held to what the delayed probes hit: the probes' nearest hits gathered and those that may be passed
+ * dropped; with any, the step slid along each wall (on a ladder's anims pushed back out of it), the push off it
+ * kept, the player's deepest wall the step's overshoot; probed ahead from the node by the step plus a reach --
+ * the crouch's, the stand's or the prone's, the aim's -- and from each hit back, the step stopped at a solid
+ * wall; the nearest hit of the SEAL's first two probes taken as the wall held, those walls that turn from it let
+ * go; with none, the hold at 0x1140 taken again; the step's ground height, the AI map's repel, the next matrix,
+ * the quaternion and the velocity taken (OVL2 0x5483D0, new in SOCOM II: PrePostTick calls it -- SOCOM 1's
+ * PostComputeNextPosition did its work; the name unknown) */
+extern "C" void func_005483D0(CZSealBody *seal, float dT)
+{
+    if (seal->m_1060_bit11 ? true : false)
+        return;
+
+    CZBodyAnimBlend *top = SealTop(seal);
+
+    if (seal->m_ef8) {
+        int n = 0;
+        CProbeHit *out = data_0066AAD0;
+        zdb::DiIntersect **di = &data_003DE940[seal->m_ef4];
+
+        for (int i = seal->m_ef4; i < seal->m_ef4 + seal->m_ef8 && n < 64; i++, di++) {
+            zdb::DiIntersect *d = *di;
+
+            if (d->m_Cnt > 0) {
+                if (d->m_Cnt >= 2)
+                    out->m_hit = d->GetNearestIntersect();
+                else
+                    out->m_hit = d->m_Intersects;
+                out->m_index = i;
+                out++;
+                n++;
+            }
+        }
+        for (int i = n - 1; i >= 0; i--) {
+            if (PassThrough(data_0066AAD0[i].m_hit)) {
+                if (i != n - 1)
+                    data_0066AAD0[i] = data_0066AAD0[n - 1];
+                n--;
+            }
+        }
+
+        bool moved;
+        bool turning;
+
+        if (seal->m_f44.x * seal->m_f44.x + seal->m_f44.y * seal->m_f44.y + seal->m_f44.z * seal->m_f44.z <= 0.00002f)
+            moved = false;
+        else
+            moved = true;
+        if (fabsf(seal->m_23c) <= 0.000001f)
+            turning = false;
+        else
+            turning = true;
+        CPnt3D saved = seal->m_f44;
+        CPnt3D push(0.0f, 0.0f, 0.0f);
+        bool ladder = func_00587F50(seal) || func_00587F10(seal) || func_00588030(seal);
+        float deepest = 0.0f;
+        bool strafe = seal->IsCurrentBlend(AnimTypes::ProneRStrafe) || seal->IsCurrentBlend(AnimTypes::ProneLStrafe);
+        bool prone = seal->IsCurrentBlend((AnimType)26) || seal->IsCurrentBlend((AnimType)27) ||
+                     seal->IsCurrentBlend((AnimType)28) || strafe || seal->m_state == stateProne;
+        CPnt3D pos;
+        CPnt3D to;
+        CPnt3D wall;
+
+        if (n) {
+            pos = *(CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+            to = pos + seal->m_f44;
+            if (seal->IsAi())
+                func_005582B0(&((CSealCtrl *)seal->m_control)->GetSealCtrlAi()->m_stamp,
+                              ((CSealCtrl *)seal->m_control)->GetSealCtrlAi(), &data_0066AAD0[0].m_hit->m_pos,
+                              data_0064FD10);
+
+            CPnt3D step = seal->m_f44;
+
+            for (int i = 0; i < n; i++) {
+                CPnt3D nrm = data_0066AAD0[i].m_hit->m_norm;
+
+                if (nrm.y < theCharacterDynamics.m_maxSlopeCos)
+                    nrm.y = 0.0f;
+                nrm.Normalize();
+                if (ladder) {
+                    CPnt3D tip = data_003DE940[data_0066AAD0[i].m_index]->m_Tip;
+                    CPnt3D d;
+
+                    tip.Sub(&data_0066AAD0[i].m_hit->m_pos, &d);
+                    float dot = Dot(d, nrm);
+
+                    if (dot < 0.0f) {
+                        CPnt3D s = nrm;
+
+                        s.Scale(-dot);
+                        step.Add(&s, &step);
+                    }
+                } else {
+                    float dot = Dot(nrm, step);
+                    CPnt3D s = nrm;
+
+                    s.Scale(dot);
+                    push.Add(&s, &push);
+                    CPnt3D t = step;
+
+                    t -= s;
+                    step = t;
+                }
+                if (seal->IsPlayer()) {
+                    CPnt3D tip = data_003DE940[data_0066AAD0[i].m_index]->m_Tip;
+                    CPnt3D d;
+
+                    tip.Sub(&data_0066AAD0[i].m_hit->m_pos, &d);
+                    float depth = Dot(d, nrm);
+
+                    if (!(fabsf(depth) <= deepest)) {
+                        deepest = fabsf(depth);
+                        wall = nrm;
+                    }
+                }
+                float k = Dot(seal->m_1350, nrm);
+
+                if (k < 0.0f)
+                    seal->m_1350 -= nrm * k;
+            }
+            seal->m_f44 = step;
+            if (!(deepest <= 1.0f)) {
+                if (prone || n >= 3)
+                    StopStep(seal);
+                else {
+                    wall.Scale(deepest - 1.0f);
+                    seal->m_f44.Add(&wall, &seal->m_f44);
+                }
+            }
+        }
+        if (n) {
+            CPnt3D dir = seal->m_f44;
+            bool blocked = false;
+
+            if (seal->m_1340 == 0.0f) {
+                float len = sqrtf(dir.x * dir.x + dir.z * dir.z);
+
+                if (prone && turning)
+                    StopStep(seal);
+                else if (!(len <= 0.000001f)) {
+                    dir.Normalize();
+                    float reach;
+
+                    if (prone)
+                        reach = 11.46f;
+                    else {
+                        reach = seal->m_state == stateCrouch ? 10.5f : 5.25f;
+                        float ax = seal->m_curr_firepos.x;
+                        float az = seal->m_curr_firepos.z;
+                        float al = sqrtf(ax * ax + az * az);
+
+                        if (al != 0.0f) {
+                            float inv = 1.0f / al;
+
+                            ax *= inv;
+                            az *= inv;
+                        }
+                        float a = al * (dir.x * ax + dir.z * az);
+
+                        if (reach < a)
+                            reach = a;
+                    }
+                    dir.Scale(reach + len);
+
+                    CPnt3D from = *(CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+                    CPnt3D end;
+
+                    end = from + dir;
+                    from.y += theCharacterDynamics.m_stepHeight;
+                    end.y += theCharacterDynamics.m_stepHeight;
+                    zdb::IntersectStruct *hit = ProbeOff(seal, &from, &end);
+
+                    if (hit && !PassThrough(hit)) {
+                        if (turning && (prone || (seal->m_state == stateCrouch && !seal->m_21c_bit2)))
+                            seal->m_next_quat = seal->m_quat;
+                        blocked = true;
+                        seal->m_f44 = CPnt3D::zero;
+                    }
+                    for (int i = 0; i < n && !blocked; i++) {
+                        data_0066AAD0[i].m_hit->m_pos.Interp(&data_003DE940[data_0066AAD0[i].m_index]->m_Tail, 0.1f,
+                                                            &from);
+                        end = seal->m_f44;
+                        if (end.x * end.x + end.z * end.z < 4.0f)
+                            end.Scale(2.0f / end.Length());
+                        end.Add(&from, &end);
+                        hit = ProbeOff(seal, &from, &end);
+                        if (hit && !PassThrough(hit)) {
+                            if (turning && (prone || seal->m_state == stateCrouch))
+                                seal->m_next_quat = seal->m_quat;
+                            blocked = true;
+                            seal->m_f44 = CPnt3D::zero;
+                        }
+                    }
+                }
+            }
+
+            int best = -1;
+            int high = -1;
+            float bestd;
+
+            for (int i = 0; i < n; i++) {
+                int idx = data_0066AAD0[i].m_index;
+
+                if (idx >= seal->m_ef4 && idx < seal->m_ef4 + 2) {
+                    CPnt3D d = data_0066AAD0[i].m_hit->m_pos - data_003DE940[idx]->m_Tail;
+                    float dsq = d.x * d.x + d.y * d.y + d.z * d.z;
+
+                    if ((best < 0 || dsq < bestd) &&
+                        (high < 0 || !(data_0066AAD0[i].m_hit->m_pos.y <= data_0066AAD0[high].m_hit->m_pos.y))) {
+                        high = i;
+                        bestd = dsq;
+                        best = i;
+                    }
+                }
+            }
+            if (best >= 0) {
+                CProbeHit *b = &data_0066AAD0[best];
+
+                func_005B0D30(seal, b->m_hit, &pos, &to);
+                if (func_0059D9F0(b->m_hit)) {
+                    CPnt3D bn = b->m_hit->m_norm;
+
+                    bn.y = 0.0f;
+                    float l = LenXZ(&bn);
+
+                    if (l != 0.0f) {
+                        float inv = 1.0f / l;
+
+                        bn.x *= inv;
+                        bn.z *= inv;
+                    }
+                    for (int j = 0; j < n; j++) {
+                        if (j != best && b->m_hit->m_poly != data_0066AAD0[j].m_hit->m_poly) {
+                            CPnt3D on = data_0066AAD0[j].m_hit->m_norm;
+
+                            on.y = 0.0f;
+                            float ol = LenXZ(&on);
+
+                            if (ol != 0.0f) {
+                                float inv = 1.0f / ol;
+
+                                on.x *= inv;
+                                on.z *= inv;
+                            }
+                            if (bn.x * on.x + bn.z * on.z < 0.9f)
+                                func_005B0D30(seal, 0, 0, 0);
+                        }
+                    }
+                }
+            } else if (moved)
+                func_005B3890(seal, 0);
+            seal->m_2bc = pos;
+        } else if (Hit1140(seal)) {
+            zdb::IntersectStruct *held = Hit1140(seal);
+            bool climb = Climbable(held);
+
+            seal->m_2bc = seal->m_posW;
+            if (!(seal->m_1090.m_node ? &seal->m_1090 : 0) || climb)
+                func_005B0D30(seal, held, &pos, &to);
+            else if (!Climbable(seal->m_1090.m_node ? &seal->m_1090 : 0))
+                func_005B0D30(seal, held, &pos, &to);
+            else {
+                CPnt3D d;
+
+                seal->m_posW.Sub(&(seal->m_1090.m_node ? &seal->m_1090 : 0)->m_pos, &d);
+                d.y = 0.0f;
+                if (!(d.x * d.x + d.y * d.y + d.z * d.z <= 576.0f))
+                    func_005B0D30(seal, held, &pos, &to);
+            }
+        } else if (moved)
+            func_005B3890(seal, 0);
+        if (seal->m_animset == data_0044D410)
+            seal->m_f44 = saved;
+    }
+    if (seal->m_animset != data_0044D410 || !seal->IsCurrentBlend((AnimType)1)) {
+        if (!(seal->m_f44.y < 0.0f) && seal->m_f44.y < 0.01f)
+            seal->m_1340 = 0.0f;
+        ((CPnt3D *)seal->m_node->m_matrix.m_matrix[3])->Add(&seal->m_f44, &seal->m_gunner_pos);
+    }
+
+    CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+
+    if (noWeaponWallPush || (ctrl->m_do_aimap_collide && !ctrl->m_bit16)) {
+        CPnt3D dir = CPnt3D::zero;
+        float len;
+        CAiMapLoc cell;
+
+        if (AiMaps.GetCellRepelParams(seal->m_mapLoc, &seal->m_gunner_pos, data_0064FD18, dir, len, cell)) {
+            CSealCtrlAi *ai = ((CSealCtrl *)seal->m_control)->GetSealCtrlAi();
+            bool push = ai == 0;
+
+            if (ai && !(ai->m_stamp.m_8 & 1)) {
+                push = true;
+                func_00558030(&ai->m_stamp, ai, &cell, false, dT);
+            }
+            if (push) {
+                if (!(len <= data_0064FD20))
+                    dir.Scale(data_0064FD20 / len);
+                seal->m_gunner_pos.Add(&dir, &seal->m_gunner_pos);
+            }
+        }
+    }
+    seal->m_landed = false;
+    if (seal->m_state != stateCarried || !seal->IsCurrentBlend((AnimType)AnimTypes::BuddyCarryBody))
+        seal->m_gunner_pos.y = func_0059AFD0(seal);
+    data_0066ACD0 = *(CPnt3D *)seal->GetRootPart()->m_node->m_matrix.m_matrix[1];
+    *(CPnt3D *)seal->m_next_matrix.m_matrix[3] = seal->m_gunner_pos;
+    seal->m_next_quat.ToMatrix(&seal->m_next_matrix);
+    seal->GetNode()->SetMatrix(&seal->m_next_matrix);
+    seal->m_quat = seal->m_next_quat;
+    seal->m_velW = seal->m_next_velw;
+    if (!func_0057B510(seal) && top && !func_005551A0(top->m_flags, 0x40)) {
+        seal->m_velW.y = seal->m_f50;
+        seal->m_velM.y = seal->m_f50;
+    }
+}
+
+extern "C" {
 /* the up the root is eased onto while the SEAL stands (OVL2 bss 0x66ACD0; the name ours), and an
  * AnimType static (OVL1 data 0x3DEF08: seal_body.cpp and seal_create.cpp test the same blend) */
 extern short data_003DEF08;
