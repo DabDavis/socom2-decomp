@@ -2066,6 +2066,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from CSealCtrl/CSealCtrlAi, round 70** (CSealCtrl::PreTick 0x594CF0 (0x19A8) byte-exact, unwritten before, seal_control.cpp,
+  from the target and SOCOM 1's; PathFollowTick 0x567900 (0x1C24) written at the target's size, 53 structural and ~70
+  register-only off: the two strafe-flag `||` values (the target's 1 in the first test's slot, `move a1,s0` reusing the turn
+  flag; ~10 spellings branch or `sltu` instead), `&d.y` held in a register (the target sp-direct), the pulls' FPR numbering,
+  the limit pull's `x` stored ahead of the saturate's `lo`, one extra nop. AttackTick's target has no movz/movn, so the round-65
+  tell does not explain its slot. zseal.h, objcmp --by-address over the 31 units including it: CSealCtrl's m_120 a union with
+  `float m_pressure`, m_124; CZSealBody::m_edc; CNetGameState::m_de; CSealCtrlAi's m_60c a union with `float m_leg_dot`;
+  seven CZKit declarations):
+  - PreTick: every local declared first, in reverse of the saved registers (pressed s8, fire s7, released s6, idle s4, weapon
+    state s3, SEAL s2, kit s1, pad s0): 23 to 3. The fire button as KEY_STATE is held unmasked, `andi`'d at each test (an
+    `unsigned char` masks at the call).
+  - both pressures through one inline `Eased(float &v, ...)` returning v; `m_trigger_power = Eased(m_trigger_power, ...)`
+    gives the double store; `float cur = v` puts the operands in f3/f2. `p = f(); p *= k;` (one expression keeps p out of f0).
+    The stance maximum read into a local before the pad pressure. The clock through a volatile view.
+  - the target calls SetScreenOffsetY twice, the second where X belongs: the original's bug, kept.
+  - PathFollowTick: CreepTick's two pulls are shared inlines with guarded statics (both guards 0x66B1C8, 0x66B1B8); each pull's
+    `hi` declared ahead of `x`; m_speed read once. `float t[3] = { 0.0f }` the byte loop with the null test. The side's sign
+    `side >= 0.0f ? 1.0f : -1.0f`. `delta <= 1` gives `slti at; bnez` (`< 2` materialises). The explicit `_close_enough<int>`
+    instantiation dropped now its caller exists (called out of line, as the target).
 - **Tells from the body mechanics, round 69** (four rows byte-exact: PitchAnim 0x5ACA70 (0x98C), the two halves of SOCOM 1's
   HomingTick 0x5B2D20 (0x61C, Tick_0's call for a blend flagged 64) and 0x5B3340 (0x544, otherwise) -- all unwritten before --
   and CheckDIShoot 0x5AA6E0 (3 off since round 68). Tick_0 0x57A330 (0x11D8) at size and frame, every call and branch placed,
