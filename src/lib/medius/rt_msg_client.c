@@ -2615,13 +2615,13 @@ typedef struct rt_msg_client_notify_info {
 
 /* SOCOM 1's process_client_connect_notify (round 16b; its callback moved to 0x8C, the connection
  * perhaps gone after it): another client's id and address, its public key kept for type 8.
- * OPEN (4 words short, 106 differ): the target -- SOCOM 1's copy alike -- copies pMsg into a1 before
- * its null test (`beq v0,v1; move a1,s0; b ret; li v0,2`) and keeps the block moves' address in a1
- * (`a1 = pMsg + 2` after the id, `a1 += 16` before the key), never stepping pMsg itself; every
- * spelling tried -- pMsg stepped, &pMsg[nOffset], a cursor assigned once or twice, the null test on
- * the cursor or on &pMsg[nOffset] -- tests s0 and folds the address into the loads' offsets
- * (build/scratch/gcc/v_ccn.c). The length test is a guard (the target compares in v1, the hoisted
- * `li v0,1` holding v0: round 14b's rule the other way round). */
+ * The block moves read a cursor INITIALISED AT ITS DECLARATION to pMsg (GCC round 75, open since
+ * round 16b at 4 words short): the null test is on the cursor, which the target copies into a1 in
+ * the validity test's slot (`beq v0,v1; move a1,s0`), and it is reassigned `pMsg + 2` after the id
+ * (which reads pMsg itself), so it lives in a1. The same cursor first assigned after the call
+ * (`pData = pMsg;` at the test) tests s0 and folds the address into the loads. The length
+ * test is a guard (the target compares in v1, the hoisted `li v0,1` holding v0: round 14b's rule the
+ * other way round). */
 unsigned char rt_msg_client_process_client_connect_notify(rt_msg_client_connection *pConnection, int nType,
                                                 unsigned char *pMsg, unsigned int nLength)
 {
@@ -2630,10 +2630,11 @@ unsigned char rt_msg_client_process_client_connect_notify(rt_msg_client_connecti
     unsigned int nOffset = 0;
     unsigned char bHasKey = 0;
     unsigned short nId;
+    unsigned char *pData = pMsg;
 
     if (rt_msg_client_is_valid_connection(pConnection) != 1)
         return 2;
-    if (pMsg == 0)
+    if (pData == 0)
         return 2;
     if (nType == 8)
         bHasKey = 1;
@@ -2643,7 +2644,7 @@ unsigned char rt_msg_client_process_client_connect_notify(rt_msg_client_connecti
         return 1;
     if (rt_msg_get_u2byte(pMsg, &nClient) != 0)
         return 7;
-    pMsg += 2;
+    pData = pMsg + 2;
     nOffset += 2;
     if (bHasKey) {
         if (nLength - nOffset != 80)
@@ -2652,10 +2653,10 @@ unsigned char rt_msg_client_process_client_connect_notify(rt_msg_client_connecti
         if (nLength - nOffset != 16)
             return 1;
     }
-    memcpy(info.szAddress, pMsg, 16);
-    pMsg += 16;
+    memcpy(info.szAddress, pData, 16);
+    pData += 16;
     if (bHasKey) {
-        memcpy(info.abKey, pMsg, 64);
+        memcpy(info.abKey, pData, 64);
         KM_SetPublicKey(pConnection->nId, nClient, info.abKey);
     }
     if (pConnection->pfnClientConnect != 0) {
@@ -2773,19 +2774,18 @@ extern unsigned char func_00635E60(rt_msg_client_connection *pConnection, rt_msg
 
 /* the second channel's address (type 24, SOCOM II's; round 16b): a datagram connection's second
  * channel takes the server's 16-byte address and its port, is marked its own and opened (0x635E60);
- * the connection then waits in state 6.
- * OPEN (40 words, 1 long, registers): the target forms `pMsg + 16` straight into a0 after the port's
- * length test and gives s1 to the port's address after it (pMsg dead there: no conflict), conn s2 and
- * nLength s3; here sched1 births the address pseudo first (`&pComm->nPort`, used again by the zero
- * test), so pMsg -- stepped in place, as here, or summed at the call -- conflicts with it; the
- * cursor and argument spellings tried are build/scratch/gcc/v_7318.c. The state change's result goes
- * through a guard (its `return f()` was a sibling call). */
+ * the connection then waits in state 6. The port's cursor is a second local formed BEFORE the length
+ * test (GCC round 75): global-alloc gives it a0 itself, so pMsg dies at the memcpy and the port's
+ * address takes its register (pMsg stepped in place lives on into the call; summed at the call,
+ * sched1 births the address first). The state change's result goes through a guard (its
+ * `return f()` was a sibling call). */
 unsigned char func_00637318(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength)
 {
     rt_msg_client_comm *pComm;
     unsigned int nOffset = 0;
     unsigned int nKind;
     unsigned char result;
+    unsigned char *pData;
 
     if (data_00655614 != 1)
         return 5;
@@ -2802,11 +2802,11 @@ unsigned char func_00637318(rt_msg_client_connection *pConnection, int nType, un
     if (nLength < nOffset + 16)
         return 1;
     memcpy(pComm->szAddress, pMsg, 16);
-    pMsg += 16;
+    pData = pMsg + 16;
     nOffset += 16;
     if (nOffset + 1 >= nLength)
         return 1;
-    if (rt_msg_get_u2byte(pMsg, &pComm->nPort) != 0)
+    if (rt_msg_get_u2byte(pData, &pComm->nPort) != 0)
         return 7;
     if (pComm->nPort == 0)
         return 1;
@@ -3477,12 +3477,14 @@ extern int rt_comm_send_to(int nChannelId, char *szAddress, unsigned short nPort
                            unsigned short nLength, unsigned short *pnSent);
 
 /* one piece of a send: a stream channel sends at most 4096 bytes, a datagram channel (kind 1) the
- * whole messages that fit in 584 to its address and port. OPEN (17 words): the target's final
+ * whole messages that fit in 584 to its address and port. The kinds are an else-if chain ending in
+ * `else return 3` (GCC round 75: 17 words to 2 -- the kind test nested in the else arm put nKind in
+ * v1 and filled the `bnez` slot the target leaves a nop; "registers" was the chain's shape). The final
  * `return 0` is a join the nothing-to-send path reaches (`move v0,zero` kept; without one 2.96 folds
  * `if (result) return result; return 0;` into `return result`, 3 words short) -- the label here is a
- * stand-in for SCEA's shape, not known; nKind then takes v1 where the target's is v0, and send_to's
- * channel and port loads come in the other order. The internals' results are unsigned char (no `andi`
- * on any returned result: get_connection, get_valid_connection, get_header and 0x638500 so typed). */
+ * stand-in for SCEA's shape, not known. OPEN (2 words): send_to's channel and port loads come in the
+ * other order. The internals' results are unsigned char (no `andi` on any returned result:
+ * get_connection, get_valid_connection, get_header and 0x638500 so typed). */
 unsigned char func_006385F0(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned int nLength, unsigned short *pnSent)
 {
     unsigned int nSend = 0;
@@ -3501,16 +3503,15 @@ unsigned char func_006385F0(rt_msg_client_comm *pComm, unsigned char *pMsg, unsi
         if (nLength > 4096)
             nSend = 4096;
         nCommResult = rt_comm_send(pComm->nChannelId, pMsg, nSend, pnSent);
-    } else {
-        if (pComm->nKind != 1)
-            return 3;
+    } else if (pComm->nKind == 1) {
         result = func_00638500(pMsg, nLength, 584, &nSend);
         if (result != 0)
             return result;
         if (nSend == 0)
             goto done;
         nCommResult = rt_comm_send_to(pComm->nChannelId, pComm->szAddress, pComm->nPort, pMsg, nSend, pnSent);
-    }
+    } else
+        return 3;
     result = rt_msg_client_map_comm_error(nCommResult);
     if (result != 0)
         return result;

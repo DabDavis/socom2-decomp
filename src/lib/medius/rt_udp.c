@@ -23,10 +23,7 @@
  * plain slot; the positive form also gives the port query's `bnez` -- three words, one shape).
  * OPEN: 0x63DD18 (the create: the target lays the allocation out after the option copy, jumping
  * back to it, and keeps the new record in one register through the copy -- 95 words with a local
- * copy, 111 without), 0x63EBA0 (the raw send, 33s to 10 in GCC round 74a: the five argument tests one
- * `||` chain ending in the length's `>`, whose `return 1` is then the fall-through `b`, and the send's two
- * tests one `||`; left, global-alloc's near-tie -- pData 1428 against nTotal 1304, s2/s3 swapped -- and
- * the nPort test's `beqz; nop` where the target has `beqzl; ld s0`), 0x63F168 and 0x6419E8 (2
+ * copy, 111 without), 0x63F168 and 0x6419E8 (2
  * each: the call's arguments scheduled the other way -- the -1 key-manager id in the delay slot),
  * 0x63ECC8 (round 12b, 93s: the receive -- the reliable test reads the header's first word, `lw;
  * andi 6`, as a word-wide `& 6` gives; the loop's message pointer lives in a0 where the target's is
@@ -35,7 +32,12 @@
  * datagram handlers: 0x63F4C8, 0x6400A8, 0x640940, 0x640EA0 and 0x641490 byte-exact, 0x63EF38 and 0x6404D8 open.
  * GCC round 74a: the connect 0x63E5E8 (open since written, 10 words) is byte-exact with its fail label INSIDE
  * `if (result != 0) {...}`, the `return 0` after -- `if (result == 0) return 0;` above the label lays the
- * success block first. */
+ * success block first. The raw send 0x63EBA0 (33s to 10 in round 74a, byte-exact in GCC round 75): the
+ * address, the port and the data each their own guard, the length's two tests one `||` ending in the
+ * `>` (its `return 1` the fall-through `b`), the send's two tests one `||`. Round 74a's one five-test
+ * chain left the port's `beqz; nop` (no `beqzl; ld s0`) and global-alloc's "near-tie" (pData 1428
+ * against nTotal 1304) -- both the guards' shape, not registers: three more guards lengthen pData's
+ * live range past nTotal's. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern void *memcpy(void *d, const void *s, unsigned int n);
@@ -790,7 +792,13 @@ int func_0063EBA0(RT_UDP *pUdp, char *szAddress, unsigned short nPort, void *pDa
 
     if (pUdp == 0)
         return 2;
-    if (szAddress == 0 || nPort == 0 || pData == 0 || nLength == 0 || nLength > pUdp->nMaxPacket)
+    if (szAddress == 0)
+        return 1;
+    if (nPort == 0)
+        return 1;
+    if (pData == 0)
+        return 1;
+    if (nLength == 0 || nLength > pUdp->nMaxPacket)
         return 1;
     nTotal = nLength + 12;
     memset(&header, 0, sizeof header);
