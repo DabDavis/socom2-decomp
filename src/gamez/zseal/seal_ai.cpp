@@ -70,11 +70,16 @@ static inline void SetPhase(CAiState *s, unsigned int phase)
 class CAiSPursue : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    virtual int Tick(CSealCtrlAi *ai);
     /* slots 0x14, 0x44 and 0x48 (new in SOCOM II; the signatures ai_states.h's) */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual bool Virtual44(AI_STATE state) { return state == m_state; }
     virtual bool Virtual48(int x, CAiState *other);
     virtual ~CAiSPursue();
+    /* a look cell (flag 2) or a cover cell (flag 4) to be found next (inlined with a bool; the
+     * name ours) */
+    void SetLook(bool look) { SetFlags(look ? PF_LOOK : PF_COVER, look ? PF_COVER : PF_LOOK); }
+    enum FLAG { PF_LOOK = 2, PF_COVER = 4 };
 
     float m_timer;   // 0x58 (SOCOM 1's 0x28)
     signed char m_5c;   // 0x5c (the name ours)
@@ -6576,6 +6581,205 @@ static inline bool PathIdle(CSealCtrlAi *ai)
     return true;
 }
 
+extern "C" {
+/* the target's last known place taken from its entity (SOCOM 1's CAiTarget::UpdateLastKnownPosW by
+ * its place in the pursuit's Tick; OVL2 0x60A5B0, ai_target.cpp's range) and the search limit a
+ * pursuit's route takes (OVL2 data 0x64FDB8, 25000) */
+void func_0060A5B0(void *target);
+extern unsigned int data_0064FDB8;
+}
+
+/* the pursuit's tick (OVL2 0x559930, slot 0x10; SOCOM 1's Tick__10CAiSPursueFfP11CSealCtrlAi without
+ * its dT, its Debug lines and its statics' run-time guards). Done once the target no longer counts or
+ * the pursuit's time is up. Step 0 picks a look or a cover cell (flags 2 and 4: by whether the target
+ * is held), 1 finds that cell and routes to it (2), else crouches and waits (4); 2 walks there, then
+ * takes a stance by chance (3); 3 watches from the cell, switching between looking and covering; 4
+ * waits; 5 routes to the target's last known place (6), 6 walks there, 7 searches around it */
+int CAiSPursue::Tick(CSealCtrlAi *ai)
+{
+    static float s_cover_time = 2.0f;
+    static float s_look_time = 1.0f;
+    static float s_wait_time = 1.75f;
+    static AI_LOOK s_look = AIL_FRANTIC;
+
+    STEP step;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (!func_0060A850(ai->m_67c))
+        return m_done = AI_DONE;
+    if (m_timer != -1.0f && !(ai->m_stateStack.m_timer <= m_timer))
+        return m_done = AI_DONE;
+
+    step = (STEP)m_phase;
+    CEntity *target = ((CTarget *)ai->m_67c)->m_ent;
+    CPnt3D dir = ((CTarget *)ai->m_67c)->m_vec;
+
+    dir.Normalize();
+    bool held = false;
+    if (func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200))
+        held = true;
+
+    switch (step) {
+    case STEP_0:
+        if (m_flags & 6)
+            step = STEP_1;
+        else if (ai->m_718 > 0.0f) {
+            step = STEP_1;
+            if (!(m_flags & 6))
+                SetLook(!held);
+        } else
+            SetLook(!held);
+        break;
+    case STEP_1: {
+        bool found = false;
+        SEAL_STANCE stance;
+        CAiMapLoc cell;
+
+        ai->SetDesiredStance(STANCE_PRONE, 0.0f, false);
+        stance = ai->m_stance;
+        if (m_flags & 2) {
+            found = func_0055F7F0(ai, &target->m_posW, cell, (unsigned char *)&m_5c, 10);
+            ai->SetAiBit2(true);
+        } else if (m_flags & 4) {
+            found = func_0055F940(ai, &target->m_posW, cell, (unsigned char *)&m_5c, 10);
+            ai->SetAiBit2(true);
+            stance = STANCE_STAND;
+            if (Chance(0.5f))
+                ai->SetSprayTimer(Rfloat(0.25f, 1.25f));
+        }
+        if (found && ai->SetRoute(cell)) {
+            ai->SetAiMode((AI_MODE)3);
+            ai->SetStance(stance);
+            func_00570F90(ai, 1.0f);
+            step = STEP_2;
+        }
+        if (step != STEP_2) {
+            step = STEP_4;
+            m_time = s_wait_time + ai->m_stateStack.m_timer;
+            ai->SetStance(STANCE_CROUCH);
+        }
+        break;
+    }
+    case STEP_2:
+        if (!func_005629B0(ai))
+            ai->SetAiMode((AI_MODE)3);
+        else {
+            ai->SetSprayTimer(0.0f);
+            ai->SetStance(Chance(0.5f) ? STANCE_CROUCH : STANCE_STAND);
+            step = STEP_3;
+        }
+        break;
+    case STEP_3:
+        ai->SetAiMode((AI_MODE)1);
+        if (held) {
+            SetLook(true);
+            if (ai->m_718 > 0.0f && !(m_phaseTime < 1.0f)) {
+                step = STEP_1;
+                SetLook(false);
+            } else if (!(m_phaseTime < s_cover_time)) {
+                step = STEP_1;
+                SetLook(false);
+            }
+        } else if (m_flags & 4) {
+            if (!(m_phaseTime < s_look_time)) {
+                step = STEP_1;
+                SetLook(true);
+            }
+        } else if (m_flags & 2) {
+            if (seal->m_desiredStance == STANCE_PRONE) {
+                ai->SetDesiredStance((SEAL_STANCE)m_5c, 1.5f, false);
+                m_5c = STANCE_PRONE;
+                if (!(m_phaseTime < s_cover_time))
+                    step = STEP_5;
+            }
+        } else
+            step = STEP_0;
+        break;
+    case STEP_4:
+        ai->SetDesiredStance(STANCE_PRONE, 0.0f, false);
+        if (!(ai->m_stateStack.m_timer < m_time)) {
+            step = STEP_5;
+            SetLook(true);
+        }
+        break;
+    case STEP_5: {
+        if (!TargetHeld(ai)) {
+            bool ok = false;
+            CPnt3D *last = (CPnt3D *)(ai->m_67c + 0x58);
+            CAiMapLoc cell;
+
+            if (func_0055F7F0(ai, last, cell, (unsigned char *)&m_5c, 10)) {
+                ok = true;
+                const CAiMapLoc &at = seal->m_mapLocValid;
+
+                if (SameCell(cell, at))
+                    ok = AiMaps.GetLocation(last, cell);
+            }
+            if (ok && ai->SetRoute(cell)) {
+                ai->m_path.m_search_limit = data_0064FDB8;
+                ai->SetStance(STANCE_CROUCH);
+                ai->SetAiMode((AI_MODE)3);
+                func_00570F90(ai, 0.35f);
+                if (ai->SetLookPosW(s_look, last)) {
+                    ai->SetScanAngle(0.5235988f);
+                    ai->SetLookFlags(4);
+                }
+                step = STEP_6;
+                m_time = 5.0f + ai->m_stateStack.m_timer;
+            }
+        } else
+            step = STEP_1;
+        if (step != STEP_6) {
+            SetActive(false);
+            ai->ClearLook(AIL_ALL);
+        }
+        break;
+    }
+    case STEP_6:
+        if (!(ai->m_stateStack.m_timer < m_time)) {
+            step = STEP_7;
+            ai->SetAiMode((AI_MODE)1);
+            if (ai->SetLookPosW(s_look, (CPnt3D *)(ai->m_67c + 0x58))) {
+                ai->SetScanAngle(0.5235988f);
+                ai->ModifyLookFlags(4, 0);
+            }
+            float t = Rfloat(1.5f, 2.5f);
+
+            m_time = t + ai->m_stateStack.m_timer;
+        } else if (func_00562960(ai))
+            SetActive(false);
+        else if (TargetHeld(ai))
+            step = STEP_1;
+        else if (func_005629B0(ai)) {
+            func_0060A5B0(ai->m_67c);
+            ai->SetLookPosW(s_look, (CPnt3D *)(ai->m_67c + 0x58));
+            step = STEP_5;
+        }
+        break;
+    case STEP_7:
+        if (TargetHeld(ai))
+            step = STEP_1;
+        else if (!(ai->m_stateStack.m_timer < m_time)) {
+            float t = Rfloat(1.0f, 3.0f);
+
+            m_time = t + ai->m_stateStack.m_timer;
+            if (ai->SetLookPosW(s_look, (CPnt3D *)(ai->m_67c + 0x58))) {
+                ai->SetScanAngle(1.4835298f);
+                ai->SetScanRate(Rfloat(0.25f, 0.75f));
+                ai->SetLookFlags(5);
+            }
+            ai->SetAiMode((AI_MODE)3);
+            step = STEP_6;
+        } else if (ai->m_look_mode != AIL_FRANTIC && ai->SetLookDirR(AIL_FRANTIC, &CPnt3D::unit_nz, true)) {
+            ai->ModifyLookFlags(1, 0);
+            ai->SetScanAngle(1.5707964f);
+            ai->SetLookTimer(2.5f);
+        }
+        break;
+    }
+    UpdatePhase(step);
+    return Result();
+}
 
 /* the rescued SEAL's tick (OVL2 0x559070, slot 0x10; SOCOM 1's slot alike): step 0 joins team 17's
  * squad (a SEAL of team bit 17 not in it yet); 1 waits for flag 1 (an extraction valve given), 3 for

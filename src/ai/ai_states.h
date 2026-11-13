@@ -319,10 +319,13 @@ public:
     };
 
     /* the flags changed: the dirty bit (31) set, then `clear` cleared and `set` set (inlined
-     * with constants -- `&= ~0` stays as a zero extension; the name ours) */
+     * with constants -- `&= ~0` stays as a zero extension; the name ours). The dirty bit's
+     * read-modify-write through a volatile view: the target never carries a test's earlier read
+     * of the word into it (CAiSPursue::Tick reloads it three times, CAiSHold::Tick once) -- a
+     * plain `|=` is a common subexpression of that read, every other spelling tried too */
     void SetFlags(unsigned int set, unsigned int clear)
     {
-        m_flags |= 0x80000000;
+        *(volatile unsigned int *)&m_flags |= 0x80000000;
         m_flags &= ~clear;
         m_flags |= set;
     }
