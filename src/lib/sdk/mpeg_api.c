@@ -11,11 +11,11 @@
  * sceMpegGetPicture's image pointer is its parameter reassigned in place; the stores in the order
  * ccperm found (the last source store is scheduled first).
  *
- * OPEN: _decodeOrSkipField (size 0x158 against 0x15C): the target keeps the constant 1 in s1
- * across the calls and builds the second field's expected structure (`li 2; xori; movn`) and both
- * booleans with movn from it, its result in s4; every spelling tried (a ternary compared inline --
- * which fold distributes into branches --, an `expect` local, `?1:0`, `&&` chains) gives sltu or
- * branches and one saved register fewer. */
+ * _decodeOrSkipField (GCC round 75; OPEN since round 4a, 0x158 of 0x15C): the second field's
+ * expected structure and both booleans are if-statements over a value set first (`expect = 2; if
+ * (d->firstStructure != 1) expect = 1;`, `ok = 0; if (...) ok = 1;`): if-conversion makes each a
+ * `movn` from the 1 the function keeps in s1. A ternary or `? 1 : 0` gives branches or `sltu` --
+ * the OPEN note's "every spelling tried" never tried a plain if. */
 
 #include "libmpeg.h"
 
@@ -484,7 +484,7 @@ static int _decodeOrSkipField(sceMpeg *mp, int n, int mode)
 {
 	MpegDec *d = mp->sys;
 	int decode = 0;
-	int ok, ret;
+	int ok, ret, expect;
 
 	d->secondField = 0;
 	if (mode == -1 || n < mode)
@@ -501,12 +501,17 @@ static int _decodeOrSkipField(sceMpeg *mp, int n, int mode)
 		d->isEnd = 1;
 		return 0;
 	}
-	if (d->picture_structure != (d->firstStructure == 1 ? 2 : 1))
+	expect = 2;
+	if (d->firstStructure != 1)
+		expect = 1;
+	if (d->picture_structure != expect)
 		return -1;
-	ok = _updateRefImage(d, 1) ? 1 : 0;
+	ok = 0;
+	if (_updateRefImage(d, 1))
+		ok = 1;
 	ret = 0;
-	if (ok && decode)
-		ret = _decPicture(d) ? 1 : 0;
+	if (ok && decode && _decPicture(d))
+		ret = 1;
 	_outputFrame(d, d->frameNo, d->nFrames);
 	d->secondField = 0;
 	mp->frameCount = d->frameNo - d->frameBase;
