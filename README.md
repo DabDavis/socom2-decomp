@@ -2109,6 +2109,13 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   - A PRIORITY TIE BETWEEN TWO GLOBALS CAN BE TIPPED BY A TAIL STATEMENT WRITTEN IN EACH ARM: the copies merge back, but the uses are
     counted before that, double inside a loop (nExpect 6122 to 8235).
   - local-alloc in 2.96 offers every input operand for sharing: an untied result means an operand not local to its block.
+- **Tells from the Metrowerks rows, round 83** (CSealUnit::CreateSinglePlayerUnits 0x5EC6A0 byte-exact, through a new inline
+  UpdateUnitsMade: `u` declared, `e = end()`, `b = begin()` taken into a local of its own, the made flag stored, then `for (u = b; u
+  != e; ++u)`. The declared-type sweep over all 106 WRONG rows found no type mistakes; `try.py -d`'s `sw zero,0(zero)` lines are
+  relocated fields masked, not code):
+  - A GLOBAL'S LOAD THE TARGET STORES TO A TEMPORARY BEFORE ANOTHER GLOBAL'S CONSTANT STORE, COPYING IT ONLY AFTER, IS begin()
+    TAKEN INTO A LOCAL OF ITS OWN AHEAD OF THE STORE, the iterator assigned from it -- inside an inline (in a block the slots rise
+    12 bytes); round 82's "MW never hoists a global's load over an earlier constant store" holds: the load was written first.
 - **Tells from the Metrowerks rows, round 82** (CZSealBody::MixAnims 0x58BDF0 byte-exact: CBlendable::BAND::m_type declared `AnimType`
   (not short cast to it), `taken[12]`. The direct-vs-pointer aliasing sweep over the 55 open rows with 1-30 structural differences:
   only two load/store-order misses (CreateSinglePlayerUnits' flag `sb`, 0x559580's `dc` stores), neither caused by aliasing; the
