@@ -1,9 +1,12 @@
-/* The boot loader (MAIN 0x1C59C0-0x1C692B, after the boot ELF's main): DNAS.BIN loaded into
- * OVL2's slot, then the two MWo3 overlays FTSCORE and ZSEALETC out of APACHE00.ZDB -- off the
- * disc (or the host) or off the memory card -- through DNAS.BIN's codec, inflated to their slots
- * (docs/storage.md); the card's pictures shown full screen, a card error rebooting the ELF, the
- * GS reset. The original file name is unknown; the functions it calls outside MAIN's libraries
- * keep placeholder names. Written in reverse of the image would not matter: auto-inlining is off. */
+/* sc: overlay=MAIN */
+/* The boot ELF's main and its loader (MAIN 0x1C4CC0-0x1C692B, the game's one MW unit after the
+ * SDK libraries): the IOP rebooted with DNAS271.IMG and its modules loaded, then DNAS.BIN loaded
+ * into OVL2's slot and the two MWo3 overlays FTSCORE and ZSEALETC out of APACHE00.ZDB -- off a
+ * memory card holding it, else off the disc (or the host) -- through DNAS.BIN's codec, inflated to
+ * their slots (docs/storage.md); full-screen pictures, a card error rebooting the ELF, the GS
+ * reset. main scores at its MAIN row through `overlay=MAIN` and the row's `ovl-copy: main`. The
+ * original file name is unknown; the functions it calls outside MAIN's libraries keep
+ * placeholder names. Source order is free: auto-inlining is off (the `inline`s still expand). */
 
 #pragma auto_inline off    /* the image calls 0x1C5DA0 and 0x1C60B0 out of line (0x114/0xEC bytes) */
 
@@ -498,4 +501,221 @@ int func_001C5DA0(const char *name, void *dest, void *buf, int second)
         }
     }
     return ok;
+}
+
+void func_00181E00(void);
+int sceSifInitRpc(int mode);
+int sceSifRebootIop(const char *img);
+int sceSifSyncIop(void);
+int sceSifInitIopHeap(void);
+int sceSifLoadFileReset(void);
+int sceSifLoadModule(const char *filename, int args, const char *argp);
+int sceCdGetDiskType(void);
+int sceCdMmode(int media);
+int sceFsReset(void);
+int func_0018FD10(void);
+int func_001BD588(int mode);
+
+/* libpad2's socket parameters (src/lib/sdk/libpad2.c's) */
+typedef struct {
+    int f0, f4, f8, f12;
+    char name[16];
+} PAD2SOCKETPARAM;
+
+int func_001BD630(PAD2SOCKETPARAM *param, void *addr);
+extern char data_001E6200[];
+
+typedef struct {
+    unsigned char Sec, Min, Hour, Day, Month;
+    unsigned short Year;
+} sceMcStDateTime;
+
+typedef struct {
+    sceMcStDateTime _Create;
+    sceMcStDateTime _Modify;
+    unsigned int FileSizeByte;
+    unsigned short AttrFile;
+    unsigned short Reserve1;
+    unsigned int Reserve2;
+    unsigned int PdaAplNo;
+    unsigned char EntryName[32];
+} sceMcTblGetDir;
+
+int sceMcInit(void);
+int sceMcGetInfo(int port, int slot, int *type, int *free, int *format);
+int sceMcChdir(int port, int slot, const char *newdir, char *olddir);
+int sceMcGetDir(int port, int slot, const char *name, unsigned int mode, int maxent,
+                sceMcTblGetDir *table);
+void func_004C53C0(int argc, char **argv);
+
+/* the CD/DVD drive started: the media mode set from the disc's type; nonzero when there is no
+ * PlayStation 2 disc (booted from the host) */
+inline int InitCd(void)
+{
+    sceCdInit(0);
+    switch (sceCdGetDiskType()) {
+    case 0x12:
+        sceCdMmode(1);
+        return 0;
+    case 0x14:
+        sceCdMmode(2);
+        return 0;
+    }
+    return 1;
+}
+
+/* a formatted PS2 memory card in the port */
+inline unsigned char CardReady(int port)
+{
+    int cmd;
+    int result;
+    int type;
+    int format;
+    unsigned char ok = 0;
+
+    sceMcGetInfo(port, 0, &type, 0, &format);
+    sceMcSync(0, &cmd, &result);
+    if (result > -10 && type == 2 && format)     /* `> -10`: slti at / bnez at; `>= -9` computes the test into v0 */
+        ok = 1;
+    return ok;
+}
+
+/* the card holds SOCOM II's save directory with APACHE00.ZDB in it */
+inline unsigned char CardHasZdb(int port)
+{
+    int cmd;
+    int result;
+    sceMcTblGetDir dir;
+    unsigned char ok = 0;
+
+    sceMcChdir(port, 0, "BASCUS-97275SOCOMII", 0);
+    sceMcSync(0, &cmd, &result);
+    if (result == 0) {
+        sceMcGetDir(port, 0, "APACHE00.ZDB", 0, 1, &dir);
+        sceMcSync(0, &cmd, &result);
+        if (result > 0)
+            ok = 1;
+    }
+    return ok;
+}
+
+#define LOAD_IRX(file) \
+    do { \
+        if (data_001E60C0) { \
+            strncpy(data_001E60D0, "host0:.", 256); \
+            strncat(data_001E60D0, "\\RUN\\IRX\\", 256); \
+            strncat(data_001E60D0, file, 256); \
+            data_001E60D0[255] = 0; \
+        } else { \
+            strncpy(data_001E60D0, "cdrom0:", 256); \
+            strncat(data_001E60D0, "\\RUN\\IRX\\", 256); \
+            strncat(data_001E60D0, file, 256); \
+            strncat(data_001E60D0, ";1", 256); \
+            data_001E60D0[255] = 0; \
+        } \
+    } while (sceSifLoadModule(data_001E60D0, 0, 0) < 0)
+
+/* the boot ELF's main: the IOP rebooted with DNAS's image and its modules loaded, the GS reset,
+ * the pad and the memory cards started; the overlays loaded off a card holding APACHE00.ZDB, else
+ * off the disc, and ZSEALETC's entry run */
+int main(int argc, char **argv)
+{
+    int device = -1;
+    unsigned char ok;
+    int cmd;
+    int result;
+    PAD2SOCKETPARAM pad;
+
+    data_001CE650 = argv[0];
+    data_001E60B0 = argc - 1;
+    data_001E60B8 = argv + 1;
+    func_00181E00();
+    sceSifInitRpc(0);
+    data_001E60C0 = InitCd();
+    do {
+        if (data_001E60C0) {
+            strncpy(data_001E60D0, "host0:.", 256);
+            strncat(data_001E60D0, "\\RUN\\IRX\\", 256);
+            strncat(data_001E60D0, "DNAS271.IMG", 256);
+            data_001E60D0[255] = 0;
+        } else {
+            strncpy(data_001E60D0, "cdrom0:", 256);
+            strncat(data_001E60D0, "\\RUN\\IRX\\", 256);
+            strncat(data_001E60D0, "DNAS271.IMG", 256);
+            strncat(data_001E60D0, ";1", 256);
+            data_001E60D0[255] = 0;
+        }
+    } while (!sceSifRebootIop(data_001E60D0));
+    while (!sceSifSyncIop())
+        ;
+    sceSifInitRpc(0);
+    sceSifInitIopHeap();
+    sceSifLoadFileReset();
+    InitCd();
+    sceFsReset();
+    func_001C67C0();
+    LOAD_IRX("SIO2MAN.IRX");
+    LOAD_IRX("CDVDSTM.IRX");
+    if (data_001E60C0) {
+        strncpy(data_001E60D0, "host0:.", 256);
+        strncat(data_001E60D0, "\\RUN\\RAW\\", 256);
+        strncat(data_001E60D0, "PULOADGP.RAW", 256);
+        data_001E60D0[255] = 0;
+    } else {
+        strncpy(data_001E60D0, "cdrom0:", 256);
+        strncat(data_001E60D0, "\\RUN\\RAW\\", 256);
+        strncat(data_001E60D0, "PULOADGP.RAW", 256);
+        strncat(data_001E60D0, ";1", 256);
+        data_001E60D0[255] = 0;
+    }
+    func_001C6570(data_001E60D0, 640, 128, 0, 160);
+    LOAD_IRX("SIO2D.IRX");
+    LOAD_IRX("DBCMAN.IRX");
+    LOAD_IRX("DS2U_S1.IRX");
+    LOAD_IRX("MCMAN.IRX");
+    LOAD_IRX("MCSERV.IRX");
+    func_0018FD10();
+    func_001BD588(0);
+    pad.f0 = 2;
+    pad.f4 = 0;
+    pad.f8 = 0;
+    pad.f12 = 0;
+    pad.name[0] = 0;
+    data_001E6300 = func_001BD630(&pad, data_001E6200);
+    sceMcInit();
+    sceMcSync(0, &cmd, &result);
+    if (CardReady(0)) {
+        if (CardHasZdb(0))
+            device = 0;
+    }
+    if (device == -1) {
+        if (CardReady(1)) {
+            if (CardHasZdb(1))
+                device = 1;
+        }
+    }
+    ok = 0;
+    if (device >= 0)
+        ok = func_001C5B30(device);
+    if (data_001E60C0) {
+        strncpy(data_001E60D0, "host0:.", 256);
+        strncat(data_001E60D0, "\\RUN\\RAW\\", 256);
+        strncat(data_001E60D0, "LOADING.RAW", 256);
+        data_001E60D0[255] = 0;
+    } else {
+        strncpy(data_001E60D0, "cdrom0:", 256);
+        strncat(data_001E60D0, "\\RUN\\RAW\\", 256);
+        strncat(data_001E60D0, "LOADING.RAW", 256);
+        strncat(data_001E60D0, ";1", 256);
+        data_001E60D0[255] = 0;
+    }
+    func_001C6570(data_001E60D0, 640, 448, 0, 0);
+    if (!ok && !data_001E60C0)
+        ok = func_001C59C0();
+    func_001BD738(data_001E6300);
+    func_001BD5C8();
+    func_0018FF50();
+    if (ok)
+        func_004C53C0(argc, argv);
+    return 0;
 }
