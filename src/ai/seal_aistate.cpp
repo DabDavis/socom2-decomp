@@ -1226,10 +1226,13 @@ public:
 
     CPnt3D m_58;   // 0x58
     CPnt3D m_64;   // 0x64
-    unsigned char _70[0x74 - 0x70];
+    unsigned int m_70;   // 0x70: the item (seal_ai.cpp's)
     CAiMapLoc m_74;   // 0x74
     CAiMapLoc m_78;   // 0x78
-    unsigned char _7c[0x9c - 0x7c];   // 0x9c bytes
+    signed char m_7c;   // 0x7c: the stance (seal_ai.cpp's; the breach's Tick stores the door's side)
+    unsigned char _7d[0x88 - 0x7d];
+    float m_88;   // 0x88: a wait (seal_ai.cpp's)
+    unsigned char _8c[0x9c - 0x8c];   // 0x9c bytes
 };
 
 /* a new state of a kind (OVL2 0x5F6550; SOCOM 1's, the cases in the same order -- alphabetical
@@ -2621,6 +2624,314 @@ bool CAiSBreach::Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool 
         break;
     }
     return r;
+}
+
+/* the breach's limits (OVL2 data: the first SEAL's wait for the team, 20, and the charge's time per
+ * SEAL, 3) */
+extern float data_00650BA8;
+extern float data_00650BB0;
+
+extern "C" {
+/* (OVL2 0x569C50, seal_ai.cpp's: an enemy within a range of an entity) */
+CEntity *func_00569C50(CEntity *e, float *range, bool flagged);
+bool func_0060A850(void *target);
+void func_005668F0(CSealCtrlAi *ai, CZSealBody *seal);
+bool func_00564D20(CSealCtrlAi *ai, int item, const CPnt3D *target, const CPnt3D *from, unsigned int flags);
+/* (the AI maps' cell name, OVL2 0x52A770, by its mangled name: zseal.h's CAiMaps does not declare it) */
+const char *GetCellNameString__7CAiMapsCFRC9CAiMapLoc(const CAiMaps *maps, const CAiMapLoc &loc);
+}
+
+/* the AI's target held, and its bit 9 at 0x6A8 set (an inline bool: the target materialises the `&&`) */
+inline bool BreachTargetHeld(CSealCtrlAi *ai)
+{
+    return func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200);
+}
+
+/* a timer counted down by a frame, its period drawn again once it runs out; whether it did (inline:
+ * the frame's time read first) */
+inline bool BreachTimerTick(CAiTimer &t, float dT)
+{
+    bool fire = false;
+
+    if (t.m_timer != CAiTimer::infinite) {
+        t.m_timer -= dT;
+        fire = t.m_timer != CAiTimer::infinite && t.m_timer <= 0.0f;
+        if (fire)
+            t.m_timer = t.Period();
+    }
+    return fire;
+}
+
+inline void SetBit264_16(CSealCtrlAi *ai, bool on)
+{
+    ai->m_aibit16 = on;
+}
+
+/* a breach's frame (OVL2 0x5F2120; SOCOM 1's grown): the team checked -- no valve or door ends it,
+ * a dead first SEAL or the valve at 3 too; to the door's cell (0, 2, 3), the team waited on (4), the
+ * door opened (5) or a charge laid (6, 7), the cell beyond (9), the charge's time (10), through (11),
+ * a grenade (12), the hold (13); 14 a failure.
+ * OPEN (the AI states' round 66, unwritten before), size exact, 18 instructions, all in step 9's test
+ * of the first SEAL's stack: the target materialises Is()'s `&&` without narrowing it (xor/sltiu/xori
+ * then beqz, the false arm's `move v0,zero` after the true arm's `b`), here an `andi 0xff` follows
+ * each arm. Tried: `!Is`, `Is == false` (both these 0xFE0), `== 0`, `!!`, an int-returning inline or
+ * local, the ternary forms (`?:` with `? true : false`, AiStateIs, int arms), `!Empty() &&`, `size()
+ * != 0 &&`, GetStateEnum, a pointer to the stack, the phase test folded in with `||`/`&&` -- none
+ * drops the andi. Settled: the path hoisted ahead of the switch (s7), `step = 2` ahead of the hold
+ * call, the door valve's switch (case 0 then 1), the pushed state's cast assigned twice (`s = s &&
+ * ... ? s : 0`: branches, where an inline's `?:` materialises), the action's local declared ahead of
+ * the node (it then shares first's s1), SetActive before the step, `<= 9`, the timer's tick an inline
+ * taking dT (read first), the two timer stores one each */
+int CAiSBreach::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+    STEP step = (STEP)m_phase;
+
+    if (m_active) {
+        CSealCtrlAi *first = m_64;
+        CSealCtrlAi *last = m_68;
+
+        if (!m_70 || !m_78)
+            step = (STEP)14;
+        else if (!m_valve)
+            m_valve = CValve::Create(GetCellNameString__7CAiMapsCFRC9CAiMapLoc(&AiMaps, m_78->m_loc), 0, VALVE_TEMP);
+        if (!first || !first->m_entity->m_isAlive) {
+            m_valve->SetValue(3);
+            step = (STEP)14;
+        } else if (m_valve->GetValue() == 3)
+            step = (STEP)14;
+        if (!last || !last->m_entity->m_isAlive)
+            last = first;
+        bool isLast = last == ai;
+        bool isFirst = first == ai;
+        CAiState *lead = first->FindAiState(AI_STATE_BREACH);
+
+        if (!lead && step < 11)
+            step = (STEP)14;
+        CAiPathBytes *path = &ai->m_path;
+
+        switch (step) {
+        case 0: {
+            m_90 = m_70->m_value;
+            unsigned int i = (m_flags & 1) ? m_6c + 3 : m_6c;
+
+            if (ai->SetRoute(BreachLocEx(m_78, i))) {
+                func_00570F90(ai, 1.0f);
+                step = (STEP)2;
+                func_00560340(ai, this, true);
+                m_valve->SetValue(1);
+            } else {
+                func_00560340(ai, this, false);
+                step = (STEP)14;
+            }
+            break;
+        }
+        case 2: {
+            unsigned char st = path->m_state;
+
+            if (!(st == 1 || st == 2 || st == 3)) {
+                if (((CAiPath *)path)->FindPoint(m_80, 0)) {
+                    ((CAiPath *)path)->PrintPath("ai::breach");
+                    unsigned int v = m_70->GetValue();
+
+                    if (v)
+                        v--;
+                    m_70->SetValue(v);
+                    m_valve->SetValue(4);
+                    step = (STEP)9;
+                } else
+                    step = (STEP)3;
+            }
+            break;
+        }
+        case 3:
+            if (func_005629B0(ai)) {
+                unsigned int v = m_70->GetValue();
+
+                if (v)
+                    v--;
+                m_70->SetValue(v);
+                ai->SetAiMode((AI_MODE)4);
+                if (ai->SetLookPosW((AI_LOOK)3, &m_58)) {
+                    ai->ModifyLookFlags(1, 0);
+                    ai->SetLookTimer(8.0f);
+                }
+                step = (STEP)4;
+            }
+            break;
+        case 4:
+            m_time += m_dT;
+            if (isFirst) {
+                if (m_70->GetValue() == 0)
+                    step = (STEP)5;
+                else if (!(m_time <= data_00650BA8))
+                    step = (STEP)14;
+            } else if (lead->m_phase >= 5) {
+                ai->SetAiMode((AI_MODE)4);
+                step = isLast ? (STEP)6 : (STEP)7;
+            }
+            break;
+        case 5: {
+            SetBit264_16(ai, false);
+            SetBit264_17(ai, false);
+            CAiSAction *a;
+            CNodeAction *na = (CNodeAction *)m_74;
+
+            if (na && m_78->GetType() == CAiMap::action::DOOR) {
+                switch (na->m_valve->GetValue()) {
+                case 0:
+                    if (ai->PushAiState(AI_STATE_ACTION, 0)) {
+                        CAiState *s = ai->GetAiState();
+
+                        s = s && s->m_state == AI_STATE_ACTION ? s : 0;
+                        a = (CAiSAction *)s;
+
+                        a->SetFlags(3, 0);
+                        a->UpdatePhase(6);
+                        func_005F0180(a, ai, na, 1);
+                        a->SetActive(true);
+                        step = isLast ? (STEP)6 : (STEP)7;
+                    } else
+                        step = (STEP)14;
+                    break;
+                case 1:
+                    step = isLast ? (STEP)6 : (STEP)7;
+                    break;
+                }
+            } else
+                step = isLast ? (STEP)6 : (STEP)7;
+            break;
+        }
+        case 6:
+            if (m_valve->GetValue() != 4) {
+                if (m_flags & 4) {
+                    int side = func_005F3270(this, ai);
+
+                    if (ai->PushAiState(AI_STATE_DEPLOY, 0)) {
+                        CAiState *s = ai->GetAiState();
+
+                        s = s && s->m_state == AI_STATE_DEPLOY ? s : 0;
+                        CAiSDeploy *d = (CAiSDeploy *)s;
+
+                        d->m_58 = m_58;
+                        d->m_64 = CPnt3D(0.0f, 0.0f, 100.0f);
+                        d->m_70 = 123;
+                        d->SetFlags(0xa4, 0);
+                        d->m_7c = side;
+                        d->m_88 = 1.0f;
+                        d->SetFlags(0x10, 0);
+                        d->UpdatePhase(3);
+                        d->SetActive(true);
+                    }
+                } else if (m_flags & 2) {
+                    int side = func_005F3270(this, ai);
+
+                    if (ai->PushAiState(AI_STATE_DEPLOY, 0)) {
+                        CAiState *s = ai->GetAiState();
+
+                        s = s && s->m_state == AI_STATE_DEPLOY ? s : 0;
+                        CAiSDeploy *d = (CAiSDeploy *)s;
+
+                        d->m_58 = m_58;
+                        d->m_64 = CPnt3D(0.0f, 0.0f, 100.0f);
+                        d->m_70 = 121;
+                        d->SetFlags(0xa4, 0);
+                        d->m_7c = side;
+                        d->m_88 = 1.5f;
+                        d->SetFlags(0x10, 0);
+                        d->UpdatePhase(3);
+                        d->SetActive(true);
+                    }
+                }
+            }
+            step = (STEP)7;
+            break;
+        case 7:
+            if (isLast)
+                step = (STEP)9;
+            else if (!(m_68->m_stateStack.m_10 & 0x10))
+                step = (STEP)9;
+            break;
+        case 9:
+            if (!isFirst) {
+                ai->SetAiMode((AI_MODE)4);
+                if (ai->SetLookPosW((AI_LOOK)3, &m_58)) {
+                    ai->ModifyLookFlags(1, 0);
+                    ai->SetLookTimer(5.0f);
+                }
+                if (first->m_stateStack.Is(AI_STATE_BREACH) == false)
+                    break;
+                if (lead->m_phase <= 9)
+                    break;
+            }
+            {
+                unsigned int i = (m_flags & 1) ? m_6c : m_6c + 3;
+                CAiMapLoc to(BreachLocEx(m_78, i));
+
+                if (ai->SetRoute(to)) {
+                    ai->ClearLook((AI_LOOK)3);
+                    step = (STEP)10;
+                    m_timer.m_min = 0.5f;
+                    m_timer.m_range = 0.5f;
+                    m_time = data_00650BB0 * ((float)m_6c / (float)m_90);
+                } else
+                    step = (STEP)14;
+                ((CSealSignalBits *)seal)->m_signalled = true;
+            }
+            break;
+        case 10:
+            ai->SetAiMode((AI_MODE)2);
+            m_time -= m_dT;
+            if (m_time <= 0.0f)
+                step = (STEP)11;
+            break;
+        case 11: {
+            float range = 0.5f * CAiEvent::GetEventRange((CAiEvent::EVENT)1);
+            CEntity *e = func_00569C50(seal, &range, false);
+
+            if (e) {
+                if (!func_0060A850(ai->m_67c))
+                    func_005668F0(ai, (CZSealBody *)e);
+                if (BreachTimerTick(m_timer, m_dT) && BreachTargetHeld(ai))
+                    ai->PlayAiSound((CHARACTER_SOUND)5, 1.0f, (CAiEvent::EVENT)-1);
+            }
+            if (func_005629B0(ai)) {
+                if (!e)
+                    step = (STEP)12;
+                ai->SetAiMode((AI_MODE)1);
+                m_70->SetValue(m_70->m_value + 1);
+                m_time = 5.0f;
+            } else
+                ai->SetAiMode((AI_MODE)3);
+            break;
+        }
+        case 12:
+            if (isFirst) {
+                CAiMapLoc c;
+                CPnt3D p;
+
+                func_005F3100(this, &c);
+                if (AiMaps.GetCellCenter(c, &p))
+                    func_00564D20(ai, 128, &p, 0, 0);
+            }
+            step = (STEP)13;
+            break;
+        case 13:
+            m_valve->SetValue(2);
+            m_time -= m_dT;
+            if (m_time <= 0.0f || m_70->GetValue() >= m_90 || BreachTargetHeld(ai))
+                SetActive(false);
+            break;
+        }
+    }
+    if (step == 14) {
+        UpdatePhase(14);
+        m_valve->SetValue(3);
+        func_00560340(ai, this, false);
+        SetActive(false);
+    }
+    UpdatePhase(step);
+    return Result();
 }
 
 /* a goto's events: reset (no goal, the invalid cell); on entry the stance after half a second
