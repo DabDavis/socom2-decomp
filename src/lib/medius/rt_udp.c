@@ -23,8 +23,10 @@
  * plain slot; the positive form also gives the port query's `bnez` -- three words, one shape).
  * OPEN: 0x63DD18 (the create: the target lays the allocation out after the option copy, jumping
  * back to it, and keeps the new record in one register through the copy -- 95 words with a local
- * copy, 111 without), 0x63EBA0 (the raw send: the length test's `return 1` is a fall-through `b`,
- * 33s), 0x63F168 and 0x6419E8 (2
+ * copy, 111 without), 0x63EBA0 (the raw send, 33s to 10 in GCC round 74a: the five argument tests one
+ * `||` chain ending in the length's `>`, whose `return 1` is then the fall-through `b`, and the send's two
+ * tests one `||`; left, global-alloc's near-tie -- pData 1428 against nTotal 1304, s2/s3 swapped -- and
+ * the nPort test's `beqz; nop` where the target has `beqzl; ld s0`), 0x63F168 and 0x6419E8 (2
  * each: the call's arguments scheduled the other way -- the -1 key-manager id in the delay slot),
  * 0x63ECC8 (round 12b, 93s: the receive -- the reliable test reads the header's first word, `lw;
  * andi 6`, as a word-wide `& 6` gives; the loop's message pointer lives in a0 where the target's is
@@ -788,9 +790,7 @@ int func_0063EBA0(RT_UDP *pUdp, char *szAddress, unsigned short nPort, void *pDa
 
     if (pUdp == 0)
         return 2;
-    if (szAddress == 0 || nPort == 0 || pData == 0 || nLength == 0)
-        return 1;
-    if (nLength > pUdp->nMaxPacket)
+    if (szAddress == 0 || nPort == 0 || pData == 0 || nLength == 0 || nLength > pUdp->nMaxPacket)
         return 1;
     nTotal = nLength + 12;
     memset(&header, 0, sizeof header);
@@ -799,9 +799,7 @@ int func_0063EBA0(RT_UDP *pUdp, char *szAddress, unsigned short nPort, void *pDa
     header.nLength = nLength;
     memcpy(pUdp->pSendBuf, &header, sizeof header);
     memcpy(pUdp->pSendBuf + 12, pData, nLength);
-    if (rt_comm_send_to(pUdp->nChannel, szAddress, nPort, pUdp->pSendBuf, nTotal, &nSent) != 0)
-        return 16;
-    if (nSent != nTotal)
+    if (rt_comm_send_to(pUdp->nChannel, szAddress, nPort, pUdp->pSendBuf, nTotal, &nSent) != 0 || nSent != nTotal)
         return 16;
     return 0;
 }
