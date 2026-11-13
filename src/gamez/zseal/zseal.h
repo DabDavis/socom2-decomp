@@ -225,6 +225,8 @@ class CZKit {
 public:
     /* the kit's frame, and the mode the hand was last given (kit.h's; OVL2 0x5C0FD0, 0x5C4960) */
     void Tick(float dT);
+    /* the scope's settle ticked by the adrenaline's targets (kit.h's; OVL2 0x5B9280) */
+    void SniperTick(float dT, class CTargetMods &mods, float settle);
     int GetHandFireMode();
     /* whether the kit holds an item, and whether that item has ammunition (SOCOM 1's; OVL2
      * 0x5C86F0, 0x5BDB20, the kit lane's) */
@@ -379,7 +381,9 @@ public:
     unsigned int m_bits0 : 12;   // 0x0
     unsigned int m_requested_item : 1;   // bit 12: an item asked for (IsChangingWeapons tests it)
     unsigned int m_bit13 : 1;   // bit 13: set with bit 12 as a weapon is picked up (PickupItem; the name ours)
-    unsigned int m_bits14 : 18;
+    unsigned int m_bit14 : 1;
+    unsigned int m_heartbeat_enabled : 1;   // bit 15 (kit.h's name: CZSealBody::Tick ticks the scope's settle under it)
+    unsigned int m_bits16 : 16;
 };
 
 class CSealCtrlAi;
@@ -489,6 +493,10 @@ public:
     bool GetLocation(const char *name, CAiMapLoc &loc);
     /* the grid steps between two cells (ai_maps.h's; OVL2 0x52C320) */
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
+    /* how a cell pushes a point away: the direction and its length, the cell that pushes (ai_maps.h's; OVL2
+     * 0x516F10) */
+    bool GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
+                            CAiMapLoc &cell);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
     /* the shadow's darkness at a point, 0 lit .. 1 dark (ai_maps.h's; PostCheckDIDown asks it) */
@@ -1972,7 +1980,7 @@ public:
     ZOOMSTATE IncrZoomState();
     void SetCurZoomState(ZOOMSTATE zs);
     /* a remote SEAL brought back, and the local SEAL's respawn (SOCOM 1's; OVL2 0x598B90, 0x5994A0,
-     * seal_create.cpp's range: Virtual8C calls them) */
+     * seal_create.cpp's range: PostMortemPreTick calls them) */
     void RemoteRespawn(bool b);
     void DoRespawn();
     /* the SEAL's stats (OVL2 0x545890: the stats events reach a teammate's through it, by member
@@ -2066,6 +2074,9 @@ public:
 
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
+    virtual void PreTick(float dT);                                         /* +0x14 */
+    virtual void Tick(float dT);                                            /* +0x18 */
+    virtual void ComputeNextPosition(float dT);                             /* +0x28 */
     virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
     virtual void UpdateAiMapLoc();                                          /* +0x48 */
@@ -2091,7 +2102,9 @@ public:
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
      * primary pointer (Destroy's state set reads +0x90) */
     virtual CZBodyPart *GetRootPart() const;                                /* +0x88 */
-    virtual void Virtual8C();                                               /* +0x8C (0x547350) */
+    /* +0x8C (0x547350): the dead SEAL's tick (SOCOM 1's PostMortemPreTick, which PreTick called in the
+     * same place with the time step -- `mov.s f12` ahead of the call; the step unused) */
+    virtual void PostMortemPreTick(float dT);
     /* the lens node deleted (OVL2 0x599820, seal_create.cpp's) */
     void DeleteCameraEffectsNode();
     virtual void BodySetState(int state);                                   /* +0x90 */
@@ -2113,6 +2126,9 @@ public:
      * float references; OVL2 0x5B0EB0, 0x5B10B0) */
     bool CheckDILadder();
     bool PostCheckDILadder();
+    /* the ground probe's answer taken: the throttles cut where it stops the SEAL (SOCOM 1's PostCheckDIDown; OVL2
+     * 0x5AF930, seal_env.cpp's range) */
+    void PostCheckDIDown(float &x, float &z, float &turn);
     float SetHealth(float health, enum SEAL_DEATH_TYPE type);
     /* the character the SEAL was made from (SOCOM 1's; OVL2 0x599810) */
     CCharacterType *GetCharacter();
@@ -2634,7 +2650,13 @@ public:
     /* bit 0: cleared by 0x549C30 when a wall the weapon's points are behind faces up past the limit
      * (seal.cpp; the name ours) */
     unsigned char m_258_0 : 1;   // 0x258
-    unsigned char _259[0x270 - 0x259];
+    /* bit 1: what 0x549F30 says of the wall ComputeNextPosition finds the player's step against,
+     * cleared as it starts (the name ours) */
+    unsigned char m_258_1 : 1;
+    unsigned char _259[0x260 - 0x259];
+    /* the frame's turn as a quaternion (ComputeNextPosition keeps the Exp of half the turn; the name
+     * ours) */
+    CQuat m_260;   // 0x260
     /* (a member array of one: ~CZSealBody's __destroy_arr; the name ours) */
     zdb::DiIntersect m_270[1];   // 0x270
     /* a point the wall's approach is measured from (0x5B4B40; the name ours) */
@@ -2710,7 +2732,8 @@ public:
     /* the clock when the altitude was last taken over (DetachBody 0x579220 stores the game's clock;
      * new in SOCOM II, the name ours) */
     float m_420;   // 0x420
-    unsigned char _424[0x428 - 0x424];
+    /* a wait PreTick runs down by the time step, held at 0 (the name ours) */
+    float m_424;   // 0x424
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
     unsigned char _42c[0x434 - 0x42c];
     CAiPath m_snakePath;   // 0x434: (SOCOM 1's 0x384)
@@ -2773,14 +2796,19 @@ public:
     unsigned char m_action_display_on;   // 0xed8 (SOCOM 1's 0xdc8)
     unsigned char _ed9[0xee0 - 0xed9];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xf40 - 0xee4];
+    unsigned char _ee4[0xef4 - 0xee4];
+    /* the SEAL's run of the delayed ground probes: the first and how many (0x5483D0 reads the hits; the
+     * names ours) */
+    int m_ef4;   // 0xef4
+    int m_ef8;   // 0xef8
+    unsigned char _efc[0xf40 - 0xefc];
     /* whether the SEAL ticks after its move (PrePostTick does nothing without it; the name ours) */
     unsigned char m_f40;   // 0xf40
     unsigned char _f41[0xf44 - 0xf41];
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
      * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
     CPnt3D m_f44;   // 0xf44
-    unsigned char _f50[0xf54 - 0xf50];
+    float m_f50;   // 0xf50: the move's height speed, kept as ComputeNextPosition clears it (the name ours)
     /* the gunner's place on the turret (0x585CD0 puts it there each frame anim 1 plays; the name ours) */
     CPnt3D m_gunner_pos;   // 0xf54
     /* the crouched move's throttles as CrouchMoveControl 0x582D10 last took them (the names ours) */
@@ -2829,7 +2857,7 @@ public:
     int m_fc4;   // 0xfc4: the killer's id HandleKiller keeps (the name ours)
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
     unsigned char _fcc;
-    /* the spectator's next and previous SEAL asked for (new in SOCOM II: Virtual8C walks to them;
+    /* the spectator's next and previous SEAL asked for (new in SOCOM II: PostMortemPreTick walks to them;
      * the names ours) */
     unsigned char m_spectate_next;   // 0xfcd
     unsigned char m_spectate_prev;   // 0xfce
@@ -2933,7 +2961,11 @@ public:
     unsigned char _1100[0x111c - 0x1100];
     /* zeroed when the SEAL lands out of state 2, and when the ground is lost (0x5B0420; the name ours) */
     int m_111c;   // 0x111c
-    unsigned char _1120[0x1160 - 0x1120];
+    /* a wall's hit the step is held to while its node is set (ComputeNextPosition hands it to 0x54A3D0;
+     * the name ours) */
+    zdb::IntersectStruct m_1120;   // 0x1120
+    /* a wall's hit 0x5483D0 holds the SEAL to when no probe hits (the name ours) */
+    zdb::IntersectStruct m_1140;   // 0x1140
     /* the weapon's draw and put-away envelope (SOCOM 1's m_weapon_seq, a CSequence * at 0xf88;
      * seal_weapon.cpp's view names it so too) */
     CSeqMember m_wep_seq;   // 0x1160
@@ -2998,7 +3030,7 @@ public:
     float m_135c;   // 0x135c: the wait before another jump (0x57E1B0 sets 0.4; the name ours)
     float m_1360;   // 0x1360: above 0, 0x59B870 leaves m_fac alone (0x57E540 sets 0.2; the name ours)
     float m_1364;   // 0x1364: 0x57E540 clears it (the name ours)
-    unsigned char _1368[0x136c - 0x1368];
+    float m_1368;   // 0x1368: a player's throttles are scaled by it (PreTick; the name ours)
     /* the ripples while the surface is just over the SEAL and while it wades, and the node they play
      * at (SOCOM 1's 0xfd8, 0xfdc, 0xfe0: HandleWater's) */
     CZAnim *m_belowwateranim;   // 0x136c
@@ -3023,7 +3055,7 @@ public:
     zdb::CNode *m_curr_firept;   // 0x14bc
     unsigned char _14c0[0x14cc - 0x14c0];
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
-    unsigned char _14ce[0x14d0 - 0x14ce];
+    short m_14ce;   // 0x14ce: zeroed by each Tick (the name ours)
     int m_14d0;   // 0x14d0: the hits a dying SEAL has shown (WeaponHitAnim; the name ours)
     unsigned char _14d4[0x14e0 - 0x14d4];   // (0x14E0 bytes: Create news 5344)
 };
