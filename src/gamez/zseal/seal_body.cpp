@@ -3000,34 +3000,33 @@ extern "C" bool func_0057DDF0(CZSealBody *seal, CZSealBody *other)
 }
 
 extern "C" {
-/* an anim type read as a variable (OVL1 data, -1 in the image) */
-extern short data_003DF130;
+/* an anim type read as a variable (OVL1 data, -1 in the image): typed AnimType, so the AnimSet calls take
+ * it as a plain argument, loaded after the set and the weapon (a short cast to AnimType is a conversion,
+ * evaluated first: 0x57DCC0 and 0x5880E0 were 6 off) */
+extern AnimType data_003DF130;
 }
 
 /* the anim of 0x3DF130 pushed over the base stance, kind 13, at a variant of the held weapon's --
  * the one given, or below zero the one the top script's id picks -- and the variant told to the
  * network for a SEAL this console plays (OVL2 0x57DCC0, new in SOCOM II; the name unknown).
- * OPEN, 6 instructions (the size right): in both AnimSet calls the target loads the kind (a2) and the
- * set (a0) before the type's global (a1), ours the type first -- the same as member calls on a
- * declared AnimSet, with the global volatile, const or typed AnimType, the arguments cast to int, or
- * the set assigned in the call; rep declared ahead of b fixed their saved registers. Round 53: the two
- * calls through inline wrappers reading the type inside (VariantIndex / VariantScript, int or short
- * weapon) keep the type's lui and lh together, as before (6) */
+ * In both AnimSet calls the target loads the kind (a2) and the set (a0) before the type's global (a1):
+ * the global declared AnimType and passed uncast (round 70; `(AnimType)` on a short is a conversion,
+ * evaluated first -- 6 off since round 53); rep declared ahead of b fixes their saved registers */
 extern "C" CZBodyAnimBlend *func_0057DCC0(CZSealBody *seal, int variant)
 {
     ACTIVE_ANIM *rep;
 
     seal->ClearToBase(false);
-    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DF130, seal->m_state, 0, 13);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, data_003DF130, seal->m_state, 0, 13);
 
     if (!b)
         return 0;
     rep = b->Representative();
 
     if (variant < 0)
-        variant = seal->m_animset->GetVariantIndex((AnimType)data_003DF130, seal->m_weapon_id,
+        variant = seal->m_animset->GetVariantIndex(data_003DF130, seal->m_weapon_id,
                                                     rep->m_anim->m_id);
-    rep->m_anim = seal->m_animset->GetVariantScript((AnimType)data_003DF130, seal->m_weapon_id, variant);
+    rep->m_anim = seal->m_animset->GetVariantScript(data_003DF130, seal->m_weapon_id, variant);
     if (theNetwork.m_9 && !seal->IsRemote())
         func_002BBAF0(seal->m_id, 34, variant, false, 12);
     return b;
@@ -5262,9 +5261,8 @@ CZBodyAnimBlend *func_005A21B0(CZSealBody *seal);
  * variant (12), the damage anims (14, 15), the blast's stand (16), the ladder's start backwards (19,
  * 20), the fall (21); 0 back but for kind 0 (OVL2 0x5880E0, new in SOCOM II: fts_remote.cpp's
  * PushBlendAnimPacketHandler calls it with the packet's anim, slot, flag and time; the name ours).
- * OPEN, 6 instructions (the size right): kind 12 is 0x57DCC0's body, and its two AnimSet calls keep
- * that row's open miss -- the target loads the weapon (a2) and the set (a0) before the type's global
- * (a1). Everything else matches: kind masked at the switch but passed on whole to 0x588BC0 (an int
+ * Kind 12 is 0x57DCC0's body (byte-exact with it since round 70: the type's global typed AnimType).
+ * Kind masked at the switch but passed on whole to 0x588BC0 (an int
  * switched as `(unsigned char)kind`), 0x57F3E0's body written out (called, MW does not inline it), the
  * cases in the target's order (12, 14, 15 before 10, 11) */
 extern "C" void *func_005880E0(CZSealBody *seal, AnimType type, int state, bool flag, int kind)
