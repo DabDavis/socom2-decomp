@@ -260,6 +260,10 @@ public:
      * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
     void SetCurItemByIndex(int index);
+    /* the item made current by its kind, and whether the weapon in hand will fire (kit.h's; OVL2
+     * 0x5C8A20, 0x5C0AE0 -- CAiSDeploy::Tick asks both) */
+    bool SetCurItemEnum(EQUIP_ITEM item);
+    bool WillFireWeapon();
     /* the item in hand's ammunition and its fire mode (kit.h's; OVL2 0x5C6970, 0x5C3790 -- a FIREMODE,
      * zweapon.h's byte enum, read here as its byte: the AI's fire set-up 0x55F3B0 asks both) */
     void *GetCurAmmo();
@@ -1277,7 +1281,7 @@ public:
     /* under flag 0x40, the time left before the shot -- run down by FireWhenReady (new in SOCOM II;
      * the name ours) */
     float m_delay;   // 0x64
-    unsigned char m_68;   // 0x68: cleared as a lob is aimed (0x55ECC0; the name ours)
+    SEAL_STANCE m_68;   // 0x68: cleared as a lob is aimed (0x55ECC0), the stance a deploy takes under flag 0x8000000 (CAiSDeploy::Tick; the name ours)
     unsigned char _69[0x6c - 0x69];
     unsigned int m_flags;   // 0x6c
 };
