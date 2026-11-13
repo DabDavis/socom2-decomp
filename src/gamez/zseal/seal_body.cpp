@@ -251,7 +251,9 @@ AnimType func_0058C820(CZSealBody *seal, AnimType type, char item);
  * prefix step, a while loop, the stack and counter both in the for's init, an inline accessor
  * returning the stack's address (22: its temporary s3), the member indexed straight (0x10C). Round 53:
  * `#pragma opt_strength_reduction off` (0x58A470's fix) changes nothing here (9, or 0x10C plain); the
- * stack a block-local of the loop, or declared bare and set in it, loses the entry (0x108) */
+ * stack a block-local of the loop, or declared bare and set in it, loses the entry (0x108). Round 80 (the MW
+ * lane): no unit flag closes it or 0x57D710 -- -O3,p gives 7 and 11 (no hoisting: the addiu stays in the loop,
+ * the s0/s1 trade kept), -O4,s 0x114, levels 4/6/8, no bottomup, no auto inlining: unchanged */
 extern "C" void func_0057D5E0(CZSealBody *seal, char item)
 {
     if (seal->IsCurrentBlend((AnimType)AnimTypes::SwapRifle))

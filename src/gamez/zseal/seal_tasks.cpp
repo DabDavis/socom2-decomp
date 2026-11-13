@@ -2189,7 +2189,9 @@ _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
  * rand rule) whose inline is still unknown. The kit's round 71: `#pragma opt_propagation off` gives
  * the target's size (0x27C, d=31: the case compares' fresh `li` back -- the 1 shared with `r` is
  * propagation's); `r` an int (d=28), the AI by if/else (d=23), `seal ? true : true`, the turret
- * declared ahead, TASK_SEAL_FIRST: all 0x274 */
+ * declared ahead, TASK_SEAL_FIRST: all 0x274. Round 80 (the MW lane): NOT A UNIT FLAG -- `opt_propagation
+ * off` from here to the unit's end loses 58 of its 110 matches, and the whole unit at -O3,p, -O4,s, levels 4/6/8,
+ * without bottomup or auto inlining leaves this at 0x274 (d=31) */
 bool CTTurret::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     TASK_SEAL(CTTurret);
