@@ -85,8 +85,30 @@ public:
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0x28 */
     virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
-    virtual void Virtual34();
+    /* whether another console drives it (zseal.h's IsRemote) */
+    virtual bool IsRemote() const;   /* +0x34 */
     virtual class CSealCtrlAi *GetSealCtrlAi();
+    /* (zseal.h's +0x3C-+0x80, unread here) */
+    virtual void Virtual3C();
+    virtual void Virtual40();
+    virtual void Virtual44();
+    virtual void Virtual48();
+    virtual void Virtual4C();
+    virtual void Virtual50();
+    virtual void Virtual54();
+    virtual void Virtual58();
+    virtual void Virtual5C();
+    virtual void Virtual60();
+    virtual void Virtual64();
+    virtual void Virtual68();
+    virtual void Virtual6C();
+    virtual void Virtual70();
+    virtual void Virtual74();
+    virtual void Virtual78();
+    virtual void Virtual7C();
+    virtual void Virtual80();
+    /* an order handed the SEAL's controller (zseal.h's OnCommand) */
+    virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);   /* +0x84 */
 };
 
 /* the SEAL as far as this unit reads it (zseal.h's CZSealBody, which this unit does not include:
@@ -322,9 +344,11 @@ public:
      * the pointer's getter and setter) */
     bool SetData(const void *data, unsigned int size)
     {
+        /* (the size tested too: AllowCommand's two copies from a squad's data keep the tests;
+         * the constant sizes elsewhere fold them) */
         bool ok = false;
 
-        if (data) {
+        if (data && size && size < sizeof m_data) {
             memcpy(m_data, data, size);
             ok = true;
             m_data_size = size;
@@ -594,6 +618,190 @@ CSealUnit *CSealUnit::GetUnitByTeam(unsigned int team)
 /* (OVL2 0x5EA4D0; CAiState's destructor follows it in, 0x5EA450) */
 CAiSBreach::~CAiSBreach()
 {
+}
+
+extern "C" {
+/* (declared again below: the online game's byte, the squad sound) */
+int func_005750A0(void);
+bool func_005EAF20(CSealUnit *unit, int sound, bool b, float chance);
+}
+CZSealBody *ftsGetPlayer();
+
+/* the top squad above one: its first level written out, the rest GetTop's (an inline: the
+ * ternary left unthreaded; the name ours) */
+static inline CSealUnit *TopOf(CSealUnit *u)
+{
+    return u->m_parent ? u->m_parent->GetTop() : u;
+}
+
+/* the squad's tick (OVL2 0x5E8060; SOCOM 1's Tick, its data gone -- the kit's round 65): when a
+ * member died the dead SEALs moved to the dead list (squads 1-3 offline say so, the player's or the
+ * AI's line) and the dead escortees too (squad 17 told), the follow flags set when the squad
+ * follows; the squad's update; with no SEAL left alive the escortees handed to the first dead SEAL or
+ * the player, the remote ones dropped; a dead follow source replaced by its squad's tail; the
+ * follow given the squad and the AI SEALs in a chain; the formation reset; the squads under it
+ * ticked; the point-out's clocks run down.
+ * The member-died block holds the squad update and the escortees' hand-over (the target skips both
+ * when m_a3 is clear); the iterators ASSIGNED (memory, lwc1/swc1 copies), one `i` for both walks (its
+ * second web the lowest slot, 128); the top squad through an inline's unthreaded ternary, taken into a
+ * local before the sound's call; the squad-range test an `||` (range-folded), the network test spelled
+ * `bool open = n == 0 || n > 32` (the value form -- HostEscort() inlined here branches); the ends of
+ * the follow walks and the sub-squad ticks in locals first.
+ * OPEN, 25 instructions at the target's size, every one the frame: the target puts the five iterator
+ * copies' temporaries first (188-172), then the hand-over's erase (168/164), then each walk's erase
+ * and push_back interleaved (160-132); here each walk's erase sits with its copies, the hand-over's
+ * after them and the push_backs last (and loop 1's iterator in v1 for a3). Wrapping the walks' erase
+ * in an inline (by value, by reference, returning the wrapper or the base iterator, or assigning
+ * through a reference) moves the erases a pass deeper but never level with the push_backs; an
+ * explicit conversion or the base iterator spelled out changes nothing */
+void CSealUnit::Tick(float dT)
+{
+    int alive = 0;
+
+    if (m_a3) {
+        m_a3 = 0;
+        bool told = false;
+        CZSealBody *dead;
+        slist::iterator i;
+
+        slist::iterator e = m_seals.end();
+
+        for (i = m_seals.begin(); i != e;) {
+            CZSealBody *s = *i;
+
+            if (!s->m_isAlive) {
+                told = m_unit_num - 1 < 3;
+                dead = s;
+                i = m_seals.erase(i);
+                m_dead_guys.push_back(s);
+            } else {
+                alive++;
+                ++i;
+            }
+        }
+        if (told && !func_005750A0()) {
+            CSealUnit *top = TopOf(this);
+
+            func_005EAF20(top, dead->IsPlayer() ? 58 : 57, false, 1.0f);
+        }
+        for (i = m_escortees.begin(); i != m_escortees.end();) {
+            CZSealBody *s = *i;
+
+            if (!s->m_isAlive) {
+                if (m_unit_num != 17)
+                    GetUnitByTeam(17)->m_a3 = 1;
+                i = m_escortees.erase(i);
+                m_dead_guys.push_back(s);
+            } else
+                ++i;
+        }
+        if (m_follow_source && m_follow_source->m_isAlive) {
+            if (m_commands.front() == 4 || HostEscort())
+                m_a0 = 1;
+            else if (!m_a0) {
+                ulist::iterator e = m_sub_units.end();
+
+                for (ulist::iterator u = m_sub_units.begin(); u != e; ++u)
+                    if ((*u)->m_commands.front() == 4)
+                        m_a1 = 1;
+            }
+        }
+        func_005E7830(this);
+        if (alive <= 0) {
+            CZSealBody *to = m_dead_guys.empty() ? ftsGetPlayer() : m_dead_guys.front();
+
+            for (slist::iterator e = m_escortees.begin(); e != m_escortees.end(); e = m_escortees.begin()) {
+                CZSealBody *s = *e;
+
+                ((CUnitSealCtrl *)s->m_control)->OnCommand(to, (FT_COMMAND)5, 0, false);
+                if (s->m_control ? ((CUnitSealCtrl *)s->m_control)->IsRemote() : false)
+                    m_escortees.erase(e);
+            }
+        }
+    }
+    CZSealBody *src = m_follow_source;
+
+    if (m_a0 || m_a1) {
+        if (src && !src->m_isAlive) {
+            m_follow_source = ((CUnitCtrl *)src->m_control)->m_unit->GetTail();
+            src = m_follow_source;
+        }
+        if (!src) {
+            m_a0 = 0;
+            m_a1 = 0;
+        }
+    }
+    if (!(m_unit_num == 1 || m_unit_num == 2 || m_unit_num == 3)) {
+        bool open = m_unit_num == 0 || m_unit_num > 32;
+        if (open)
+            open = theNetwork.m_bNetwork && theNetwork.m_bSessionMaster;
+        if (!open) {
+            m_a0 = 0;
+            m_a1 = 0;
+        }
+    }
+    if (m_a0) {
+        m_a0 = 0;
+        m_a1 = 0;
+        if (m_follow_source)
+            IssueCommand(m_follow_source, (FT_COMMAND)4, 0, false);
+    }
+    if (m_a1) {
+        m_a1 = 0;
+        slist::iterator e = m_seals.end();
+
+        for (slist::iterator i = m_seals.begin(); i != e; ++i) {
+            CZSealBody *s = *i;
+
+            if (s != m_follow_source && (s->m_control ? ((CUnitSealCtrl *)s->m_control)->IsAi() : false)) {
+                if (src)
+                    s->IssueCommand(src, (FT_COMMAND)4, 0, true);
+                src = s;
+            }
+        }
+        ulist::iterator ue = m_sub_units.end();
+
+        for (ulist::iterator u = m_sub_units.begin(); u != ue; ++u)
+            if ((*u)->m_commands.front() == 4 && src)
+                (*u)->IssueCommand(src, (FT_COMMAND)4, 0, true);
+    }
+    if (m_a2)
+        SetFormation(m_8, 0);
+    ulist::iterator te = m_sub_units.end();
+
+    for (ulist::iterator u = m_sub_units.begin(); u != te; ++u)
+        (*u)->Tick(dT);
+    if (0 < m_point_ticks) {
+        m_point_ticks--;
+        m_leader_point_data.timer -= dT;
+        if (0.0f > m_leader_point_data.timer) {
+            m_leader_point_data.timer = 0.0f;
+            if (m_leader_point_data.in_point) {
+                m_leader_point_data.start_anim = 0;
+                m_leader_point_data.start_turn = 0;
+                m_leader_point_data.in_point = 0;
+            }
+        }
+        m_follower_point_data.timer -= dT;
+        if (0.0f > m_follower_point_data.timer) {
+            m_follower_point_data.timer = 0.0f;
+            if (m_follower_point_data.in_point) {
+                m_follower_point_data.start_anim = 0;
+                m_follower_point_data.start_turn = 0;
+                m_follower_point_data.in_point = 0;
+            }
+        }
+        if (m_unit_in_point)
+            m_unit_in_point = m_unit_in_point ? (m_leader_point_data.in_point != 0 || m_follower_point_data.in_point != 0) : false;
+    } else {
+        m_leader_point_data.in_point = 0;
+        m_leader_point_data.start_anim = 0;
+        m_leader_point_data.start_turn = 0;
+        m_follower_point_data.in_point = 0;
+        m_follower_point_data.start_anim = 0;
+        m_follower_point_data.start_turn = 0;
+        m_unit_in_point = 0;
+    }
 }
 
 /* every squad that is no part of another ticked, once they are made (OVL2 0x5E7FD0; SOCOM 1's,
@@ -1708,6 +1916,134 @@ CZSealBody *CSealUnit::FindRescuedNear(CZSealBody *seal)
         }
     }
     return 0;
+}
+
+
+/* the online game's byte (seal_command.cpp's 0x5750A0, the SEALs') */
+extern "C" int func_005750A0(void);
+
+/* the SEAL's reticule hits as far as an order reads them (zseal.h's CZSealBody m_last_reticule
+ * 0x3C0 and m_last_reticule_action 0x3E0: a point, then the node at +0x1C -- a view) */
+struct CUnitHit {
+    CPnt3D m_pos;   // 0x0
+    unsigned char _c[0x1c - 0xc];
+    void *m_node;   // 0x1c
+};
+struct CUnitAimView {
+    unsigned char _0[0x3c0];
+    CUnitHit m_last_reticule;   // 0x3c0
+    CUnitHit m_last_reticule_action;   // 0x3e0
+};
+
+/* the SEAL's controller, or 0 (an inline, unthreaded: the name ours) */
+static inline CUnitSealCtrl *CtrlOf(CZSealBody *s)
+{
+    return s ? (CUnitSealCtrl *)s->m_control : 0;
+}
+
+/* the point an order is aimed at: the reticule's action hit when it has a node, else the
+ * reticule's (the name ours). `p = node ? p : 0` is the target's movz -- and A MOVZ ANYWHERE IN A
+ * FUNCTION STOPS MW FILLING DELAY SLOTS FROM THE FALL-THROUGH IN ALL OF IT: the ternary
+ * `node ? &pos : 0` branches, and AllowCommand came out 0x48 short, every branch's slot filled
+ * from below where the target leaves 18 nops */
+static inline const CPnt3D *AimedAt(CZSealBody *seal)
+{
+    const CPnt3D *p = &((CUnitAimView *)seal)->m_last_reticule_action.m_pos;
+
+    p = ((CUnitAimView *)seal)->m_last_reticule_action.m_node ? p : 0;
+
+    if (!p)
+        p = &((CUnitAimView *)seal)->m_last_reticule.m_pos;
+    return p;
+}
+
+/* whether the squad takes an order (OVL2 0x5EE7F0; SOCOM 1's, much changed -- the kit's round 65): squad 1's relay asks
+ * squad 3; in an online game the network squads (24-26, 30, 31) answer by the giver's life; squad
+ * 19's order only for squad 2; then the first SEAL whose controller allows it; the ambush (30) while
+ * the squad has SEALs, the air support (21) while its anim can run, the breach (16) when the squad
+ * and the aim are within reach, the extraction (22) when a rescued SEAL is near; else the squads
+ * under it, the first that allows it lending its order data; squad 17 asks the escortee looked at,
+ * squad 18 the team's SEALs */
+bool CSealUnit::AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data)
+{
+    bool ok = false;
+
+    if (m_unit_num == 1 && IsRelayCommand(cmd)) {
+        ok = GetUnitByTeam(3)->AllowCommand(seal, cmd, data);
+    } else if (func_005750A0() && (m_unit_num == 25 || m_unit_num == 26 || m_unit_num == 30
+                                   || m_unit_num == 31 || m_unit_num == 24)) {
+        ok = seal->m_isAlive;
+    } else if (m_unit_num != 2 && cmd == 19) {
+        ok = false;
+    } else {
+        for (slist::iterator i = m_seals.begin(); i != m_seals.end() && !ok; ++i) {
+            CUnitSealCtrl *c = CtrlOf(*i);
+
+            ok = c ? c->AllowCommand(seal, cmd, data) : false;
+        }
+        switch (cmd) {
+        case 30:
+            return !m_seals.empty();
+        case 21:
+            return can_run_anim("team_airsupport") != 0;
+        case 16:
+            if (ok || m_unit_num == 1) {
+                CPnt3D c;
+
+                GetCenter(&c, 99, false);
+                const CPnt3D *p = AimedAt(seal);
+                float d1 = GetMaxDistSq(&c, 99);
+                float d2 = GetMaxDistSq(p, 99);
+
+                if (!(d1 <= 250000.0f && d2 <= 2250000.0f))
+                    return false;
+            }
+            break;
+        case 22:
+            return FindRescuedNear(seal) != 0;
+        }
+        if (!ok) {
+            for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u) {
+                CSealUnit *su = *u;
+
+                ok = su->AllowCommand(seal, cmd, data);
+                if (ok) {
+                    SetData(su->m_data, su->m_data_size);
+                    break;
+                }
+            }
+        }
+        if (!ok) {
+            if (m_unit_num == 17) {
+                CZSealBody *t = seal->GetReticuleSeal();
+
+                if (t && (t->m_team & 0x20000)) {
+                    CUnitSealCtrl *c = (CUnitSealCtrl *)t->m_control;
+                    CSealUnit *u = ((CUnitCtrl *)c)->m_unit;
+
+                    if (this != u)
+                        ok = c->AllowCommand(seal, cmd, data);
+                }
+            } else if (m_unit_num == 18) {
+                std::list<CZSealBody *> seals;
+
+                GetTeamSeals(18, seal, this, &seals);
+                for (std::list<CZSealBody *>::iterator i = seals.begin(); i != seals.end(); ++i) {
+                    CZSealBody *s = *i;
+
+                    ok = ((CUnitSealCtrl *)s->m_control)->AllowCommand(seal, cmd, data);
+                    if (ok) {
+                        CSealUnit *u = ((CUnitCtrl *)s->m_control)->m_unit;
+
+                        if (u != this)
+                            SetData(u->m_data, u->m_data_size);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return ok;
 }
 
 

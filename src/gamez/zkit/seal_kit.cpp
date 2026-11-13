@@ -4464,6 +4464,14 @@ extern "C" void Shot__10CSealStatsFRC10CZSealBody(void *stats, CZSealBody *seal)
 void Timer_PlaceC4(void *, void *data);
 extern short data_003DEB48;
 
+/* the larger of two, the first when equal (an inline by value: `b <= a ? a : b` is the target's
+ * `slti at; movn` -- `a < 0 ? 0 : a`, `0 <= a ? a : 0` written in place and every if branch or
+ * compute into v0; the name ours) */
+static inline int AtLeast(int a, int b)
+{
+    return b <= a ? a : b;
+}
+
 /* whether the charge is within reach, not running (inline: the tests in a register; the name ours) */
 static inline bool PlaceOk(CKitFireBody *fb)
 {
@@ -4491,7 +4499,11 @@ static inline bool KitIsPlayerB(CKitBody *body)
  * OPEN, 0xEE0 against 0xF00: every word but the block optimization's copies -- the target steals `move v0,zero` by a copy
  * behind a `b; andi` at each KitIsPlayer here (the engine core's round 28: something in this function fires 0x4C6D60; not
  * found: none of the `?:` shapes tried fires it, nor the else-if chain, v_hf5, v_hf6), the bound's movn, the registers
- * (this s5, index s4, index * 4 s6 in the target: the numbering falls out once the size is right) */
+ * (this s5, index s4, index * 4 s6 in the target: the numbering falls out once the size is right).
+ * The kit's round 65: the bound is AtLeast's `b <= a ? a : b` (the target's slti/movn, d=407 -> 296),
+ * and with it the function stops filling slots from the fall-through: 0xF10 now, 16 bytes long --
+ * the place-charge test's two float compares are the target's values with no `andi` (bool, int, a
+ * ternary, `&&`, if/else and an int return all keep one) */
 void CZKit::HandleFireWeapon(int index, float a, float b)
 {
     EQUIP_ITEM id = m_item[index]->GetId();
@@ -4613,7 +4625,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
                 g_placeHit.m_norm = CPnt3D::zero;
                 if (GetCurItemEnum() == 151)
                 {
-                    SetCurItemByIndex(m_last_selected < 0 ? 0 : m_last_selected);
+                    SetCurItemByIndex(AtLeast(m_last_selected, 0));
                 }
             }
         }
