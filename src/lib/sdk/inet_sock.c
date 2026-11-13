@@ -62,6 +62,11 @@
  * address trading s5/s6) the same way: the close, free and return are written after EACH unlink
  * (no `goto close`), jump2 cross-jumping the copies into one -- the second sceInetClose is a fifth
  * use of the client's address, which breaks global-alloc's exact tie (842 each) with the address.
+ * gethostbyname func_001C48A0 (GCC round 78; open since 21a, 0x178 against 0x180): each h_errno
+ * arm complete -- `c->herr = N; func_001C2310(c, 0); goto fail;` -- and the errno arm too, `fail:
+ * return 0;` after `return h`: the arms cross-jump among themselves only (a call and a jump: one
+ * insn short of jump2's minimum of two against the lock path's), and inside each arm sched1 slips
+ * the `move a0` between the li and the sw (the li's latency), as the target's arms have it.
  *
  * OPEN: func_001C1D40, the first-fit allocation (0x14C against 0x150: the target computes the
  *   remainder as (size' - 12) - size from the loop's own load of the block's size, and after a split
@@ -71,13 +76,13 @@
  *   size held from the start, the merges reuse the adjacency sums -- the walk's shape is not yet the
  *   target's); func_001C2028, the heap's set-up (right size, 34: the first `return -1` is the one
  *   the second test jumps back to, and nine stores in another order -- not yet permuted);
- *    *    *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
- *   `func_001C2310(c, X); return 0;` apart -- three calls, each `b epilogue; move v0,zero` -- where
- *   this compile cross-jumps them into one call; the h_errno chain's value through one store as
- *   the target's); func_001C4A20, gethostbyaddr (0x1EC against 0x1FC: the same question -- the
- *   target cross-jumps the type, length and h_errno paths into the lock failure's call and keeps
- *   the errno path's call apart, this compile merges all four; its h_errno 2 and 4 stored from the
- *   checked type and length, as the target's). */
+ *   func_001C4A20, gethostbyaddr (0x1EC against 0x1FC: the target cross-jumps the type, length
+ *   and h_errno paths into the lock failure's call and keeps the errno path's call apart, this
+ *   compile merges all four; its h_errno 2 and 4 stored from the checked type and length, as the
+ *   target's. GCC round 78: 486 placements of `return 0` / `goto fail` / `goto fail2` over the five
+ *   failure paths, the h_errno arms shared or each complete -- none 0x1FC (0x1EC-0x210): a `goto
+ *   fail` to a trailing `return 0` is threaded back into `v0 = 0; jump end` by the first jump pass,
+ *   so the errno path stays a cross-jump candidate; build/scratch/gcc2-r78/v4c.py). */
 
 typedef unsigned int u_int;
 typedef unsigned int size_t;
@@ -877,21 +882,27 @@ struct hostent *func_001C48A0(const char *name)
 		return 0;
 	}
 	if (r < 0) {
-		if (r == -500 || r == -515)
+		if (r == -500 || r == -515) {
 			c->herr = 1;
-		else if (r == -516)
+			func_001C2310(c, 0);
+			goto fail;
+		} else if (r == -516) {
 			c->herr = 2;
-		else if (r == -517)
+			func_001C2310(c, 0);
+			goto fail;
+		} else if (r == -517) {
 			c->herr = 3;
-		else if (r == -518)
+			func_001C2310(c, 0);
+			goto fail;
+		} else if (r == -518) {
 			c->herr = 4;
-		else {
+			func_001C2310(c, 0);
+			goto fail;
+		} else {
 			c->herr = -1;
 			func_001C2310(c, func_001C24D0(r));
-			return 0;
+			goto fail;
 		}
-		func_001C2310(c, 0);
-		return 0;
 	}
 	h->h_name = 0;
 	h->h_aliases = data_001CE640;
@@ -903,6 +914,8 @@ struct hostent *func_001C48A0(const char *name)
 	h->h_addr_list = data_001CE648;
 	func_001C2310(c, 0);
 	return h;
+fail:
+	return 0;
 }
 
 /* every pending libinet call of the thread aborted */
