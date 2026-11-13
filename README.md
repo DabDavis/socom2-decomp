@@ -2066,6 +2066,49 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from CZSealBody, round 68** (PreTick 0x551EC0 (0x8BC), ComputeNextPosition 0x54D9A0 (0xA88), Tick 0x550EF0 (0xFCC)
+  byte-exact, all unwritten before, seal.cpp; 0x5483D0 (0x15F8, SOCOM 1's PostComputeNextPosition the outline) at the target's
+  size and 688-byte frame, every call and branch placed, ~170 structural and 65 register-only off: two temporaries' slots
+  (344/312), the target recomputing `&step.y/.z` in v0 at each use and holding `&nrm.y/.z` in s1/s0 (the reference-inline fix
+  untried here), the moved/turning flags' `c.le; bc1f` into `li 1 / move 0` (every spelling gives `bc1t; xori` or `c.lt`);
+  0x54A6D0 and 0x54A3D0 pinned `#pragma auto_inline off` (deferred inlining had expanded both into ComputeNextPosition).
+  0x547350 renamed PostMortemPreTick__10CZSealBodyFf (PreTick calls slot 0x8C with the step where SOCOM 1's calls it). The
+  constructor 0x553EA0 (~450 initialiser stores into fields still padding) and PostPreTick 0x54AA30 not reached. zseal.h,
+  objcmp-proved: fields out of padding (m_424, m_1368, the m_258_1 bit, CQuat m_260, m_f50, m_ef4/m_ef8, IntersectStruct
+  m_1120/m_1140, short m_14ce); CZKit's bits 14/15, m_heartbeat_enabled, SniperTick; the overrides declared):
+  - a pointer tested `== 0` does not materialise; `!p` on a pointer member gives `sltu`. `v ? true : false` on a bit gives the
+    `sltu`; `f() == false` on a bool member call keeps the `andi` a plain `!` drops.
+  - a scale through a reference-parameter inline (`ScaleBy(float &v, const float &s)`) loads the scale first. A grouped `||`
+    tail (an inline OnLadderSlide) lets an earlier operand's true jump to the end. An inline returning `a + b` puts the copy's
+    and the sum's slots under the function's locals.
+  - a point's words written in place keep their addresses in saved registers; through a reference inline (RunDown), a length
+    inline (LenXZ) or a row pointer plus Dot they fold to sp offsets.
+  - Tick: the top blend read before and after the probes is two variables; the moving test's locals in the animset-18 branch
+    their own block's (only then do the else's webs take the main block's registers); all at the top gives ctrl s1, top s4.
+  - `*(CZKit::FIRE_CLASS *)` loads with `lb`: FIRE_CLASS a signed byte. `_max` as `a > b ? a : b` over references gives
+    `c.le; bc1t`.
+- **Tells from the body mechanics, round 68** (0x5AE980 (0xAE8, the look anims: SOCOM 1's ComputeDeltaLookQuat inlined 12 times,
+  InitLookAnims' 48 pairs; the four look tables' externs CPnt3D[]/CQuat[]) and 0x5B56C0 (0x674, the throttles slowed by water
+  depth and slope: SOCOM 1's GetTerrainMotionFactor's place and body, now changing two throttles through pointers) byte-exact in
+  seal_env.cpp, both unwritten before. CheckDIShoot 0x5AA6E0 at size, 3 off in the auto-aim copy into the kit's aim point (the
+  target reuses the shot's x register, reloads y and z; all 420 legal orders of the seven statements, field-by-field, pointer
+  and reference copies, a PNT3D field, a CPnt3D shot tried). PostCheckDIDown 0x5AF930 at size, ~27 off: the falling-damage
+  call reuses the compared register for m_1364 (the target reloads), `3.0f` to m_script_wt hoisted into f20 (target `lui; sw`),
+  the shade's int-to-char sign-extended in s0 (target `sb` of the raw word). 0x5ACA70 named PitchAnim__10CZSealBodyFP6CPnt3D
+  (SOCOM 1's place and second half; 0x57A330 passes this + 0x144C after CanPitch). Not done: 0x5880E0, 0x5B1C80 (ladder, VU0),
+  0x5B2D20 and 0x5B3340 (both halves of SOCOM 1's HomingTick?) -- m2c drafts in the lane's scratch. zseal.h declarations only
+  (GetAP, CheckDIShoot, PostCheckDIDown -- a `bool`, the CZSealBody lane's duplicate `void` declaration dropped at the merge --
+  and the CAiMaps view's GetInterpolatedShadow), objcmp: only seal_env.cpp differs):
+  - AN INLINE'S LOCALS STACK BY INLINE DEPTH: 0x5AE980's slots run all CPnt3Ds, all quaternions, then all VU0 vectors only when
+    the VU0 cross product is its own nested inline (one body interleaves them: 242 off).
+  - a pointer from an inline's return spills at slot+0 (again: `di` reached 192 only through an IntersectsPast() inline). One
+    CPnt3D shared by every branch gives 0x5B56C0's 240-byte frame (one per branch 288).
+  - `bool ok = Call(); if (!ok)` brings back the target's `andi` on a bool call (GetAP, GetScreenPos, _close_enough); one bool
+    for two tests puts it in v1. sqrtf inlines as `sqrt.s`. A three-case `switch (m_state)` keeps the `beq` chain (cases listed
+    in reverse of the emitted order) where `==` folds 9 and 10.
+  - `(A ? IsAi() : false) || IsRemote()` gives CheckDIShoot's entry. A dead first declaration of the node (`zdb::CNode *node;`
+    then `node = GetNode()`) puts the world in s0. `zdb::CNode *nd;` ahead of the loop's hit pointer swaps their saved
+    registers (21 to 8). A local the accuracy pointer is copied into inside the perturb inline keeps `acc` its own register.
 - **Tells from the AI states, round 67** (nothing closed; CAiSFollow::Tick 0x5FB1C0 (0x138C) written in the new
   seal_aifollow.cpp from the target with SOCOM 1's FollowTick and HandleFollowTick* as the outline, 0x136C/201 structural to the
   target's size and 33 off -- control flow, calls and the 544-byte frame right; left: the spill slots (target mode 272, n 256,

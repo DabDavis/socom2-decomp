@@ -2126,9 +2126,6 @@ public:
      * float references; OVL2 0x5B0EB0, 0x5B10B0) */
     bool CheckDILadder();
     bool PostCheckDILadder();
-    /* the ground probe's answer taken: the throttles cut where it stops the SEAL (SOCOM 1's PostCheckDIDown; OVL2
-     * 0x5AF930, seal_env.cpp's range) */
-    void PostCheckDIDown(float &x, float &z, float &turn);
     float SetHealth(float health, enum SEAL_DEATH_TYPE type);
     /* the character the SEAL was made from (SOCOM 1's; OVL2 0x599810) */
     CCharacterType *GetCharacter();
