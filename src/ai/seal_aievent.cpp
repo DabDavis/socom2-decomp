@@ -207,17 +207,47 @@ static inline unsigned char TargetGone(CSealCtrlAi *ai, float limit = 3.0f)
     return gone;
 }
 
-/* HandleEvent's helpers (inline; the names ours): a random float between two (seal_airesponse.cpp's), a chance
- * taken, the event's bit for an entity set and cleared -- an entity's own event has none --, the AI's own event if it
- * has not run out, and the AI's own event made a copy of one (zseal.h's CAiEventFields) */
+/* HandleEvent's helpers (inline; the names ours): SOCOM 1's Rfloat (zkit.h's, a local copy as seal_unit.cpp's
+ * UnitRfloat: a draw in [min, min + range) with its zero-range test), a random float between two through it (its min
+ * materialised before the range -- the plain `lo + (hi - lo) * r` numbers the range's constant first), a chance taken
+ * through it with the odds by value read through a `const float &` (round 74's tell: the target stores the chance before
+ * rand() and reloads it from its slot), the event's bit for an entity set and cleared -- an entity's own event has none
+ * --, the AI's own event if it has not run out, and the AI's own event made a copy of one (zseal.h's CAiEventFields) */
+struct HeRfloat {
+    operator float() const
+    {
+        float f;
+
+        if (m_range == 0.0f)
+            f = m_min;
+        else {
+            float r = 4.656613e-10f * rand();
+            f = m_min + m_range * r;
+        }
+        return f;
+    }
+
+    float m_min;
+    float m_range;
+};
+
 static inline float RandBetween(float lo, float hi)
 {
-    return lo + (hi - lo) * (4.656613e-10f * (float)rand());
+    HeRfloat r;
+
+    r.m_min = lo;
+    r.m_range = hi - lo;
+    return r;
 }
 
-static inline bool Chance(const float &p)
+static inline bool Chance(float chance)
 {
-    return RandBetween(0.0f, 1.0f) <= p;
+    const float &c = chance;
+    HeRfloat r;
+
+    r.m_min = 0.0f;
+    r.m_range = 1.0f;
+    return r <= c;
 }
 
 static inline int EventSeen(const CAiEvent *ev, unsigned int bit)
@@ -293,14 +323,12 @@ extern "C" bool func_005F8D40(CSealCtrlAi *ai, CSoundEventView *ev, CZSealBody *
 /* an event the AI may notice: not its own, not seen by it already, no less than the one it holds; marked as seen unless
  * it lies off the maps; a visible one only through the view cone and a chance by the line to it; the state asked; then
  * by its kind (OVL2 0x5F95D0; SOCOM 1's HandleEvent, 0x1D28 bytes there, the distance new).
- * OPEN, 0x14F8 against 0x1504 (1342 of 1345 instructions, 30 short runs, the kit's round 62). Right: the switch's layout
- * and every arm, the event's copy (an implicit assignment going member by member, through zseal.h's CAiEventFields) and its
- * addresses through m_ev, the union member: through a cast of m_event each address was a common subexpression, s0 and s1
- * held them, `known` was spilled and four more pads came. What differs: the chance's float, which the target keeps in memory (`swc1 $f0,
- * 180(sp)` before rand, `addiu v0,sp,180; lwc1 $f0,0(v0)` after -- an inline's const float & on an rvalue, a named
- * reference, a pointer local, a two-level inline, an array all fold into a saved FPR, so mine saves f21 too and the one
- * word shifts the 8-byte pads ahead of the blocks reached by a branch: `b; move v0,zero; nop` at +0x54 and +0x7C; only a
- * volatile cast stores it); bit in a0 for the target's a3 and @type in a3 for its a2 in EventSeen (the shift must colour
+ * OPEN, the target's size since round 75 (0x14F8 and 67 structural before; 17 now, 87 register-only). Right: the switch's
+ * layout and every arm, the event's copy (an implicit assignment going member by member, through zseal.h's CAiEventFields)
+ * and its addresses through m_ev, the union member: through a cast of m_event each address was a common subexpression, s0
+ * and s1 held them, `known` was spilled and four more pads came. Round 75: the chance kept in memory and the draws'
+ * constant order are SOCOM 1's Rfloat (the helpers' comment -- three words), the event's cell declared before the SEAL's
+ * (their frame slots). What differs: bit in a0 for the target's a3 and @type in a3 for its a2 in EventSeen (the shift must colour
  * before the index: a named local, an early return and a mask local do not move it); UnmarkEvent's index in v1 for a0
  * (`mask`, a word pointer and an unsigned local tried); 0.3's `mtc1 v1,$f2` two words early, and the block optimization
  * form at AIE_HELPME's busy test (an `andi` mine keeps after the xori) */
@@ -327,8 +355,8 @@ bool CSealCtrlAi::HandleEvent(const CAiEvent *ev, float dist)
 
     if (e)
         comrade = !func_00572D30(this, e);
-    CAiMapLoc myLoc = self->m_mapLocValid;
     CAiMapLoc evLoc;
+    CAiMapLoc myLoc = self->m_mapLocValid;
     bool known = AiMaps.GetLocation(&ev->m_pos, evLoc);
 
     if (!known) {

@@ -2140,12 +2140,12 @@ extern "C" void *func_005F5B20(void *target, CPnt3D *out);
 /* the anim's byte at 2 as a bool (inline: StateTick's; the name ours) */
 inline bool AnimBusy(CZAnim *a)
 {
-    return ((unsigned char *)a)[2] != 0;
+    return ((unsigned char *)a)[2] ? true : false;
 }
 
-/* the follow state's master in a player-led mode (inline: the master read through a reference, kept on the stack; the
- * name ours) */
-inline bool ModeMaster(CSealCtrlAi *ai, CZSealBody *&master)
+/* the follow state's master in a player-led mode (inline: the master read through a reference to the caller's volatile
+ * local; the name ours) */
+inline bool ModeMaster(CSealCtrlAi *ai, CZSealBody *volatile &master)
 {
     bool r = ai->m_660 == 1;
 
@@ -2158,10 +2158,15 @@ inline bool ModeMaster(CSealCtrlAi *ai, CZSealBody *&master)
  * finished state's response sequence seen off in the script under it; past its range from the kept target, the stack
  * popped to the first state that answers, and with none left in a player-led mode the SEAL told to follow, the squad
  * told; a kind 3 state taken away when the flag asks.
- * OPEN, 0x4C8 against 0x4E8 (the kit's round 61, its saved registers all the target's: the declarations' order decides the
- * spill pick's tie): the target keeps the master in a frame slot (172: `sw zero`, then direct loads and stores -- every
- * address-taking tried folds, or leaves the address in a register); the Is(3) at the end is the stack's known Is() shape,
- * the materialised first operand and explicit false arm, which fold in this unit (round 58's AiStateIs) */
+ * OPEN, 0x4D8 against 0x4E8 (0x4C8 and 45 structural before round 75; the kit's round 61, its saved registers all the
+ * target's: the declarations' order decides the spill pick's tie): left only the Is(3) at the end, the stack's known Is()
+ * shape, the materialised first operand and explicit false arm, which fold in this unit (round 58's AiStateIs). Round 75,
+ * read as code: the point's CPnt3D() is called out of line (0x516900, as seal_control.cpp's and Create's -- a missing
+ * call, not registers); the master a VOLATILE local (each access a frame load or store: `sw zero`, the conditional store,
+ * one load into m -- what the note called "kept in a frame slot"); m's test a self-assigning ternary (one call, the
+ * null and wrong-type arms joined at `move a1,zero`); AnimBusy `? true : false` (the target's sltu before bnez); and the
+ * post-walk test's end() through a const REFERENCE cast, `((const CAiStateStack &)*stack).end()` -- recomputed from the
+ * stack (`addiu v1,s4,4`) where the pointer cast's is CSE'd with the walk's hoisted end */
 void CSealCtrlAi::StateTick(float dT)
 {
     /* (declared in this order: the tie on the spill pick falls to the highest number, the SEAL, which takes s6) */
@@ -2204,7 +2209,10 @@ void CSealCtrlAi::StateTick(float dT)
 
         if (word & 0x10) {
             CPnt3D p;
+
+            func_00516900(&p);
             bool near = true;
+
 
             if (!(m_674 <= 0.0f) && func_005F5B20(&m_660, &p))
                 near = func_005F5AD0(&p, func_005F5B10(seal)) <= m_678;
@@ -2214,17 +2222,14 @@ void CSealCtrlAi::StateTick(float dT)
                 for (; i != ((const CAiStateStack *)stack)->end(); ++i)
                     if (((CAiStateFlagSlots *)*i)->Virtual40Ai(this))
                         break;
-                if (i != ((const CAiStateStack *)stack)->end()) {
+                if (i != ((const CAiStateStack &)*stack).end()) {
                     PopToAiState(*i, true);
-                    /* (its address taken in an unused pointer keeps its frame slot, at no code) */
-                    CZSealBody *master = 0;
-                    CZSealBody **pm = &master;
+                    CZSealBody *volatile master = 0;
 
                     if (stack->size() == 0 && ModeMaster(this, master)) {
                         CZSealBody *m = master;
 
-                        if (!m || m->m_type != 2)
-                            m = 0;
+                        m = m && m->m_type == 2 ? m : 0;
                         SetFollowMaster(m);
                         bool pushed = CanPushAiState(AI_STATE_FOLLOW, 0);
 

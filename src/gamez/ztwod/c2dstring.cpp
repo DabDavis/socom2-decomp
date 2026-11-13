@@ -64,8 +64,12 @@ public:
     /* the glyph's current piece taken, and the font's drop-shadow colour written for a glyph without
      * its own (inline: SeekGlyph and Advance end alike). The glyph through a local: m_piece is then
      * loaded after Get()'s ternary, the target's order (indexing Get()'s result evaluates the
-     * subscript first). The cap declared from the opacity and scaled in place, the alpha assigned
-     * after it: the target's registers (round 61; SeekGlyph's note) */
+     * subscript first). The alpha capped by a ternary whose arms are the scaled opacity, an
+     * expression (CSE'd), and the alpha: the result takes the alpha's register, both arms convert
+     * and their tails merge, the join an expression's (unpadded; `if (cap < alpha) alpha = cap;` pads
+     * it, a ternary over a scaled `cap` local takes cap's register and keeps two arms). `cap = cap;`
+     * keeps the opacity a named local -- numbered before the 128's temporary, which then takes $f0
+     * (propagated, the load numbers after the 128 and the two swap) -- the round 75 fit */
     void SetPiece()
     {
         C2DGlyph *g = m_glyph.Get();
@@ -81,10 +85,8 @@ public:
             float cap = m_str->m_font->m_54;
 
             alpha = m_str->m_color[3];
-            cap = (float)(int)(128.0f * cap);
-            if (cap < alpha)
-                alpha = cap;
-            m_color[3] = (int)alpha;
+            cap = cap;
+            m_color[3] = (int)((float)(int)(128.0f * cap) < alpha ? (float)(int)(128.0f * cap) : alpha);
         }
     }
 
@@ -741,8 +743,9 @@ C2DStringCursor::C2DStringCursor(C2DString *str, int *color)
  * character -- a '#B' after it toggles the bright flag and moves on again (one byte: the next call's
  * UTF8CharLen skips the 'B'), any other advances the pen by the passed character's width and seeks
  * the next glyph. An if / else chain: early returns each branch to a shared `b` (2 words).
- * OPEN, 0x328 against 0x320: SetPiece's shadow alpha, as SeekGlyph's (see there: since round 61 only
- * the last colour store's scheduling, the same 8 bytes) */
+ * Byte-exact since round 75: SetPiece's alpha as a ternary (its comment), and the '#B' arm's own
+ * `return;` after the recursion -- the call falls into its join's `b` (without it the body ends in a
+ * `b` of its own ahead of the join's) */
 void C2DStringCursor::Advance()
 {
     if (m_colorSet) {
@@ -770,6 +773,7 @@ void C2DStringCursor::Advance()
             m_bright = !m_bright;
             if (*m_p)
                 Advance();
+            return;
         } else {
             m_x += m_str->GetCharWidth(UTF8GetChar(p));
             SeekGlyph();
@@ -783,15 +787,11 @@ void C2DStringCursor::Advance()
  * glyph its first piece is taken, and when the font colours its glyphs and this one has no colour of
  * its own the font's drop-shadow colour is written (C2DFont's m_3c, m_48 and m_54: the faces rdr's
  * "dropshadow" block), its alpha the string's capped at the shadow's opacity (whole).
- * OPEN, 0x298 against 0x290, one spot shared with Advance (SetPiece's): round 61 closed the shadow
- * alpha's registers -- the opacity read into the cap's own declaration and scaled in place, the alpha
- * assigned after it (SetPiece) gives the target's FPRs (the 128 $f0, live across the three colour
- * stores in $f1, the opacity $f1) and its loads (the string a0, the font v1); left: the last store's
- * address (`lw v1,36(s0)`) is scheduled ahead of the clamp's cvt.w.s at the join (the target's after
- * it), with a nop after the clamp's mov.s and one before UTF8CharLen's jal -- tried since: the clamp
- * as a ternary (a `b` more), an if/else of two stores (0x2A8), `alpha > cap`, the conversion into an
- * int local, through an inline (FloatToInt, Clamp, an int-returning clamp) or an inline setter of the
- * colour word, a pointer local for the store (17-22 differing, each the same 8 bytes). Before round 61:
+ * Byte-exact since round 75 (0x298 against 0x290 since round 61): SetPiece's clamp read as code --
+ * the target's join after `mov.s` is unpadded and its cvt.w.s precedes the store's address load, the
+ * shape of a ternary whose two converting arms merged their tails, not of an if-statement (a statement
+ * label pads; the earlier "scheduling" was the label). Its arms an expression and the alpha give the
+ * alpha's register; `cap = cap;` keeps the opacity's numbering (SetPiece's comment). Before round 61:
  * the target colours the 128 first; MW numbers
  * the constant before the opacity's load whichever side it is written on (it canonicalises the
  * constant to the first operand), and the replay (tools/igreplay.py --want 53=f0,54=f1,46=f1 --movers
