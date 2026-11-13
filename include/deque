@@ -678,7 +678,8 @@ public:
         this->start_ = 0;
     }
     /* out of line in an earlier unit (zanim_menu.cpp's tail: erase 0x285D30, insert 0x286160 -- SOCOM 1's
-     * signatures, the four-word iterators by value; resize calls both). The insert UNWRITTEN; the erase
+     * signatures, the four-word iterators by value; resize calls both). The insert written since the engine's round 2 (below, under
+     * __MSL_CDEQUE_INSERT: zanim_menu.cpp alone defines it, the other units' copies being dead; OPEN, registers); the erase
      * written since the UI's round 39 as an explicit specialisation in zanim_menu.cpp's tail (OPEN, 76: its
      * note); its shape read off
      * the image (the MSL headers round 35): MSL's deque erase -- the empty range returned at once; pos =
@@ -897,6 +898,121 @@ void cdeque<const void *, Allocator>::resize(unsigned int n)
             clear();
     }
 }
+
+#ifdef __MSL_CDEQUE_INSERT
+/* THE INSERT (0x286160, the engine's round 2; zanim_menu.cpp opts in by __MSL_CDEQUE_INSERT -- defined for every unit it
+ * is code-neutral over every hand-written one, its eleven other copies dead and zrndr_pipe.cpp's a WRONG row in its span).
+ * Generated in the tail after __recommend, so it inlines it (the max static, alloc() inlined, the min one temporary) where
+ * push_back, generated before, calls it -- an explicit specialisation in zanim_menu.cpp (an own function) generates
+ * __recommend early and push_back 0x2858B0 then inlines it too. Its pieces: the distance by the friend operator-'s shape,
+ * the walks by value */
+template <class X, class Y>
+inline int __cdeque_dist(const X &x, const Y &y)
+{
+    const void *const *f = x.first_;
+    int n = x.p_ - y.p_;
+
+    if (x.p_ >= f) {
+        if (y.p_ < f)
+            n -= x.last_ - x.data_;
+    } else if (y.p_ >= f)
+        n += x.last_ - x.data_;
+    return n;
+}
+
+template <class I>
+inline I __cdeque_copy(I first, I last, I result)
+{
+    for (; first != last; ++first, ++result)
+        *result = *first;
+    return result;
+}
+
+template <class I>
+inline I __cdeque_copy_backward(I first, I last, I result)
+{
+    while (first != last)
+        *--result = *--last;
+    return result;
+}
+
+template <class I, class T>
+inline void __cdeque_fill_n(I first, unsigned int n, const T &x)
+{
+    for (; n > 0; --n, ++first)
+        *first = x;
+}
+
+/* n copies of x put at position (0x286160, zanim_menu.cpp's tail; SOCOM 1's insert(iterator, n, x)): when they fit, the
+ * nearer end moved -- the front back by n, its pos elements copied down, or the back's elements copied up from the end --
+ * and the hole filled; else regrown to __recommend's capacity, the ring copied around the n copies into the new storage.
+ * THE VALUE A REFERENCE TO A TERNARY (`inside ? value_type(x) : x`, an rvalue arm): the temporary is materialised in the
+ * frame (sp+236), both arms load x and the fills re-read it there -- the target's 0x868 exactly; a plain `value_type v`
+ * folds the test away (0x818). OPEN, at the target's size, 456 instructions all registers: in the front branch the target
+ * reads b's storage and last slot for `b += -n` through the four-argument constructor's address temporaries (a0, v1) and
+ * copies ob through new ones; here ob's copy takes the constructor's and += new ones, and the numbering shifts every
+ * volatile register after it. Tried: ob by copy constructor, by value through an inline, declared first, `iterator &r = b;
+ * r += ...` (458), `b = b + -n` (0x8A0), += through an inline taking a reference; the capacity test with `cap` in a local
+ * (`== 0 ?` form: the target's head). The replay (igreplay --target --greedy, build/scratch/eng-r2/): 119 of 144 nodes
+ * differ; moving the value's reference v (v40) past b's address temporaries (131.5) and ob's scalarised position (v64,
+ * 130.5) leaves 71 -- the target colours &b+4 / &b+12 (v130, v132) before v, pos and back. v through a pointer (assigned
+ * once or twice), through an inline returning the reference, or a value local with a reference to it: unchanged, 456 */
+template <class Allocator>
+void cdeque<const void *, Allocator>::insert(iterator position, unsigned int n, const value_type &x)
+{
+    if (n == 0)
+        return;
+    unsigned int cap = this->capacity_ == 0 ? 0 : this->capacity_ - 1;
+    unsigned int size = this->size_ + n;
+
+    if (size <= cap) {
+        iterator b(this->data_ + this->start_, this->data_, this->start_, this->capacity_);
+        unsigned int pos = __cdeque_dist(position, b);
+        unsigned int back = this->size_ - pos;
+        bool inside = false;
+
+        if (&x >= this->data_ && &x < this->data_ + this->capacity_)
+            inside = true;
+        const value_type &v = inside ? value_type(x) : x;
+
+        if (pos < back) {
+            iterator ob = b;
+
+            b += -(int)n;
+            this->start_ = b.p_ - this->data_;
+            this->size_ += n;
+            if (pos)
+                b = __cdeque_copy(ob, ob + pos, b);
+            __cdeque_fill_n(b, n, v);
+        } else {
+            this->size_ += n;
+            b = end();
+            if (back)
+                b = __cdeque_copy_backward(b + -(int)(n + back), b + -(int)n, b);
+            for (; n > 0; --n)
+                *--b = v;
+        }
+    } else {
+        unsigned int c = __recommend(size);
+        value_type *p = this->allocate(c + 1);
+        value_type *d = p;
+
+        for (__ring_iterator i = __ring_begin(); i.p_ != position.p_; ++i, ++d)
+            *d = *i;
+        __cdeque_fill_n(d, n, x);
+        d += n;
+        if (this->data_) {
+            for (__ring_iterator e = __ring_end(); position.p_ != e.p_; ++position, ++d)
+                *d = *position;
+            this->deallocate(this->data_, this->capacity_);
+        }
+        this->data_ = p;
+        this->capacity_ = c + 1;
+        this->start_ = 0;
+        this->size_ += n;
+    }
+}
+#endif
 
 /* x put past the back (0x2858B0, zanim_menu.cpp's tail: the state queue's push 0x2852B0 calls it out of
  * line; the UI's round 37): in place while the buffer has room (the count stepped first, then the slot

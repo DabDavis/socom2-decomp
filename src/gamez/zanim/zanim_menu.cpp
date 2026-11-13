@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* the circular buffer's insert defined here alone (include/deque: 0x286160 is this unit's tail) */
+#define __MSL_CDEQUE_INSERT
 #include <algorithm>
 
 #include "zanim_menu.h"
@@ -5202,8 +5204,7 @@ void CSelectedCharsItr::Advance()
  * OPEN, 76 instructions at the target's size (0x428), 6 of them structural: the target's first block holds `sll
  * t6,t3,2` (the capacity's shift: begin()'s dead last_ surviving pass 0's common subexpressions) and one data read,
  * and the rest is the register rotation they cause; a dead read of begin()'s last_ in the text changes nothing.
- * The insert 0x286160 (0x868) is not written: its begin() is built in memory at sp+208 by the four-argument iterator
- * constructor, a shape this erase does not exercise. */
+ * The insert 0x286160 (0x868) is include/deque's, defined here by __MSL_CDEQUE_INSERT (OPEN, registers: its note). */
 typedef Metrowerks::cdeque<const void *, std::allocator<const void *> > CStateBuf;
 
 template <class X, class Y>
