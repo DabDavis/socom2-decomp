@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC Medius code, round 80** (rt_udp 0x63ECC8 and 0x63EF38 byte-exact, one shape: the connection range test the last
+  statement `if (nConn < pUdp->nConns) { ... } return 1;`, the -2 arm its own `return 0;`, a plain `while (pMsg != 0)` walk (round
+  79's goto loop was a stand-in). dmelocal 0x616290 8 short to size, 3 off (the name's address a local `s = (char *)pObject + 12`;
+  the client through a copy `(pC = pClient)->nObjects`); 0x619DD8's pads refit 20 to 3. -fno-strict-aliasing on all twelve units
+  with open rows: nothing. 0x61F920 still a first draft: the target computes `nMaster << 2` once into s1 for both pEntry arms):
+  - AN EARLY RETURN WHOSE TEST'S TEMPORARY SITS IN v1 WHERE THE TARGET'S IS IN v0 IS THE FUNCTION'S LAST STATEMENT: `if (ok) { ... }
+    return N;` (as an early return, if-conversion hoists `v0 = N` above the test; last, it stands before the return label at jump2
+    and the arms cross-jump).
+  - lone nops before a loop's head and continue point are 8-byte loop-label alignment: a real loop with notes, not a goto.
+  - a null test kept on `p + K` is a local holding the sum (inline, 2.96 folds it to `p != -K`). A pointer loaded into one
+    register and copied to another at a loop's entry and tail is a copy local, `(pC = pClient)->...` (the loaded register is
+    PRE's).
 - **Tells from the GCC SDK, round 80** (libmrpc.c's sceSifMUnBindRpc 0x1BD200 and sceSifMCallRpc 0x1BD320 byte-exact: the packet
   written through a union (sceSifMPkt), the client's pid read before paddr is stored; libmrpc 9 of 9 -- a unit-wide
   -fno-strict-aliasing also matches all three but costs sceSifMInitRpc 9 words, and the demo shows libmrpc one object. inet_heap.c's
