@@ -159,10 +159,14 @@ static BTNODE *AllocateBacktrace(DPGENUW *e, BTNODE *prev)
     return chunk;
 }
 
-/* OPEN (0x248; this shape is 0x268 and 132 words off): the chunk loop is the DpScoreUw
- * object's (12-byte nodes; the chunk counter an unsigned short); the twenty cells' loop is
- * unrolled by five there, and the statement order at the top, the cells' stores and the two
- * garbage cells' are not yet measured (ccperm, as InitViterbi@dpscoreuw's was). */
+/* the backtrace chunks chained into one free list (each chunk's nodes walked by the chunk pointer
+ * itself, the list's last node where the walk stops), the root node taken off it, the twenty word
+ * cells and the two garbage cells started from the root. Byte-exact since GCC round 75: the walk
+ * steps `chunk` (indexing gives a copy of it, `move a2,t1`), the chunk counter is not zeroed ahead
+ * of the loop (with `i = 0` above CSE shares one zero for i and `last`, and the entry test reads it:
+ * `sltu` where the target tests the count `beqz`), and f108 is cleared before f232. OPEN from round
+ * 9c to 74 as "the cells' loop unrolled by five and the statement order not measured" -- neither:
+ * the cells' loop matched as written. */
 static void InitViterbi(DPGENUW *e)
 {
     BTNODE *last;
@@ -173,7 +177,6 @@ static void InitViterbi(DPGENUW *e)
     unsigned int per;
 
     e->frame = -1;
-    i = 0;
     e->f48 = 0;
     e->f72 = 0;
     last = 0;
@@ -183,9 +186,11 @@ static void InitViterbi(DPGENUW *e)
         chunk = e->chunks[i];
         if (last != 0)
             last->next = chunk;
-        for (j = 0; j < per; j++)
-            chunk[j].next = &chunk[j + 1];
-        last = &chunk[j];
+        for (j = 0; j < per; j++) {
+            chunk->next = chunk + 1;
+            chunk++;
+        }
+        last = chunk;
     }
     if (last != 0)
         last->next = 0;
@@ -211,8 +216,8 @@ static void InitViterbi(DPGENUW *e)
     c->phen = e->garbage;
     c->bt = root;
     root->count = NWORDCELLS + 2;
-    e->f232 = 0;
     e->f108 = 0;
+    e->f232 = 0;
 }
 
 static int InitDpGenUw(DPGENUW *e)
