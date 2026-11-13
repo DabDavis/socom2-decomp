@@ -2066,6 +2066,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 65** (CSealUnit::AllowCommand 0x5EE7F0 (0x5BC) byte-exact, unwritten before;
+  CSealUnit::Tick 0x5E8060 (0x7F0) written at the target's size, 25 off, all frame slots -- the target puts the five iterator
+  copies first (188-172), the hand-over's erase (168/164), then each walk's erase and push_back interleaved (160-132), where
+  here each erase sits with its copies and the push_backs come last; erase through an inline every way moves it a pass deeper
+  but never level -- maybe an include/list depth device; HandleFireWeapon 0x5BE9A0 d=407 to 296, now 0xF10 of 0xF00, the
+  place-charge test's two float compares keeping an `andi` under every spelling; CZKit::Fire 0x5C5340 still unwritten. All
+  view changes local to seal_unit.cpp: CUnitSealCtrl's slot 0x34 `IsRemote() const`, slots 0x3C-0x80, OnCommand at 0x84):
+  - A MOVZ/MOVN ANYWHERE IN A FUNCTION STOPS MW FILLING BRANCH DELAY SLOTS FROM THE FALL-THROUGH, IN ALL OF IT:
+    AllowCommand's `p = node ? p : 0` (movz) for `node ? &pos : 0` (a branch) took it 0x574 to 0x5BC, all 18 slots at once;
+    HandleFireWeapon's nop slots 57 to 75 (the target's) with its movn. When a candidate is short and every slot it fills
+    from below is a nop in the target, look for a `?:` that compiles to movz/movn.
+  - `slti at,x,0; movn x,zero,at` is `b <= a ? a : b` through a by-value inline (`AtLeast(n, 0)`); in place it branches or
+    computes into v0; `MaxVal(0, n)` (`a < b ? b : a`) gives `slt at,zero,x; movz`.
+  - one network test, two shapes: HostEscort() inlined is branchy (`beqz; daddiu 1`), `bool open = n == 0 || n > 32;` the
+    value form (`xor; sltiu; bnez; sltiu 33; xori`). An `||` of equalities folds into a range test; a `switch` of the same
+    cases a `li`/`beq` chain under every order.
+  - an inline's `return u->m_parent ? u->m_parent->GetTop() : u;` taken into a local before the call gives the unthreaded
+    `b; lw` and the dead `move v0,s1`; passed straight in, it expands after the other argument's inline.
+  - Tick: the squad update 0x5E7830 and the escortee hand-over inside `if (m_a3)`; one iterator for both death walks (its
+    second use the lowest slot, 128); each walk ending on a local `end()` declared before it (36 to 25).
 - **Tells from the HUD, round 70** (CHUD::Init 0x1FA360 (0xF98) and CHUD::Tick 0x1F7FF0 (0x1158) byte-exact, both unwritten
   before, SOCOM 1's bodies; with them the font's out-of-line copies from hud_main.cpp -- C2DFont::Reset 0x1FB370, CPnt3D()
   0x1FB3C0, vector<CTexHandle*>() 0x1FB3D0, map<Us,C2DGlyph>() 0x1FB3F0, the glyph tree's constructor, CSaferStr() 0x1E7B60
