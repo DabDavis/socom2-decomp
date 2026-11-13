@@ -92,7 +92,13 @@ void func_00645290(RT_FRAG_BUF *pBuf, unsigned int nSeq, void *pData, unsigned i
 }
 /* the next complete message's length (0x645380): from the oldest sequence's slot -- or, when that does not start a message,
  * the next slot flagged 0x20000000 past it -- over consecutive fragments to one flagged 0x40000000 */
-/* OPEN (round 26b): d=62, registers only: i takes a2 for the target's a1 and everything shifts from there. */
+/* OPEN (GCC round 81: 62 words to 18, registers only): the count a variable of its own (j: nSlot or n as the counter
+ * gives the search's break path i's equality with nSlot, recomputing the slot's address from nSlot), the slot's
+ * sequence a temporary (`n & SEQ` written at each use: the store takes the and's register), x00 stored before
+ * nExpect, nSlot computed before the nCount test (the target's slot), the walk's length and sequence locals of the
+ * block, nSeq declared after pSlot (pSlot wins their 30000 tie for v1). Left: nSlot (8 refs over 35, 6857) is
+ * allocated before nExpect (10 over 49, 6122) and takes a2; the target's order is nExpect a2, the search's base
+ * copy a2, nSlot a3 -- 720 declaration orders, the counter's three spellings, the arm inverted: none. */
 unsigned int func_00645380(RT_FRAG_BUF *pBuf)
 {
     unsigned int nFirst = 0;
@@ -101,16 +107,16 @@ unsigned int func_00645380(RT_FRAG_BUF *pBuf)
     unsigned int nExpect;
     unsigned int nSlot;
     unsigned int n;
-    unsigned int nSeq;
     unsigned int i;
+    unsigned int j;
 
     if (pBuf == 0)
         return 0;
     nHead = pBuf->x00;
     nExpect = nHead & RT_FRAG_SEQ;
+    nSlot = nHead & (RT_FRAG_SLOTS - 1);
     if (pBuf->nCount == 0)
         return 0;
-    nSlot = nHead & (RT_FRAG_SLOTS - 1);
     if (pBuf->aSlots[nSlot].nLength == 0 || (pBuf->aSlots[nSlot].nSeq & 0x20000000) == 0) {
         i = nSlot;
         for (;;) {
@@ -121,17 +127,18 @@ unsigned int func_00645380(RT_FRAG_BUF *pBuf)
                 break;
         }
         n = pBuf->aSlots[i].nSeq;
-        nSeq = n & RT_FRAG_SEQ;
-        nExpect = nSeq;
-        if (nHead < nSeq) {
-            pBuf->x00 = nSeq;
+        if (nHead < (n & RT_FRAG_SEQ)) {
+            pBuf->x00 = n & RT_FRAG_SEQ;
+            nExpect = n & RT_FRAG_SEQ;
             nSlot = n & (RT_FRAG_SLOTS - 1);
         } else
             return 0;
     }
     i = nSlot;
-    for (nSlot = 0; nSlot < RT_FRAG_SLOTS; nSlot++, i = (i + 1) & (RT_FRAG_SLOTS - 1)) {
+    for (j = 0; j < RT_FRAG_SLOTS; j++, i = (i + 1) & (RT_FRAG_SLOTS - 1)) {
         RT_FRAG_SLOT *pSlot = &pBuf->aSlots[i];
+        unsigned int nSeq;
+        unsigned int nLength;
 
         nSeq = pSlot->nSeq;
         if (nSeq & 0x20000000) {
@@ -139,17 +146,17 @@ unsigned int func_00645380(RT_FRAG_BUF *pBuf)
             nTotal = pSlot->nLength;
             nExpect = nFirst & RT_FRAG_SEQ;
         } else {
-            if (nTotal == 0 || (n = pSlot->nLength) == 0 || nExpect != (nSeq & RT_FRAG_SEQ)) {
+            if (nTotal == 0 || (nLength = pSlot->nLength) == 0 || nExpect != (nSeq & RT_FRAG_SEQ)) {
                 nTotal = 0;
                 continue;
             }
-            nTotal += n;
+            nTotal += nLength;
             if (nSeq & 0x40000000)
                 break;
         }
         nExpect++;
     }
-    if (nSlot == RT_FRAG_SLOTS)
+    if (j == RT_FRAG_SLOTS)
         nTotal = 0;
     if (nTotal != 0)
         pBuf->x00 = nFirst;
