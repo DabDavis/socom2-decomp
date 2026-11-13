@@ -774,7 +774,11 @@ int func_00610FA0(AUDIO *pAudio, int nTo, GRID_HEADER *h, void *pData, int nLen)
  * OPEN (13 words, all registers): the target keeps the state in s0 and the peer in s1, 2.96 here
  * the other way round -- the state a local (it lives across the first send), every spelling tried
  * (its declaration's place, int or unsigned, the tests' order and nesting, the info through a
- * pointer, the peer a typed copy of a void parameter, the results' variables) gives the same. */
+ * pointer, the peer a typed copy of a void parameter, the results' variables) gives the same.
+ * Round 83: it is a priority tie -- p (6 refs over 24, 5000) beats nState (4 over 17, 4705); one more
+ * nState ref flips them and every register comes right: the second call's result in nState (the tail
+ * then copies v0 to s0, 4 bytes long), or nState set in both arms of `if (nAddr != 0)` (the else arm's
+ * load survives as its own block, 8 bytes long: dbr's slot takes `move s2,s3`, not the load). */
 int func_00611180(AUDIO *pAudio, char *pBuf, int nLen, PEER *p)
 {
     unsigned int nState = p->nState;
