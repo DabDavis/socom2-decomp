@@ -236,7 +236,7 @@ bool CAiSAction::Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool 
 }
 
 /* +0x38: the state's phase word below 6 (the name ours) */
-bool CAiSAction::Virtual38()
+bool CAiSAction::Virtual38(CSealCtrlAi *ai)
 {
     return m_phase < 6;
 }

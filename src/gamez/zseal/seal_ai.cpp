@@ -5632,7 +5632,7 @@ static inline bool AvoidPoint(const CPnt3D &pos, const CPnt3D &dir, const float 
  * `mul.s $f20` then `mov.s $f12`, the two instructions round 32 was short), and AvoidPoint taking the
  * mover's fields by reference: the two addresses held across the Normalize add the neighbours that
  * keep the AI deferred past the other four (igdump: all five over K), so it colours first, s0 */
-extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
+extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other, float dT)
 {
     static float s_still = 25.0f;
     static float s_room = 20.0f;
@@ -5857,7 +5857,7 @@ void CSealCtrl::ClearGoal(GOAL_TYPE type)
     if (type == GOAL_NONE)
         type = m_goal_type;
     if (m_goal_type == type) {
-        SetGoalPos(type, 0, 0.0f);
+        SetGoalPos(type, 0, 3.0f);
         SetGoalDir(type, 0, false);
         m_goal_timer.m_timer = CAiTimer::infinite;
         m_goal_timer.m_min = CAiTimer::infinite;
@@ -8403,8 +8403,8 @@ struct CAlertLevel {
     float m_amount;   // 0x4
     unsigned char m_level;   // 0x8
     unsigned char _9[0xc - 0x9];
-    int m_c;   // 0xc: cleared on any change
-    unsigned char _10[0x14 - 0x10];
+    int m_c;   // 0xc: cleared on any change, counted up by each tick (0x556370)
+    float m_10;   // 0x10: the time limit 0x556370 last set, by the throttle
     AI_MODE m_mode;   // 0x14: the AI's mode at the change, 1 without an AI
     unsigned char _15[0x18 - 0x15];
     CAiMapLoc m_loc;   // 0x18: the cause's cell
@@ -8453,6 +8453,250 @@ extern "C" ALERT_CHANGE func_00557F60(CAlertLevel *a, CSealCtrlAi *ai, unsigned 
     if (r != ALERT_NONE)
         a->m_c = 0;
     return r;
+}
+
+extern "C" {
+/* (OVL2 0x5FD620, 0x5FD6F0, seal_aifollow.cpp's: the follow step in the AI's mode -- a tail call of
+ * 0x5FD460, so its bool comes back -- and the follow mode; 0x604390, the path-recover state given
+ * the cell left and the cell to recover to) */
+bool func_005FD620(CSealCtrlAi *ai, CPnt3D *pos, CAiMapLoc *loc);
+AI_MODE func_005FD6F0(const CSealCtrlAi *ai);
+void func_00604390(CAiState *s, const CAiMapLoc *from, const CAiMapLoc *to);
+/* (OVL2 data: how slow the other SEAL must be, squared, for its follow step to be tried; the alert's
+ * time limits by level -- 0x6504E0/0x6504E8 the throttle's lerp, 0x6504F0 level 1's, 0x6504F8 level
+ * 4's; how many cells and how far a recovery point may be; how many ticks a level holds before it
+ * decays -- ints and floats read as variables) */
+extern float data_0064FFA0;
+extern float data_006504E0;
+extern float data_006504E8;
+extern float data_006504F0;
+extern float data_006504F8;
+extern int data_00650500;
+extern int data_00650508;
+extern int data_006504B8;
+}
+
+/* the AI's alert record read in place, off a view of the AI with the record a member (0x556370: the
+ * target folds every field's offset into one off the AI -- a pointer local, an inline returning the
+ * pointer or the cast `(CAlertLevel *)&ai->m_stamp` all keep 0x324 added once in a register; the
+ * names ours) */
+struct CAiAlertView {
+    unsigned char _0[0x324];
+    CAlertLevel m_alert;   // 0x324
+};
+
+#define AlertOf(ai) (&((CAiAlertView *)(ai))->m_alert)
+
+/* small inlines 0x556370 is spelled with (the names ours, each by what it fixes there): a throttle by
+ * value (_max's two copies made right to left, 0x240/0x244), an entity's valid cell by reference (the
+ * cell's address kept in a1), a byte tested through `& ~0` (the target's dsll32/dsrl32 zero
+ * extension), the stack's top of a kind into a bool (its andi), the route resumed (its cell an inline's
+ * local: the lowest slot, below the throttles), the mission's clock (loaded ahead of the record's time) */
+static inline float ThrottleOf(const CEntityCtrl *c, int i) { return c->m_throttle[i]; }
+static inline const CAiMapLoc &ValidLoc(const CEntity *e) { return e->m_mapLocValid; }
+static inline bool Masked(unsigned int v, unsigned int clear) { return (v & ~clear) != 0; }
+static inline bool TopIs(const CSealCtrlAi *ai, AI_STATE st)
+{
+    bool r = !ai->m_stateStack.empty() ? ai->m_stateStack.GetState()->m_state == st : false;
+
+    return r;
+}
+
+static inline void FollowRouteBack(CSealCtrlAi *ai)
+{
+    CZSealBody *me = (CZSealBody *)ai->m_entity;
+    CAiPath *p = (CAiPath *)&ai->m_path;
+    CAiMapLoc to;
+
+    if (!p->PopPoint(&to))
+        to = me->m_mapLocValid;
+    func_0056C080(ai, p, &to);
+}
+
+static inline float MissionTime() { return data_004365C0; }
+
+/* the avoid and path-recover states on top, or none (inlines: the state's kind tested) */
+static inline CAiSAvoid *AsAvoid(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_AVOID ? (CAiSAvoid *)s : 0;
+}
+
+static inline CAiSPathRecover *AsPathRecover(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_PATHRECOVER ? (CAiSPathRecover *)s : 0;
+}
+
+/* the AI's alert record ticked (OVL2 0x556370, new in SOCOM II: CSealCtrlAi's tick calls it; the name
+ * ours): dropped while the state on top refuses it, a mounted SEAL in mode 7 or a grouped AI; else by
+ * level once its time is past the limit -- 1, another SEAL met: its follow step tried, else the avoid
+ * state pushed (the flag) or the way past it (0x557190); 4: the cells ahead and the record's marked; 2:
+ * a cell moved off -- each ending in a recovery or the record dropped. Whether the SEAL acted */
+extern "C" bool func_00556370(CSealCtrlAi *ai, float dT)
+{
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (!ai->GetAiState()->Virtual38(ai)) {
+        AlertOf(ai)->Reset();
+        return false;
+    }
+    if (ai->m_3f4 == 7 && func_0054F6E0(seal, true, true, true)) {
+        AlertOf(ai)->Reset();
+        return false;
+    }
+    if (ai->InGroup()) {
+        AlertOf(ai)->Reset();
+        return false;
+    }
+
+    bool result = false;
+    float t;
+
+    if (AlertOf(ai)->m_level == 0)
+        t = 0.0f;
+    else
+        t = MissionTime() - AlertOf(ai)->m_time;
+
+    float th = ai::_max(ThrottleOf(ai, 0), ThrottleOf(ai, 1));
+    const CAiMapLoc &cell = seal->m_mapLoc;
+    bool recover = false;
+    float hi, lo;
+
+    lo = data_006504E0;
+    hi = data_006504E8;
+    float limit = hi * (1.0f - th) + lo * th;
+
+    AlertOf(ai)->m_10 = limit;
+    bool reset = false;
+    unsigned char avoid = AlertOf(ai)->m_avoid;
+
+    switch (AlertOf(ai)->m_level) {
+    case 0:
+        break;
+    case 1:
+        if (AlertOf(ai)->m_who) {
+            if (AlertOf(ai)->m_who->m_type != CEntity::ENT_TYPE_SEAL)
+                AlertOf(ai)->Reset();
+            else if (!AlertOf(ai)->m_who->m_isAlive)
+                AlertOf(ai)->Reset();
+        }
+        if (AlertOf(ai)->m_who && !(t <= data_006504F0)) {
+            ai->SetDoAiMapCollide(true);
+            bool done = false;
+            CZSealBody *who = AlertOf(ai)->m_who;
+
+            if (who && !ai::is_moving(&who->m_velW, data_0064FFA0)) {
+                CPnt3D pos;
+                CAiMapLoc loc;
+
+                if (func_005FD620(ai, &pos, &loc)) {
+                    int steps = CellSteps(ValidLoc(who), loc);
+                    AI_MODE mode = func_005FD6F0(ai);
+
+                    if (steps <= data_00650500) {
+                        switch (mode) {
+                        case 3:
+                            done = false;
+                            FollowRouteBack(ai);
+                            break;
+                        case 4:
+                        case 5:
+                            done = true;
+                            ai->ClearGoal(GOAL_NONE);
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!done) {
+                if (avoid) {
+                    if (!(t <= limit)) {
+                        if (ai->PushAiState(AI_STATE_AVOID, 0)) {
+                            CAiSAvoid *s = AsAvoid(ai->GetAiState());
+
+                            s->Begin(seal, AlertOf(ai)->m_who, 20.0f);
+                            result = true;
+                            s->SetActive(true);
+                        }
+                        AlertOf(ai)->m_avoid = 0;
+                    }
+                } else {
+                    result = func_00557190(ai, AlertOf(ai)->m_who, dT);
+                }
+            }
+        }
+        break;
+    case 4:
+        if (!(t <= data_006504F8)) {
+            ai->SetDoAiMapCollide(true);
+            CPnt3D dir(ai->m_throttle[1], 0.0f, -ai->m_throttle[0]);
+
+            TransformVectors(&seal->m_node->m_matrix, &dir, &dir, 1);
+            dir.Normalize();
+            func_00556EE0(0, cell, &dir, false);
+            func_00556EE0(0, AlertOf(ai)->m_loc, 0, true);
+            recover = true;
+        }
+        break;
+    case 2:
+        if (!(t <= limit)) {
+            ai->SetDoAiMapCollide(true);
+            if (CellSteps(cell, AlertOf(ai)->m_loc) > 1)
+                reset = true;
+            else
+                recover = true;
+        }
+        break;
+    }
+
+    if (recover) {
+        CAiPath *path = (CAiPath *)&ai->m_path;
+
+        if (ai->PushAiState(AI_STATE_PATHRECOVER, 0)) {
+            CAiSPathRecover *s = AsPathRecover(ai->GetAiState());
+
+            switch (AlertOf(ai)->m_mode) {
+            case 3:
+            case 6:
+                if (path->HasPoints() && path->m_points.size()) {
+                    CAiMapLoc loc = CAiMapLoc::invalid;
+                    int i = 0;
+
+                    while (i < (int)path->m_points.size()) {
+                        loc = path->m_points.data()[path->m_points.size() - i - 1].m_loc;
+                        if ((int)AiMaps.GetLocationDelta(AlertOf(ai)->m_loc, loc) > data_00650508) {
+                            while ((int)path->m_points.size() > 0 && i-- > 0)
+                                path->PopPoint(0);
+                            break;
+                        }
+                        i++;
+                    }
+                    if (loc != CAiMapLoc::invalid)
+                        func_00604390(s, &ai->m_624, &loc);
+                    else {
+                        DropRoute(ai);
+                        s->SetActive(false);
+                    }
+                }
+                break;
+            case 4:
+            case 7:
+                ai->m_goal_pos_valid = false;
+                break;
+            }
+            AlertOf(ai)->Reset();
+        } else if (TopIs(ai, AI_STATE_PATHRECOVER)) {
+            AsPathRecover(ai->GetAiState())->m_58++;
+        }
+    } else if (reset) {
+        AlertOf(ai)->Reset();
+    }
+
+    float amount = data_0066B0F8;
+
+    if (Masked(AlertOf(ai)->m_level, 0) && AlertOf(ai)->m_c >= data_006504B8)
+        func_00557F60(AlertOf(ai), 0, 0, amount);
+    AlertOf(ai)->m_c++;
+    return result;
 }
 
 /* a point's distance from another flat on the ground, squared (an inline: the difference built by the
