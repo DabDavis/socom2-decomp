@@ -2066,6 +2066,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 71** (CZPauseTest::Init 0x202520 (0x1C20) byte-exact, unwritten before -- hud_pausemenu.cpp, from
+  round 70's table: the twelve lines, three sounds, the IsSelectable loop, the background, panels, bars, mission name,
+  prompts, the third panel's questions, the yes/no boxes, each pushed on the one before, its tail ReInit's body inlined;
+  CTCM::Update 0x236430, open since round 65 at 2. Class changes local: CPauseItem's inline Set/SetFlags, CZPauseTest::m_20
+  `C2DFont *m_font`, `CSnd::GetSoundByName` static (CPauseSub is really the sound class)):
+  - AN OWN FUNCTION INLINED INTO A CALLER MUST FIT `-inline auto`'s 15 STATEMENTS: ReInit's ten SetString calls left it
+    called (0x1AA8); its strings in an inline member SetStrings() inline it, its out-of-line copy 0x202370 unchanged.
+    `#pragma inline_max_auto_size(40)` proved the shape first.
+  - a `false` to an inline bit-field setter taking bool stays `andi rX,zero,1` before its shift; `true` folds.
+  - A LOCAL ASSIGNED BEFORE A CALL MATERIALISES ITS CONSTANT FIRST: `right = 40.0f + yes;` ahead of `SetPos(..., (int)(4.0f
+    + right), ...)` puts 40.0 before the 253.0 conversion (15 off); `4.0f + (40.0f + yes)` in the call matches, the shared
+    sum in f22; the box edges float locals, their (int)s unfolded in s2-s5 across both boxes.
+  - COMPOUND ADD MOVES A `lui`: `v = cur; v += rate * step;` puts the rate's `lui at` ahead of the direction's load;
+    `v = cur + rate * step` after it.
+  - tried, unchanged: CTCM::HandleOpenPad 0x235D40 (2, a swapped `lb` pair: all 24 orders of st/cross/up/down and more),
+    ClearSlot 0x23ECA0 (38: `^= 1`, `^ true`, `== false`, if-forms, int/uchar used). Still WRONG in range: SetupTeamNameEntry,
+    AddRow, hudOpenPopup, hudAddPopupDefinition, GetScrollPermissions, AddMission, tcmUpdatePlayer (7), HudTick (11),
+    UpdateColor; 0x243840-0x253000 (lgAudInit, libnetb, the func_0024xxxx group) is GCC/net code.
 - **Tells from the AI map, round 1** (a near-miss sweep of OVL2 0x50E000-0x540000 with this session's levers; nothing closed --
   none of the eight targets has a movz/movn. CAiMap::GetCellRepelParams 0x5169B0 41 to 18 off: the FPRs and the modulo's
   registers right, left the n/v frame slots (n at 272 above v at 256 in the target) and `CPnt3D::zero`'s address register
