@@ -1247,7 +1247,7 @@ inline bool CSealUnit::HandleSupport(CZSealBody *seal, FT_COMMAND cmd, void *dat
  * FollowSeal, the prototype signalled through a CAiState pointer (on the object MW calls
  * CAiSBreach::OnSignal directly), the three targeted walks' end() taken into a local first (begin
  * in v0, the end in v1, as the target: 70 -> 52).
- * OPEN, 52 instructions at the target's size (0x1640): (1) the frame -- the target's two cells sit
+ * OPEN, 50 instructions at the target's size (0x1640): (1) the frame -- the target's two cells sit
  * highest (0x14C, 0x148), then the order list's erase/insert temporaries (0x144-0x12C), the
  * escortee's copy (0x128), the prototype pointer and the four order-data words (0x124-0x114);
  * here the temporaries sit 0x14-0x20 lower; (2) the squad-18 walk's node and sentinel swap (s2 /
@@ -1255,8 +1255,8 @@ inline bool CSealUnit::HandleSupport(CZSealBody *seal, FT_COMMAND cmd, void *dat
  * the iterator declared first, its end a local or the prototype's definition late all miss); (4)
  * the prototype's kind reloaded lb
  * (here lbu -- a signed char cast changes nothing), the default walk's `took || b` scheduled a
- * word later, `size() >= 4` compared into v0 (the target's sltiu at: a signed-int count, an if or
- * a reversed ternary all worse) */
+ * word later. The kit's round 66: the path's `size() > 3` is the target's sltiu at (`>= 4` computed
+ * into v0), 52 -> 50 */
 CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b)
 {
     if (m_unit_num == 1 && IsRelayCommand(cmd)) {
@@ -1345,7 +1345,7 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
 
                 if (u) {
                     CAiPath &path = ((CUnitSealView *)seal)->m_snakePath;
-                    const CAiPath::point *p = path.m_points.size() >= 4 ? &path.m_points[3] : 0;
+                    const CAiPath::point *p = path.m_points.size() > 3 ? &path.m_points[3] : 0;
 
                     if (p) {
                         u->SetData(p, 4);
