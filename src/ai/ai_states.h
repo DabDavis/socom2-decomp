@@ -241,7 +241,7 @@ public:
      * `!func_00572D30(ai, owner)`; CAiSAction's 0x5F0740 and CAiSBreach's 0x5F34D0 read the event
      * in a2 and the bool in t0; the names ours) */
     virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy) { return true; }
-    virtual bool Virtual38() { return true; }                             /* +0x38 (new) */
+    virtual bool Virtual38(CSealCtrlAi *ai) { return true; }              /* +0x38 (new): the AI passed (0x556370 hands it in a1) */
     /* +0x3C (new): the AI passed (the follow's master check 0x5FDD40 and 0x558640 hand it in a1 after
      * testing its bit 13; no override read so far reads it) */
     virtual bool Virtual3C(CSealCtrlAi *ai) { return true; }
@@ -622,7 +622,7 @@ public:
     virtual bool CanScan() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
     virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
-    virtual bool Virtual38();
+    virtual bool Virtual38(CSealCtrlAi *ai);
     virtual ~CAiSAction();
 
     /* 0x58: the action's object, released on the way out for the SEAL (OnSignal's

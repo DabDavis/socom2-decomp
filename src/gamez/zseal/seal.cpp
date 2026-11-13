@@ -2034,10 +2034,10 @@ static inline bool SolveQuadratic(float a, float b, float c, float *t0, float *t
 /* a moving upright cylinder's sweep against a standing one: the first time in 0..1 where the mover --
  * at a point with a radius and a height, moving by a step -- overlaps the other in height and touches it
  * in the ground plane; the hit point, and the way out of the other's axis level and unit; whether it
- * hits (OVL2 0x550330, new in SOCOM II: 0x54F7E0 calls it, the standing cylinder's height by the
- * stance; the name unknown) */
-extern "C" bool func_00550330(CPnt3D *hit, CPnt3D *normal, float cx, float cy, float cz, float r, float h,
-                              float px, float py, float pz, float r2, float h2, float dx, float dy, float dz)
+ * hits (OVL2 0x550330, SOCOM 1's collideCylinders__FfffffffffffffR6CPnt3DR6CPnt3D -- its order, the
+ * points last: 0x54F7E0 takes the normal's address after the floats; the name ours) */
+extern "C" bool func_00550330(float cx, float cy, float cz, float r, float h, float px, float py, float pz,
+                              float r2, float h2, float dx, float dy, float dz, CPnt3D *hit, CPnt3D *normal)
 {
     float t0 = 0.0f;
     float t1;
@@ -2089,6 +2089,218 @@ extern "C" bool func_00550330(CPnt3D *hit, CPnt3D *normal, float cx, float cy, f
     return true;
 }
 
+struct CAlertLevel;
+extern "C" {
+bool func_00558440(CAlertLevel *a, CSealCtrlAi *ai, CZSealBody *seal, float amount, bool avoid);
+CZBodyAnimBlend *func_0057F5B0(CZSealBody *seal);
+/* the AIs' reach when two of them meet (OVL2 data 0x64FCC0, 0.65), the alert's amount (0x64FCC8,
+ * 0.1) and the avoid flag handed with it (OVL1 bss 0x66AAC0; the names ours) */
+extern float data_0064FCC0;
+extern float data_0064FCC8;
+extern bool data_0066AAC0;
+}
+
+/* the blend's bit 0x20 as an int (an inline, the name ours: tested `? false : true` it gives the
+ * target's `andi; sltu; xori; beqz` -- a bool inline, `!`, `== 0`, `!= 0` all branch on the andi) */
+static inline int BlendFlag20(CZBodyAnimBlend *b) { return func_005551A0(b->m_flags, 0x20); }
+
+/* the SEAL's collision cylinder's height by its state (the name ours) */
+static inline float CollideHeight(int state)
+{
+    return state == stateProne ? 6.0f : state == stateCrouch ? 15.0f : 19.1f;
+}
+
+/* the SEAL kept out of the SEALs it targets: its motion (m_f44) cut where its cylinder would sweep into
+ * another's, a player pushed out of one it stands in, the AIs that meet told of each other; whether
+ * the motion changed (OVL2 0x54F7E0, SOCOM 1's CollidePlayers__10CZSealBodyFR6CPnt3D -- its motion a
+ * member now, the frame time unused; the name ours) */
+extern "C" bool func_0054F7E0(CZSealBody *seal, float dT)
+{
+    bool moved = false;
+
+    seal->m_altitude_characters = false;
+    CPnt3D &vel = seal->m_f44;
+    if (vel.x * vel.x + vel.y * vel.y + vel.z * vel.z <= 0.0002f && fabsf(seal->m_23c) <= 0.001f)
+        return false;
+    if (!seal->m_isAlive || !seal->m_check_player_collision)
+        return false;
+
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends);
+    bool ladder = false;
+
+    if (seal->m_state == stateClimbLadder || top->m_state == stateClimbLadder ||
+        seal->IsCurrentBlend((AnimType)46)) {
+        bool on = false;
+
+        if (seal->IsCurrentBlend((AnimType)46) && (BlendFlag20(top) ? false : true))
+            on = true;
+        ladder = on;
+        if (!on)
+            return false;
+    }
+
+    const CPnt3D *m = (const CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+    float x = m->x;
+    float y = m->y;
+    float z = m->z;
+    float r = seal->m_state == stateProne ? 8.0f : seal->m_state == stateCrouch ? 7.0f : 6.0f;
+    /* (an if around a ternary: a plain ternary's value is copy-propagated into the one use, the
+     * temporary numbering last -- f20 where the target holds h in f25; a full if-chain moves code) */
+    float h;
+    if (seal->m_state == stateProne)
+        h = 6.0f;
+    else
+        h = seal->m_state == stateCrouch ? 15.0f : 19.1f;
+
+    if (!(seal->m_wep_seq.Weight() <= 0.05f))
+        r *= 1.75f;
+
+    float reach = 0.0f;
+
+    if (seal->IsPlayer())
+        reach = seal->m_curr_firepos.x * seal->m_curr_firepos.x + seal->m_curr_firepos.z * seal->m_curr_firepos.z;
+
+    CZBodyAnimBlend *blend = (CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends);
+    bool upright = true;
+
+    if (blend->m_state == stateDead ||
+        seal->m_state == stateProne || seal->m_state == stateDead || seal->m_state == stateCarried)
+        upright = false;
+
+    CTargetList &targets = seal->m_targets;
+
+    for (CTargetList::iterator t = targets.begin(); t != targets.end(); ++t) {
+        CZSealBody *other = AsSeal(t->m_ent);
+
+        if (!other || !other->GetNode()->m_active || seal == other->m_carry || seal->m_carry == other)
+            continue;
+
+        bool prone = other->m_state == stateProne || other->m_state == stateDead;
+
+        if (prone && upright) {
+            seal->m_altitude_characters = true;
+            continue;
+        }
+
+        float r2 = prone ? 8.0f : other->m_state == stateCrouch ? 7.0f : 6.0f;
+
+        if (!(other->m_wep_seq.Weight() <= 0.05f))
+            r2 *= 1.75f;
+
+        float near = (r + r2) * (r + r2);
+
+        if (!(t->m_distSq < 2.5f * (near + reach)))
+            continue;
+
+        CPnt3D opos = *(const CPnt3D *)other->GetNode()->m_matrix.m_matrix[3];
+        bool both = false;
+        bool aiOther = false;
+        float r1 = r;
+        bool aiSelf = false;
+
+        if (seal->IsPlayer()) {
+            CPnt3D p = *(const CPnt3D *)seal->m_node->m_matrix.m_matrix[3] + seal->m_curr_firepos + vel;
+
+            p.y = opos.y;
+            p -= opos;
+            float d = p.Length();
+
+            if (d < r2) {
+                float push = r2 - d;
+                CPnt3D dir = *(const CPnt3D *)seal->m_node->m_matrix.m_matrix[3] - opos;
+
+                dir.y = 0.0f;
+                float len = sqrtf(dir.x * dir.x + dir.z * dir.z);
+
+                if (len != 0.0f) {
+                    float inv = 1.0f / len;
+
+                    dir.x *= inv;
+                    dir.z *= inv;
+                }
+                vel += dir * push;
+                moved = true;
+            }
+            aiOther = LodAiDriven(other);
+        } else if (LodAiDriven(seal)) {
+            if (LodAiDriven(other)) {
+                both = true;
+                r2 *= data_0064FCC0;
+                r1 *= data_0064FCC0;
+            } else {
+                aiSelf = true;
+            }
+        }
+
+        if ((*t).m_distSq < near) {
+            float ox = opos.x;
+            float oy = opos.y;
+            float oz = opos.z;
+            float vx = vel.x;
+            float vy = vel.y;
+            float vz = vel.z;
+            float rr = r2 + r1;
+
+            if (vx > 0.0f) {
+                if (ox < x - rr || !(ox <= rr + (x + vx)))
+                    continue;
+            }
+            if (vx < 0.0f) {
+                if (ox < x + (vx - rr) || !(ox <= x + rr))
+                    continue;
+            }
+            if (vz > 0.0f) {
+                if (oz < z - rr || !(oz <= rr + (z + vz)))
+                    continue;
+            }
+            if (vz < 0.0f) {
+                if (oz < z + (vz - rr) || !(oz <= z + rr))
+                    continue;
+            }
+
+            CPnt3D hit;
+            CPnt3D normal;
+
+            if (!func_00550330(ox, oy, oz, r2, CollideHeight(other->m_state), x, y, z, r1, h, vx, vy, vz, &hit,
+                               &normal))
+                continue;
+
+            float d = vel.x * normal.x + vel.y * normal.y + vel.z * normal.z;
+
+            if (d < 0.0f) {
+                if (ladder) {
+                    func_0057F5B0(seal);
+                    return moved;
+                }
+                vel -= normal * d;
+            }
+            d = seal->m_1350.x * normal.x + seal->m_1350.y * normal.y + seal->m_1350.z * normal.z;
+            if (d < 0.0f)
+                seal->m_1350 -= normal * d;
+            moved = true;
+        }
+
+        if (moved && (aiSelf || both || aiOther)) {
+            if (aiSelf) {
+                CSealCtrlAi *ai = seal->GetSealCtrlAi();
+
+                func_00558440((CAlertLevel *)&ai->m_stamp, ai, other, data_0064FCC8, data_0066AAC0);
+            } else if (both) {
+                CSealCtrlAi *ai = seal->GetSealCtrlAi();
+
+                func_00558440((CAlertLevel *)&ai->m_stamp, ai, other, data_0064FCC8, data_0066AAC0);
+                ai = other->GetSealCtrlAi();
+                func_00558440((CAlertLevel *)&ai->m_stamp, ai, seal, data_0064FCC8, data_0066AAC0);
+            } else if (aiOther) {
+                CSealCtrlAi *ai = other->GetSealCtrlAi();
+
+                func_00558440((CAlertLevel *)&ai->m_stamp, ai, seal, data_0064FCC8, data_0066AAC0);
+            }
+        }
+    }
+    return moved;
+}
+
 extern "C" {
 /* three anim types the code reads as variables (OVL1 data, -1 in the image) */
 extern short data_003DEF40;
@@ -2111,7 +2323,6 @@ extern "C" bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool ani
 }
 
 extern "C" {
-void func_0054F7E0(CZSealBody *seal, float dT);
 /* the speed below which a SEAL stops checking player collision, squared (OVL2 data, 0.0001: a
  * variable -- read with lwc1 for the compare) */
 extern float data_0064FCD0;
