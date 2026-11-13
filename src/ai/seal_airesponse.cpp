@@ -1310,6 +1310,203 @@ extern "C" void func_006055B0(CAiSEvent *s, CSealCtrlAi *ai)
     }
 }
 
+extern "C" {
+/* a script sequence run on the AI's script state (OVL2 0x5F43B0) and a state's hold on the AI's
+ * weapon kind given back (0x5F6190): seal_aistate.cpp's */
+bool func_005F43B0(CSealCtrlAi *ai, const char *name, unsigned int flags);
+void func_005F6190(CAiState *s, CSealCtrlAi *ai);
+}
+
+/* the event's random wait, its Rfloat drawn (zkit.h's Rfloat::operator float, inline; the name ours) */
+static inline float EventWait(CAiSEvent *s)
+{
+    float f;
+
+    if (s->m_rnd_range == 0.0f)
+        f = s->m_rnd_min;
+    else {
+        float r = 4.656613e-10f * rand();
+        f = s->m_rnd_min + s->m_rnd_range * r;
+    }
+    return f;
+}
+
+/* the plan the goto just pushed onto the event's own stack, or 0 (inline; the name ours) */
+static inline CAiSPlan *EventPlan(CAiSEvent *s)
+{
+    CAiState *st = s->m_stack.GetState();
+
+    return (CAiSPlan *)(st ? (st && st->m_state == AI_STATE_PLAN ? st : 0) : 0);
+}
+
+/* an event (OVL2 0x604CE0; SOCOM 1's grown): the player's side never shouts or orders (bits 1-3); the
+ * sub-step first; a held target (bit 4) or the alert (bit 5) breaks it off (8) unless it waits (bit 2),
+ * as does its clock running out. 0 the callout, 1 and 2 a look at each point, 3 a goto to the event's
+ * cell with a plan covering the event (5 after), 5 the look held there, 6 the goto back to the cell the
+ * SEAL started from (8 after), 7 a wait, 8 and 9 the way out -- the AI's script told the event's name.
+ * Byte-exact (round 65, unwritten before): the player's-side test `m_navyseal ? true : false` (sltu); the
+ * wait an Rfloat drawn through a NON-const pointer (const, its range's second read takes an address
+ * temporary); the scan angle 20 degrees (0.34906584f); the cell test `x != || y != ? 6 : 8`; the step
+ * copied into a local before the end's compare (its address is taken: read in place, it is reloaded
+ * after the m_8d store); the limits function-local statics (8-byte-spaced data, content-checked) */
+int CAiSEvent::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+
+    if (ai->m_navyseal ? true : false)
+        SetFlags(0, 0xe);
+    STEP step = (STEP)m_phase;
+
+    Virtual14(ai, 0);
+    unsigned int flags = m_flags;
+
+    if (flags & 4) {
+        bool waiting = m_phase == 0 || m_8d == 0;
+
+        if (waiting)
+            goto timed;
+    }
+    if ((flags & 0x10) && TargetHeld(ai))
+        step = STEP_8;
+    else if (HasFlags(this, 0x20) && !(((CAiCtrlEvent *)ai)->m_718 <= 1.0f))
+        step = STEP_8;
+timed:
+    if (m_time != -1.0f && step >= 0) {
+        if ((m_time -= m_dT) <= 0.0f)
+            step = STEP_8;
+    }
+    switch (step) {
+    case STEP_0:
+        NextStep(&step, m_88);
+        func_006055B0(this, ai);
+        break;
+    case STEP_1:
+        ai->m_stateStack.SetFlags(1, 0);
+        if (ai->SetLookPosW((AI_LOOK)5, &m_pos)) {
+            ai->SetLookTimer(EventWait(this));
+            ai->SetScanAngle(0.34906584f);
+            ai->ModifyLookFlags(1, 0);
+        }
+        NextStep(&step, (m_flags & 2) ? m_80 : EventWait(this));
+        ai->m_stateStack.SetFlags(1, 0);
+        break;
+    case STEP_2:
+        if (ai->SetLookPosW((AI_LOOK)5, &m_pos2)) {
+            ai->ModifyLookFlags(1, 0);
+            ai->SetLookTimer(EventWait(this));
+            ai->SetScanAngle(0.34906584f);
+        }
+        NextStep(&step, EventWait(this));
+        break;
+    case STEP_3: {
+        static float s_tolNear = 0.15f;
+        static float s_tolFar = 1.0f;
+        static int s_limit = 10000;
+        static int s_tol = 3;
+        CAiMapLoc loc;
+        bool ok;
+
+        step = STEP_8;
+        switch ((signed char)m_58) {
+        case 5:
+            ok = AiMaps.GetLocation(&m_pos, loc);
+            m_cell = *(unsigned int *)&CAiMapLoc::invalid;
+            break;
+        default:
+            ok = AiMaps.GetLocation((m_flags & 1) ? &m_pos2 : &m_pos, loc);
+            m_cell = *(unsigned int *)&seal->m_mapLocValid;
+            break;
+        }
+        if (ok && func_005F0830(ai, (unsigned int *)&loc, 4, -1, -1)) {
+            CAiSPlan *plan = EventPlan(this);
+
+            plan->m_114 = (unsigned int)this;
+            plan->m_124 = 5;
+            plan->m_128 = 8;
+            plan->m_12c = (m_flags & 8) ? s_tolNear : s_tolFar;
+            plan->m_11c = s_limit;
+            plan->m_130 = s_tol;
+            step = STEP_5;
+            m_8c = 5;
+        }
+        break;
+    }
+    case STEP_5: {
+        static float s_hold = 5.0f;
+        static float s_angle = 1.5707964f;
+
+        m_84 = s_hold;
+        if (ai->SetLookPosW((AI_LOOK)5, (m_flags & 1) ? &m_pos2 : &m_pos)) {
+            ai->SetLookTimer(m_84);
+            ai->SetLookFlags(6);
+            ai->SetScanAngle(s_angle);
+            ai->SetScanRate(1.0f);
+            ai->SetLookRate(1.0f);
+        }
+        m_8c = ((CAiMapLoc *)&m_cell)->x != CAiMapLoc::invalid.x || ((CAiMapLoc *)&m_cell)->y != CAiMapLoc::invalid.y ? 6 : 8;
+        step = STEP_7;
+        break;
+    }
+    case STEP_6: {
+        static float s_tolNear = 0.15f;
+        static float s_tolFar = 1.0f;
+        static int s_limit = 10000;
+        static int s_tol = 3;
+
+        ai->ClearLook((AI_LOOK)5);
+        if (m_flags & 8) {
+            func_00571010(ai, func_00609530(2), 258, (ORDER_KIND)11);
+            func_005F6190(this, ai);
+        }
+        if (func_005F0830(ai, &m_cell, 4, -1, -1)) {
+            CAiSPlan *plan = EventPlan(this);
+
+            plan->m_114 = (unsigned int)this;
+            plan->m_124 = 8;
+            plan->m_128 = 8;
+            plan->m_12c = (m_flags & 8) ? s_tolNear : s_tolFar;
+            plan->m_11c = s_limit;
+            plan->m_130 = s_tol;
+            step = STEP_8;
+            m_8c = 8;
+        } else {
+            m_84 = 1.5f;
+            m_8c = 8;
+            step = STEP_7;
+        }
+        break;
+    }
+    case STEP_7:
+        if ((m_84 -= m_dT) <= 0.0f) {
+            m_84 = 0.0f;
+            step = (STEP)(signed char)m_8c;
+        }
+        break;
+    case STEP_8:
+        ai->ClearLook((AI_LOOK)5);
+        step = STEP_9;
+        m_84 = 0.0f;
+    case STEP_9:
+        if ((m_84 -= m_dT) <= 0.0f) {
+            if ((m_flags & 8) && ai->GetAiAware() == AIA_SUSPICIOUS)
+                ai->SetAiAware(AIA_UNAWARE, 0, -1.0f);
+            ai->PopAiState();
+            if (m_name[0]) {
+                func_005F43B0(ai, m_name, 3);
+                return AI_RUNNING;
+            }
+        }
+        break;
+    }
+    STEP s = step;
+
+    if (s != m_phase) {
+        m_8d = m_phase;
+        UpdatePhase(s);
+    }
+    return Result();
+}
+
 /* the hold's signed-byte count (a file static: its Tick reads it too; OVL2 data 0x650E10) */
 static signed char s_holdCount = 3;
 

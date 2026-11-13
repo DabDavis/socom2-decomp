@@ -881,6 +881,8 @@ public:
         __ct__9CAiMapLocFv(&m_cell);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x604CE0) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x605800): an event interrupted by a held target or the AI's alarm */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     /* the step after `*step` picked by the flags and kept in m_8c, the delay in m_84, and
@@ -914,8 +916,8 @@ public:
     unsigned int m_cell;   // 0x7c: a CAiMapLoc
     float m_80;   // 0x80 (0.5 on a reset)
     float m_84;   // 0x84: the delay NextStep was given (the name ours)
-    unsigned int m_88;   // 0x88
-    unsigned char m_8c;   // 0x8c
+    float m_88;   // 0x88: the first step's delay (seal_aievent.cpp sets 3.0; the name ours)
+    signed char m_8c;   // 0x8c: the step after a wait (NextStep; read back with lb -- the name ours)
     unsigned char m_8d;   // 0x8d
     char m_name[16];   // 0x8e: a name, up to 16 characters (SetName; cleared on a reset)
     unsigned char _9e[0xa0 - 0x9e];   // 0xa0 bytes, Create's new
