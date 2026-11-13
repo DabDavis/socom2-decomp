@@ -317,6 +317,14 @@ void BufferElement::DrawStreaked(float (&m)[4][4])
     in[3] = *(float *)&head[3];
     CPnt4D *fogAlt = Cam()->m_vuFogAlt;
 
+#if Z_PORT
+    /* the point (its w the projection's word) into vf20, the camera's altitude-fog pair into
+     * vf17/vf18, VU0's micro program at 0 started: the fog comes back in vf14 */
+    z_vu0_lqc2(20, pin);
+    z_vu0_lqc2(17, &fogAlt[0]);
+    z_vu0_lqc2(18, &fogAlt[1]);
+    z_vu0_callms(0x0);
+#else
     asm {
         .set noreorder
         lqc2 vf20, 0(pin)
@@ -326,6 +334,7 @@ void BufferElement::DrawStreaked(float (&m)[4][4])
         vnop
         .set reorder
     }
+#endif
     _word128 *p = m_spr;
 
     if (m_texture != m_lastTexture) {
@@ -340,11 +349,15 @@ void BufferElement::DrawStreaked(float (&m)[4][4])
     p++;
     int fog;
 
+#if Z_PORT
+    fog = ((int *)z_vu0.vf[14])[0];   /* qmfc2.i: waits for the program; the low word, vf14.x */
+#else
     asm {
         .set noreorder
         qmfc2.i fog, vf14
         .set reorder
     }
+#endif
     CPnt4D tint = func_003B7590(m_instance->m_source->m_tint);
 
     func_003B59A0((_word128 *)this, (_word128 *)&tint, (_word128 *)&c);
@@ -493,6 +506,14 @@ void BufferElement::DrawXZ(float (&m)[4][4])
     in[3] = *(float *)&out[3];
     CPnt4D *fogAlt = thePipe.m_camera->m_vuFogAlt;
 
+#if Z_PORT
+    /* the point (its w the projection's word) into vf20, the camera's altitude-fog pair into
+     * vf17/vf18, VU0's micro program at 0 started: the fog comes back in vf14 */
+    z_vu0_lqc2(20, pin);
+    z_vu0_lqc2(17, &fogAlt[0]);
+    z_vu0_lqc2(18, &fogAlt[1]);
+    z_vu0_callms(0x0);
+#else
     asm {
         lqc2 vf20, 0(pin)
         lqc2 vf17, 0(fogAlt)
@@ -500,6 +521,7 @@ void BufferElement::DrawXZ(float (&m)[4][4])
         vcallms 0x0
         vnop
     }
+#endif
     corner[0][0] = InstOf(this)->m_pos[0] - ScaleOf(this);
     corner[0][1] = InstOf(this)->m_pos[1];
     corner[0][2] = InstOf(this)->m_pos[2] - ScaleOf(this);
@@ -530,11 +552,15 @@ void BufferElement::DrawXZ(float (&m)[4][4])
         return;
     int fog;
 
+#if Z_PORT
+    fog = ((int *)z_vu0.vf[14])[0];   /* qmfc2.i: waits for the program; the low word, vf14.x */
+#else
     asm {
         .set noreorder
         qmfc2.i fog, vf14
         .set reorder
     }
+#endif
     p0[3] = fog;
     p1[3] = fog;
     p2[3] = fog;
@@ -666,6 +692,14 @@ void BufferElement::DrawRotated(float (&m)[4][4])
     in[3] = *(float *)&out[3];
     CPnt4D *fogAlt = thePipe.m_camera->m_vuFogAlt;
 
+#if Z_PORT
+    /* the point (its w the projection's word) into vf20, the camera's altitude-fog pair into
+     * vf17/vf18, VU0's micro program at 0 started: the fog comes back in vf14 */
+    z_vu0_lqc2(20, pin);
+    z_vu0_lqc2(17, &fogAlt[0]);
+    z_vu0_lqc2(18, &fogAlt[1]);
+    z_vu0_callms(0x0);
+#else
     asm {
         .set noreorder
         lqc2 vf20, 0(pin)
@@ -675,6 +709,7 @@ void BufferElement::DrawRotated(float (&m)[4][4])
         vnop
         .set reorder
     }
+#endif
     p0[0] = (int)((float)out[0] + (float)dx * aspect);
     p0[1] = (int)((float)out[1] + (float)dy * aspect);
     p0[2] = out[2] << 4;
@@ -697,11 +732,15 @@ void BufferElement::DrawRotated(float (&m)[4][4])
         return;
     int fog;
 
+#if Z_PORT
+    fog = ((int *)z_vu0.vf[14])[0];   /* qmfc2.i: waits for the program; the low word, vf14.x */
+#else
     asm {
         .set noreorder
         qmfc2.i fog, vf14
         .set reorder
     }
+#endif
     p1[3] = fog;
     p0[3] = fog;
     p2[3] = fog;
@@ -836,6 +875,14 @@ void BufferElement::Draw(float (&m)[4][4])
 
     in[3] = *(float *)&out[3];
     CPnt4D *fogAlt = thePipe.m_camera->m_vuFogAlt;
+#if Z_PORT
+    /* the point (its w the projection's word) into vf20, the camera's altitude-fog pair into
+     * vf17/vf18, VU0's micro program at 0 started: the fog comes back in vf14 */
+    z_vu0_lqc2(20, pin);
+    z_vu0_lqc2(17, &fogAlt[0]);
+    z_vu0_lqc2(18, &fogAlt[1]);
+    z_vu0_callms(0x0);
+#else
     asm {
         lqc2 vf20, 0(pin)
         lqc2 vf17, 0(fogAlt)
@@ -843,6 +890,7 @@ void BufferElement::Draw(float (&m)[4][4])
         vcallms 0x0
         vnop
     }
+#endif
     _word128 *p = m_spr;
     int fog;
 
@@ -858,9 +906,13 @@ void BufferElement::Draw(float (&m)[4][4])
         p++;
         float q = 1.0f / (float)out[2];
 
+#if Z_PORT
+        fog = ((int *)z_vu0.vf[14])[0];   /* qmfc2.i: waits for the program; the low word, vf14.x */
+#else
         asm {
             qmfc2.i fog, vf14
         }
+#endif
         p->u128 = *(const u_long128 *)&CPnt4D::zero;
         p++;
         sceVu0FTOI0Vector((int *)p, (float *)&c);
@@ -887,9 +939,13 @@ void BufferElement::Draw(float (&m)[4][4])
         p->u64[0] = 0x2073400000008002;
         p->u64[1] = 0x51;
         p++;
+#if Z_PORT
+        fog = ((int *)z_vu0.vf[14])[0];   /* qmfc2.i: waits for the program; the low word, vf14.x */
+#else
         asm {
             qmfc2.i fog, vf14
         }
+#endif
         sceVu0FTOI0Vector((int *)p, (float *)&c);
         p++;
         p->u32[0] = out[0] - w;

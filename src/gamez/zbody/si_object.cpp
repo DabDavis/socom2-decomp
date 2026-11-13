@@ -87,11 +87,17 @@ static inline void RotToFloat(const short *r, CQuat *rot)
     ib[1] = r[1];
     ib[2] = r[2];
     ib[3] = r[3];
+#if Z_PORT
+    /* vitof15.xyzw: four 1.15 fixed-point words to floats, straight into the quaternion */
+    for (int k = 0; k < 4; k++)
+        ((float *)rot)[k] = z_vu0_itof(ib[k], 15);
+#else
     asm __volatile__ (
         "lqc2 $vf4, 0(%0)\n"
         "vitof15.xyzw $vf5, $vf4\n"
         "sqc2 $vf5, 0(%1)\n"
         : : "r"(ib), "r"(rot) : "memory");
+#endif
 }
 
 /* a position's three shorts in 1/256ths to floats (vitof0, scaled), copied out */
@@ -103,6 +109,11 @@ static inline void PosToFloat(const short *p, CPnt3D *pos)
     ib[0] = p[0];
     ib[1] = p[1];
     ib[2] = p[2];
+#if Z_PORT
+    /* vitof0.xyz, times 1/256 (vmulx), into the float buffer (its w a stale lane there, unread) */
+    for (int k = 0; k < 3; k++)
+        fb[k] = z_vu0_itof(ib[k], 0) * 0.00390625f;
+#else
     asm __volatile__ (
         "lqc2 $vf4, 0(%0)\n"
         "mfc1 $8, %2\n"
@@ -111,6 +122,7 @@ static inline void PosToFloat(const short *p, CPnt3D *pos)
         "vmulx.xyz $vf5, $vf5, $vf3x\n"
         "sqc2 $vf5, 0(%1)\n"
         : : "r"(ib), "r"(fb), "f"(0.00390625f) : "$8", "memory");
+#endif
     pos->x = fb[0];
     pos->y = fb[1];
     pos->z = fb[2];
@@ -176,6 +188,21 @@ CPnt3D *CZSIObject::GetPosRaw(int f0, int f1, float t, CPnt3D *pos)
         ib1[0] = p1[0];
         ib1[1] = p1[1];
         ib1[2] = p1[2];
+#if Z_PORT
+        /* vitof0.xyz both frames, each times 1/256 (vmulx), d = p1 - p0, d *= t, p = d + p0, xyz into the
+         * float buffer (its w a stale lane there, unread) */
+        for (int k = 0; k < 3; k++) {
+            float a = z_vu0_itof(ib0[k], 0);
+            float b = z_vu0_itof(ib1[k], 0);
+            float d;
+
+            a = a * 0.00390625f;
+            b = b * 0.00390625f;
+            d = b - a;
+            d = d * t;
+            fb[k] = d + a;
+        }
+#else
         asm __volatile__ (
             "lqc2 $vf4, 0(%0)\n"
             "lqc2 $vf5, 0(%1)\n"
@@ -192,6 +219,7 @@ CPnt3D *CZSIObject::GetPosRaw(int f0, int f1, float t, CPnt3D *pos)
             "vadd.xyz $vf8, $vf8, $vf4\n"
             "sqc2 $vf8, 0(%2)\n"
             : : "r"(ib0), "r"(ib1), "r"(fb), "f"(0.00390625f), "f"(t) : "$8", "memory");
+#endif
         pos->x = fb[0];
         pos->y = fb[1];
         pos->z = fb[2];

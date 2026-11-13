@@ -80,6 +80,23 @@ void Instance::Tick(float dT)
         if (m_props->m_friction) {
             float f = FastExp(-m_props->m_friction * m_dT);
 
+#if Z_PORT
+            /* the velocity drawn toward the wind: w = wind * factor (vmulx.xyz), d = v - w, d *= f, v = w + d,
+             * xyz; v.w kept */
+            {
+                float *v = m_vel;
+                const float *wind = &zdb::CWorld::m_world->m_Wind.x;
+                float wf = m_props->m_windFactor;
+
+                for (int k = 0; k < 3; k++) {
+                    float w = wind[k] * wf;
+                    float d = v[k] - w;
+
+                    d = d * f;
+                    v[k] = w + d;
+                }
+            }
+#else
             asm __volatile__ (
                 "lqc2 $vf7, 0(%0)\n"
                 "lqc2 $vf4, 0(%1)\n"
@@ -95,6 +112,7 @@ void Instance::Tick(float dT)
                 "vadd.xyz $vf7, $vf4, $vf6\n"
                 "sqc2 $vf7, 0(%0)\n"
                 : : "r"(m_vel), "r"(&zdb::CWorld::m_world->m_Wind.x), "f"(m_props->m_windFactor), "f"(f) : "$8", "memory");
+#endif
         }
     }
 }

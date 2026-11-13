@@ -237,16 +237,31 @@ static inline void TransformVectors(const CMatrix *m, const CPnt3D *in, CPnt3D *
     CPnt4D input;
     CPnt4D output;
 
+#if Z_PORT
+    /* vf4-vf7: the rows copied once, for the loop below */
+    float z_rows[16];
+    for (int k = 0; k < 16; k++)
+        z_rows[k] = ((const float *)m)[k];
+#else
     asm __volatile__(
         "lqc2 $vf4, 0x0(%0)\n"
         "lqc2 $vf5, 0x10(%0)\n"
         "lqc2 $vf6, 0x20(%0)\n"
         "lqc2 $vf7, 0x30(%0)\n"
         : : "r"(m) : "memory");
+#endif
     do {
         input.x = in->x;
         input.y = in->y;
         input.z = in->z;
+#if Z_PORT
+        /* ACC = r0*x; ACC += r1*y; out = ACC + r2*z, xyz (zmath.h's _TransformVectorXYZ) */
+        for (int k = 0; k < 3; k++) {
+            float acc = z_rows[k] * input.x;
+            acc = acc + z_rows[4 + k] * input.y;
+            (&output.x)[k] = acc + z_rows[8 + k] * input.z;
+        }
+#else
         asm __volatile__(
             "lqc2 $vf8, 0(%0)\n"
             "vmulax.xyz $ACC, $vf4, $vf8\n"
@@ -254,6 +269,7 @@ static inline void TransformVectors(const CMatrix *m, const CPnt3D *in, CPnt3D *
             "vmaddz.xyz $vf9, $vf6, $vf8\n"
             "sqc2 $vf9, 0(%1)\n"
             : : "r"(&input), "r"(&output) : "memory");
+#endif
         out->x = output.x;
         out->y = output.y;
         out->z = output.z;
