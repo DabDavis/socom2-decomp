@@ -9426,6 +9426,190 @@ extern "C" bool func_00556280(CCellWalk *w, CCellGather *g)
     return !same;
 }
 
+extern "C" {
+/* the debug switches' word (OVL1 data 0x436620: 0x2000 hides the AI's SEALs), the aim's mode and point
+ * set (OVL2 0x60FB30, the AI states' range), the courage's fall-back (0x570D90, above), the scales'
+ * limits and the view cone's widening (OVL2 data 0x64FFF0, 0x64FE58: 0 and 1; 0x64FFE8: 1.3) */
+extern unsigned int data_00436620;
+void func_0060FB30(CSealCtrlAi *ai, signed char mode, const CPnt3D *point);
+extern float data_0064FFF0;
+extern float data_0064FE58;
+extern float data_0064FFE8;
+}
+
+/* the flags word at 0x268: `clear` cleared, `set` set (an inline; the name ours) */
+static inline void SetFlags268(CSealCtrlAi *ai, unsigned int set, unsigned int clear)
+{
+    ai->m_268 &= ~clear;
+    ai->m_268 |= set;
+}
+
+/* the AI's brain started over: a valve per kind, every flag set, the alive valve opened, the three
+ * points zeroed, the looks, states, path and mode cleared; for the player's team (bit 1) a Navy SEAL
+ * joining team 26, its call sign and code name read off its node's and display names, its radio
+ * valve opened, generally aware and given the item 128; for the rest the binoculars, and call sign 4
+ * for a hostage or an escortee; then the character's parameters merged in and scaled by the
+ * difficulty -- a Navy SEAL's fixed -- the escortee's or the rescued SEAL's set-up, the respawn's
+ * sequence (SOCOM 1's InitAiBrain; OVL2 0x573130: CMission::LoadVehicle, RemoteRespawn and
+ * DoRespawn call it) */
+void CSealCtrlAi::InitAiBrain()
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    for (int i = 0; i < 3; i++) {
+        sprintf(data_0066B110, "%s_%s", seal->m_node->GetName(), get_valve((SEAL_VALVE)i));
+        m_valve[i] = CValve::Create(data_0066B110, 0, (VALVE_TYPE)2);
+    }
+    m_aware.m_value = 0.0f;
+    m_aware.m_goal = 0.0f;
+    SetFlags268(this, 0xffffffff, 0);
+    CValve *alive = m_valve[SEAL_VALVE_ALIVE];
+
+    if (alive)
+        SetValveValue(alive, 1);
+    m_780 = m_78c = m_798 = CPnt3D::zero;
+    ClearLook(AIL_ALL);
+    ClearAiState(true);
+    SetAiState((AI_STATE)0, 0);
+    m_aibit21 = true;
+    m_aibit19 = true;
+    DropRoute(this);
+    SetAiMode((AI_MODE)1);
+    func_0056BEF0(this, true);
+    m_bit17 = true;
+    m_aibit15 = false;
+    m_274 = 0;
+    m_270 = 0;
+    m_6f0 = 0.0f;
+    func_0060FB30(this, 0, &CPnt3D::unit_nz);
+    m_26e = 0;
+    m_follow_master = 0;
+    m_follow_master_id = CEntity::invalidId;
+    func_005604D0(this, 0);
+    SetGroup(0);
+    func_0056C080(this, (CAiPath *)&m_path, &CAiMapLoc::invalid);
+    m_aibit18 = false;
+    m_5c0 = -100.0f;
+    m_5c8 = 0.0f;
+    m_awareTimer = 0.0f;
+    m_awarePending = (AI_AWARE)0;
+    m_5c4 = 0;
+    m_40c = 0.0f;
+    m_400 = 0.0f;
+    m_404 = 0.0f;
+    m_408 = seal->m_health;
+    m_stamp.Reset();
+    m_624 = CAiMapLoc::invalid;
+    m_leg_cell = CAiMapLoc::invalid;
+    m_61c = CAiMapLoc::invalid;
+    m_620 = CAiMapLoc::invalid;
+    m_768 = 1.0f;
+    m_underfire.m_value = 0.0f;
+    m_underfire.m_goal = 0.0f;
+    m_730 = CEntity::invalidId;
+    if (seal->m_team & 2) {
+        m_navyseal = true;
+        m_aibit16 = true;
+        m_aibit17 = false;
+        m_aibit5 = true;
+        m_nosnooze = true;
+        seal->m_invisible = (data_00436620 & 0x2000) != 0;
+        seal->JoinTeam(26);
+        m_debug = false;
+        m_aibit13 = true;
+        const char *display = seal->m_display_name;
+        const char *name = seal->m_node->GetName();
+
+        if (!strcasecmp(name, "able2"))
+            m_26c = 1;
+        else if (!strcasecmp(name, "bravo1"))
+            m_26c = 2;
+        else if (!strcasecmp(name, "bravo2"))
+            m_26c = 3;
+        m_26d = 0;
+        switch (m_26c) {
+        case 1:
+            seal->CreateCompassAnchor(12, 0);
+            m_debug = false;
+            break;
+        case 2:
+        case 3:
+            seal->CreateCompassAnchor(13, 0);
+            if (!strcasecmp(display, "polaris") || !strcasecmp(display, "bludshot"))
+                m_26d = 1;
+            else if (!strcasecmp(display, "sabre") || !strcasecmp(display, "reaver"))
+                m_26d = 2;
+            break;
+        }
+        func_00574EF0(this, 1);
+        SetAiAware((AI_AWARE)2, 0, 0.0f);
+        m_6c0 = 0;
+        func_005657C0(this, (EQUIP_ITEM)128, 0);
+    } else {
+        m_navyseal = false;
+        m_aibit16 = false;
+        m_aibit17 = false;
+        seal->m_kit.SetupBinocular();
+        m_debug = false;
+        m_26c = 0;
+        if ((m_entity->m_team & 0x4000000) || (m_entity->m_team & 0x20000))
+            m_26c = 4;
+    }
+    SetDoAiMapCollide(true);
+    UpdateEventMask();
+    SetViewFOV(1.134464f);
+    CCharacterType *type = seal->GetCharacter();
+
+    if (type) {
+        m_aiParams.Merge(m_aiParams, type->m_aiParams);
+        SetRange6F4(this, m_aiParams.courage);
+        SetViewFOV(0.017453292f * m_aiParams.visual_fov * data_0064FFE8);
+        SetViewRange(m_aiParams.visual_range * data_0064FE60[data_0066AFD8][7]);
+        m_aiParams.target_delay *= data_0064FE60[data_0066AFD8][3];
+        m_aiParams.visual_sens *= data_0064FE60[data_0066AFD8][4];
+        if (m_navyseal) {
+            m_aiParams.training = 1.0f;
+            m_aiParams.target_delay = 0.1f;
+            m_aiParams.target_discipline = 0.85f;
+            m_aiParams.visual_sens = 1.25f + 0.1f * (float)data_0066AFD8;
+            m_aiParams.stealth = 2.0f;
+            SetViewRange(-1.0f);
+        }
+        _saturate(&m_aiParams.target_delay, data_0064FFF0, data_0064FE58);
+    }
+    if (seal->m_team & 0x10000000)
+        seal->m_restrainable = true;
+    if (seal->m_team & 0x20000) {
+        if (!data_0045A0C1) {
+            if (seal->m_team & 0x80000000)
+                seal->m_restrainable = true;
+        } else {
+            m_26c = 4;
+            func_00555900(this, 3, 0);
+            m_debug = false;
+            CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
+
+            if (unit)
+                unit->SealJoinUnit(seal);
+        }
+        seal->CreateCompassAnchor(4, 0);
+    } else if (seal->m_team & 0x40000) {
+        if (!seal->m_compass_anchor)
+            seal->CreateCompassAnchor(5, 0);
+        func_00570D90(this, true);
+    }
+    if (m_has_respawned ? true : false) {
+        OnMissionStart();
+        CAiState *s = GetAiState();
+
+        s = s && s->m_state == AI_STATE_SCRIPT ? s : 0;
+        if (s)
+            ((CAiSScript *)s)->ActivateSequence("on_respawn", 3);
+    }
+    if (m_entity->m_team & 2)
+        ((CAiPath *)&m_path)->m_unk24 = m_entity->m_team;
+}
+
 /* the stamp restarted: the mission's time, its fields cleared (OVL2 0x558590; the sleep setters
  * inline it, the states and the group call it) */
 void CAiStamp::Reset()
