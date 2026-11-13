@@ -10945,6 +10945,7 @@
 0x005D57C0 Parse__7CTPaintFP5_zrdr
 0x005D5A20 End__6CTMoveFP14_zanim_cmd_hdr
 0x005D5B40 Tick__6CTMoveFP14_zanim_cmd_hdrPf
+0x005D5D00 Begin__6CTMoveFP14_zanim_cmd_hdr
 0x005D64B0 Parse__6CTMoveFP5_zrdr
 0x005D6770 Tick__5CTMapFP14_zanim_cmd_hdrPf
 0x005D69F0 Parse__5CTMapFP5_zrdr
@@ -10972,6 +10973,7 @@
 0x005D96E0 clear__Q23std32vector<Pv,Q23std13allocator<Pv>>Fv
 0x005D96F0 __ct__Q23std32vector<Pv,Q23std13allocator<Pv>>Fv
 0x005D9710 Tick__7CTGroupFP14_zanim_cmd_hdrPf
+0x005D9840 Begin__7CTGroupFP14_zanim_cmd_hdr
 0x005DAF50 func_005DAF50
 0x005DB350 End__6CTGotoFP14_zanim_cmd_hdr
 0x005DB510 Tick__6CTGotoFP14_zanim_cmd_hdrPf
@@ -11069,6 +11071,7 @@
 0x005E6290 OnDeath__11CRemoteCtrlFv
 0x005E6300 PostTick__11CRemoteCtrlFf
 0x005E6310 PostMortemPreTick__11CRemoteCtrlFf
+0x005E6400 PreTick__11CRemoteCtrlFf
 0x005E6980 Tick__11CRemoteCtrlFf
 0x005E69A0 AllowCommand__11CRemoteCtrlFP10CZSealBody10FT_COMMANDPv
 0x005E6A00 OnCommand__11CRemoteCtrlFP10CZSealBody10FT_COMMANDPvb
@@ -11324,6 +11327,7 @@
 0x005FE830 OnActionButton__15CSealCtrlSquirmFv
 0x005FE840 PostMortemPreTick__15CSealCtrlSquirmFf
 0x005FE850 Tick__15CSealCtrlSquirmFf
+0x005FE880 PreTick__15CSealCtrlSquirmFf
 0x005FEF10 ResetToInitialState__15CSealCtrlSquirmFv
 0x005FEF20 OnDeath__15CSealCtrlSquirmFv
 0x005FEF30 OnSetHealth__15CSealCtrlSquirmFff
@@ -11516,7 +11520,7 @@
 0x0060E4E0 DeleteAll__8CAiGroupFv
 0x0060E580 ResetIds__8CAiGroupFv
 0x0060E590 TickAll__8CAiGroupFf
-0x0060E610 Create__8CAiGroupFi
+0x0060E610 Create__8CAiGroupFii
 0x0060E6E0 InGroup__11CSealCtrlAiFv
 0x0060E6F0 SetGroup__11CSealCtrlAiFP8CAiGroup
 0x0060E7A0 GetGroup__11CSealCtrlAiFv

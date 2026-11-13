@@ -2066,6 +2066,30 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 63** (four rows byte-exact, all unwritten before, 6,620 bytes: CRemoteCtrl::PreTick
+  0x5E6400, CSealCtrlSquirm::PreTick 0x5FE880, CTMove::Begin 0x5D5D00, CTGroup::Begin 0x5D9840; 0x60E610 renamed
+  Create__8CAiGroupFii -- Begin passes the step count in a1, ai_group.cpp's Create takes it unused and stays exact. Headers,
+  layout-only and objcmp-proved: zseal.h's CSealCtrl hole `_1fc[0x25]` is `CPnt3D m_net_pos` 0x1fc, `_208[8]`, `CQuat
+  m_net_quat` 0x210, `_220`; zkit.h's CSealCtrlSquirm::m_250 a float, the squirm's phase. Scratch build/scratch/kit-r63/):
+  - NUMBERS: `node` declared first and assigned at GetNode gives this s4, node s3, seal s2, pos s1 (declared at use, node and
+    pos swap). CTMove::Begin: index before type, the list before the counter gives type s2, index s3, counter s0, list s1.
+    The squirm's hand-over re-reads the entity into `seal` itself (a local of its own takes another saved register).
+  - SLOTS: the eased factor read ahead of the two throttle locals lands in the first branch's delay slot. The trigger's state
+    into a bool before the decrement, SetTrigger after, puts the store in the call's slot. Each `p += 4` goes before the call
+    consuming what it advances past; a local zeroed after a memcpy takes its `sw zero` after the call.
+  - COPIES: a negated `const CPnt3D &` aim keeps the first reads frame-direct, stores through address CSEs; implicit quaternion
+    assignment loads three then stores three, a vec/w pair interleaves. Negate member by member (`CPnt3D(-x,-y,-z)` costs
+    frame). `a.m_min = a.m_timer = s_static;` one load, two stores. `T n[1] = { 0 }` gives the 4-byte zeroing by bytes.
+    A ground-normalise through a const view reloads x and z after the divide, plain `*=` keeps them.
+  - TESTS: the handlers' find comes in two shapes -- `if (!p) break;` (TASK_SEAL_PLAIN, no `sltu; xori`) or the bool kept
+    (CTGroup::Begin): check the target first; swapping TASK_SEAL_PLAIN into CTTeam, CTCreate, CTRegion, CTTurret made all
+    four worse. `ctrl ? ctrl->IsAi() : false` gives `b; andi` / `move zero; andi`. `SetFlag(f, (bool)bitfield)` gives `sltu`.
+    A count read twice: a const view through a local in the first loop splits the CSE; a const cast at the read hoists the
+    address into a saved register.
+  - CTGroup::Begin's ZAnim case falls into the camera case: the target's own missing `break`, copied.
+  - `const CPnt3D *mine = &seal->m_posW;` to a member call sets a1 before a0 in the target; every spelling tried sets a0
+    first. Next: CTGroup::Parse 0x5D9E70 (0x10D4, writes the stream Begin reads: 41 memcpys, 9 findtags, 3 calls to
+    0x5DAF50), then round 62's opens.
 - **Tells from the GCC libraries, round 29** (DynProgAccNBestNoOptSil 0x4EC598 (0x1144) byte-exact from the interrupted
   lane's nbestdp.c draft, d=379 to 0; nbestdp.c 15 of 17, lib/asr 626 of 653; the NBTOKEN/NBWORD/NBLINK retyping loses
   nothing; the forward declaration `static`, as SOCOM 1's LOCAL):
