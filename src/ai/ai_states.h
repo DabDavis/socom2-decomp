@@ -446,6 +446,7 @@ public:
      * line (0x5EA550) as the target does, and seal_aistate.cpp emits that copy */
     CAiSBreach() : CAiState(AI_STATE_BREACH), m_timer(0.0f) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
