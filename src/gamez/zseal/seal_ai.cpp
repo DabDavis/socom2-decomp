@@ -7641,26 +7641,32 @@ static inline CEntity *ShooterOf(CZProjectile *proj)
     return 0;
 }
 
+/* the AI's entity as an inline's result (its temporary numbered after the call's others; the name ours) */
+static inline CEntity *EntityOf(CSealCtrlAi *ai)
+{
+    return ai->m_entity;
+}
+
 /* the dodge's look and throw: toward the grenade's thrower for a Navy SEAL (its own aim point when the
  * grenade is its own), the throw scaled by the distance; else along the SEAL's facing turned to a
  * free direction of the map and jittered, the throw at a fixed 200 -- up at 45 degrees for the throw
- * back (step 5), at 35 for the kick (OVL2 0x55C870, new in SOCOM II; the names ours). OPEN (the
- * SEALs' round 62, first written): 0x428 of 0x42C, every register right; the target's return is a
- * fresh `daddiu v0,zero,1` after the `li v0,1; sb` of m_85, here the store's v0 is returned (a bool
- * local, an inline Mark returning true, int, `r = true` in each arm, bool m_85, opt_propagation off
- * in the body: none), and the facing's &dir.y / &dir.z address pair is scheduled the other way
- * round. The shooter needs ShooterOf's own local -- `b; nop` at the call's join -- the ternary, an
- * if/else or a returning inline all thread it (0x418) */
+ * back (step 5), at 35 for the kick (OVL2 0x55C870, new in SOCOM II; the names ours). Byte-exact in
+ * round 71 (open since round 62): the return is the flag's assignment through a bool view (`return
+ * (bool &)g->m_85 = true;` -- the target's fresh `daddiu v0,zero,1`; the plain char's value adds a
+ * `sltu`), the SEAL through an inline's result (numbered after the grenade's: proj s2, seal s1) and
+ * the Navy SEAL test into a bool local ahead of `back` (a0 / v1). The shooter needs ShooterOf's own
+ * local -- `b; nop` at the call's join -- the ternary, an if/else or a returning inline all thread it */
 extern "C" bool func_0055C870(CAiSGrenade *g, CSealCtrlAi *ai)
 {
     CZProjectile *proj = GrenadeOf(g);
     CEntity *owner = ShooterOf(proj);
-    CEntity *seal = ai->m_entity;
+    CEntity *seal = EntityOf(ai);
+    bool navy = ai->IsNavySeal();
     bool back = g->m_84 == 5;
     CPnt3D dir;
     float dist;
 
-    if (ai->IsNavySeal() && owner) {
+    if (navy && owner) {
         if (proj->m_shooterID == seal->m_id)
             dir = ai->m_774 - seal->m_posW;
         else
@@ -7693,8 +7699,7 @@ extern "C" bool func_0055C870(CAiSGrenade *g, CSealCtrlAi *ai)
 
         g->m_vel = k_kick * (dist * k_kick_scale);
     }
-    g->m_85 = 1;
-    return true;
+    return (bool &)g->m_85 = true;
 }
 
 extern "C" {

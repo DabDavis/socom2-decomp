@@ -252,7 +252,7 @@ AnimType func_0058C820(CZSealBody *seal, AnimType type, char item);
  * returning the stack's address (22: its temporary s3), the member indexed straight (0x10C). Round 53:
  * `#pragma opt_strength_reduction off` (0x58A470's fix) changes nothing here (9, or 0x10C plain); the
  * stack a block-local of the loop, or declared bare and set in it, loses the entry (0x108) */
-extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item)
+extern "C" void func_0057D5E0(CZSealBody *seal, char item)
 {
     if (seal->IsCurrentBlend((AnimType)AnimTypes::SwapRifle))
         return;
@@ -520,18 +520,35 @@ void CZSealBody::SetMovingChangeToPistol(ACTIVE_ANIM *a)
     SetOverlay(m_overlay, a, trig, 0.0f, 6);
 }
 
+/* the cut-in test (an inline: each arm's bool set by if/else; the name ours) */
+static inline bool CutIn(bool back, float t, float x)
+{
+    bool r;
+
+    if (back) {
+        if (t < 1.0f - x)
+            r = true;
+        else
+            r = false;
+    } else {
+        if (t > x)
+            r = true;
+        else
+            r = false;
+    }
+    return r;
+}
+
 /* whether the SEAL's anim may be cut short: not when the top blend is done, its representative anim
  * holds, the SEAL carries a body in anim 17, or -- for the AI -- in anims 100, 99, 25, 19, 17 and the
  * pistol's stand to prone; else as the last overlay of the top blend's first anim says, the blend's time
  * against the anim's cut-in point (from the end when the blend's flag 0x20 is set) (OVL2 0x587C20;
  * SOCOM 1's CanInterrupt, between CanHeadLook and CanTurn in both builds -- SOCOM 1's AI anims 103 and
  * 102).
- * OPEN, 0x1CC against 0x1DC: the switch gives the target's descending compare chain and its closing `b`,
- * the result-variable IsAi its `andi` at the join; left: the carry and pistol tests' `move v0,zero` sits
- * in the target's conditional branch's delay slot (ours in the `b`'s), the loop's two arms assign a bool
- * (`daddiu`, the `andi` to r at the join) and the target numbers back in s0 and r in s2 (ours the other
- * way). Tried: the cut-in test through an inline bool helper (if/return or a ternary) and as nested
- * if/else assignments */
+ * Byte-exact in round 71 (0x1CC of 0x1DC before): the switch gives the target's descending compare chain and
+ * its closing `b`; the AI test as the ternary (the null path joins at the `andi`; zseal.h's result-variable IsAi
+ * joins after it); the cut-in as an inline bool whose two arms each set r by if/else (`daddiu`, the `andi` at
+ * the loop's join); the result declared first (r s2, back s0) */
 bool CZSealBody::CanInterrupt()
 {
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
@@ -544,7 +561,7 @@ bool CZSealBody::CanInterrupt()
         return false;
     if (id == 17 && m_carry)
         return false;
-    if (IsAi()) {
+    if (m_control ? ((CSealCtrl *)m_control)->IsAi() : false) {
         switch (id) {
         case 17:
         case 19:
@@ -556,14 +573,14 @@ bool CZSealBody::CanInterrupt()
         if (id == AnimTypes::PistolStand2Prone)
             return false;
     }
+    bool r = false;
     bool back = func_005551A0(top->m_flags, 32);
     float t = top->m_tfrac;
-    bool r = false;
 
     for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
         float x = a->m_anim->m_30;
 
-        r = back ? t < 1.0f - x : t > x;
+        r = CutIn(back, t, x);
     }
     return r;
 }
@@ -5756,9 +5773,11 @@ void CZSealBody::Recoil()
  * callbacks; the homing stepped and let go; posed; the carry's root held; the root's move kept as the
  * velocity in the turns and the step; then the look, the eyes and the blink, the spine's pitch, the
  * recoil, the lean into turns (OVL2 0x57A330; SOCOM 1's Tick_0, its float unread; Tick calls it).
- * OPEN, at size and frame, every call and branch placed: 4 structural, ONE cause -- the yaw compared in f1
- * and reloaded into f12 for the positive call (here compared in f12 and reused); the three nops after it
- * are label padding that moves with it -- and 32 register-only: the first loop's o1 s4 for s2 and the
+ * OPEN, register-only (round 71: every structural difference closed, 154 to 23 differing): the yaw
+ * compared in f1 and reloaded for the positive call through a const view (`*(const float *)&yaw`: the
+ * target's lwc1 f12 and its label pad); the lean's two speeds both loaded in the first speed's test
+ * (`(vy = m_velR.y, vz = m_velM.z, vy != 0.0f) && vz != 0.0f`: vz's load fills the bc1t's delay slot, f2/f1
+ * as the target, the epilogue's pad gone). Left, 23: the first loop's o1 s4 for s2 and the
  * fire-pose script (script's later web) s2 for s4; the second loop's a s5 for s3. One script for both
  * loops, declared at the top (round 70, 37 to 32: the second loop's script a split web, numbered late,
  * as igreplay asked). igreplay: the second loop's a wants a number after t's split webs and before
@@ -6075,7 +6094,7 @@ void CZSealBody::Tick_0()
                     CZSIScriptCommon *s = m_animset->GetScript((AnimType)82);
 
                     if (!(yaw < 0.0f))
-                        func_00577BA0(this, s, 1, 2, yaw);
+                        func_00577BA0(this, s, 1, 2, *(const float *)&yaw);
                     else
                         func_00577BA0(this, s, 1, 0, -yaw);
                 }
@@ -6100,11 +6119,13 @@ void CZSealBody::Tick_0()
             PitchAnim(&m_aim_goal);
     }
     Recoil();
-    if ((m_lean_into_turns ? true : false) && m_spinelo && !m_airborne && m_velR.y != 0.0f && m_velM.z != 0.0f) {
+    float vy, vz;
+
+    if ((m_lean_into_turns ? true : false) && m_spinelo && !m_airborne && (vy = m_velR.y, vz = m_velM.z, vy != 0.0f) && vz != 0.0f) {
         CQuat q;
         CQuat r;
 
-        q.MakeZRot(m_velR.y * (-0.000375f * m_velM.z));
+        q.MakeZRot(vy * (-0.000375f * vz));
         CQuat *rot = &m_spinelo->m_rot;
 
         q.Mul(rot, &r);

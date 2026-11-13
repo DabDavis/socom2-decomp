@@ -2714,25 +2714,17 @@ bool CZSealBody::CanUseCQB(CZSealBody *victim)
 /* the death a CQB attack gives its victim: from behind or in front, by the attacker's offset against
  * the victim's facing, flattened (OVL2 0x5A9420; SOCOM 1's FindDeathAnimTypeCQB, after CanUseRestraint
  * in both builds, the same arithmetic).
- * OPEN, 10 instructions (the size right since round 23): the target loads both nodes before the
- * facing's three stores (the last in the call's delay slot); MW here loads this node after them. The
- * negation is NegateInto(&fwd, &fwd) -- the out-parameter form folds the loads into sp offsets and keeps
- * only &fwd.y in a register, as the target. Tried since: the nodes in locals (either order), the
- * positions in pointer locals, the offset computed first, both points assigned, GetNode(). Before: the
- * offset computed first, the facing assigned after it, y through a pointer, Negate(fwd.y). Round 39:
- * CanUseRestraint/CanUseCQB/CanUseKnife share the shape and matched with the Sub's `this` (the victim's
- * position) a pointer local declared before the facing -- here the Sub's `this` is this SEAL's own
- * position, and that local (pointer, reference, node pointer, either order, an inline helper taking
- * the facing by value and both points by reference) still loads after the stores: 10 every time.
- * Round 56 (igdump --pcode): the pre-colouring code already has this node's load after the facing's
- * stores, so its register falls free (v0) -- the target's v1/a3 need the load among the facing's
- * loads; this SEAL's position first through a pointer, a reference pair, both nodes in locals (either
- * order) and the facing assigned after the pointer: 10 each (build/scratch/seal-r56/v_cqb.py). SOCOM 1's
- * own code (0x299900) has the target's order with the facing and the Sub's slots swapped. */
+ * Byte-exact in round 71 (10 off since round 23): both nodes read first through volatile views, so
+ * their loads stay at their statements, ahead of the facing's stores (the target's v1/a3); every plain,
+ * const, pointer or reference spelling let MW sink this node's load after the stores. The negation is
+ * NegateInto(&fwd, &fwd) -- the out-parameter form folds the loads into sp offsets. SOCOM 1's own code
+ * (0x299900) has the target's order with the facing and the Sub's slots swapped. */
 AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 {
-    CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
-    CPnt3D d = *(const CPnt3D *)m_node->m_matrix.m_matrix[3] - *(const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
+    zdb::CNode *vn = ((volatile CZSealBody *)victim)->m_node;
+    zdb::CNode *mn = ((volatile CZSealBody *)this)->m_node;
+    CPnt3D fwd(*(const CPnt3D *)vn->m_matrix.m_matrix[2]);
+    CPnt3D d = *(const CPnt3D *)mn->m_matrix.m_matrix[3] - *(const CPnt3D *)vn->m_matrix.m_matrix[3];
 
     NegateInto(&fwd, &fwd);
     fwd.y = 0.0f;
@@ -6525,13 +6517,15 @@ static inline void FallLanding(CZSealBody *seal, const float &speed)
         if (held < 0.0f)
             seal->m_1364 = speed;
         if (seal->m_1364 > 0.0f)
-            seal->HandleFallingDamage(seal->m_1364);
+            seal->HandleFallingDamage(((const CZSealBody *)seal)->m_1364);
         seal->m_1364 = 0.0f;
         func_005804E0(seal);
     } else {
         if (held < 0.0f)
             seal->m_1364 = speed;
-        ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->Representative()->m_script_wt = 3.0f;
+        ACTIVE_ANIM *rep = ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->Representative();
+
+        rep->m_script_wt = 3.0f;
         seal->m_1350 = CPnt3D::zero;
     }
 }
@@ -6542,7 +6536,11 @@ static inline void FallLanding(CZSealBody *seal, const float &speed)
  * air keeps its velocity (a jump's or a fall's step taken), one come down lands -- a fall's anim, a hurt
  * state's drop, the climbs' and the drop's ends, else a landing -- and, with a polygon under it, the
  * material, the shadow's light and the visual's inside flag taken (OVL2 0x5AF930; SOCOM 1's
- * PostCheckDIDown, after HandleLanding: CZSealBody::Tick's three throttles) */
+ * PostCheckDIDown, after HandleLanding: CZSealBody::Tick's three throttles). Byte-exact in round 71
+ * (~27 off before): FallLanding's damage call reads the held speed again through a const view (MW kept
+ * the compare's f12), its anim hold through a representative local (the 3.0f then stored from a GPR
+ * after the calls, not hoisted to f20 ahead of them), the airborne bit into an `unsigned char` (`andi`;
+ * a bool `sltu`), the node into a local before the shade's store (the int is stored by `sb` unextended) */
 bool CZSealBody::PostCheckDIDown(float &x, float &y, float &z)
 {
     if (HoldsNoProbe(this))
@@ -6606,7 +6604,7 @@ bool CZSealBody::PostCheckDIDown(float &x, float &y, float &z)
                 m_1350 = m_velW;
             }
         } else {
-            bool air = m_airborne;
+            unsigned char air = m_airborne;
 
             if (!air && !grounded) {
                 if (IsCurrentBlend((AnimType)data_003DEED8) || IsCurrentBlend((AnimType)data_003DEED0))
@@ -6671,8 +6669,9 @@ bool CZSealBody::PostCheckDIDown(float &x, float &y, float &z)
             light = AiMaps.GetInterpolatedShadow(m_mapLoc, &m_posW, data_0066B470);
         _saturate(&light, 0.0f, 1.0f);
         int shade = (int)(127.0f * (1.0f - light));
+        zdb::CNode *node = GetNode();
 
-        GetNode()->m_socom2_a0 = shade;
+        node->m_socom2_a0 = shade;
     } else {
         zdb::CNode *node = GetNode();
 
@@ -7747,10 +7746,13 @@ extern "C" bool func_005B4340(CZSealBody *seal, unsigned char kind)
  * than 10, or for a SEAL of bit 9; kept as it is when the face's edges cannot be found (OVL2 0x5B3890,
  * new in SOCOM II: the stance setters, the ladder's leave and the states call it; the name unknown).
  * The edge points declared lower first (the target's upper one at the lower slot).
- * OPEN, 16 instructions (the size right): the flattening store -- the target stores d.y = 0 with
- * `sw zero,100(sp)` in the reach test's delay slot and loads d.x twice (f2 squared in place, f7 for
- * the face's dot), d.z once; MW here stores it early through `addiu a0,sp,100` and keeps d.x and d.z
- * in f3/f7 for both. Tried: zmath.h's Dot for either or both products (the zero is then reloaded, 0x1D0
+ * OPEN, 5 instructions, register-only (16 before round 71): the flattening store through a view
+ * (`((CPnt3D *)&d)->y = 0.0f` -- the target's `sw zero,100(sp)` in the reach test's delay slot, d.y then
+ * propagated as the zero) and the face's x read first through a const view (`dx`: its second load of
+ * d.x, in the first block). Left: dx takes f8 and the zero f7, the reverse of the target -- igreplay
+ * (FPR class): dx must be numbered after d.y's common subexpression (an IRO temporary, not a named
+ * local); declaring dx anywhere, a zero local, the length in a local, the view on the length's x
+ * instead: no. Before: zmath.h's Dot for either or both products (the zero is then reloaded, 0x1D0
  * and more), a pointer Dot, the reach in a local, 24*24, the flag declared first, the zero an int, a
  * PNT3D view, a Flatten inline, the normal by reference. */
 extern "C" void func_005B3890(CZSealBody *seal, int drop_now)
@@ -7766,10 +7768,11 @@ extern "C" void func_005B3890(CZSealBody *seal, int drop_now)
     bool drop = false;
 
     seal->m_posW.Sub(&hit->m_pos, &d);
-    d.y = 0.0f;
+    float dx = ((const CPnt3D *)&d)->x;
+    ((CPnt3D *)&d)->y = 0.0f;
     if (d.x * d.x + d.y * d.y + d.z * d.z > 576.0f)
         drop = true;
-    if (d.x * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z <= 0.0f)
+    if (dx * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z <= 0.0f)
         drop = true;
 
     const CMatrix &m = seal->m_node->m_matrix;

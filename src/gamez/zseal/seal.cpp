@@ -2779,10 +2779,11 @@ static inline CMaterialNoise *MaterialNoise(unsigned int i)
     return (CMaterialNoise *)CMaterialExArray::m_materialex_list[i];
 }
 
-/* whether an AI is awake (an inline, the name ours: neither of the sleep bits, materialised) */
-static inline int AwakeBits(CSealCtrlAi *ai)
+/* whether an AI is awake (an inline bool, the name ours: `!(a != 0 || b != 0)` gives the target's `sltu; bnez;
+ * nop; andi; sltu; X: xori`, the first test's value the `||`'s; typed int it adds an `andi`) */
+static inline bool AwakeBits(CSealCtrlAi *ai)
 {
-    return (ai->m_aibit9 ? 1 : (ai->m_aibit8 != 0)) ^ 1;
+    return !(ai->m_aibit9 != 0 || ai->m_aibit8 != 0);
 }
 
 /* a kind and the visible bit through values (inlines, the names ours: `andi a0,zero,1` for a zero) */
@@ -2795,9 +2796,9 @@ static inline bool CtrlIsAi(CSealCtrl *ctrl)
     return ctrl ? ctrl->IsAi() : false;
 }
 
-/* OPEN, 2 instructions short (0x3C8 of 0x3D0), about 16 off: the awake test's value `||` -- the target's `sltu;
- * bnez; nop; andi; sltu; X: xori` with no pad at X (an `if` pads X, the conditional here has no sltu, `!(a || b)`
- * adds an andi) -- and the dead arm's schedule, the event's old word read first. Every saved register right.
+/* Byte-exact in round 71 (open since its writing, 0x3C8 of 0x3D0): the awake test an inline bool over `!=`s,
+ * the dead arm's type test through a volatile view (the old word then read again for the kind's insert, as the
+ * target; plain, CSE reuses the test's load) and the speed into a local (`fabsf(sp * k)`'s operands in order).
  * a SEAL's own AI event kept up to the frame: alive, heard over a range by how it moves and what it stands on, at
  * its place (kind 3; a sleeping AI's hardly at all); dead, once, heard far and seen 10 up as kind 5 (OVL2 0x550A80,
  * new in SOCOM II: PrePostTick calls it; the name unknown) */
@@ -2815,8 +2816,9 @@ extern "C" void func_00550A80(CZSealBody *seal)
             float t = ctrl->m_throttle[1];
 
             if (!(fabsf(ctrl->m_throttle[0]) + fabsf(t) <= 0.0f)) {
-                float f = fabsf(sqrtf(seal->m_velW.x * seal->m_velW.x + seal->m_velW.y * seal->m_velW.y +
-                                      seal->m_velW.z * seal->m_velW.z) * data_0064FCB0);
+                float sp = sqrtf(seal->m_velW.x * seal->m_velW.x + seal->m_velW.y * seal->m_velW.y +
+                                 seal->m_velW.z * seal->m_velW.z);
+                float f = fabsf(sp * data_0064FCB0);
 
                 range = data_0064FCA0 * (1.0f - f) + data_0064FCA8 * f;
                 if (seal->m_last_altitude.m_poly) {
@@ -2840,7 +2842,7 @@ extern "C" void func_00550A80(CZSealBody *seal)
             SetEventType(seal->m_aiEvent, 3);
             SetEventVisible(seal->m_aiEvent, false);
         }
-    } else if ((signed char)event->m_type != 0) {
+    } else if ((signed char)((volatile CAiEvent *)event)->m_type != 0) {
         SetEventType(event, 5);
         seal->m_aiEvent->m_rangeSq = 160000.0f;
         SetEventVisible(seal->m_aiEvent, true);
@@ -4005,11 +4007,11 @@ static inline bool ProbePart(CZSealBody *seal, CZBodyPart *part, const CPnt3D *o
  * from the delayed set's count (m_ef4, m_ef8): along the push from the spine and from the head, hands and
  * feet while a top anim holds or finishes, else ahead along the push, from the head, and either side --
  * the prone and rolling SEAL's tilted by the ground. Out of probes, it stops at once.
- * Open (round 70): at the target's frame, 4 instructions short, every call, branch, slot and register placed
- * but the facing row's: the target loads m_node again in the still and strafe arms (and pads two `b`s with a
- * nop), where IRO_CommonSubs here reuses pos's load of it (igdump: `*(this + 40)` computed at the pos, reused
- * in both arms) -- a volatile or const view, inline wrappers, pos through an inline, in each arm or each
- * stance arm, a label, all leave the reuse or worsen. The level (0.0f in f20) is a variable: the constant
+ * Byte-exact in round 71 (4 short since its writing, round 70): the node read once through a volatile view
+ * into a local for pos -- its load pinned there, so CSE no longer hands it to the facing arms, which load
+ * m_node again as the target (a volatile or const view in the arms alone was folded or ignored); the strafe
+ * arm's row through a float pointer (the node v0, &dir.y v1); the AI test as the ternary (the null path joins
+ * at the `andi`). The level (0.0f in f20) is a variable: the constant
  * spelled leaves f20 to the step and the frame's FPRs one short */
 void CZSealBody::PostPreTick(float dT)
 {
@@ -4053,7 +4055,7 @@ void CZSealBody::PostPreTick(float dT)
             IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints))
             check = false;
     } else if (!nopush) {
-        if (IsAi() && !AiProbes(this)) {
+        if ((m_control ? ((CSealCtrl *)m_control)->IsAi() : false) && !AiProbes(this)) {
             check = false;
             halt = false;
         } else if (still && !notdone && wt == 0.0f)
@@ -4103,7 +4105,8 @@ void CZSealBody::PostPreTick(float dT)
             break;
         }
 
-        CPnt3D *pos = (CPnt3D *)m_node->m_matrix.m_matrix[3];
+        zdb::CNode *pn = ((volatile CZSealBody *)this)->m_node;
+        CPnt3D *pos = (CPnt3D *)pn->m_matrix.m_matrix[3];
         CPnt3D dir;
         CPnt3D side;
         CPnt3D a, b;
@@ -4116,11 +4119,11 @@ void CZSealBody::PostPreTick(float dT)
             dir.z = m[2][2];
             dir = dir * -1.0f;
         } else if (strafe) {
-            float (*m)[4] = m_node->m_matrix.m_matrix;
+            float *m = m_node->m_matrix.m_matrix[2];
 
-            dir.x = m[2][0];
-            dir.y = m[2][1];
-            dir.z = m[2][2];
+            dir.x = m[0];
+            dir.y = m[1];
+            dir.z = m[2];
             Negate(dir);
         } else
             dir = m_f44;
@@ -5716,7 +5719,15 @@ extern "C" void func_00547860(CZSealBody *victim)
 /* the entity the SEAL works as a turret, if it is one */
 static inline CTurret *AsTurret(CEntity *e)
 {
-    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+    bool is = false;
+
+    if (e) {
+        bool t = e->m_type == CEntity::ENT_TYPE_TURRET;
+
+        if (t)
+            is = true;
+    }
+    return is ? (CTurret *)e : 0;
 }
 
 inline CTurret *CZSealBody::GetTurret(CEntity *e)
@@ -5921,9 +5932,11 @@ CPnt3D *func_00539E90(CPnt3D *p, const CPnt3D *src);
  * 0x546210 boards it offline; the name unknown).
  * OPEN, 0x5F4 against 0x5FC (round 53, unwritten before; every call, constant and block the target's):
  * (1) the turret tests -- the target MATERIALISES `e->m_type == 3` (`xori; sltiu; beqz`, then the
- * triangle `daddiu 1`) in all three (the platform's, the boarding's and HasThermal's inlined one), as
- * the UI's round-31 function-wide mode does, where AsTurret here (and in 0x546210 / 0x545EE0, which
- * match) branches `li 3; bne` -- an IsTurretEnt bool inline under the ternary lengthens it (0x604);
+ * triangle `daddiu 1`) in all three: AsTurret's test into a bool local set true under `if (t)` (round 71:
+ * 42 to 25 structural, every other row of the unit unchanged). Left there: the inlined HasThermal's
+ * entity -- the target copies e into a0 ahead of the `if (!e)` (its parameter kept, coalesced with
+ * GetTurret's `v`, the ternary's e arm empty: `beqz; nop; b; nop`), here propagated and copied in the
+ * arm (the call through a cast, a local, the turret, GetTurret's parameter reassigned, a reference: no);
  * (2) the saved registers: the SEAL s4, the entity s3, ok s2 in the target, s2 / s1 / s0 here. Right:
  * the matrix read (GetPosW) before the unit_nz copy, TransformVectors (VU0) in place, the position
  * through CNode::GetPosition (the copy stored through one pointer), the homing's five points through
