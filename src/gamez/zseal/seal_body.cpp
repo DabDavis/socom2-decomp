@@ -5459,8 +5459,10 @@ static inline void DropCarry(CZSealBody *seal)
  * recoil, the lean into turns (OVL2 0x57A330; SOCOM 1's Tick_0, its float unread; Tick calls it).
  * OPEN, at size and frame, every call and branch placed: 4 structural (the yaw compared in f1 and reloaded
  * for the positive call, here compared in f12; a nop where the target fills the lean test's delay slot)
- * and ~50 register-only, the two overlay loops' saved registers (the target: a s2, the pool s3, the
- * script s4, the overlay taken s5 in the first; a s3, the script s2, the pool s5 in the second) */
+ * and ~40 register-only, the overlay loops' saved registers: the first loop's a, script and taken overlay
+ * right since the script is declared ahead of the loop (175 to 159), its o1 s4 for s2; the second's a s5,
+ * script s4, pool s3, &ov[1] s2 for s3, s2, s5, s4. Tried: got set first, the script's ternary (186), a
+ * declared outside, a second script local for the fire pose (171), the loop bodies as inlines (0x11EC) */
 void CZSealBody::Tick_0()
 {
     float z1;
@@ -5482,6 +5484,8 @@ void CZSealBody::Tick_0()
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
 
     if (func_005551A0(top->m_flags, 64)) {
+        CZSIScriptCommon *script;
+
         for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = top->m_anims.Next()) {
             ACTIVE_ANIM *ov[2] = {0};
             int i = 0;
@@ -5490,8 +5494,6 @@ void CZSealBody::Tick_0()
                 if (i < 2)
                     ov[i] = o;
             AnimType t = func_0058C9E0(this, (AnimType)a->m_id, m_item);
-            CZSIScriptCommon *script;
-
             if ((short)t == a->m_id)
                 script = 0;
             else
