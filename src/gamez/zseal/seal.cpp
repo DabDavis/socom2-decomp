@@ -4036,7 +4036,7 @@ void CZSealBody::PostPreTick(float dT)
         nopush = true;
 
     bool check = true;
-    bool zero = false;
+    bool halt = false;
     float wt = m_wep_seq.Weight();
 
     if (m_state == stateDead)
@@ -4048,16 +4048,16 @@ void CZSealBody::PostPreTick(float dT)
     } else if (!nopush) {
         if (IsAi() && !AiProbes(this)) {
             check = false;
-            zero = false;
+            halt = false;
         } else if (still && !notdone && wt == 0.0f)
             check = false;
     }
     if (IsCurrentBlend((AnimType)data_003DEAD8)) {
         check = true;
-        zero = false;
+        halt = false;
     }
     if (!check) {
-        if (zero)
+        if (halt)
             m_f44 = CPnt3D::zero;
         else
             m_bit8 = true;
@@ -4130,18 +4130,17 @@ void CZSealBody::PostPreTick(float dT)
 
         step = theCharacterDynamics.m_stepHeight;
 
-        float zero;
-
+        float level;
 
         if (still || strafe) {
             side.x = -dir.z;
-            zero = 0.0f;
-            side.y = zero;
+            level = 0.0f;
+            side.y = level;
             side.z = dir.x;
         } else {
             side.x = -m_f44.z;
-            zero = 0.0f;
-            side.y = zero;
+            level = 0.0f;
+            side.y = level;
             side.z = m_f44.x;
         }
         side.Normalize();
@@ -4172,10 +4171,10 @@ void CZSealBody::PostPreTick(float dT)
             if (!m_carry) {
                 CPnt3D push = m_f44;
 
-                if (push.y < zero) {
+                if (push.y < level) {
                     push.y += m_2e0 * (theCharacterDynamics.m_gravity * m_2e0);
-                    if (push.y > zero)
-                        push.y = zero;
+                    if (push.y > level)
+                        push.y = level;
                 }
                 push = push + dir;
 
@@ -4192,12 +4191,12 @@ void CZSealBody::PostPreTick(float dT)
                 if (!ProbePart(this, m_head, &h0, node, from, to, push))
                     return;
 
-                CPnt3D h1(2.25f, zero, -4.0f);
+                CPnt3D h1(2.25f, level, -4.0f);
 
                 if (!ProbePart(this, m_head, &h1, node, from, to, push))
                     return;
 
-                CPnt3D h2(2.25f, zero, 4.0f);
+                CPnt3D h2(2.25f, level, 4.0f);
 
                 if (!ProbePart(this, m_head, &h2, node, from, to, push))
                     return;
@@ -4241,10 +4240,10 @@ void CZSealBody::PostPreTick(float dT)
             if (!m_carry) {
                 CPnt3D push = m_f44;
 
-                if (push.y < zero) {
+                if (push.y < level) {
                     push.y += m_2e0 * (theCharacterDynamics.m_gravity * m_2e0);
-                    if (push.y > zero)
-                        push.y = zero;
+                    if (push.y > level)
+                        push.y = level;
                 }
                 push = push + dir;
 
@@ -4312,12 +4311,12 @@ void CZSealBody::PostPreTick(float dT)
                 q.Apply(&m_f44, &lean, 1);
                 if (strafe || lean.x * lean.x + lean.z * lean.z < 0.001f)
                     lean.z = -1.0f;
-                lean.y = zero;
+                lean.y = level;
                 lean.Normalize();
             }
             if ((m_state == stateCrouch || m_state == stateStand) && m_velM.z > 0.01f)
                 fwd = fwd * data_0064FCE8;
-            else if (m_state == stateCrouch && !m_21c_bit2 && m_velM.z < zero)
+            else if (m_state == stateCrouch && !m_21c_bit2 && m_velM.z < level)
                 fwd = fwd * data_0064FCE8;
             NodePos(this, from);
             if (strafe) {
@@ -4353,14 +4352,14 @@ void CZSealBody::PostPreTick(float dT)
 
                 CPnt3D z = *(CPnt3D *)m_node->m_matrix.m_matrix[2];
 
-                float lim = strafe ? -0.2f : zero;
+                float lim = strafe ? -0.2f : level;
 
                 if (z.x * nx + z.y * ny + z.z * nz >= lim && !still)
                     to = from + dir;
                 else {
                     CPnt3D f = fire * 1.1f;
 
-                    if ((func_005551A0(SealTop(this)->m_flags, 64) && m_wep_seq.LinearWeight() > zero &&
+                    if ((func_005551A0(SealTop(this)->m_flags, 64) && m_wep_seq.LinearWeight() > level &&
                          m_state != stateClimbLadder) ||
                         m_state == stateProne || IsCurrentBlend((AnimType)17) || IsCurrentBlend((AnimType)19) ||
                         IsCurrentBlend((AnimType)25)) {
@@ -4425,7 +4424,7 @@ void CZSealBody::PostPreTick(float dT)
                     return;
             }
             if (strafe) {
-                if (m_velM.x >= zero) {
+                if (m_velM.x >= level) {
                     from = *pos + a - dir;
                     to = *pos + la + dir + m_f44;
                 } else {
@@ -4447,7 +4446,7 @@ void CZSealBody::PostPreTick(float dT)
             if (roll) {
                 bool up = true;
 
-                if (m_260.vec.y >= zero) {
+                if (m_260.vec.y >= level) {
                     up = false;
                     from = *pos + a + dir;
                     to = *pos + b - dir + m_f44;
@@ -4507,7 +4506,7 @@ void CZSealBody::PostPreTick(float dT)
                     return;
             }
             if (strafe) {
-                if (m_velM.x >= zero) {
+                if (m_velM.x >= level) {
                     from = *pos + a + dir;
                     to = *pos + ra - dir + m_f44;
                 } else {
@@ -4529,7 +4528,7 @@ void CZSealBody::PostPreTick(float dT)
             if (roll) {
                 bool up = true;
 
-                if (m_260.vec.y >= zero) {
+                if (m_260.vec.y >= level) {
                     from = *pos - a - dir;
                     to = *pos - b + dir + m_f44;
                 } else {
