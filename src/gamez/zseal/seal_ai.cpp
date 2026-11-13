@@ -2197,20 +2197,126 @@ extern "C" bool func_00555420(CSealCtrlAi *ai, CAiPathBytes *path, CAiRouteBytes
     return r;
 }
 
-/* a table of two rows of eighteen, the row picked by whether the word at 0xC is empty (OVL2
- * 0x558AA0; 0x558640 reads five of them) */
+/* the AI's glance counts at 0x284 (zseal.h's bytes; the class and names ours): the cell last counted
+ * from, the range counted and the rise worth a look, and two direction counts -- the latest at m_c, the
+ * other turned into the rise since the one before (0x558640). A count by direction of the risen one
+ * (OVL2 0x558AA0; 0x558640 reads five of them) */
 struct CAiRowTable {
-    unsigned char _0[0xc];
-    void *m_c;   // 0xc
-    unsigned char _10[0x18 - 0x10];
-    void *m_rows[2][18];   // 0x18
+    CAiMapLoc m_loc;   // 0x0
+    int m_range;   // 0x4
+    int m_rise;   // 0x8
+    unsigned int m_c;   // 0xc
+    MAP_DIRCOUNT m_dc[2];   // 0x10
 
     bool IsEmpty() { return !m_c; }
 };
 
-extern "C" void *func_00558AA0(CAiRowTable *t, unsigned char i)
+#pragma auto_inline off
+extern "C" int func_00558AA0(CAiRowTable *t, unsigned char i)
 {
-    return t->m_rows[t->IsEmpty()][i];
+    return t->m_dc[t->IsEmpty()].m_count[i];
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* a direction wrapped into the eight (OVL2 0x558A80, a draft's) */
+CAiMap::DIR func_00558A80(int dir);
+}
+
+/* the AI's glance on its frame slice (ai_slice1): with bit 13, a current state that lets it and not in
+ * mode 7, the cells seen from its cell counted again once it moves -- where any direction's count rose
+ * past the limit, the slice's taker counted and, below look mode 9, the direction of the most rise of
+ * the facing one and the two either side looked in (9) unless the facing one or none; else the look 9
+ * cleared. Without a glance the window widened by one (OVL2 0x558640, new in SOCOM II; the name ours).
+ * 0x558AA0 pinned out of line (the target calls it five times); the older count's index an `int` from
+ * IsEmpty() (narrowed once, at the def -- a bool or byte holder is masked again in the loop); the
+ * facing a DIR copy (masked at its first use, after the first call); each rise a local compared */
+extern "C" void func_00558640(CSealCtrlAi *ai)
+{
+    CAiMap::DIR d;
+    bool looked;
+    CAiRowTable *t;
+    CAiMap::DIR best;
+    int most;
+    CEntity *e = ai->m_entity;
+
+    if (ai_slice1.Has(e->m_index)) {
+        looked = false;
+        CAiState *s = ai->GetAiState();
+
+        if ((ai->m_aibit13 ? true : false) && s->Virtual3C(ai) && ai->m_3f4 != 7) {
+            const CAiMapLoc *loc = &e->m_mapLocValid;
+            t = (CAiRowTable *)&ai->_284[0];
+            const CMatrix &m = ai->m_entity->m_node->m_matrix;
+            CPnt3D back;
+
+            back.x = -m.m_matrix[2][0];
+            back.y = -m.m_matrix[2][1];
+            back.z = -m.m_matrix[2][2];
+            best = CAiMap::GetClosestDir(&back);
+            bool rose = false;
+
+            if (*loc != t->m_loc) {
+                CAiMap *map = AiMaps.GetMapByIndex(loc->m_mapid);
+
+                if (map) {
+                    t->m_loc = *loc;
+                    t->m_c = !t->m_c;
+                    int old = t->IsEmpty();
+
+                    t->m_dc[t->m_c].m_range = t->m_range;
+                    map->CountMapVisDir(*loc, &t->m_dc[t->m_c]);
+                    for (int i = 0; i < 8; i++) {
+                        int n = t->m_dc[t->m_c].m_count[i] - t->m_dc[old].m_count[i];
+
+                        t->m_dc[old].m_count[i] = n;
+                        if (n > t->m_rise)
+                            rose = true;
+                    }
+                }
+            }
+            if (rose) {
+                ai_slice1.m_count++;
+                looked = true;
+                if (ai->m_look_mode < 9) {
+                    int n;
+
+                    most = func_00558AA0(t, best);
+                    CAiMap::DIR face = best;
+
+                    d = func_00558A80(face + 1);
+                    n = func_00558AA0(t, d);
+                    if (n >= most) {
+                        best = d;
+                        most = n;
+                    }
+                    d = func_00558A80(face - 1);
+                    n = func_00558AA0(t, d);
+                    if (n >= most) {
+                        best = d;
+                        most = n;
+                    }
+                    d = func_00558A80(face + 2);
+                    n = func_00558AA0(t, d);
+                    if (n >= most) {
+                        best = d;
+                        most = n;
+                    }
+                    d = func_00558A80(face - 2);
+                    n = func_00558AA0(t, d);
+                    if (n >= most) {
+                        best = d;
+                        most = n;
+                    }
+                    if (best != 8 && best != face)
+                        ai->SetLookDirW((AI_LOOK)9, best);
+                }
+            }
+        } else
+            ai->ClearLook((AI_LOOK)9);
+        if (!looked)
+            ai_slice1.SetSize(ai_slice1.m_size + 1, ai_slice1.m_total);
+    }
 }
 
 /* (OVL2 0x60A850, unowned: a test of the AI's object at 0x67C) */
