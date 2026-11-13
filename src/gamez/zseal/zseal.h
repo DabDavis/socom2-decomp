@@ -491,6 +491,8 @@ public:
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
+    /* the shadow's darkness at a point, 0 lit .. 1 dark (ai_maps.h's; PostCheckDIDown asks it) */
+    float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside);
     /* the cell's boundary bits, and the link between two cells (ai_maps.cpp's) */
     unsigned int GetBoundary(const CAiMapLoc &loc);
     class CGEdge *FindLinkEdge(const CAiMapLoc &from, const CAiMapLoc &to);
@@ -2298,6 +2300,10 @@ public:
     /* the aim at a point, with its surface normal, or none (SOCOM 1's; OVL2 0x5DF4E0, seal_weapon.cpp
      * -- the kit lane) */
     bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);
+    /* the aim point's place, when there is one (SOCOM 1's; OVL2 0x5DF3E0) */
+    bool GetAP(CPnt3D &pos);
+    /* the shot's check along the view, the reticule's hits kept (SOCOM 1's; OVL2 0x5AA6E0, seal_env.cpp) */
+    void CheckDIShoot(CPnt3D *from, CMatrix *mat);
     /* the aim's direction brought up to date from the aim's or fire point, in the body's frame, and the goal set; a
      * player's still prone aim outside its limits puts the points back (SOCOM 1's; OVL2 0x5DEEC0) */
     bool UpdateAimDir(bool keep);
@@ -2376,6 +2382,9 @@ public:
     static bool m_allow_friendly_fire;
     /* a landing's damage by its speed, the severity returned (SOCOM 1's; OVL2 0x5AC1F0) */
     LANDING_TYPE HandleFallingDamage(float speed);
+    /* the ground probe's result taken, the throttles stopped in the air (SOCOM 1's; OVL2 0x5AF930,
+     * seal_env.cpp -- CZSealBody::Tick passes its three throttles) */
+    bool PostCheckDIDown(float &x, float &y, float &z);
     /* a landing taken: its damage, the anim its grade or the pace asks and the state it leaves -- in
      * state 8 the ladder and the climb let go (SOCOM 1's; OVL2 0x5AF590) */
     void HandleLanding(float speed);

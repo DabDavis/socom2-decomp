@@ -2022,6 +2022,276 @@ static inline void SetBit21c0(CZSealBody *seal, bool on)
     seal->m_useCachedReticuleSeal = on;
 }
 
+/* the kit as the shot's check sees it: the reticule's blocked bit (3) and the aim's assist (16), the
+ * point aimed at, two values zeroed, the blocked reticule's size and place on the screen (kit.h's
+ * CZKit; zseal.h has only its first word) */
+struct CKitShootView {
+    unsigned int m_bits0 : 3;
+    unsigned int m_retblocked : 1;   // bit 3
+    unsigned int m_bits4 : 12;
+    unsigned int m_autoaimed : 1;   // bit 16 (kit.h's m_bit16)
+    unsigned int m_bits17 : 15;
+    unsigned char _4[0xc - 0x4];
+    CPnt3D m_aimpt;   // 0xc
+    float m_18;   // 0x18
+    float m_1c;   // 0x1c
+    unsigned char _20[0x860 - 0x20];
+    float m_retblockedsize;   // 0x860
+    float m_retblockedX;   // 0x864
+    float m_retblockedY;   // 0x868
+};
+
+static inline CKitShootView *KitView(CZSealBody *seal)
+{
+    return (CKitShootView *)&seal->m_kit;
+}
+
+extern unsigned char _AutoAim;
+
+extern "C" {
+CZSealBody *func_005AB1C0(CZSealBody *seal, CPnt3D *out, CPnt3D *from);
+CPnt3D *func_005414F0(CPnt3D *p, float x, float y, float z);
+void __ml__6CPnt3DCFf(CPnt3D *ret, const CPnt3D *p, float s);
+void __pl__6CPnt3DCFRC6CPnt3D(CPnt3D *ret, const CPnt3D *p, const CPnt3D *b);
+void __mi__6CPnt3DCFRC6CPnt3D(CPnt3D *ret, const CPnt3D *p, const CPnt3D *b);
+signed char GetCurReticule__5CZKitFv(CZKit *kit);
+}
+
+namespace zdb {
+void SetCameraCollideFlagRequired(bool on);
+}
+
+static inline CNodeAction *ActionOf(zdb::CNode *node);
+
+/* a random value in [-1, 1], its square keeping the sign (seal_control.cpp's) */
+static inline float ShootSignedSquareRand()
+{
+    float r = 9.313226e-10f * (float)(rand() - 0x3fffffff);
+
+    if (r < 0.0f)
+        r = -(r * r);
+    else
+        r = r * r;
+    return r;
+}
+
+/* the aim thrown off by a target's accuracy, scaled by its distance from the eye (seal_control.cpp's
+ * PerturbAimVector about the line of sight; an inline, its locals after the caller's) */
+static inline void PerturbAim(CPnt3D *aim, const CPnt3D *eye, const CAccuracy *acc)
+{
+    CPnt3D dir;
+    CPnt3D up;
+    CPnt3D side;
+    CPnt3D vert;
+    CPnt3D t1;
+    CPnt3D t2;
+    CPnt3D t4;
+    CPnt3D t3;
+
+    const CAccuracy *a = acc;
+
+    __mi__6CPnt3DCFRC6CPnt3D(&dir, aim, eye);
+    float dist = dir.Normalize();
+
+    func_005414F0(&up, 0.0f, 1.0f, 0.0f);
+    func_00516900(&side);
+    func_00516900(&vert);
+    dir.Cross(&up, &side, false);
+    side.Cross(&dir, &vert, false);
+    float r = ShootSignedSquareRand();
+
+    __ml__6CPnt3DCFf(&t1, &side, dist * (a->m_factorX + a->m_factor * r));
+    func_00539E90(&side, &t1);
+    r = ShootSignedSquareRand();
+    __ml__6CPnt3DCFf(&t2, &vert, dist * (a->m_factorY + a->m_factor * r));
+    func_00539E90(&vert, &t2);
+    __pl__6CPnt3DCFRC6CPnt3D(&t3, aim, &side);
+    __pl__6CPnt3DCFRC6CPnt3D(&t4, &t3, &vert);
+    func_00539E90(aim, &t4);
+}
+
+/* the world's hits along a ray, the SEAL's own node switched off and the camera's collision asked for
+ * (an inline, the name ours) */
+static inline zdb::DiIntersect *IntersectsPast(CZSealBody *seal, const CPnt3D *from, const CPnt3D *to)
+{
+    zdb::SetCameraCollideFlagRequired(true);
+    zdb::CNode *node;
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    node = seal->GetNode();
+    bool active = node->m_active;
+
+    node->SetActive(false);
+    zdb::DiIntersect *di = world->GetIntersects(from, to);
+
+    node->SetActive(active);
+    zdb::SetCameraCollideFlagRequired(false);
+    return di;
+}
+
+static inline void ClearHit(zdb::IntersectStruct *is)
+{
+    is->m_pos = CPnt3D::zero;
+    is->m_norm = CPnt3D::zero;
+    is->m_poly = 0;
+    is->m_node = 0;
+}
+
+static inline bool Near(const CPnt3D &a, float x, float y, float z)
+{
+    if (!(fabsf(a.x - x) <= 0.008f))
+        return false;
+    if (!(fabsf(a.y - y) <= 0.008f))
+        return false;
+    if (!(fabsf(a.z - z) <= 0.008f))
+        return false;
+    return true;
+}
+
+/* the shot's check along the view: the nearest hit a shot goes through and the nearest hit whose node
+ * takes an action, out to the weapon's range (at least 600, at most the camera's far plane); the aim's
+ * assist onto a target's place thrown off by its accuracy; the reticule's hit and action's hit kept;
+ * then, the weapon up, whether something lies in the way between the fire point and the aim (OVL2
+ * 0x5AA6E0; SOCOM 1's CheckDIShoot, after GetReticuleDi in both builds) */
+void CZSealBody::CheckDIShoot(CPnt3D *from, CMatrix *mat)
+{
+    if ((m_control ? ((CSealCtrl *)m_control)->IsAi() : false) || IsRemote())
+        return;
+    m_kit.GetCurItemFireClass();
+    float range = 600.0f;
+    CZFTSWeapon *w = m_kit.GetCurItem();
+    float r = 0.0f;
+
+    if (w)
+        r = ((CZWeapon *)w)->GetMaxRange();
+
+    if (r > 600.0f)
+        range = r;
+    float far = zdb::CWorld::m_world->m_camera->m_mid_plane;
+
+    if (range > far)
+        range = far;
+    CPnt3D to;
+    CPnt3D end(0.0f, 0.0f, -range);
+    bool aimed = false;
+
+    mat->Transform(&end, &to, 1);
+    zdb::IntersectStruct *hit = 0;
+    zdb::IntersectStruct *act = 0;
+
+    zdb::DiIntersect *di = IntersectsPast(this, from, &to);
+    int n = di->m_Cnt;
+    float best = (range + 1.0f) * (range + 1.0f);
+    float bestAct = best;
+
+    for (int i = 0; i < n; i++) {
+        zdb::CNode *nd;
+        zdb::IntersectStruct *is = &di->m_Intersects[i];
+        CPnt3D v;
+
+        if (ShootThrough(is)) {
+            is->m_pos.Sub(from, &v);
+            float d = v.x * v.x + v.y * v.y + v.z * v.z;
+
+            if (!hit || d < best) {
+                hit = is;
+                best = d;
+                if (d < bestAct) {
+                    bestAct = d;
+                    act = 0;
+                }
+            }
+        } else if (nd = is->m_node, ActionOf(nd)) {
+            is->m_pos.Sub(from, &v);
+            float d = v.x * v.x + v.y * v.y + v.z * v.z;
+
+            if (d < bestAct) {
+                act = is;
+                bestAct = d;
+            }
+        }
+    }
+
+    float sx, sy, sz;
+    bool autoaimed = false;
+
+    if (!data_0045A0C1 && !KitView(this)->m_retblocked && _AutoAim && GetCurReticule__5CZKitFv(&m_kit) != 4) {
+        CPnt3D aim;
+        CZSealBody *target = func_005AB1C0(this, &aim, &hit->m_pos);
+        CTarget *t = target ? m_targets.FindTarget(target) : 0;
+
+        if (t && (t->m_flags & 0x200)) {
+            CPnt3D eye;
+
+            GetNodePos(m_curr_firept, eye, false);
+            PerturbAim(&aim, &eye, &target->m_accuracy);
+            SetAimPointW(&aim, 0, false);
+            aimed = true;
+            sx = aim.x;
+            hit = 0;
+            sy = aim.y;
+            autoaimed = aimed;
+            KitView(this)->m_aimpt = aim;
+            sz = aim.z;
+        }
+    }
+    KitView(this)->m_autoaimed = autoaimed;
+    if (hit) {
+        SetAimPointW(&hit->m_pos, &hit->m_norm, false);
+        m_last_reticule = *hit;
+        aimed = true;
+        sx = hit->m_pos.x;
+        sy = hit->m_pos.y;
+        sz = hit->m_pos.z;
+    } else if (!aimed) {
+        SetAimPointW(&to, 0, false);
+        ClearHit(&m_last_reticule);
+    }
+    if (act)
+        m_last_reticule_action = *act;
+    else
+        ClearHit(&m_last_reticule_action);
+    if (m_wep_seq.LinearWeight() == 0.0f) {
+        KitView(this)->m_retblocked = false;
+        return;
+    }
+    KitView(this)->m_18 = 0.0f;
+    KitView(this)->m_1c = 0.0f;
+    CPnt3D ap;
+
+    bool ok = GetAP(ap);
+
+    if (!ok)
+        return;
+    CPnt3D tgt = m_1458;
+
+    if (m_eb8)
+        m_eb8->Virtual60(&ap);
+    zdb::IntersectStruct *block = func_005B6240(this, &ap, &tgt);
+    CZFTSWeapon *cur = m_kit.GetCurItem();
+
+    if (!autoaimed && block && cur && cur->m_ID != 190 &&
+        ((unsigned char)GetWeaponState() == 1 || m_weapon_state == 18) && !(aimed && (!aimed || Near(block->m_pos, sx, sy, sz)))) {
+        KitView(this)->m_retblocked = true;
+        SetAimPointW(&block->m_pos, &block->m_norm, true);
+        CPnt3D scr;
+
+        bool on = zdb::CWorld::m_world->m_camera->GetScreenPos(&block->m_pos, &scr);
+
+        if (on) {
+            float m = scr.y;
+
+            if (!(scr.x < scr.y))
+                m = scr.x;
+
+            KitView(this)->m_retblockedX = scr.x;
+            KitView(this)->m_retblockedY = scr.y;
+            KitView(this)->m_retblockedsize = m;
+        }
+    } else
+        KitView(this)->m_retblocked = false;
+}
+
 /* the hit under the reticule (OVL2 0x5AA6D0: SOCOM 1's GetReticuleDi, `this + 0x340` there -- its
  * m_last_reticule; between GetReticuleSeal and CheckDIShoot in both builds, and called where SOCOM 1's
  * DoRangeText calls it, ahead of the range's Sub and sprintf, in the HUD's 0x216770) */
@@ -6002,6 +6272,217 @@ extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
     }
     climb->m_state = 0;
     climb->m_active = 0;
+}
+
+extern "C" {
+/* (OVL1 data: the light's override switch and value, the shadow's inside flag; the falls' anims) */
+extern unsigned char data_003DF1B8;
+extern float data_003DF1C0;
+extern bool data_0066B470;
+extern short data_003DEED0;
+extern short data_003DEED8;
+extern short data_003DEEE8;
+extern short data_003DEEF0;
+extern short data_003DEEF8;
+extern short data_003DEF00;
+extern short data_003DEF08;
+extern short data_003DEF40;
+extern short data_003DEF50;
+extern short data_003DEF60;
+/* (OVL2: seal_body.cpp's jump and fall steps, seal_fall.cpp's fall against the ground) */
+bool func_0057DFE0(CZSealBody *seal);
+void *func_0057DF20(CZSealBody *seal);
+bool func_0057E130(CZSealBody *seal);
+void *func_0057E050(CZSealBody *seal);
+bool func_005804E0(CZSealBody *seal);
+bool func_00580360(CZSealBody *seal, float t);
+void func_0057F310(CZSealBody *seal);
+void func_0059B440(CZSealBody *seal, zdb::IntersectStruct *hit, float *speed, bool touch, float alt);
+bool func_00587FE0(CZSealBody *seal);
+}
+
+/* a fall's landing in one of the two fall anims: the damage taken at once with nothing held, at the
+ * ground (the root at most 4 up) the held fall's damage -- the speed when none was kept -- and the
+ * fall ended; above it the speed kept, the anim held at 3 and the kept velocity cleared (an inline: the
+ * two landings expand it alike; the name ours) */
+static inline void FallLanding(CZSealBody *seal, const float &speed)
+{
+    float held = seal->m_1364;
+
+    if (0.0f == held) {
+        seal->HandleFallingDamage(speed);
+        func_005804E0(seal);
+    } else if (seal->m_root->m_pos.y <= 4.0f) {
+        if (held < 0.0f)
+            seal->m_1364 = speed;
+        if (seal->m_1364 > 0.0f)
+            seal->HandleFallingDamage(seal->m_1364);
+        seal->m_1364 = 0.0f;
+        func_005804E0(seal);
+    } else {
+        if (held < 0.0f)
+            seal->m_1364 = speed;
+        ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->Representative()->m_script_wt = 3.0f;
+        seal->m_1350 = CPnt3D::zero;
+    }
+}
+
+/* the ground probe's result taken: none while the probe is held off; climbing (or in state 4) only the
+ * altitude kept and the SEAL on the ground; else the jump's and the fall's waits run down, the SEAL put
+ * in the air and stepped against the ground's hit, the throttles stopped in the air; a living SEAL in the
+ * air keeps its velocity (a jump's or a fall's step taken), one come down lands -- a fall's anim, a hurt
+ * state's drop, the climbs' and the drop's ends, else a landing -- and, with a polygon under it, the
+ * material, the shadow's light and the visual's inside flag taken (OVL2 0x5AF930; SOCOM 1's
+ * PostCheckDIDown, after HandleLanding: CZSealBody::Tick's three throttles) */
+bool CZSealBody::PostCheckDIDown(float &x, float &y, float &z)
+{
+    if (HoldsNoProbe(this))
+        return false;
+    func_00555170(&m_blends);
+    zdb::IntersectStruct *alt = &m_last_altitude;
+    bool climbing = IsCurrentBlend((AnimType)46) || IsCurrentBlend((AnimType)42) ||
+                    IsCurrentBlend((AnimType)AnimTypes::ClimbMedium) || IsCurrentBlend((AnimType)35) ||
+                    IsCurrentBlend((AnimType)AnimTypes::StepUp) || IsCurrentBlend((AnimType)45);
+
+    if (climbing || m_state == 4) {
+        if (alt)
+            m_alt = alt->m_pos.y;
+        m_airborne = false;
+        return false;
+    }
+    float speed = m_133c;
+    float was = m_alt;
+
+    if (m_135c > 0.0f) {
+        m_135c -= m_2e0;
+        if (m_135c < 0.0f)
+            m_135c = 0.0f;
+    }
+    if (m_1360 > 0.0f) {
+        m_1360 -= m_2e0;
+        if (m_1360 <= 0.0f)
+            m_133c = m_1364;
+        m_jumped = true;
+    }
+    bool grounded = !m_airborne;
+
+    m_airborne = true;
+    if (alt && !IsCurrentBlend((AnimType)AnimTypes::ClimbOver))
+        func_0059B440(this, alt, &speed, grounded, was);
+    if (m_airborne) {
+        x = 0.0f;
+        z = 0.0f;
+        y = 0.0f;
+    }
+    if (!climbing) {
+        if (m_health > 0.0f && m_airborne && !m_carry && !IsCurrentBlend((AnimType)8) &&
+            !IsCurrentBlend((AnimType)9) && !IsCurrentBlend((AnimType)data_003DEED0) &&
+            !IsCurrentBlend((AnimType)data_003DEED8) && !IsCurrentBlend((AnimType)data_003DEEE8) &&
+            !IsCurrentBlend((AnimType)data_003DEEF0) && !IsCurrentBlend((AnimType)AnimTypes::ClimbOver) &&
+            !IsCurrentBlend((AnimType)data_003DEF50) && !IsCurrentBlend((AnimType)data_003DEF40) &&
+            !IsCurrentBlend((AnimType)AnimTypes::RifleM203Reload)) {
+            if (!IsCurrentBlend((AnimType)9) && !IsCurrentBlend((AnimType)data_003DEF08)) {
+                switch (m_state) {
+                case 3:
+                case 10:
+                case 9:
+                    if (func_0057DFE0(this))
+                        func_0057DF20(this);
+                    break;
+                default:
+                    if (func_0057E130(this))
+                        func_0057E050(this);
+                    break;
+                }
+                m_1350 = m_velW;
+            }
+        } else {
+            bool air = m_airborne;
+
+            if (!air && !grounded) {
+                if (IsCurrentBlend((AnimType)data_003DEED8) || IsCurrentBlend((AnimType)data_003DEED0))
+                    FallLanding(this, speed);
+                else if (m_state == 9) {
+                    HandleFallingDamage(speed);
+                    if (!m_isAlive) {
+                        DropBody();
+                        ClearToBase(false);
+                        func_00588BC0(this, (AnimType)data_003DEEE8, 8, 0, 0);
+                    }
+                } else if (m_state != 10 && !func_00587FE0(this) && !IsCurrentBlend((AnimType)data_003DEEF8) &&
+                           !IsCurrentBlend((AnimType)data_003DEF00)) {
+                    if (IsCurrentBlend((AnimType)data_003DEF50))
+                        func_0057F310(this);
+                    else if (IsCurrentBlend((AnimType)AnimTypes::ClimbOver))
+                        PopBlend();
+                    else if (IsCurrentBlend((AnimType)data_003DEF08))
+                        func_00580360(this, speed);
+                    else {
+                        m_135c = 0.4f;
+                        if (m_state != 8 && ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_state != 8 &&
+                            !climbing) {
+                            m_jumped = false;
+                            if (!m_carry) {
+                                if (m_velW.x * m_velW.x + m_velW.y * m_velW.y + m_velW.z * m_velW.z < 400.0f)
+                                    ClearStack(1, true);
+                                else {
+                                    if (m_blends.m_top + 1 > 1)
+                                        PopBlend();
+                                    CQuat inv = m_quat;
+
+                                    Negate(inv.vec.x);
+                                    Negate(inv.vec.y);
+                                    Negate(inv.vec.z);
+                                    inv.Apply(&m_velW, &m_velM, 1);
+                                }
+                            }
+                            HandleLanding(speed);
+                        }
+                    }
+                }
+            } else if (!air && grounded) {
+                if (IsCurrentBlend((AnimType)data_003DEED8) || IsCurrentBlend((AnimType)data_003DEED0))
+                    FallLanding(this, speed);
+                if (IsCurrentBlend((AnimType)data_003DEF50)) {
+                    ClearStack(1, true);
+                    func_00588BC0(this, (AnimType)data_003DEF60, 0, 0, 0);
+                }
+            }
+        }
+    }
+    if (!alt)
+        return false;
+    if (!alt->m_poly)
+        return false;
+    m_onMaterial = alt->GetMaterial();
+    if (data_003DF1B8) {
+        float light = data_003DF1C0;
+
+        if (light < 0.0f)
+            light = AiMaps.GetInterpolatedShadow(m_mapLoc, &m_posW, data_0066B470);
+        _saturate(&light, 0.0f, 1.0f);
+        int shade = (int)(127.0f * (1.0f - light));
+
+        GetNode()->m_socom2_a0 = shade;
+    } else {
+        zdb::CNode *node = GetNode();
+
+        node->m_socom2_a0 = -1;
+    }
+    if (zdb::CWorld::m_world->m_camera->m_fog_alt_enabled) {
+        if (m_last_altitude.m_poly && m_last_altitude.m_poly->m_flags.m_inside) {
+            zdb::CVisual *v = GetNode()->GetFirstVisual();
+
+            if (v)
+                v->m_bits.m_b19 = false;
+        } else {
+            zdb::CVisual *v = GetNode()->GetFirstVisual();
+
+            if (v)
+                v->m_bits.m_b19 = true;
+        }
+    }
+    return true;
 }
 
 extern "C" {
