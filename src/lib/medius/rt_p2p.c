@@ -37,7 +37,11 @@
  * connection-lost handler -- each arm keeps its own copy of the reset, cross-jumped, and the state 0 is
  * assigned after the -2 initialisers; left: the join callback's `beq` keeps its argument load
  * `lw a1,8(sp)` in a plain slot (sched1 issued it before the pointer's load), here `beql` from the
- * target thread; the callee's definition order, its type, a local copy, the test's sense tried). */
+ * target thread; the callee's definition order, its type, a local copy, the test's sense tried. Round 77:
+ * expand_call loads the callback's pointer before load_register_parameters, so the argument comes after it
+ * at equal priority and dependents; a PRECOMPUTED argument (`*(volatile int *)&nLocal`) puts its load first
+ * as the target has it, but a volatile load cannot fill the slot (0x1B8); a 64-bit or short parameter, a
+ * pointer local, `(*p)()` leave it. The lead: an argument expression that emits an insn when expanded). */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern char *strncpy(char *dst, const char *src, unsigned int n);

@@ -1065,9 +1065,12 @@ unsigned char func_00634278(unsigned char *pbSent, char *szAddress, unsigned sho
  * summed, and each as a percentage of the rings' sizes (at most 100; 1 when a ring has none).
  * The receive percentage is POSITIVE with its error in an else (round 14b's rule): with the guard,
  * loop.c's exit-block move (find_and_verify_loops) puts the loop's `return 21` block after that
- * guard's barrier, here after the last statement, as the target. OPEN (10 words, registers only):
- * the send sum takes s2 and the strength-reduced channel offset s1, the target's the other way round;
- * 40 declaration orders tried (build/scratch/gcc/declperm.py) move only the zeroed slots' stores. */
+ * guard's barrier, here after the last statement, as the target. OPEN (10 words, registers only;
+ * round 77 re-read: the earlier s1/s2 story is gone): the counter i (7 refs, loop-weighted, over 54 insns:
+ * 2592) outranks nSendSize (9 over 106: 2547) for s3, the target the other way round. `i = 0;` above the
+ * connection's test lengthens i and gives every register (d=5), but its `move` then fills the call's slot
+ * where the target keeps `move a1,sp` and sets i after the test; i one insn longer (55: 2545) flips it.
+ * int i, while/for/do spellings, the sums' orders, nSendSize zeroed later all leave it. */
 unsigned char rt_msg_client_iget_buffer_status(unsigned short nConnection, unsigned int *pnSendUsed,
                                      unsigned int *pnRecvUsed, unsigned int *pnSendPercent,
                                      unsigned int *pnRecvPercent)
