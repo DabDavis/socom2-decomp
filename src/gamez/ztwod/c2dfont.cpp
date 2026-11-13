@@ -558,7 +558,11 @@ void CHangulFont::LoadLeadUsage(const _zrdr *rdr, const std::vector<CSaferStr> &
 }
 
 /* LeadRangeLayouts: each named row of vowel rows, by vowel, the Default's where one names none */
-/* OPEN, 21 instructions: registers only -- the target walks the row in s0 and keeps the two
+/* Round 73: 21 to 9 -- `int def; unsigned int k;` declared bare ahead of the row (initialised at its
+ * declaration) and assigned later (round 72's FPR tell, here on the saved GPRs: a bare local numbers after
+ * an initialised one): the row s0 and the counter s3 are the target's; left the two FindName strings, one
+ * register here (s0) where the target keeps s1 and s2 (a named local for either: 9 or 18).
+ * Was: OPEN, 21 instructions: registers only -- the target walks the row in s0 and keeps the two
  * FindName strings apart (s1, s2), the default in s4 and the counter in s3; this build shares
  * one register for the strings and puts the row in s4. The ternary store (rather than `if (v <
  * 0) v = def;`) gives the target's doubled counter step, as in LoadLeadUsage. */
@@ -571,10 +575,12 @@ void CHangulFont::LoadLeadRangeLayouts(std::vector<CSaferStr> &names, const _zrd
 
         names.push_back(CSaferStr(zrdr_flat_findstring(item, "Name", 0)));
         m_vowelRows.resize(m_vowelRows.size() + 1);
+        int def;
+        unsigned int k;
         CJamoIndex *row = m_vowelRows.back().m_vowels;
-        int def = FindName(vowelNames, zrdr_flat_findstring(item, "Default", 0));
+        def = FindName(vowelNames, zrdr_flat_findstring(item, "Default", 0));
 
-        for (unsigned int k = 0; k < 21; k++) {
+        for (k = 0; k < 21; k++) {
             int v = FindName(vowelNames, zrdr_flat_findstring(item, s_hangulJamoNames[s_hangulVowels[k]], 0));
 
             (row++)->m_v = v >= 0 ? v : def;
