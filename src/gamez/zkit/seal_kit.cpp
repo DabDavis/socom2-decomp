@@ -742,11 +742,13 @@ public:
     const char *LastMessage();
 };
 
-/* the mission as the bomb pickup reads it (theMission, OVL1 0x4364E0: its message queue at 0xB80
- * and the two bases' nodes at 0x18EC/0x18F0 -- the names ours) */
+/* the mission as the bomb pickup reads it (theMission, OVL1 0x4364E0: its two message queues at 0x1C0
+ * (fts_state.h's m_messages: HandleFireWeapon's "Unable To Deploy") and 0xB80, and the two bases'
+ * nodes at 0x18EC/0x18F0 -- the names ours) */
 class CKitMission {
 public:
-    unsigned char _0[0xb80];
+    unsigned char _0[0x1c0];
+    unsigned char m_messages0[0xb80 - 0x1c0];   // 0x1c0
     unsigned char m_messages[0x18ec - 0xb80];   // 0xb80
     zdb::CNode *m_base0;   // 0x18ec
     zdb::CNode *m_base1;   // 0x18f0
@@ -4911,12 +4913,13 @@ extern "C" void Shot__10CSealStatsFRC10CZSealBody(void *stats, CZSealBody *seal)
 void Timer_PlaceC4(void *, void *data);
 extern short data_003DEB48;
 
-/* the larger of two, the first when equal (an inline by value: `b <= a ? a : b` is the target's
- * `slti at; movn` -- `a < 0 ? 0 : a`, `0 <= a ? a : 0` written in place and every if branch or
- * compute into v0; the name ours) */
-static inline int AtLeast(int a, int b)
+/* metres in the world's units, the argument scaled in place (HandleFireWeapon's ladder bound: the
+ * product takes the constant's register, `mul.s $f2,$f2,$f0` -- a plain `0.32f * scale` gives the
+ * product its own; the name ours) */
+static inline float Metres(float m)
 {
-    return b <= a ? a : b;
+    m *= zdb::CWorld::m_scale;
+    return m;
 }
 
 /* the charge within reach; not running (inlines, each compare a bool local returned: the value in a
@@ -4970,10 +4973,16 @@ static inline bool PlaceOk(CKitFireBody *fb)
  * aim copied through a reference to m_1440 (one m_body load for the three words), and the quaternion
  * copied whole (`q = m_quat`: the three loads then the three stores, w between); then (47 to 27) the
  * type's int declared after shots -- igreplay wanted t numbered after shots (v43 to 52.5+), the throw
- * test reading the byte itself `(int)(unsigned char)type == 121` (without the int cast 33). Left: the
- * bound's `slti` (ours `slt at,a1,zero`: AtLeast's 0 a register operand), the shared `b` to the end
- * every test of the place-charge arm reaches in the target (the block-optimization pad), and the item
- * byte and the weapon's byte trading a1/a2 at the top. */
+ * test reading the byte itself `(int)(unsigned char)type == 121` (without the int cast 33).
+ * Round 80 (the MW lane; 27 to 10, register-only): the deploy message goes to the mission's FIRST queue
+ * (theMission+0x1C0, a data-reference mismatch the instruction count hid); the place-charge arm ends in
+ * an explicit `return;` (the target's unthreaded `b` to the end every test of the arm reaches: a return
+ * is its own jump block, not a join MW threads through); the bound is `m_last_selected > -1 ? ... : 0`
+ * (`slti at,a1,0; movn` -- `0 <= a`, `b <= a` with b 0 give `slt at,a1,zero`, `a < 0 ? 0 : a` a
+ * branch); the ladder bound Metres(0.32f), the argument scaled in place (`mul.s $f2,$f2,$f0`: the
+ * product in the constant's register). Left: the item byte (the CSE ETYPCON(item), v80) and the zoom
+ * class's lb (a code-generation temporary, v135) trade a1/a2 -- igreplay `--move 135=79.5` gives both;
+ * a named local, int, an inline's result (signed char, int, the bool test) are all propagated away. */
 void CZKit::HandleFireWeapon(int index, float a, float b)
 {
     EQUIP_ITEM id = m_item[index]->GetId();
@@ -5002,7 +5011,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
     if (item == 153) {
         if (CZWeapon::m_pProjectilelist->GetNumRemoteExplosives(((CEntity *)m_body)->m_id) >= 4) {
             if (m_8 <= 0.0f) {
-                ((C2DMessage_Q *)theMission.m_messages)->Add_Message("Unable To Deploy: Max Equipment Items Placed (4)", (MSGTYPE)2, false, 0, 0.0f);
+                ((C2DMessage_Q *)theMission.m_messages0)->Add_Message("Unable To Deploy: Max Equipment Items Placed (4)", (MSGTYPE)2, false, 0, 0.0f);
                 m_8 = 2.0f;
             }
             return;
@@ -5011,7 +5020,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
             CKitFireBody *fb = (CKitFireBody *)m_body;
             unsigned int ladder = fb->m_onladder;
 
-            if (ladder && !((ladder ? fb->m_f88 : 0.0f) <= 0.32f * zdb::CWorld::m_scale))
+            if (ladder && !((ladder ? fb->m_f88 : 0.0f) <= Metres(0.32f)))
                 return;
         }
         func_0057D540(m_body, data_003DEB48, 0);
@@ -5021,7 +5030,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
     } else if (item == 158) {
         if (CZWeapon::m_pProjectilelist->GetNumRemoteExplosives(((CEntity *)m_body)->m_id) >= 4) {
             if (m_8 <= 0.0f) {
-                ((C2DMessage_Q *)theMission.m_messages)->Add_Message("Unable To Deploy: Max Equipment Items Placed (4)", (MSGTYPE)2, false, 0, 0.0f);
+                ((C2DMessage_Q *)theMission.m_messages0)->Add_Message("Unable To Deploy: Max Equipment Items Placed (4)", (MSGTYPE)2, false, 0, 0.0f);
                 m_8 = 2.0f;
             }
             return;
@@ -5030,7 +5039,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
             CKitFireBody *fb = (CKitFireBody *)m_body;
             unsigned int ladder = fb->m_onladder;
 
-            if (ladder && !((ladder ? fb->m_f88 : 0.0f) <= 0.32f * zdb::CWorld::m_scale))
+            if (ladder && !((ladder ? fb->m_f88 : 0.0f) <= Metres(0.32f)))
                 return;
         }
         func_0057D540(m_body, data_003DEB48, 0);
@@ -5095,10 +5104,11 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
                 g_placeHit.m_norm = CPnt3D::zero;
                 if (GetCurItemEnum() == 151)
                 {
-                    SetCurItemByIndex(AtLeast(m_last_selected, 0));
+                    SetCurItemByIndex(m_last_selected > -1 ? m_last_selected : 0);
                 }
             }
         }
+        return;
     } else if (item == 193)
         DetonateRemoteExplosives();
     else if (item == 154) {
@@ -5218,13 +5228,6 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
 
 /* the node the explosive is being placed on, its place and how far it was then (0x66B680's neighbours:
  * HandleFireWeapon 0x5BE9A0 sets them, this tick reads them; the names ours) */
-
-/* metres in the world's units: the argument cast so that the product by 1 stays (a plain `1.0f * scale`
- * folds; the name ours) */
-static inline float Metres(float m)
-{
-    return (float)m * zdb::CWorld::m_scale;
-}
 
 /* a point less another, by value (Added's shape; the name ours) */
 static inline CPnt3D Subbed(const CPnt3D &a, const CPnt3D *b)
