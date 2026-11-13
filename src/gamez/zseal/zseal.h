@@ -335,6 +335,16 @@ public:
      * asks them) */
     float GetCurZoom();
     void IncrScreenOffsetY(float dy);
+    /* the bob's screen offsets zeroed and read, the fire delay set, the item in hand's id type, whether
+     * the item may change and the accuracy set (kit.h's; OVL2 0x5B9030, 0x5B90E0, 0x5B90D0, 0x5C32B0,
+     * 0x5C8040, 0x5C4FD0, 0x5BD100 -- CSealCtrl::PreTick calls them) */
+    void ResetScreenOffsetXY();
+    float ScreenOffsetX();
+    float ScreenOffsetY();
+    void SetFireDelay(float delay, bool b);
+    unsigned char GetCurItemIDType();
+    bool CanChangeItem();
+    void SetCurAccuracy();
     /* whether the night vision is on (OVL2 0x5C80F0, kit.h's) */
     bool NVG_Enabled() const;
     /* the night vision and the binoculars put on or off, the lens's fog and colour (kit.h's: OVL2
@@ -659,7 +669,9 @@ public:
     unsigned char m_ghost;   // 0xd2
     unsigned char _d3[0xdc - 0xd3];
     unsigned char m_dc;   // 0xdc: a SEAL's death sends no squad order unless set (the name ours)
-    unsigned char _dd[0x111 - 0xdd];
+    unsigned char _dd;
+    unsigned char m_de;   // 0xde: set while a starting game's clock runs past 3 s (CSealCtrl::PreTick; the name ours)
+    unsigned char _df[0x111 - 0xdf];
     unsigned char m_mode;   // 0x111: the game's kind (the stats test 1 and 3; the name ours)
     unsigned char _112[0x12c - 0x112];
     char m_charname[32];   // 0x12c: the local player's character (the name ours)
@@ -1086,8 +1098,11 @@ public:
     float m_trigger_power;   // 0x11c
     /* (zeroed by the constructor after the trigger's power, where SOCOM 1's zeroed m_firstreading and
      * m_lastreading -- SOCOM II dropped the readings themselves; the name ours) */
-    int m_120;   // 0x120
-    unsigned char _124[0x128 - 0x124];
+    union {
+        int m_120;   // 0x120
+        float m_pressure;   // 0x120: the fire button's pressure, smoothed (CSealCtrl::PreTick; the name ours)
+    };
+    int m_124;   // 0x124: set once a throw's trigger goes down (CSealCtrl::PreTick; the name ours)
     float m_zoomlevel;   // 0x128 (as SOCOM 1's)
     float m_zoomincrement;   // 0x12c
     /* the aim's pitch and yaw (SOCOM 1's m_aimPitch and m_aimYaw, the same offsets: the constructor
@@ -2903,7 +2918,10 @@ public:
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned int m_action_selection;   // 0xed4: the selected action's bit (SOCOM 1's m_action_selection_mask, 0xdc4)
     unsigned char m_action_display_on;   // 0xed8 (SOCOM 1's 0xdc8)
-    unsigned char _ed9[0xee0 - 0xed9];
+    unsigned char _ed9[0xedc - 0xed9];
+    /* the command the fire button gives with a shoulder button held: 3 or 2 (CSealCtrl::PreTick, where
+     * SOCOM 1's called ActionCommand with them; the name ours) */
+    int m_edc;   // 0xedc
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
     unsigned char _ee4[0xef4 - 0xee4];
     /* the SEAL's run of the delayed ground probes: the first and how many (0x5483D0 reads the hits; the

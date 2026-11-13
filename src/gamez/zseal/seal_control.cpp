@@ -523,6 +523,604 @@ bool CSealCtrl::ThrottlesPreTick(CPad *pad, float dT0)
     return false;
 }
 
+/* the state a SEAL's controller sends over the network (seal.cpp's SEAL_NET_STATE: a word packed
+ * through memcpy, its fourth byte the node's fade in fifteenths) */
+struct SEAL_NET_STATE_CTRL {
+    bool m_jump;   // 0x0
+    unsigned char _1[2];
+    unsigned char m_fade : 4;   // 0x3
+    unsigned char m_bit4 : 1;
+    unsigned char m_friend : 1;
+    unsigned char m_bit6 : 1;
+    unsigned char m_bit7 : 1;
+};
+
+extern "C" float floorf(float);
+
+/* a node's fade in fifteenths (seal.cpp's FadeLevel: 15 times the faded part when it is shown) */
+static inline unsigned int NetFadeLevel(bool active, float opacity)
+{
+    return active ? (unsigned int)floorf(15.0f * (1.0f - opacity)) : 0;
+}
+
+/* the timer's flag cleared (an inline, the name ours: the constant left unfolded before the store) */
+inline void MPBomb_TimerEngaged(CSealCtrl *ctrl, bool on)
+{
+    ctrl->m_mpbomb_bTimerEngaged = on;
+}
+
+class CMission;
+extern CMission theMission;
+
+class CZLANLobby {
+public:
+    bool IsActive();
+};
+
+extern "C" {
+/* the game clock (OVL1 data 0x4365C0, the AI's: seconds) */
+extern float data_004365C0;
+/* whether the SEAL holds on (OVL2 0x54F6E0, seal.cpp's) */
+bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool anims);
+/* the altitude's switch (OVL2 bss: a function static) */
+extern bool data_0066B3F8;
+/* (the network: online and on its way -- OVL1 0x45A1CA, theNetwork's byte; its clock less the start,
+ * OVL1 0x30CD80) */
+extern bool data_0045A1CA;
+int func_0030CD80(CZNetwork *net);
+extern CZLANLobby data_0044FE10;
+/* the SEAL's fade online (OVL2 0x553DC0, seal.cpp's) and the game left (OVL1 0x2A47B0, fts_mission.cpp's) */
+void func_00553DC0(CZSealBody *seal, float t);
+bool func_002A47B0(CMission *mission, const char *dialog);
+extern char data_0065E650[];
+/* the fade's limits and the idle's (OVL2 data, function statics) */
+extern float data_00650640;
+extern float data_00650648;
+extern float data_00650650;
+extern float data_0066B400;
+/* a squad's sound (OVL2 0x5EAF20, the kit lane's seal_unit.cpp) */
+void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
+/* the pad's buttons read (OVL1 0x2C5C90, 0x2C63F0, 0x2C6350, 0x2C60C0, fts_controller.cpp's) */
+void func_002C5C90(CPad *pad);
+float func_002C63F0(unsigned char func, const CPad *pad);
+float func_002C6350(CPad *pad);
+bool func_002C60C0(int func, CPad *pad);
+int func_001BDA78(int port, unsigned char *data, int n);
+/* the pressure's two rates (OVL2 data) */
+extern float data_006505E0;
+extern float data_006505D8;
+/* the stance button's statics (OVL2 data and bss) */
+extern bool data_00650658;
+extern float data_0066B410;
+extern bool data_0066B408;
+extern unsigned char data_0044D4F8;
+extern unsigned char FireModeSwapIsOn;
+extern float data_00650660;
+extern float data_00650668;
+bool func_005857E0(CZSealBody *seal);
+bool func_00584C10(CZSealBody *seal);
+bool func_00584B00(CZSealBody *seal);
+void *func_0057E540(CZSealBody *seal);
+void *func_0057DC80(CZSealBody *seal);
+unsigned char func_0057DBB0(CZSealBody *seal);
+bool func_0059D830(CZSealBody *seal);
+void func_00594B70(CSealCtrl *ctrl, float dT);
+}
+
+/* the mission's abort valve, a halfword at +4 (hud_scorepopup.cpp's view) */
+struct CAbortValve {
+    unsigned char _0[4];
+    unsigned short m_value;   // 0x4
+};
+
+extern "C" CAbortValve *data_0043668C;
+
+class CCtrlrConfigs {
+public:
+    static bool IsJumpAndActionShared();
+};
+
+/* the controller's action bit set (an inline: the constant left unfolded before the store) */
+static inline void SetActionBit(CSealCtrl *ctrl, bool on)
+{
+    ctrl->m_action = on;
+}
+
+/* the SEAL's desired state, a base one when it is none of the three (an inline) */
+static inline SEAL_STATE DesiredBaseState(CZSealBody *seal)
+{
+    return (unsigned int)(unsigned char)seal->m_desiredState < 3 ? seal->m_desiredState : (SEAL_STATE)func_0057DBB0(seal);
+}
+
+/* a value eased toward a reading, faster as the reading rises (an inline: the throw's pressure stored
+ * twice, its result assigned back) */
+static inline float Eased(float &v, float x, float dT)
+{
+    float cur = v;
+    float r = x > cur ? dT * data_006505E0 : dT * data_006505D8;
+
+    v = cur * (1.0f - r) + x * r;
+    return v;
+}
+
+/* the weapon state's countdown run down, true once it has (an infinite one never runs) */
+static inline bool TickWepTimer(CAiTimer &t, float dT)
+{
+    bool r = false;
+
+    if (t.m_timer != CAiTimer::infinite) {
+        t.m_timer -= dT;
+        r = t.m_timer != CAiTimer::infinite && t.m_timer <= 0.0f;
+    }
+    return r;
+}
+
+/* the controller's tick ahead of the body's: nothing while the game is paused or the controllers off;
+ * the body's ground flags, the view cone and sensors, the pad read; a slide or a drop out of the
+ * world online stops it; online, the fade and the game's end; the throttles; the idle wait; the
+ * action and jump buttons, the MP bomb, the hot swaps, the zoom, the stance button, the peeks, the
+ * reload, the fire mode, the trigger with the grenade's throw; the accuracy, the camera's offsets,
+ * the rumble, the pickups and victims, and the idle time (OVL2 0x594CF0, slot 0xC; SOCOM 1's
+ * PreTick with the online parts, the stance button and the throw's pressure added). Byte-exact
+ * (round 70): the locals declared first in reverse of their saved registers (pressed s8, fire s7,
+ * released s6, idle s4, the weapon state s3, the SEAL s2, the kit s1, the pad s0), `shared` declared
+ * ahead of the jump button's bool (the stack slots), the clock read through a volatile view, the
+ * fire button's state a KEY_STATE (held unmasked, masked at each test), both pressures through
+ * Eased (the throw's stored twice), the throw's pressure scaled in a second statement */
+bool CSealCtrl::PreTick(float dT)
+{
+    bool pressed;
+    bool fire;
+    bool released;
+    bool idle;
+    WEAPON_STATE ws;
+    CZSealBody *seal;
+    bool collide;
+    CZKit *kit;
+    bool altitude;
+    CPad *pad;
+
+    seal = (CZSealBody *)m_entity;
+
+    if (data_0043668C->m_value == 1 || data_0043668C->m_value == 2)
+        return false;
+    if (!data_003DF1B0) {
+        seal->m_524 = 0.0f;
+        return false;
+    }
+
+    altitude = data_0066B3F8;
+    collide = true;
+
+    if (func_0054F6E0(seal, true, true, true) || seal->m_eb8)
+        collide = false;
+    if (seal->m_state == stateProne)
+        altitude = false;
+    seal->m_check_player_collision = collide;
+    seal->m_get_new_altitude = altitude;
+
+    idle = true;
+    kit = &seal->m_kit;
+
+    seal->InvalidateFollowParams();
+    kit->ResetScreenOffsetXY();
+    UpdateViewCone();
+    SensorPreTick(dT);
+
+    ws = (WEAPON_STATE)2;
+
+    if ((int)m_targetSum > 0 || (kit->IsZoomed() && !kit->IsUsingBinocs()))
+        ws = (WEAPON_STATE)1;
+
+    pad = m_padid < CInput::NUM_PADS ? CInput::m_pads[m_padid] : 0;
+
+    func_002C5C90(pad);
+
+    bool stop = SlideTick(dT);
+
+    if (theNetwork.m_9 && !(*(volatile float *)&data_004365C0 - seal->m_420 <= 0.6f)) {
+        CPnt3D pos = seal->m_last_altitude.m_pos;
+
+        seal->TeleportTo(&pos, &seal->m_quat);
+        stop = true;
+    }
+    if (stop) {
+        SetThrottle(0, 0.0f);
+        SetThrottle(1, 0.0f);
+        SetThrottle(2, 0.0f);
+        return true;
+    }
+    if (theNetwork.m_9) {
+        int t = func_0030CD80(&theNetwork) - 1500;
+
+        if (t > 0 && !data_0044FE10.IsActive()) {
+            float f = 0.001f * (5000 - t);
+
+            _saturate(&f, data_00650640, data_00650648);
+            func_00553DC0(seal, f);
+            if (t > 3000)
+                data_00437CE8->m_de = 1;
+            else
+                data_00437CE8->m_de = 0;
+        } else {
+            func_00553DC0(seal, 1.0f);
+            data_00437CE8->m_de = 0;
+        }
+        if (!data_0045A1CA) {
+            SetThrottle(0, 0.0f);
+            SetThrottle(1, 0.0f);
+            SetThrottle(2, 0.0f);
+            SetTrigger(false);
+            if (data_0044FE10.IsActive())
+                func_002A47B0(&theMission, data_0065E650);
+            return true;
+        }
+
+        CNetGameState *game = data_00437CE8;
+
+        if (game->m_dc && !game->m_ghost && seal->m_fd3) {
+            zdb::CNode *node = seal->GetNode();
+            float opacity = node->m_Opacity;
+            SEAL_NET_STATE_CTRL st;
+            unsigned int zero = 0;
+            unsigned int state;
+
+            memcpy(&st, &zero, sizeof(st));
+            bool active = node->m_active;
+
+            if (active && opacity > 0.0f)
+                st.m_fade = NetFadeLevel(active, opacity);
+            else
+                st.m_fade = 15;
+            memcpy(&state, &st, sizeof(st));
+            SetAiNetState(state);
+            if (opacity == 1.0f)
+                seal->m_fd3 = 0;
+            return true;
+        }
+        seal->m_524 = 0.0f;
+    }
+    if (ThrottlesPreTick(pad, dT))
+        return true;
+    if (!(seal->m_524 < data_00650650)) {
+        seal->m_524 = data_0066B400;
+
+        CSealUnit *unit = ((CSealCtrl *)seal->m_control)->m_unit;
+
+        if (unit)
+            func_005EAF20(unit->GetTop(), 80, 1, 1.0f);
+    }
+
+    bool shared;
+    bool jumpButton = func_002C64E0(5, pad) == 1;
+
+    fire = false;
+    released = false;
+    pressed = false;
+
+    shared = CCtrlrConfigs::IsJumpAndActionShared();
+
+    if (!m_menustate) {
+        KEY_STATE b = (KEY_STATE)func_002C64E0(0, pad);
+        float p = func_002C63F0(0, pad);
+
+        Eased(m_pressure, p, dT);
+        fire = b == 2;
+        released = b == 3;
+        pressed = b == 1;
+    } else
+        idle = false;
+    if (m_menustate != 1) {
+        if (shared) {
+            if (pressed) {
+                float side = m_throttle[1];
+                bool jump = false;
+
+                if (!(fabsf(m_throttle[2]) <= 0.0f) || !(fabsf(side) <= 0.0f))
+                    jump = true;
+                else if (!seal->m_action_selection)
+                    jump = true;
+                m_action = jump;
+                if (jump) {
+                    unsigned int sel = seal->m_action_selection;
+
+                    if (!(sel & 0x2000) && !(sel & 0x20000) && !(sel & 0x80))
+                        seal->ExecuteDelayedAction_Jump();
+                }
+            } else if (released) {
+                SetActionBit(this, false);
+                OnActionButton();
+            } else
+                SetActionBit(this, false);
+        } else {
+            if (jumpButton) {
+                unsigned int sel = seal->m_action_selection;
+
+                if (!(sel & 0x2000) && !(sel & 0x20000) && !(sel & 0x80) && func_005B4340(seal, 11)) {
+                    seal->ExecuteDelayedAction_Jump();
+                    m_action = true;
+                }
+            } else
+                SetActionBit(this, false);
+            if (released)
+                OnActionButton();
+        }
+
+        bool clear = true;
+
+        if (fire) {
+            if (pad->m_state[3] == 1)
+                seal->m_edc = 3;
+            else if (pad->m_state[2] == 1)
+                seal->m_edc = 2;
+            if (m_mpbomb_bTimerAvailable) {
+                if (!m_mpbomb_node) {
+                    CNodeAction *action = ((CZSealBody *)m_entity)->GetReticuleAction(true);
+
+                    if (m_bomb_defusal_node) {
+                        m_mpbomb_node = m_bomb_defusal_node;
+                        m_mpbomb_timer = 5.0f;
+                        m_mpbomb_bTimerEngaged = true;
+                    } else if (action && CanPerformAction(action) && action->m_type == NODEACTION_BOMB) {
+                        m_mpbomb_node = action->m_node;
+                        m_mpbomb_timer = 5.0f;
+                        m_mpbomb_bTimerEngaged = true;
+                    }
+                }
+                TickMPBomb(dT);
+                clear = false;
+            }
+        } else if (m_mpbomb_bTimerAvailable) {
+            MPBomb_TimerEngaged(this, false);
+            m_mpbomb_timer = 5.0f;
+            m_mpbomb_node = 0;
+        }
+        if (!m_mpbomb_bTimerAvailable && clear) {
+            MPBomb_TimerAvailable(false);
+            MPBomb_TimerEngaged(this, false);
+            m_mpbomb_timer = 5.0f;
+            m_mpbomb_node = 0;
+        }
+        if (func_002C64E0(9, pad) == 1) {
+            if (seal->CanChangeItem() && kit->isSelectableItem((int)m_hotswapL1) &&
+                m_hotswapL1 <= (float)kit->GetNumItems() && kit->CanChangeItem())
+                kit->SetCurItemByIndex((int)m_hotswapL1);
+            else
+                CSnd::PlayErrorSound();
+        }
+        if (!data_0044D4F8 && func_002C64E0(10, pad) == 1) {
+            if (seal->CanChangeItem() && kit->isSelectableItem((int)m_hotswapL2) &&
+                m_hotswapL2 <= (float)kit->GetNumItems() && kit->CanChangeItem())
+                kit->SetCurItemByIndex((int)m_hotswapL2);
+            else
+                CSnd::PlayErrorSound();
+        }
+        if (seal->CanZoom()) {
+            if (pad->m_state[5] == 1 && !m_menustate) {
+                ZOOMSTATE z = seal->DecrZoomState();
+
+                if (seal->m_zoomstate_echo && (int)z <= 0 && seal->m_carry) {
+                    zdb::CNode *node = seal->m_carry->GetNode();
+
+                    if (node)
+                        node->m_Opacity = 1.0f;
+                }
+            } else if (pad->m_state[4] == 1 && !m_menustate) {
+                ZOOMSTATE z = seal->IncrZoomState();
+
+                if (seal->m_zoomstate_echo && (int)z > 0 && seal->m_carry) {
+                    zdb::CNode *node = seal->m_carry->GetNode();
+
+                    if (node)
+                        node->m_Opacity = 0.0f;
+                }
+            }
+        }
+    }
+    if (!((CSealCtrl *)seal->m_control)->m_menustate) {
+        if (data_00650658) {
+            float max = data_0066B410;
+            float p = pad->m_held[6];
+
+            if (p > max) {
+                data_0066B410 = p;
+                if (!(p < 0.3f))
+                    data_0066B408 = 1;
+            } else if (p < max)
+                data_0066B408 = 1;
+        } else
+            data_00650658 = pad->m_state[6] == 0;
+        if (data_0066B408) {
+            data_0066B408 = 0;
+            data_00650658 = 0;
+            idle = false;
+            if (data_0066B410 < 0.3f) {
+                SEAL_STATE st = DesiredBaseState(seal);
+
+                if (func_005857E0(seal)) {
+                    switch (st) {
+                    case stateStand:
+                        seal->m_desiredState = stateCrouch;
+                        break;
+                    case stateCrouch:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    case stateProne:
+                        seal->m_desiredState = stateCrouch;
+                        break;
+                    }
+                } else {
+                    switch (st) {
+                    case stateStand:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    case stateCrouch:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    case stateProne:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    }
+                }
+            } else if (!(data_0066B410 < 0.3f)) {
+                SEAL_STATE st = DesiredBaseState(seal);
+
+                if ((st == stateStand || st == stateCrouch) && func_00584B00(seal)) {
+                    func_0057E540(seal);
+                    seal->m_desiredState = stateProne;
+                } else if (func_005857E0(seal) && func_00584C10(seal)) {
+                    switch (st) {
+                    case stateStand:
+                        seal->m_desiredState = stateProne;
+                        break;
+                    case stateCrouch:
+                        seal->m_desiredState = stateProne;
+                        break;
+                    case stateProne:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    }
+                } else if (func_005857E0(seal)) {
+                    switch (st) {
+                    case stateStand:
+                        seal->m_desiredState = stateCrouch;
+                        break;
+                    case stateCrouch:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    case stateProne:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    }
+                } else {
+                    switch (st) {
+                    case stateStand:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    case stateCrouch:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    case stateProne:
+                        seal->m_desiredState = stateStand;
+                        break;
+                    }
+                }
+            }
+            data_0066B410 = 0.0f;
+        }
+    }
+    seal->m_desiredStance = STANCE_PRONE;
+    if (seal->m_state != stateDead && !func_001BDA78(pad->m_port, pad->m_e4, 12) && !fire) {
+        if (func_001BDA78(pad->m_port, pad->m_e4, 7)) {
+            if (!(func_001BDA78(pad->m_port, pad->m_e4, 21) / 255.0f <= 0.03f) && func_00596D60(this, -1, 7.8375f))
+                seal->m_desiredStance = STANCE_NONE;
+            else
+                func_0057DC80(seal);
+        } else if (func_001BDA78(pad->m_port, pad->m_e4, 5)) {
+            if (!(func_001BDA78(pad->m_port, pad->m_e4, 20) / 255.0f <= 0.03f) && func_00596D60(this, 1, 9.5f))
+                seal->m_desiredStance = STANCE_CROUCH;
+            else
+                func_0057DC80(seal);
+        }
+    }
+    if (func_002C64E0(6, pad) == 1 && !seal->IsReloading()) {
+        idle = false;
+        seal->m_kit.SetFireDelay(-1.0f, false);
+    }
+    if (FireModeSwapIsOn) {
+        if (func_002C64E0(3, pad) == 1)
+            seal->m_kit.CycleFireMode();
+    } else
+        func_00594B70(this, dT);
+    if (func_002C64E0(1, pad) == 3 && !func_002C6280(pad))
+        data_0066B3D8 = 1;
+    if ((m_throwing || m_justthrew) && func_0059D830(seal)) {
+        float p = func_002C6350(pad);
+
+        p *= data_00650660;
+
+        if (!m_justthrew) {
+            if (p > m_trigger_power * data_00650668) {
+                m_trigger_power = Eased(m_trigger_power, p, dT);
+                idle = false;
+            } else {
+                seal->SetWeaponState((WEAPON_STATE)1);
+                SetTrigger(true);
+                idle = false;
+                m_justthrew = true;
+                m_124 = 1;
+            }
+        } else if (seal->IsThrowing(false))
+            idle = false;
+        else {
+            bool off = false;
+
+            m_throwing = off;
+            m_justthrew = off;
+            seal->SetWeaponState((WEAPON_STATE)2);
+            m_trigger_power = 0.0f;
+            SetTrigger(false);
+        }
+    } else {
+        SetTrigger(func_002C60C0(2, pad));
+
+        bool grenade = kit->GetCurItemIDType() == 0x79;
+
+        switch (m_trigger) {
+        case TRIGGER_FALLING:
+            m_wep_state.m_timer = m_wep_state.Period();
+            if (grenade && kit->CurItemHasAmmo()) {
+                m_throwing = true;
+                SetTrigger(false);
+                SetTrigger(false);
+            } else
+                seal->SetWeaponState((WEAPON_STATE)1);
+            idle = false;
+            break;
+        case TRIGGER_DOWN:
+            seal->SetWeaponState((WEAPON_STATE)1);
+            m_wep_state.m_timer = m_wep_state.Period();
+            idle = false;
+            break;
+        case TRIGGER_RISING:
+            m_wep_state.m_timer = m_wep_state.Period();
+            break;
+        case TRIGGER_UP:
+            if (grenade)
+                ws = (WEAPON_STATE)2;
+            else if (ws == 2) {
+                if (!TickWepTimer(m_wep_state, dT))
+                    ws = (WEAPON_STATE)1;
+            } else
+                m_wep_state.m_timer = m_wep_state.Period();
+            seal->SetWeaponState(ws);
+            break;
+        }
+    }
+    kit->SetCurAccuracy();
+
+    CEntityCtrl *ctrl = seal->m_control;
+
+    if (ctrl ? ((CSealCtrl *)ctrl)->IsPlayer() : false) {
+        zdb::CCamera *cam = zdb::CWorld::m_world->m_camera;
+
+        cam->SetScreenOffsetY(kit->ScreenOffsetX());
+        cam->SetScreenOffsetY(kit->ScreenOffsetY());
+    }
+    TickRumbler(dT);
+    TickPickups(dT);
+    TickVictims();
+    if (idle && (m_throttle[0] != 0.0f || (m_throttle[1] != 0.0f && m_throttle[2] != 0.0f)))
+        idle = false;
+    if (idle) {
+        seal->m_524 += dT;
+        if (seal->m_524 < 0.0f)
+            seal->m_524 = 0.0f;
+    } else
+        seal->m_524 = 0.0f;
+    return true;
+}
+
 enum TWO { TWO_0, TWO_1, TWO_2, TWO_BIG = 0x7fff };
 
 /* an arc cosine kept to its domain (an inline, seal_env.cpp's) */
@@ -948,17 +1546,6 @@ void CSealCtrl::TickPickups(float dT)
     }
 }
 
-/* the state a SEAL's controller sends over the network (seal.cpp's SEAL_NET_STATE: a word packed
- * through memcpy, its fourth byte the node's fade in fifteenths) */
-struct SEAL_NET_STATE_CTRL {
-    bool m_jump;   // 0x0
-    unsigned char _1[2];
-    unsigned char m_fade : 4;   // 0x3
-    unsigned char m_bit4 : 1;
-    unsigned char m_friend : 1;
-    unsigned char m_bit6 : 1;
-    unsigned char m_bit7 : 1;
-};
 
 extern "C" {
 extern float floorf(float);
@@ -969,11 +1556,6 @@ bool func_002C2FA0();
 void func_005B88C0(CZKit *kit);
 }
 
-/* a node's fade in fifteenths (seal.cpp's FadeLevel: 15 times the faded part when it is shown) */
-static inline unsigned int NetFadeLevel(bool active, float opacity)
-{
-    return active ? (unsigned int)floorf(15.0f * (1.0f - opacity)) : 0;
-}
 
 /* the controller's SEAL (an inline: its result a temporary, numbered after the named locals -- the
  * SEAL in s2 under the menu byte and the node, PostMortemPreTick's registers by tools/igreplay.py) */
@@ -1955,11 +2537,6 @@ extern "C" {
 extern float data_00650678;
 }
 
-/* the timer's flag cleared (an inline, the name ours: the constant left unfolded before the store) */
-inline void MPBomb_TimerEngaged(CSealCtrl *ctrl, bool on)
-{
-    ctrl->m_mpbomb_bTimerEngaged = on;
-}
 
 /* the MP bomb worked at: its timer runs while the reticule's action, the reticule's hit or the MP bomb
  * is the bomb's node; run out, a defusal under way is attempted once the bomb is planted (state 3),
