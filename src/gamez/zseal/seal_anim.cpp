@@ -180,7 +180,11 @@ static inline void CrossVU0(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
  * MW hoists into s7/fp); the frames `unsigned int`: their conversion to GetRot's int is a loop-invariant
  * temporary hoisted into the preheader, as the target's `move s0,a2` / `move s6,a3` there (as `int` the
  * parameters are copied in the prologue).
- * OPEN, 14 instructions (28 before round 45): the preheader's order. The target hoists `&seal->m_body_parts` into the preheader
+ * BYTE-EXACT since the SEALs' round 73: the loop ROTATED BY HAND -- `if (i < n) { parts = ...; do { ... }
+ * while (obj++, ++i < n); }` -- puts the reference's address in the guard's block, after the entry test
+ * (the target's preheader: `move s3,zero` in the test's delay slot, `addiu s1` after it), and the
+ * reference is not forwarded there (build/scratch/seal-r73/v_7ba0.py).
+ * Was OPEN, 14 instructions (28 before round 45): the preheader's order. The target hoists `&seal->m_body_parts` into the preheader
  * (s1) and the replay (build/ig, tools/igreplay.py --movers) has exactly one numbering giving every
  * saved register: the parts' address numbered between part and the first hoisted conversion -- an
  * inlined function's variable or the first loop-optimiser temporary. Tried: the reference at the top
@@ -208,9 +212,10 @@ extern "C" void func_00577BA0(CZSealBody *seal, CZSIScriptCommon *script, unsign
     CZSIObject *obj = script->m_pObjects;
     unsigned int i = 0;
     CZBodyPart *part = 0;
-    std::vector<CZBodyPart *> &parts = seal->m_body_parts;
 
-    for (; i < script->m_nObjects; i++, obj++) {
+    if (i < script->m_nObjects) {
+    std::vector<CZBodyPart *> &parts = seal->m_body_parts;
+    do {
         unsigned int id = obj->m_body_part_id;
 
         if (id < siNumBodyObjects) {
@@ -233,6 +238,7 @@ extern "C" void func_00577BA0(CZSealBody *seal, CZSIScriptCommon *script, unsign
             part->m_rot.Mul(&qd, &q1);
             part->m_rot = q1;
         }
+    } while (obj++, ++i < script->m_nObjects);
     }
 }
 
