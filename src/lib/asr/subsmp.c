@@ -90,37 +90,49 @@ int Subsampler_Process(SUBSAMPLER *s, short *in)
     return 0;
 }
 
-/* OPEN (49 words, 0x164 against 0x174): every block is the target's but the last two -- the
- * centre tap's test (0.5) and the odd taps' loop (0) share one tail in both builds, but here the
- * centre's copy is cross-jumped into the loop's (`b` into the loop body), where the target keeps
- * the centre's and the loop body jumps back into it (`ld; b tail; addiu 16`), the fail block
- * between them. Tried: guard clauses, the nested if/else with `err = 1; break`, a fail label
- * inside the centre test's then-block (this one), the check written once in a for(;;)/while/do
- * loop (d = *a - 0.5, then d = *a), an index loop (109s). The pairs loop and everything before
- * it match (`*a++ - *b--`: the increments sit before the calls). Two pool constants of 1e-15, as
- * the target's (0x65A4D8, 0x65A4E0). */
+/* the filter's impulse response checked: an odd tap count whose half is odd, symmetric pairs, the
+ * centre tap 0.5 and every second tap from h[1] zero, each within 1e-15 (as `abs` of the int
+ * conversion, the vendor's); a failure is error 300. Byte-exact since GCC round 75 (OPEN since it was
+ * written, 0x16C of 0x174, read as which copy of the shared tail cross-jumping keeps): every failure is
+ * its own `err = 1` and goto past the centre test, the half's and the count's tests apart and the
+ * count's `% 2 == 1` (fold keeps the compare with 1: `li 1; beq`); jump.c then merges the copies
+ * into the centre test's then-block, which the loop's check jumps back into, and err's five sets
+ * rank it above s and h (s2). One `fail:` label threads every goto to the end instead. Two pool
+ * constants of 1e-15, as the target's (0x65A4D8, 0x65A4E0). */
 static int Subsampler_CheckImpulseResponse(SUBSAMPLER *s, double *h, unsigned int ntaps)
 {
     int err = 0;
     double *a, *b;
 
-    if ((ntaps & 1) == 0)
-        goto fail;
+    if ((ntaps & 1) == 0) {
+        err = 1;
+        goto done;
+    }
     s->len = ntaps >> 1;
     s->n = s->len + 1;
-    if ((s->len & 1) == 0 || (s->n & 1) == 1)
-        goto fail;
-    for (a = h, b = h + ntaps - 1; a < b; )
-        if (abs(*a++ - *b--) > 1e-15)
-            goto fail;
-    if (abs(*a - 0.5) > 1e-15) {
-fail:
+    if ((s->len & 1) == 0) {
         err = 1;
-    } else {
-        for (a = h + 1; a < b; a += 2)
-            if (abs(*a) > 1e-15)
-                goto fail;
+        goto done;
     }
+    if (s->n % 2 == 1) {
+        err = 1;
+        goto done;
+    }
+    for (a = h, b = h + ntaps - 1; a < b; )
+        if (abs(*a++ - *b--) > 1e-15) {
+            err = 1;
+            goto done;
+        }
+    if (abs(*a - 0.5) > 1e-15)
+        err = 1;
+    else {
+        for (a = h + 1; a < b; a += 2)
+            if (abs(*a) > 1e-15) {
+                err = 1;
+                goto done;
+            }
+    }
+done:
     if (err != 0)
         _tosErrorLog(s, 300);
     return err;
