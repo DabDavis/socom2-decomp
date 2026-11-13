@@ -73,6 +73,37 @@ extern "C" {
 /* SOCOM II's additions, no SOCOM 1 names: VU0 loops over a point array, hand-written. */
 
 /* out[i] = m * in[i], n CPnt3D points (w = 1): SOCOM 1's Transform, its stack slots swapped */
+#if Z_PORT
+/* the port: the rows read once (lqc2 vf4-vf7), each point copied into the aligned input and
+ * through them -- ACC = r0*x; ACC += r1*y; ACC += r2*z; out = ACC + r3*1 (vf0.w), xyz -- and
+ * copied out; a do-while as the asm's loop (n 0 runs it 2^32 times there too) */
+void CMatrix::Transform(const CPnt3D *in, CPnt3D *out, int n) const
+{
+    float r[16];
+    float v[3];
+    float o[3];
+    int k;
+
+    for (k = 0; k < 16; k++)
+        r[k] = ((const float *)m_matrix)[k];
+    do {
+        v[0] = in->x;
+        v[1] = in->y;
+        v[2] = in->z;
+        for (k = 0; k < 3; k++) {
+            float acc = r[k] * v[0];
+            acc = acc + r[4 + k] * v[1];
+            acc = acc + r[8 + k] * v[2];
+            o[k] = acc + r[12 + k] * 1.0f;
+        }
+        in++;
+        out->x = o[0];
+        out->y = o[1];
+        out->z = o[2];
+        out++;
+    } while (--n);
+}
+#else
 asm void CMatrix::Transform(const CPnt3D *in, CPnt3D *out, int n) const
 {
     addiu sp, sp, -32
@@ -109,8 +140,37 @@ loop:
     jr ra
     addiu sp, sp, 32
 }
+#endif
 
 /* out[i] = m * in[i], n CPnt4D vectors */
+#if Z_PORT
+/* the port: ACC = r0*x; ACC += r1*y; ACC += r2*z; out = ACC + r3*w, all four lanes; each vector
+ * read whole before its store, as lqc2/sqc2 do (in place works) */
+void CMatrix::Transform(const CPnt4D *in, CPnt4D *out, int n) const
+{
+    float r[16];
+    float v[4];
+    float o[4];
+    int k;
+
+    for (k = 0; k < 16; k++)
+        r[k] = ((const float *)m_matrix)[k];
+    do {
+        for (k = 0; k < 4; k++)
+            v[k] = ((const float *)in)[k];
+        for (k = 0; k < 4; k++) {
+            float acc = r[k] * v[0];
+            acc = acc + r[4 + k] * v[1];
+            acc = acc + r[8 + k] * v[2];
+            o[k] = acc + r[12 + k] * v[3];
+        }
+        for (k = 0; k < 4; k++)
+            ((float *)out)[k] = o[k];
+        in++;
+        out++;
+    } while (--n);
+}
+#else
 asm void CMatrix::Transform(const CPnt4D *in, CPnt4D *out, int n) const
 {
     lqc2 vf4, 0(a0)
@@ -131,6 +191,7 @@ loop:
     jr ra
     nop
 }
+#endif
 
 /* no translation and a unit diagonal, compared as bits */
 bool func_003084F0(const CMatrix *m)
@@ -207,6 +268,66 @@ CQuat *CMatrix::ToQuat(CQuat *q) const
 
 /* A rigid inverse for a matrix whose scale is uniform: the transpose over the squared
  * scale, the translation rotated back. Hand-written VU0 (SOCOM 1 has it byte for byte). */
+#if Z_PORT
+/* the port, op by op: Q = 1 / (r0.x^2 + r0.y^2 + r0.z^2) (vmul, then x += y, x += z: the first
+ * row's squared length is the scale squared); the 3x3 transposed and times Q, each moved lane
+ * `0 + v` as vadd with vf0 makes it; w 0 in the three rows (vmuly.w by vf0.y: the asm multiplies
+ * a stale lane by 0, which on VU0 leaves -0 when that lane was negative -- here +0); the last row
+ * -(t.x*c0 + t.y*c1 + t.z*c2), w 1. Every source row is read before the first store: dst may be
+ * src, as in the asm */
+void Vu0MatrixInverseWithUniformScale(CMatrix *dst, CMatrix *src)
+{
+    const float *s = (const float *)src->m_matrix;
+    float *d = (float *)dst->m_matrix;
+    float r0[4], r1[4], r2[4], t[4];
+    float c0[4], c1[4], c2[4], c3[4];
+    float sq[3];
+    float q, r0y, r0z, r1z;
+    int k;
+
+    for (k = 0; k < 4; k++) {
+        r0[k] = s[k];
+        r1[k] = s[4 + k];
+        r2[k] = s[8 + k];
+        t[k] = s[12 + k];
+    }
+    for (k = 0; k < 3; k++)
+        sq[k] = r0[k] * r0[k];                  /* vmul.xyz vf8, vf4, vf4 */
+    sq[0] = sq[0] + sq[1];                      /* vaddy.x vf8, vf8, vf8 */
+    sq[0] = sq[0] + sq[2];                      /* vaddz.x vf8, vf8, vf8 */
+    q = z_vu0_div(1.0f, sq[0]);                 /* vdiv Q, vf0w, vf8x */
+    r0y = 0.0f + r0[1];                         /* vaddy.x vf20, vf0, vf4 */
+    r0z = 0.0f + r0[2];                         /* vaddz.x vf21, vf0, vf4 */
+    r1z = 0.0f + r1[2];                         /* vaddz.y vf22, vf0, vf5 */
+    for (k = 0; k < 3; k++) {
+        c0[k] = r0[k] * q;                      /* vmulq.xyz vf10, vf4, Q */
+        c1[k] = r1[k] * q;                      /* vmulq.xyz vf11, vf5, Q */
+        c2[k] = r2[k] * q;                      /* vmulq.xyz vf12, vf6, Q */
+    }
+    c0[1] = 0.0f + c1[0];                       /* vaddx.y vf10, vf0, vf11 */
+    c0[2] = 0.0f + c2[0];                       /* vaddx.z vf10, vf0, vf12 */
+    c1[2] = 0.0f + c2[1];                       /* vaddy.z vf11, vf0, vf12 */
+    c1[0] = r0y * q;                            /* vmulq.x vf11, vf20, Q */
+    c2[0] = r0z * q;                            /* vmulq.x vf12, vf21, Q */
+    c2[1] = r1z * q;                            /* vmulq.y vf12, vf22, Q */
+    c0[3] = 0.0f;                               /* vmuly.w vf10, vf10, vf0 (and vf11, vf12) */
+    c1[3] = 0.0f;
+    c2[3] = 0.0f;
+    for (k = 0; k < 3; k++) {
+        float acc = c0[k] * t[0];               /* vmulax.xyz ACC, vf10, vf7 */
+        acc = acc + c1[k] * t[1];               /* vmadday.xyz ACC, vf11, vf7 */
+        c3[k] = acc + c2[k] * t[2];             /* vmaddz.xyz vf13, vf12, vf7 */
+        c3[k] = 0.0f - c3[k];                   /* vsub.xyz vf13, vf0, vf13 */
+    }
+    c3[3] = 1.0f + 0.0f;                        /* vaddy.w vf13, vf0, vf0 */
+    for (k = 0; k < 4; k++) {
+        d[k] = c0[k];
+        d[4 + k] = c1[k];
+        d[8 + k] = c2[k];
+        d[12 + k] = c3[k];
+    }
+}
+#else
 asm void Vu0MatrixInverseWithUniformScale(CMatrix *dst, CMatrix *src)
 {
     lqc2 vf4, 0(a1)
@@ -251,6 +372,7 @@ asm void Vu0MatrixInverseWithUniformScale(CMatrix *dst, CMatrix *src)
     jr ra
     sqc2 vf13, 0(a0)
 }
+#endif
 
 void CMatrix::SetZero()
 {

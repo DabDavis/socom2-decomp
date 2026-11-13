@@ -83,6 +83,15 @@ extern "C" {
 void func_00309280(float *out, const float *a, const float *b, float s)
 {
     float w = out[3];
+#if Z_PORT
+    /* vmulx.xyz vf6 = a * s; vadd.xyz vf6 += b; the sqc2 stores a stale w, put back below. Both
+     * inputs read before the first store (out may be a or b) */
+    float t0 = a[0] * s, t1 = a[1] * s, t2 = a[2] * s;
+    float b0 = b[0], b1 = b[1], b2 = b[2];
+    out[0] = t0 + b0;
+    out[1] = t1 + b1;
+    out[2] = t2 + b2;
+#else
     asm __volatile__ (
         "lqc2 $vf4, 0(%0)\n"
         "lqc2 $vf7, 0(%1)\n"
@@ -93,6 +102,7 @@ void func_00309280(float *out, const float *a, const float *b, float s)
         "vadd.xyz $vf6, $vf6, $vf7\n"
         "sqc2 $vf6, 0(%3)\n"
         : : "r"(a), "r"(b), "f"(s), "r"(out) : "$8", "memory");
+#endif
     out[3] = w;
 }
 

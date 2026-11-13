@@ -158,6 +158,18 @@ int CBBox::GetIntersect(CPnt4D *pa, CPnt4D *pb, CPnt4D *pout, CPnt4D *pout2, boo
         *w = 0;
     out[3] = 0.0f;
     CBBox *self = this;
+#if Z_PORT
+    /* the segment and the box into vf1-vf4 (the box's w the back-face word above), the micro
+     * program at 0x30 run to its end (the qmtc2.i waits), its hit (vf10) and normal (vf30) out */
+    (void)self;
+    z_vu0_lqc2(1, a);
+    z_vu0_lqc2(2, b);
+    z_vu0_lqc2(3, pmin);
+    z_vu0_lqc2(4, pmax);
+    z_vu0_callms(0x30);
+    z_vu0_sqc2(10, out);
+    z_vu0_sqc2(30, out2);
+#else
     asm {
         .set noreorder
         qmtc2.i self, vf0
@@ -172,6 +184,7 @@ int CBBox::GetIntersect(CPnt4D *pa, CPnt4D *pb, CPnt4D *pout, CPnt4D *pout2, boo
         qmtc2.i self, vf0
         .set reorder
     }
+#endif
     if (out[3] == 1.0f)
         return 1;
     return 0;
@@ -326,6 +339,14 @@ void CQuat::Apply(const CPnt3D *in, CPnt3D *out, int n) const
         vin[1] = v[1];
         vin[2] = v[2];
         vin[3] = v[3];
+#if Z_PORT
+        /* q into vf1, the point into vf2, the micro program at 0x50 run (the qmtc2.i waits on
+         * either side), the rotated point from vf3 */
+        z_vu0_lqc2(1, this);
+        z_vu0_lqc2(2, vin);
+        z_vu0_callms(0x50);
+        z_vu0_sqc2(3, vout);
+#else
         asm __volatile__ (
             "qmtc2.i %0, $vf0\n"
             "lqc2 $vf1, 0(%0)\n"
@@ -335,6 +356,7 @@ void CQuat::Apply(const CPnt3D *in, CPnt3D *out, int n) const
             "sqc2 $vf3, 0(%2)\n"
             "qmtc2.i %0, $vf0\n"
             : : "r"(this), "r"(vin), "r"(vout) : "memory");
+#endif
         float *r = vout;
         out->x = r[0];
         out->y = r[1];

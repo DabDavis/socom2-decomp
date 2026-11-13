@@ -328,6 +328,8 @@ public:
  * to right: Transform loads &input before &output; an asm block takes them in the arguments'
  * right-to-left order) */
 #if Z_PORT
+/* the port's stand-ins for the asm (VU0's register file and lane helpers, the fences): M1 */
+#include <zport.h>
 /* the port: vf4-vf7, the matrix's rows COPIED at the load as lqc2 copies them (a later write to
  * the matrix does not reach the transforms), for the transforms that follow; VU0 state lives
  * across these inlines within one function, so one copy per unit is enough */

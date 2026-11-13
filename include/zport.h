@@ -64,6 +64,10 @@ struct z_qword { unsigned int w[4]; } __attribute__((aligned(16)));
 #define Z_I_BREAK(code) __builtin_trap()
 #define Z_I_NOP() ((void)0)
 
+/* what the C behind each asm site uses: fences, the EE's hardware hooks, VU0's register file and
+ * its non-IEEE answers (M1) */
+#include "zport_ee.h"
+
 #else /* the PS2: the original tokens */
 
 #define Z_QWORD_TYPEDEF(base, name) typedef base name __attribute__((mode(TI)))
