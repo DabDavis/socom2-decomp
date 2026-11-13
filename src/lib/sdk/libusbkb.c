@@ -15,8 +15,8 @@
  * the key ring's clear, push and pop (0x1BF688-0x1BF728: four codes at the state's +0x22, through
  * a pointer to its +0x10 block), and in round 17a the 21-entry lookup 0x1BFA38 and its two
  * callers, the code copier 0x1BF790 (each raw code copied, or converted through 0x1BF8E0 by the
- * keyboard's arrangement) and the converter 0x1BF8E0 (it prints "Arrangement error!"); not
- * written: Read's result and key-code conversion (0x1BEFF8, 0x574). The library's data has no names
+ * keyboard's arrangement) and the converter 0x1BF8E0 (it prints "Arrangement error!"); and in
+ * the GCC libraries' round 30 Read's result (0x1BEFF8, 0x574), the last. The library's data has no names
  * (data_<VA>: the state at 0x1E41C0 -- keyboards, the per-keyboard array, the pending command --
  * the client 0x1E4260, the buffers 0x1E42C0 and 0x1E4300, the semaphore 0x1CE5D8).
  *
@@ -60,7 +60,7 @@ typedef struct {
 	int tick;			/* 0x04 (0x14): vblanks, counted by the INTC 3 handler */
 	int sta;			/* 0x08 (0x18): the repeat's start, SetRepeat's */
 	int interval;			/* 0x0C (0x1C): and its interval */
-	u_short f20;			/* 0x10 (0x20) */
+	u_short last;			/* 0x10 (0x20): the last key read, the one that repeats */
 	u_short buf[4];			/* 0x12 (0x22): the key-code ring */
 	int wp;				/* 0x1C (0x2C): its write position */
 	int rp;				/* 0x20 (0x30): its read position */
@@ -75,12 +75,18 @@ typedef struct {
 	UsbKbRing r;			/* 0x10: reached through its own pointer (addiu 16) */
 } UsbKbDev;
 
+/* a read's result (Sony's USBKBDATA_t, 0x88 bytes) */
+typedef struct {
+	u_int led;			/* 0x00 */
+	u_int mkey;			/* 0x04: the modifier keys */
+	int len;			/* 0x08: the codes */
+	u_short keycode[62];		/* 0x0C */
+} UsbKbData;
+
 typedef struct {
 	int max;			/* 0x00: keyboards the IOP side serves */
 	UsbKbDev *dev;			/* 0x04 */
-	int f08[2];
-	int f10;			/* 0x10 */
-	int f14[31];
+	UsbKbData old;			/* 0x08: the last packet read (packet-mode off) */
 	int cmd;			/* 0x90: the pending command */
 	int no;				/* 0x94 */
 	void *result;			/* 0x98 */
@@ -197,12 +203,12 @@ int func_001BE6A0(int *max)
 		data_001E41C0.dev[i].r.tick = 0;
 		data_001E41C0.dev[i].r.sta = 0;
 		data_001E41C0.dev[i].r.interval = 0;
-		data_001E41C0.dev[i].r.f20 = 0;
+		data_001E41C0.dev[i].r.last = 0;
 		data_001E41C0.dev[i].r.wp = 0;
 		data_001E41C0.dev[i].r.rp = 0;
 		data_001E41C0.dev[i].r.n = 0;
 	}
-	data_001E41C0.f10 = 0;
+	data_001E41C0.old.len = 0;
 	if ((data_001E41C0.intc = AddIntcHandler(3, func_001BF600, -1)) < 0) {
 		DeleteSema(data_001CE5D8);
 		data_001CE5D8 = -1;
@@ -429,6 +435,161 @@ int func_001BEFA0(void)
 	return 0;
 }
 
+int func_001BF688(int no);
+int func_001BF6B8(int no, u_short code);
+int func_001BF728(int no, u_short *code);
+int func_001BF790(int no, u_char mkey, u_char led, int len, u_short *src, u_short *dst);
+
+/* Read's result: the receive buffer's packet (+0 the LEDs, +1 the codes, 255 none, +2 the
+ * modifiers, +4 the codes, a byte each) to the caller's data. In packet mode (read mode 1) every
+ * nonzero code as it came; otherwise only the codes not in the last packet, the last of them
+ * repeating -- the repeat timer's codes pushed onto the keyboard's ring, an empty packet answered
+ * from it -- and the packet kept as the last (an 0x88-byte copy). Codes are converted by the
+ * keyboard's code type and arrangement (0x1BF790). Byte-exact (round 30) with, each measured:
+ * the repeat state a switch with an explicit `case 0:` (as the INTC handler's); the two packet
+ * copies' count j, the new-codes filter's n (a3 and t3: one count variable is one register); the
+ * ring's pop tested `== 0` with the miss in the else (`bnezl v0` into the shared return); the
+ * packet's length stored before its modifiers; the 0x88-byte copy a byte loop on the function's
+ * int i (`i < sizeof`: sltiu; a block-local u_int counter swaps it with the destination, a1/a2;
+ * a struct assignment is GCC's ldl/sdl block move). */
+int func_001BEFF8(void)
+{
+	UsbKbData *data;
+	UsbKbDev *d;
+	UsbKbRing *r;
+	u_char *rb;
+	UsbKbData kd;
+	u_short cnv[64];
+	u_short code;
+	int i, j, n;
+
+	data = data_001E41C0.result;
+	d = &data_001E41C0.dev[data_001E41C0.no];
+	r = &d->r;
+	rb = data_001E4300;
+	if (rb[1] == 255)
+		return -1;
+	if (d->rmode == 1) {
+		data->led = rb[0];
+		data->len = rb[1];
+		data->mkey = rb[2];
+		if (data->len == 0)
+			return 0;
+		j = 0;
+		for (i = 0; i < data->len; i++)
+			if (rb[4 + i] != 0)
+				data->keycode[j++] = rb[4 + i];
+		data->len = j;
+		if (j == 0) {
+			data->len = 1;
+			data->keycode[0] = 0;
+		}
+		func_001BF790(data_001E41C0.no, data->mkey, data->led, data->len, data->keycode,
+		              data->keycode);
+		return 0;
+	}
+	switch (r->rep) {
+	case 0:
+		break;
+	case 1:
+		if (r->tick >= r->sta) {
+			r->tick = 0;
+			func_001BF688(data_001E41C0.no);
+			if (r->sta >= 2)
+				func_001BF6B8(data_001E41C0.no, 0);
+			func_001BF6B8(data_001E41C0.no, r->last);
+			if (r->interval >= 2)
+				func_001BF6B8(data_001E41C0.no, 0);
+			r->rep = 2;
+		}
+		break;
+	case 2:
+		if (r->tick >= r->interval) {
+			r->tick = 0;
+			func_001BF6B8(data_001E41C0.no, r->last);
+			if (r->interval >= 2)
+				func_001BF6B8(data_001E41C0.no, 0);
+		}
+		break;
+	}
+	if (rb[1] == 0) {
+		if (func_001BF728(data_001E41C0.no, &code) == 0) {
+			data->len = 1;
+			data->keycode[0] = code;
+			data->led = data_001E41C0.old.led;
+			data->mkey = data_001E41C0.old.mkey;
+		} else
+			data->len = 0;
+		return 0;
+	}
+	if (rb[4] == 1) {
+		r->rep = 0;
+		data->len = 0;
+		return 0;
+	}
+	kd.led = rb[0];
+	kd.len = rb[1];
+	kd.mkey = rb[2];
+	j = 0;
+	for (i = 0; i < kd.len; i++)
+		if (rb[4 + i] != 0)
+			kd.keycode[j++] = rb[4 + i];
+	kd.len = j;
+	func_001BF688(data_001E41C0.no);
+	if (kd.keycode[0] == 0 || kd.mkey != data_001E41C0.old.mkey) {
+		data->keycode[0] = 0;
+		data->len = 1;
+		r->last = 0;
+		data->led = kd.led;
+		data->mkey = kd.mkey;
+		r->rep = 0;
+	} else {
+		if (data_001E41C0.old.keycode[0] != 0) {
+			n = 0;
+			for (i = 0; i < kd.len; i++) {
+				for (j = 0; j < data_001E41C0.old.len; j++)
+					if (kd.keycode[i] == data_001E41C0.old.keycode[j])
+						break;
+				if (j == data_001E41C0.old.len)
+					data->keycode[n++] = kd.keycode[i];
+			}
+			data->len = n;
+		} else {
+			for (i = 0; i < kd.len; i++)
+				data->keycode[i] = kd.keycode[i];
+			data->len = i;
+		}
+		data->led = kd.led;
+		data->mkey = kd.mkey;
+		func_001BF790(data_001E41C0.no, data->mkey, data->led, data->len, data->keycode,
+		              data->keycode);
+		if (data->len > 0) {
+			r->last = data->keycode[data->len - 1];
+			if (r->sta > 0 && r->interval > 0)
+				r->rep = 1;
+		} else {
+			func_001BF790(data_001E41C0.no, kd.mkey, kd.led, kd.len, kd.keycode, cnv);
+			for (i = 0; i < kd.len; i++)
+				if (cnv[i] == r->last)
+					break;
+			if (i == kd.len) {
+				r->rep = 0;
+				data->len = 1;
+				data->keycode[0] = 0;
+				data->led = kd.led;
+				data->mkey = kd.mkey;
+			}
+		}
+	}
+	{
+		u_char *s = (u_char *)&kd, *o = (u_char *)&data_001E41C0.old;
+
+		for (i = 0; i < sizeof(UsbKbData); i++)
+			*o++ = *s++;
+	}
+	return 0;
+}
+
 int func_001BF570(void)
 {
 	u_char *src, *dst;
@@ -637,8 +798,8 @@ int func_001BFAA8(int no, u_int rmode)
 		data_001E41C0.dev[no].r.tick = 0;
 		data_001E41C0.dev[no].r.wp = 0;
 		data_001E41C0.dev[no].r.rp = 0;
-		data_001E41C0.f10 = 0;
-		data_001E41C0.dev[no].r.f20 = 0;
+		data_001E41C0.old.len = 0;
+		data_001E41C0.dev[no].r.last = 0;
 	}
 	data_001E41C0.dev[no].rmode = rmode;
 	return 0;
@@ -663,7 +824,7 @@ int func_001BFB18(u_int no)
 	d = &data_001E41C0.dev[no];
 	d->r.rep = 0;
 	d->r.tick = 0;
-	d->r.f20 = 0;
+	d->r.last = 0;
 	d->r.wp = 0;
 	d->r.rp = 0;
 	d->r.n = 0;
