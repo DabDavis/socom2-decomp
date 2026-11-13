@@ -1249,7 +1249,8 @@ struct CTGroup : TASK_HDR {
     unsigned char m_flag4 : 1;   // bit 1: the group's flag 4
     unsigned char m_flag8 : 1;   // bit 2: the group's flag 8
     unsigned char _a3 : 5;
-    unsigned char _b[0x10 - 0xb];
+    unsigned char _b;
+    float m_c;   // 0xc: 10 when parsed (unread here)
     CAiMapLoc m_goal;   // 0x10: the group's goal cell
     unsigned int m_14;   // 0x14: the group's id (CAiGroup::Find's), 0 once ended
     char m_data[4];   // 0x18: the stream
@@ -1258,6 +1259,18 @@ struct CTGroup : TASK_HDR {
     static void End(_zanim_cmd_hdr *hdr);    /* (RegisterCommands' handlers, unwritten) */
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+
+    /* a block of a size, its goal no cell (inline: Parse's -- its result through here puts Parse's
+     * spilled block at the bottom of its stack slot, as the target has it; the name ours) */
+    static CTGroup *Create(unsigned int size)
+    {
+        CTGroup *cmd = (CTGroup *)_calloc(size, 1, 0, 0);
+
+        cmd->hdr.data_size = size;
+        cmd->hdr.data_type = ai_cmdid[0];
+        cmd->m_goal = CAiMapLoc::invalid;
+        return cmd;
+    }
 };
 
 /* ai::GOTO (SOCOM 1's CTGoto): a route through cells -- the nodes named, else the regions -- at a
@@ -2806,6 +2819,207 @@ extern "C" bool func_005DAF50(TASK_GROUPPOS *out, _zrdr *r, unsigned int flags)
         }
     }
     return ok;
+}
+
+/* a value appended to a group's stream: copied whole when the room left holds it, else as much as
+ * fits and the room spent -- true only for a whole copy (CTGroup::Parse's; the name ours) */
+static inline bool TaskPut(char *&p, unsigned int &left, const void *src, unsigned int n)
+{
+    bool ok = false;
+
+    if (left >= n) {
+        ok = true;
+        memcpy(p, src, n);
+        left -= n;
+        p += n;
+    } else if (left) {
+        memcpy(p, src, left);
+        left = 0;
+    }
+    return ok;
+}
+
+/* a group read: the "members" named, the "origin" cell and a cell for each member ("position"), the
+ * "options" "teleport" and "stoponexit", then each step of the "script" -- its actions in pairs, a
+ * name and its arguments: a member's "sound", "anim" (and its "loop") or "zanim", a "camera" move
+ * ("pos", then "rot" or "lookat") and the group's "music", each with an optional "wait" -- written
+ * into a 2K stream the block copies, the block made only for a stream with room left and a step
+ * (OVL2 0x5D9E70; SOCOM II's command, the names ours but the tags'). Byte-exact (the kit's round 64,
+ * unwritten before): ten locals spilled, each in a 16-byte slot in declaration order -- so the
+ * locals declared at the top in the target's slot order (the members, the steps, the members' tag
+ * count, the three flags, the block, the step's count, the step, the script tag); a pointer set
+ * from a call's v0 sits at slot+12 (the script tag), the block at +0 only when it comes back
+ * through Create (written in place, 220 for the target's 208); one counter `i` for the members' two
+ * loops and the position tag in `t` again (their registers swap otherwise); every item read by an
+ * unsigned index (the target's `sll` each pass), the pairs' `j * 2` and `j * 2 + 1` included (both
+ * strength-reduced, the shifts kept); the padding into a named `aligned` (a `?:` adds a `b`) */
+_zanim_cmd_hdr *CTGroup::Parse(_zrdr *rdr)
+{
+    CAiMapLoc origin(CAiMapLoc::invalid);
+    char buf[0x800];
+    char *p = buf;
+    unsigned int left = sizeof(buf);
+    bool ok = false;
+    int members = 0;
+    int steps = 0;
+    int n;
+    bool haslocs = false;
+    bool teleport = false;
+    bool stop = false;
+    CTGroup *cmd;
+    int count;
+    int s;
+    _zrdr *script;
+    int i;
+    _zrdr *t = zrdr_findtag(rdr, "members");
+
+    if (t) {
+        n = t->Count();
+
+        if (n > 0) {
+            ok = true;
+            for (i = 0; i < n; i++) {
+                if (t->Item((unsigned int)i)->type == 3) {
+                    members++;
+                    const char *name = t->Item((unsigned int)i)->String();
+
+                    if (!TaskPut(p, left, name, strlen(name) + 1)) {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    cmd = 0;
+    if (ok) {
+        AiMaps.GetLocation(zrdr_findstring(rdr, "origin"), origin);
+        t = zrdr_findtag(rdr, "position");
+
+        if (t && t->Count() == members) {
+            haslocs = true;
+            for (i = 0; ok && i < members; i++) {
+                CAiMapLoc loc;
+
+                ok = AiMaps.GetLocation(t->Item((unsigned int)i)->String(), loc);
+                TaskPut(p, left, &loc, 4);
+            }
+        }
+        if (zrdr_findtag(rdr, "options")) {
+            teleport = zrdr_findtag(rdr, "teleport") != 0;
+            stop = zrdr_findtag(rdr, "stoponexit") != 0;
+        }
+        script = zrdr_findtag(rdr, "script");
+
+        if (script) {
+            steps = script->Count();
+            for (s = 0; ok && s < steps; s++) {
+                _zrdr *step = script->Item((unsigned int)s);
+                count = step->Count() >> 1;
+                int c[1] = { 0 };
+
+                c[0] = count;
+                TaskPut(p, left, c, 4);
+                for (int j = 0; ok && j < count; j++) {
+                    const char *what = step->Item((unsigned int)(j * 2))->String();
+                    _zrdr *args = step->Item((unsigned int)(j * 2 + 1));
+                    unsigned int flags = 0;
+                    float wait = 0.0f;
+
+                    if (!strcmp(what, "sound")) {
+                        flags = args->Item(0)->Int();
+                        flags |= 0x200;
+                        const char *name = args->Item(1)->String();
+
+                        if (zrdr_findreal(args, "wait", &wait, 1))
+                            flags |= 0x10000;
+                        TaskPut(p, left, &flags, 4);
+                        TaskPut(p, left, name, strlen(name) + 1);
+                        if (flags & 0x10000)
+                            TaskPut(p, left, &wait, 4);
+                    } else if (!strcmp(what, "anim")) {
+                        flags = args->Item(0)->Int();
+                        float loop = 0.0f;
+
+                        flags |= 0x100;
+                        const char *name = args->Item(1)->String();
+                        int anim = name ? FindAnimType(name) : animTypeUndefined;
+
+                        if (zrdr_findreal(args, "wait", &wait, 1))
+                            flags |= 0x10000;
+                        if (zrdr_findreal(args, "loop", &loop, 1))
+                            flags |= 0x20000;
+                        TaskPut(p, left, &flags, 4);
+                        TaskPut(p, left, &anim, 4);
+                        if (flags & 0x10000)
+                            TaskPut(p, left, &wait, 4);
+                        if (flags & 0x20000)
+                            TaskPut(p, left, &loop, 4);
+                    } else if (!strcmp(what, "zanim")) {
+                        flags = args->Item(0)->Int();
+                        flags |= 0x500;
+                        const char *name = args->Item(1)->String();
+
+                        if (zrdr_findreal(args, "wait", &wait, 1))
+                            flags |= 0x10000;
+                        TaskPut(p, left, &flags, 4);
+                        TaskPut(p, left, name, strlen(name) + 1);
+                        if (flags & 0x10000)
+                            TaskPut(p, left, &wait, 4);
+                    } else if (!strcmp(what, "camera")) {
+                        TASK_GROUPPOS from;
+                        TASK_GROUPPOS to;
+
+                        from.m_flags = 0;
+                        to.m_flags = 0;
+                        flags = 0x300;
+                        if (func_005DAF50(&from, zrdr_findtag(args, "pos"), 0x100) &&
+                            (func_005DAF50(&to, zrdr_findtag(args, "rot"), 0x200) ||
+                             func_005DAF50(&to, zrdr_findtag(args, "lookat"), 0x100))) {
+                            if (zrdr_findreal(args, "wait", &wait, 1))
+                                flags |= 0x10000;
+                            TaskPut(p, left, &flags, 4);
+                            TaskPut(p, left, &from, 16);
+                            TaskPut(p, left, &to, 16);
+                            if (flags & 0x10000)
+                                TaskPut(p, left, &wait, 4);
+                        } else
+                            ok = false;
+                    } else if (!strcmp(what, "music")) {
+                        flags = 0x400;
+                        const char *name = args->Item(0)->String();
+
+                        if (zrdr_findreal(args, "wait", &wait, 1))
+                            flags |= 0x10000;
+                        TaskPut(p, left, &flags, 4);
+                        TaskPut(p, left, name, strlen(name) + 1);
+                        if (flags & 0x10000)
+                            TaskPut(p, left, &wait, 4);
+                    }
+                }
+            }
+        }
+        if (ok && left && steps > 0) {
+            unsigned int used = sizeof(buf) - left;
+            unsigned int r = used & 3;
+            unsigned int aligned = used;
+
+            if (r)
+                aligned = used + (4 - r);
+            unsigned int size = aligned + sizeof(CTGroup);
+
+            cmd = Create(size);
+            memcpy(cmd->m_data, buf, used);
+            cmd->m_count = members;
+            cmd->m_steps = steps;
+            cmd->m_haslocs = haslocs;
+            cmd->m_flag4 = teleport;
+            cmd->m_flag8 = stop;
+            cmd->m_c = 10.0f;
+            cmd->m_goal = origin;
+        }
+    }
+    return &cmd->hdr;
 }
 
 /* the group built from the block's stream: its members by name (the SEALs the AI drives), their
