@@ -1464,8 +1464,8 @@ extern int func_00613808(void *pFrame, void *pData, int nFlag, void *pBuf, int n
 
 /* the frames of one type sent to the group spoken in (0x6115C0): the codec's frame made or changed as the type asks, each packet it gives
  * sent with its own sequence number; nFlag 0 sends the header alone and ends the talk. */
-/* OPEN (round 27b): 6 words: the exit test's `blez` with `move v0,s6` in its slot where this gets `blezl`, and the length and sequence stores scheduled
- * either side of the send's jal the other way round (a local for the sequence does not change it). */
+/* Byte-exact (round 77): the send's length is the header's own field read back (`h.nLen`), not `n & 0xFFFF` -- the
+ * `andi` is then the field's zero-extension and the length store issues before the jal, the sequence's in its slot. */
 int func_006115C0(AUDIO *pAudio, int nType, char *pData, int nFlag)
 {
     GRID_HEADER h;
@@ -1547,6 +1547,6 @@ int func_006115C0(AUDIO *pAudio, int nType, char *pData, int nFlag)
         nTotal += n;
         h.nLen = n;
         h.nSeq = nSeq;
-        func_00624830(p, pAudio->nId, &h, abBuf, n & 0xFFFF);
+        func_00624830(p, pAudio->nId, &h, abBuf, h.nLen);
     }
 }
