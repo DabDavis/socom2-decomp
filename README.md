@@ -2066,6 +2066,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks rows, round 80** (tcmUpdateTeamMember 0x230050 byte-exact, open since round 56: the slot-0xC call passes
+  the parameter narrowed again, `(TCM_MEMBER)member`, not the local m. HandleFireWeapon 0x5BE9A0 27 to 10, two registers left: a
+  SOURCE MISTAKE -- "Unable To Deploy" goes to the mission's first queue (theMission+0x1C0, CKitMission's new m_messages0), not
+  +0xB80; the place-charge arm ends in `return;`; the bound `m_last_selected > -1 ? m_last_selected : 0`; the ladder bound
+  `Metres(0.32f)` (`m *= scale; return m;`). Nine stubborn rows compiled under whole-unit flag variants (-O3,p, -O4,s, -O4, inline
+  levels 4/6/8, no bottomup, no auto): none closes -- no MW row is a separately-flagged unit (CTTurret::Tick's opt_propagation off
+  to the unit's end loses 58 of 110); `-opt no*` options changed nothing anywhere, likely not accepted, untested. `try.py -d` over
+  all WRONG rows for data-reference mismatches: none further (some hud_scorepopup rows errored, unchecked)):
+  - A DATA-REFERENCE MISMATCH CAN HIDE UNDER AN INSTRUCTION COUNT: read `try.py -d`'s "only the target:" line.
+  - AN UNTHREADED `b` TO THE END THAT EVERY EXIT OF AN ARM REACHES IS AN EXPLICIT `return;` (MW threads through a join, not a return).
+  - `slti at,x,0; movn` IS `x > -1 ? x : 0` (`0 <= x` gives `slt at,x,zero`; `x < 0 ? 0 : x` a branch).
+  - a product in its constant's register (`mul.s f2,f2,f0`) is one variable scaled in place (`m *= scale; return m;`).
+  - AN ARGUMENT THE TARGET PASSES BARE WHERE A NARROWED LOCAL IS RE-EXTENDED AT THE CALL IS THE PARAMETER NARROWED AGAIN.
 - **Tells from the GCC Medius code, round 79** (rt_udp 0x63DD18 (0x1CC of 0x184: the first allocation a `while` loop's test, the second's
   failure a `break`, fields through pUdp directly, nShared an enum and pfnCallback the endpoint's function-pointer type, pUser last)
   and largeint 0x6283F8 (the second `j = 0;` after lintSetSmallValue) byte-exact. rt_comm_platform2_receive_from 41 to 2 (`volatile
