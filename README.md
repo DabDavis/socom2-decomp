@@ -2066,6 +2066,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from CSealCtrl/CSealCtrlAi, round 68** (CSealCtrlAi::PreTick 0x56DE10 (0x1064) and LadderClimbTick 0x56AF50 (0xDB4,
+  SOCOM 1's, PreTick's mode-7 arm) byte-exact, both unwritten before, 7,704 bytes; CSealCtrlAi::Tick 0x56FD00 (0x1010) at size
+  and frame, 640 to 29 off: the entry's courage/threat/product in f2/f3/f4 (here f4/f2/f3; igreplay found one placement, all
+  three nodes before v32), TargetHeld's byte narrowing once at the join (here per arm), the discipline decay's rate ternary
+  after the 0.005 store; ~40 spellings tried. Named by place and callees: 0x567900 PathFollowTick__11CSealCtrlAiFf (after
+  SetThrottle), 0x563E10 AttackTick__11CSealCtrlAiFfb (after FireWhenReady; the bool in a1, returns bool), 0x57B550
+  Recoil__10CZSealBodyFv (the CQuat Exp/Mul/Normalize chain), 0x57A330 Tick_0__10CZSealBodyFv (SOCOM II never reads SOCOM 1's
+  float). zseal.h, objcmp --by-address each change: SEAL_AI_PARAMS' floats 0x6F4-0x71C four CAiDecay members under SOCOM 1's
+  names (m_courage, m_audiofactor, m_dicipline, m_underfire; users respelled), bit 21 split from m_bits20, 0x410 a CPnt3D;
+  CSealCtrlAi declares Tick, PreTick, LadderClimbTick, AttackTick, PathFollowTick. func_0056BEF0 takes a second unused bool
+  (callers `move a1,zero`). 0x5604D0 and 0x56D2B0 pinned `#pragma auto_inline off`. Not started: OnCommand 0x58FBE0,
+  CSealCtrl::PreTick 0x594CF0, the bodies of 0x567900, 0x57A330, 0x57B550, 0x563E10 -- m2c drafts in the lane's scratch):
+  - A NAMED LOCAL'S SAVED REGISTER FOLLOWS THE ALLOCATOR'S NUMBERING: declare every local first, in reverse of the registers
+    wanted, assign after (PreTick: the SEAL in s2 only declared between the two late bools, as igreplay said).
+  - an inline helper whose expanded body passes inline_max_size inlines one level only: a helper wrapping ClearGoal and
+    SetGoalPos called both out of line; written out at each site they inline.
+  - a decay's constant passed as an argument to an inline loads before the test, in the branch's slot (read inside, in the arm).
+  - A CONST VIEW STOPS LOAD REUSE ACROSS A READ-MODIFY-WRITE: `((const CSealCtrlAi *)this)->field` keeps MW from reusing a
+    load across a later RMW of the same byte (the sensing bit, bit 22, the climb's goal-type test).
+  - `bool x = !(bit ? true : false); if (x)` gives `sltu; xori` then the branch. A by-value pair inside an inline (`lo`, `hi`
+    to _saturate) takes slots below the function's own inline temporaries. `(v & ~clear)` with clear 0 zero-extends (again).
 - **Tells from CZSealBody, round 68** (PreTick 0x551EC0 (0x8BC), ComputeNextPosition 0x54D9A0 (0xA88), Tick 0x550EF0 (0xFCC)
   byte-exact, all unwritten before, seal.cpp; 0x5483D0 (0x15F8, SOCOM 1's PostComputeNextPosition the outline) at the target's
   size and 688-byte frame, every call and branch placed, ~170 structural and 65 register-only off: two temporaries' slots
