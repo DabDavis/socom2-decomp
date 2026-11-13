@@ -311,6 +311,9 @@ class CSpectatorInfo : public C2D {
 public:
     CSpectatorInfo();
     virtual ~CSpectatorInfo();
+    /* every string emptied, and cleared and wiped (hud_spectatorinfo.cpp: 0x242B20, 0x242AB0) */
+    void Empty();
+    void Wipe();
     unsigned char _18[0x680 - 0x18];
 } __attribute__((aligned(16)));
 
@@ -775,10 +778,6 @@ zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name)
 
 void hudTurnOffScorePopup();
 
-/* the members' clean-ups not named yet: the info box's, the spectator's, the ammo counts', the
- * lens flares' */
-extern "C" void func_00242AB0(CSpectatorInfo *info);
-
 /* everything a mission set up taken down for the next: the map and the selectors, the cameras,
  * icons and reticle, every string wiped, the pause menu closed and cleared, the flashes, the
  * network boxes, the map items and the score popup, and the network state */
@@ -818,7 +817,7 @@ void CHUD::ReInit_Uninit()
     m_FlashFXVector.Reset();
     m_teamMateNames.UnInit();
     m_infobox.UnInit();
-    func_00242AB0(&m_spectatorinfo);
+    m_spectatorinfo.Wipe();
     CZPlayerMapItem::MissionEndCleanup();
     hudTurnOffScorePopup();
     theTCM.Close(false);
@@ -838,7 +837,6 @@ public:
 
 /* not named yet: SOCOM II's own re-inits and resets */
 void hudResetPopupTriggers();
-extern "C" void func_00242B20(CSpectatorInfo *info);
 
 
 /* the HUD made ready for the next mission: on, the letterbox and the piggyback strings put away,
@@ -865,7 +863,7 @@ void CHUD::ReInit_Init()
     m_pausetest.ReInit();
     m_poseBitmap.ReInit();
     m_infobox.ReInit();
-    func_00242B20(&m_spectatorinfo);
+    m_spectatorinfo.Empty();
     if (theNetwork.m_bNetwork) {
         m_teamMateNames.Init();
     } else {

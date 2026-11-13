@@ -2331,12 +2331,12 @@
 0x00242050 0x2AC Tick__10CHealthBarFf  # OVL1; by hand (the HUD lane: slot 12 of CHealthBar's vtable 0x405EF0; the flash and the drain stepped)
 0x00242300 0xC8 __dt__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: slot 0 of CHealthBar's vtable 0x405EF0)
 0x002423D0 0x204 __ct__10CHealthBarFv  # OVL1; s1:vtable by hand (the HUD lane: builds a C2D, then stores CHealthBar's vtable 0x405EF0, found by its RTTI's name; CHUD's constructor calls it for a member)
-0x002425E0 0x44C func_002425E0  # OVL1
-0x00242A30 0x8 func_00242A30  # OVL1
-0x00242A40 0x68 func_00242A40  # OVL1
-0x00242AB0 0x6C func_00242AB0  # OVL1
-0x00242B20 0x84 func_00242B20  # OVL1
-0x00242BB0 0x3C8 func_00242BB0  # OVL1
+0x002425E0 0x44C Tick__14CSpectatorInfoFf  # OVL1; by hand (the OVL1 lane: slot 12 of CSpectatorInfo's vtable 0x405F60, C2D's Tick -- hud_spectatorinfo.cpp, the followed SEAL's name, side colour and stats)
+0x00242A30 0x8 Off__14CSpectatorInfoFv  # OVL1; by hand (the OVL1 lane: slot 4 of CSpectatorInfo's vtable 0x405F60, C2D's Off: a tail call of C2D::Off)
+0x00242A40 0x68 On__14CSpectatorInfoFv  # OVL1; by hand (the OVL1 lane: slot 5 of CSpectatorInfo's vtable 0x405F60, C2D's On: shown only while spectating, then ticked)
+0x00242AB0 0x6C Wipe__14CSpectatorInfoFv  # OVL1; by hand (the OVL1 lane: every string's ClearAndWipe, C2DString's last slot; CHUD::ReInit_Uninit's; the name ours)
+0x00242B20 0x84 Empty__14CSpectatorInfoFv  # OVL1; by hand (the OVL1 lane: every string set to none; CHUD::ReInit_Init's; the name ours)
+0x00242BB0 0x3C8 Init__14CSpectatorInfoFP7C2DFont  # OVL1; by hand (the OVL1 lane: the box made and added to the HUD, its strings loaded with the font; the name ours)
 0x00242F80 0xE0 __dt__14CSpectatorInfoFv  # OVL1; s1:vtable by hand (the HUD lane: slot 0 of CSpectatorInfo's vtable 0x405F60)
 0x00243060 0x8C __ct__14CSpectatorInfoFv  # OVL1; s1:vtable by hand (the HUD lane: stores CSpectatorInfo's vtable 0x405F60, found by its RTTI's name; CHUD's constructor calls it for a member)
 0x002430F0 0x1A4 heap_Realloc  # OVL1; by body: realloc's wrapper (no heap: `j realloc`; a null block: the alloc path), its table entry moved and resized; the demo heap object 0x378348 holds heap_Realloc beside heap_Alloc/heap_Calloc/heap_Free
@@ -8507,7 +8507,7 @@
 0x003FF7B0 0x3C __sinit_reco.cpp  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint); ours (the HUD lane, round 19: reco.cpp's initialiser -- theReco (0x414680) constructed and its destructor registered; the old s1~ si_object.cpp hint was wrong)
 0x003FF7F0 0x1D0 __sinit_hud_mpweaponsel.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 20): hud_mpweaponsel.cpp's static initialiser -- its file statics defined in address order, eight colour CPnt3Ds and fourteen places computed from the .data layout statics (s_listx, s_width, s_gap ...), byte-exact as MW emits them
 0x003FF9C0 0x88 __sinit_hud_healthbar.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane: hud_healthbar.cpp's initialiser -- it builds the bar's five colours, 0x4148B0-0x4148F0, which only CHealthBar's functions read)
-0x003FFA50 0xB0 func_003FFA50  # OVL1 data area; a static initialiser
+0x003FFA50 0xB0 __sinit_hud_spectatorinfo.cpp  # OVL1 data area; a static initialiser; by hand (the OVL1 lane: hud_spectatorinfo.cpp's initialiser -- the box's six colours 0x414900-0x414960 and the values' column top 0x414920 copied off the labels' 0x3DCF98; between hud_healthbar.cpp's 0x3FF9C0 and zanim_cmd_parse.cpp's, as the units link)
 0x003FFB00 0x64 __sinit_zanim_cmd_parse.cpp  # OVL1 data area; a static initialiser; s1:unit by hand, the core lane round 3 (the integrator's initialiser research: SOCOM 1's __sinit_zanim_cmd_parse.cpp, the <iostream> pair alone, linked right before __sinit_zanim_cmd_tick.cpp -- byte-exact from the new zanim_cmd_parse.cpp)
 0x003FFB70 0x64 __sinit_zanim_cmd_tick.cpp  # OVL1 data area; a static initialiser; s1:unit by the integrator's initialiser research (build/scratch/sinit/report.txt, MEDIUM: the second of the two pair-only initialisers SOCOM 1 links right before __sinit_anim_main.cpp, its objects ending where ZAnim begins), the core lane round 2: zanim_cmd_tick.cpp's <iostream> pair (0x414B88, 0x414BA0) byte-exact
 0x003FFBE0 0x50 __sinit_anim_main.cpp  # OVL1 data area; a static initialiser; s1:unit by hand, the core lane round 3 (the integrator's initialiser research, HIGH: CZAnimMain's inline constructor on ZAnim 0x414BB0, SOCOM 1's __sinit_anim_main.cpp storing the same four fields -- byte-exact from anim_main.cpp's definition)
