@@ -2066,6 +2066,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI states, round 65** (four Ticks byte-exact, all unwritten before, SOCOM 1's bodies: CAiSAction 0x5EFA50
+  (0x730, seal_aistate.cpp), CAiSShotAt 0x6089F0 (0x798), CAiSRush 0x602E30 (0x860), CAiSEvent 0x604CE0 (0x8C8, all three
+  seal_airesponse.cpp); CAiSPathRecover::Tick 0x603950 written, 0x9F0 of 0x9E8, d=87, only the exits loop -- the target
+  strength-reduces `this` into a pointer stepped by 4 (s2), here the exits block's address stays a fixed base indexed off;
+  six local orders, int/unsigned i, the count late or unnamed, a pointer, reference or copy of this all tried. ai_states.h,
+  each commit objcmp-proved: the five classes declare their own Tick (slot 0x10); CAiSEvent's m_88 a float, m_8c a signed
+  char; CAiSPathRecover's m_58 an int, `m_exits` 0x48 raw bytes at 0x110 read as a MAP_DIRCOUNT and `m_dir` 0x158 -- typed
+  as a MAP_DIRCOUNT member its CAiMapLoc array's implicit constructor changes CAiState::Create):
+  - `n-- && inline()` gives `sltu; xori`; an unsigned `n-- > 0` the target's `move; beqz`; a signed `> 0` a `blez`.
+  - a local CPnt3D negated in place gets an address temporary for y and z's second access; through a pointer helper
+    `(const CPnt3D *, CPnt3D *)` every access stays frame-relative. `CPnt3D h = *(const CPnt3D *)row` batches the loads and
+    stores, assignment interleaves.
+  - slots: an earlier-declared named local takes a higher slot; an inline's locals lie below the caller's -- Rush's distance
+    point in an inline (RushDistSq) so the copy-constructed facing keeps the higher one.
+  - assigned twice numbers late, again: `e = e && e->m_type == 2 ? e : 0;` puts Rush's target in s2 (one initialiser: s0).
+  - `x ? true : false` gives the bit's `sltu` (m_navyseal, m_bit16); a plain read or `(bool)` does not. A random range read
+    through a const pointer gives its second read an address temporary; non-const is clean. An address-taken step copied to
+    a local before the end's compare is not reloaded after the store. `unsigned idx = 0; if (flag) idx = f();` (a `?:` tests
+    in v0 and fills the slot). Rush's route-done arm an if/else (a `?:` emits a dead third `li`); Event's `x != || y != ? 6 :
+    8`; the scan angle 20 degrees (0.34906584f); limits 8 bytes apart in data are function-local statics.
+  - next: CAiSFollow::Tick 0x5FB1C0, CAiSBreach::Tick 0x5F2120.
 - **Tells from the kit and AI states, round 65** (CSealUnit::AllowCommand 0x5EE7F0 (0x5BC) byte-exact, unwritten before;
   CSealUnit::Tick 0x5E8060 (0x7F0) written at the target's size, 25 off, all frame slots -- the target puts the five iterator
   copies first (188-172), the hand-over's erase (168/164), then each walk's erase and push_back interleaved (160-132), where
