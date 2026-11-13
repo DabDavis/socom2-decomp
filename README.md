@@ -2066,6 +2066,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC code, round 76** (seven Medius rows byte-exact: rt_p2p's peer searches 0x639A90 and 0x63B410 and 0x639FB8
+  (since 22b), rt_udp 0x63F168, dmemessage 0x61ED48 (51 structural; re-read from the target as code), rt_crypt KM_Create (since
+  8b), rt_msg_client 0x635228 (since 27b); five notes misdiagnosed. Nearer, not committed (variants in the lane's scratch,
+  build/scratch/gcc-r76/): rt_udp 0x6404D8 51 to 20 structural, dmemessage 0x61F920 25 to 20 at size, rt_crypt 0x630DF0 (every
+  register right, `sw zero` order left), dmemessage 0x61F518 8 to 3, rt_comm_platform2_receive_from 11 to 5 (GCC coalesces the
+  copy the target keeps), rt_udp 0x63EF38/0x63ECC8 (the vendor's variable-size memcpy a plain call)):
+  - A VALUE STORED AGAIN INSIDE A GUARD'S ARM (`if (p == 0) { *pn = -2; return 2; }`) makes the arm two insns, so ifcvt's
+    find_if_case_1 does not hoist its `li v0`; the earlier constant takes v0 and the arm keeps its own `jr ra`.
+  - a redundant re-assignment in an `else` (`} else i = 0;`, i already 0) gives the loop's exits the `b; addiu` layout.
+  - REGISTERS SHARED BY TWO ARMS ARE ONE SET OF FUNCTION-LEVEL LOCALS; failures branching to one block are a `goto fail` to a
+    label inside the last guard; a statement between an `||` guard's two tests fills the second's slot.
+  - A SIBLING IN THE SAME UNIT MAKING THE SAME CALLS IS THE SHAPE TEMPLATE (0x63F168 took 0x63E5E8's `result = ...; if (result
+    != 0) { fail: ... }`).
+  - a sign test `& 0x80000000` gives a plain `bgez` whose slot both arms share (`< 0` gives `bgezl` carrying the next `lui`).
 - **Tells from the Metrowerks register-only rows, round 76** (CEntity::UpdateTargetList 0x2A0450, 20 register-only, byte-exact: one
   bare `CEntity *ent;` shared by the add and slice walks, and the bumped count a named local in its own block `{ int count =
   robin.m_count + 1; robin.setup(..., count, ...); }` -- each alone 17 and 24. igreplay's wanted numbering per row, none reached:
