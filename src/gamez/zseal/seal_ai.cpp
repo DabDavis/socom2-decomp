@@ -2980,6 +2980,8 @@ public:
     void SetHasWeapon(bool b) { m_hasWeapon = b; }
     void SetHigh(unsigned int n) { m_high = n; }
     static float GetWeaponAccuracy(CZWeapon *w, float d, bool b);
+    /* a weapon's effective range (OVL2 0x5C93C0) */
+    static float GetWeaponEffectiveRange(CZWeapon *w);
 
     unsigned int m_mode : 2;   // bits 0-1
     unsigned int m_2 : 2;   // bits 2-3
@@ -3560,6 +3562,82 @@ static inline bool Chance(float chance)
 
     return Rfloat(0.0f, 1.0f) <= c;
 }
+
+extern "C" {
+/* the weapon's change's counts (OVL2 data 0x6501F0, 0x6501F8: ints 8 bytes apart; the names ours) */
+extern int data_006501F0;
+extern int data_006501F8;
+}
+
+/* the two trigger times set -- the second's first -- and rolled, as an attack's reset rolls them (an
+ * inline; the name ours) */
+static inline void SetTriggerTimes(CSealCtrlAi *ai, float a, float b, float c, float d)
+{
+    ai->m_73c[0] = c;
+    ai->m_73c[1] = d;
+    ai->m_734[0] = a;
+    ai->m_734[1] = b;
+    ai->m_748 = RollTime(ai->m_734);
+    ai->m_744 = ai->m_748 + RollTime(ai->m_73c);
+}
+
+/* the AI's fire after its weapon's change: with a target the count at 0x6C0 set (none for a Navy SEAL),
+ * the trigger times and the fire mode by the weapon -- a pistol or a weapon of one mode by its kind (a
+ * sniper rifle's count 2), else single shots beyond 1.2 of its effective range, bursts for a Navy SEAL,
+ * a weapon whose most is a burst or at even chances, else full automatic (OVL2 0x565D30, new in SOCOM
+ * II: ChooseWeapon and AttackTick call it; the name ours) */
+extern "C" void func_00565D30(CSealCtrlAi *ai)
+{
+    CZFTSWeapon *w;
+    EQUIP_ITEM id;
+    CZKit *kit;
+    FIREMODE mode;
+
+    kit = &((CZSealBody *)ai->m_entity)->m_kit;
+    w = kit->GetCurItem();
+    kit->GetCurItemEnum();
+    id = ((CZWeapon *)w)->GetIDType();
+    kit->GetCurFireMode();
+    mode = w->m_maxfiremode;
+    if (func_0060A850(ai->m_67c)) {
+        ai->m_6c0 = ai->m_navyseal ? 0 : data_006501F0;
+        if ((unsigned char)id == 4 || mode < BURST) {
+            switch ((unsigned char)id) {
+            case 101:
+                SetTriggerTimes(ai, 1.0f, 2.0f, 0.15f, 0.35f);
+                ai->m_6c0 = ai->m_navyseal ? 0 : data_006501F8;
+                break;
+            case 4:
+                SetTriggerTimes(ai, 0.15f, 1.15f, 0.25f, 0.25f);
+                break;
+            case 81:
+                SetTriggerTimes(ai, 1.0f, 2.0f, 0.25f, 0.25f);
+                break;
+            case 121:
+            case 141:
+            default:
+                SetTriggerTimes(ai, 8.0f, 0.0f, 0.1f, 0.0f);
+                break;
+            }
+            mode = SINGLE;
+        } else {
+            float range = CAiWepHint::GetWeaponEffectiveRange((CZWeapon *)w);
+
+            if (!(((CTarget *)ai->m_67c)->GetRange() <= 1.2f * range)) {
+                SetTriggerTimes(ai, 0.15f, 1.15f, 0.15f, 0.099999994f);
+                mode = SINGLE;
+            } else if (ai->IsNavySeal() || mode == BURST || Chance(0.5f)) {
+                SetTriggerTimes(ai, 0.5f, 1.0f, 0.5f, 0.5f);
+                mode = BURST;
+            } else {
+                mode = AUTOFIRE;
+                SetTriggerTimes(ai, 0.5f, 1.0f, 0.5f, 0.5f);
+            }
+        }
+        kit->SetCurFireMode(mode);
+    }
+}
+
 
 /* a sound of the SEAL's character played (SOCOM 1's PlayAiSound(CHARACTER_SOUND), which always played
  * it; OVL2 0x55FF60, slot 0x24 of CSealCtrlAi's vtable): not again within the sound's gap since it last
