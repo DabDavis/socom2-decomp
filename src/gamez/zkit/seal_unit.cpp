@@ -2807,6 +2807,20 @@ static inline void UpdateUnits()
         func_005E7830(*u);
 }
 
+/* the single-player creator's form of it: the made flag stored between begin() and the walk -- the
+ * first node read into its own local ahead of the flag, the iterator assigned from it after (the
+ * name ours) */
+static inline void UpdateUnitsMade()
+{
+    std::list<CSealUnit *>::iterator u;
+    std::list<CSealUnit *>::iterator e = CSealUnit::m_list.end();
+    std::list<CSealUnit *>::iterator b = CSealUnit::m_list.begin();
+
+    CSealUnit::m_created_units_test = true;
+    for (u = b; u != e; ++u)
+        func_005E7830(*u);
+}
+
 /* an entity that is a SEAL (kind 2), or none (seal.cpp's) */
 static inline CZSealBody *AsSeal(CEntity *e)
 {
@@ -2886,13 +2900,11 @@ void CSealUnit::InitalizeSealUnit(CZSealBody *seal, CSealUnit *unit)
  * 29 and 5-15; every SEAL put in its squad; Alpha told the player's order 6, then the mission's
  * fireteam command -- 5 goes to squad 3 with the data 8 stored, squad 2 told 4 -- the formation set
  * to Alpha's own, and each squad's update run (OVL2 0x5EC6A0; SOCOM 1's, its squads made inline and
- * order 5's 8 passed as the data).
- * OPEN, 11 instructions: the made flag's store. The target loads m_list's first node and stores it to
- * the walk's temporary before it stores the flag; MW here stores the flag first (CreateMultiPlayerUnits,
- * the same store written before its entity walk, gets the target's order). Tried: the flag as 1, through
- * an inline setter, as UpdateUnits' argument, the walk written in place, through a reference, a
- * pointer and a const view of m_list, u declared first, the flag stored after begin() or end() inside
- * the walk's inline. What closed the rest: the order 5 test a one-case switch (`beq; b`), the data an
+ * order 5's 8 passed as the data). The made flag's store (round 83, open since the kit's rounds at 11):
+ * the target loads m_list's first node and stores it to a temporary before the flag's store, and only
+ * copies it into the walk's iterator after -- begin() taken into a local of its own ahead of the store
+ * and the iterator assigned from it, inside an inline (UpdateUnitsMade; written in a block the slots
+ * move, 18 off; `u = begin(); flag = true;` copies before the store, 10 off). What closed the rest: the order 5 test a one-case switch (`beq; b`), the data an
  * int local (its slot right under the walk's iterator: SetDataPtr's parameter lands lower), the
  * push_back one inline level deeper (AddSub: the inserts' temporaries under the walk's) */
 void CSealUnit::CreateSinglePlayerUnits()
@@ -2935,8 +2947,7 @@ void CSealUnit::CreateSinglePlayerUnits()
         alpha->IssueCommand(player, cmd, 0, true);
     }
     alpha->SetFormation(alpha->m_8, 0);
-    m_created_units_test = true;
-    UpdateUnits();
+    UpdateUnitsMade();
 }
 
 /* (OVL2 0x5E6C90; pinned: at fifteen statements -inline auto takes it, and the target's recursion
