@@ -4408,7 +4408,7 @@ void CZSealBody::PostPreTick(float dT)
             CPnt3D la = a * 1.3f;
 
             if (prone && !strafe && !roll) {
-                from = *pos + a - dir;
+                from = *pos + la - dir;
                 to = *pos + la + dir + m_f44;
                 from.y += step;
                 to.y += step;
@@ -4484,7 +4484,7 @@ void CZSealBody::PostPreTick(float dT)
             CPnt3D ra = a * 1.3f;
 
             if (prone && !strafe && !roll) {
-                from = *pos - a - dir;
+                from = *pos - ra - dir;
                 to = *pos - ra + dir + m_f44;
                 from.y += step;
                 to.y += step;
