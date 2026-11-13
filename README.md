@@ -2066,6 +2066,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC libraries, round 72a** (five rows byte-exact, 3,048 bytes: libmpeg's _updateRefImage 0x1B9280 (0x2B4, the
+  reference slots turned over, returns whether valid), _cpr8 0x1B95D8 (0x290, a picture stored as RAW8 through the scratchpad;
+  libmpeg.h gains D8/D9_MADR) and _csc_storeRefImage 0x1BA3E8 (0x288, mpeg_csc.c) -- all unwritten before -- _extensionAndUserData
+  0x1B8A58 (open since GCC round 10a) and 0x6200D0 (since 27b). inflate_mask 0x1CF830 moved from symbols.txt to data.txt: zlib's
+  uInt[17] mask table, swept as a code row. The fast log2 0x2517D8 open: with `x.l = 0; x.f = fX;` the frame word is reload's
+  spill of `(subreg:SF (reg:SI))` -- the union is never a memory object in RTL, so truncdisi2 cannot fold into the `sw`; the
+  target stores both words from 64-bit registers untruncated. Tried, 2-3 words each still: 0x639FB8, 0x639A90, 0x63C170,
+  0x63F168, 0x6419E8, 0x61F7B0, ProcessVad; _initRefImages 0xD8 of 0xE0):
+  - RE-DIFF THE WHOLE STREAM BEFORE TRUSTING AN OPEN NOTE: 0x6200D0's `bnezl` was put down to reorg -- it is control flow (each
+    buffer freed under its own test, the `pData == 0` arm jump-threaded to the second test, leaving a slot reorg annuls);
+    _extensionAndUserData's two hoisted start codes were a symptom of the id clamp: `if (id > 10) id = 0` folds to `sltiu 11`,
+    `id = id > 10 ? 0 : id` keeps a GTU against 10 in a register that loop.c hoists into s2, and three invariants keep both
+    start codes in saved registers.
+  - allocation can hinge on a near-tie: _updateRefImage's cases 1, 2, 3 ranked `ps` 2678 against `ref` 2675, swapping t0/t1
+    throughout -- case 3 first fixes it (ccdump -f's priority table shows it). `ok` declared first but cleared after ref's
+    initialiser fixes the entry's schedule without reordering pseudos. A selected pointer copied into a second variable (one
+    variable is 8 words off). _cpr8: declaration order fixes the spill slots; the destination stepped before the source.
 - **Tells from the SEAL body, round 71** (six rows byte-exact: CZSealBody::PostPreTick 0x54AA30 (0x2BEC, 4 short since round 70),
   PostCheckDIDown 0x5AF930 (~27), FindDeathAnimTypeCQB 0x5A9420 (10 since round 23), CanInterrupt 0x587C20, 0x550A80 (open since
   written), 0x55C870 (since round 62). Tick_0 0x57A330 154 to 23, structural 4 to 0 (the yaw reloaded through `*(const float

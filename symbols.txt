@@ -1357,7 +1357,6 @@
 0x001CA2A0 0xEC uncompress  # MAIN
 0x001CA390 0x28 zcfree  # MAIN
 0x001CA3C0 0xC zcalloc  # MAIN; by position: three other thunks share its bytes
-0x001CF830 0x44 inflate_mask  # MAIN data: zlib infutil.c, uInt[17]
 0x001D4B00 0x74 __sinit_zmalloc.cpp  # MAIN; by hand (MAIN runtime lane round 2): the pool unit's static initialiser -- constructs the six pools (24-byte first, 2200 blocks, ... 4-byte last, 8800) at 0x1D5690..0x1D5780; the unit's file name ours; src/main/zmalloc.cpp
 0x001D4B80 0x64 func_001D4B80  # MAIN; by hand (MAIN runtime lane round 6): MAIN's copy of zvid_init.cpp's initialiser -- <iostream>'s two objects alone (0x1D57B8, 0x1D57D0, after the pool unit's .bss), word for word OVL1's __sinit_zvid_init.cpp 0x404490 and SOCOM 1's 0x46E130; placed between the pool unit's initialiser and iostream.cpp's, where MAIN's game units are zsys_memory.cpp's copy (OVL1's has no initialiser) and the copy holding zVid_Assert 0x181C20 (zvid_init.cpp's in SOCOM 1 and OVL1); ovl-copy: __sinit_zvid_init.cpp (src/main/zvid_init.cpp)
 0x001D4BF0 0x28 __sinit_iostream.cpp  # MAIN; by hand (MAIN runtime lane round 6): iostream.cpp's static initialiser -- the guards of the wide facets' ids (@GUARD@id__Q23std14codecvt<w,c,i> 0x1D5628, @GUARD@id__Q23std8ctype<w> 0x1D562C) tested and set, as SOCOM 1's guard-only __sinit_iostream.cpp (0x469FB0) does for its one; byte-exact from the ids' definitions; src/main/msl/iostream.cpp

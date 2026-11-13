@@ -96,6 +96,7 @@
 0x001CE5A0 0xF gRomName  # MAIN; s1:data-exact (size SOCOM 1's; via IsT10K)
 0x001CE5E0 0x0 S5432  # MAIN; s1:data-exact (size SOCOM 1's; via _sceVu0ecossin)
 0x001CE5F0 0x20 init_vif_regs.126  # MAIN; s1:data-exact (size SOCOM 1's; via sceVpu0Reset)
+0x001CF830 0x44 inflate_mask  # zlib infutil.c's uInt[17] mask table (0, 1, 3 .. 0xFFFF), defined in src/zlib/infutil.c; swept as a code row, moved here by the GCC libraries' round 72a
 0x001D0848 0x28 isclr  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaReset)
 0x001D0880 0xA stdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
 0x001D0890 0xA mfdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)

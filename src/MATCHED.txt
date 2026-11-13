@@ -1005,6 +1005,7 @@
 0x001B8818 _sliceB
 0x001B8880 _nextHeader
 0x001B8990 _pictureHeader
+0x001B8A58 _extensionAndUserData
 0x001B8B80 _pictureCodingExtension
 0x001B8D70 _extrainfo
 0x001B8DB8 _updateTempTackData
@@ -1014,7 +1015,9 @@
 0x001B9090 _copyrightExtension
 0x001B9120 _decPicture
 0x001B91F0 _outputFrame
+0x001B9280 _updateRefImage
 0x001B9538 _isOutSizeOK
+0x001B95D8 _cpr8
 0x001B9868 _markOutput
 0x001B9890 _getPtsDtsFlags
 0x001B9A20 _dispRefImage
@@ -1022,6 +1025,7 @@
 0x001B9E58 receiveDataFromIPU
 0x001B9EE0 _doCSC
 0x001BA310 _ch4dma
+0x001BA3E8 _csc_storeRefImage
 0x001BA670 _sysbitInit
 0x001BA6A8 _sysbitNext
 0x001BA6C8 _sysbitFlush
@@ -11858,6 +11862,7 @@
 0x0061FBC8 func_0061FBC8
 0x0061FE18 func_0061FE18
 0x00620008 func_00620008
+0x006200D0 func_006200D0
 0x006203C8 func_006203C8
 0x006204B8 func_006204B8
 0x006204E8 func_006204E8
