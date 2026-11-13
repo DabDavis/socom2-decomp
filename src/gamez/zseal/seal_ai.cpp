@@ -3911,15 +3911,10 @@ static inline bool NotNavySeal(const CSealCtrlAi *ai)
  * `&&` or a bool local in StackIs fold it into branches), 0x60A850 a bool (round 58: 0x60A850 returns
  * bool in the row's own unit, the test `bool ok = func_0060A850(t) && (t->m_flags & 0x200)`), `exposed`
  * declared bare ahead of the SEAL (igreplay --movers: numbered before it, s1 and s0 as the target).
- * OPEN, 17 instructions -- ONE WORD: the bit-16-without-17 test's merge gets an `andi v0,0xff` the
- * target lacks (the other 16 are branch offsets it shifts, until the 8-byte pad after `exposed = true`
- * absorbs it). The andi is MW converting the `!` of the bit-17 bool into the && value (igdump: op1087
- * into the temporary, in the bit-17 block) -- a bool, int, unsigned or unsigned char variable, the
- * helper or the caller, `!(x != 0)`, `x ? false : true`, `^ true`, a `!= 0` accessor, `!x ? true :
- * false`, `(bool)!x` and `x != true` all keep it;
- * `== false` drops it but compiles to xor/sltiu; `(b16 ? !b17 : false) == false` moves it to the merge
- * and drops the first sltu (7); the target's `sltu; xori` reaches the branch clean
- * (build/scratch/seal-r56/v_c80*.py) */
+ * The bit-16-without-17 test a self-assigning ternary `only = only ? !AiBit17(ai) : only;` (round 72;
+ * open since round 56 at one word): Bit16Only's `if (r) r = !AiBit17(ai);` -- and ~20 spellings of the
+ * `!` -- kept an `andi v0,0xff` at the merge; the ternary joins the two values unmasked. AttackTick
+ * keeps Bit16Only's if-form (the ternary there is 0xECC). */
 extern "C" bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance)
 {
     bool exposed;
@@ -3937,7 +3932,10 @@ extern "C" bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance)
         bool ok = func_0060A850(t) && (t->m_flags & 0x200);
 
         if (ok) {
-            if (!Bit16Only(ai)) {
+            bool only = AiBit16(ai);
+
+            only = only ? !AiBit17(ai) : only;
+            if (!only) {
                 if (t->m_vec.y * t->m_vec.y / t->m_distSq > 0.07f)
                     exposed = true;
                 if (t->m_distSq < 62500.0f)
