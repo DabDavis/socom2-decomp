@@ -58,6 +58,10 @@
  * conversion and store are written in EACH arm -- one call site in the target is jump2's cross-jump
  * of the two arms' tails, so the 16 for *namelen sits in the join's own block, where sched1 cannot
  * hoist it above the sh and local-alloc hands it the call's dead v0.
+ * accept func_001C32A8 (GCC round 78; open since 21a, 10 words: the peer address and libnet's client
+ * address trading s5/s6) the same way: the close, free and return are written after EACH unlink
+ * (no `goto close`), jump2 cross-jumping the copies into one -- the second sceInetClose is a fifth
+ * use of the client's address, which breaks global-alloc's exact tie (842 each) with the address.
  *
  * OPEN: func_001C1D40, the first-fit allocation (0x14C against 0x150: the target computes the
  *   remainder as (size' - 12) - size from the loop's own load of the block's size, and after a split
@@ -67,10 +71,7 @@
  *   size held from the start, the merges reuse the adjacency sums -- the walk's shape is not yet the
  *   target's); func_001C2028, the heap's set-up (right size, 34: the first `return -1` is the one
  *   the second test jumps back to, and nine stores in another order -- not yet permuted);
- *   func_001C32A8, accept (10 words, right size: the peer address's pointer and libnet's client
- *   address trade s5/s6 -- global-alloc's priorities; four spellings alike, gen_accept.py; the
- *   lists' pushes and unlinks, the gotos' layout and every store as the target's);
- *    *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
+ *    *    *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
  *   `func_001C2310(c, X); return 0;` apart -- three calls, each `b epilogue; move v0,zero` -- where
  *   this compile cross-jumps them into one call; the h_errno chain's value through one store as
  *   the target's); func_001C4A20, gethostbyaddr (0x1EC against 0x1FC: the same question -- the
@@ -1566,7 +1567,9 @@ unpend:
 		t->next->prev = t->prev;
 	else
 		s->ptail = t->prev;
-	goto close;
+	sceInetClose(c->client, c->abuf, t->cid, 0);
+	func_001C1D08(t);
+	return func_001C2310(c, r);
 unlist:
 	{
 		SOCK *n = t->next;
@@ -1580,7 +1583,6 @@ unlist:
 		t->next->prev = t->prev;
 	else
 		data_001CE634 = t->prev;
-close:
 	sceInetClose(c->client, c->abuf, t->cid, 0);
 	func_001C1D08(t);
 	return func_001C2310(c, r);
