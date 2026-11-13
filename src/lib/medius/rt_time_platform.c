@@ -47,6 +47,9 @@ typedef struct sceCdCLOCK {
     unsigned char year;
 } sceCdCLOCK;
 
+#if Z_PORT
+#include <zport.h>   /* the port: the hooks the asm sites use */
+#endif
 #define RT_TIME_CYCLES_PER_SEC  294912000U
 #define RT_BCD(x)               (((x) >> 4) * 10 + ((x) & 0xF))
 
@@ -188,7 +191,11 @@ static unsigned int rt_time_platform_timer_getcount(void)
 {
     unsigned int count;
 
+#if Z_PORT
+    count = z_ee_cop0_count();   /* mfc0 $9 (COP0 Count); sync.p */
+#else
     asm volatile ("mfc0 %0, $9\n\tsync.p" : "=r" (count));
+#endif
     return count;
 }
 

@@ -432,7 +432,12 @@ static void _sceFs_Poff_Intr(void *pkt, void *arg)
 
 	if (p->func)
 		p->func(p->addr);
+#if Z_PORT
+	Z_EE_SYNC();
+	Z_EE_EI();	/* the handler's return: the platform's dispatcher */
+#else
 	__asm__ volatile ("sync.l; ei");
+#endif
 }
 
 /* The client's first use: the power-off and reply handlers installed, the bind retried until the

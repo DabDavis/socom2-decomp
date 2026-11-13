@@ -10,6 +10,9 @@
  * round 1. Placeholders: the codec's names are not in SOCOM 1.
  * Built as nelly.c is (ee-gcc 2.96, -O2 -G8: the encoder's range). */
 
+#if Z_PORT
+#include <zport.h>   /* the port: the hooks the asm sites use */
+#endif
 extern void *memcpy(void *, const void *, unsigned int);
 
 #define VU0_MEM_RE ((void *)0x11004000)		/* VU0 data memory, the microprogram's buffers */
@@ -179,6 +182,12 @@ void *func_00252098(float *pfRe, float *pfIm, int n)
 {
 	memcpy(VU0_MEM_RE, pfRe, n * sizeof(float));
 	memcpy(VU0_MEM_IM, pfIm, n * sizeof(float));
+#if Z_PORT
+	/* vi1 = (n != 256), the syncs, and the FFT micro program func_00252150 copied into VU0's micro
+	 * memory run from 0 on the data copied above */
+	z_vu0.vi[1] = n != 256;
+	z_vu0_callms(0);
+#else
 	__asm__ __volatile__(
 		"ctc2 %0, $vi1\n"
 		"\tsync.p\n"
@@ -188,6 +197,7 @@ void *func_00252098(float *pfRe, float *pfIm, int n)
 		"\tvcallms 0\n"
 		"\tvnop"
 		: : "r" (n != 256));
+#endif
 	memcpy(pfRe, VU0_MEM_RE, n * sizeof(float));
 	return memcpy(pfIm, VU0_MEM_IM, n * sizeof(float));
 }

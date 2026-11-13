@@ -619,7 +619,11 @@ static void FreeLanguage(DISTSIL *d)
  * cross-jumping, a guard, a goto, a label, a do-while(0), the inline's parameters in any order or
  * as `const`, its tos passed in or loaded later (19: then it outranks the block's own tos) -- each
  * leaves the tie (build/scratch/gcc/fd/v1-v6.py) */
+#if Z_PORT
+#define FREEDIST_STANDIN() ((void)0)   /* the port: the stand-in shapes only the PS2 compile */
+#else
 #define FREEDIST_STANDIN() __asm__ __volatile__ ("")
+#endif
 static int FreeDistCalc(DISTSIL *d)
 {
     TOS *tos = d->b.tos;

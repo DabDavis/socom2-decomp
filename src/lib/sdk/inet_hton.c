@@ -25,8 +25,13 @@ typedef unsigned int u_int;
 
 u_int func_001C1308(u_int x)
 {
+#if Z_PORT
+	register u_int r;	/* the port: no register binding ($2 = v0, $3 = v1 on the EE) */
+	register u_int t;
+#else
 	register u_int r asm ("$2");
 	register u_int t asm ("$3");
+#endif
 
 	r = x << 24;
 	t = x & 0xff00;
@@ -42,8 +47,13 @@ u_int func_001C1308(u_int x)
 
 u_int func_001C1330(u_int x)
 {
+#if Z_PORT
+	register u_int r;	/* the port: no register binding ($2 = v0, $3 = v1 on the EE) */
+	register u_int t;
+#else
 	register u_int r asm ("$2");
 	register u_int t asm ("$3");
+#endif
 
 	r = x << 8;
 	r &= 0xff00;

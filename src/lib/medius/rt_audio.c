@@ -15,6 +15,9 @@
  * it `(unsigned char)(c - '0') < 10`, the target's `andi; sltiu`); the clock's mask constant is
  * hoisted out of the printer's loop, so `(n & 0xFF000000) >> 24` keeps its `and`. */
 
+#if Z_PORT
+#include <zport.h>   /* the port: the hooks the asm sites use */
+#endif
 extern int GetThreadId(void);
 extern int SetAlarm(unsigned short time, void (*handler)(int, unsigned short, void *), void *common);
 extern void SleepThread(void);
@@ -82,7 +85,11 @@ unsigned int func_0062C060(void)
 {
     unsigned int count;
 
+#if Z_PORT
+    count = z_ee_cop0_count();   /* mfc0 $9 (COP0 Count); sync.p */
+#else
     asm volatile ("mfc0 %0, $9\n\tsync.p" : "=r" (count));
+#endif
     return count;
 }
 

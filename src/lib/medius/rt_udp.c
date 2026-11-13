@@ -223,7 +223,11 @@ RT_UDP *gapUdp[8];
  * stored before the loop's test. No flag does either (-fno-gcse, -fno-cse-follow-jumps,
  * -fno-rerun-cse-after-loop, -fno-expensive-optimizations, -fno-force-mem, -fno-thread-jumps);
  * a volatile pointer reloads everywhere (127s). */
+#if Z_PORT
+#define RT_UDP_BARRIER() __atomic_signal_fence(__ATOMIC_SEQ_CST)   /* the port: a compiler barrier */
+#else
 #define RT_UDP_BARRIER() __asm__ volatile ("" ::: "memory")
+#endif
 
 
 extern int func_00631B60(RT_UDP_BUF *pBuf, void **ppMsg);
