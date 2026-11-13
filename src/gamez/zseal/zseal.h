@@ -225,6 +225,8 @@ class CZKit {
 public:
     /* the kit's frame, and the mode the hand was last given (kit.h's; OVL2 0x5C0FD0, 0x5C4960) */
     void Tick(float dT);
+    /* the scope's settle ticked by the adrenaline's targets (kit.h's; OVL2 0x5B9280) */
+    void SniperTick(float dT, class CTargetMods &mods, float settle);
     int GetHandFireMode();
     /* whether the kit holds an item, and whether that item has ammunition (SOCOM 1's; OVL2
      * 0x5C86F0, 0x5BDB20, the kit lane's) */
@@ -379,7 +381,9 @@ public:
     unsigned int m_bits0 : 12;   // 0x0
     unsigned int m_requested_item : 1;   // bit 12: an item asked for (IsChangingWeapons tests it)
     unsigned int m_bit13 : 1;   // bit 13: set with bit 12 as a weapon is picked up (PickupItem; the name ours)
-    unsigned int m_bits14 : 18;
+    unsigned int m_bit14 : 1;
+    unsigned int m_heartbeat_enabled : 1;   // bit 15 (kit.h's name: CZSealBody::Tick ticks the scope's settle under it)
+    unsigned int m_bits16 : 16;
 };
 
 class CSealCtrlAi;
@@ -2065,6 +2069,7 @@ public:
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
     virtual void PreTick(float dT);                                         /* +0x14 */
+    virtual void Tick(float dT);                                            /* +0x18 */
     virtual void ComputeNextPosition(float dT);                             /* +0x28 */
     virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
@@ -2115,6 +2120,9 @@ public:
      * float references; OVL2 0x5B0EB0, 0x5B10B0) */
     bool CheckDILadder();
     bool PostCheckDILadder();
+    /* the ground probe's answer taken: the throttles cut where it stops the SEAL (SOCOM 1's PostCheckDIDown; OVL2
+     * 0x5AF930, seal_env.cpp's range) */
+    void PostCheckDIDown(float &x, float &z, float &turn);
     float SetHealth(float health, enum SEAL_DEATH_TYPE type);
     /* the character the SEAL was made from (SOCOM 1's; OVL2 0x599810) */
     CCharacterType *GetCharacter();
@@ -3028,7 +3036,7 @@ public:
     zdb::CNode *m_curr_firept;   // 0x14bc
     unsigned char _14c0[0x14cc - 0x14c0];
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
-    unsigned char _14ce[0x14d0 - 0x14ce];
+    short m_14ce;   // 0x14ce: zeroed by each Tick (the name ours)
     int m_14d0;   // 0x14d0: the hits a dying SEAL has shown (WeaponHitAnim; the name ours)
     unsigned char _14d4[0x14e0 - 0x14d4];   // (0x14E0 bytes: Create news 5344)
 };

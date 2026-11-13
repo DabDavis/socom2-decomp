@@ -63,6 +63,8 @@ public:
      * engine core's round 23 named both; camera.cpp's AttachTo calls the first with (this, prey, 0)) */
     void Follow(CEntity *prey, const char *part);
     void Follow(CZSealBody *seal, const char *part);
+    /* the camera shaken, harder for a lower level (OVL1 0x299320) */
+    void Shake(unsigned char level);
 
     unsigned char _4[0x45 - 0x4];
     unsigned char m_45;   // 0x45 (camera.h's names)
@@ -1843,6 +1845,14 @@ static inline CZBodyAnimBlend *SealTop(CZSealBody *seal)
 }
 
 static inline void ScaleBy(float &v, const float &s) { v *= s; }
+/* whether a ladder slide's anim is on top (an inline, the name ours: its `||` a group of its own, so an
+ * earlier operand's true jumps past it) */
+static inline bool OnLadderSlide(CZSealBody *seal)
+{
+    return seal->IsCurrentBlend((AnimType)data_003DEF50) || seal->IsCurrentBlend((AnimType)data_003DEF60) ||
+           seal->IsCurrentBlend((AnimType)data_003DEF40);
+}
+
 /* the tick before the move: a wait run down; the time step kept; the opacity's fade run; the camera's SEAL's LOD
  * flags; dead (or ended, or respawning online) the controller's post-mortem tick, the rumble (unless remote) and
  * the SEAL's own; else the controller's PreTick, then -- when it asks -- the climb, the network-life watch, a carry
@@ -1984,8 +1994,7 @@ void CZSealBody::PreTick(float dT)
         CZBodyAnimBlend *top = SealTop(this);
 
         bool ladder = m_state == stateClimbLadder || (top && top->m_state == stateClimbLadder) ||
-                      IsCurrentBlend((AnimType)46) || (IsCurrentBlend((AnimType)data_003DEF50) ||
-                      IsCurrentBlend((AnimType)data_003DEF60) || IsCurrentBlend((AnimType)data_003DEF40));
+                      IsCurrentBlend((AnimType)46) || OnLadderSlide(this);
 
         if (ladder) {
             m_23c = 0.0f;
@@ -2000,6 +2009,368 @@ void CZSealBody::PreTick(float dT)
     if (m_wephit.m_node ? &m_wephit : 0)
         HandleWepHit();
     func_005B0410(this);
+}
+
+/* an animation set (anim.cpp's, which declares the whole class: only the script lookup here, OVL2 0x5E3D90) */
+class AnimSet {
+public:
+    CZSIScriptCommon *GetScript(AnimType type);
+};
+
+/* the pitch's direction (SOCOM 1's global, OVL1 data 0x3DF198) */
+extern float hackPitchFactor;
+
+/* the larger of two values by reference, the first on a tie (an inline, the name ours) */
+static inline const float &MaxOf(const float &a, const float &b)
+{
+    return a > b ? a : b;
+}
+
+extern "C" {
+/* the MP bomb's drop asked for and where (seal_env.cpp's), the camera's shake ranges (OVL2 data 0x64FC88,
+ * 0x64FC90, 0x64FC98: the squared distances of an explosion), the terrain's motion factor this frame (OVL2
+ * data 0x64FC80, set to 1 -- SOCOM 1's GetTerrainMotionFactor stored it), the ladder slide's loop and its sound
+ * (seal_env.cpp's) */
+extern bool data_0044CDF8;
+extern CPnt3D data_0044CDE8;
+extern float data_0064FC88;
+extern float data_0064FC90;
+extern float data_0064FC98;
+extern float data_0064FC80;
+extern CSnd *data_0044CE20;
+extern CSndInstance *data_0044CE28;
+extern AnimSet *data_0044D408;
+/* the anims' steps the tick calls (seal_body.cpp's and seal_env.cpp's) */
+CZBodyAnimBlend *func_0057E1B0(CZSealBody *seal);
+bool func_0057F2A0(CZSealBody *seal);
+bool func_005B4B40(CZSealBody *seal, float *a, float *b);
+extern short data_003DEF08;
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+bool func_00580360(CZSealBody *seal, float t);
+bool func_0057A010(CZSealBody *seal, float t0, float t1);
+void func_0057D5E0(CZSealBody *seal, signed char item);
+bool func_005A64C0(CZSealBody *seal, signed char from, signed char to, bool now);
+void func_0057A330(CZSealBody *seal);
+void func_00576860(CZSealBody *seal);
+/* a value eased toward a target by exp(-rate dT) (OVL2 0x5551C0, the unit's tail: SOCOM 1's _decay<f>) */
+float &func_005551C0(float &v, const float &target, float rate, float dT);
+/* (OVL2's copy of _close_enough<f>) */
+bool func_0052EB60(const float &a, const float &b, const float &eps);
+}
+
+/* the adrenaline as the tick eases it: the level, its target, and how (1 exponentially; the names ours) */
+struct CAdrenalineEase {
+    float m_level;   // 0x0
+    float m_target;   // 0x4
+    unsigned char m_mode;   // 0x8
+};
+
+/* the frame's tick: the weapon-up time run down; with the controller asking, the MP bomb dropped, the last
+ * projectile forgotten, the controller's Tick, a player shaken by a near explosion; not dead, the blend run on
+ * -- a step done, a state's move begun, or the reload's and the swap's overlay moved to the moving anim -- the
+ * throttles cut where the body cannot move, the turn rate, the player's adrenaline, scope settle, heartbeat and
+ * ladder-slide loop, the proximity explosives, the anims' late steps, the hostile anchor and the move
+ * (OVL2 0x550EF0, slot 0x18; SOCOM 1's Tick, with the explosion's shake, the slide and the bomb's drop new) */
+void CZSealBody::Tick(float dT)
+{
+    CZBodyAnimBlend *top;
+    short type;
+    CZBodyAnimBlend *cur;
+    bool moving;
+    bool overlay;
+    bool rifle;
+    float t;
+
+    m_f40 = 0;
+    if (!(m_wep_upT <= 0.0f))
+        m_wep_upT -= dT;
+    if (!m_doPostTick)
+        return;
+    if (data_0044CDF8 && CPickup::m_isOpen && CreateMPBombPickup(&data_0044CDE8, false))
+        data_0044CDF8 = false;
+    if (m_lastprojectile)
+        m_lastprojectile = 0;
+
+    CSealCtrl *ctrl = (CSealCtrl *)m_control;
+
+    if (!ctrl)
+        return;
+    if (m_isAlive)
+        m_14d0 = 0;
+    if (!ctrl->Tick(dT))
+        return;
+    if (IsPlayer()) {
+        CPnt3D *boom = CZProjectile::GetNewExplosion();
+
+        if (boom && appCamera) {
+            CPnt3D d;
+
+            m_posW.Sub(boom, &d);
+            float dsq = d.x * d.x + d.y * d.y + d.z * d.z;
+
+            if (dsq < data_0064FC88)
+                appCamera->Shake(2);
+            else if (dsq < data_0064FC90)
+                appCamera->Shake(1);
+            else if (dsq < data_0064FC98)
+                appCamera->Shake(0);
+        }
+    }
+    if (m_state == stateDead)
+        return;
+
+    type = SealTop(this)->m_animType;
+    cur = SealTop(this);
+
+    GetRootPart();
+    if (func_005551A0(cur->m_flags, 0x40)) {
+        switch (m_state) {
+        case stateClimbLadder:
+            if (IsCurrentBlend((AnimType)45) && PostCheckDILadder() == false) {
+                func_00588BC0(this, (AnimType)46, 0, 0, 0);
+                m_alt = m_node->m_matrix.m_matrix[3][1];
+            }
+            break;
+        case stateHang:
+            if (ctrl->m_action)
+                Stand(-1);
+            break;
+        default:
+            if (m_action_jump) {
+                m_action_jump = false;
+                func_0057E1B0(this);
+            } else if (!func_0057F2A0(this))
+                func_005B4B40(this, &m_240, &m_244);
+            break;
+        }
+    } else if (ctrl->m_action) {
+        if (!(m_1090.m_node ? &m_1090 : 0) && m_action_jump) {
+            m_action_jump = false;
+            func_0057E1B0(this);
+        } else
+            func_005B4B40(this, &m_240, &m_244);
+    }
+    if (IsCurrentBlend((AnimType)data_003DEF08) && !m_airborne &&
+        m_1350.x * m_1350.x + m_1350.y * m_1350.y + m_1350.z * m_1350.z == 0.0f) {
+        PopBlend();
+        m_bit9 = false;
+        m_bit10 = false;
+        func_00580360(this, m_1364);
+        m_1364 = 0.0f;
+    }
+    PostCheckDIDown(m_240, m_244, m_23c);
+    data_0064FC80 = 1.0f;
+    top = SealTop(this);
+
+    bool dead = top->m_state == stateDead;
+
+    if (!func_005551A0(top->m_flags, 0x40)) {
+        if (type == top->m_animType) {
+            moving = false;
+            overlay = false;
+            rifle = false;
+            if ((CanInterrupt() && !dead) || type == 53) {
+                if (!(fabsf(m_240) <= 0.1f))
+                    moving = true;
+                if (!(fabsf(m_244) <= 0.1f))
+                    moving = true;
+                if (!(fabsf(m_23c) <= 0.1f))
+                    moving = true;
+                if (moving) {
+                    t = top->m_tfrac;
+                    overlay = true;
+                    rifle = func_005551A0(top->m_flags, 32);
+                }
+            }
+            if (!moving)
+                moving = CheckAnim();
+            if (moving) {
+                if (overlay && type == 17) {
+                    if (m_carry)
+                        m_carry->m_carry = 0;
+                    m_carry = 0;
+                }
+                top->m_ctrl = 0;
+                top = SealAnim(moving);
+                if (overlay) {
+                    if (type == AnimTypes::RifleReload || type == AnimTypes::RifleCrouchReload ||
+                        type == AnimTypes::RifleM203Reload) {
+                        ClearBlendOverlay();
+                        ACTIVE_ANIM *a = ActiveAnimPool()->GetActiveAnim(
+                            m_animset->GetScript((AnimType)AnimTypes::MovingRifleReload), -1);
+
+                        a->m_id = AnimTypes::MovingRifleReload;
+                        SetMovingRifleReload(a);
+                        m_overlay.m_ovlyT = t * a->m_anim->LoopTime();
+                        m_overlay.m_triggerT = -4.0f;
+                    } else if (type == AnimTypes::PistolReload || type == AnimTypes::PistolCrouchReload) {
+                        ClearBlendOverlay();
+                        ACTIVE_ANIM *a = ActiveAnimPool()->GetActiveAnim(
+                            m_animset->GetScript((AnimType)AnimTypes::MovingPistolReload), -1);
+
+                        a->m_id = AnimTypes::MovingPistolReload;
+                        SetMovingPistolReload(a);
+                        m_overlay.m_ovlyT = t * a->m_anim->LoopTime();
+                        m_overlay.m_triggerT = -4.0f;
+                    } else if (type == 53) {
+                        if (rifle) {
+                            ClearBlendOverlay();
+                            ACTIVE_ANIM *a = ActiveAnimPool()->GetActiveAnim(
+                                m_animset->GetScript((AnimType)AnimTypes::MovingRifle2Pistol), -1);
+
+                            a->m_id = AnimTypes::MovingRifle2Pistol;
+                            SetMovingChangeToRifle(a);
+                            m_overlay.m_ovlyT = t * a->m_anim->LoopTime();
+                            m_overlay.m_triggerT = -4.0f;
+                        } else {
+                            ClearBlendOverlay();
+                            ACTIVE_ANIM *a = ActiveAnimPool()->GetActiveAnim(
+                                m_animset->GetScript((AnimType)AnimTypes::MovingRifle2Pistol), -1);
+
+                            a->m_id = AnimTypes::MovingRifle2Pistol;
+                            SetMovingChangeToPistol(a);
+                            m_overlay.m_ovlyT = t * a->m_anim->LoopTime();
+                            m_overlay.m_triggerT = -4.0f;
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        switch (m_state) {
+        case stateHang:
+            m_23c = 0.0f;
+            break;
+        case stateClimbLadder:
+            m_23c = 0.0f;
+            m_244 = 0.0f;
+            break;
+        }
+        bool moving2;
+        bool overlay2;
+
+        type = top->m_animType;
+        if (m_animset == data_0044D408 && type == 18) {
+            moving2 = false;
+            overlay2 = false;
+            if (!(fabsf(m_240) <= 0.1f))
+                moving2 = true;
+            if (!(fabsf(m_244) <= 0.1f))
+                moving2 = true;
+            if (moving2) {
+                t = top->m_tfrac;
+                overlay2 = true;
+                rifle = func_005551A0(top->m_flags, 32);
+            }
+            if (overlay2) {
+                if (m_animset == data_0044D408 && type == 18 && !IsReloading()) {
+                    *(signed char *)&m_item = *(signed char *)&m_lastitem;
+                    BindAnimSet(m_default_animset, false);
+                    m_desiredState = stateStand;
+                    func_0057D5E0(this, *(signed char *)&m_item);
+                    top = SealAnim(false);
+                    int i = m_kit.GetFireClassIndex(*(CZKit::FIRE_CLASS *)&m_item);
+
+                    if (i != -1)
+                        m_kit.SetCurItemByIndex(i);
+                    func_005A64C0(this, 4, *(signed char *)&m_item, false);
+                }
+            } else
+                top = SealAnim(false);
+        } else
+            top = SealAnim(false);
+    }
+    if (m_state == stateCarried)
+        m_244 = 0.0f;
+    t = top->m_tfrac;
+    if (func_0057A010(this, t, top->Propagate(m_2e0, false))) {
+        SealTop(this);
+        SealAnim(false);
+    }
+    if (m_state == stateHang)
+        m_23c = 0.0f;
+    if (IsCurrentBlend((AnimType)33) || IsCurrentBlend((AnimType)35) || IsCurrentBlend((AnimType)36) ||
+        IsCurrentBlend((AnimType)8) || IsCurrentBlend((AnimType)9) || IsCurrentBlend((AnimType)10) ||
+        IsCurrentBlend((AnimType)11) || IsCurrentBlend((AnimType)42) || IsCurrentBlend((AnimType)43))
+        m_23c = 0.0f;
+
+    CZBodyAnimBlend *b = SealTop(this);
+    bool ladder = m_state == stateClimbLadder || (b && b->m_state == stateClimbLadder) ||
+                  IsCurrentBlend((AnimType)46) || OnLadderSlide(this);
+
+    if (ladder) {
+        m_23c = 0.0f;
+        m_244 = 0.0f;
+    }
+    if (!IsCurrentBlend((AnimType)data_003DEAE0))
+        m_velR.y = theCharacterDynamics.m_turn_maxRate * m_23c;
+
+    CZFTSWeapon *w = m_kit.GetCurItem();
+
+    if (w && IsPlayer()) {
+        CTargetMods *mods = w->TargetMods(GetStance(false));
+        float rate = mods->GetSniper_DecayRate();
+
+        if (GetSpeedState() == 3)
+            rate = 1.0f - fabsf(m_240);
+        AdrenalineIncr(fabsf(m_240));
+        AdrenalineIncr(0.1f * fabsf(m_23c));
+        AdrenalineIncr(fabsf(m_244));
+        if (ctrl)
+            AdrenalineIncr(0.05f * fabsf(ctrl->m_138));
+
+        float eps = 0.005f;
+        CAdrenalineEase *a = (CAdrenalineEase *)m_adrenaline;
+
+        if (a->m_target != a->m_level) {
+            if (a->m_mode == 1) {
+                func_005551C0(a->m_level, a->m_target, rate, dT);
+                if (func_0052EB60(a->m_level, a->m_target, eps))
+                    a->m_level = a->m_target;
+            } else {
+                float k = -rate * dT;
+
+                a->m_level = a->m_level + k * (a->m_target - a->m_level);
+                if (func_0052EB60(a->m_level, a->m_target, MaxOf(k, eps)))
+                    a->m_level = a->m_target;
+            }
+        }
+        if (m_kit.m_heartbeat_enabled) {
+            if (m_kit.IsUsingScope() || m_kit.IsUsingBinocs())
+                m_kit.SniperTick(dT, *mods, ctrl->m_138 * hackPitchFactor);
+            if (m_kit.IsUsingScope())
+                TickHeartbeat();
+            else
+                StopAllHeartbeatSounds();
+            if (IsCurrentBlend((AnimType)data_003DEF50)) {
+                if (!data_0044CE28) {
+                    if (data_0044CE20)
+                        data_0044CE28 = data_0044CE20->PlaySound3D(&m_posW, 1.0f, 0, 0, 255);
+                } else
+                    data_0044CE28->SetPos(&m_posW);
+            } else if (data_0044CE28) {
+                data_0044CE28->Stop();
+                CSndInstance::ReleaseSoundInstance(data_0044CE28);
+                data_0044CE28 = 0;
+            }
+        } else {
+            StopAllHeartbeatSounds();
+            if (data_0044CE28) {
+                data_0044CE28->Stop();
+                CSndInstance::ReleaseSoundInstance(data_0044CE28);
+                data_0044CE28 = 0;
+            }
+        }
+    } else if (IsPlayer())
+        StopAllHeartbeatSounds();
+    CheckProximityExplosives();
+    m_14ce = 0;
+    func_0057A330(this);
+    func_00576860(this);
+    UpdateHostileAnchor();
+    if (!(m_1060_bit11 ? true : false))
+        ComputeNextPosition(dT);
+    m_f40 = 1;
 }
 
 /* the SEAL's own AI event: an entity event that never expires, heard only close by, where the SEAL
