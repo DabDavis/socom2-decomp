@@ -2066,6 +2066,17 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC Medius code, round 81** (dmemessage 0x61F920 byte-exact, rewritten from the target: a failure with no callback
+  falls through into the join, the report's return inside `if (data_0067C5B8 != 0)`. rt_frag 0x645290 13 to 2 (`d = pSlot->nSeq &
+  63; d = (d - nIndex) & SEQ; if (d - 1 < 0x0FFFFFFE)`), 0x645380 62 to 18, registers only (nSlot 6857 before nExpect 6122; 720
+  orders). Scheduler tie-breaks, unclosed: 0x63C170, 0x6385F0, 0x6419E8, 0x63B5D0, receive_from, 0x61F7B0, 0x63ACA0. 0x616290: PRE
+  copies after the entry load; the target's load-then-copy looks like a PRE insertion before a two-predecessor block):
+  - A DYING TEMPORARY IS NEVER TIED TO A USER VARIABLE'S SET: a load or `- 1` leaving the expression's register means the value was
+    assigned to a variable -- write it in two steps.
+  - a loop count sharing a variable with a value tested for equality against the iterator lets CSE use the equality on the exit
+    edge; a count of its own stops it. A store taking an `and` result's register, not the copy's, is the expression written again
+    at each use. A 30000-priority tie between a block-local pointer and a function-level variable goes to the lower pseudo:
+    declare the variable after the pointer inside the block. A value computed in a test's slot is computed before the test.
 - **Tells from the GCC SDK, round 81** (nothing closed. inet_heap.c is gone: round 79's separate -fno-strict-aliasing object was a
   stand-in for a union -- the block header K&R's `typedef union _blk { struct { union _blk *next, *prev; u_int size; } s; int x; }
   BLK;` under inet_sock.c's own `-O2 -G0` gives word-identical code for all five rows 0x1C1CD0-0x1C2028, and the heap's .bss
