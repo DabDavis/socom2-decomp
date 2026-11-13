@@ -5450,6 +5450,307 @@ static inline void DropCarry(CZSealBody *seal)
     }
 }
 
+/* the turret's own recoil (OVL1 0x3A7330: the kick stored at 0x3C0, then Rotate(0); the name ours) */
+extern "C" void func_003A7330(CTurret *turret, float kick);
+
+/* the entity the SEAL works as a turret, if it is one (seal.cpp's) */
+static inline CTurret *RecoilAsTurret(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+}
+
+/* a pose's offset scaled by the kick (an inline; the name ours: through its parameters the products keep
+ * the kick first, `mul.s f, f20, fc`, and a zero axis is still multiplied -- `w * 0.0f` written out folds
+ * to a stored zero and puts the constant first) */
+static inline CPnt3D RecoilScale(float s, float x, float y, float z)
+{
+    return CPnt3D(s * x, s * y, s * z);
+}
+
+/* one part kicked: turned by the recoil's rotation and moved by its offset (an inline; the name ours).
+ * The product's quaternion is the caller's one local (one slot for all 21, 160) */
+static inline void RecoilPart(CZBodyPart *part, const CQuat &q, const CPnt3D &t, CQuat &r)
+{
+    if (part) {
+        CQuat *rot = &part->m_rot;
+
+        q.Mul(rot, &r);
+        r.Normalize(rot);
+        part->m_pos.Add(&t, &part->m_pos);
+    }
+}
+
+/* the weapon's recoil played on the body: the kick decays by the time step (dropped under 0.01); a
+ * turret takes it as its own; otherwise each part is turned by an exponential of a vector fixed for the
+ * stance (the state's, else the one wanted) and the item (the rifle or the pistol), scaled by the kick,
+ * and the hips, root and right arm moved (OVL2 0x57B550; SOCOM 1's Recoil -- 97 Exp calls against SOCOM
+ * 1's 100, the vectors transcribed from the target by a script). The decay is tested as the assignment's
+ * value (a separate test reuses the sum for the kick; the target reloads it); the 20 offsets copied from
+ * CPnt3D::zero and the four identities share one temporary each (MW's), the rest of the identities direct;
+ * the root's part passed straight, the rest through one reused local (its later webs split: numbered
+ * after the inlines' rots, they take s1 where the root's and the hips' take s2) */
+void CZSealBody::Recoil()
+{
+    if (!(m_do_weapon_recoil ? true : false))
+        return;
+    if (m_recoilParam < 0.01f) {
+        m_recoilParam = 0.0f;
+        return;
+    }
+    if ((m_recoilParam += -1.1f * m_recoilParam * m_2e0) < 0.01f) {
+        m_recoilParam = 0.0f;
+        return;
+    }
+    float w = m_recoilParam;
+
+    if (m_eb8) {
+        CTurret *turret = RecoilAsTurret(m_eb8);
+
+        if (turret) {
+            func_003A7330(turret, 0.017453292f * w);
+            return;
+        }
+    }
+    CPnt3D t_root = CPnt3D::zero;
+    CPnt3D t_hips;
+    CPnt3D t_spinelo = CPnt3D::zero;
+    CPnt3D t_spinehi = CPnt3D::zero;
+    CPnt3D t_lbicep = CPnt3D::zero;
+    CPnt3D t_lforearm = CPnt3D::zero;
+    CPnt3D t_lhand = CPnt3D::zero;
+    CPnt3D t_rbicep = CPnt3D::zero;
+    CPnt3D t_rforearm = CPnt3D::zero;
+    CPnt3D t_rhand = CPnt3D::zero;
+    CPnt3D t_rshoulder_wgt = CPnt3D::zero;
+    CPnt3D t_lshoulder_wgt = CPnt3D::zero;
+    CPnt3D t_rscap = CPnt3D::zero;
+    CPnt3D t_neck = CPnt3D::zero;
+    CPnt3D t_head = CPnt3D::zero;
+    CPnt3D t_lthigh = CPnt3D::zero;
+    CPnt3D t_lcalf = CPnt3D::zero;
+    CPnt3D t_lfoot = CPnt3D::zero;
+    CPnt3D t_rthigh = CPnt3D::zero;
+    CPnt3D t_rcalf = CPnt3D::zero;
+    CPnt3D t_rfoot = CPnt3D::zero;
+    bool stand = CBody::m_state == 0;
+    bool crouch = CBody::m_state == 1;
+    bool prone = CBody::m_state == 2;
+
+    if (!stand && !crouch && !prone) {
+        if (m_desiredState == 0)
+            stand = true;
+        else if (m_desiredState == 1)
+            crouch = true;
+        else if (m_desiredState == 2)
+            prone = true;
+        else
+            return;
+    }
+    if ((unsigned)(m_item - 1) >= 2)
+        return;
+    CQuat q_root;
+    CQuat q_hips;
+    CQuat q_spinelo;
+    CQuat q_spinehi;
+    CQuat q_lbicep;
+    CQuat q_lforearm;
+    CQuat q_lhand;
+    CQuat q_rbicep;
+    CQuat q_rforearm;
+    CQuat q_rhand;
+    CQuat q_rshoulder_wgt;
+    CQuat q_lshoulder_wgt;
+    CQuat q_rscap;
+    CQuat q_neck;
+    CQuat q_head;
+    CQuat q_lthigh;
+    CQuat q_lcalf;
+    CQuat q_lfoot;
+    CQuat q_rthigh;
+    CQuat q_rcalf;
+    CQuat q_rfoot;
+    CQuat r;
+    CZBodyPart *part;
+
+    q_root = CQuat::identity;
+    q_hips = CQuat::identity;
+    q_head = CQuat::identity;
+    q_neck = CQuat::identity;
+    if (stand) {
+        if (m_item == 1) {
+            t_hips = RecoilScale(w, 0.011489f, 0.0f, 0.075324f);
+            t_rbicep = RecoilScale(w, -0.102813f, -0.130555f, -0.039765f);
+            t_rshoulder_wgt = RecoilScale(w, -0.102813f, -0.130555f, -0.039766f);
+            q_spinelo.Exp(&CPnt3D(0.005387f, -0.012874f, 0.006357f), w);
+            q_spinehi.Exp(&CPnt3D(-0.005118f, -0.000446f, 0.00003f), w);
+            q_lbicep.Exp(&CPnt3D(0.007894f, -0.004139f, 0.001756f), w);
+            q_lforearm.Exp(&CPnt3D(0.0f, 0.0f, -0.018294f), w);
+            q_lhand.Exp(&CPnt3D(0.002943f, 0.009859f, 0.022242f), w);
+            q_rbicep.Exp(&CPnt3D(0.001201f, 0.009856f, -0.015212f), w);
+            q_rforearm.Exp(&CPnt3D(0.0f, 0.0f, 0.020098f), w);
+            q_rhand.Exp(&CPnt3D(0.02925f, -0.006348f, -0.021838f), w);
+            q_rshoulder_wgt.Exp(&CPnt3D(0.000557f, 0.031965f, -0.016739f), w);
+            q_lshoulder_wgt.Exp(&CPnt3D(0.007853f, -0.003765f, 0.002166f), w);
+            q_rscap.Exp(&CPnt3D(-0.0349f, 0.02906f, -0.005172f), w);
+            q_lthigh.Exp(&CPnt3D(-0.001482f, -0.000474f, -0.003307f), w);
+            q_lcalf.Exp(&CPnt3D(0.0f, 0.0f, -0.005571f), w);
+            q_lfoot.Exp(&CPnt3D(0.000292f, 0.003642f, 0.005507f), w);
+            q_rthigh.Exp(&CPnt3D(0.007847f, 0.001516f, -0.002758f), w);
+            q_rcalf.Exp(&CPnt3D(0.0f, 0.0f, 0.012274f), w);
+            q_rfoot.Exp(&CPnt3D(-0.000168f, 0.004046f, -0.004852f), w);
+        } else {
+            t_hips = CPnt3D::zero;
+            t_root = RecoilScale(w, 0.005375f, 0.059233f, 0.075169f);
+            t_rshoulder_wgt = RecoilScale(w, -0.033543f, -0.095054f, -0.053353f);
+            t_rbicep = RecoilScale(w, -0.033543f, -0.095054f, -0.053353f);
+            q_spinelo.Exp(&CPnt3D(-0.000163f, -0.000066f, -0.000185f), w);
+            q_spinehi.Exp(&CPnt3D(0.000039f, -0.000079f, 0.000142f), w);
+            q_lbicep.Exp(&CPnt3D(0.008493f, 0.040414f, -0.045407f), w);
+            q_lforearm.Exp(&CPnt3D(-0.000002f, 0.0f, -0.014087f), w);
+            q_lhand.Exp(&CPnt3D(0.007872f, -0.008518f, -0.015933f), w);
+            q_rbicep.Exp(&CPnt3D(-0.001706f, 0.015955f, -0.04503f), w);
+            q_rforearm.Exp(&CPnt3D(0.0f, 0.0f, -0.001521f), w);
+            q_rhand.Exp(&CPnt3D(-0.001086f, 0.043668f, -0.004971f), w);
+            q_rshoulder_wgt.Exp(&CPnt3D(-0.006629f, -0.01915f, -0.062511f), w);
+            q_lshoulder_wgt.Exp(&CPnt3D(0.01061f, 0.074667f, -0.023115f), w);
+            q_rscap.Exp(&CPnt3D(-0.03003f, 0.008851f, 0.00311f), w);
+            q_lthigh.Exp(&CPnt3D(-0.007393f, 0.001074f, -0.000452f), w);
+            q_lcalf.Exp(&CPnt3D(0.0f, 0.0f, -0.020223f), w);
+            q_lfoot.Exp(&CPnt3D(0.000168f, 0.001642f, 0.012923f), w);
+            q_rthigh.Exp(&CPnt3D(-0.002807f, -0.002019f, -0.004672f), w);
+            q_rcalf.Exp(&CPnt3D(0.0f, 0.0f, -0.013229f), w);
+            q_rfoot.Exp(&CPnt3D(0.000326f, 0.004175f, 0.009199f), w);
+        }
+    } else if (crouch) {
+        if (m_item == 1) {
+            t_hips = RecoilScale(w, -0.000467f, 0.0f, 0.094615f);
+            t_rbicep = RecoilScale(w, -0.082743f, -0.071263f, -0.025372f);
+            t_rshoulder_wgt = RecoilScale(w, -0.082744f, -0.071263f, -0.025372f);
+            q_spinelo.Exp(&CPnt3D(0.026072f, 0.000632f, -0.005229f), w);
+            q_spinehi.Exp(&CPnt3D(-0.006573f, -0.009303f, 0.01548f), w);
+            q_lbicep.Exp(&CPnt3D(0.007432f, -0.007066f, 0.008696f), w);
+            q_lforearm.Exp(&CPnt3D(0.0f, 0.0f, -0.037121f), w);
+            q_lhand.Exp(&CPnt3D(0.002951f, -0.002902f, 0.022555f), w);
+            q_rbicep.Exp(&CPnt3D(-0.003263f, 0.000732f, -0.000108f), w);
+            q_rforearm.Exp(&CPnt3D(0.0f, 0.0f, -0.004036f), w);
+            q_rhand = CQuat::identity;
+            q_rshoulder_wgt.Exp(&CPnt3D(-0.005449f, 0.035174f, -0.007502f), w);
+            q_lshoulder_wgt.Exp(&CPnt3D(0.006184f, -0.010409f, 0.006705f), w);
+            q_rscap.Exp(&CPnt3D(-0.017693f, 0.022068f, -0.004278f), w);
+            q_lthigh.Exp(&CPnt3D(0.003437f, 0.000612f, -0.002599f), w);
+            q_lcalf.Exp(&CPnt3D(0.0f, 0.000001f, -0.007748f), w);
+            q_lfoot.Exp(&CPnt3D(0.000595f, 0.000743f, 0.011995f), w);
+            q_rthigh.Exp(&CPnt3D(0.009803f, 0.0066f, -0.007671f), w);
+            q_rcalf.Exp(&CPnt3D(0.0f, 0.0f, 0.009801f), w);
+            q_rfoot.Exp(&CPnt3D(0.000158f, 0.00011f, 0.004287f), w);
+        } else {
+            t_hips = RecoilScale(w, 0.0f, -0.000001f, 0.131876f);
+            q_spinelo.Exp(&CPnt3D(0.007025f, -0.002077f, 0.00019f), w);
+            q_spinehi.Exp(&CPnt3D(-0.005202f, -0.000631f, 0.000199f), w);
+            q_lbicep.Exp(&CPnt3D(0.016825f, 0.02406f, -0.019762f), w);
+            q_lforearm.Exp(&CPnt3D(0.000001f, 0.0f, -0.012323f), w);
+            q_lhand.Exp(&CPnt3D(0.050053f, -0.038887f, -0.02299f), w);
+            q_rbicep.Exp(&CPnt3D(-0.009803f, 0.0115f, -0.010364f), w);
+            q_rforearm.Exp(&CPnt3D(-0.000002f, 0.0f, -0.035221f), w);
+            q_rhand.Exp(&CPnt3D(-0.01896f, 0.075736f, -0.019627f), w);
+            q_rshoulder_wgt.Exp(&CPnt3D(-0.010802f, 0.009695f, -0.011523f), w);
+            q_lshoulder_wgt.Exp(&CPnt3D(0.014205f, 0.011816f, -0.032678f), w);
+            q_rscap = CQuat::identity;
+            q_lthigh.Exp(&CPnt3D(0.004688f, -0.000415f, -0.001454f), w);
+            q_lcalf.Exp(&CPnt3D(-0.000001f, -0.000001f, -0.010688f), w);
+            q_lfoot.Exp(&CPnt3D(-0.000518f, -0.000633f, 0.015546f), w);
+            q_rthigh.Exp(&CPnt3D(0.012607f, 0.00614f, -0.007235f), w);
+            q_rcalf.Exp(&CPnt3D(0.0f, 0.0f, 0.014621f), w);
+            q_rfoot.Exp(&CPnt3D(0.001681f, 0.001706f, 0.000976f), w);
+        }
+    } else if (prone) {
+        q_spinelo = CQuat::identity;
+        q_spinehi = CQuat::identity;
+        if (m_item == 1) {
+            t_hips = RecoilScale(w, 0.0f, 0.0f, 0.031129f);
+            t_rbicep = RecoilScale(w, -0.032738f, -0.002479f, -0.016733f);
+            t_rshoulder_wgt = RecoilScale(w, -0.032737f, -0.002479f, -0.016733f);
+            q_lbicep.Exp(&CPnt3D(0.007835f, -0.007862f, -0.007845f), w);
+            q_lforearm.Exp(&CPnt3D(0.0f, 0.0f, -0.042349f), w);
+            q_lhand.Exp(&CPnt3D(0.007701f, -0.002592f, 0.031954f), w);
+            q_rbicep.Exp(&CPnt3D(-0.00023f, -0.000164f, -0.009173f), w);
+            q_rforearm.Exp(&CPnt3D(0.0f, 0.0f, -0.015064f), w);
+            q_rhand = CQuat::identity;
+            q_rshoulder_wgt.Exp(&CPnt3D(0.000055f, 0.001005f, -0.009372f), w);
+            q_lshoulder_wgt.Exp(&CPnt3D(0.016509f, 0.003302f, -0.00267f), w);
+            q_rscap.Exp(&CPnt3D(-0.002128f, 0.008386f, 0.002922f), w);
+            q_neck.Exp(&CPnt3D(0.002319f, -0.000692f, -0.00198f), w);
+            q_head.Exp(&CPnt3D(0.003897f, 0.001094f, -0.010441f), w);
+            q_lthigh.Exp(&CPnt3D(0.006298f, -0.005139f, -0.003464f), w);
+            q_lcalf.Exp(&CPnt3D(0.0f, 0.0f, 0.017269f), w);
+            q_lfoot.Exp(&CPnt3D(0.000057f, 0.000501f, -0.008447f), w);
+            q_rthigh.Exp(&CPnt3D(0.00297f, 0.000321f, 0.002151f), w);
+            q_rcalf.Exp(&CPnt3D(0.0f, 0.0f, 0.003491f), w);
+            q_rfoot.Exp(&CPnt3D(-0.000277f, -0.000238f, 0.000171f), w);
+        } else {
+            t_hips = RecoilScale(w, 0.0f, 0.0f, 0.036443f);
+            t_rbicep = RecoilScale(w, -0.041599f, 0.000939f, -0.023483f);
+            t_rshoulder_wgt = RecoilScale(w, -0.041599f, 0.000939f, -0.023483f);
+            q_lbicep.Exp(&CPnt3D(0.004498f, -0.005562f, -0.008127f), w);
+            q_lforearm.Exp(&CPnt3D(0.0f, 0.0f, -0.01812f), w);
+            q_lhand.Exp(&CPnt3D(0.06044f, -0.031837f, -0.02536f), w);
+            q_rbicep.Exp(&CPnt3D(0.0027f, -0.001746f, 0.000973f), w);
+            q_rforearm.Exp(&CPnt3D(-0.000001f, 0.0f, -0.012243f), w);
+            q_rhand.Exp(&CPnt3D(-0.033487f, 0.019365f, -0.068799f), w);
+            q_rshoulder_wgt.Exp(&CPnt3D(0.005535f, 0.001265f, 0.001057f), w);
+            q_lshoulder_wgt.Exp(&CPnt3D(0.006141f, -0.00396f, -0.007437f), w);
+            q_rscap.Exp(&CPnt3D(-0.001878f, 0.011042f, 0.003769f), w);
+            q_lthigh.Exp(&CPnt3D(0.007315f, -0.005974f, -0.004027f), w);
+            q_lcalf.Exp(&CPnt3D(0.0f, -0.000001f, 0.020069f), w);
+            q_lfoot.Exp(&CPnt3D(0.000068f, 0.000586f, -0.00982f), w);
+            q_rthigh.Exp(&CPnt3D(0.003478f, 0.000376f, 0.002519f), w);
+            q_rcalf.Exp(&CPnt3D(0.0f, 0.0f, 0.004086f), w);
+            q_rfoot.Exp(&CPnt3D(-0.000324f, -0.000279f, 0.000203f), w);
+        }
+    }
+    RecoilPart(m_root, q_root, t_root, r);
+    part = m_hips;
+    RecoilPart(part, q_hips, t_hips, r);
+    part = m_spinelo;
+    RecoilPart(part, q_spinelo, t_spinelo, r);
+    part = m_spinehi;
+    RecoilPart(part, q_spinehi, t_spinehi, r);
+    part = m_lbicep;
+    RecoilPart(part, q_lbicep, t_lbicep, r);
+    part = m_lforearm;
+    RecoilPart(part, q_lforearm, t_lforearm, r);
+    part = m_lhand;
+    RecoilPart(part, q_lhand, t_lhand, r);
+    part = m_rbicep;
+    RecoilPart(part, q_rbicep, t_rbicep, r);
+    part = m_rforearm;
+    RecoilPart(part, q_rforearm, t_rforearm, r);
+    part = m_rhand;
+    RecoilPart(part, q_rhand, t_rhand, r);
+    part = m_lshoulder_wgt;
+    RecoilPart(part, q_lshoulder_wgt, t_lshoulder_wgt, r);
+    part = m_rshoulder_wgt;
+    RecoilPart(part, q_rshoulder_wgt, t_rshoulder_wgt, r);
+    part = m_rscap;
+    RecoilPart(part, q_rscap, t_rscap, r);
+    part = m_neck;
+    RecoilPart(part, q_neck, t_neck, r);
+    part = m_head;
+    RecoilPart(part, q_head, t_head, r);
+    part = m_lthigh;
+    RecoilPart(part, q_lthigh, t_lthigh, r);
+    part = m_lcalf;
+    RecoilPart(part, q_lcalf, t_lcalf, r);
+    part = m_lfoot;
+    RecoilPart(part, q_lfoot, t_lfoot, r);
+    part = m_rthigh;
+    RecoilPart(part, q_rthigh, t_rthigh, r);
+    part = m_rcalf;
+    RecoilPart(part, q_rcalf, t_rcalf, r);
+    part = m_rfoot;
+    RecoilPart(part, q_rfoot, t_rfoot, r);
+}
+
 /* the SEAL animated for the tick: the throttles kept, the overlay stepped; every anim of the top blend
  * given its overlay for the weapon (and, the weapon up, its fire pose over it); the top blend run --
  * synched (2), propagated and slid (3), else propagated (the restrained set posed) and the velocity taken
