@@ -5464,7 +5464,9 @@ static inline CTurretFlags *AsTurret(CEntity *e)
     return t;
 }
 
-static inline bool NotBit17(CSealCtrlAi *ai) { return !AiBit17(ai); }
+/* bit 16 without 17 as AttackTick's pursuit asks it: the self-assigning ternary (an `&&` threads the
+ * bit-16 test's false branch past the join's test, which the target lands on) */
+static inline bool Bit16OnlyT(CSealCtrlAi *ai) { bool r = AiBit16(ai); r = r ? !AiBit17(ai) : r; return r; }
 static inline bool NB(CSealCtrlAi *ai) { int r = ai->m_aibit16 != 0; if (r) r = (ai->m_aibit17 != 0) ^ 1; return r ^ 1; }
 static inline bool TT(CSealCtrlAi *ai, const CTurretFlags *t)
 {
@@ -5790,9 +5792,13 @@ static inline bool CanAttackTarget(CSealCtrlAi *ai, CEntity *e)
  * and the fire s4, the item and the fire flag s5, the state s6). The hint built by its default
  * constructor, then given the range (the call after the stores, the range kept in $f21); the clock's
  * read through a volatile view (only so is it loaded into $f2 and the elapsed time into $f1).
- * OPEN, 1 instruction off: AsTurretOf's false arm -- the target's `b` to the shared null block keeps
+ * OPEN, 2 instructions off: AsTurretOf's false arm -- the target's `b` to the shared null block keeps
  * a nop in its delay slot where this fills it with `move a2,zero` (~40 spellings of the test: nested
- * and negated ternaries, `&&` ifs, switches, early returns) */
+ * and negated ternaries, `&&` ifs, switches, early returns; round 76: 13 more, and the self-assigning
+ * forms, build/scratch/struct-r76/v_att2.py). Round 76: structdiff's "1" hid two branch targets
+ * (4 differing words): the pursuit's and the end's `AiBit16 && NotBit17` threaded the bit-16 test's
+ * false branch past the join's `beqz`, where the target lands on it -- Bit16OnlyT's self-assigning
+ * ternary keeps the join (Bit16Only's if-form adds an `andi` there) */
 bool CSealCtrlAi::AttackTick(float dT, bool b)
 {
     CAiState *state;
@@ -5916,7 +5922,7 @@ bool CSealCtrlAi::AttackTick(float dT, bool b)
                 CAiSPursue *p = (CAiSPursue *)(s && s->m_state == AI_STATE_PURSUE ? s : 0);
 
                 p->m_timer = IsNavySeal() ? 5.0f : -1.0f;
-                if (AiBit16(this) && NotBit17(this))
+                if (Bit16OnlyT(this))
                     p->SetFlags(4, 2);
                 p->SetActive(true);
             }
@@ -5993,7 +5999,7 @@ bool CSealCtrlAi::AttackTick(float dT, bool b)
     bool fired = seal->m_kit.WillFireWeapon();
 
     if (fired) {
-        if (AiBit16(this) && NotBit17(this))
+        if (Bit16OnlyT(this))
             PlayAiSound((CHARACTER_SOUND)66, 1.0f, CAiEvent::AIE_NONE);
         m_dicipline.m_value *= data_0064FE28;
         m_5c0 = data_004365C0;
