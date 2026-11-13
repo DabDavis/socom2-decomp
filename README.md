@@ -2066,6 +2066,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 67** (four rows unwritten for 66 rounds, all byte-exact: CPopUpDialog's TickZAnimCmd
+  0x36DA20 (0xC2C) and ParseZAnimCmd 0x36E880 (0x1390) with OVL1's c_str copy 0x36E860, and CZActionBitmap::Init 0x21DED0
+  (0x1248); zui_2d.cpp 277 of 277, hud_actionbitmap.cpp whole; all SOCOM 1's bodies):
+  - the pop-up copies a look apart from LoadSpec's (as SOCOM 1 does): a c_str through an accessor inside a setter lands
+    past the last pass, the target's six out-of-line calls. YES's tag locals named, NO's one reused: later webs number
+    above the CSE temporaries, which is the target's s1/s2.
+  - Init's 22 icons are a macro over a level-deep list add: literal indices fold at parse (each virtual call rebuilds its
+    address), an inline's index parameter leaves a CSE in a saved register; the first texture is numbered last (s0), the
+    last look-up tested through a temporary (`bnez v0`).
+- **Tells from the SDK lane** (fileio.c whole, 40 of 40: sceIoctl, sceWrite, sceRead, sceLseek, sceLseek64,
+  _sceFs_Rcv_Intr; sceGsExecStoreImage in a new gs_execstoreimage.c; libmpeg's _motionComp0, _getAllRefs and _doMC
+  byte-exact -- mpeg2decode's reconstruct and form_predictions, cut for the IPU -- _copyRefImage with them, _getRef0
+  written, open; MpegMB's fields named):
+  - `_sceFs_q` is volatile (a store in the slot's place); the header words are plain address-taken locals (ADDRESSOF:
+    CSE1 leaves their load for PRE); the no-wait second test is `(short)flag & 0x8000`.
+  - sceWrite: the head's test names its zero first, its copy an index of its own. sceIoctl: the constant 1 in s5 is a
+    variable CSE reads back at the case's compare.
+- **Tells from the GCC libraries, round 28b** (grid.c's unwritten rows: the chunked send 0x624830, the clock 0x624DC0,
+  the talk and video messages 0x6250D0 and 0x6253B8 byte-exact; the group message 0x625690 (0xA7C) written, 7 words open,
+  all the first test; grid.c 32 of 32 to 36 of 37):
+  - a cross-jump keeps the copy with no label before it; update_equiv_regs doubles a live length per leading constant set.
 - **Tells from the kit and AI states, round 62** (nine of its fourteen unwritten rows byte-exact, 19,956 bytes:
   AnimSet::Load 0x5E30F0 and DefineFPAnims 0x5E0690, vector<string>'s insert 0x5E5CC0, PlayMessage 0x5E7960, CZKit::OnDeath
   0x5B8920, TickExplosives 0x5C1970 and HandleRemotePlaceExplosive 0x5BC730, 0x5F8D40, CAiSAvoid::Begin 0x602270; four more
