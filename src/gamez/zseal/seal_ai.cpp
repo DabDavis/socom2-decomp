@@ -5945,14 +5945,16 @@ struct CThrowView {
  * stance cleared, the time, and flags 0x0E100000. Written from the target (the round 72 SEALs; the name
  * kept: its callers 0x55EAA0 and 0x55F0A0 are the AI lane's): the reach's record through a throw_params
  * pointer (s3), the abort threshold declared ahead of the share and read after it (its slot above),
- * `dy >= 0 ? 10 + dy : 10`, `t1 > t2 ? t1 : t2`, vy and the reach declared first (f23, f22).
- * OPEN, 12 instructions, register-only: the target holds the rise (and then the flight time) in f21 and
- * the distance in f20, here the other way round (every declaration order of the four, an if for the
- * time or the height, tried) */
+ * `dy >= 0 ? 10 + dy : 10`; the floats declared first, vy, reach, dy, t, len (f23, f22, f21 shared by
+ * dy and t, f20) -- the time an if/else into a named local: as a ternary its front-end temporary is
+ * numbered after every named local, popped first and takes f20 (igdump) */
 extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
 {
     float vy;
     float reach;
+    float dy;
+    float t;
+    float len;
     CZSealBody *seal = (CZSealBody *)ai->m_entity;
     static CPnt3D hand(3.5f, 19.3f, 3.9f);
     static CPnt3D hand_left(7.8f, 10.13f, -5.31f);
@@ -5981,10 +5983,10 @@ extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
         ai::AddNoiseXZ(&target, noise);
     }
     CPnt3D d = target - from;
-    float dy = d.y;
+    dy = d.y;
 
     d.y = 0.0f;
-    float len = d.Normalize();
+    len = d.Normalize();
 
     p->m_dist = len;
     p->m_lookDirW = d;
@@ -6000,7 +6002,10 @@ extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
 
     if (!ai::quadratic(-49.0f, vy, -dy, t1, t2))
         return false;
-    float t = t1 > t2 ? t1 : t2;
+    if (t1 > t2)
+        t = t1;
+    else
+        t = t2;
 
     d.Scale(p->m_flags & 1 ? data_006503F0 : len / t, &d);
     d.y = vy;
