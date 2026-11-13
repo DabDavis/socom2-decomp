@@ -21,16 +21,21 @@
  * reads each unlink's other link into a local first (the slot loads), walks the used run on the
  * fields, and sums `+= sizeof(BLK) + x`, which keeps the adjacency test's (size + 12) for the add.
  *
- * OPEN (round 79): func_001C1D40 (right size, 28: sz and the remainder trade v1/a3 -- global-alloc's
- * order -- and the split's two link arms share one reload of p->size where the target's then-arm
- * keeps its own; the exact fit's arms load b->next into v0, b->prev into a0 on both paths -- the
- * target's beqz, this compile's beqzl), func_001C1E90 (right size, 6: in the first merge the target
- * stores the size through n and reads the next link through b after `b = n`, CSE here makes b the
- * class's canonical register for both; in the second the target addresses the neighbour through the
- * computed sum, the jump's equivalence -- `(t = ...) == n` gives it but then the next link loads
- * after the size store), func_001C2028 (right size, 23: the stores in the target's order, its head
- * `fail:` inside the first test as the target lays it; heap+size's addu and the %hi pseudos
- * allocated otherwise -- 24 orders of the free globals' stores, an `end` local: 22-27). */
+ * Round 80: the allocation's exact fit reads each unlink's other link into its own local first, as
+ * the release does (t, u: one variable for both moves a register), and the split's last link sets
+ * sz in each arm (the target's `lw v1,8(a1)` in both branches' slots); the remainder is two
+ * pseudos, `avail = sz - sizeof(BLK); rest = avail - size;` (one variable set twice trades sz and
+ * rest between v1 and a3). The release's second merge names the computed neighbour (m) -- the
+ * loads go through the sum's register, not through n -- and the first takes `t = b->next` after
+ * `b = n` and steps `t = t->next` as its own statement.
+ *
+ * OPEN (round 80): func_001C1D40 (2: the split's `lw v1,0(a2)` (b->next) one slot ahead of the
+ * target's, before `addiu v0,a0,12` -- sched1 ranks the load first in every statement order tried
+ * and under every flag), func_001C1E90 (1: the first merge's size store through n (a1) where the
+ * load before it and the link store after it go through b (a0) -- CSE canonicalises both pseudos to
+ * b after `b = n`, b living longer (make_regs_eqv); 72 orders of the five statements, n or b in each
+ * place, all 1), func_001C2028 (23: heap+size computed right after the first store and kept in t1,
+ * heap in t2; an `end` local at any of five places changes nothing -- sched1 places it). */
 
 typedef unsigned int u_int;
 typedef unsigned int size_t;
@@ -72,8 +77,8 @@ void func_001C1D08(void *p)
 
 void *func_001C1D40(size_t size)
 {
-	BLK *p, *b, *n;
-	u_int rest, sz;
+	BLK *p, *b, *n, *t, *u;
+	u_int rest, sz, avail;
 
 	size = (size + 3) & ~3U;
 	for (p = data_001E5F80; p; p = p->next) {
@@ -84,8 +89,8 @@ void *func_001C1D40(size_t size)
 	if (p == 0)
 		return 0;
 
-	rest = sz - sizeof(BLK);
-	rest -= size;
+	avail = sz - sizeof(BLK);
+	rest = avail - size;
 	b = p;
 	if (rest) {
 		/* split: the rest stays free, in b's place */
@@ -99,20 +104,24 @@ void *func_001C1D40(size_t size)
 		else
 			data_001E5F84 = p;
 		p->prev = b->prev;
-		if (p->prev)
+		if (p->prev) {
 			p->prev->next = p;
-		else
+			sz = p->size;
+		} else {
 			data_001E5F80 = p;
-		sz = p->size;
+			sz = p->size;
+		}
 	} else {
+		t = b->prev;
 		if (b->next)
-			b->next->prev = b->prev;
+			b->next->prev = t;
 		else
-			data_001E5F84 = b->prev;
+			data_001E5F84 = t;
+		u = b->next;
 		if (b->prev)
-			b->prev->next = b->next;
+			b->prev->next = u;
 		else
-			data_001E5F80 = b->next;
+			data_001E5F80 = u;
 	}
 
 	/* the used list in address order: before the block that follows the free one */
@@ -141,7 +150,7 @@ void *func_001C1D40(size_t size)
 
 void func_001C1E90(void *ptr)
 {
-	BLK *b, *p, *n, *t;
+	BLK *b, *p, *n, *t, *m;
 	u_int size;
 
 	if (ptr == 0)
@@ -187,19 +196,20 @@ void func_001C1E90(void *ptr)
 	/* merged with the free neighbours */
 	n = b->prev;
 	if (n && (BLK *)((char *)n + (n->size + sizeof(BLK))) == b) {
-		t = n->next;
 		b = n;
+		t = b->next;
 		n->size += sizeof(BLK) + size;
-		b->next = t->next;
+		t = t->next;
+		b->next = t;
 		if (b->next)
 			b->next->prev = b;
 		else
 			data_001E5F84 = b;
 	}
 	n = b->next;
-	if (n && (BLK *)((char *)b + (b->size + sizeof(BLK))) == n) {
-		t = n->next;
-		b->size += sizeof(BLK) + n->size;
+	if (n && (m = (BLK *)((char *)b + (b->size + sizeof(BLK)))) == n) {
+		t = m->next;
+		b->size += sizeof(BLK) + m->size;
 		b->next = t;
 		if (t)
 			t->prev = b;
