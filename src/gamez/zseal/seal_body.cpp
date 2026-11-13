@@ -5773,9 +5773,11 @@ void CZSealBody::Recoil()
  * callbacks; the homing stepped and let go; posed; the carry's root held; the root's move kept as the
  * velocity in the turns and the step; then the look, the eyes and the blink, the spine's pitch, the
  * recoil, the lean into turns (OVL2 0x57A330; SOCOM 1's Tick_0, its float unread; Tick calls it).
- * OPEN, at size and frame, every call and branch placed: 4 structural, ONE cause -- the yaw compared in f1
- * and reloaded into f12 for the positive call (here compared in f12 and reused); the three nops after it
- * are label padding that moves with it -- and 32 register-only: the first loop's o1 s4 for s2 and the
+ * OPEN, register-only (round 71: every structural difference closed, 154 to 23 differing): the yaw
+ * compared in f1 and reloaded for the positive call through a const view (`*(const float *)&yaw`: the
+ * target's lwc1 f12 and its label pad); the lean's two speeds both loaded in the first speed's test
+ * (`(vy = m_velR.y, vz = m_velM.z, vy != 0.0f) && vz != 0.0f`: vz's load fills the bc1t's delay slot, f2/f1
+ * as the target, the epilogue's pad gone). Left, 23: the first loop's o1 s4 for s2 and the
  * fire-pose script (script's later web) s2 for s4; the second loop's a s5 for s3. One script for both
  * loops, declared at the top (round 70, 37 to 32: the second loop's script a split web, numbered late,
  * as igreplay asked). igreplay: the second loop's a wants a number after t's split webs and before
@@ -6092,7 +6094,7 @@ void CZSealBody::Tick_0()
                     CZSIScriptCommon *s = m_animset->GetScript((AnimType)82);
 
                     if (!(yaw < 0.0f))
-                        func_00577BA0(this, s, 1, 2, yaw);
+                        func_00577BA0(this, s, 1, 2, *(const float *)&yaw);
                     else
                         func_00577BA0(this, s, 1, 0, -yaw);
                 }
@@ -6117,11 +6119,13 @@ void CZSealBody::Tick_0()
             PitchAnim(&m_aim_goal);
     }
     Recoil();
-    if ((m_lean_into_turns ? true : false) && m_spinelo && !m_airborne && m_velR.y != 0.0f && m_velM.z != 0.0f) {
+    float vy, vz;
+
+    if ((m_lean_into_turns ? true : false) && m_spinelo && !m_airborne && (vy = m_velR.y, vz = m_velM.z, vy != 0.0f) && vz != 0.0f) {
         CQuat q;
         CQuat r;
 
-        q.MakeZRot(m_velR.y * (-0.000375f * m_velM.z));
+        q.MakeZRot(vy * (-0.000375f * vz));
         CQuat *rot = &m_spinelo->m_rot;
 
         q.Mul(rot, &r);
