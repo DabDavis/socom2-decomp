@@ -1,7 +1,9 @@
-/* The boot loader's overlay decode (MAIN 0x1C5DA0): one MWo3 overlay out of
- * APACHE00.ZDB, through DNAS.BIN's codec, inflated to its slot (docs/storage.md).
- * The original file name is unknown; the functions it calls keep placeholder names
- * until their own TUs are written. */
+/* The boot loader (MAIN 0x1C59C0-0x1C692B, after the boot ELF's main): DNAS.BIN loaded into
+ * OVL2's slot, then the two MWo3 overlays FTSCORE and ZSEALETC out of APACHE00.ZDB -- off the
+ * disc (or the host) or off the memory card -- through DNAS.BIN's codec, inflated to their slots
+ * (docs/storage.md); the card's pictures shown full screen, a card error rebooting the ELF, the
+ * GS reset. The original file name is unknown; the functions it calls outside MAIN's libraries
+ * keep placeholder names. Written in reverse of the image would not matter: auto-inlining is off. */
 
 #pragma auto_inline off    /* the image calls 0x1C5DA0 and 0x1C60B0 out of line (0x114/0xEC bytes) */
 
@@ -33,7 +35,7 @@ char *strncpy(char *, const char *, unsigned int);
 char *strncat(char *, const char *, unsigned int);
 int func_001C5DA0(const char *name, void *dest, void *buf, int second);
 
-int sceOpen(const char *name, int mode);
+int sceOpen(const char *name, int flag, ...);     /* Sony's: variadic (0x1C6570 passes a third, 0) */
 int sceClose(int fd);
 int sceRead(int fd, void *buf, int n);
 int sceLseek(int fd, int offset, int whence);
@@ -93,6 +95,225 @@ int func_001C5EC0(const char *name, void *buf)
         sceClose(fd);
     }
     return len;
+}
+
+int sceGsSyncV(int mode);
+
+typedef unsigned int u_long128 __attribute__((mode(TI)));
+
+/* libgraph's BITBLTBUF (Sony's sceGsBitbltbuf) */
+typedef struct {
+    unsigned long SBP : 14;
+    unsigned long : 2;
+    unsigned long SBW : 6;
+    unsigned long : 2;
+    unsigned long SPSM : 6;
+    unsigned long : 2;
+    unsigned long DBP : 14;
+    unsigned long : 2;
+    unsigned long DBW : 6;
+    unsigned long : 2;
+    unsigned long DPSM : 6;
+    unsigned long : 2;
+} sceGsBitbltbuf;
+
+/* libgraph's image transfer: a GIF tag, four A+D pairs, the IMAGE tag (0x60 bytes) */
+typedef struct {
+    u_long128 giftag0;
+    sceGsBitbltbuf bitbltbuf;   /* 0x10 */
+    long bitbltbufaddr;
+    long trxpos;
+    long trxposaddr;
+    long trxreg;
+    long trxregaddr;
+    long trxdir;
+    long trxdiraddr;
+    u_long128 giftag1;
+} sceGsLoadImage;
+
+int sceGsSetDefLoadImage(sceGsLoadImage *lp, short dbp, short dbw, short dpsm, short x, short y,
+                         short w, short h);
+int sceGsExecLoadImage(sceGsLoadImage *lp, u_long128 *srcaddr);
+int FlushCache(int op);
+int sceDmaGetChan(int id);
+int sceDmaSync(int d, int mode, int timeout);
+
+#define GS_PMODE ((volatile unsigned long *)0x12000000)
+#define GS_SMODE2 ((volatile unsigned long *)0x12000020)
+#define GS_DISPFB1 ((volatile unsigned long *)0x12000070)
+#define GS_DISPLAY1 ((volatile unsigned long *)0x12000080)
+#define GS_DISPFB2 ((volatile unsigned long *)0x12000090)
+#define GS_DISPLAY2 ((volatile unsigned long *)0x120000A0)
+#define GS_BGCOLOR ((volatile unsigned long *)0x120000E0)
+
+/* the GS's DISPLAY register (Sony's sceGsDisplay) as two words of bitfields: DY, spanning bytes 1
+ * and 2, is then read and written as a word (lw/sw); as u_long fields it is a doubleword */
+typedef struct {
+    unsigned int DX : 12;
+    unsigned int DY : 11;
+    unsigned int MAGH : 4;
+    unsigned int MAGV : 2;
+    unsigned int : 3;
+    unsigned int DW : 12;
+    unsigned int DH : 11;
+    unsigned int : 9;
+} sceGsDisplay;
+
+/* libgraph's display environment (the display word a bitfield struct) */
+typedef struct {
+    unsigned long pmode;
+    unsigned long smode2;
+    unsigned long dispfb;
+    sceGsDisplay display;
+    unsigned long bgcolor;
+} sceGsDispEnv;
+
+/* libgraph's double buffer; only the two display environments are used here */
+typedef struct {
+    sceGsDispEnv disp[2];
+    char rest[0x1B0];           /* the GIF tags, drawing environments and clears */
+} sceGsDBuff;
+
+void sceGsResetPath(void);
+int sceGsResetGraph(short mode, short inter, short omode, short ffmode);
+int sceGsSetDefDBuff(sceGsDBuff *db, short psm, short w, short h, short ztest, short zpsm,
+                     short clear);
+void sceDmaReset(int mode);
+int sceDmaSendN(int d, void *addr, int size);
+
+/* the boot loader's double buffer (0x1E6410) and the DMA packet that clears the screen */
+extern sceGsDBuff data_001E6410;
+extern char data_001CE680[];
+
+/* the GS reset to a black 640x448 interlaced screen, both read circuits on frame buffer 0 */
+void func_001C67C0(void)
+{
+    *GS_PMODE = 0;
+    *GS_BGCOLOR = 0;
+    asm volatile { sync }
+    sceGsResetPath();
+    sceGsResetGraph(0, 1, 2, 0);
+    sceGsSetDefDBuff(&data_001E6410, 0, 640, 448, 2, 58, 1);
+    data_001E6410.disp[0].display.DX += 4;
+    data_001E6410.disp[1].display.DX += 4;
+    data_001E6410.disp[1].display.DY += 1;
+    *GS_SMODE2 = 1;
+    *GS_DISPLAY1 = *(unsigned long *)&data_001E6410.disp[0].display;
+    *GS_DISPLAY2 = *(unsigned long *)&data_001E6410.disp[1].display;
+    *GS_DISPFB1 = 0x1400;
+    *GS_DISPFB2 = 0x1400;
+    *GS_PMODE = 0x7F23;
+    sceDmaReset(1);
+    sceDmaSendN(sceDmaGetChan(2), data_001CE680, 10);
+    sceDmaSync(sceDmaGetChan(2), 0, 0);
+}
+
+/* a raw 32-bit picture shown full width: the screen faded out (PMODE's ALP), the picture
+ * streamed into GS memory 64 lines at a time, the screen faded back in */
+void func_001C6570(const char *path, int w, int h, int x, int y)
+{
+    float a;
+    int fd;
+    sceGsLoadImage li;
+    u_long128 buf[0xA000];
+
+    a = 1.0f;
+    do {
+        sceGsSyncV(0);
+        *GS_PMODE = ((long)(int)(255.0f * a) << 8) | 0xE1;
+        a += -0.1f;
+    } while (a >= 0.0f);
+    *GS_PMODE = 0xE1;
+    fd = sceOpen(path, 1, 0);
+    if (fd >= 0) {
+        sceGsSetDefLoadImage(&li, (x * 4 + y * 2560) / 256, w / 64, 0, 0, 0, w, 64);
+        do {
+            sceRead(fd, buf, 0x28000);
+            FlushCache(0);
+            sceGsExecLoadImage(&li, buf);
+            sceDmaSync(sceDmaGetChan(2), 0, 0);
+            h -= 64;
+            li.bitbltbuf.DBP += 640;
+        } while (h != 0);
+        sceClose(fd);
+    }
+    a = 0.0f;
+    do {
+        sceGsSyncV(0);
+        *GS_PMODE = ((long)(int)(255.0f * a) << 8) | 0xE1;
+        a += 0.1f;
+    } while (a <= 1.0f);
+    *GS_PMODE = 0xFFE1;
+    *GS_PMODE = 0x7F23;
+}
+int sceCdInit(int mode);
+int LoadExecPS2(const char *filename, int argc, char **argv);
+char *strcpy(char *, const char *);
+char *strcat(char *, const char *);
+int func_001BD938(int port);                    /* the pad's state */
+int func_001BD790(int port, void *data);        /* the pad read */
+int func_001BDA78(int port, void *data, int n);
+void func_001BD738(int port);
+void func_001BD5C8(void);
+void func_0018FF50(void);
+
+/* the boot ELF's own name, argc and argv (for the reboot) */
+extern char *data_001CE650;
+extern int data_001E60B0;
+extern char **data_001E60B8;
+/* the pad's port and its data */
+extern int data_001E6300;
+extern char data_001E6310[];
+
+/* a memory card error: the "card removed" picture shown until the pad answers, then the
+ * libraries shut down and the boot ELF executed again */
+void func_001C6390(int device, int result)
+{
+    const char *pic;
+    char path[256];
+    char exec[256];
+    int ok;
+
+    if (result < -9) {
+        if (device == 0)
+            pic = "PUPUTBAK.RAW";
+        else
+            pic = "PUPUTBA2.RAW";
+        if (data_001E60C0) {
+            strncpy(path, "host0:.", 256);
+            strncat(path, "\\RUN\\RAW\\", 256);
+            strncat(path, pic, 256);
+            path[255] = 0;
+        } else {
+            strncpy(path, "cdrom0:", 256);
+            strncat(path, "\\RUN\\RAW\\", 256);
+            strncat(path, pic, 256);
+            strncat(path, ";1", 256);
+            path[255] = 0;
+        }
+        func_001C6570(path, 640, 128, 0, 160);
+        for (;;) {
+            sceGsSyncV(0);
+            ok = 0;
+            if (func_001BD938(data_001E6300) == 1)
+                ok = func_001BD790(data_001E6300, data_001E6310);
+            if (ok == 0)
+                continue;
+            if (func_001BDA78(data_001E6300, data_001E6310, 14) == 0)
+                continue;
+            func_001BD738(data_001E6300);
+            func_001BD5C8();
+            func_0018FF50();
+            sceCdInit(5);
+            if (data_001E60C0 == 0) {
+                LoadExecPS2("cdrom0:\\SCUS_972.75;1", data_001E60B0, data_001E60B8);
+            } else {
+                strcpy(exec, "host0:");
+                strcat(exec, data_001CE650);
+                LoadExecPS2(exec, data_001E60B0, data_001E60B8);
+            }
+        }
+    }
 }
 
 int sceMcOpen(int port, int slot, const char *name, int mode);
