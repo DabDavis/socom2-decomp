@@ -1611,6 +1611,12 @@ public:
     virtual void OnSetHealth(float health, float old);
     /* a target taken (SOCOM 1's; OVL2 0x566540, seal_ai.cpp's) */
     virtual void SetTarget(CTarget *target);
+    /* a target seen or lost (SOCOM 1's; OVL2 0x5CA470, seal_sensors.cpp's) */
+    virtual void OnSetTargetVisible(CTarget &target, bool visible, zdb::DiIntersect *di);
+    /* the AI's sensing frame (SOCOM 1's; OVL2 0x5CBA20, seal_sensors.cpp's: PreTick calls it) */
+    void SensorPreTick(float dT);
+    /* the alertness passed on from another AI (SOCOM 1's; OVL2 0x560B20, seal_ai.cpp's) */
+    void AcquireAiAware(CSealCtrlAi *other, bool b);
     /* a projectile's hit taken (SOCOM 1's; OVL2 0x572330, seal_ai.cpp's) */
     virtual void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj);
     /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */

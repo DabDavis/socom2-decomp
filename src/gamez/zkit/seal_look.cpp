@@ -1,8 +1,8 @@
 /* seal_look.cpp -- where an AI SEAL looks: CSealCtrl's look and scan state (SOCOM 1 keeps these
  * functions -- ScanTick, ClearLook, SetLookDirR/W, SetLookPosW, SetDefaultLookParams and the scan
  * setters -- right after the hand signals, before seal_airesponse.cpp's states: its unit
- * seal_aiscan.cpp; this unit's name is ours). OVL2 0x600550-0x60187F: ScanTick (0x600550, not
- * written), a new look-direction helper (0x600CF0, a draft), ClearLook ... SetLookRate. zseal.h's
+ * seal_aiscan.cpp; this unit's name is ours). OVL2 0x600550-0x60187F: ScanTick (0x600550,
+ * through a view local: there the parameter's register is the view's), a new look-direction helper (0x600CF0, a draft), ClearLook ... SetLookRate. zseal.h's
  * CSealCtrl (the SEAL lane's) declares the functions but names only m_look_mode, so the members are
  * read through a view of the controller, cast through an inline (a cast local would be a variable
  * of its own, numbered after the parameters: the target's registers are the parameters'). Defined
@@ -322,5 +322,147 @@ void CSealCtrl::ClearLook(AI_LOOK look)
         l->m_look_timer = CAiTimer::infinite;
         l->m_look_flags = 0;
         SetDefaultLookParams(AIL_NORMAL, changed);
+    }
+}
+
+/* the scan's constants (OVL2 data, read as variables): the closest a head-relative point may be, the
+ * cosine under which the head turns, the turn rate's ends, the bias's sign and the sweep's side that
+ * flips each scan */
+extern float data_00650DA8;
+extern float data_00650DB0;
+extern float data_00650DB8;
+extern float data_00650DC0;
+extern float data_00650DC8;
+extern float data_00650DD0;
+/* the scan's vertical reach (OVL2 data) */
+extern float data_0066BB48;
+
+/* the scan's countdown run down by dT, drawn again once it runs out -- an infinite one never runs --
+ * and whether it did (the name ours: in place, a reference or the member, MW keeps the timer's address
+ * in a saved register; through an inline it folds to offsets from `this` as the target's) */
+static inline bool ScanTimerTick(CAiTimer &t, float dT)
+{
+    bool r = false;
+
+    if (t.m_timer != CAiTimer::infinite) {
+        t.m_timer -= dT;
+        r = t.m_timer != CAiTimer::infinite && t.m_timer <= 0.0f;
+        if (r)
+            t.m_timer = t.Period();
+    }
+    return r;
+}
+
+/* the look turned to its point and the scan swept (OVL2 0x600550; SOCOM 1's ScanTick -- SOCOM II's runs
+ * only for a SEAL whose frame slice it is, or with look flags set): the point as a direction in the
+ * SEAL's frame -- a world point from the head, a world direction, or a relative one as it is -- the bias
+ * added once each time it changes (bit 7), the head turned there when it is off by more than the
+ * cosine, and the body told to face it while the head is still turning; the look's timer run down to a
+ * plain look; the scan's timer drawing a new bias each period (bits 2 and 3: across the scan angle, or
+ * to one side and the other). Through a view local (`l`): Look(this) at each use keeps every member's
+ * address in a saved register. The dot product through Dot keeps &out.y/&out.z in s3/s1 across the
+ * head's call, as the target (written out, they fold to sp offsets: a 0x14-byte shorter body). The
+ * locals declared have, seal, view (s1, s0, this's s2) */
+void CSealCtrl::ScanTick(float dT)
+{
+    CPnt3D out;
+    CPnt3D dir;
+    CPnt3D head;
+    CPnt3D hdir;
+    bool have;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CSealLook *l = Look(this);
+
+    if (!ai_slice0.Has(seal->m_index) && !l->m_look_flags)
+        return;
+    have = false;
+    ai_slice0.m_count++;
+    seal->GetLookDir();
+    switch (l->m_look_type) {
+    case LOOK_POSW:
+        seal->GetHeadParams(&head, &hdir);
+        l->m_look_data.Sub(&head, &dir);
+        if (dir.Normalize() < data_00650DA8)
+            break;
+        {
+            CQuat inv = seal->m_quat;
+
+            inv.vec.x = -inv.vec.x;
+            inv.vec.y = -inv.vec.y;
+            inv.vec.z = -inv.vec.z;
+            inv.Apply(&dir, &out, 1);
+        }
+        have = true;
+        ModifyLookFlags(0x80, 0);
+        break;
+    case LOOK_DIRW:
+        dir = l->m_look_data;
+        {
+            CQuat inv = seal->m_quat;
+
+            inv.vec.x = -inv.vec.x;
+            inv.vec.y = -inv.vec.y;
+            inv.vec.z = -inv.vec.z;
+            inv.Apply(&dir, &out, 1);
+        }
+        have = true;
+        ModifyLookFlags(0x80, 0);
+        break;
+    case LOOK_DIRR:
+        have = true;
+        out = l->m_look_data;
+        break;
+    }
+    if (have && (l->m_look_flags & 0x80)) {
+        bool settled;
+
+        l->m_look_flags &= ~0x80;
+        out.Add(&l->m_look_bias, &out);
+        out.Normalize();
+        settled = true;
+        if (Dot(out, l->m_look_data_mdir) < data_00650DB0) {
+            float r = l->m_look_rate;
+
+            settled = seal->SetLookDir(&out, data_00650DB8 * (1.0f - r) + data_00650DC0 * r);
+            l->m_look_data_mdir = out;
+        }
+        if (l->m_look_type != LOOK_DIRR
+            && ((!settled && !(l->m_look_flags & 2)) || (l->m_look_flags & 1)))
+            SetGoalDir((GOAL_TYPE)1, &dir, false);
+    }
+    if (l->m_look_timer != CAiTimer::infinite) {
+        l->m_look_timer -= dT;
+        if (l->m_look_timer <= 0.0f)
+            ClearLook(AIL_ALL);
+    }
+    if (l->m_look_flags & 0xc) {
+        bool fired = ScanTimerTick(l->m_scan_timer, dT);
+        if (fired) {
+            float angle;
+            CPnt3D d = CPnt3D::zero;
+
+            if (data_0066BB48 != 0.0f)
+                d.y = Rfloat(-data_0066BB48, data_0066BB48);
+            if (l->m_look_flags & 8)
+                angle = Rfloat(-l->m_scan_angle, l->m_scan_angle);
+            else {
+                float k = Rfloat(0.8f, 1.1f);
+
+                if (l->m_look_bias.x == 0.0f) {
+                    angle = data_00650DD0 * (l->m_scan_angle * k);
+                    data_00650DD0 = -data_00650DD0;
+                } else if (l->m_look_bias.x >= 0.0f)
+                    angle = data_00650DC8 * (-l->m_scan_angle * k);
+                else
+                    angle = data_00650DC8 * (l->m_scan_angle * k);
+            }
+            d.x = sinf(angle);
+            d.z = cosf(angle);
+            d.z = -d.z;
+            if (d.y != 0.0f)
+                d.Normalize();
+            l->m_look_bias = d - CPnt3D::unit_nz;
+            ModifyLookFlags(0x80, 0);
+        }
     }
 }
