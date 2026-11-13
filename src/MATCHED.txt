@@ -6572,6 +6572,8 @@
 0x00361B60 TranslateString__FPCc
 0x00361BC0 GetStringTables__Fv
 0x00361BD0 Write__15C2DStringPacketFP15C2DStringCursor
+0x00362350 SeekGlyph__15C2DStringCursorFv
+0x003625E0 Advance__15C2DStringCursorFv
 0x00362900 __ct__15C2DStringCursorFP9C2DStringPi
 0x00362B20 SetFont__9C2DStringFP7C2DFont
 0x00362B70 UpdatePos__9C2DStringFv

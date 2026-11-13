@@ -2066,6 +2066,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks re-diff sweep, round 75** (C2DStringCursor::SeekGlyph 0x362350 and Advance 0x3625E0 byte-exact, open
+  since round 61, through their shared inline SetPiece's alpha clamp `m_color[3] = (int)((float)(int)(128.0f * cap) < alpha ?
+  (float)(int)(128.0f * cap) : alpha);` with `cap = cap;` ahead (Advance its own `return;` after the '#B' recursion). Nearer:
+  CEntity::UpdateTargetList 0x2A0450 (0 structural, 20 register-only), CSealCtrlAi::StateTick 0x5F55E0 (45 to 9 structural: a
+  MISSING out-of-line call `func_00516900(&p)`, CPnt3D's empty constructor; `master` volatile; left the Is(3) family),
+  HandleEvent 0x5F95D0 at size (67 to 17 structural: the Rfloat + `const float &` chance; evLoc before myLoc),
+  CanUseDoorAction 0x5EC4E0 (18 to 1 structural: it returns `unsigned int` as both callers declare, not bool). Notes wrong in
+  all five. A table of the 114 open MW rows by structural and register-only count is in the lane's scratch
+  (build/scratch/mw-r75/open_mw_rows.txt, with a structdiff dump per row in sd/)):
+  - AN UNPADDED JOIN AFTER A FALL-THROUGH ARM IS AN EXPRESSION'S, NOT A STATEMENT'S: a ternary whose converting arms merge their
+    tails (`x = (int)(c ? e : a)`) gives `bc1f; nop; mov.s; L: cvt` unpadded; `if (c) a = e;` pads L. With a named local as the
+    arm the result takes its register; an expression arm gives the other operand's.
+  - `x = x;` keeps an initialised local named (its load numbers before later temporaries).
+  - AN END COMPUTED ONCE PER OUTER PASS AND TESTED TWICE is a local declared inside a hand-rotated walk's guard (`if (j != end())
+    { iterator je = end(); do ... while (++j != je); }`).
+  - A LOCAL KEPT IN A FRAME SLOT WITH EVERY ACCESS A LOAD OR STORE IS VOLATILE (`T *volatile m = 0;`).
+  - AN EMPTY CONSTRUCTOR CALLED OUT OF LINE IS A CALL TO WRITE: check the target's jal list before the registers.
+    `((const T &)*p).end()` is not CSE'd with `((const T *)p)->end()`. A rand draw's constants in min-then-range order are
+    SOCOM 1's Rfloat. READ THE CALLERS' DECLARATIONS: `li s1,1` and no `andi` at the return is an int-returning function.
 - **Tells from the GCC network code, round 75** (three rows byte-exact: rt_msg_client 0x637318, rt_udp's raw send 0x63EBA0,
   process_client_connect_notify 0x636E68 (open since round 16b); 0x6385F0 17 to 2 (an `else if` chain ending `else return 3`;
   left: send_to's channel and port loads swapped). Four more notes misdiagnosed (a stepped cursor, the guards' grouping, a nested
