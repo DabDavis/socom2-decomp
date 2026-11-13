@@ -10247,7 +10247,7 @@
 0x0056ACE0 0x128 func_0056ACE0  # OVL2
 0x0056AE10 0x30 func_0056AE10  # OVL2; the same words as __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv (0x2a9680) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x0056AE40 0x108 func_0056AE40  # OVL2
-0x0056AF50 0xDB4 func_0056AF50  # OVL2
+0x0056AF50 0xDB4 LadderClimbTick__11CSealCtrlAiFf  # OVL2; s1:order by hand (ctrl lane, round 68): SOCOM 1's LadderClimbTick__11CSealCtrlAiFf (0x78C there): CSealCtrlAi::PreTick's mode-7 arm calls it where SOCOM 1's PreTick calls LadderClimbTick; the 0x448 phase bits, 0x56BD10, 0x56BEF0
 0x0056BD10 0x1E0 func_0056BD10  # OVL2
 0x0056BEF0 0x120 func_0056BEF0  # OVL2
 0x0056C010 0x68 func_0056C010  # OVL2

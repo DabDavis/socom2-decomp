@@ -1529,6 +1529,8 @@ public:
     /* the AI's frame: the scan, the fudge velocities, the alertness's decays and band (OVL2 0x56FD00,
      * seal_ai.cpp's) */
     virtual bool Tick(float dT);
+    /* the AI on a ladder (SOCOM 1's; OVL2 0x56AF50, seal_ai.cpp's) */
+    void LadderClimbTick(float dT);
     /* the AI's pre-tick: suspended, dead, asleep, else awake (OVL2 0x56DE10, seal_ai.cpp's) */
     virtual bool PreTick(float dT);
     /* the sightings, the stance, the rescue and the alertness's score (OVL2 0x56F970, seal_ai.cpp's) */

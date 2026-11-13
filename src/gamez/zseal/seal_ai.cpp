@@ -4482,7 +4482,7 @@ void func_005B3890(CEntity *seal, int x);
  * mode 3, the climb's words cleared, the move goal dropped, 0x570F90 asked with 1 and the SEAL's
  * 0x5B3890 with 1 (OVL2 0x56BEF0, new in SOCOM II: 0x56AF50 calls it three times; the name
  * unknown) */
-extern "C" void func_0056BEF0(CSealCtrlAi *ai)
+extern "C" void func_0056BEF0(CSealCtrlAi *ai, bool b)
 {
     CEntity *e = ai->m_entity;
 
@@ -5977,6 +5977,244 @@ void func_00545480(CSealStats *stats, CZSealBody *seal);
 }
 
 extern "C" {
+/* the ladder climb's tunings (OVL2 data 0x650140-0x650158 floats, 0x650160 and bss 0x66B1D0 bytes; the
+ * names ours) */
+extern float data_00650140;
+extern float data_00650148;
+extern float data_00650150;
+extern float data_00650158;
+extern unsigned char data_00650160;
+extern unsigned char data_0066B1D0;
+/* (OVL2 0x57F530, 0x57F3E0: seal_body.cpp's) */
+bool func_0057F530(CZSealBody *seal);
+void func_0057F3E0(CZSealBody *seal);
+/* the action on a cell (ai_maps.h's, OVL2 0x52D8B0) */
+void *GetCellAction__7CAiMapsFRC9CAiMapLoc(CAiMaps *maps, const CAiMapLoc &loc);
+}
+
+/* a ladder's two ends (seal_env.cpp's CLadderData: the bottom and the top) */
+struct CLadderEnds {
+    CPnt3D m_bottom;   // 0x0
+    CPnt3D m_top;   // 0xc
+};
+
+/* the route's last point popped and walked back to, the SEAL's cell when there is none (OVL2 0x56C010's
+ * body, inlined: FollowRouteBack's twin, which is defined below) */
+static inline void RouteLegBack(CSealCtrlAi *ai)
+{
+    CAiPath *p;
+    CZSealBody *me = (CZSealBody *)ai->m_entity;
+    CAiMapLoc to;
+
+    p = (CAiPath *)&ai->m_path;
+    if (!p->PopPoint(&to))
+        to = me->m_mapLocValid;
+    func_0056C080(ai, p, &to);
+}
+
+/* CSealCtrl's SetGoalPos(type, point, tolerance) and ClearGoal, as the climb expands them (the members'
+ * bodies; MW calls the members out of line here) */
+static inline bool GoalPos(CSealCtrl &c, GOAL_TYPE type, const CPnt3D *pos, float tolerance)
+{
+    if (c.m_goal_type > type)
+        return false;
+    if (pos) {
+        c.m_goal_pos = *pos;
+        c.m_goal_tolerance = tolerance;
+        c.m_goal_pos_valid = true;
+        if (c.m_goal_dir_valid && c.m_goal_type != type)
+            c.SetGoalDir(c.m_goal_type, 0, false);
+        c.m_goal_type = type;
+    } else {
+        c.m_goal_pos_valid = false;
+        if (!c.m_goal_dir_valid)
+            c.m_goal_type = GOAL_NONE;
+    }
+    return true;
+}
+
+static inline void GoalClear(CSealCtrl &c, GOAL_TYPE type)
+{
+    if (type == GOAL_NONE)
+        type = c.m_goal_type;
+    if (c.m_goal_type == type) {
+        GoalPos(c, type, 0, 3.0f);
+        c.SetGoalDir(type, 0, false);
+        c.m_goal_timer.m_timer = CAiTimer::infinite;
+        c.m_goal_timer.m_min = CAiTimer::infinite;
+        c.m_goal_timer.m_range = 0.0f;
+    }
+}
+
+/* LegLadderIndex and LegLadder on the leg itself (the climb reads 0x444 once, into a saved register) */
+static inline int LegLadderIndex2(const CAiLadderLeg *leg)
+{
+    return leg ? leg->m_ladder : 0xFFFF;
+}
+
+static inline CLadderData *LegLadder2(const CAiLadderLeg *leg, int index)
+{
+    return leg ? theMission.m_ladders->GetLadderByIndex(index) : 0;
+}
+
+/* the climb's phase bits changed (an inline: `clear` 0 keeps the word's zero extension) */
+static inline void LadderBits(CSealCtrlAi *ai, unsigned int set, unsigned int clear)
+{
+    ai->m_448 &= ~clear;
+    ai->m_448 |= set;
+}
+
+/* the AI on a ladder (OVL2 0x56AF50: SOCOM 1's LadderClimbTick, 0x78C there -- the phases kept in the
+ * bits of 0x448: 1 waiting at the foot, 2 lining up, 4 climbing, 8 and 0x10 stepping off at the top or
+ * the bottom, 0x20 walking clear) */
+void CSealCtrlAi::LadderClimbTick(float dT)
+{
+    bool top;
+    CAiLadderLeg *leg;
+    CLadderData *ladder;
+    CZSealBody *seal;
+
+    seal = (CZSealBody *)m_entity;
+    top = func_0054F6E0(seal, true, true, true);
+    leg = m_444;
+    ladder = LegLadder2(leg, LegLadderIndex2(leg));
+
+    func_00570F90(this, 0.5f);
+    m_bit17 = !(m_448 & 0x20);
+    unsigned int f = m_448;
+
+    if (f & 1) {
+        if (ladder && !func_0056BD10(seal, ladder)) {
+            m_448 &= ~1;
+            m_448 |= 6;
+        } else if (!(*(float *)&m_3f8 <= data_00650150)) {
+            StopThrottles(false);
+            func_0056BEF0(this, false);
+        } else {
+            func_005B3890(seal, 1);
+            func_00567690(this, dT, false);
+        }
+    } else if (f & 2) {
+        if (ladder) {
+            CLadderEnds *ends = (CLadderEnds *)ladder;
+            CPnt3D goal;
+            CPnt3D dir;
+            CAiMap::DIR d;
+
+            const CPnt3D *pos = &seal->m_posW;
+
+            ends->m_bottom.Interp(&ends->m_top, 0.5f, &goal);
+
+            if (m_440 && (((unsigned char *)m_440)[1] & 1))
+                d = (CAiMap::DIR)leg->m_4;
+            else {
+                d = (CAiMap::DIR)leg->m_4;
+                if (m_448 & 0x10)
+                    d = (CAiMap::DIR)((d + 4) % 8);
+            }
+            CAiMap::GetDirVec(d, dir);
+            goal += dir * data_00650158;
+            float y = pos->y;
+            float y0 = ends->m_bottom.y;
+            float y1 = ends->m_top.y;
+
+            goal.y = fabsf(y0 - y) <= fabsf(y1 - y) ? y0 : y1;
+            GoalClear(*this, GOAL_NONE);
+            GoalPos(*this, (GOAL_TYPE)3, &goal, 1.0f);
+            SetGoalDir((GOAL_TYPE)3, &dir, false);
+            m_448 &= ~2;
+            m_448 |= 4;
+        } else {
+            StopThrottles(false);
+            func_0056BEF0(this, false);
+            DropRoute(this);
+        }
+    } else if (f & 4) {
+        bool creep = ((const CSealCtrlAi *)this)->m_goal_type == 3 && ((bool)m_goal_dir_valid || (bool)m_goal_pos_valid);
+
+        if (creep && !top)
+            CreepTick(dT, true);
+        else if (top) {
+            GoalClear(*this, GOAL_NONE);
+            StopThrottles(false);
+            m_448 &= ~4;
+        } else {
+            StopThrottles(false);
+            func_0056BEF0(this, false);
+            DropRoute(this);
+        }
+    } else if (f & 8) {
+        if (top) {
+            SetThrottle(0, data_00650140);
+            SetThrottle(1, 0.0f);
+            SetThrottle(2, 0.0f);
+        } else {
+            CPnt3D p(0.0f, 0.0f, -data_00650148);
+
+            seal->m_node->m_matrix.Transform(&p, 1);
+            GoalClear(*this, GOAL_NONE);
+            GoalPos(*this, (GOAL_TYPE)3, &p, 3.0f);
+            m_goal_timer.m_timer = 1.5f;
+            m_goal_timer.m_min = 1.5f;
+            m_goal_timer.m_range = 0.0f;
+            m_448 &= ~0x18;
+            m_448 |= 0x20;
+        }
+    } else if (f & 0x10) {
+        if (top) {
+            SetThrottle(0, -data_00650140);
+            SetThrottle(1, 0.0f);
+            SetThrottle(2, 0.0f);
+            bool off = func_0057F530(seal);
+
+            if (off) {
+                if (data_0066B1D0 || (data_00650160 && IsNavySeal()))
+                    func_0057F3E0(seal);
+            }
+        } else {
+            CPnt3D p(0.0f, 0.0f, data_00650148);
+
+            seal->m_node->m_matrix.Transform(&p, 1);
+            GoalClear(*this, GOAL_NONE);
+            GoalPos(*this, (GOAL_TYPE)3, &p, 3.0f);
+            m_goal_timer.m_timer = 1.5f;
+            m_goal_timer.m_min = 1.5f;
+            m_goal_timer.m_range = 0.0f;
+            m_448 &= ~0x18;
+            m_448 |= 0x20;
+        }
+    } else if (f & 0x20) {
+        CreepTick(dT, true);
+        bool creep = m_goal_type == 3 && ((bool)m_goal_dir_valid || (bool)m_goal_pos_valid);
+
+        if (!creep) {
+            m_448 &= ~0x20;
+            m_448 |= 0x100000;
+            StopThrottles(false);
+            func_0056BEF0(this, false);
+            SetAiMode((AI_MODE)3);
+            CAiPath *path = (CAiPath *)&m_path;
+
+            while (path->HasPoints()) {
+                if (GetCellAction__7CAiMapsFRC9CAiMapLoc(&AiMaps, path->m_points[path->m_points.size() - 1].m_loc))
+                    RouteLegBack(this);
+                else {
+                    RouteLegBack(this);
+                    break;
+                }
+            }
+        }
+    } else {
+        if (top) {
+            LadderBits(this, 0x10, 0);
+        } else {
+            StopThrottles(false);
+            func_0056BEF0(this, false);
+        }
+    }
+}
+
+extern "C" {
 /* the AI pre-tick's switches (OVL2 data 0x64FF90, 0x650078-0x650090 and bss 0x66B1A8, bytes; the names
  * ours) */
 extern unsigned char data_0064FF90;
@@ -5990,7 +6228,6 @@ void SensorPreTick__11CSealCtrlAiFf(CSealCtrlAi *ai, float dT);
 /* (OVL2 0x56C550, 0x56AF50, 0x567900, unwritten; 0x5FAE70, 0x5FD3E0, seal_aifollow.cpp's; 0x60F760,
  * seal_aivehicle.cpp's) */
 void func_0056C550(CSealCtrlAi *ai, float dT);
-void func_0056AF50(CSealCtrlAi *ai, float dT);
 void func_00567900(CSealCtrlAi *ai, float dT);
 void func_005FAE70(CSealCtrlAi *ai, float dT);
 bool func_005FD3E0(CSealCtrlAi *ai, CEntity *e);
@@ -6162,7 +6399,7 @@ bool CSealCtrlAi::PreTick(float dT)
         func_0056A760(this, 0, true);
         break;
     case 7:
-        func_0056AF50(this, dT);
+        LadderClimbTick(dT);
         break;
     case 8:
         break;
