@@ -2027,6 +2027,7 @@
 0x0022BB30 hudTurnOffScorePopup__Fv
 0x0022BC40 hudTriggerPopup__FP14CTriggerSource
 0x0022BD50 hudTriggerPopup__FPCc
+0x0022BE20 hudTickScorePopup__FP4CPad10MENU_STATEf
 0x0022CBF0 hudIsScorePopupOn__Fv
 0x0022CC10 hudTurnOnScorePopup__Fv
 0x0022D170 GetE3ScoreTeam08__9CZNetGameCFv

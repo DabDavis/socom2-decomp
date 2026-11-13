@@ -2066,6 +2066,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 69** (hudTickScorePopup 0x22BE20 (0xDC4, the 992-byte frame) byte-exact, unwritten before -- the
+  interrupted lane's hud_scorepopup.cpp draft, 1 word off (`lbu` vs `lb`); the name ours, SOCOM 1's by place and body.
+  CMPWeaponSel::ClearSlot 0x23ECA0 (0x1250, name ours: SetSlot's first call, the leaving weapon taking its companion items)
+  written at the target's size, 38 words off in registers alone: the target has `used` with `old` in s0 and the 141-slot `i`
+  in s2, swapped here; eight spellings under igvar moved nothing, igreplay `--want used=s0,i=s2` 0 hits in 8.5 % before its
+  timeout -- an interference, not a numbering (round 36's tell); next, the statement shape around `used`. hud_weaponsel.h
+  declares ClearSlot, proved on its six units and all of Apps/FTS/):
+  - a reference cast `(ENUM &)sbyte` reads a signed-byte global with `lb`; every value cast narrows to `lbu`.
+  - case tests emit in reverse source order: `case 154: case 195: case 254: case 255:` gives 255/254/195/154 with the `b; nop;
+    nop` default (`||` folds 254/255 into a range). A chain masking the byte once into v1 (`li K; bne v1`) is if/else-if.
+  - NO PREHEADER when the call is spelled `CZWeapon::m_listWeapons.GetWeapon(x)` (directly or through an inline that only
+    returns it); an inline holding the list in a reference local gives the invariant assignment IRO_PullOutInvariantAssignments
+    moves into an out-of-line guard-plus-preheader at the function's end.
+  - `move v1,zero; beqz; li 3; bne; daddiu v1,1; beqz v1` is `bool t = false; used = !used; if (used && j == 3) t = true;`
+    -- the statement between stops RebuildLogicalExpressions (the UI's round-36 tell, confirmed). `bool f = false; if (a == b)
+    f = true;` keeps `move; bne; daddiu 1` where `f = a == b` gives `xor; sltiu`.
+  - unwritten still: CZPauseTest::Init 0x202520 (SOCOM II's own -- SOCOM 1's is 0x28 -- twelve CPauseItem menu lines then the
+    bitmaps and strings), CHUD::Tick 0x1F7FF0 and Init 0x1FA360 (SOCOM 1 bodies); UpdateColor 0x215C10 open since round 66.
 - **Tells from the kit and AI states, round 64** (two rows byte-exact, both unwritten before, 7,280 bytes: CTGroup::Parse
   0x5D9E70 (0x10D4, seal_tasks.cpp: the 2K stream CTGroup::Begin reads, through a new inline TaskPut -- the value whole if it
   fits, else what fits and the room used up -- and an inline CTGroup::Create; the file-local CTGroup's pad byte 0xb is `_b`
