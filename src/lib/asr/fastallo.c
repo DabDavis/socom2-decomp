@@ -21,14 +21,16 @@ extern void *func_00243298(void *heap, int size);                  /* the heap's
 extern void heap_Free(void *heap, void *p);
 extern void *memset(void *p, int c, unsigned int n);
 
-/* OPEN (61 words, 6 short): the target keeps p in s4 from its first 0 to the single return
- * (a merge, so a register across the heap calls), indexes the free list with srl and builds
- * the list's address once; guards, nested and goto single-exit shapes with an unsigned short,
- * unsigned or int `left` (build/scratch/gcc/spec_fa*.py) come no closer than this one. */
+/* a block of n words (1..64) cut from the current chunk; when too few are left, their tail goes
+ * on the free list of its size and a new chunk is started (the chunk table grown by one). Byte-exact
+ * since GCC round 75 (long OPEN, 6 words short): the count is read from the field at
+ * every use, no local -- CSE then keeps one HImode load for the store's `left - n` and a zero-
+ * extended copy (`andi`) for the tests and the free list's index (`+ 3u`: srl); the chunk counter
+ * is bumped in the table's index (`i++`, in place: the target's s1). A local `left` of any type
+ * loses the copy and the extension. */
 int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n)
 {
     int *p = 0;
-    unsigned short left;
     int i;
     int **list;
     int **chunks;
@@ -38,11 +40,10 @@ int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n)
         goto out;
     if (n > 64)
         goto out;
-    left = fa->left;
-    if (left < n) {
+    if (fa->left < n) {
         i = fa->nchunks;
-        if (left != 0) {
-            list = &fa->free[(left + 3) >> 2];
+        if (fa->left != 0) {
+            list = &fa->free[(fa->left + 3u) >> 2];
             *(int **)fa->next = *list;
             *list = fa->next;
         }
@@ -53,14 +54,13 @@ int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n)
         chunk = func_00243298(fa->heap, fa->chunk_size);
         if (chunk == 0)
             goto out;
-        fa->chunks[i] = chunk;
-        fa->nchunks = i + 1;
+        fa->chunks[i++] = chunk;
+        fa->nchunks = i;
         fa->next = chunk;
-        left = fa->chunk_size >> 2;
-        fa->left = left;
+        fa->left = fa->chunk_size >> 2;
     }
     p = fa->next;
-    fa->left = left - n;
+    fa->left -= n;
     fa->next = p + n;
 out:
     return p;
