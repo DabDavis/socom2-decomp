@@ -847,13 +847,12 @@ static inline CPnt3D Minus(const CPnt3D &a, const CPnt3D &b)
 
 /* (OVL2 0x5E7390) the result a local: `return true` in place gives `li` and its own block where
  * the target sets the bool with daddiu, its zero in the test's delay slot.
- * OPEN, 16 instructions at the right size, registers and two stores: the target gives `this` s1 (shared
- * after the walk with &d.y) and the start byte's pointer s2, here the other way round (the pointer
- * declared first, a dead first definition, a `self` copy and the bool test in place tried); and it
- * stores d.y's zero (in Normalize's delay slot) and the negated look.z straight to their stack slots
- * while every load of them goes through the saved address registers -- here the stores take the
- * registers too (LenSq/Dot/negate as inline helpers over references or pointers drop the address
- * registers altogether: 0x1E0-0x1E4) */
+ * d.y's zero (in Normalize's delay slot) and the negated look.z are stored straight to their stack
+ * slots while every load of them goes through the saved address registers: both stores through the
+ * point as a float array (`((float *)&d)[1]`, or `*(float *)((char *)&d + 4)`) -- an address
+ * expression of its own, which CSE does not merge with the members' -- and with them `this` and the
+ * start byte's pointer take the target's s1/s2: byte-exact, 16 to 0 (the kit's round 71; either
+ * store alone 1 and 15; a volatile store, const reference reads: no) */
 bool CSealUnit::GetMyPointOutAnimStart(CZSealBody *seal)
 {
     bool navy = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi()->m_navyseal;
@@ -880,13 +879,13 @@ bool CSealUnit::GetMyPointOutAnimStart(CZSealBody *seal)
 
     if (d.x * d.x + d.y * d.y + d.z * d.z > maxdist)
         return false;
-    d.y = 0.0f;
+    ((float *)&d)[1] = 0.0f;
     d.Normalize();
     CPnt3D look = *(const CPnt3D *)ftsGetPlayer()->m_node->m_matrix.m_matrix[2];
 
     look.x = -look.x;
     look.y = -look.y;
-    look.z = -look.z;
+    ((float *)&look)[2] = -look.z;
     look.y = 0.0f;
     look.Normalize();
     static float mincos = -0.8f;
