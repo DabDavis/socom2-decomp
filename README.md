@@ -2066,6 +2066,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from OVL1, round 73** (four rows byte-exact: SkbStartDisplay 0x395540 (1 since round 21), SendChatLine 0x281D40 (6),
+  zar::CZAR::ReadDirectory 0x258000 (3), CTeamNames::SetupTeamNameEntry 0x2216D0 (2). BitmapReticule::UpdateColor 0x215C10
+  0xB40 to 0xB48 of 0xB50, 3 nops off (`CPnt3D tip = CPnt3D::zero, q = CPnt3D::zero;`; GetBarrelPart a real virtual through a
+  local CBarrelView; left: the `b` before the arming-distance join unfilled in the target). LoadLeadRangeLayouts 0x35AF70 21 to
+  9, LoadCharLayouts 0x35B9D0 46 to 30, registers only. Lead: OnIsEquipmentSelected's end read through a `volatile WeapView`
+  recomputes it in the latch, 1 off at 0x140 (an extra data load in the guard), not committed. No header change):
+  - AN OPERAND READ THROUGH AN INLINE WITH AN ARGUMENT CARRIES `hascall`: a float binary op generates it first --
+    `(float)SkbRectWidth(s_rect) * t` gives `mul.s f0,f0,f1`, `510.0f - StringLength(s)` puts 510 ahead of y's constants; a
+    member read, an argumentless inline or a member accessor does not.
+  - the self-assigning ternary absorbs an outer null test: `x = p && p->t == 3 ? p->S() : x;` lays the empty arm first, no pad
+    (`if (p) x = ...` nests a second join). `ok = A && B` (round 72's tell) closed ReadDirectory.
+  - two struct locals initialised from one global in one declaration share one block-copied temporary. Bare-declared integer
+    locals assigned later number after an initialised one -- saved GPRs too, as round 72 found for FPRs.
 - **Tells from the SEAL sensors, round 72** (six rows byte-exact: CSealCtrl::ScanTick 0x600550 (0x79C, zkit/seal_look.cpp),
   CSealCtrl::SensorTick 0x5C9B30 (0x63C), CSealCtrlAi::OnSetTargetVisible 0x5CA470 (0x580), SensorPreTick 0x5CBA20 (0x6AC) --
   seal_sensors.cpp -- 0x55E670 (0x430, SOCOM 1's ComputeThrowFireParams(AI_FIREPARAMS &) by its calls; NOT yet renamed: its
