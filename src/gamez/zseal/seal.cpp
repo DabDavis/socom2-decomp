@@ -3854,11 +3854,15 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
     CZBodyAnimBlend *top = SealTop(seal);
 
     if (seal->m_ef8) {
-        int n = 0;
-        CProbeHit *out = data_0066AAD0;
-        zdb::DiIntersect **di = &data_003DE940[seal->m_ef4];
+        int n;
+        int i;
+        zdb::DiIntersect **di;
+        CProbeHit *out;
 
-        for (int i = seal->m_ef4; i < seal->m_ef4 + seal->m_ef8 && n < 64; di++, i++) {
+        n = 0;
+        out = data_0066AAD0;
+        di = &data_003DE940[seal->m_ef4];
+        for (i = seal->m_ef4; i < seal->m_ef4 + seal->m_ef8 && n < 64; di++, i++) {
             zdb::DiIntersect *d = *di;
 
             if (d->m_Cnt > 0) {
@@ -3898,10 +3902,12 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
         if (n) {
             pos = *(CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
             to = pos + seal->m_f44;
-            if (seal->IsAi())
-                func_005582B0(&((CSealCtrl *)seal->m_control)->GetSealCtrlAi()->m_stamp,
-                              ((CSealCtrl *)seal->m_control)->GetSealCtrlAi(), &data_0066AAD0[0].m_hit->m_pos,
-                              data_0064FD10);
+            if (seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false) {
+                CSealCtrlAi *ai = ((CSealCtrl *)seal->m_control)->GetSealCtrlAi();
+
+                func_005582B0(&((CSealCtrl *)seal->m_control)->GetSealCtrlAi()->m_stamp, ai,
+                              &data_0066AAD0[0].m_hit->m_pos, data_0064FD10);
+            }
 
             CPnt3D step(seal->m_f44.x, seal->m_f44.y, seal->m_f44.z);
 
@@ -3974,9 +3980,13 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                             reach = 10.5f;
                         else
                             reach = 5.25f;
-                        float ax = seal->m_curr_firepos.x;
-                        float az = seal->m_curr_firepos.z;
-                        float al = sqrtf(ax * ax + az * az);
+                        float al;
+                        float ax;
+                        float az;
+
+                        ax = seal->m_curr_firepos.x;
+                        az = seal->m_curr_firepos.z;
+                        al = sqrtf(ax * ax + az * az);
 
                         if (al != 0.0f) {
                             float inv = 1.0f / al;
@@ -3984,10 +3994,10 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                             ax *= inv;
                             az *= inv;
                         }
-                        float a = al * (dir.x * ax + dir.z * az);
+                        al = al * (dir.x * ax + dir.z * az);
 
-                        if (reach < a)
-                            reach = a;
+                        if (reach < al)
+                            reach = al;
                     }
                     dir.Scale(reach + len);
 
