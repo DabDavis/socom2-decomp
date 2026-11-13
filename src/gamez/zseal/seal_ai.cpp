@@ -9937,7 +9937,11 @@ static inline CAiSPathRecover *TopRecover(CSealCtrlAi *ai)
  * then the line to the next point walked, a blocked or met cell raising the alert, the leg tracked and
  * each leg's end popping the next point; the throttles from the pull along and across the leg, or
  * toward the goal's direction, and the fudge velocity's push back onto the leg (OVL2 0x567900, SOCOM
- * 1's PathFollowTick, CSealCtrlAi::PreTick's mode-3 arm) */
+ * 1's PathFollowTick, CSealCtrlAi::PreTick's mode-3 arm). OPEN (round 70, first written): at size, 53
+ * structural -- the strafe flags' two `||` values the target materialises (the 1 in the first test's
+ * slot: `move a1,s0` from the turn flag, `daddiu v1,1`) where every spelling here branches or tests
+ * the second operand with sltu; &d.y kept in a register; the pulls' FPR numbering (the -pos operand a
+ * register up); the limit pull's x stored ahead of its saturate's lo */
 void CSealCtrlAi::PathFollowTick(float dT)
 {
     CAiPath *path = (CAiPath *)&m_path;
@@ -10201,7 +10205,7 @@ void CSealCtrlAi::PathFollowTick(float dT)
         return;
     }
     if (m_leg_dot != 0.0f && !(m_leg_dot <= 0.0f) && along < 0.0f &&
-        (delta < 2 || (next && AiMaps.CanTravelLine(*here, next->m_loc, 0)))) {
+        (delta <= 1 || (next && AiMaps.CanTravelLine(*here, next->m_loc, 0)))) {
         RouteLegBack(this);
         PathFollowTick(dT);
         return;
