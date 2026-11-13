@@ -4105,18 +4105,6 @@ static inline void StopStep(CZSealBody *seal)
     seal->m_f44 = CPnt3D::zero;
 }
 
-/* a probe from one point to another with the SEAL's node off (an inline, the name ours) */
-static inline zdb::IntersectStruct *ProbeOff(CZSealBody *seal, const CPnt3D *from, const CPnt3D *to)
-{
-    bool active = seal->GetNode()->m_active;
-
-    seal->GetNode()->SetActive(false);
-    zdb::IntersectStruct *hit = zdb::CWorld::m_world->GetIntersect(from, to);
-
-    seal->GetNode()->SetActive(active);
-    return hit;
-}
-
 /* whether a hit is a climb's: a climbable kind, or a ladder's (kind 2) (an inline, the name ours) */
 static inline bool Climbable(zdb::IntersectStruct *hit)
 {
@@ -4128,12 +4116,13 @@ static inline bool Climbable(zdb::IntersectStruct *hit)
     return climb;
 }
 
-/* OPEN (the body lane, round 68): at the target's size (0x15F8) and frame (688), every call and branch in place,
- * ~170 structural differences left -- the temporaries' slots (the operator results 344/312), the step's and the
- * normals' address forms (the target recomputes &step.y and &step.z in v0 at each use and keeps &nrm.y/&nrm.z in
- * s1/s0 -- through a reference inline, as ComputeNextPosition's RunDown/LenXZ, untried here), the moved and turning
- * flags (the target branches c.le/bc1f into li 1/move 0; every spelling tried here -- `!(a <= b)`, ternaries,
- * if/else, inline returns -- gives c.le/bc1t and an xori, or c.lt/bc1t) and the register choice across the loops.
+/* Byte-exact (the body lane, round 69; open since round 68 at ~170 structural): the step and the tips copied
+ * word by word (the step through CPnt3D's three-float constructor: loads z, y, x), the flags through GtRef's
+ * local (c.le; bc1f into li 1 / move 0 -- every spelling in place gives bc1t; xori), the wall slide an inline
+ * over references (its two points take the low slots), the probes written out in place (through an inline the
+ * hit and the walk pointer swap s0/s1), the second probe loop behind its own `if (!blocked)`, the held wall's
+ * distance Dot(d, d), the carried test without a `!` (the target calls 0x59AFD0 when the carry anim plays),
+ * the first loop's locals and the reach's floats declared first in reverse of their registers.
  * the step held to what the delayed probes hit: the probes' nearest hits gathered and those that may be passed
  * dropped; with any, the step slid along each wall (on a ladder's anims pushed back out of it), the push off it
  * kept, the player's deepest wall the step's overshoot; probed ahead from the node by the step plus a reach --
@@ -4142,7 +4131,10 @@ static inline bool Climbable(zdb::IntersectStruct *hit)
  * go; with none, the hold at 0x1140 taken again; the step's ground height, the AI map's repel, the next matrix,
  * the quaternion and the velocity taken (OVL2 0x5483D0, new in SOCOM II: PrePostTick calls it -- SOCOM 1's
  * PostComputeNextPosition did its work; the name unknown) */
+/* a > b through a local (an inline, the name ours) */
 static inline bool GtRef(float a, float b) { bool r = a > b; return r; }
+
+/* the step slid along a wall, the push off it kept (an inline, the name ours) */
 static inline void SlideAlong(CPnt3D &step, CPnt3D &push, const CPnt3D &nrm)
 {
     float dot = Dot(nrm, step);
@@ -4322,7 +4314,12 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                     end = from + dir;
                     from.y += theCharacterDynamics.m_stepHeight;
                     end.y += theCharacterDynamics.m_stepHeight;
-                    zdb::IntersectStruct *hit = ProbeOff(seal, &from, &end);
+                    bool act0 = seal->GetNode()->m_active;
+
+                    seal->GetNode()->SetActive(false);
+                    zdb::IntersectStruct *hit = zdb::CWorld::m_world->GetIntersect(&from, &end);
+
+                    seal->GetNode()->SetActive(act0);
 
                     if (hit && !PassThrough(hit)) {
                         if (turning && (prone || (seal->m_state == stateCrouch && !seal->m_21c_bit2)))
@@ -4338,7 +4335,11 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
                         if (end.x * end.x + end.z * end.z < 4.0f)
                             end.Scale(2.0f / sqrtf(end.x * end.x + end.y * end.y + end.z * end.z));
                         end.Add(&from, &end);
-                        hit = ProbeOff(seal, &from, &end);
+                        bool act = seal->GetNode()->m_active;
+
+                        seal->GetNode()->SetActive(false);
+                        hit = zdb::CWorld::m_world->GetIntersect(&from, &end);
+                        seal->GetNode()->SetActive(act);
                         if (hit && !PassThrough(hit)) {
                             if (turning && (prone || seal->m_state == stateCrouch))
                                 seal->m_next_quat = seal->m_quat;
