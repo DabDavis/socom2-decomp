@@ -2227,12 +2227,15 @@ void CZSealBody::CheckDIShoot(CPnt3D *from, CMatrix *mat)
             PerturbAim(&aim, &eye, &target->m_accuracy);
             SetAimPointW(&aim, 0, false);
             aimed = true;
-            sx = aim.x;
+            /* (the words read through a reference: the x kept for the copy, y and z read again) */
+            const CPnt3D &r = aim;
+
+            sx = r.x;
             hit = 0;
-            sy = aim.y;
+            sy = r.y;
             autoaimed = aimed;
+            sz = r.z;
             KitView(this)->m_aimpt = aim;
-            sz = aim.z;
         }
     }
     KitView(this)->m_autoaimed = autoaimed;
@@ -3397,6 +3400,172 @@ extern "C" void func_005AC620(CZSealBody *seal, float dT)
         if (seal->m_ffc[i] < 0.0f)
             seal->m_ffc[i] = 0.0f;
     }
+}
+
+/* a cross product through VU0 (an inline, the name ours) */
+static inline void CrossVU0(const CPnt3D &a, const CPnt3D &b, CPnt3D *out)
+{
+    sceVu0FVECTOR c;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = a.x;
+    va[1] = a.y;
+    va[2] = a.z;
+    va[3] = 1.0f;
+    vb[0] = b.x;
+    vb[1] = b.y;
+    vb[2] = b.z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(c, va, vb);
+    out->x = c[0];
+    out->y = c[1];
+    out->z = c[2];
+}
+
+/* a point turned round in place through two references (an inline: the loads keep the fields' address
+ * registers, the stores fold to sp offsets -- NegateInto's the other way; the name ours) */
+static inline void NegRef(const CPnt3D &in, CPnt3D &out)
+{
+    out.x = -in.x;
+    out.y = -in.y;
+    out.z = -in.z;
+}
+
+/* the anim set the SEALs share (OVL1 bss 0x44D408) */
+extern AnimSet *data_0044D408;
+
+/* the spine bent toward the aim: the aim's direction taken into the body's frame -- from the aim
+ * point, or the fire point, to the frame's aim (m_1464), which a player's fire point too near a
+ * wall puts back to the last frame's or pulls in front of him; an AI with no valid aim point, or a
+ * remote SEAL, bends to the goal as it is -- then the low and high spine turned toward it by 0.1
+ * and 0.4 of the weapon's weight (OVL2 0x5ACA70; SOCOM 1's PitchAnim, its second half the same,
+ * its first new; Tick_0 hands it the aim's goal) */
+void CZSealBody::PitchAnim(CPnt3D *goal)
+{
+    if (CBody::m_state == 2)
+        return;
+    float w = m_wep_seq.Weight();
+
+    if (m_animset == data_0044D408)
+        w = 1.0f;
+    if (w <= 0.0f)
+        return;
+    CPnt3D dir = *goal;
+    CQuat inv = m_quat;
+
+    Negate(inv.vec.x);
+    Negate(inv.vec.y);
+    Negate(inv.vec.z);
+    if (!((m_control ? ((CSealCtrl *)m_control)->IsAi() : false) && !m_aim_point_valid) && !IsRemote()) {
+        CPnt3D ap;
+        CPnt3D fp;
+        bool got = GetAP(ap);
+        bool gotfp = false;
+
+        if (!got) {
+            if (m_kit.CurWeaponIsM203Mode())
+                gotfp = GetFirepointPos(fp, "firepoint_203");
+            else
+                gotfp = GetFP(fp);
+            if (gotfp)
+                ap = fp;
+        }
+        if (got || gotfp) {
+            CPnt3D at = m_1464;
+
+            if (IsPlayer() && m_curr_firept) {
+                CPnt3D d = m_posW;
+
+                d.y += m_root->m_pos.y;
+                d.Sub(&at, &d);
+                float dot = Dot(*(const CPnt3D *)m_node->m_matrix.m_matrix[2], d);
+                bool ahead = dot > 1.0f;
+
+                if (Dot(d, d) < 900.0f && ahead) {
+                    CPnt3D fire = m_curr_firepos;
+
+                    fire.Add(&m_posW, &fire);
+                    fire.Sub(&at, &fire);
+                    NegRef(fire, fire);
+                    unsigned char norm = m_have_aim_norm;
+
+                    if (norm && !(m_1470.y < theCharacterDynamics.m_maxSlopeCos)) {
+                        if (!(Dot(*(const CPnt3D *)m_node->m_matrix.m_matrix[2], fire) <= 0.7f)) {
+                            m_1464 = m_prev_1464;
+                            at = m_prev_1464;
+                        }
+                    } else if (norm && m_1470.y < theCharacterDynamics.m_maxSlopeCos) {
+                        CPnt3D back = *(const CPnt3D *)m_node->m_matrix.m_matrix[2];
+
+                        NegRef(back, back);
+                        float reach = Dot(m_curr_firepos, back);
+
+                        reach *= 1.06f;
+
+                        back.Scale(reach, &back);
+                        if (!(reach <= dot)) {
+                            m_1464 = m_prev_1464;
+                            at = m_prev_1464;
+                        }
+                        d = m_posW;
+                        d.y += m_root->m_pos.y;
+                        d.Sub(&at, &d);
+                        if (!(reach <= Dot(*(const CPnt3D *)m_node->m_matrix.m_matrix[2], d))) {
+                            back.Add(&m_posW, &back);
+                            back.Add(&m_root->m_pos, &back);
+                            m_1464 = back;
+                            at = back;
+                            m_258_0 = false;
+                        }
+                    }
+                }
+            }
+            dir = at - ap;
+            inv.Apply(&dir, &dir, 1);
+            dir.Normalize();
+        }
+        if (Dot(dir, CPnt3D::unit_nz) <= 0.0f && (m_control ? ((CSealCtrl *)m_control)->IsAi() : false))
+            dir = *goal;
+    }
+
+    CQuat lo;
+    CQuat hi;
+
+    PartInSpace(m_spinelo, 0, 0, &lo);
+    Negate(lo.vec.x);
+    Negate(lo.vec.y);
+    Negate(lo.vec.z);
+    PartInSpace(m_spinehi, 0, 0, &hi);
+    Negate(hi.vec.x);
+    Negate(hi.vec.y);
+    Negate(hi.vec.z);
+    CPnt3D lofwd;
+    CPnt3D hifwd;
+
+    lo.Apply(&CPnt3D::unit_nz, &lofwd, 1);
+    hi.Apply(&CPnt3D::unit_nz, &hifwd, 1);
+    CQuat lorot = m_spinelo->m_rot;
+    CQuat hirot = m_spinehi->m_rot;
+    CPnt3D d;
+    CPnt3D axis;
+    CPnt3D turn;
+    CQuat q;
+    CQuat m;
+    CQuat m2;
+
+    lo.Apply(&dir, &d, 1);
+    CrossVU0(lofwd, d, &axis);
+    axis.Scale(0.1f * w, &turn);
+    q.Exp(&turn);
+    lorot.Mul(&q, &m);
+    m_spinelo->m_rot = m;
+    hi.Apply(&dir, &d, 1);
+    CrossVU0(hifwd, d, &axis);
+    axis.Scale(0.4f * w, &turn);
+    q.Exp(&turn);
+    hirot.Mul(&q, &m2);
+    m_spinehi->m_rot = m2;
 }
 
 extern "C" {
@@ -4773,27 +4942,6 @@ void func_005AE980(const CPnt3D *rot, CQuat *dq, CPnt3D *axis);
 extern float data_0044C2D0;
 extern float data_0044C2D4;
 extern float data_0044C2D8;
-}
-
-/* a cross product through VU0 (an inline, the name ours) */
-static inline void CrossVU0(const CPnt3D &a, const CPnt3D &b, CPnt3D *out)
-{
-    sceVu0FVECTOR c;
-    sceVu0FVECTOR va;
-    sceVu0FVECTOR vb;
-
-    va[0] = a.x;
-    va[1] = a.y;
-    va[2] = a.z;
-    va[3] = 1.0f;
-    vb[0] = b.x;
-    vb[1] = b.y;
-    vb[2] = b.z;
-    vb[3] = 1.0f;
-    sceVu0OuterProduct(c, va, vb);
-    out->x = c[0];
-    out->y = c[1];
-    out->z = c[2];
 }
 
 /* the turn from one look rotation to another, and the axis the unit -z swings about under it (SOCOM 1's
@@ -6814,6 +6962,218 @@ public:
 static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
 {
     return (CHomingAim *)&b->m_homing;
+}
+
+/* the homing's turn: the angle between the wall's normal in the SEAL's frame and the reference
+ * direction, its rate over the frame about the sign of their cross's y (an inline; the name ours) */
+static inline float SafeAcosH(float c)
+{
+    if (!(c < 1.0f))
+        return 0.0f;
+    if (c <= -1.0f)
+        return 3.1415927f;
+    return acosf(c);
+}
+
+/* the homing stepped, the first way: the reference point's place in the world measured against the
+ * point it closes on, the blend turned at the rate (held within 1.5 pi) that lays its reference
+ * direction onto the wall's normal, and moved by the rest in the SEAL's frame over the frame, each
+ * part held within 30 -- the rest's length on the flat returned, the dot of the two directions given
+ * back when asked (OVL2 0x5B2D20; SOCOM 1's HomingTick's other half, new in SOCOM II: CZSealBody's
+ * Tick_0 calls it for a blend flagged 64; the name ours) */
+/* a vector turned by a node's rotation in place (an inline over TransformVectors: its VU0 temporaries a
+ * level deeper, under the caller's own; the name ours) */
+static inline void RotateBy(const zdb::CNode *node, CPnt3D *v)
+{
+    TransformVectors(&node->m_matrix, v, v, 1);
+}
+
+extern "C" float func_005B2D20(CZSealBody *seal, float *cosOut)
+{
+    CPnt3D f;
+    CPnt3D e;
+    CPnt3D g;
+    CPnt3D nrm;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    CHoming *h = &top->m_homing;
+
+    if (!h)
+        return 999999.0f;
+    float t = top->m_tfrac;
+
+    top->Representative()->m_anim->TrueLoopTime();
+    if (func_005551A0(top->m_flags, 32))
+        t = 1.0f - t;
+    CPnt3D a = h->m_int_w;
+
+    a.Sub(&seal->m_posW, &a);
+    CPnt3D b = seal->GetRootPart()->m_pos;
+
+    RotateBy(seal->m_node, &b);
+    a.Sub(&b, &a);
+    CQuat inv = seal->m_quat;
+
+    inv.vec.x = -inv.vec.x;
+    inv.vec.y = -inv.vec.y;
+    inv.vec.z = -inv.vec.z;
+    inv.Apply(&h->m_norm_w, &nrm, 1);
+    CQuat q = CQuat::identity;
+    CPnt3D *ref = &h->m_refvec_m;
+    float c = nrm.x * ref->x + nrm.y * ref->y + nrm.z * ref->z;
+
+    if (cosOut)
+        *cosOut = c;
+    float ang = SafeAcosH(c);
+    CPnt3D rot;
+
+    rot.x = 0.0f;
+    rot.y = ang / seal->m_2e0;
+    if (!(rot.y <= 4.712389f))
+        rot.y = 4.712389f;
+    else if (rot.y < -4.712389f)
+        rot.y = -4.712389f;
+    rot.z = 0.0f;
+    CPnt3D axis;
+
+    CrossVU0(*ref, nrm, &axis);
+    if (axis.y < 0.0f)
+        rot.y = -rot.y;
+    rot.Scale(axis.Length(), &rot);
+    top->m_drot = rot;
+    CPnt3D half;
+    CQuat al;
+
+    rot.Scale(-0.5f * seal->m_2e0, &half);
+    q.Exp(&half);
+    al.Align(*ref, nrm);
+    CPnt3D p;
+    CPnt3D p2;
+
+    al.Apply(&h->m_refpt_m, &p, 1);
+    TransformVectors(&seal->m_node->m_matrix, &p, &p2, 1);
+    quadW(t);
+    a.Sub(&p2, &e);
+    f = e;
+
+    inv.Apply(&f, &g, 1);
+    float len = sqrtf(e.x * e.x + e.z * e.z);
+
+    g.x /= seal->m_2e0;
+    g.y /= seal->m_2e0;
+    g.z /= seal->m_2e0;
+
+    if (!(g.x <= 30.0f))
+        g.x = 30.0f;
+    else if (g.x < -30.0f)
+        g.x = -30.0f;
+    if (!(g.y <= 30.0f))
+        g.y = 30.0f;
+    else if (g.y < -30.0f)
+        g.y = -30.0f;
+    if (!(g.z <= 30.0f))
+        g.z = 30.0f;
+    else if (g.z < -30.0f)
+        g.z = -30.0f;
+    top->m_dpos = g;
+    top->m_homing.m_1c++;
+    return len;
+}
+
+/* the homing stepped: the blend turned at the rate that lays its reference direction onto the wall's
+ * normal, and moved by the share quadW gives of what is left between its reference point, turned and
+ * placed in the world, and the point it closes on -- the step's length on the flat returned, the dot
+ * of the two directions given back when asked (OVL2 0x5B3340; SOCOM 1's HomingTick's body, the
+ * position now the root's, its fly test 44/46; CZSealBody's Tick_0 calls it with no out; the name
+ * ours) */
+extern "C" float func_005B3340(CZSealBody *seal, float *cosOut)
+{
+    CPnt3D d2;
+    CPnt3D d;
+    CPnt3D d3;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    CHoming *h = &top->m_homing;
+
+    if (!h)
+        return 999999.0f;
+    float t = top->m_tfrac;
+
+    if (func_005551A0(top->m_flags, 32))
+        t = 1.0f - t;
+    CQuat inv = seal->m_quat;
+
+    inv.vec.x = -inv.vec.x;
+    inv.vec.y = -inv.vec.y;
+    inv.vec.z = -inv.vec.z;
+    CPnt3D nrm;
+
+    inv.Apply(&h->m_norm_w, &nrm, 1);
+    top->Representative()->m_anim->TrueLoopTime();
+    CPnt3D *ref = &h->m_refvec_m;
+    float c = nrm.x * ref->x + nrm.y * ref->y + nrm.z * ref->z;
+
+    if (cosOut)
+        *cosOut = c;
+    float ang = SafeAcosH(c);
+    CPnt3D rot;
+
+    rot.x = 0.0f;
+    rot.y = ang / seal->m_2e0;
+    if (!(rot.y <= 6.2831855f))
+        rot.y = 6.2831855f;
+    else if (rot.y < -6.2831855f)
+        rot.y = -6.2831855f;
+    rot.z = 0.0f;
+    CPnt3D axis;
+
+    CrossVU0(*ref, nrm, &axis);
+    if (axis.y < 0.0f)
+        rot.y = -rot.y;
+    rot.Scale(axis.Length(), &rot);
+    top->m_drot = rot;
+    CPnt3D half;
+    CQuat q;
+    CQuat al;
+
+    rot.Scale(-0.5f * seal->m_2e0, &half);
+    q.Exp(&half);
+    al.Align(*ref, nrm);
+    CPnt3D p;
+    CPnt3D p2;
+
+    al.Apply(&h->m_refpt_m, &p, 1);
+    TransformVectors(&seal->m_node->m_matrix, &p, &p2, 1);
+    p2.x = -p2.x;
+    p2.y = -p2.y;
+    p2.z = -p2.z;
+    CPnt3D r = h->m_int_w;
+
+    p2.Add(&r, &p2);
+    CPnt3D w;
+
+    CZBodyPart *root = seal->m_root;
+
+    seal->m_node->m_matrix.Transform(&root->m_pos, &w, 1);
+    p2.Sub(&w, &d);
+    float s = quadW(t);
+
+    s = sqrtf(s);
+    d.Scale(s, &d);
+    q.Apply(&d, &d2, 1);
+    inv.Apply(&d2, &d3, 1);
+    if (seal->IsCurrentBlend((AnimType)44) ||
+        (seal->IsCurrentBlend((AnimType)46) &&
+         func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 32)))
+        d3.y = 0.0f;
+    float len = sqrtf(d.x * d.x + d.z * d.z);
+
+    d3.Scale(1.0f / seal->m_2e0, &d3);
+    top->m_dpos = d3;
+    CPnt3D v = seal->m_velM;
+
+    v.Scale(seal->m_2e0, &v);
+    h->m_refpt_m.Sub(&v, &h->m_refpt_m);
+    top->m_homing.m_1c++;
+    return len;
 }
 
 /* a point brought onto a ladder's run between its two ends, on the flat: within 3 of one end only, put
