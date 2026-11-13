@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit, round 67** (CSealUnit::IssueCommand 0x5E8E10 (0x1640) byte-exact, 50 to 0; CZKit::Fire 0x5C5340 at the
+  target's size, d=280 to 49, frame and slots right, 50 register-only off: the threat block's two constants swapped (the target
+  8.26e-7 in f1, 1.0 in f0), the team test's body before player, UsesAmmo's item in v0 for a0, FindChild's `move a0` a word
+  early. CSealUnit::Tick 0x5E8060 still 25 (erase and push_back in one inline every way, `erase(i++)`, push_back first all
+  worse; in its OPEN note). No header change; the new helpers static inlines in seal_kit.cpp):
+  - INLINE TEMPORARIES SIT UNDER THE FUNCTION'S OWN LOCALS: an address-taken local takes a slot above every inline
+    expansion's temporaries; IssueCommand's breach order-data words through SetDataPtr/GetDataPtr (defined later in the unit,
+    auto-inlined) became inline temporaries under the order list's and escortee's, as the target: 50 to 26 alone.
+  - a value read back for a later call shares the parameter's register (`data = GetDataPtr();` in s3 with `data`). Each
+    walk's `end()` into a local first fixes node/sentinel and iterator/end swaps; the default walk's squad a block local fills
+    `took || b`'s slot. A signed `lb` needs a signed-byte lvalue: `*(signed char *)&proto.m_state` (a value cast keeps `lbu`).
+  - THE REFERENCE/DIRECT SPLIT IS PER INLINE KIND, NOT PER FUNCTION: a reference-parameter inline, a pointer-parameter inline
+    and plain code are three forms; two identical inlines under different names are one form; statement inlines of field
+    arithmetic act as plain code. Fire takes one kind per site: the forward row's node through a reference (KitNodeR, folding
+    `&player->m_node`), the cross product through references, the negation through a float pointer (KitNegFP), the distance
+    through the reference dot, the side tests through the pointer dot. `scale` between the y and z negations (61 to 49).
 - **Tells from the kit, round 66** (CZKit::FireCur 0x5C6510 from source -- SOCOM 1's `return Fire(m_selected_item, pos, vel,
   v);`, found from Fire's callers; matched by its draft before, the draft dropped; CZKit::Fire 0x5C5340 written (SOCOM 1's by
   signature), 0x11D8 of 0x11D0, frame and every slot right, 36 structural and ~56 register-only off: the threat-arrow block
