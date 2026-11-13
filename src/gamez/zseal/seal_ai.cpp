@@ -3213,9 +3213,38 @@ bool CSealCtrlAi::GetDuckStance(CZSealBody *leader, SEAL_STANCE &stance) const
     return ok;
 }
 
-extern "C" {
-/* the side a found cell faces from its direction (OVL2 0x55FA90, not written yet) */
-unsigned char func_0055FA90(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir);
+/* the side a found cell faces from its direction: 2 when the cell ahead may be stepped on, else 1
+ * when the cell to the right does not stop the eye, -1 when the one to the left does not (OVL2
+ * 0x55FA90; the names ours) */
+static inline bool TraversableNeighborCell(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out,
+                                           CAiCell *&cell)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map->m_nx && y >= 0 && y < map->m_ny) {
+        out.x = x;
+        out.y = y;
+        out.m_mapid = map->GetMapId();
+        cell = map->GetCell(out, 0);
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+extern "C" int func_0055FA90(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir)
+{
+    CAiMapLoc out;
+    CAiCell *cell = 0;
+    int side = 2;
+
+    if (!TraversableNeighborCell(map, loc, dir, out, cell)) {
+        if (map->GetNeighbor(loc, (CAiMap::DIR)((dir + 9) % 8), out, cell) && !cell->IsOpaque())
+            side = 1;
+        if (map->GetNeighbor(loc, (CAiMap::DIR)((dir + 7) % 8), out, cell) && !cell->IsOpaque())
+            side = -1;
+    }
+    return side;
 }
 
 /* a cell to look from, and one to take cover in, near the SEAL's last good cell (its map's
