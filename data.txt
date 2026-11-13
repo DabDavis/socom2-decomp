@@ -2423,6 +2423,12 @@
 0x0066B1B8 0x1 @GUARD@CreepTick__9CSealCtrlFfb@rest1  # OVL2 bss; ours (the SEALs, round 59): its guard -- 2 references in 1 function (the test and the set)
 0x0066B1C0 0x4 @LOCAL@CreepTick__9CSealCtrlFfb@rest0  # OVL2 bss; ours (the SEALs, round 59): CSealCtrl::CreepTick's static copy of 0x650130, the forward pull's rest factor -- 2 references in 1 function (the store and the read)
 0x0066B1C8 0x1 @GUARD@CreepTick__9CSealCtrlFfb@rest0  # OVL2 bss; ours (the SEALs, round 59): its guard -- 2 references in 1 function (the test and the set)
+0x0066B220 0x1 @GUARD@func_0055E670@hand  # OVL2 bss; ours (the SEALs' round 72): the guard of the throw's hand point (0x55E670, ComputeThrowFireParams by SOCOM 1's calls) -- 2 references
+0x0066B228 0xc @LOCAL@func_0055E670@hand  # OVL2 bss; ours (the SEALs' round 72): a guarded static CPnt3D (3.5, 19.3, 3.9), the throw's hand point in the node's frame -- 4 references, 0x55E670
+0x0066B238 0x1 @GUARD@func_0055E670@hand_left  # OVL2 bss; ours (the SEALs' round 72): its guard -- 2 references, 0x55E670
+0x0066B240 0xc @LOCAL@func_0055E670@hand_left  # OVL2 bss; ours (the SEALs' round 72): a guarded static CPnt3D (7.8, 10.13, -5.31), the hand point under flag 0x20 -- 4 references, 0x55E670
+0x0066B250 0x1 @GUARD@func_0055E670@hand_under  # OVL2 bss; ours (the SEALs' round 72): its guard -- 2 references, 0x55E670
+0x0066B258 0xc @LOCAL@func_0055E670@hand_under  # OVL2 bss; ours (the SEALs' round 72): a guarded static CPnt3D (-8.83, 11.47, -6.48), the hand point under flag 0x10 -- 4 references, 0x55E670
 0x0066B268 0x1 @GUARD@func_0055CDC0@k_fall  # OVL2 bss; ours (the SEALs, round 60): its guard -- 2 references in 1 function (the test and the set)
 0x0066B270 0xc @LOCAL@func_0055CDC0@k_fall  # OVL2 bss; ours (the SEALs, round 60): the landing point's static CPnt3D (0, -98, 0), the fall of the grenade's flight -- 4 references in 1 function (three stores and the read)
 0x0066B2F0 0x14 newanims  # OVL2 bss; SOCOM 1's name (the SEAL lane, round 17: SOCOM 1's newanims, a CActiveAnimList -- an RTList<ACTIVE_ANIM>, 0x14 bytes -- built by __sinit_seal_body.cpp with 8 links where SOCOM 1's held 12); 29 references in 4 functions: BlendedClimb, 0x582D10, 0x583030 and the initialiser (src/gamez/zseal/seal_body.cpp)
