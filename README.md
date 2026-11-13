@@ -2066,6 +2066,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC SDK, round 81** (nothing closed. inet_heap.c is gone: round 79's separate -fno-strict-aliasing object was a
+  stand-in for a union -- the block header K&R's `typedef union _blk { struct { union _blk *next, *prev; u_int size; } s; int x; }
+  BLK;` under inet_sock.c's own `-O2 -G0` gives word-identical code for all five rows 0x1C1CD0-0x1C2028, and the heap's .bss
+  0x1E5F70-0x1E5F8C sits right before the socket layer's 0x1E5F90; the rows are back in inet_sock.c. Still open: 0x1C1D40 (2),
+  0x1C1E90 (1; 96 orders), 0x1C2028 (23; ccperm's 40,320 orders, best 16 -- the globals are separate symbols), sceSifCallRpc
+  (2: sched1's tie-break by register weight). `scd.py show` and `try.py -d` print the target with the candidate's relocation
+  masks applied -- read raw words with `scd.py show --raw`):
+  - A UNIT SPLIT OUT FOR -fno-strict-aliasing FOLDS BACK WHEN A ONE-MEMBER UNION ON ITS STRUCT GIVES THE SAME WORDS: compare the
+    objects word for word, not the scores.
+  - a store-order miss between stores to two constant addresses is not an alias question (a union changes nothing: _ch3dmaCSC).
+  - sched1 picks among equal-priority stores by INSN_REG_WEIGHT: the store whose value dies there goes first; to push it later the
+    value must stay live, whatever the statement order.
+  - `sccheck | tail -N` can cut off a WRONG line: count the WRONG rows against the summary.
 - **Tells from the GCC Medius code, round 80** (rt_udp 0x63ECC8 and 0x63EF38 byte-exact, one shape: the connection range test the last
   statement `if (nConn < pUdp->nConns) { ... } return 1;`, the -2 arm its own `return 0;`, a plain `while (pMsg != 0)` walk (round
   79's goto loop was a stand-in). dmelocal 0x616290 8 short to size, 3 off (the name's address a local `s = (char *)pObject + 12`;
@@ -2083,8 +2096,7 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
   -fno-strict-aliasing also matches all three but costs sceSifMInitRpc 9 words, and the demo shows libmrpc one object. inet_heap.c's
   0x1C1D40 28 to 2 (left: b->next's load one slot ahead of `addiu v0,a0,12`) and 0x1C1E90 6 to 1 (the first merge's size store
   through n: CSE makes b canonical, it lives longer); sifrpc's sceSifCallRpc 0x1A6C78 17 to 2 (the same union locally); 0x1C2028
-  still 23. The strict-aliasing flag swept over the lane's 24 units: no other row matches with it. QUESTION FOR inet_heap.c: round
-  79 split it out for -fno-strict-aliasing; a union in its access path may be the true shape instead -- not yet tried):
+  still 23. The strict-aliasing flag swept over the lane's 24 units: no other row matches with it. inet_heap.c: answered in round 81 -- a union, folded back):
   - STORES KEPT IN SOURCE ORDER IN ONE FUNCTION, ITS SIBLINGS FREE TO REORDER, ARE ACCESSES THROUGH A UNION, NOT A UNIT FLAG: a
     union anywhere in the access path gives alias set 0 (c_get_alias_set). Before splitting a unit for -fno-strict-aliasing, try a
     one-member union on the pointer.
