@@ -713,6 +713,11 @@ public:
  * inline took it as a word; the name ours) */
 inline void AddScaled(float *d, const float *s, float f)
 {
+#if Z_PORT
+    d[0] += s[0] * f;
+    d[1] += s[1] * f;
+    d[2] += s[2] * f;
+#else
     asm __volatile__ (
         "lqc2 $vf7, 0(%0)\n"
         "lqc2 $vf4, 0(%1)\n"
@@ -723,6 +728,7 @@ inline void AddScaled(float *d, const float *s, float f)
         "vadd.xyz $vf7, $vf7, $vf6\n"
         "sqc2 $vf7, 0(%0)\n"
         : : "r"(d), "r"(s), "f"(f) : "$8", "memory");
+#endif
 }
 
 /* e^x by halving into [0, 0.5], a series and squaring back (SOCOM 1's inline, in both builds'

@@ -1306,11 +1306,17 @@ inline bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
 
         v[0] = m_idx * (pos->x - m_bbox.m_min.x);
         v[1] = m_idy * (pos->z - m_bbox.m_min.z);
+#if Z_PORT
+        /* vftoi0: each lane truncated toward zero to an int, in place */
+        ((int *)p)[0] = (int)v[0];
+        ((int *)p)[1] = (int)v[1];
+#else
         asm volatile {
             lqc2 vf3, 0(p)
             vftoi0.xyzw vf3, vf3
             sqc2 vf3, 0(p)
         }
+#endif
         loc.x = ((int *)p)[0];
         loc.y = (unsigned short)((int *)p)[1];
         loc.m_mapid = (unsigned char)GetMapId();
