@@ -1265,9 +1265,10 @@ int func_00645018(void *hAudio, int a1, int a2)
 }
 
 /* the voice library's connect callback: the local address known, every joined member announced */
-/* OPEN (37 words, the right size): the member loop -- `bJoined == 1 && bAnnounced == 0` folds
- * into the target's one word load and 0x00FF00FF mask (fold_truthop), here too; the registers
- * around the two voice-library calls differ. Not iterated. */
+/* (GCC round 74a, open since written at 37 words: the port stored through a block's own copy of
+ * pSession -- the int store kills the bare slot purge_addressof leaves, and the target does not
+ * load pSession again for the address argument; the rest followed. The member loop's `bJoined == 1
+ * && bAnnounced == 0` folds into one word load and a 0x00FF00FF mask, fold_truthop's.) */
 int func_006450B0(void *hAudio, int nAddr, int nPort)
 {
     STREAM_SESSION *pSession = 0;
@@ -1278,8 +1279,12 @@ int func_006450B0(void *hAudio, int nAddr, int nPort)
 
     if (func_00644480(hAudio, &pSession) != 0)
         return -1;
-    pSession->nPort = nPort;
-    func_0062BD30(nAddr, pSession->szAddr);
+    {
+        STREAM_SESSION *p = pSession;
+
+        p->nPort = nPort;
+        func_0062BD30(nAddr, p->szAddr);
+    }
     result = func_006451E0(func_0062BEA0(pSession->hAudio, &nId), 42);
     if (result != 0)
         return result;
