@@ -15,12 +15,10 @@
  * if / else if / else of two sends and `return 6`; a range test whose `return 8` the target
  * branches past is `if (n >= 0 && n < count) {...} else return 8;`; 0x6398C0's tests are positive
  * on the connection (`!= -1` first, the else arm second).
- * OPEN: the peer searches 0x639A90 and 0x63B410: the loop is the target's as `for (i = 0; ; i++)
- * { if (i >= n) break; ... }` (bound hoisted, i * 40 recomputed, unrotated) -- what is left is the
- * second guard: the target keeps `if (pP2p == 0) return 2;` as its own `jr ra` (not if-converted,
- * the -2 stored through v0), ours if-converts it (ce: IF-CASE-1) and shares the first guard's
- * v0 = 2; posnest/else/goto/dup-store/result spellings all convert or move the loop;
- * 0x639FB8 (2: the stores'
+ * Round 76: the peer searches 0x639A90 and 0x63B410 byte-exact -- the second guard stores the -2
+ * again in its own arm (`if (pP2p == 0) { *pnIndex = -2; return 2; }`): a two-insn THEN block is
+ * not hoisted by ifcvt's find_if_case_1, so the -2 takes v0 and the arm keeps its own `jr ra`.
+ * OPEN: 0x639FB8 (2: the stores'
  * order -- sched1 issues the three entry stores by register weight, the base's and the 7's deaths
  * putting nState first; every source order and a chained -1 tried). The rows this note once listed as not written
  * (0x6395B8, 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63ACA0, 0x63B708, 0x63B9A0, 0x63C4F0) are written since: all
@@ -448,8 +446,10 @@ int func_00639A90(RT_P2P *pP2p, int *pnIndex)
     if (pnIndex == 0)
         return 2;
     *pnIndex = -2;
-    if (pP2p == 0)
+    if (pP2p == 0) {
+        *pnIndex = -2;
         return 2;
+    }
     for (i = 0; ; i++) {
         if (i >= pP2p->nEntries)
             break;
@@ -1151,8 +1151,10 @@ int func_0063B410(RT_P2P *pP2p, int nConn, int *pnIndex)
     if (pnIndex == 0)
         return 2;
     *pnIndex = -2;
-    if (pP2p == 0)
+    if (pP2p == 0) {
+        *pnIndex = -2;
         return 2;
+    }
     for (i = 0; ; i++) {
         if (i >= pP2p->nEntries)
             break;
