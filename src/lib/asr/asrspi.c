@@ -514,7 +514,7 @@ int asrspi_UswGetNbrRecsNeeded(ASRSPI *e, int *n)
     return err;
 }
 
-/* R until asrspi_ActivateWords is the right size (above): its code is byte-exact */
+/* byte-exact with its relocations since asrspi_ActivateWords is the right size (GCC round 82) */
 int asrspi_OpenEngine(SAFEH rsrc, int mode, ASRSPI **out)
 {
     RSRC *r;
