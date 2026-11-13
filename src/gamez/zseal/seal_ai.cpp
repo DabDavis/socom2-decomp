@@ -6932,10 +6932,12 @@ void func_00561550(CSealCtrlAi *ai);
 }
 
 /* a decay run a frame: exponentially or linearly toward its goal, snapped to it within 0.005 (or
- * the linear step) -- inline, SOCOM 1's Tick called _decay and _close_enough as here (the name ours) */
-static inline void DecayTick(CAiDecay *d, float rate, float dT)
+ * the linear step) -- inline, SOCOM 1's Tick called _decay and _close_enough as here (the name ours).
+ * The 0.005 a DEFAULT ARGUMENT (round 72): its slot (address-taken by _close_enough) is stored as the
+ * arguments are evaluated, right to left -- ahead of the discipline's `m_navyseal ? a : b` rate, as
+ * the target; a local initialised in the body stores it after the ternary */
+static inline void DecayTick(CAiDecay *d, float rate, float dT, float eps = 0.005f)
 {
-    float eps = 0.005f;
 
     if (d->m_goal != d->m_value) {
         if (d->m_type == CAiDecay::EXPONENTIAL) {
@@ -6976,7 +6978,10 @@ static inline void FudgeDecay(CPnt3D &p, float k, float dT)
         p -= p * k * dT;
 }
 
-/* the AI's frame (OVL2 0x56FD00, slot 0x10: SOCOM 1's Tick, rewritten) */
+/* the AI's frame (OVL2 0x56FD00, slot 0x10: SOCOM 1's Tick, rewritten). Byte-exact (round 72, 29 off
+ * before): the fixed-courage test one `&&` (`go = TargetHeld(this) && dist < k`: the held bool joined
+ * unmasked, its andi in the branch's slot -- `if (go) go = ...` masked it first); lim and threat
+ * declared bare ahead of range (range f2, threat f3, lim f4); DecayTick's eps a default argument */
 bool CSealCtrlAi::Tick(float dT)
 {
     ALERT_BAND band;
@@ -6997,18 +7002,19 @@ bool CSealCtrlAi::Tick(float dT)
     } else
         m_780 = m_78c = m_798 = CPnt3D::zero;
     if (!data_0045A0C1) {
+        float lim;
+        float threat;
         float range = m_courage.m_value;
-        float threat = m_targetThreat.m_value;
-        float lim = data_00650060 * range;
+
+        threat = m_targetThreat.m_value;
+        lim = data_00650060 * range;
 
         if (!(m_navyseal ? true : false) && !m_aibit7 && !(seal->m_team & 0x4000000)) {
             bool go = false;
             bool fixed = data_0064FE40 == m_aiParams.courage;
 
             if (fixed) {
-                go = TargetHeld(this);
-                if (go)
-                    go = *(float *)(m_67c + 0x10) < data_00650070;
+                go = TargetHeld(this) && *(float *)(m_67c + 0x10) < data_00650070;
             } else if (data_0064FE48 != range) {
                 bool b = lim <= threat;
 
