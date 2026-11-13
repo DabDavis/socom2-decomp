@@ -999,40 +999,30 @@ CZSealBody *CSealUnit::GetSealByIndex(int index, int depth)
 }
 
 
-/* MSL's back_insert_iterator and copy as far as the squads use them (the target's second walk is
- * copy's: its first iterator a by-value parameter in the frame below the caller's temporaries) */
-struct CSealPusher {
-    CSealPusher(std::list<CZSealBody *> *l) : c(l) {}
-    CSealPusher &operator=(CZSealBody *const &v)
-    {
-        c->push_back(v);
-        return *this;
-    }
-    CSealPusher &operator*() { return *this; }
-    CSealPusher &operator++() { return *this; }
-
-    std::list<CZSealBody *> *c;
-};
-
-template <class I, class O>
-inline O CopyAll(I first, I last, O result)
+/* a range pushed onto a list (an inline; the name ours): MSL's copy over a back inserter as the
+ * target lays it out -- the first iterator a by-value parameter kept in the frame by assigning it to
+ * itself (scalarised otherwise: a register), the loop ROTATED BY HAND (a guard, then a do-while: the
+ * target's top test and bottom test), and the list's end() taken afresh for each insert (push_back's
+ * end() is hoisted into a saved register) */
+template <class I>
+inline void PushRange(I first, I last, std::list<CZSealBody *> *out)
 {
-    for (; first != last; ++first, ++result)
-        *result = *first;
-    return result;
+    first = first;
+    if (first != last)
+        do
+            out->insert(out->end(), *first);
+        while (++first != last);
 }
 
 /* (OVL2 0x5EA8C0: the walks' iterators assigned, in memory; the looked-at SEAL in its home, its
  * address handed to push_back; `(1 << team) & m_team`, the mask first in the target's `and`).
- * OPEN, 0x1B8 against 0x1B0: the squad's walk. The target walks it with the iterator assigned from
- * begin() in the frame (two copies, its slot BELOW every push_back temporary), the end in a saved
- * register, the loop top-tested and not rotated, and out->end() rebuilt inside the loop. Written as
- * a plain walk after the early return MW hoists out->end() into a saved register and enters the
- * loop at its bottom test (0x1C8, the first walk's push temporaries a slot lower too); through an
- * inline (a plain walk, or as here MSL's copy over a back-inserter stand-in) the first walk's frame is
- * the target's but the squad's iterator goes to a register; `goto` for the return, a do-while and an
- * assigned iterator inside the copy (0x1D8) tried. Also: the escortees' end and the team mask take
- * s0/s1 the other way round */
+ * BYTE-EXACT since the SEALs' round 73 (0x1B8 against 0x1B0 before): the squad's walk through
+ * PushRange above -- the target's iterator in the frame below every insert temporary, the loop
+ * guarded and rotated, out->end() rebuilt inside it -- and the escortees' end taken into a local
+ * ahead of the walk (the end s1, the team mask s0, as the target; hoisted from the test they took
+ * them the other way round). Before: a plain walk hoists out->end() and enters at the bottom test
+ * (0x1C8); MSL's copy over a back-inserter stand-in scalarises the iterator (0x1B8); a do-while
+ * and an assigned iterator inside the copy (0x1D8) */
 void CSealUnit::GetTeamSeals(int team, CZSealBody *seal, CSealUnit *unit, std::list<CZSealBody *> *out)
 {
     CZSealBody *s = 0;
@@ -1045,15 +1035,16 @@ void CSealUnit::GetTeamSeals(int team, CZSealBody *seal, CSealUnit *unit, std::l
         }
         CSealUnit *u = ((CUnitCtrl *)((CEntity *)seal)->m_control)->m_unit;
         std::list<CZSealBody *>::iterator i;
+        std::list<CZSealBody *>::iterator e = u->m_escortees.end();
 
-        for (i = u->m_escortees.begin(); i != u->m_escortees.end(); ++i) {
+        for (i = u->m_escortees.begin(); i != e; ++i) {
             s = *i;
             if ((1 << team) & s->m_team)
                 out->push_back(s);
         }
     }
     if (unit && unit->m_unit_num == team) {
-        CopyAll(unit->m_seals.begin(), unit->m_seals.end(), CSealPusher(out));
+        PushRange(unit->m_seals.begin(), unit->m_seals.end(), out);
     }
 done:
     ;
