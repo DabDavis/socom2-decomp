@@ -12374,9 +12374,11 @@
 0x00636850 rt_msg_client_process_connect_result
 0x00636B30 func_00636B30
 0x00636D58 func_00636D58
+0x00636E68 rt_msg_client_process_client_connect_notify
 0x00637050 rt_msg_client_process_app_message
 0x00637150 rt_msg_client_process_disconnect_message
 0x00637230 func_00637230
+0x00637318 func_00637318
 0x00637438 func_00637438
 0x00637510 func_00637510
 0x00637900 func_00637900
@@ -12540,6 +12542,7 @@
 0x0063E830 func_0063E830
 0x0063E8E8 func_0063E8E8
 0x0063E928 func_0063E928
+0x0063EBA0 func_0063EBA0
 0x0063F148 func_0063F148
 0x0063F270 func_0063F270
 0x0063F2D8 func_0063F2D8

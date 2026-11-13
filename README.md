@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC network code, round 75** (three rows byte-exact: rt_msg_client 0x637318, rt_udp's raw send 0x63EBA0,
+  process_client_connect_notify 0x636E68 (open since round 16b); 0x6385F0 17 to 2 (an `else if` chain ending `else return 3`;
+  left: send_to's channel and port loads swapped). Four more notes misdiagnosed (a stepped cursor, the guards' grouping, a nested
+  kind test, an untried declaration-initialised cursor). Leads, not committed: 0x639A90 and 0x63B410 (if-conversion hoists `v0 =
+  2` above the pointer test in ours), rt_comm_platform2_receive_from (`volatile int flags` fixes the frame order; `long
+  nReceived` the registers but adds an `andi`), 0x62F818 (`result = 0` in each of three arms), inet_network 0x1C1698):
+  - A REGISTER-ALLOCATION "NEAR-TIE" BETWEEN A PARAMETER AND A TEMPORARY CAN BE THE GUARDS' GROUPING: each separate guard
+    lengthens the parameter's live range -- try every split of the `||` chain (2^(n-1)); 0x63EBA0 matched with exactly one.
+  - A VALUE FORMED STRAIGHT INTO AN ARGUMENT REGISTER IN A BRANCH'S SLOT, BEFORE A GUARD, IS A SECOND LOCAL SET BEFORE THAT GUARD
+    (`pData = pMsg + 16;`): it takes the argument register and frees the original's; stepping the original keeps it alive.
+  - A LOCAL INITIALISED AT ITS DECLARATION IS NOT ONE ASSIGNED AT FIRST USE (`T *p = pMsg;` at the top: the copy into a1 in the
+    guard's slot). A kind test nested in an `else` is not an `else if` chain (the chain keeps the kind in v0, the slot a nop).
 - **Tells from the GCC recogniser and SDK, round 75** (nine rows byte-exact: pitchcomb.c's PitchCombinerReset 0x502658 and
   InitPitchCombiner 0x502A08, tos.c's tosBaseBlockConstruct 0x50CE98 and ConstructBlock 0x50B2C0, InitViterbi@dpgenuw 0x4E47F8,
   mpeg_api.c's _decodeOrSkipField 0x1BC060, tlbfunc.c's InitTLB32MB 0x1AC2F0, fastallo_AllocateMemoryFromChunk 0x50D560,
