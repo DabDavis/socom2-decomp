@@ -3368,21 +3368,21 @@ zdb::IntersectStruct *SealGetAltitude__10CZSealBodyFP6CPnt3Df(CZSealBody *seal, 
  * altitude kept when it is within the fall; past a quarter of gravity the slide's anim pushed (state 6)
  * unless on top, carrying or changing weapons. Off such ground: the anim popped, a landing above the
  * landing rate handled, the speed cleared */
-extern "C" void func_0054EDF0(CZSealBody *seal, float dT)
+void CZSealBody::HandleSliding(float dT)
 {
-    if (!seal->m_airborne) {
-    if (func_0054F330(seal, &seal->m_last_altitude)) {
+    if (!this->m_airborne) {
+    if (func_0054F330(this, &this->m_last_altitude)) {
         float g = theCharacterDynamics.m_gravity;
-        CPnt3D flat = seal->m_1344;
+        CPnt3D flat = this->m_1344;
 
         flat.y = 0.0f;
         flat.Normalize();
-        if (seal->m_1340 == 0.0f) {
-            CPnt3D v = seal->m_velW;
+        if (this->m_1340 == 0.0f) {
+            CPnt3D v = this->m_velW;
 
             v.y = 0.0f;
             float speed = v.Normalize();
-            CPnt3D n = seal->m_1344;
+            CPnt3D n = this->m_1344;
             CPnt3D side = CPnt3D::zero;
 
             if (n.x && n.z) {
@@ -3416,57 +3416,57 @@ extern "C" void func_0054EDF0(CZSealBody *seal, float dT)
                 cr.y = -cr.y;
                 cr.z = -cr.z;
             }
-            seal->m_1340 = speed * Dot(v, cr);
+            this->m_1340 = speed * Dot(v, cr);
         }
         zdb::IntersectStruct *hit = 0;
         float fall;
         float step = 1.0f;
 
-        seal->m_1340 += (1.0f - seal->m_1344.y) * (g * dT);
-        fall = seal->m_1340 * dT;
-        float k = fall * seal->m_1344.y;
+        this->m_1340 += (1.0f - this->m_1344.y) * (g * dT);
+        fall = this->m_1340 * dT;
+        float k = fall * this->m_1344.y;
 
-        seal->m_f44.x = k * seal->m_1344.x;
-        seal->m_f44.z = k * seal->m_1344.z;
-        CPnt3D pos = seal->m_posW;
+        this->m_f44.x = k * this->m_1344.x;
+        this->m_f44.z = k * this->m_1344.z;
+        CPnt3D pos = this->m_posW;
 
         while (!hit && step < 10.0f) {
             CPnt3D q;
-            CPnt3D p = pos + seal->m_f44 * step;
+            CPnt3D p = pos + this->m_f44 * step;
 
             q.x = p.x;
             q.y = p.y;
             q.z = p.z;
             q.y -= fall;
-            hit = SealGetAltitude__10CZSealBodyFP6CPnt3Df(seal, &q, fabsf(fall));
+            hit = SealGetAltitude__10CZSealBodyFP6CPnt3Df(this, &q, fabsf(fall));
             step += 0.1f;
         }
         if (hit) {
             float y = hit->m_pos.y + MaterialEx(hit->GetMaterial())->m_38;
 
-            seal->m_f44.y = y - pos.y;
-            if (fabsf(seal->m_f44.y) <= fabsf(fall)) {
-                seal->m_alt = y;
-                seal->m_bit8 = true;
+            this->m_f44.y = y - pos.y;
+            if (fabsf(this->m_f44.y) <= fabsf(fall)) {
+                this->m_alt = y;
+                this->m_bit8 = true;
             }
         }
-        if (seal->m_1340 > 0.25f * g && !seal->IsCurrentBlend((AnimType)data_003DEAD8) &&
-            !(seal->m_state == stateCarrying || seal->m_state == 10) && !seal->IsChangingWeapons(true))
-            func_00588BC0(seal, (AnimType)data_003DEAD8, 6, 0, 0);
+        if (this->m_1340 > 0.25f * g && !this->IsCurrentBlend((AnimType)data_003DEAD8) &&
+            !(this->m_state == stateCarrying || this->m_state == 10) && !this->IsChangingWeapons(true))
+            func_00588BC0(this, (AnimType)data_003DEAD8, 6, 0, 0);
     } else {
-        if (seal->IsCurrentBlend((AnimType)data_003DEAD8)) {
-            seal->PopBlend();
-            seal->BodySetState(SealTop(seal)->m_state);
+        if (this->IsCurrentBlend((AnimType)data_003DEAD8)) {
+            this->PopBlend();
+            this->BodySetState(SealTop(this)->m_state);
         }
-        if (seal->m_1340 > theCharacterDynamics.m_landFallRate &&
-            !(seal->m_state == stateCarrying || seal->m_state == 10))
-            seal->HandleLanding(seal->m_1340);
-        seal->m_1340 = 0.0f;
+        if (this->m_1340 > theCharacterDynamics.m_landFallRate &&
+            !(this->m_state == stateCarrying || this->m_state == 10))
+            this->HandleLanding(this->m_1340);
+        this->m_1340 = 0.0f;
     }
-    } else if (seal->IsCurrentBlend((AnimType)data_003DEAD8)) {
-        seal->PopBlend();
-        seal->BodySetState(SealTop(seal)->m_state);
-        seal->m_1340 = 0.0f;
+    } else if (this->IsCurrentBlend((AnimType)data_003DEAD8)) {
+        this->PopBlend();
+        this->BodySetState(SealTop(this)->m_state);
+        this->m_1340 = 0.0f;
     }
 }
 
@@ -3693,7 +3693,6 @@ extern "C" {
  * and seal_body.cpp's) and the step held to a wall (OVL2 0x54A3D0, below) */
 void func_005B0C70(CZSealBody *seal, zdb::IntersectStruct *hit);
 bool func_00549F30(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit);
-void func_0054EDF0(CZSealBody *seal, float dT);
 bool func_0057B510(CZSealBody *seal);
 bool func_00587FE0(CZSealBody *seal);
 bool func_00587F10(CZSealBody *seal);
@@ -3845,7 +3844,7 @@ void CZSealBody::ComputeNextPosition(float dT)
         }
     }
     if (!IsCurrentBlend((AnimType)AnimTypes::ClimbOver))
-        func_0054EDF0(this, dT);
+        HandleSliding(dT);
     if (m_animset != data_0044D410) {
         m_gunner_pos = NextPos(this);
     }

@@ -10026,7 +10026,7 @@
 0x0054E8F0 0x190 func_0054E8F0  # OVL2
 0x0054EA80 0x250 func_0054EA80  # OVL2
 0x0054ECD0 0x118 func_0054ECD0  # OVL2
-0x0054EDF0 0x53C func_0054EDF0  # OVL2
+0x0054EDF0 0x53C HandleSliding__10CZSealBodyFf  # OVL2; by hand (the map's last rows, round 73): SOCOM 1's HandleSliding(float) (the demo's 0x254130) by place and body -- seal.cpp, ComputeNextPosition's call; objcmp same by address
 0x0054F330 0xE0 func_0054F330  # OVL2
 0x0054F410 0x158 func_0054F410  # OVL2
 0x0054F570 0x168 func_0054F570  # OVL2
