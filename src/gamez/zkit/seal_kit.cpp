@@ -4968,8 +4968,12 @@ static inline bool PlaceOk(CKitFireBody *fb)
  * again after it for the first argument; written inline MW evaluated the call first and CSE'd one
  * m_body load into both -- which gave every saved register the target's (this s5); with it the AI's
  * aim copied through a reference to m_1440 (one m_body load for the three words), and the quaternion
- * copied whole (`q = m_quat`: the three loads then the three stores, w between). Left: the bound's
- * `slti` (ours `slt at,a1,zero`), the block-optimization pad, and w / ammo / t one register over. */
+ * copied whole (`q = m_quat`: the three loads then the three stores, w between); then (47 to 27) the
+ * type's int declared after shots -- igreplay wanted t numbered after shots (v43 to 52.5+), the throw
+ * test reading the byte itself `(int)(unsigned char)type == 121` (without the int cast 33). Left: the
+ * bound's `slti` (ours `slt at,a1,zero`: AtLeast's 0 a register operand), the shared `b` to the end
+ * every test of the place-charge arm reaches in the target (the block-optimization pad), and the item
+ * byte and the weapon's byte trading a1/a2 at the top. */
 void CZKit::HandleFireWeapon(int index, float a, float b)
 {
     EQUIP_ITEM id = m_item[index]->GetId();
@@ -5104,9 +5108,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
         m_burst_count++;
         m_81c = b;
     } else {
-        int t = (unsigned char)type;
-
-        if (t == 121) {
+        if ((int)(unsigned char)type == 121) {
         bool can = func_0059D830(m_body);
 
         if (can)
@@ -5173,6 +5175,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
             LobAim(m_body, &fp, to, &dir, w->GetMuzzleVelocity());
         }
         int shots = 1;
+        int t = (unsigned char)type;
 
         if (ammo)
             shots = ammo->GetNumProjectilesFired();
