@@ -236,15 +236,14 @@ int InitTLB(void)
 	return _InitTLB();
 }
 
-/* OPEN: 5 words, the last loop's entry. The index lives in t9 across the _SetTLBEntry calls, saved
- * nowhere -- a register variable (`register int i asm ("$25")`: GCC gives a pseudo live across a
- * call a saved register) -- and the function returns it shifted (`sll t9,t9,13`, in the exit test's
- * delay slot): `i <<= 13` here. The target computes the first EntryHi, t9 + 0xE0000000, after the
- * loop's exit test (the preheader, where loop.c puts a giv's initial value); this computes it before
- * (`lui v1; sll; slti; beqz; addu`). A giv of the index (`0xE0000000 + (n << 13)`) is placed so but
- * shifts n again (22s), and a biv of the shifted i eliminated into the giv (`0xE0000000 + value`)
- * costs 6. Everything before the last loop is byte-exact: `i = 0` above the first overflow test
- * (the target tests `i < end` after Exit as a real compare), the bounds cached, `i + count`. */
+/* The index lives in t9 across the _SetTLBEntry calls, saved nowhere -- a register variable
+ * (`register int i asm ("$25")`: GCC gives a pseudo live across a call a saved register) -- and the
+ * function returns it shifted (`sll t9,t9,13`, in the exit test's delay slot): `i <<= 13` here.
+ * `i = 0` above the first overflow test (the target tests `i < end` after Exit as a real compare),
+ * the bounds cached, `i + count`. The last loop is rotated by hand (GCC round 75; OPEN since round
+ * 4a, 5 words): its first EntryHi is computed inside the guard, after the exit test -- a `for`
+ * computes its init before its own entry test (`lui; sll; slti; beqz; addu`), which rounds 4a-74
+ * read as loop.c's giv placement. */
 static int InitTLB32MB(void)
 {
 	register int i asm ("$25");
@@ -286,7 +285,13 @@ static int InitTLB32MB(void)
 	}
 	n = i;
 	i <<= 13;
-	for (value = 0xE0000000 + i; n < 48; n++, value += 0x2000)
-		_SetTLBEntry(n, 0, value, 0, 0);
+	if (n < 48) {
+		value = 0xE0000000 + i;
+		do {
+			_SetTLBEntry(n, 0, value, 0, 0);
+			n++;
+			value += 0x2000;
+		} while (n < 48);
+	}
 	return i;
 }
