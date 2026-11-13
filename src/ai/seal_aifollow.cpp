@@ -38,6 +38,13 @@ struct FOLLOW_PATH {
         m_20 |= set;
     }
 
+    /* the same on the word at 0x1c (the follow's Tick) */
+    void SetFlags1c(unsigned int set, unsigned int clear)
+    {
+        m_1c &= ~clear;
+        m_1c |= set;
+    }
+
     unsigned char _0[0x1c];
     unsigned int m_1c;   // 0x1c
     unsigned int m_20;   // 0x20
@@ -319,8 +326,8 @@ void CZSealBody::UpdateFollowParams(float dT)
 
 /* a direction to look in from a map spot, toward a point (OVL2 0x559580, the SEAL lane's range, not
  * written: seal_ai.cpp passes 0 for the point) */
-extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, int b, int n,
-    int c);
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out,
+    int n, int *found);
 
 /* whether a look of a mode may be set: none of a higher mode holds (seal_ai.cpp's inline; the name
  * ours) */
@@ -397,8 +404,10 @@ bool CAiSFollow::SetHideLook(CSealCtrlAi *ai)
     return done;
 }
 
-/* two cells' x and y distances summed (CAiPlanner::dist's shape, unscaled; the name ours) */
-static inline int FollowCellDist(const CAiMapLoc &a, const CAiMapLoc &b)
+/* two cells' x and y distances summed (CAiPlanner::dist's shape, unscaled; the name ours: a template
+ * over the cells' types -- the follow's goal at 0x104 is a GoalCell) */
+template <class A, class B>
+inline int FollowCellDist(const A &a, const B &b)
 {
     int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
     int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
@@ -847,12 +856,12 @@ static inline bool CellKindOk(const CAiMapLoc &loc)
 /* a cell beside a point of the route: from the route's point `index`, up to `n` cells sideways of the
  * direction (to its left; to its right for a negative count), each in the route's band, walkable and,
  * if asked, of a kind 0x5FC550 takes -- the last such cell put out; false without a route, the point
- * or its map (OVL2 0x5FD790, new in SOCOM II: CAiSFollow::Tick calls it with its own `this`, unread;
- * the name unknown). Byte-exact (the kit's round 54): the floats read and set before the two copies of
+ * or its map (OVL2 0x5FD790, new in SOCOM II: CAiSFollow::Tick calls it with the AI first, unread -- the
+ * AI states' round 67: a0 is the Tick's ai, not its `this`; the name unknown). Byte-exact (the kit's round 54): the floats read and set before the two copies of
  * the point's cell (the target loads the direction and builds the 0.5 ahead of the copies' masks; with
  * the copies first the scheduling and the parameters' saved registers both move -- 46 / 74 off),
  * declared in the order that numbers them f23 / f22 / f21 / f20, and 0x5FC550 pinned out of line */
-extern "C" bool func_005FD790(CAiSFollow *f, CAiPath *path, unsigned int index, int n, CAiMapLoc *out,
+extern "C" bool func_005FD790(CSealCtrlAi *ai, CAiPath *path, unsigned int index, int n, CAiMapLoc *out,
                               const CPnt3D *dir, bool kinds)
 {
     if (!path->m_snake_len)
@@ -907,6 +916,486 @@ extern "C" bool func_005FC550(const CAiFollowKind *k)
     return r;
 }
 #pragma auto_inline reset
+
+/* the follow's limits (OVL2 .data 0x650C88-0x650D30, 8 bytes apart in the order the Tick reads them:
+ * function-local statics, read here as variables -- the hint's timer at 0x650CB8 is written) */
+extern "C" {
+extern float data_00650C30;   /* 0.65: how far ahead of the master its velocity puts the goal (s) */
+extern float data_00650C88;   /* 8.0: the master's snake path long enough to leave the start */
+extern int data_00650C90;     /* 1, 100: the point index's bounds */
+extern int data_00650C98;
+extern float data_00650CA0;   /* 1.25: close, in follow ranges */
+extern float data_00650CA8;   /* 150.0: near, for a Navy SEAL's AI */
+extern float data_00650CB0;   /* 100.0: the player's escort too far: the hint */
+extern float data_00650CB8;   /* -1.0: the hint's countdown */
+extern float data_00650CC0;   /* 10.0: the hint's period */
+extern float data_00650CC8;   /* 600.0: too far to follow at all */
+extern float data_00650CD0;   /* 0.1: cells per world unit */
+extern int data_00650CD8;     /* 3: the path's slack in cells before a new route */
+extern int data_00650CE0;     /* 10, 15: the route's first point far / the goal near it */
+extern int data_00650CE8;
+extern int data_00650CF0;     /* 7: no extension and no nearer than this: a new route */
+extern float data_00650CF8;   /* 4.5: within this many ranges the throttle follows the master's */
+extern float data_00650D00;   /* 1.2: the master's speed scaled */
+extern float data_00650D08;   /* 0.25, 1.0: the throttle's bounds */
+extern float data_00650D10;
+extern int data_00650D18;     /* 8: the hide look's search */
+extern unsigned int data_00650D20;   /* 5 */
+extern int data_00650D28;     /* 3: the hide cell's reach */
+extern float data_00650D30;   /* 3.0: the hide look's period */
+/* the squad's point-out (OVL2 0x5E7580, 0x5E7390: seal_unit.cpp's range; zseal.h's CSealUnit does
+ * not declare them) */
+bool GetMyPointOutTurnDir__9CSealUnitFP10CZSealBodyPP6CPnt3D(CSealUnit *unit, CZSealBody *seal, CPnt3D **dir);
+bool GetMyPointOutAnimStart__9CSealUnitFP10CZSealBody(CSealUnit *unit, CZSealBody *seal);
+/* (OVL2 0x592910, seal_control.cpp's; 0x52BDF0, ai_maps.cpp's: zseal.h's classes do not declare them) */
+float GetThrottleFromSpeed__9CSealCtrlFfi(CSealCtrl *c, float speed, int n);
+bool ExtendPath__7CAiMapsFR7CAiPathRC9CAiMapLocRC9CAiMapLoc(CAiMaps *maps, CAiPath *path, const CAiMapLoc *from,
+                                                           const CAiMapLoc *to);
+void func_00560340(CSealCtrlAi *ai, CAiState *state, bool b);
+void func_00570F90(CSealCtrlAi *ai, float t);
+}
+
+namespace ai {
+enum LINE_TYPE { LINE_ANY = 0, LINE_TYPE_LAST = 0x7fffffff };
+bool LineOn(LINE_TYPE type);
+bool PushLineColor(unsigned int rgb);
+void PopLineColor();
+void DrawLine(LINE_TYPE type, const CPnt3D *a, const CPnt3D *b);
+void DrawOctahedron(LINE_TYPE type, const CPnt3D *pos, float height, float width);
+}
+
+/* (the namespace by another name: a state's `ai` parameter hides it) */
+namespace ailine = ai;
+
+/* the squad pointing out: the follower turned to the point and its hand signal given; whether it
+ * is (SOCOM 1's HandleFollowTickPointMode, the squad's flag at 9 now; inline) */
+static inline bool FollowPointMode(CSealCtrlAi *ai)
+{
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    CSealUnit *unit = ((CSealCtrl *)seal->m_control)->m_unit;
+    bool r = false;
+
+    if (((unsigned char *)unit)[9]) {
+        CPnt3D *dir = 0;
+
+        if (GetMyPointOutTurnDir__9CSealUnitFP10CZSealBodyPP6CPnt3D(unit, seal, &dir)) {
+            if (ai->SetLookDirW((AI_LOOK)3, dir, true)) {
+                ai->ModifyLookFlags(1, 0);
+                ai->SetLookTimer(10.0f);
+            }
+        }
+        if (GetMyPointOutAnimStart__9CSealUnitFP10CZSealBody(unit, seal))
+            seal->DoHandSignal((SEAL_HANDSIGNAL)5);
+        r = true;
+    }
+    return r;
+}
+
+/* a random float from a minimum to a maximum (SOCOM 1's Rfloat(min, max) and its operator float,
+ * the zero-range test kept: zkit.h's class is not this unit's; the name ours) */
+static inline float FollowRandRange(float min, float max)
+{
+    float range = max - min;
+    float f;
+
+    if (range == 0.0f)
+        f = min;
+    else {
+        float r = 4.656613e-10f * rand();
+        f = min + range * r;
+    }
+    return f;
+}
+
+/* a Navy SEAL's AI not yet aware of anything (inline: the bool materialised; the name ours) */
+static inline bool FreeNavySeal(CSealCtrlAi *ai, CEntity *seal)
+{
+    bool r = false;
+
+    if (ai->IsNavySeal() && !seal->m_aware_counter)
+        r = true;
+    return r;
+}
+
+/* the steps the follow hides in: 4 to 7 (inline; the name ours) */
+static inline bool Hiding(unsigned char step)
+{
+    bool r = false;
+
+    if (step == 4 || step == 5 || step == 6 || step == 7)
+        r = true;
+    return r;
+}
+
+/* the AI on its way to a move goal (inline: the test built whole; the name ours) */
+static inline bool Moving(CSealCtrlAi *ai)
+{
+    return ai->m_goal_type == 3 && (ai->m_goal_dir_valid || ai->m_goal_pos_valid);
+}
+
+/* two cells apart on the grid (inline: the `||` materialised; the name ours) */
+static inline bool CellMoved(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x != b.x || a.y != b.y;
+}
+
+/* whether the stamp holds any of the bits asked (seal_ai.cpp's StampHas) */
+static inline bool StampHas(const CAiStamp &s, unsigned int mask)
+{
+    return (s.m_8 & mask) != 0;
+}
+
+static inline CAiPath *SnakePathOf(CZSealBody *s)
+{
+    return &s->m_snakePath;
+}
+
+static inline float SpeedOf(CSealCtrl *c)
+{
+    return c->m_speed;
+}
+
+/* a body's state byte (CBody's at 0x174) */
+static inline SEAL_STATE BodyState(CZSealBody *s)
+{
+    CBody &b = *s;
+
+    return (SEAL_STATE)b.m_state;
+}
+
+/* the stance a state stands for, the others left as they come (SOCOM 1's inline switch; the name
+ * ours) */
+static inline SEAL_STANCE StanceOf(SEAL_STATE st)
+{
+    switch (st) {
+    case 0:
+        return (SEAL_STANCE)0;
+    case 1:
+        return (SEAL_STANCE)1;
+    case 2:
+        return (SEAL_STANCE)2;
+    }
+    return (SEAL_STANCE)1;
+}
+
+static inline CPnt3D &Pt(float *f)
+{
+    return *(CPnt3D *)f;
+}
+
+/* the follow's frame (OVL2 0x5FB1C0; SOCOM 1's FollowTick__11CSealCtrlAiFf and its
+ * HandleFollowTick* helpers folded into the state): the master checked, the squad's point-out, the
+ * master's and the follower's places, velocities and distance kept, a start until the master's snake
+ * path is 8 long; the goal a cell beside the snake path at the formation's offset (0x5FD790) or the
+ * offset turned by the formation's direction ahead of the master; close and near, the escort hint,
+ * the snake-path bit, the hide check and stance; then the steps -- route (0), planning (2), walking
+ * the path (3: replanned when the straight line is shorter, extended, the throttle the master's),
+ * hiding behind the player (4, 5), waiting (7, 8) -- and the goal drawn for debugging.
+ * OPEN (the AI states' round 67, unwritten before), 33 instructions at the right size, all frame
+ * slots but one `ori` and one argument load's order: the target lays the spills mode 272, n 256,
+ * inPath 240, len 224, mpath 208, d 192, hide 176 (here hide 224, mpath 192, d 176 -- an inline
+ * wrapper around HideCheck puts hide at 208, 31 off), the CPnt3D temporaries Scale, Add, the goal's
+ * Sub, the master's Sub, the two debug Adds in that order (here the goal's Sub first). Settled: the
+ * stance switch an inline of returns with a default of 1 (each case's `b`); the start test through
+ * `bool started = !m_76` (the materialised not); IsIdle() for the planning test (its state load is
+ * HasPoints()'s); the hiding steps an `==` chain (4-6 fold to one range, 7 apart); the goal cell a
+ * GoalCell member, not a CAiMapLoc (Create would call its constructor) nor a cast (an address
+ * register); FollowCellDist's operands in the target's compare order; the phase updated after a
+ * volatile read of it (the target loads m_phase twice: no other spelling reloads it); CanTravelLine
+ * tested `!= false` (its andi); `K + timer` */
+int CAiSFollow::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+    signed char mode = ai->m_26c;
+
+    func_00560340(ai, this, true);
+    m_7d = 0;
+    m_7c = 0;
+    if (!CheckMaster(ai)) {
+        SetActive(false);
+        return Result();
+    }
+    STEP step = (STEP)m_phase;
+
+    if (FollowPointMode(ai))
+        return m_done = AI_RUNNING;
+    CZSealBody *master = m_master;
+
+    master->UpdateFollowParams(m_dT);
+    Pt(m_a4) = master->m_posW;
+    Pt(m_98) = master->m_velW;
+    master->UpdateFollowParams(m_dT);
+    Pt(m_b0) = ((CFollowParamsView *)master)->m_formation_dir;
+    m_bc = Pt(m_98).Normalize();
+    m_c0 = *(unsigned int *)&master->m_mapLocValid;
+    Pt(m_d8) = seal->m_posW;
+    Pt(m_cc) = seal->m_velW;
+    m_e4 = Pt(m_cc).Normalize();
+    Pt(m_e8) = Pt(m_a4) - Pt(m_d8);
+    m_f4 = Pt(m_e8).Normalize();
+    CAiPath *mpath = SnakePathOf(master);
+    const CAiMapLoc &at = seal->m_mapLocValid;
+    const CAiMapLoc &mloc = *(const CAiMapLoc *)&m_c0;
+    CAiPath *path = (CAiPath *)&ai->m_path;
+
+    if (m_76) {
+        if (!(m_master->m_snakePath.GetLength(true) < data_00650C88))
+            m_76 = 0;
+    }
+    bool started = !m_76;
+
+    if (!started) {
+        SEAL_STANCE stance = StanceOf(BodyState(master));
+
+        ai->GetDuckStance(master, stance);
+        ai->SetStanceDelayed(stance, -1.0f);
+        ai->CreepTick(m_dT, false);
+        return m_done = AI_RUNNING;
+    }
+    bool got = false;
+    bool kinds = false;
+
+    if (FreeNavySeal(ai, seal)) {
+        if (CellKindOk(mloc))
+            kinds = true;
+    }
+    int index = m_5c[0];
+    int n = m_5c[1];
+
+    _saturate(&index, data_00650C90, data_00650C98);
+    if (func_005FD790(ai, mpath, index, n, (CAiMapLoc *)&m_104, (const CPnt3D *)m_b0, kinds)) {
+        if (AiMaps.GetCellCenter(*(CAiMapLoc *)&m_104, (CPnt3D *)m_f8))
+            got = true;
+    }
+    if (!m_78 & got)
+        m_78 = 1;
+    else if (m_78 & !got)
+        m_78 = 0;
+    if (!got) {
+        Pt(m_f8) = Pt(m_a4) + master->m_velW * data_00650C30;
+        float x = m_5c[1] * data_0064FC60;
+        float z = -m_5c[0] * data_0064FC60;
+        CPnt3D off;
+
+        off.x = m_b0[2] * x + m_b0[0] * z;
+        off.y = 0.0f;
+        off.z = -m_b0[0] * x + m_b0[2] * z;
+        ((const CPnt3D *)m_f8)->Add(&off, (CPnt3D *)m_f8);
+        AiMaps.GetLocation((const CPnt3D *)m_f8, *(CAiMapLoc *)&m_104);
+    }
+    Pt(m_108) = Pt(m_f8) - Pt(m_d8);
+    m_114 = Pt(m_108).Normalize();
+    bool close = false;
+    bool near = false;
+
+    if (m_114 <= data_00650CA0 * m_68)
+        close = near = true;
+    else if (ai->IsNavySeal() && m_114 <= data_00650CA8 && !seal->m_aware_counter)
+        near = true;
+    if (m_7a && !close)
+        m_7a = 0;
+    else if (!m_7a && close)
+        m_7a = 1;
+    if (master->IsPlayer() && (seal->m_team & 0x20000) && !(m_114 <= data_00650CB0)) {
+        if (data_00650CB8 < 0.0f) {
+            ai->PlayAiSound((CHARACTER_SOUND)49, 1.0f, (CAiEvent::EVENT)-1);
+            float t = data_00650CC0;
+
+            data_00650CB8 = t;
+            data_00650CB8 += FollowRandRange(0.0f, t / 2.0f);
+        } else
+            data_00650CB8 -= m_dT;
+        if (!(m_f4 <= data_00650CC8))
+            return m_done = AI_RUNNING;
+    }
+    bool inPath = mpath->PointInPath(at, 0);
+
+    if (inPath) {
+        if (!m_75) {
+            ((FOLLOW_PATH *)path)->SetFlags1c(8, 0);
+            m_75 = 1;
+        }
+    } else if (m_75) {
+        path->m_flags &= ~8;
+        m_75 = 0;
+    }
+    bool hide = HideCheck(ai, close, Hiding(step), (char *)&step);
+
+    StanceCheck(ai, close || near, hide);
+    if (ai->GetAiAware() >= 2)
+        ai->SetAiBit2(close || hide);
+    switch (step) {
+    case 0:
+        if (close) {
+            SetTemplatePath__7CAiPathFP7CAiPath((FOLLOW_PATH *)path, 0);
+            m_80 = 0.0f;
+            step = (STEP)4;
+        } else {
+            if (inPath) {
+                SetTemplatePath__7CAiPathFP7CAiPath((FOLLOW_PATH *)path, (FOLLOW_PATH *)mpath);
+                ((FOLLOW_PATH *)path)->SetFlags1c(0x20, 0);
+            } else {
+                SetTemplatePath__7CAiPathFP7CAiPath((FOLLOW_PATH *)path, 0);
+                path->m_flags &= ~0x20;
+            }
+            AbortPathPlan__2aiFP7CAiPath((FOLLOW_PATH *)path);
+            ai->SetRoute(*(CAiMapLoc *)&m_104);
+            step = (STEP)2;
+        }
+        break;
+    case 2: {
+        if (path->IsIdle()) {
+            if (!path->HasPoints()) {
+                path->PrintPath("dbg_path");
+                m_80 = 2.5f;
+                step = (STEP)8;
+            } else {
+                path->RebuildLegs(&AiMaps, true);
+                step = (STEP)3;
+            }
+        }
+        if (step != 3)
+            break;
+    }
+    case 3:
+        if (path->HasPoints()) {
+            const CAiMapLoc &first = path->m_points[0].m_loc;
+            int dGoal = FollowCellDist(first, m_104);
+            int dSeal = FollowCellDist(m_104, at);
+            int dFirst = FollowCellDist(first, at);
+            bool there = dSeal <= data_00650CD0 * (m_64 + m_68);
+
+            if (at.m_mapid == m_104.m_mapid) {
+                int len = (int)path->GetLength(true);
+                int d = FollowCellDist(at, m_104);
+
+                if (AiMaps.CanTravelLine(at, *(CAiMapLoc *)&m_104, 0) != false) {
+                    if (d + data_00650CD8 < len)
+                        step = (STEP)0;
+                }
+            }
+            bool keep = data_00650CE0 < dFirst && dGoal < data_00650CE8 || dGoal == 0;
+            ((FOLLOW_PATH *)path)->SetFlags(!there, there);
+            if (!close && !keep) {
+                if (!ExtendPath__7CAiMapsFR7CAiPathRC9CAiMapLocRC9CAiMapLoc(&AiMaps, path, &at, (CAiMapLoc *)&m_104)) {
+                    if (dFirst <= data_00650CF0)
+                        step = (STEP)0;
+                }
+            }
+            if (close && (!dFirst || m_bc < 10.0f)) {
+                step = (STEP)4;
+                m_80 = 0.0f;
+            }
+            float throttle = 1.0f;
+
+            if (m_114 <= data_00650CF8 * m_68) {
+                CSealCtrl *mc = (CSealCtrl *)master->m_control;
+
+                throttle = GetThrottleFromSpeed__9CSealCtrlFfi(mc, m_bc * data_00650D00, 0);
+                throttle = fabsf(throttle);
+                float lo = ailine::_min(SpeedOf(mc), data_00650D08);
+
+                _saturate(&throttle, lo, data_00650D10);
+            }
+            func_00570F90(ai, throttle);
+            m_7d = 1;
+        } else if (close) {
+            m_80 = 0.0f;
+            step = (STEP)4;
+        } else
+            step = (STEP)0;
+        break;
+    case 4:
+        m_c8 = m_c0;
+        m_c4 = 1;
+        step = (STEP)7;
+        if (m_master->IsPlayer()) {
+            SetTemplatePath__7CAiPathFP7CAiPath((FOLLOW_PATH *)path, 0);
+            CAiMapLoc to(at);
+            int found;
+
+            if (!seal->m_aware_counter && at.m_mapid == ((const CAiMapLoc *)&m_c0)->m_mapid) {
+                AiMaps.GetMapByIndex(at.m_mapid);
+                CPnt3D back;
+
+                back.x = -m_b0[0];
+                back.y = -m_b0[1];
+                back.z = -m_b0[2];
+
+                func_00559580(&at, &back, 0xd0003, &to, data_00650D18, &found);
+                if (!CellKindOk(to)) {
+                    if (!(found < data_00650D20) || FollowCellDist(at, mloc) > FollowCellDist(to, mloc))
+                        to = at;
+                }
+            }
+            SetHideLook(ai);
+            m_7c = 1;
+            if (CellMoved(to, at)) {
+                ai->SetAiBit2(true);
+                ai->SetGoalPos((GOAL_TYPE)3, to, 5.0f);
+                step = (STEP)5;
+                m_c4 = data_00650D28;
+            }
+        }
+        break;
+    case 5:
+        if (Moving(ai)) {
+            if (StampHas(ai->m_stamp, ~0u)) {
+                ai->ClearGoal((GOAL_TYPE)3);
+                m_7c = 0;
+            } else
+                m_7c = 1;
+        } else {
+            m_6c &= ~2;
+            m_80 = 0.0f;
+            step = (STEP)7;
+        }
+        break;
+    case 7:
+    case 8:
+        m_7c = 1;
+        if (!(ai->m_stateStack.m_timer < m_84)) {
+            m_6c &= ~2;
+            m_84 = data_00650D30 + ai->m_stateStack.m_timer;
+        }
+        if (!(m_80 <= 0.0f)) {
+            m_80 -= m_dT;
+            if (m_80 <= 0.0f) {
+                m_80 = 0.0f;
+                step = (STEP)0;
+            }
+        }
+        break;
+    }
+    if (step != *(volatile unsigned int *)&m_phase)
+        UpdatePhase(step);
+    if (ailine::LineOn((ailine::LINE_TYPE)512)) {
+        static CPnt3D up(0.0f, 5.0f, 0.0f);
+        CPnt3D top = Pt(m_f8) + up;
+        CPnt3D from = Pt(m_f8) + up;
+        unsigned int color;
+
+        switch ((unsigned char)mode) {
+        case 1:
+            color = 0xff0000;
+            break;
+        case 2:
+            color = 0xff00;
+            break;
+        case 3:
+            color = 0xff;
+            break;
+        default:
+            color = 0xffffff;
+            break;
+        }
+        ailine::PushLineColor(color);
+        ailine::DrawOctahedron((ailine::LINE_TYPE)512, &top, 4.0f, 3.0f);
+        ailine::DrawLine((ailine::LINE_TYPE)512, &from, &top);
+        ailine::PopLineColor();
+    }
+    return Result();
+}
 
 extern "C" {
 /* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) */

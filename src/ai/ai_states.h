@@ -674,6 +674,8 @@ public:
      * its flag bit 3 set */
     /* +0x08 (0x5FDF80) */
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x5FB1C0, seal_aifollow.cpp's) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual bool Virtual3C(CSealCtrlAi *ai);
     virtual ~CAiSFollow();
 
@@ -723,26 +725,33 @@ public:
     unsigned char m_7c;   // 0x7c: a flag (the follow's mode 4 when set: 0x5FD6F0)
     unsigned char m_7d;   // 0x7d: a flag (mode 3)
     unsigned char _7e[0x80 - 0x7e];
-    int m_80;   // 0x80 (0 on entry)
-    int m_84;   // 0x84 (0 on entry)
+    float m_80;   // 0x80: a wait, run down by the frame in steps 7 and 8 (0 on entry; the name ours)
+    float m_84;   // 0x84: the state clock's time the hide look may be set again after (0 on entry)
     float m_88[3];   // 0x88: CPnt3Ds from here to 0x114, CAiMapLocs at 0xc0, 0xc8 and 0x104
     unsigned char _94[0x98 - 0x94];
     float m_98[3];   // 0x98
     float m_a4[3];   // 0xa4
     float m_b0[3];   // 0xb0
-    unsigned char _bc[0xc0 - 0xbc];
+    float m_bc;   // 0xbc: the master's speed (Tick: m_98 normalised)
     unsigned int m_c0;   // 0xc0
     int m_c4;   // 0xc4: how far the hide cell may be from the cell at 0xc8 (HideCheck; the name ours)
     unsigned int m_c8;   // 0xc8
     float m_cc[3];   // 0xcc
     float m_d8[3];   // 0xd8
-    unsigned char _e4[0xe8 - 0xe4];
+    float m_e4;   // 0xe4: the follower's speed (Tick: m_cc normalised)
     float m_e8[3];   // 0xe8
     float m_f4;   // 0xf4
     float m_f8[3];   // 0xf8
-    unsigned int m_104;   // 0x104
+    /* 0x104: the goal's cell, a CAiMapLoc's three fields without its constructor (the Tick reads them
+     * in place, at this + 0x104 each time: a CAiMapLoc member makes CAiState::Create call its
+     * constructor, a cast or a view keeps the address in a register; the names ours) */
+    struct GoalCell {
+        unsigned int m_mapid : 6;
+        unsigned int x : 13;
+        unsigned int y : 13;
+    } m_104;
     float m_108[3];   // 0x108
-    unsigned char _114[0x118 - 0x114];   // 0x118 bytes, Create's new
+    float m_114;   // 0x114: the distance to the goal point (Tick; 0x118 bytes, Create's new)
 };
 
 /* the vehicle state (new in SOCOM II; seal_aivehicle.cpp) */
