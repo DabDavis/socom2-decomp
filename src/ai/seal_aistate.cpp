@@ -1869,16 +1869,9 @@ inline int HideDist(const CAiMapLoc &a, const CAiMapLoc &b)
 
 /* (OVL2 0x5F8570: the line seen from eight units up at both ends -- the height a variable, read from
  * data; the distance an inline, whose x fields MW shares with operator!='s, as the target does).
- * OPEN, 0x130 against 0x138: the target leaves the m_dist test's delay slot empty (ours takes the
- * first compare of the distance) and pads the visibility block's label -- the early `return r`
- * forms, the test nested or negated and the compare in a materialised inline bool all tried.
- * Round 59 (the GCC front's round-43a pragma scan: propagation or dead assignments off, 10 -> 6):
- * either pragma reaches 0x138 only by adding two `andi 0xffff` on the y fields, the slot still filled
- * (24 differing) -- not the target's shape; MW's optimiser log (igdump --iro on a 3.0b52 copy, which
- * compiles this row as b50 does) shows m_dist in one temporary and the x fields shared, nothing a
- * source shape moves: the miss is the scheduler's slot fill (the pad follows the word). m_dist or the
- * distance in a named local, the distance test nested with an early return, a materialised `far`
- * flag: 0x130-0x140, 10-41 off */
+ * The hide/see compare a ternary: as an if/else (open since written, 0x130) MW filled the m_dist
+ * test's delay slot from the fall-through and left the visibility label unpadded -- the UI's round-31
+ * if-versus-ternary rule, here in the function's own body (round 72). */
 bool CAiHidePlanner::is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b)
 {
     bool r = false;
@@ -1886,10 +1879,7 @@ bool CAiHidePlanner::is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b
     if (m_start != a && (!m_dist || HideDist(a, m_start) >= m_dist)) {
         float vis = map.ComputeLineVisibility(a, b, 0, s_hideHeight, s_hideHeight);
 
-        if (m_hide)
-            r = vis <= m_thresh;
-        else
-            r = vis >= m_thresh;
+        r = m_hide ? vis <= m_thresh : vis >= m_thresh;
     }
     return r;
 }
