@@ -6,6 +6,7 @@
 #define _MSL_ALGORITHM
 
 #include <iterator>
+#include <msl_utility>   /* swap, which iter_swap calls: declared before use (MW does no two-phase lookup; every conforming compiler does) */
 
 namespace std {
 
