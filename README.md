@@ -2066,6 +2066,27 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI states, round 67** (nothing closed; CAiSFollow::Tick 0x5FB1C0 (0x138C) written in the new
+  seal_aifollow.cpp from the target with SOCOM 1's FollowTick and HandleFollowTick* as the outline, 0x136C/201 structural to the
+  target's size and 33 off -- control flow, calls and the 544-byte frame right; left: the spill slots (target mode 272, n 256,
+  inPath 240, len 224, mpath 208, d 192, hide 176; here hide 224, mpath 192, d 176 -- slots follow the allocator's numbers,
+  named locals then temporaries, hide the last temporary in the target; HideCheck in an inline gives 31, not kept, no evidence
+  of such a wrapper), the CPnt3D temporaries' order (Scale, Add, goal Sub, master Sub, two debug Adds; here the goal Sub
+  first), one `ori` and one argument load. ai_states.h, objcmp-proved: CAiSFollow declares Tick, m_80/m_84 floats, m_bc,
+  m_e4, m_114 named floats, m_104 a constructor-less GoalCell bit-field struct (a real CAiMapLoc member makes CAiState::Create
+  call its constructor); func_005FD790 takes `CSealCtrlAi *` (the call passes ai in a0), still exact. CAiSBreach::Tick still
+  18: the same Is() shape blocks Pop(ai, AI_STATE) (0xA4 of 0xAC) and PopTo (0x124 of 0x130); ~70 more spellings and the b52
+  build, none drops the `andi`):
+  - Is() probes: HasPoints() (`!m_points.empty() && m_state == COMPLETE`) and `m_goal_type == 3 && (bit || bit)` give the
+    materialised `&&` with no `andi`, but the false path reuses v0 for the explicit `move v0,zero`; AiStateIs's `NotEmpty() ?
+    (X ? true : false) : false` gives the target's exact form only when X holds a real call (GetState inlined folds to 0x9C).
+  - a byte-to-same-values switch is an inline of `return`s with `default: return 1` (a `b` per case, the result left in the
+    compare register). `bool started = !m_76; if (!started)` materialises `sltu; xori; bnez`.
+  - `path->IsIdle()` ahead of `HasPoints()` shares one state load. An `==` chain 4, 5, 6, 7 folds 4-6 to `addiu; sltiu at`,
+    7 alone (7 first folds only 4-5). `if (d <= K)` branches on `slt at`, `!(K < d)` materialises; `!= false` brings back the
+    `andi`. FollowCellDist(a, b)'s `sltu at,b,a` gives the compare order.
+  - the phase update loads m_phase twice: only `step != *(volatile unsigned int *)&m_phase` in the first test does it (the
+    second volatile tell, after the SEALs' round-66 dirty bit).
 - **Tells from the SEALs, round 67** (two rows byte-exact, both unwritten before: 0x54F7E0 (0xB50, seal.cpp), SOCOM 1's
   CollidePlayers -- cuts the SEAL's motion where its cylinder would sweep into another's, pushes a player out of one it stands
   in, tells meeting AIs about each other, returns whether the motion changed; SOCOM II passes (seal, dT), dT unused -- and
