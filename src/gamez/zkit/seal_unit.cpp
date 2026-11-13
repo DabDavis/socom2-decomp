@@ -2500,37 +2500,63 @@ extern "C" void func_005EB190(CSealUnit *unit, CZSealBody *seal, FT_COMMAND cmd,
         seal->DoHandSignal(sig);
 }
 
-/* a random draw in [min, min + range) (SOCOM 1's Rfloat's operator float without its zero-range test,
- * the 1.0 range through the parameter so its multiply stays -- seal_aifollow.cpp's FollowRand), and
- * whether it falls at or under a chance whose address is taken (the target stores the chance after
- * the 1.0 test, in the draw's block, and keeps its address across rand()) */
-static inline float UnitRand(float min, float range)
-{
-    float r = 4.656613e-10f * rand();
+/* SOCOM 1's Rfloat (zkit.h's -- this unit cannot include it: its CZNetwork clashes), a random draw in
+ * [min, min + range) with its zero-range test; and whether it falls at or under a chance --
+ * seal_airesponse.cpp's Chance shape, the odds by value read through a `const float &` (the target
+ * stores the chance in the draw's block and keeps its address in a saved register across rand()) */
+struct UnitRfloat {
+    operator float() const
+    {
+        float f;
 
-    return min + range * r;
+        if (m_range == 0.0f)
+            f = m_min;
+        else {
+            float r = 4.656613e-10f * rand();
+            f = m_min + m_range * r;
+        }
+        return f;
+    }
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+static inline bool UnitChance(float chance)
+{
+    const float &c = chance;
+    UnitRfloat r;
+
+    r.m_min = 0.0f;
+    r.m_range = 1.0f;
+    return r <= c;
 }
 
-static inline bool UnitChance(float chance) { return UnitRand(0.0f, 1.0f) <= *(const float *)&chance; }
+/* a random index up to n (0 when n is): rand()'s value taken into a local before the `%` (the modulus
+ * through an inline taking it, `rand() % m`, matches too) -- the zero arm's `b` then keeps its empty
+ * slot and the join its pad; `rand() % (n + 1)` in place fills the slot whatever shape the test takes */
+static inline int UnitPick(int n)
+{
+    int i;
 
-/* a random index up to n (0 when n is) */
-static inline int UnitPick(int n) { return n == 0 ? 0 : rand() % (n + 1); }
+    if (n == 0)
+        i = 0;
+    else {
+        int r = rand();
+
+        i = r % (n + 1);
+    }
+    return i;
+}
 
 /* the squad's voice (OVL2 0x5EAF20; new in SOCOM II, the name ours): with the chance (1 always),
  * a random SEAL of the squad and the squads under it when `pick`, then the squad's own SEALs in
  * turn, then each squad under it -- the first AI SEAL alive that plays the sound (its controller's
- * PlayAiSound at full chance, no event). Whether one did.
- * OPEN, 0x268 against 0x270, two places, the rest (registers, the walks, the hoisted ends) the
- * target's: (1) the chance -- the target compares $f12 with 1.0, then in the draw's block stores it
- * and keeps its address in s4 across rand() (`swc1 $f12,124(sp); jal rand; addiu s4,sp,124` ...
- * `lwc1 $f0,0(s4)`); the inline's by-value parameter read through `*(const float *)&` gives the
- * store in that block but reloads sp-relative; a reference or pointer inline, a pointer local (a
- * cast or not, before the draw or across a `?:`), SOCOM 1's Rfloat with its range test, a two-level
- * pointer inline all keep the chance in $f20 (0x27C) or reload it sp-relative (0x268); (2) the
- * random index -- the target's zero arm is an empty block (`bnez; move a1,zero; b join; nop`, then an
- * alignment nop before the rand() block), ours fills the b's delay slot with the join's `move a0,s2`:
- * a ternary in or out of an inline, if/else in or out of an inline, early returns, `!n`, `n != 0`, the
- * round-44 self arm `i = n == 0 ? i : ...`, an empty then-branch all fill it */
+ * PlayAiSound at full chance, no event). Whether one did. Byte-exact in the SEAL's round 74 (0x268
+ * of 0x270 since round 44): (1) the chance -- `swc1 $f12,124(sp); jal rand; addiu s4,sp,124` ...
+ * `lwc1 $f0,0(s4)` -- needs BOTH the Rfloat (its range test folded) and the reference: Rfloat alone
+ * keeps the chance in $f20 (0x27C), the reference alone over a plain draw 0x27C too, `*(const float
+ * *)&` reloads sp-relative; (2) the index's empty zero arm, UnitPick's rand() local (above) */
 extern "C" bool func_005EAF20(CSealUnit *unit, int sound, bool pick, float chance)
 {
     bool played = false;
