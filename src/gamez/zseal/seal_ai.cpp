@@ -162,7 +162,11 @@ public:
     /* the step after the run to the grenade: 4 the kick, 5 the throw back, 6 none (compared with
      * lbu; Tick's copies to its step reload it with lb -- open there; the name ours) */
     unsigned char m_84;   // 0x84
-    unsigned char _85[0xa0 - 0x85];
+    /* set once the dodge's direction and throw are worked out (0x55C870; the name ours) */
+    unsigned char m_85;   // 0x85
+    unsigned char _86[0x94 - 0x86];
+    /* the direction the dodge looks along (0x55C870; the name ours) */
+    CPnt3D m_94;   // 0x94
     /* the throw's velocity in the SEAL's frame (0x55C480 turns it by the body's matrix; the name
      * ours) */
     CPnt3D m_vel;   // 0xa0
@@ -4049,14 +4053,109 @@ struct SEAL_LINEWALK {
     float m_scale;   // 0x14
     CAiMapLoc m_to;   // 0x18
     CPnt3D m_back;   // 0x1c: the SEAL's facing, reversed
-    unsigned int m_28;   // 0x28
+    /* the height of the last cell the restrained walk climbed from (0x56A2E0; the name ours) */
+    float m_28;   // 0x28
     CSealCtrlAi *m_ai;   // 0x2c
     bool m_30;   // 0x30: true at first
 };
 
 extern "C" {
-bool func_0056A2E0(const MAP_LINEWALK_STRUCT &s, void *data);
 CEntity *func_00569AA0(CEntity *e, const CAiMapLoc *loc);
+unsigned int func_0056A760(CSealCtrlAi *ai, const CPnt3D *pos, bool tell);
+}
+
+/* the line walk's callback: at the first cell the facing's agreement with the line and the cell's
+ * height kept, and on; at the target cell, or past the reach, stop; a linked cell stops it. While
+ * still free: an occupied cell met (not the first) or, on soil 3, a vehicle there, is an entity met;
+ * a cell that may be stepped on goes on unless the line turns from the facing (under 0.9) onto a
+ * cell with an action or of soil 6 -- anything else blocks. A restrained SEAL's walk marks soil 6,
+ * or a climb steeper than 2 onto a cell that may not be stepped on (OVL2 0x56A2E0, new in SOCOM II;
+ * the names ours). OPEN (the SEALs' round 62, first written): size exact, 8 structural -- the reach
+ * and link tests' `return false` put `move v0,zero` in the branch's own slot and leave `b; nop` in
+ * the target, here `nop; b; move` (`return go`, `||`, else-if chains, an inline test: none) -- and
+ * 45 in registers alone, the entry's CSE'd loc.x / start.x in a0 / v1 there (v1 / v0 here), which
+ * pushes the soil and every later temporary off v0. The three bools declared at the top took the
+ * saved registers from 99 differing to 45 */
+static inline bool MetVehicle(SEAL_LINEWALK *w, const MAP_LINEWALK_STRUCT &s)
+{
+    w->m_metid = func_0056A760(w->m_ai, (const CPnt3D *)&s.m_pos, 0);
+    return w->m_metid != CEntity::invalidId;
+}
+
+static inline bool SteppedAltitude(const CAiMap *map, const CAiCell *cell, float &alt)
+{
+    if (!cell->m_badalt && cell->m_soil != 10)
+        return map->GetAltitude(cell, alt);
+    return false;
+}
+
+extern "C" bool func_0056A2E0(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    SEAL_LINEWALK *w = (SEAL_LINEWALK *)data;
+    bool go;
+    bool six;
+    bool trav;
+
+    if (s.m_loc == s.m_start) {
+        w->m_scale = w->m_back.x * s.m_dir.x + w->m_back.y * s.m_dir.y + w->m_back.z * s.m_dir.z;
+        s.m_map->GetAltitude(s.m_cell, w->m_28);
+        return true;
+    }
+    if (s.m_loc == w->m_to)
+        return false;
+
+    if (!(s.m_dist < w->m_dist))
+        return false;
+    if (s.m_cell->HasLink())
+        return false;
+
+    go = false;
+    unsigned int soil = s.m_cell->m_soil;
+    six = soil == 6;
+    trav = !(soil == 0 || soil == 10 || soil == 8 || soil == 9);
+
+    if (w->m_30) {
+        if (s.m_cell->m_occupied && s.m_start != s.m_loc) {
+            w->m_met = 1;
+            w->m_metloc = s.m_loc;
+        } else if (soil == 3 && w->m_ai && MetVehicle(w, s))
+            w->m_metloc = s.m_loc;
+        else {
+            if (trav) {
+                bool ok = true;
+
+                if (w->m_scale < 0.9f && (s.m_cell->HasAction() || six))
+                    ok = false;
+                if (ok) {
+                    w->_1 = ok;
+                    go = true;
+                    goto held;
+                }
+            }
+            w->m_blocked = 1;
+            go = false;
+            w->m_metloc = s.m_loc;
+        }
+    }
+held:
+    if (w->m_restrained && !w->m_8) {
+        if (six)
+            w->m_8 = true;
+        if (!(s.m_dist <= 0.0f)) {
+            float alt;
+
+            if (SteppedAltitude(s.m_map, s.m_cell, alt)) {
+                static float k_steep = 2.0f;
+
+                if (!((alt - w->m_28) / s.m_dist <= k_steep))
+                    w->m_8 = w->m_8 || !trav;
+                w->m_28 = alt;
+            }
+        }
+        w->m_30 = go;
+        go = true;
+    }
+    return go;
 }
 
 /* whether the AI can walk the line from its SEAL's cell to another of the same map: the walk's
@@ -6376,10 +6475,75 @@ extern "C" bool func_0055CDC0(CZProjectile *proj, CPnt3D *pos, float *fuse)
     return ok;
 }
 
+/* a projectile's shooter, none without one: the entity named in a local of its own, which leaves
+ * the call's join an unthreaded `b; nop` (the name ours) */
+static inline CEntity *ShooterOf(CZProjectile *proj)
+{
+    if (proj) {
+        CEntity *e = CEntity::m_list.GetEntityById(proj->m_shooterID);
+
+        return e;
+    }
+    return 0;
+}
+
+/* the dodge's look and throw: toward the grenade's thrower for a Navy SEAL (its own aim point when the
+ * grenade is its own), the throw scaled by the distance; else along the SEAL's facing turned to a
+ * free direction of the map and jittered, the throw at a fixed 200 -- up at 45 degrees for the throw
+ * back (step 5), at 35 for the kick (OVL2 0x55C870, new in SOCOM II; the names ours). OPEN (the
+ * SEALs' round 62, first written): 0x428 of 0x42C, every register right; the target's return is a
+ * fresh `daddiu v0,zero,1` after the `li v0,1; sb` of m_85, here the store's v0 is returned (a bool
+ * local, an inline Mark returning true, int, `r = true` in each arm, bool m_85, opt_propagation off
+ * in the body: none), and the facing's &dir.y / &dir.z address pair is scheduled the other way
+ * round. The shooter needs ShooterOf's own local -- `b; nop` at the call's join -- the ternary, an
+ * if/else or a returning inline all thread it (0x418) */
+extern "C" bool func_0055C870(CAiSGrenade *g, CSealCtrlAi *ai)
+{
+    CZProjectile *proj = GrenadeOf(g);
+    CEntity *owner = ShooterOf(proj);
+    CEntity *seal = ai->m_entity;
+    bool back = g->m_84 == 5;
+    CPnt3D dir;
+    float dist;
+
+    if (ai->IsNavySeal() && owner) {
+        if (proj->m_shooterID == seal->m_id)
+            dir = ai->m_774 - seal->m_posW;
+        else
+            dir = owner->m_posW - seal->m_posW;
+        dist = dir.Normalize();
+        g->m_94 = dir;
+    } else {
+        rand();
+        const CMatrix &m = seal->m_node->m_matrix;
+
+        dir.x = -m.m_matrix[2][0];
+        dir.y = -m.m_matrix[2][1];
+        dir.z = -m.m_matrix[2][2];
+        CAiMap::GetDirVec(func_00559580(&seal->m_mapLocValid, &dir, 0, 0, 10, 0), dir);
+        dir.x += RandRange(-0.2f, 0.2f);
+        dir.y += RandRange(0.4f, 0.8f);
+        dir.z += RandRange(-0.2f, 0.2f);
+        dir.Normalize();
+        g->m_94 = dir;
+        dist = 200.0f;
+    }
+    if (back) {
+        static CPnt3D k_back(0.0f, 0.707f, -0.707f);
+        static float k_back_scale = 1.6f;
+
+        g->m_vel = k_back * (dist * k_back_scale);
+    } else {
+        static CPnt3D k_kick(0.0f, 0.57357f, -0.81915f);
+        static float k_kick_scale = 1.2f;
+
+        g->m_vel = k_kick * (dist * k_kick_scale);
+    }
+    g->m_85 = 1;
+    return true;
+}
+
 extern "C" {
-/* the dodge's look and sound (0x55C870, not written yet); a path is planned to a cell by the
- * AI core's CAiPath::InsertPathLoc(loc, map) 0x526C10 */
-void func_0055C870(CAiSGrenade *g, CSealCtrlAi *ai);
 /* (below: a map's cell inside; the AI states' range: a plan pushed to a cell) */
 bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
 bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
