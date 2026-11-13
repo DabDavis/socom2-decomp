@@ -213,19 +213,18 @@ void CEntity::CountAwareness()
  * whole list (clear() puts their temporaries in other frame slots); InSlice's test returns true or
  * false (the jump form the target materialises), the next start's modulo an if/else (its label
  * padded as the target's).
- * OPEN, 20 instructions, registers only (28 and 3 structural before round 75): (1) closed in round
- * 75 -- the first inner walk's end, computed once per outer pass into s2 and tested twice, is a
- * local declared INSIDE a hand-rotated walk's guard (`if (j != end()) { iterator je = end(); do ...
- * while (++j != je); }`: no loop to hoist it out of until the do), the outer walk rotated by hand too
- * (its iterator then numbered after je: s1 against je's s2 -- igreplay wanted je below it or it
- * after je); (2) the slice loop's entity, last and count trade s0/s1/s3 -- the
- * target's colouring wants in < count < size < last < entity in MW's numbering, where the scalarised
- * CRobin makes size and count inliner temporaries (setup's arguments, right to left), last a
- * scalariser one and the entity a named local numbered before them all (as a CSE temporary, (*it)->
- * at each use, its load moves into the conditional SEAL test); plain named locals for the robin are
- * the shape to try next */
+ * Byte-exact since round 76 (28 and 3 structural before round 75): the first inner walk's end,
+ * computed once per outer pass into s2 and tested twice, is a local declared INSIDE a hand-rotated
+ * walk's guard (`if (j != end()) { iterator je = end(); do ... while (++j != je); }`), the outer walk
+ * rotated by hand too (round 75); the slice loop's entity, last and count (s0/s1/s3, 20 off) are ONE
+ * `ent` for both entity walks, declared bare at the top and assigned in each (two webs: IRO splits it
+ * into temporaries numbered after the scalarised robin's last -- igreplay wanted the entity at
+ * 56.5+), and the bumped count a named local in its own block (igreplay: 38.5-40.5, among the
+ * named locals) -- each alone 17 and 24 off */
 void CEntity::UpdateTargetList(bool b)
 {
+    CEntity *ent;
+
     if (m_target_rem.size()) {
         CEntityList::iterator it = m_list.begin();
 
@@ -258,7 +257,7 @@ void CEntity::UpdateTargetList(bool b)
         CEntityList::iterator e = m_list.end();
 
         for (CEntityList::iterator it = m_list.begin(); it != e; ++it) {
-            CEntity *ent = *it;
+            ent = *it;
 
             ent->UpdateAiMapLoc();
             if (ent->m_update_targetlist) {
@@ -286,7 +285,7 @@ void CEntity::UpdateTargetList(bool b)
 
     for (CEntityList::iterator it = m_list.begin(); it != e; ++it, ++i) {
         bool in;
-        CEntity *ent = *it;
+        ent = *it;
 
         in = robin.InSlice(i);
 
@@ -299,7 +298,11 @@ void CEntity::UpdateTargetList(bool b)
         if (ent->m_update_targetlist)
             sorted = ent->OnUpdateTargetList(false, in);
         if (in && !sorted)
-            robin.setup(robin.m_first, robin.m_count + 1, robin.m_size);
+        {
+            int count = robin.m_count + 1;
+
+            robin.setup(robin.m_first, count, robin.m_size);
+        }
     }
     rrTargetListFirst = robin.Next();
 }
