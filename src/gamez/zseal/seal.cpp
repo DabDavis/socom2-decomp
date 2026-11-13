@@ -4099,7 +4099,7 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
 
                 seal->m_posW.Sub(&(seal->m_1090.m_node ? &seal->m_1090 : 0)->m_pos, &d);
                 d.y = 0.0f;
-                if (!(d.x * d.x + d.y * d.y + d.z * d.z <= 576.0f))
+                if (!(Dot(d, d) <= 576.0f))
                     func_005B0D30(seal, held, &pos, &to);
             }
         } else if (moved)
@@ -4115,7 +4115,7 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
 
     CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
 
-    if (noWeaponWallPush || (ctrl->m_do_aimap_collide && !ctrl->m_bit16)) {
+    if (noWeaponWallPush || (ctrl->m_do_aimap_collide && !(ctrl->m_bit16 ? true : false))) {
         CPnt3D dir = CPnt3D::zero;
         float len;
         CAiMapLoc cell;
@@ -4136,17 +4136,16 @@ extern "C" void func_005483D0(CZSealBody *seal, float dT)
         }
     }
     seal->m_landed = false;
-    if (seal->m_state != stateCarried || !seal->IsCurrentBlend((AnimType)AnimTypes::BuddyCarryBody))
+    if (seal->m_state != stateCarried || seal->IsCurrentBlend((AnimType)AnimTypes::BuddyCarryBody))
         seal->m_gunner_pos.y = func_0059AFD0(seal);
     data_0066ACD0 = *(CPnt3D *)seal->GetRootPart()->m_node->m_matrix.m_matrix[1];
-    *(CPnt3D *)seal->m_next_matrix.m_matrix[3] = seal->m_gunner_pos;
+    *(CPnt3D *)seal->m_next_matrix.m_matrix[3] = CPnt3D(seal->m_gunner_pos.x, seal->m_gunner_pos.y, seal->m_gunner_pos.z);
     seal->m_next_quat.ToMatrix(&seal->m_next_matrix);
     seal->GetNode()->SetMatrix(&seal->m_next_matrix);
     seal->m_quat = seal->m_next_quat;
     seal->m_velW = seal->m_next_velw;
     if (!func_0057B510(seal) && top && !func_005551A0(top->m_flags, 0x40)) {
-        seal->m_velW.y = seal->m_f50;
-        seal->m_velM.y = seal->m_f50;
+        seal->m_velM.y = seal->m_velW.y = seal->m_f50;
     }
 }
 
