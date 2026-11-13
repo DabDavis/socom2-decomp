@@ -64,24 +64,20 @@ extern void __assert(const char *file, int line, const char *expr);
 
 /* the two-stage index decoded: the midpoint book's level, and the midpoint itself either that
  * level (the index's flag bit set) or the reference passed in.
- * OPEN (6 words, right size, every instruction but two saved registers): the target gives Pv s2
- * and the flag s3, here the other way round. `if (iFlag == 0)` first is the target's block order
- * (`if (iFlag)` first: 8 words); the dequantised value kept in a local or reread through Pv
- * compiles alike. GCC round 19a, the allocator's reason (tools/ccdump.py -df): Pv and the flag
- * each have 3 references, so global-alloc orders them by live length as the first scheduling pass
- * left it -- Pv 25 insns (its parameter copy scheduled two insns before the flag's andi, which
- * that pass ranks last for its register weight) against the flag's 24 -- and the target needs
- * Pv's no longer (a tie goes to the lower pseudo, Pv's). The flag as int, unsigned, short, char or
- * long, tested `== 0`, `!` or as `iIndex & 8`, the argument cast, the value in a local, and the
- * float parameter moved before Pv (the copies are scheduled the same) -- 72 spellings, all 6 words
- * (build/scratch/gcc/v_codepv*.c); __assert declared noreturn changes the layout (36s). */
+ * The flag is set AFTER the asserts (GCC round 77; open since round 19a, 6 words: Pv and the flag
+ * traded s2/s3): initialised at its declaration it was 24 insns live to Pv's 25 at 3 references
+ * each, and global-alloc took it first; set after the asserts Pv goes first, as the target's s2
+ * (the andi still lands in the prologue). The 72 spellings of round 19a all kept the
+ * initialiser. `if (iFlag == 0)` first is the target's block order (`if (iFlag)` first: 8
+ * words). */
 void func_002487E8(int iIndex, float *Pv_Mid, float *Pv, float fRef)
 {
-	int iFlag = iIndex & 8;
+	int iFlag;
 
 #line 137 "../../SaseEncVad/source/CodePv.c"
 	assert(Pv_Mid != NellyNull);
 	assert(Pv != NellyNull);
+	iFlag = iIndex & 8;
 	*Pv = func_0024B7E8(fPvMidTable, 8, iIndex - iFlag);
 	if (iFlag == 0)
 		*Pv_Mid = fRef;
