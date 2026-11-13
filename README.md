@@ -2066,6 +2066,48 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the mechanics, round 70** (four rows byte-exact: CZSealBody::Recoil 0x57B550 (0x1FB8) and the ladder 0x5B1C80 (0x994,
+  returns bool) -- both unwritten before -- 0x57DCC0 (6 off since round 53) and 0x5880E0 (its kind 12 is 0x57DCC0's body; one
+  fix closed both). Recoil generated from the target: a symbolic walk of the disassembly emitting the Exp vectors and offsets
+  (the lane's scratch, build/scratch/mech-r70/recoil_*.py; Recoil-specific). Tick_0 0x57A330 159 to 154: the 4 structural all
+  one cause (the target compares the yaw in f1 and reloads it into f12 for the positive call; here f12 reused; the 3 nops
+  move with it -- `>= 0`, swapped arms, a local, a copy, `-yaw`, `0.0f > yaw`, a bool, a switch tried), 32 register-only (o1
+  s4 for s2, the second loop's `a` s5 for s3; igreplay wants `a` numbered after t's split webs and before script's). Only
+  local class change: seal_env.cpp's CLadderData m_node at 0x18):
+  - Recoil: the decay tested as the assignment's value (`if ((m_recoilParam += -1.1f * m_recoilParam * m_2e0) < 0.01f)`)
+    reloads the kick (a separate test reuses the sum's register). Pose offsets through an inline's parameters
+    (`RecoilScale(w, x, y, z)`) keep the kick first in mul.s and still multiply a zero axis (written out, MW puts the constant
+    first and folds `w * 0.0f` to a stored zero).
+  - MW SHARES ONE TEMPORARY FOR A STRUCT COPY REPEATED IN A BLOCK (20 offsets from CPnt3D::zero share one; the four identity
+    quaternions another); a single copy goes direct. One product quaternion for all 21 parts, a caller local by reference
+    (an inline's own local takes 21 slots). One reused `CZBodyPart *part`: its split webs number after the inlines' rots, so
+    from the third part on part s1 and rot s2, the reverse of the first two (SOCOM 1's tail flips the same way).
+  - ladder: an ASSIGNED vector iterator (`it = begin()`) keeps begin's temporary, the iterator and postfix ++'s two copies in
+    memory. Three `const CPnt3D &` points declared together hold the third's address in s7 across the first Sub. The turn rate
+    into a local before the three m_velR stores. `15.6f + y` (`ref.y + y` reloads ref.y).
+  - 0x57DCC0: the global 0x3DF130 declared AnimType and passed uncast (`(AnimType)` on a short is a conversion MW evaluates
+    first; a plain argument loads after the weapon and the set, as the target).
+- **Tells from PostPreTick, round 70** (CZSealBody::PostPreTick 0x54AA30 (0x2BEC), the largest function left, written from the target
+  and the m2c draft -- SOCOM 1's is an empty stub, no SOCOM 1 body inlined in it -- at 0x2BDC, the 3408-byte frame, every call,
+  branch, slot and saved register placed; all misses in one ~40-instruction block (7 structural, 6 register-only): copying
+  the facing row into `dir` the target reloads m_node inside the still and strafe arms and pads two `b`s, where MW's CSE reuses
+  the load made for `pos` before the branch (igdump: `*(this + 40)` at pos, reused in both arms) -- a volatile cast (ignored),
+  const view, Facing/Row2/whole-chain inlines, pos through an inline or per arm, an unused label, GetNode(), operator(), a
+  CMatrix &, a struct copy all tried. Its flow: the ammo cleanup (GetNext(20, PU_AMMO), CleanupAmmoPickup); the gate (dead,
+  carrying under a stab or restraint, AI held off, still with nothing to finish; AnimTypes 0x3DEAD8 overrides); the probe sets
+  (two part-probe chains, or one forward probe, or forward/head/side probes, prone-tilted through 0x54ECD0 and rolled through
+  m_260); m_ef4/m_ef8 count the delayed probes; the first failed probe returns. The m2c draft's flow is wrong twice: after the
+  carried-body probe the code falls through to the side probes, and the prone side probes start from `pos +- 1.3*side -+ dir`.
+  zseal.h, objcmp --by-address: CZSealBody's `virtual void PostPreTick(float)` at slot +0x1C, SEAL_AI_PARAMS' m_268):
+  - deferred inlining expanded 13 of 31 calls to 0x54F410 (3711 instructions vs 2811): pinned `#pragma auto_inline off`.
+  - `return a < e && b < e && c < e;` in an inline, assigned, makes the first two bools and branches on the last (as CPnt3D's
+    operator==); `if (...) still = true;` makes the last too.
+  - a 0.0f kept in f20 across the function is a variable assigned in both arms (as a constant f20 goes to the step and one
+    FPR fewer is saved). FPRs follow declaration order (reach f26, rise f25, step f24, then the normal).
+  - the normal's words through `const CPnt3D &d = dir` load frame-direct and stay in f23-f21 (`float nx = dir.x` kept &dir.y
+    in a saved register, spilling top). `CPnt3D z = *(CPnt3D *)row` keeps the strafe ternary ahead of the dot product.
+  - `float h = f(); h *= 0.5f;` keeps h in f0. `return !b->IsDone(dT)` in an inline gives `sltu; xori; beqz` (in place
+    `bnez`). `case 0` beside `default`: the beq chain tests 0, 2, 1.
 - **Tells from CSealCtrl/CSealCtrlAi, round 70** (CSealCtrl::PreTick 0x594CF0 (0x19A8) byte-exact, unwritten before, seal_control.cpp,
   from the target and SOCOM 1's; PathFollowTick 0x567900 (0x1C24) written at the target's size, 53 structural and ~70
   register-only off: the two strafe-flag `||` values (the target's 1 in the first test's slot, `move a1,s0` reusing the turn
