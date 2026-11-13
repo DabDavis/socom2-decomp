@@ -88,7 +88,7 @@ public:
     virtual void ResetToInitialState();
     virtual void OnActionButton();
 
-    unsigned int m_250;   // 0x250 (cleared by the constructor; the names ours)
+    float m_250;   // 0x250: the squirm's phase (cleared by the constructor; the names ours)
     unsigned char m_254;   // 0x254 (cleared by the constructor, set by Initalize)
     unsigned char _255[0x258 - 0x255];
     CAiTrigger m_trigger;   // 0x258: the rest (up) and squirm (down) times
