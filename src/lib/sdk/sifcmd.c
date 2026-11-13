@@ -20,12 +20,13 @@
  * receive buffer's header is volatile (the target's `lbu; andi 0xff` of psize), and so is the
  * copied packet's (fno reloaded on each path).
  *
- * OPEN: sceSifInitCmd (152s: the target saves five s-registers -- both loop counters, the SIF0
- * status bit 0x20 stored after FlushCache and the 0x20000 mask live in s0 -- where this keeps the
- * counters in v1 and builds the 32 at its store; a variable for the bit and both loops counting
- * down do not move it); _sceSifCmdIntrHdlr (23, right size: the copy's count is tested `blez`
- * in the target, `beqz` here -- this compile knows (size + 15) / 16 is not negative -- and the
- * registers around it follow; ten loop shapes tried, build/scratch/gcc/gen_intr.py). */
+ * sceSifInitCmd byte-exact since GCC round 83: both clears count UP to 32 -- loop.c reverses
+ * them (s0 down from 31), and the counter's final value 32, live across EIntr and FlushCache, is
+ * the SIF0 bit stored back (the s0 the OPEN note read as a variable for the bit).
+ * OPEN: _sceSifCmdIntrHdlr (8, right size: one int is the size, the quadword count and the id --
+ * the count tested `blez`, since a pseudo set more than once has no nonzero_bits for combine to
+ * prove it positive; the packet indexed and the receive buffer walked, so the count's copy comes
+ * before the giv's init; left: the fno test in v1 and the handler in a2, where this takes v0/v1). */
 
 typedef unsigned int u_int;
 typedef unsigned int u_long128 __attribute__((mode(TI)));
@@ -149,7 +150,7 @@ void sceSifInitCmd(void)
 		_sys_buffer[i].func = 0;
 		_sys_buffer[i].data = 0;
 	}
-	for (i = 31; i >= 0; i--)
+	for (i = 0; i < 32; i++)
 		soft_reg[i] = 0;
 	_sys_buffer[0].func = (sceSifCmdHandler)_change_addr;
 	_sys_buffer[0].data = &_data_table;
@@ -278,30 +279,29 @@ static int _sceSifCmdIntrHdlr(int ch)
 	sceSifCmdState *dt;
 	volatile sceSifCmdHdr *h;
 	volatile sceSifCmdHdr *c;
-	sceSifCmdData *d;
-	int size, n, i, id;
+	int size, i;
 
 	EIntr();
 	dt = &_data_table;
 	h = (volatile sceSifCmdHdr *)dt->pktbuf;
 	if ((size = h->psize) == 0)
 		return 0;
-	n = (size + 15) / 16;
+	size = (size + 15) / 16;
 	h->psize = 0;
-	{ u_long128 *s = (u_long128 *)h, *t = pkt; for (i = 0; i < n; i++) *t++ = *s++; }
+	{ u_long128 *s = (u_long128 *)h; for (i = 0; i < size; i++) pkt[i] = *s++; }
 	isceSifSetDChain();
 	c = (volatile sceSifCmdHdr *)pkt;
 	if (c->fno & 0x80000000) {
-		id = c->fno & 0x7fffffff;
-		if (id < dt->systbl_len) {
-			if (dt->systbl[id].func)
-				dt->systbl[id].func(pkt, dt->systbl[id].data);
+		size = c->fno & 0x7fffffff;
+		if (size < dt->systbl_len) {
+			if (dt->systbl[size].func)
+				dt->systbl[size].func(pkt, dt->systbl[size].data);
 		}
 	} else {
-		id = c->fno;
-		if (id < dt->usrtbl_len) {
-			if (dt->usrtbl[id].func)
-				dt->usrtbl[id].func(pkt, dt->usrtbl[id].data);
+		size = c->fno;
+		if (size < dt->usrtbl_len) {
+			if (dt->usrtbl[size].func)
+				dt->usrtbl[size].func(pkt, dt->usrtbl[size].data);
 		}
 	}
 	asm volatile ("sync\n\tei");
