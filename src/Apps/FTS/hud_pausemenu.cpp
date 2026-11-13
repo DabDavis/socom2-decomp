@@ -6,7 +6,7 @@
  * lines' test and the line's constructor and destructor (round 37); ClosePauseMenu (round 51: its old
  * menu state SOCOM 1's MENU_STATE m_oldmenustate -- a signed char field cast to the enum loads with lbu); TickOffState (round 59: the
  * unit's first function, 0x2011F0, as SOCOM 1's; HudTick 0x201690, Init 0x202520, HandleSelectionInput
- * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten); HudTick, HandleSelectionInput and OpenPauseMenu (round 65; Init 0x202520 still unwritten). Defined in reverse of their
+ * 0x2041E0 and OpenPauseMenu 0x204A40 named by SOCOM 1's calls, unwritten); HudTick, HandleSelectionInput and OpenPauseMenu (round 65); Init 0x202520 (round 71, ReInit inlined into it). Defined in reverse of their
  * image order (-inline deferred): the unit ends with the lines' test 0x205A70, the line's
  * constructor 0x205970 (generated before the menu's constructor, which takes its address) and the
  * menu's constructor 0x205800. */
@@ -34,6 +34,23 @@ enum MENU_STATE {
  * names ours */
 struct CPauseItem {
     CPauseItem();
+    /* a line set up (Init's: the string id, the kind, the offline and online flags; a line with no
+     * string gets the third flag; the names ours) */
+    void Set(unsigned int id, unsigned char kind, bool f0, bool f1)
+    {
+        m_id = id;
+        m_kind = kind;
+        m_flag0 = f0;
+        m_flag1 = f1;
+        if (m_id == (unsigned int)-1)
+            m_flag2 = true;
+    }
+    void SetFlags(bool f2, bool f3, bool f4)
+    {
+        m_flag2 = f2;
+        m_flag3 = f3;
+        m_flag4 = f4;
+    }
 
     C2DString m_text;   // 0x0
     unsigned int m_id;   // 0x98
@@ -68,12 +85,28 @@ public:
     virtual void Off();
     virtual void On();
     void ReInit();
+    /* the prompts', questions' and answers' texts (ReInit's; inline, the name ours: written out in
+     * ReInit's body, ReInit is past -inline auto's fifteen statements, and the target inlines ReInit
+     * into Init) */
+    void SetStrings()
+    {
+        m_texta90.SetString("\xa6 ACCEPT", true);
+        m_textb28.SetString("\xac BACK", true);
+        m_textcf0.SetString("Are you sure you want", true);
+        m_textd88.SetString("to abort the game?", true);
+        m_texte20.SetString(" ", true);
+        m_texteb8.SetString("Are you sure you want", true);
+        m_textf50.SetString("to replay the mission?", true);
+        m_textfe8.SetString(" ", true);
+        m_text1080.SetString("YES", true);
+        m_text1220.SetString("NO", true);
+    }
     void Clear();
     void ClosePauseMenu();
     bool IsSelectable(signed char line);
     /* the menu closed: the start button opens it (SOCOM 1's TickOffState, 0x2011F0), the faded
      * parts fade out; and the menu's tick, set-up, pad and opening (SOCOM 1's HudTick, Init,
-     * HudTick 0x201690, HandleSelectionInput 0x2041E0, OpenPauseMenu 0x204A40; Init 0x202520 unwritten) */
+     * HudTick 0x201690, HandleSelectionInput 0x2041E0, OpenPauseMenu 0x204A40) */
     void TickOffState(const CPad &pad, float dT);
     void HudTick(CPad *pad, float dT);
     void Init();
@@ -85,7 +118,7 @@ public:
 
     CPauseItem *m_items;   // 0x18
     signed char m_sel;   // 0x1c: the line selected
-    int m_20;   // 0x20
+    C2DFont *m_font;   // 0x20: the lines' font (Init loads every string with it)
     unsigned char _24[0x30 - 0x24];
     C2DBitmapPoly m_background;   // 0x30
     C2DBitmap m_panel;   // 0x220
@@ -244,6 +277,7 @@ public:
 class CSnd {
 public:
     static void PostTick(float dT, void *arg);
+    static CPauseSub *GetSoundByName(const char *name);
 };
 
 class CameraZoom {
@@ -436,7 +470,7 @@ CZPauseTest::CZPauseTest()
     Off();
     m_bc4 = 0;
     m_bc8 = 50.0f;
-    m_20 = 0;
+    m_font = 0;
     m_oldmenustate = stateNone;
     m_bd0 = 0;
     m_bd4 = 0;
@@ -521,16 +555,7 @@ void CZPauseTest::ReInit()
     } while (!found);
     m_sel = sel;
     m_socom2_bc1 = 0;
-    m_texta90.SetString("\xa6 ACCEPT", true);
-    m_textb28.SetString("\xac BACK", true);
-    m_textcf0.SetString("Are you sure you want", true);
-    m_textd88.SetString("to abort the game?", true);
-    m_texte20.SetString(" ", true);
-    m_texteb8.SetString("Are you sure you want", true);
-    m_textf50.SetString("to replay the mission?", true);
-    m_textfe8.SetString(" ", true);
-    m_text1080.SetString("YES", true);
-    m_text1220.SetString("NO", true);
+    SetStrings();
     data_00409088 = 0;
 }
 
@@ -942,6 +967,249 @@ static float s_pausePulseDir = 1.0f;
 extern float data_00409090;
 extern unsigned char data_00409098;
 extern float data_004090A0;
+
+/* the screen's size (zVid's, OVL1 bss 0x4A44C4/0x4A44C8; no rows) */
+extern unsigned int data_004A44C4;
+extern unsigned int data_004A44C8;
+
+/* the menu built (CHUD::Init's call; SOCOM II's own -- SOCOM 1's is 0x28): the twelve lines' string
+ * ids, kinds and flags, the three sounds, the lines placed down the panel, the background, the panel
+ * and its bars, the mission's name and the prompts, then the third panel -- its questions and its
+ * yes/no boxes -- each part a child of the one before; ReInit's set-up last (inlined: the target's
+ * tail is ReInit's body, so ReInit's strings went into the inline SetStrings to bring it under -inline
+ * auto's fifteen statements). Each line's flags through two inline setters taking bools: a `false`
+ * argument stays `andi rX,zero,1` before its shift, a `true` folds to the constant. The yes/no boxes'
+ * right edges are written out in each SetPos, `4.0f + (40.0f + yes)` then `40.0f + yes` (a `right`
+ * local assigned before the call materialises 40.0 ahead of the outer box's 253.0, 15 off); the box
+ * edges are float locals, their (int) conversions kept in s2-s5 across both boxes */
+void CZPauseTest::Init()
+{
+    m_items[0].Set(0xec60, 0, true, true);
+    m_items[0].SetFlags(false, true, true);
+    m_items[1].Set(0xec62, 1, true, false);
+    m_items[1].SetFlags(false, true, false);
+    m_items[2].Set(0xec61, 2, true, true);
+    m_items[2].SetFlags(false, true, false);
+    m_items[3].Set(0xec67, 3, true, true);
+    m_items[3].SetFlags(true, true, false);
+    m_items[8].Set(-1, 8, true, true);
+    m_items[8].SetFlags(true, true, false);
+    m_items[5].Set(-1, 5, false, true);
+    m_items[5].SetFlags(true, true, false);
+    m_items[9].Set(-1, 9, true, true);
+    m_items[9].SetFlags(true, true, false);
+    m_items[4].Set(-1, 4, false, true);
+    m_items[4].SetFlags(true, true, false);
+    m_items[6].Set(0xec65, 6, true, false);
+    m_items[6].SetFlags(true, true, false);
+    m_items[7].Set(0xec63, 7, true, false);
+    m_items[7].SetFlags(true, true, false);
+    m_items[11].Set(-1, 11, false, true);
+    m_items[11].SetFlags(true, true, false);
+    m_items[10].Set(-1, 10, false, true);
+    m_items[10].SetFlags(true, true, false);
+    m_bd0 = CSnd::GetSoundByName(".TCM_SELECT");
+    m_bd4 = CSnd::GetSoundByName(".TCM_SLIDE");
+    m_bd8 = CSnd::GetSoundByName(".TCM_SLIDE");
+
+    unsigned int n = 0;
+
+    for (unsigned int i = 0; i < 12; i++) {
+        signed char line = i;
+        CPauseItem *item = &m_items[line];
+
+        if (IsSelectable(line)) {
+            item->m_text.Load(1.1f, "UNUSED", m_font, (float)(data_004A44C4 / 2), 155.0f + 21.0f * (float)n++, true);
+            item->m_text.m_isCentered = 1;
+            item->m_text.SetColor(100.0f, 100.0f, 100.0f);
+            item->m_text.SetTrans(128.0f);
+            item->m_text.On();
+        } else {
+            item->m_text.Off();
+        }
+    }
+
+    m_background.SetHasTexture(false);
+    m_background.SetPos(0.0f, 0.0f, (float)data_004A44C4, (float)data_004A44C8);
+    m_background.SetColor(0.0f, 0.0f, 0.0f);
+    m_background.SetIsTrans(true);
+    m_background.SetTrans(1, 0.0f);
+    m_background.SetTrans(2, 0.0f);
+    m_background.Off();
+
+    m_panel.SetHasTexture(false);
+    m_panel.Load(164.0f, 119.0f, 476.0f, 361.0f, 0);
+    m_panel.SetColor(s_pauseColor1.x, s_pauseColor1.y, s_pauseColor1.z);
+    m_panel.SetTrans(80.0f);
+    m_panel.SetIsTrans(true);
+    m_panel.Off();
+
+    m_bitmap2a0.SetHasTexture(false);
+    m_bitmap2a0.Load(170.0f, 125.0f, 470.0f, 355.0f, 0);
+    m_bitmap2a0.SetColor(s_pauseColor0.x, s_pauseColor0.y, s_pauseColor0.z);
+    m_bitmap2a0.SetTrans(100.0f);
+    m_bitmap2a0.SetIsTrans(true);
+    m_bitmap2a0.Off();
+    m_panel.push_back(&m_bitmap2a0);
+
+    m_bitmap320.SetHasTexture(false);
+    m_bitmap320.Load(164.0f, 56.0f, 476.0f, 106.0f, 0);
+    m_bitmap320.SetColor(s_pauseColor1.x, s_pauseColor1.y, s_pauseColor1.z);
+    m_bitmap320.SetTrans(80.0f);
+    m_bitmap320.SetIsTrans(true);
+    m_bitmap320.Off();
+    m_bitmap2a0.push_back(&m_bitmap320);
+
+    m_bitmap3a0.SetHasTexture(false);
+    m_bitmap3a0.Load(170.0f, 62.0f, 470.0f, 100.0f, 0);
+    m_bitmap3a0.SetColor(s_pauseColor0.x, s_pauseColor0.y, s_pauseColor0.z);
+    m_bitmap3a0.SetTrans(100.0f);
+    m_bitmap3a0.SetIsTrans(true);
+    m_bitmap3a0.Off();
+    m_bitmap320.push_back(&m_bitmap3a0);
+
+    m_text420.Load(1.3f, " ", m_font, 0.0f, 0.0f, true);
+    m_text420.SetPos(data_004A44C4 / 2, 92);
+    m_text420.SetString("MISSION NAME", true);
+    m_text420.SetColor(128.0f, 128.0f, 64.0f);
+    m_text420.SetTrans(110.0f);
+    m_text420.m_isCentered = 1;
+    m_text420.UpdatePos();
+    m_bitmap3a0.push_back(&m_text420);
+
+    m_poly6b0.SetHasTexture(false);
+    m_poly6b0.SetColor(s_pauseColor2.x, s_pauseColor2.y, s_pauseColor2.z);
+    m_poly6b0.SetTrans(100.0f);
+    m_poly6b0.SetIsTrans(true);
+    m_poly6b0.Off();
+    m_bitmap2a0.push_back(&m_poly6b0);
+
+    m_texta90.Load(0.8f, "\xa6 ACCEPT", m_font, 0.0f, 0.0f, true);
+    m_texta90.SetPos(245, 345);
+    m_texta90.SetString(" ", true);
+    m_texta90.SetColor(128.0f, 128.0f, 64.0f);
+    m_texta90.SetTrans(110.0f);
+    m_bitmap2a0.push_back(&m_texta90);
+
+    m_textb28.Load(0.8f, "\xac BACK", m_font, 0.0f, 0.0f, true);
+    m_textb28.SetPos(337, 345);
+    m_textb28.SetString(" ", true);
+    m_textb28.SetColor(128.0f, 128.0f, 64.0f);
+    m_textb28.SetTrans(110.0f);
+    m_bitmap2a0.push_back(&m_textb28);
+
+    m_panel2.SetPos((int)((float)(data_004A44C4 / 2) - 128.0f - 10.0f), 125,
+                    (int)(10.0f + (128.0f + (float)(data_004A44C4 / 2))), 275);
+    m_panel2.SetHasTexture(false);
+    m_panel2.SetColor(s_pauseColor1);
+    m_panel2.SetTrans(80.0f);
+
+    m_bitmapbf0.SetPos((int)((float)(data_004A44C4 / 2) - 128.0f), 135,
+                       (int)(128.0f + (float)(data_004A44C4 / 2)), 265);
+    m_bitmapbf0.SetHasTexture(false);
+    m_bitmapbf0.SetColor(s_pauseColor0);
+    m_bitmapbf0.SetTrans(100.0f);
+    m_bitmapbf0.On();
+    m_panel2.push_back(&m_bitmapbf0);
+
+    m_textcf0.Load(1.1f, "UNUSED", m_font, 0.0f, 0.0f, true);
+    m_textcf0.SetPos(data_004A44C4 / 2, 165);
+    m_textcf0.m_isCentered = 1;
+    m_textcf0.SetColor(100.0f, 100.0f, 100.0f);
+    m_textcf0.UpdatePos();
+    m_textcf0.On();
+    m_bitmapbf0.push_back(&m_textcf0);
+
+    m_textd88.Load(1.1f, "UNUSED", m_font, 0.0f, 0.0f, true);
+    m_textd88.SetPos(data_004A44C4 / 2, 185);
+    m_textd88.m_isCentered = 1;
+    m_textd88.SetColor(100.0f, 100.0f, 100.0f);
+    m_textd88.UpdatePos();
+    m_textd88.On();
+    m_bitmapbf0.push_back(&m_textd88);
+
+    m_texte20.Load(1.1f, "UNUSED", m_font, 0.0f, 0.0f, true);
+    m_texte20.SetPos(data_004A44C4 / 2, 205);
+    m_texte20.m_isCentered = 1;
+    m_texte20.SetColor(100.0f, 100.0f, 100.0f);
+    m_texte20.UpdatePos();
+    m_texte20.On();
+    m_bitmapbf0.push_back(&m_texte20);
+
+    m_texteb8.Load(1.1f, "UNUSED", m_font, 0.0f, 0.0f, true);
+    m_texteb8.SetPos(data_004A44C4 / 2, 165);
+    m_texteb8.m_isCentered = 1;
+    m_texteb8.SetColor(100.0f, 100.0f, 100.0f);
+    m_texteb8.UpdatePos();
+    m_texteb8.On();
+    m_bitmapbf0.push_back(&m_texteb8);
+
+    m_textf50.Load(1.1f, "UNUSED", m_font, 0.0f, 0.0f, true);
+    m_textf50.SetPos(data_004A44C4 / 2, 185);
+    m_textf50.m_isCentered = 1;
+    m_textf50.SetColor(100.0f, 100.0f, 100.0f);
+    m_textf50.UpdatePos();
+    m_textf50.On();
+    m_bitmapbf0.push_back(&m_textf50);
+
+    m_textfe8.Load(1.1f, "UNUSED", m_font, 0.0f, 0.0f, true);
+    m_textfe8.SetPos(data_004A44C4 / 2, 205);
+    m_textfe8.m_isCentered = 1;
+    m_textfe8.SetColor(100.0f, 100.0f, 100.0f);
+    m_textfe8.UpdatePos();
+    m_textfe8.On();
+    m_bitmapbf0.push_back(&m_textfe8);
+
+    float yes = (float)(data_004A44C4 / 2) - 60.0f;
+    float no = 60.0f + (float)(data_004A44C4 / 2);
+    float top = 223.0f;
+    float bottom = 249.0f;
+
+    m_bitmap11a0.On();
+    m_bitmap11a0.SetHasTexture(false);
+    m_bitmap11a0.SetColor(s_pauseColor3);
+    m_bitmap11a0.SetPos((int)(yes - 40.0f - 4.0f), (int)(top - 4.0f), (int)(4.0f + (40.0f + yes)), (int)(bottom + 4.0f));
+    m_bitmapbf0.push_back(&m_bitmap11a0);
+
+    m_bitmap1120.On();
+    m_bitmap1120.SetHasTexture(false);
+    m_bitmap1120.SetColor(s_pauseColor3);
+    m_bitmap1120.SetPos((int)(yes - 40.0f), (int)top, (int)(40.0f + yes), (int)bottom);
+    m_bitmapbf0.push_back(&m_bitmap1120);
+
+    m_bitmap1340.On();
+    m_bitmap1340.SetHasTexture(false);
+    m_bitmap1340.SetColor(s_pauseColor3);
+    m_bitmap1340.SetPos((int)(no - 40.0f - 4.0f), (int)(top - 4.0f), (int)(4.0f + (40.0f + no)), (int)(bottom + 4.0f));
+    m_bitmapbf0.push_back(&m_bitmap1340);
+
+    m_bitmap12c0.On();
+    m_bitmap12c0.SetHasTexture(false);
+    m_bitmap12c0.SetColor(s_pauseColor3);
+    m_bitmap12c0.SetPos((int)(no - 40.0f), (int)top, (int)(40.0f + no), (int)bottom);
+    m_bitmapbf0.push_back(&m_bitmap12c0);
+
+    float y = 245.0f;
+
+    m_text1080.Load(1.1f, " ", m_font, 0.0f, 0.0f, true);
+    m_text1080.SetPos((int)yes, (int)y);
+    m_text1080.m_isCentered = 1;
+    m_text1080.SetColor(100.0f, 100.0f, 100.0f);
+    m_text1080.UpdatePos();
+    m_text1080.On();
+    m_bitmapbf0.push_back(&m_text1080);
+
+    m_text1220.Load(1.1f, " ", m_font, 0.0f, 0.0f, true);
+    m_text1220.SetPos((int)no, (int)y);
+    m_text1220.m_isCentered = 1;
+    m_text1220.SetColor(100.0f, 100.0f, 100.0f);
+    m_text1220.UpdatePos();
+    m_text1220.On();
+    m_bitmapbf0.push_back(&m_text1220);
+
+    m_panel2.Off();
+    ReInit();
+}
 
 /* the menu's tick (SOCOM 1's HudTick, much grown): the third panel's bitmap kept up, the selection bar
  * slid to the selected line, then closed the closed tick, or open: the sound ticked, the yes/no of the
