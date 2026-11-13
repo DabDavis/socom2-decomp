@@ -112,6 +112,17 @@ void CPnt3D::Interp(const CPnt3D *b, float t, CPnt3D *out) const
     out->Add(&tmp, out);
 }
 
+/* OPEN (the engine back half's round 1, both DistToVectors): the VU vectors are declared in the
+ * target's frame order (c, v1, v2 at the top, then n, v3, v4: the 4-argument one 126 -> 110 off),
+ * and the target's accesses read as three forms -- the two tests' Dot and the final product through
+ * references (&ap + 4 and + 8 the temporaries, the final product reusing the second test's loads),
+ * v3's fill likewise; the assignments `ab = ...`/`ap = ...`, v1's and v2's fills and both sqrts'
+ * y and z frame-relative, the sqrts' x the test's register. Every combination of Dot / direct tests,
+ * direct / Length / Dot sqrts and reference / direct fills (576, build: the 3-argument one) leaves
+ * the assignments' y and z stores in the tests' temporaries (best: 0x2F8, d=61 -- the tests by Dot,
+ * the first sqrt direct, the fills and the final product by reference). CQuat::Align and
+ * ClipCameraChord closed on the same split (their assignments then stored frame-relative, in
+ * ClipCameraChord's case between two reference reads, so it is not the order alone). */
 /* The same, and the nearest point of the segment into *nearest when it lies inside. */
 int CPnt3D::DistToVector(const CPnt3D *a, const CPnt3D *b, CPnt3D *nearest, float *dist) const
 {
@@ -130,12 +141,12 @@ int CPnt3D::DistToVector(const CPnt3D *a, const CPnt3D *b, CPnt3D *nearest, floa
         *dist = sqrtf(Dot(ap, ap));
         return 0;
     }
-    sceVu0FVECTOR n;
-    sceVu0FVECTOR v4;
-    sceVu0FVECTOR v3;
     sceVu0FVECTOR c;
     sceVu0FVECTOR v1;
     sceVu0FVECTOR v2;
+    sceVu0FVECTOR n;
+    sceVu0FVECTOR v3;
+    sceVu0FVECTOR v4;
     v1[0] = ap.x;
     v1[1] = ap.y;
     v1[2] = ap.z;
@@ -181,12 +192,12 @@ int CPnt3D::DistToVector(const CPnt3D *a, const CPnt3D *b, float *dist) const
         *dist = sqrtf(Dot(ap, ap));
         return 0;
     }
-    sceVu0FVECTOR n;
-    sceVu0FVECTOR v4;
-    sceVu0FVECTOR v3;
     sceVu0FVECTOR c;
     sceVu0FVECTOR v1;
     sceVu0FVECTOR v2;
+    sceVu0FVECTOR n;
+    sceVu0FVECTOR v3;
+    sceVu0FVECTOR v4;
     v1[0] = ap.x;
     v1[1] = ap.y;
     v1[2] = ap.z;
