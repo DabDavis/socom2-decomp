@@ -23,12 +23,16 @@ extern char *DELETED_NODE;
 
 namespace zdb {
 
-/* the unit's statics, CLight::m_tick_list and CNode::m_deferred_visuals, which its __sinit builds
- * in that order (0x4028D0), are not defined here yet: defined, this unit emits their destructors,
- * whose generated drafts match (0x317820, 0x3177C0) where these do not -- CTickLightList's vector
- * is constructed as a vector of pointers is and destroyed clearing its size, which no vector in
- * include/vector does, and the list's destructor calls the deleter's after two levels where
- * list<T *>'s inlines all three. With a vector of pointers in its place the initialiser matches */
+/* the unit's statics, CLight::m_tick_list and CNode::m_deferred_visuals, built in that order by
+ * the unit's __sinit (0x4028D0: the vector's three words zeroed in line, the list's deleter
+ * constructed out of line, each destructor registered) -- byte-exact, as is the list's destructor
+ * this unit emits (0x3177C0). OPEN (~CTickLightList, 0x317820, 6 instructions): its generated
+ * draft matches where this unit's copy does not -- the target inlines the deleter's clear (the
+ * size zeroed) into the deleter's destructor, four this-tests deep, where here clear is generated
+ * a round after the destructor and called (include/vector's comment on the deleter's rounds); an
+ * explicit destructor, `clear()` in one, either destroy opt-in: no closer */
+CTickLightList CLight::m_tick_list;
+std::list<CVisual *> CNode::m_deferred_visuals;
 
 /* the world-to-texture projectors (zmath_main.cpp: SOCOM 1's CalcWorldToUV pair, given the
  * texture's width where SOCOM 1 passed the texture) */
