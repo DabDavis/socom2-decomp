@@ -2066,6 +2066,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC Medius code, round 77** (dmemessage 0x61F518 (the six report stores permuted: 3 of 720 orders match --
+  nWorld, nClient, pClient, nState, nUser, nData), streammedia 0x644EA0 (the data callback read into a `void (*pfn)(STREAM_CB_DATA
+  *)` local before the four stores) and audio 0x6115C0 (the send's length `h.nLen` read back, not `n & 0xFFFF`) byte-exact; four
+  notes stale or wrong. Near: iget_buffer_status (`i = 0;` above the connection test gives every register, its move in the call's
+  slot; one instruction more of i's live range would flip the priority), rt_crypt 0x630DF0 (pData 2934 vs the key master 2903),
+  rt_p2p 0x63C170 (a volatile argument orders the load but cannot fill the `beq` slot). 0x63EF38: two byte-identical copy arms
+  ending in jumps to one label are not cross-jumped at the post-sched2 pass):
+  - AN EXHAUSTED PERMUTATION IS ONLY EXHAUSTED AGAINST ITS BODY: re-run it after any other change (0x61F518's "all 720" predated
+    the nState local).
+  - A REGISTER THE TARGET SKIPS (a reload in a1 with v0/v1 free) IS A VALUE LIVE ACROSS IT AT ALLOCATION that sched2 later sank.
+  - AN ARGUMENT EQUAL TO A FIELD JUST STORED IS THE FIELD READ BACK (`f(..., h.nLen)`: the `andi` is the field's zero-extension).
+  - expand_call loads an indirect callee's pointer before the register arguments; a precomputed argument goes ahead of it. Under
+    2.96 REG_N_REFS is weighted by loop depth: a loop counter's few uses count double.
 - **Tells from the Metrowerks rows, round 77** (CBBox::GetIntersect 0x307640 byte-exact. Not closed: the turret test (all three
   targets one block shape -- null test to the zero block, kind test to the true arm, the false arm a lone `b` to the zero block;
   SetTarget's `if (!t || kind != TURRET) t = 0;` gives it but pads the join; ~70 more spellings), 0x57F530 (the dead-store arm gives
