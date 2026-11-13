@@ -1105,6 +1105,8 @@
 0x001BCF20 _request_end@libmrpc
 0x001BD028 sceSifMBindRpc
 0x001BD050 sceSifMBindRpcParam
+0x001BD200 sceSifMUnBindRpc
+0x001BD320 sceSifMCallRpc
 0x001BD588 func_001BD588
 0x001BD5C8 func_001BD5C8
 0x001BD630 func_001BD630

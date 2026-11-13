@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC SDK, round 80** (libmrpc.c's sceSifMUnBindRpc 0x1BD200 and sceSifMCallRpc 0x1BD320 byte-exact: the packet
+  written through a union (sceSifMPkt), the client's pid read before paddr is stored; libmrpc 9 of 9 -- a unit-wide
+  -fno-strict-aliasing also matches all three but costs sceSifMInitRpc 9 words, and the demo shows libmrpc one object. inet_heap.c's
+  0x1C1D40 28 to 2 (left: b->next's load one slot ahead of `addiu v0,a0,12`) and 0x1C1E90 6 to 1 (the first merge's size store
+  through n: CSE makes b canonical, it lives longer); sifrpc's sceSifCallRpc 0x1A6C78 17 to 2 (the same union locally); 0x1C2028
+  still 23. The strict-aliasing flag swept over the lane's 24 units: no other row matches with it. QUESTION FOR inet_heap.c: round
+  79 split it out for -fno-strict-aliasing; a union in its access path may be the true shape instead -- not yet tried):
+  - STORES KEPT IN SOURCE ORDER IN ONE FUNCTION, ITS SIBLINGS FREE TO REORDER, ARE ACCESSES THROUGH A UNION, NOT A UNIT FLAG: a
+    union anywhere in the access path gives alias set 0 (c_get_alias_set). Before splitting a unit for -fno-strict-aliasing, try a
+    one-member union on the pointer.
+  - a load ordered ahead of a store to a different base under alias set 0 means the source reads first.
+  - two registers holding one value in one block (load through one, store through the other) are not a CSE choice: canon_reg
+    makes them one (make_regs_eqv: the longer-lived copy wins).
+  - a value one variable holds twice that the target keeps in two registers is two variables (`avail = sz - C; rest = avail -
+    size;`). A reload in each arm's branch slot is the assignment written in each arm.
+  - exp2 0x251850: the target's `li at,0; mtc1` zero is a CONST_DOUBLE 0.0 that is not CONST0_RTX; its source unknown.
 - **Tells from the Metrowerks rows, round 80** (tcmUpdateTeamMember 0x230050 byte-exact, open since round 56: the slot-0xC call passes
   the parameter narrowed again, `(TCM_MEMBER)member`, not the local m. HandleFireWeapon 0x5BE9A0 27 to 10, two registers left: a
   SOURCE MISTAKE -- "Unable To Deploy" goes to the mission's first queue (theMission+0x1C0, CKitMission's new m_messages0), not
