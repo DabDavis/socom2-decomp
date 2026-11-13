@@ -4954,7 +4954,7 @@ static inline bool IsAutomatic(EQUIP_ITEM id)
 extern "C" {
 /* (OVL2 0x58F6E0, seal_orders.cpp's: a cell near a point, along a line from another) */
 bool func_0058F6E0(const CPnt3D *from, const CPnt3D *to, CAiMapLoc *out, bool along);
-/* (OVL2 0x555C50: a throw found from a point to another -- its landing point and cell; unwritten) */
+/* (OVL2 0x555C50: a throw found from a point to another -- its landing point and cell; below) */
 bool func_00555C50(CSealCtrlAi *ai, const CPnt3D *from, const CPnt3D *to, CPnt3D *pos, CAiMapLoc *loc);
 /* (OVL2 data: the wait a launcher's round is given, read as a variable) */
 extern float data_0064FE38;
@@ -7664,6 +7664,8 @@ struct CCellWalk {
 };
 
 struct CCellGather {
+    CCellGather() : m_found(0), m_loc(CAiMapLoc::invalid), m_count(0) {}
+
     unsigned char m_kind;   // 0x0
     CPnt3D m_pos;   // 0x4
     unsigned char m_found;   // 0x10
@@ -7929,6 +7931,63 @@ extern "C" bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc)
     CAiCell *cell = map->GetCell(loc, 0);
 
     return cell ? cell->IsInside() : false;
+}
+
+/* a throw from outside at a point inside: the line walked from the one to the other (0x556280 gathers
+ * the outside cells up to the inside's edge, the fourth one kept), the last outside point and that
+ * cell, moved a cell on along the line's reverse -- or forward -- when that cell can be stepped on;
+ * else the point itself with the thrower's cell (OVL2 0x555C50, new in SOCOM II: 0x564D20 asks it;
+ * the names ours). Byte-exact (the SEALs' round 62, unwritten before) with: the two locations' tests
+ * one `&&` (GetLocation's bool read with sltu, an if-chain does not); the gatherer's constructor
+ * copying the invalid cell field by field; the map declared ahead of the direction */
+extern "C" bool func_00555C50(CSealCtrlAi *ai, const CPnt3D *from, const CPnt3D *to, CPnt3D *pos,
+                              CAiMapLoc *loc)
+{
+    CAiMapLoc a;
+    CAiMapLoc b;
+    bool ok = AiMaps.GetLocation(from, a) && AiMaps.GetLocation(to, b);
+    if (ok) {
+        CCellGather g;
+        g.m_kind = CellInside(b);
+        if (g.m_kind && !CellInside(a)) {
+            AiMaps.WalkLine(from, to, (bool (*)(const MAP_LINEWALK_STRUCT &, void *))func_00556280, &g, 0.2f);
+            if (g.m_found) {
+                *pos = g.m_pos;
+                *loc = g.m_loc;
+
+                CPnt3D d = *to - *from;
+                float len = FlatLength(d);
+
+                if (len != 0.0f) {
+                    float inv = 1.0f / len;
+
+                    d.x *= inv;
+                    d.z *= inv;
+                }
+
+                CAiMap *map;
+                CAiMap::DIR dir = (CAiMap::DIR)((CAiMap::GetClosestDir(&d) + 12) % 8);
+
+                map = AiMaps.GetMapByIndex(loc->m_mapid);
+
+                if (map) {
+                    CAiMapLoc n;
+
+                    if (TraversableNeighbor(map, *loc, dir, n))
+                        *loc = n;
+                    else if (TraversableNeighbor(map, *loc, (CAiMap::DIR)((dir + 4) % 8), n))
+                        *loc = n;
+                }
+            } else
+                ok = false;
+        } else
+            ok = false;
+    }
+    if (!ok) {
+        *pos = *to;
+        *loc = a;
+    }
+    return ok;
 }
 
 extern "C" {
