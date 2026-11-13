@@ -77,17 +77,16 @@ float CPnt3D::Normalize(CPnt3D *out) const
     return len;
 }
 
-/* the reflection of this vector in the plane whose normal is n. OPEN: the target's chain --
- * the scaled normal, its block copy, an element-wise assignment, the adds -- but it keeps this
- * vector's components in registers from the dot product, where this reloads them. */
+/* the reflection of this vector in the plane whose normal is n: the scaled normal, its block copy,
+ * an element-wise assignment, then this vector added through operator+= -- Add, this unit's own,
+ * inlined, its operand's components still in the registers the dot product loaded them into (the
+ * engine back half's round 1; the three `r.x += x` reload them, 0xDC) */
 CPnt3D CPnt3D::Reflect(const CPnt3D *n)
 {
     CPnt3D r;
 
     r = *n * (-2.0f * Dot(*this, *n));
-    r.x += x;
-    r.y += y;
-    r.z += z;
+    r += *this;
     return r;
 }
 
