@@ -1247,16 +1247,14 @@ inline bool CSealUnit::HandleSupport(CZSealBody *seal, FT_COMMAND cmd, void *dat
  * FollowSeal, the prototype signalled through a CAiState pointer (on the object MW calls
  * CAiSBreach::OnSignal directly), the three targeted walks' end() taken into a local first (begin
  * in v0, the end in v1, as the target: 70 -> 52).
- * OPEN, 50 instructions at the target's size (0x1640): (1) the frame -- the target's two cells sit
- * highest (0x14C, 0x148), then the order list's erase/insert temporaries (0x144-0x12C), the
- * escortee's copy (0x128), the prototype pointer and the four order-data words (0x124-0x114);
- * here the temporaries sit 0x14-0x20 lower; (2) the squad-18 walk's node and sentinel swap (s2 /
- * s5); (3) the breach's sub-squad walk swaps its iterator and the read-back prototype (s0 / s3 --
- * the iterator declared first, its end a local or the prototype's definition late all miss); (4)
- * the prototype's kind reloaded lb
- * (here lbu -- a signed char cast changes nothing), the default walk's `took || b` scheduled a
- * word later. The kit's round 66: the path's `size() > 3` is the target's sltiu at (`>= 4` computed
- * into v0), 52 -> 50 */
+ * Byte-exact since the kit's round 67 (50 -> 0): the breach's order data through SetDataPtr and
+ * GetDataPtr, auto-inlined (their parameters and locals inline temporaries, so they sit under the
+ * order list's and the escortee's, as the target's 0x124-0x114 -- written as the function's own
+ * locals they sat highest), the read-back pointer assigned into the parameter `data` (s3, shared
+ * with it), the squad-18 walk's and the sub-squad walk's end() taken into a local first, the default
+ * walk's squad a block local (`took || b`'s delay slot filled), the prototype's kind read through a
+ * signed-char view (`lb`: a marked device -- a value cast keeps `lbu`). The kit's round 66: the
+ * path's `size() > 3` is the target's sltiu at (`>= 4` computed into v0) */
 CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b)
 {
     if (m_unit_num == 1 && IsRelayCommand(cmd)) {
@@ -1289,7 +1287,8 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
         CZSealBody *s = 0;
 
         GetTeamSeals(18, seal, this, &seals);
-        for (std::list<CZSealBody *>::iterator i = seals.begin(); i != seals.end(); ++i) {
+        std::list<CZSealBody *>::iterator e = seals.end();
+        for (std::list<CZSealBody *>::iterator i = seals.begin(); i != e; ++i) {
             s = *i;
             if (((CUnitSealCtrl *)s->m_control)->AllowCommand(seal, cmd, data))
                 s->IssueCommand(seal, cmd, data, true);
@@ -1476,7 +1475,7 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
         if (kind != 1) {
             CAiState *ps = &proto;
 
-            proto.Reset((AI_STATE)proto.m_state);
+            proto.Reset((AI_STATE)*(signed char *)&proto.m_state);
             ps->OnSignal((CAiState::SIGNAL)4, 0);
             if (func_005EBF00(seal, this, seal->GetReticuleAction(false), &proto)) {
                 switch (kind) {
@@ -1489,9 +1488,7 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
                 case 19:
                     break;
                 }
-                void *p = &proto;
-
-                SetData(&p, sizeof p);
+                SetDataPtr(&proto);
                 data = (void *)1;
             }
         }
@@ -1504,23 +1501,16 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
                     took = s;
                 }
             }
-            void *p = 0;
-            void *pr = 0;
+            data = GetDataPtr();
 
-            if (GetData(&p, sizeof p))
-                pr = p;
-            void *z = 0;
+            SetDataPtr(0);
+            ulist::iterator e = m_sub_units.end();
 
-            SetData(&z, sizeof z);
-            for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u) {
+            for (ulist::iterator u = m_sub_units.begin(); u != e; ++u) {
                 CSealUnit *su = *u;
-                void *q = pr;
-
-                su->SetData(&q, sizeof q);
+                su->SetDataPtr(data);
                 su->IssueCommand(seal, cmd, (void *)1, true);
-                void *z2 = 0;
-
-                su->SetData(&z2, sizeof z2);
+                su->SetDataPtr(0);
             }
         }
         break;
@@ -1531,8 +1521,11 @@ CZSealBody *CSealUnit::IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data
             if (took != seal)
                 took->IssueCommand(seal, cmd, data, b);
         }
-        for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u)
-            took = (*u)->IssueCommand(seal, cmd, data, took || b);
+        for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u) {
+            CSealUnit *su = *u;
+
+            took = su->IssueCommand(seal, cmd, data, took || b);
+        }
         break;
     }
     return took;
