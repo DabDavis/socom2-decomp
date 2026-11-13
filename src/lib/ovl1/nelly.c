@@ -107,17 +107,11 @@ int func_00249EE0(Blk48 **pp)
     return 0;
 }
 
-/* a level's band: 261 above 96, 20 less for each 8 below it, down to 161.
- * OPEN (0x70 against 0x8C): the target keeps the 56 test's branch and then compares against 48
- * with nothing branching on it (`c.lt.s; jr ra; nop`), so 56, 48 and below all return 161 by a
- * path the jump optimiser left in place; here the 56 and 48 tests fold into one dead compare after
- * 64. A chain of returns, an assigned result (initialised or in a final else), the ifs in either
- * order and a 141 for the 48 case give 15-49 words (build/scratch/gcc/v_1748.c, GCC round 19a). Round
- * 41a (build/scratch/gcc/r41/v_1748*.py, 10 shapes): a nested ternary returned or assigned, an
- * else-if chain, the last test as a ternary, 161 through an int local (in the 48 case, the final
- * return or both), an unsigned char or float 161 -- every one 0x70, the 56 and 48 tests gone whole. */
-/* OPEN (0x70 against 0x8C; GCC round 45a: no last `return` gives 0x7C, d=9): the target's chain ends `li v0,161` in the 56's slot and a
- * dead `c.lt.s` for 48 before `jr ra`: a jump deleted after flow's last pass, one test deeper than falling off the end leaves it. */
+/* a level's band: 261 above 96, 20 less for each 8 below it, down to 161 -- and nothing returned at
+ * or below 40 (v0 still holds the 56 test's slot's 161 there). GCC round 74a: the chain one test
+ * deeper than the levels it distinguishes, and no final return: the 40 test's jump is deleted after
+ * flow's last pass, the 48 test left a dead `c.lt.s` before `jr ra` (open since round 19a: every
+ * shape that ended in a return folded the 56 and 48 tests whole). */
 int func_00251748(float fX)
 {
     if (fX > 96.0F)
@@ -134,7 +128,8 @@ int func_00251748(float fX)
         return 161;
     if (fX > 48.0F)
         return 161;
-    return 161;
+    if (fX > 40.0F)
+        return 161;
 }
 
 int func_00249F68(void **pblock)
