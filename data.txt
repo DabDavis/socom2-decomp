@@ -2332,6 +2332,7 @@
 0x00669160 0x1C __vt__15CStealthPlanner  # vtable of CStealthPlanner: found by its RTTI's name
 0x00669180 0x1C __vt__13CBasicPlanner  # vtable of CBasicPlanner: found by its RTTI's name
 0x006691A0 0x70 __vt__10CZSealBody  # vtable of CZSealBody: found by its RTTI's name
+0x00669240 0x14 data_00669240  # OVL2 data; ours (the body lane, round 69): OVL2's copy of zdb::CNodeEx's vtable (RTTI 0x65C220, then its three inline slots' OVL2 copies 0x555140/0x555150/0x555160, as OVL1's 0x406000 has 0x2742F0/0x274300/0x216760) -- CZSealBody's constructor 0x553EA0 stores it building m_sealEx, before CSealEx's 0x669570; ovl-copy: __vt__Q23zdb7CNodeEx
 0x00669260 0x50 __vt__11CAiSRescued  # vtable of CAiSRescued: found by its RTTI's name
 0x006692B0 0x50 __vt__10CAiSPursue  # vtable of CAiSPursue: found by its RTTI's name
 0x00669300 0x50 __vt__11CAiSAnimate  # vtable of CAiSAnimate: found by its RTTI's name

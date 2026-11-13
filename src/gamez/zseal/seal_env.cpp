@@ -1347,7 +1347,7 @@ extern "C" void func_005B0420(CZSealBody *seal)
                 seal->m_node->SetPosition(((const CPnt3D &)p).x, ((const CPnt3D &)p).y, ((const CPnt3D &)p).z);
                 seal->m_alt = y;
                 if (seal->m_state != 2)
-                    seal->m_111c = 0;
+                    seal->m_1100.m_node = 0;
             }
             if (CZSealBody::GetSeal(hit->m_node))
                 seal->m_last_altitude.m_pos = hit->m_pos;
@@ -1365,7 +1365,7 @@ extern "C" void func_005B0420(CZSealBody *seal)
             seal->m_1340 = 0.0f;
             seal->m_node->SetPosition(seal->m_last_altitude.m_pos.x, seal->m_last_altitude.m_pos.y, seal->m_last_altitude.m_pos.z);
             seal->UpdatePosW();
-            seal->m_111c = 0;
+            seal->m_1100.m_node = 0;
         } else {
             CPnt3D norm(seal->m_last_altitude.m_norm);
             float y = seal->m_last_altitude.m_pos.y;
@@ -4941,7 +4941,6 @@ bool CZSealBody::SetEyeLookDir(float pitch, float yaw, float rate)
  * 1's, CZSealBody's constructor calls it for its two looks) */
 CLook::CLook()
 {
-    Clear();
     m_curr_dir.x = 0.0f;
     m_curr_dir.y = 0.0f;
     m_curr_dir.z = -1.0f;
@@ -7047,7 +7046,7 @@ static inline bool InClimbAnim(CZSealBody *seal)
  * 32 otherwise (OVL2 0x5B3CE0: SOCOM 1's CanTraverse, its faces' kinds grown) */
 bool CZSealBody::CanTraverse(CDIType type)
 {
-    zdb::IntersectStruct *hit = m_1090.m_node ? &m_1090 : 0;
+    zdb::IntersectStruct *hit = m_1090.m_node ? (zdb::IntersectStruct *)&m_1090 : 0;
 
     if (!hit)
         return false;
@@ -7107,7 +7106,7 @@ bool CZSealBody::CanTraverse(CDIType type)
         if (h <= 10.0f) {
             CPnt3D p = m_posW;
 
-            ImpactFront(m_1090.m_node ? &m_1090 : 0, &p);
+            ImpactFront(m_1090.m_node ? (zdb::IntersectStruct *)&m_1090 : 0, &p);
             func_005B3890(this, 1);
             return false;
         }
@@ -7158,7 +7157,7 @@ extern "C" bool func_005B4B40(CZSealBody *seal, float *a, float *b)
         return false;
     }
 
-    zdb::IntersectStruct *hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+    zdb::IntersectStruct *hit = seal->m_1090.m_node ? (zdb::IntersectStruct *)&seal->m_1090 : 0;
 
     if (!hit)
         return false;
@@ -7395,7 +7394,7 @@ extern "C" bool func_005B4340(CZSealBody *seal, unsigned char kind)
  * PNT3D view, a Flatten inline, the normal by reference. */
 extern "C" void func_005B3890(CZSealBody *seal, int drop_now)
 {
-    zdb::IntersectStruct *hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+    zdb::IntersectStruct *hit = seal->m_1090.m_node ? (zdb::IntersectStruct *)&seal->m_1090 : 0;
 
     if (!hit || drop_now) {
         seal->m_1090.m_node = 0;

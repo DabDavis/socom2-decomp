@@ -10054,8 +10054,8 @@
 0x00553E60 0x3C OnMissionStart__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00553EA0 0x119C __ct__10CZSealBodyFPQ23zdb5CNodeP14CCharacterType  # OVL2; s1:calls (Create and ReCreate call it after new(5344) where SOCOM 1's call __ct__10CZSealBodyFPQ23zdb5CNodeP14CCharacterType, with the node and the type; it builds the CBody at 0x170) -- the SEAL lane, round 4
 0x00555040 0x70 __dt__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv  # OVL2; ours (the SEAL lane, round 17: the destructor ~CObjAnims calls on FreeVector's temporary -- seal.cpp's copy, the first in OVL2's link order; the words any pointer vector's destructor has)
-0x005550B0 0x10 func_005550B0  # OVL2; tu: orders.cpp~ (1.0 beta)
-0x005550C0 0x8 func_005550C0  # OVL2
+0x005550B0 0x10 __ct__8CObjAnimFv  # OVL2; tu: orders.cpp~ (1.0 beta); by hand (the body lane, round 69): CObjAnim's inline constructor's out-of-line copy (both words zeroed, this returned) -- CZSealBody's constructor builds m_item_gear[5] with it through __construct_array; seal.cpp
+0x005550C0 0x8 __defctor__Q23zdb11DiIntersectFv  # OVL2; by hand (the body lane, round 69): j DiIntersect(int); li a1,8 -- the array default constructor of DiIntersect(int n = 8), as SOCOM 1's __defctor__Q23zdb11DiIntersectFv 0x258EB0; CZSealBody's constructor builds m_270 with it through __construct_array; seal.cpp
 0x005550D0 0x68 SealInitCharacterDynamics__Fv  # OVL2; s1:exact
 0x00555140 0x8 func_00555140  # OVL2; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (OVL2's copy, li v0,-1 as OVL1's 0x2742F0)
 0x00555150 0x8 func_00555150  # OVL2; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: Slot0C__Q23zdb7CNodeExFv (OVL2's copy: slot 0xC of __vt__7CSealEx, returns 0 as OVL1's 0x274300)
