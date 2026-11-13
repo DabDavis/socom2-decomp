@@ -5004,8 +5004,7 @@ static inline CTurretFlags *AsTurret(CEntity *e)
 {
     CTurretFlags *t = (CTurretFlags *)e;
 
-    if (!e || e->m_type != CEntity::ENT_TYPE_TURRET)
-        t = 0;
+    t = t ? (e->m_type != CEntity::ENT_TYPE_TURRET ? 0 : t) : t;
     return t;
 }
 
@@ -5056,13 +5055,14 @@ static inline CEntity *TargetEnt(const CTarget *t)
  * bit 2 a weapon chosen for the target's range -- a hint's mode 1 under bit 16 without 17 -- and without
  * it, once, an enemy's squad's sound for a player's SEAL (OVL2 0x566540, slot 0xB0: SOCOM 1's SetTarget,
  * SOCOM II's CanAttack inline).
- * OPEN, 0x3B0 against 0x3A8 -- every instruction the target's but: (1) AsTurret's join takes an 8-byte pad
- * the target lacks (its `move t0,zero` runs straight on: `if` pads, every ternary spelling folds into a
- * materialised sltu / movz; two words then shift two more pads); (2) the mode: the target's `li v0,1` comes
+ * OPEN, 7 structural (at the target's size since round 72: AsTurret's `t = t ? (e->m_type != TURRET ? 0 : t)
+ * : t;`, a self-assigning ternary, drops the 8-byte pad its `if` gave the join -- the round-58 note had
+ * every ternary spelling folding into sltu / movz); left, the mode: the target's `li v0,1` comes
  * from the block's top (a logical temporary, live through the hint's stores: no block temporary may take v0),
  * `int mode = 1` declared ahead of the hint gets the same shape in a0 -- the node is deferred in the target
  * (degree over K, coloured first), and `(bit16 && !bit17)` written as a value materialises with sltu instead
- * (build/scratch/seal-r58/v_540*.py). */
+ * (build/scratch/seal-r58/v_540*.py); and the `!bit16 || bit17` test laid out `bnez` to the zero block over a
+ * `b` to the join, where MW falls into it (round 72: else-arm, nested, goto, helper and ternary spellings alike). */
 void CSealCtrlAi::SetTarget(CTarget *target)
 {
     if (target ? ((CAiTargetFlags *)m_67c)->m_entity == target->m_ent : !((CAiTargetFlags *)m_67c)->m_entity)
