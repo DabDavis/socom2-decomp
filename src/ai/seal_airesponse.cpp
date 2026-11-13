@@ -2101,7 +2101,7 @@ void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 {
     switch (sig) {
     case SIGNAL_4:
-        m_tries = s_pathTries;
+        ((MAP_DIRCOUNT *)m_exits)->m_range = s_pathTries;
         break;
     case SIGNAL_0:
         ai->SetAiMode((AI_MODE)4);
@@ -2121,6 +2121,219 @@ void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_active = false;
         break;
     }
+}
+
+extern "C" {
+/* the AI's stamp's age (OVL2 0x557F30) and a route handed to the controller (0x5557B0): the SEAL
+ * lane's rows */
+float func_00557F30(CAiStamp *stamp);
+void func_005557B0(CSealCtrlAi *ai, int x);
+}
+
+/* the recovery's limits (OVL2 data, the unit's: 8 bytes apart) */
+static float s_pathWait = 2.0f;
+static int s_pathGiveUp = 15;
+
+/* a route point by index, or none past the end (inline; the name ours) */
+static inline const CAiMapLoc *PathPoint(CAiPathBytes *p, unsigned int i)
+{
+    return i < (unsigned int)p->m_9c ? (const CAiMapLoc *)(*(char **)&p->_a0 + i * 8) : 0;
+}
+
+/* the last cell of the recovery's vector, or the invalid cell (inline; the name ours) */
+struct PathVecView {
+    unsigned int m_capacity;
+    unsigned int m_size;   // 0x4
+    CAiMapLoc *m_data;   // 0x8
+};
+
+static inline const CAiMapLoc *PathLast(CAiSPathRecover *s)
+{
+    return ((PathVecView *)s->m_vec)->m_size == 0 ? &CAiMapLoc::invalid
+                                                  : ((PathVecView *)s->m_vec)->m_data + ((PathVecView *)s->m_vec)->m_size - 1;
+}
+
+/* a path recovery (OVL2 0x603950; SOCOM 1's grown): once the SEAL's cell is valid again, the route
+ * resumed (5, 6) and done (7); else a goal back to the last valid cell (0, 4), or the ways out of the
+ * cell counted (1) and the best one taken (2, the way's count spent when the stamp says it was tried);
+ * 3 waits for the AI's mode; past 15 it gives up (8).
+ * OPEN (round 65, written from the target; 0x9F0 of 0x9E8, d=87): the exits loop -- the target
+ * strength-reduces `this` into a walker (s2, +4 a pass: counts at 0x118, cells at 0x138) with i, the
+ * best way and its count in s4/s6/s5; here &m_exits stays a base and each pass indexes it (through a
+ * reference to m_exits; read straight, neither the walker nor the index's shift match -- d=244).
+ * Tried: the four locals in six orders, int/unsigned i, the count read late or not named, a pointer,
+ * a reference, `this` copied. Right: the cells' copies, the steps' tests, the plan registered (the
+ * vector read as fields), the route's points by index, the ok `&&` through a local path pointer */
+int CAiSPathRecover::Tick(CSealCtrlAi *ai)
+{
+    CEntity *seal = ai->m_entity;
+    unsigned int step = m_phase;
+    CAiMapLoc valid(seal->m_mapLocValid);
+    CAiMapLoc loc(seal->m_mapLoc);
+
+    m_time += m_dT;
+    if (m_58 > s_pathGiveUp)
+        step = 8;
+    switch (step) {
+    case 0:
+        if (valid == loc)
+            step = 5;
+        else if (!(ai->m_bit16 ? true : false) && ai->SetGoalPos(GOAL_RECOVER, valid, 3.0f)) {
+            ai->SetAiMode((AI_MODE)4);
+            step = 4;
+        }
+        if (step == 0) {
+            CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+            if (map) {
+                map->CountMapExitDir(loc, (MAP_DIRCOUNT *)m_exits);
+                step = 1;
+            }
+        }
+        break;
+    case 3:
+        if (ai->m_3f4 != 4) {
+            ai->SetAiBit2(false);
+            step = 0;
+        } else if (!(m_time <= s_pathWait))
+            step = 0;
+        break;
+    case 4:
+        if (valid == loc)
+            step = 5;
+        else {
+            bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+            if (!has) {
+                CAiMapLoc here(seal->m_mapLoc);
+                CAiMap *map = AiMaps.GetMapByIndex(here.m_mapid);
+
+                if (map) {
+                    map->CountMapExitDir(here, (MAP_DIRCOUNT *)m_exits);
+                    step = 1;
+                }
+            }
+        }
+        break;
+    case 1: {
+        int bestCount = 10000;
+        int best = -1;
+        float bestH = -999.0f;
+        float y = seal->m_posW.y;
+
+        MAP_DIRCOUNT &dc = *(MAP_DIRCOUNT *)m_exits;
+
+        for (int i = 0; i < 8; i++) {
+            int c = dc.m_count[i];
+
+            if (c < s_pathTries) {
+                float h = -999.0f;
+
+                if (AiMaps.GetAltitude(dc.m_loc[i], h))
+                    h = y - h;
+                if (c < bestCount || (c == bestCount && !(h <= bestH)) || (bestH < 0.0f && !(h <= 0.0f))) {
+                    bestCount = c;
+                    bestH = h;
+                    best = i;
+                }
+            }
+        }
+        m_dir = best;
+        if (ai->SetGoalPos(GOAL_RECOVER, ((MAP_DIRCOUNT *)m_exits)->m_loc[best], 5.0f)) {
+            ai->m_stamp.Reset();
+            ai->SetAiMode((AI_MODE)4);
+        }
+        step = 8;
+        break;
+    }
+    case 2:
+        if (valid == loc)
+            step = 5;
+        else {
+            bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+            if (!has) {
+                if ((ai->m_stamp.m_8 & 6) && !(func_00557F30(&ai->m_stamp) <= 1.0f)) {
+                    step = 1;
+                    ((MAP_DIRCOUNT *)m_exits)->m_count[m_dir] = s_pathTries;
+                } else
+                    step = 0;
+            }
+        }
+        break;
+    case 5: {
+        CAiPathBytes *route = &ai->m_path;
+
+        step = 7;
+        bool ok = !(route->m_9c == 0) && route->m_state == 4;
+
+        if (ok) {
+            CAiMapLoc first(**(CAiMapLoc **)&route->_a0);
+
+            if (m_flags & 1) {
+                func_005628F0(ai);
+                if (ai->SetRoute(first))
+                    step = 6;
+                else
+                    step = 8;
+            } else if (valid == *PathLast(this))
+                SetActive(false);
+            else {
+                const CAiMapLoc *last = PathLast(this);
+                CAiCell *cell = AiMaps.GetCell(*last);
+
+                if (cell && cell->IsTraversable()) {
+                    PathVecView *v = (PathVecView *)m_vec;
+
+                    ((CAiPath *)m_path)->m_flags = 0;
+                    if (AiMaps.RegisterPathPlan(valid, v->m_data, v->m_size, (CAiPath *)m_path))
+                        step = 6;
+                    else if (AiMaps.RegisterPathPlan(valid, last, 1, (CAiPath *)m_path))
+                        step = 6;
+                } else {
+                    func_005628F0(ai);
+                    if (ai->SetRoute(first))
+                        step = 6;
+                    else
+                        step = 8;
+                }
+            }
+        }
+        break;
+    }
+    case 6: {
+        CAiPathBytes *path = (CAiPathBytes *)m_path;
+        unsigned char st = path->m_state;
+
+        if (st == 1 || st == 2 || st == 3)
+            break;
+        step = 7;
+        bool ok = !(path->m_9c == 0) && st == 4;
+
+        if (ok) {
+            func_005557B0(ai, 3);
+            if (!(m_flags & 1)) {
+                int n = (int)path->m_9c;
+                CAiPath *route = (CAiPath *)&ai->m_path;
+
+                for (int i = 0; i < n - 1; i++) {
+                    route->InsertPathLoc(*PathPoint(path, i), 0);
+                    route->IncrementPathId();
+                }
+            }
+        } else if (m_flags & 1)
+            step = 8;
+        break;
+    }
+    }
+    if (step == 7)
+        SetActive(false);
+    else if (step == 8)
+        SetActive(false);
+    else if (step != m_phase)
+        m_time = 0.0f;
+    UpdatePhase(step);
+    return Result();
 }
 
 /* the rush's count of SEALs in it (the SEALs' OVL2 bss 0x66B048: seal_ai.cpp's AI init zeroes it) */

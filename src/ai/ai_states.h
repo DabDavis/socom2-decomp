@@ -811,22 +811,26 @@ public:
     {
         __ct__7CAiPathFv(m_path);
         __ct__12CAiMapLocVecFv(m_vec);
-        func_005F6F00(&m_110, 15, 0);
+        func_005F6F00(&m_exits, 15, 0);
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x603950) */
+    virtual int Tick(CSealCtrlAi *ai);
     virtual const char *GetStatus() const;
     virtual bool CanAttack() const { return false; }
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     /* (0x609810, not written yet: its members' destructors) */
     virtual ~CAiSPathRecover();
 
-    unsigned int m_58;   // 0x58
+    int m_58;   // 0x58: over 15 ends the recovery (compared signed; the name ours)
     unsigned char m_path[0xa8];   // 0x5c: a CAiPath (built by 0x528340)
-    unsigned char m_vec[0xc];   // 0x104: a vector (0x52EB00 zeroes its three words)
-    /* 0x110: a pair built (15, 0) -- 0 here, 15 in the tries (0x5F6F00) */
-    int m_110;   // 0x110
-    int m_tries;   // 0x114: reset to the unit's static count (10)
-    unsigned char _118[0x15c - 0x118];
+    unsigned char m_vec[0xc];   // 0x104: a vector of cells (0x52EB00 zeroes its three words)
+    /* 0x110: the ways out of the cell the SEAL stands on (CAiMap::CountMapExitDir's; built by
+     * 0x5F6F00 with (15, 0), its range reset to the unit's static count, 10, and a way's count set
+     * to it once tried -- the Tick, round 65; the name ours). Bytes, read as a MAP_DIRCOUNT: as the
+     * member, its CAiMapLoc array's implicit constructor would join Create's inlined constructor */
+    unsigned char m_exits[0x48];
+    int m_dir;   // 0x158: the way taken (0x15c bytes, Create's new)
 };
 
 class CAiSRush : public CAiState {
