@@ -14,8 +14,8 @@
  * there too -- and FormatStringInt, 0x1FDE30-0x1FE18F); and, with the
  * members laid out, the implicit destructors the unit links (the selectors', the team names',
  * the stance icon's, the network selector's slots and category page). Written and OPEN: the
- * destructor (0xA40; two headers' inline heights, diagnosed there). Init (round 70, with the font's
- * pieces 0x1FB370-0x1FB3F0). Not yet: Tick (0x1158), and the four inline copies at the unit's head
+ * destructor (0xA40; two headers' inline heights, diagnosed there). Init and Tick (round 70, with the
+ * font's pieces 0x1FB370-0x1FB3F0). Not yet: the four inline copies at the unit's head
  * (0x1F6A90-0x1F6B00: C2DString helpers the reticle's unit calls; their caller here must be
  * dead-stripped). 0x1F6A80 is CLoadMenu's (st_load.cpp's vtable slot).
  * Defined in reverse of their image order (-inline deferred). */
@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "../../gamez/ztwod/ztwod.h"
+#include "../../gamez/zinput/zinput.h"
 #include "../../gamez/znode/znode.h"
 #include "../../gamez/zrdr/zrdr.h"
 #include "hud_ammo.h"
@@ -61,8 +62,14 @@ class CUIVariable;
 class CSealCtrl {
 public:
     MENU_STATE GetMenuState() { return m_menustate; }
+    /* the weapon in hand changed for the HUD (OVL2 0x592C30) */
+    bool UpdateHudWeapon();
 
-    unsigned char _0[0x221];
+    unsigned char _0[0x114];
+    unsigned int m_port;   // 0x114: its pad
+    unsigned char _118[0x11c - 0x118];
+    float m_11c;   // 0x11c: the grenade's cook bar, as the reticle's gauge shows it
+    unsigned char _120[0x221 - 0x120];
     MENU_STATE m_menustate;   // 0x221
 };
 
@@ -74,6 +81,9 @@ class CZKit {
 public:
     void SetCurReticule(bool flag);   /* SOCOM 1's, a flag added */
     CZFTSWeapon *GetCurItem() const;
+    unsigned char GetCurItemFireClass();
+    int GetCurAmmoCount();
+    bool WeaponInfoChanged();
     bool IsUsingScope();
     bool NVG_Enabled() const;
     float GetCurZoom();
@@ -90,6 +100,7 @@ class CEntity;
 class CEntityList {
 public:
     CEntity *GetEntityById(unsigned int id) const;
+    CEntity *GetEntity(const char *name) const;
 
     unsigned char _0[0xc];
 };
@@ -258,6 +269,7 @@ public:
         m_parent = 0;
     }
     void Init(CHUD *parent, C2DFont *pFont);
+    void HudTick(MENU_STATE menustate);
     void UnInit();
 
     zdb::CTexHandle *m_canClimbTexture;   // 0x80
@@ -304,6 +316,8 @@ public:
     void UnInit();
     void OnPauseTest();
     void HideTimer();
+    void SetGBarVal(float val);
+    void HudTick(float dT);
     CHUD *m_parent;   // 0x18
     unsigned char _1c[0x47b0 - 0x1c];
 } __attribute__((aligned(16)));
@@ -313,6 +327,7 @@ public:
     CTeamNames();
     void Init();
     void Clear();
+    void SetOpacity(float fOpacity);
 
     unsigned char _18[0x28 - 0x18];
     CHudBrightText m_names[4];   // 0x28
@@ -344,6 +359,7 @@ public:
     void Clear();
     void ClosePauseMenu();
     void Init();
+    void HudTick(CPad *pad, float dT);
     unsigned char _0[0x20];
     C2DFont *m_font;   // 0x20
     unsigned char _24[0x13c0 - 0x24];
@@ -422,6 +438,24 @@ public:
     unsigned char _18[0x150 - 0x18];
 } __attribute__((aligned(16)));
 
+/* a message waiting (fts_mission.cpp's) and the queue of them (only what the HUD calls) */
+class CQueuedMessage {
+public:
+    CQueuedMessage();
+
+    MSGTYPE m_type;   // 0x0
+    char m_text[128];   // 0x1
+    char m_name[32];   // 0x81
+};
+
+class CMessageQueue {
+public:
+    bool HasMessages();
+    void Dequeue(CQueuedMessage *msg);
+
+    unsigned char _0[0x10];
+};
+
 /* the mission: its three message queues, the chat line (the HUD re-inits it) and the online game */
 class CMission {
 public:
@@ -435,7 +469,8 @@ public:
     C2DMessage_Q m_messages2;   // 0x6a0
     C2DMessage_Q m_messages3;   // 0xb80
     CMsgEditor m_messages4;   // 0x1060: the chat line
-    unsigned char _11b0[0x1808 - 0x11b0];
+    CMessageQueue m_queue;   // 0x11b0: the players' messages waiting
+    unsigned char _11b0[0x1808 - 0x11b0 - sizeof(CMessageQueue)];
     void *m_1808;   // 0x1808
     unsigned char _180c[0x1824 - 0x180c];
     _zrdr *m_fontsRdr;   // 0x1824
@@ -479,6 +514,7 @@ public:
     CHUD();
     ~CHUD();
     void Init(zdb::CWorld *world);
+    void Tick(float dT);
     void SetupTimerText();
     void SetupSpectatorText(MENU_STATE menustate);
     void SetupGhostText(MENU_STATE menustate);
@@ -754,6 +790,7 @@ void hudTurnOffScorePopup();
 class CReco {
 public:
     void Init();
+    void Suspend(bool b);
     void UnInit();
 };
 extern CReco theReco;
@@ -1455,6 +1492,294 @@ void CHUD::SetupSpectatorText(MENU_STATE menustate)
             m_piggyback_text[i].On();
         else
             m_piggyback_text[i].Off();
+    }
+}
+
+/* not named yet: whether a seal spectates (0x2C2FD0), a pad function's state (0x2C64E0) and
+ * whether it was pressed (0x2C60C0), the online game's tick (0x2C6C70); the HUD's last owner's
+ * map-zoomed bit (OVL1 bss 0x408F08) */
+extern "C" bool func_002C2FD0(CZSealBody *seal);
+extern "C" unsigned char func_002C64E0(int func, CPad *pad);
+extern "C" bool func_002C60C0(int func, CPad *pad);
+extern "C" void func_002C6C70();
+extern unsigned char data_00408F08;
+extern unsigned char g_bExternalWhispers;
+class CZLANLobby {
+public:
+    bool IsActive();
+};
+extern CZLANLobby data_0044FE10;
+
+/* a pad by its index, none past the last (SOCOM 1's inline over CInput's table) */
+static inline CPad *GetPad(unsigned int n)
+{
+    return n < CInput::NUM_PADS ? CInput::m_pads[n] : 0;
+}
+void hudTickScorePopup(CPad *pad, MENU_STATE menustate, float dT);
+bool hudIsScorePopupOn();
+
+/* the weapon's elements faded in (SOCOM II's: the ammo counts by the time, the rest kept hidden;
+ * the name ours) */
+static void SetElemsTrans(float trans)
+{
+    CHUD *hud = theHUD;
+
+    hud->m_ammodisplay.SetTrans(trans);
+    hud->m_WeaponBackground.SetTrans(0.0f);
+    hud->m_firemode.SetTrans(0.0f);
+    hud->m_weaponname.SetTrans(0.0f);
+    hud->m_ammocount.SetTrans(0.0f);
+    hud->m_magscount.SetTrans(0.0f);
+    hud->m_teamnames.SetOpacity(trans);
+}
+
+
+/* the weapon's elements hidden and the ammo counts brought up to date */
+static void HideWeaponInfo(CHUD *hud)
+{
+    hud->m_ammodisplay.Update();
+    hud->m_WeaponBackground.Off();
+    hud->m_firemode.Off();
+    hud->m_firemodename.Off();
+    hud->m_ammocount.Off();
+    hud->m_magscount.Off();
+    hud->m_ammotype.Off();
+    hud->m_weaponname.Off();
+}
+
+/* the HUD's frame (CCoreState::Tick's call before the three DrawPhases; SOCOM 1's, much grown): the
+ * piggyback lines' fade, the dead player's lines (spectator, ghost, respawn, spectating) or the HUD
+ * back on, the letterbox, fader and timer, the connected count, the orders' and zoomed-in hiding;
+ * then, with an owner, the weapon selector closed when the map zoom ends, the selectors' pad, the team
+ * names, the weapon, the grenade's gauge, the radio menu, the compass, stance, action icon, pause
+ * menu, cameras and map, the message queues and the players' messages, the weapon's texts, the range
+ * text, the message timer, the teammate names, the network boxes, the reticle, the elements' fade-in,
+ * the score popup and what it hides, the online tick and the single player's info box.
+ * Byte-exact (round 70): `m_socom2_1a0ec = 0` inside the map-zoom block (a nop pads each join, the
+ * tell for a block's end); the menu test an `||` MW folds to one unsigned range test materialised
+ * by a branch (`sltiu at; bnez; daddiu 1; move zero`); the online test written with the network flag
+ * twice (the target's redundant second `beqz`; an inline returning bool adds `sltu`s); the fade-in's
+ * three arms one inline over theHUD; the gauge's float read ahead of GetHUDOwner (v1/v0) */
+void CHUD::Tick(float dT)
+{
+    bool first = false;
+    CZSealBody *player = ftsGetPlayer();
+    CZSealBody *owner = GetHUDOwner();
+    MENU_STATE menustate = player->m_ctrl->GetMenuState();
+
+    if (m_socom2_1a0e8 == 0.0f)
+        first = true;
+    if (!(m_socom2_1a0e8 < 0.0f)) {
+        m_socom2_1a0e8 += dT;
+        if (m_socom2_1a0e8 > 10.0f && m_piggyback_text[0].GetTrans() > 0.0f) {
+            float trans = 100.0f * (1.0f - (m_socom2_1a0e8 - 10.0f) / 0.5f);
+
+            if (trans < 0.0f) {
+                trans = 0.0f;
+                m_socom2_1a0e8 = -1.0f;
+            }
+            m_piggyback_text[0].SetTrans(trans);
+            m_piggyback_text[1].SetTrans(trans);
+            m_piggyback_text[2].SetTrans(trans);
+            m_piggyback_text[3].SetTrans(trans);
+        } else if (first) {
+            m_piggyback_text[0].SetTrans(100.0f);
+            m_piggyback_text[1].SetTrans(100.0f);
+            m_piggyback_text[2].SetTrans(100.0f);
+            m_piggyback_text[3].SetTrans(100.0f);
+        }
+    }
+    if (!player->m_socom2_e1_4) {
+        if (theNetwork.m_bNetwork) {
+            bool ghost = owner != player;
+
+            if (func_002C2FD0(player))
+                SetupSpectatorText(menustate);
+            else if (ghost)
+                SetupGhostText(menustate);
+            else
+                SetupRespawnText(menustate);
+        } else {
+            SetupSpectatingText(menustate);
+        }
+    } else {
+        if (owner != player) {
+            SetupGhostText(menustate);
+        } else if (menustate == stateNone) {
+            On();
+            m_letterbox.RemoveLetterbox();
+            for (unsigned int i = 0; i < 6; i++)
+                m_piggyback_text[i].Off();
+        }
+        if (theNetwork.m_bNetwork && !func_002C2FA0())
+            m_spectatorinfo.Off();
+    }
+    m_letterbox.Tick(dT);
+    m_bmpFade.Tick(dT);
+    SetupTimerText();
+    if (theNetwork.m_bNetwork) {
+        int count = theNetwork.zNetGetValidGameClientCount();
+
+        if (theNetwork.m_bSessionMaster)
+            sprintf(data_00408F90, "%dm", count);
+        else
+            sprintf(data_00408F90, "%d", count);
+        m_num_connected.SetString(data_00408F90, true);
+    }
+    if (menustate == stateOrders) {
+        for (unsigned int i = 0; i < 6; i++)
+            m_piggyback_text[i].Off();
+        m_teamMateNames.Off();
+        m_socom2_0.Off();
+    } else if (theNetwork.m_bNetwork && m_hudmode == ZOOMIN) {
+        m_infobox.Off();
+        m_timertext.Off();
+        m_num_connected.Off();
+    }
+    if (!owner)
+        return;
+    if (data_00408F08 && !owner->m_socom2_e1_4) {
+        m_weaponsel.OnClose();
+        m_weaponsel.AfterCloseFirst();
+        m_weaponsel.AfterClose();
+        m_weaponsel.ResetHotSwap(true);
+        if (!theNetwork.m_bNetwork) {
+            theMission.m_messages.Off();
+            theMission.m_messages3.Off();
+        }
+        CZSealBody *me = ftsGetPlayer();
+
+        if (GetHUDOwner() == me) {
+            theTCM.Close(false);
+            theReco.Suspend(true);
+            m_socom2_1a0e8 = 0.0f;
+        }
+        m_socom2_1a0ec = 0;
+    }
+
+    CPad *pad = GetPad(player->m_ctrl->m_port);
+    bool menuok = menustate == stateNone || menustate == stateWeaponSel;
+    if (pad && menuok && !(theNetwork.m_bNetwork && (!theNetwork.m_bNetwork || func_002C2FA0()))) {
+        if (owner->m_socom2_e1_4 && owner == player)
+            m_weaponsel.HudTick(pad, dT);
+        else if (theNetwork.m_bNetwork && owner == player)
+            m_mpweaponsel.HudTick(pad, dT);
+    }
+    if (!theNetwork.m_bNetwork)
+        m_teamnames.Tick(dT);
+    if (owner->m_ctrl->UpdateHudWeapon()) {
+        if (!theNetwork.m_bNetwork)
+            m_newmap->UpdateExplosives();
+        weapon.Off();
+    }
+
+    {
+        CZKit *kit = &owner->m_kit;
+
+        if (kit->GetCurItemFireClass() == 3
+            && (kit->GetCurItem()->m_type < 400 || kit->GetCurItem()->m_type >= 450)) {
+            float val = owner->m_ctrl->m_11c;
+            CZSealBody *seal = GetHUDOwner();
+
+            if (seal) {
+                if (seal->m_kit.GetCurAmmoCount() > 0)
+                    m_bitmapReticule.SetGBarVal(val);
+                else
+                    m_bitmapReticule.SetGBarVal(0.0f);
+            }
+        }
+    }
+    theTCM.Update(dT);
+    if (menustate == stateNone || menustate == stateOrders)
+        theTCM.Tick(pad, dT);
+    m_mapcompass.Tick(dT);
+    m_poseBitmap.Tick(dT);
+    m_actionbitmap.HudTick(menustate);
+    if (pad)
+        m_pausetest.HudTick(pad, dT);
+    m_missioncams.HudTick(pad, dT);
+    if (!theNetwork.m_bNetwork)
+        m_newmap->HudTick(pad, dT);
+    theMission.m_messages.Tick(dT);
+    theMission.m_messages3.Tick(dT);
+    theMission.m_messages2.Tick(dT);
+    theMission.m_messages4.Tick(dT);
+
+    CMessageQueue *queue = &theMission.m_queue;
+    CQueuedMessage msg;
+
+    while (queue->HasMessages()) {
+        queue->Dequeue(&msg);
+        if (msg.m_type == MSGTYPE_ALERT && !g_bExternalWhispers && !CEntity::m_list.GetEntity(msg.m_name))
+            continue;
+        theMission.m_messages.Add_Message(msg.m_text, msg.m_type, false, 0, 0.0f);
+    }
+    owner->m_kit.NVG_Enabled();
+    if (!owner->m_kit.GetCurItem())
+        HideWeaponInfo(this);
+    else if (owner->m_kit.WeaponInfoChanged())
+        HideWeaponInfo(this);
+    m_rangetext.Off();
+    if (!(theHUD->IsOn() != 0))
+        m_rangetext.Off();
+    if (m_messageTime > 0.0f) {
+        m_messageTime -= dT;
+        if (m_messageTime <= 0.0f) {
+            m_messageTime = 0.0f;
+            m_message.Off();
+        }
+    }
+    data_00408F08 = owner->m_socom2_e1_4 != 0;
+    m_teamMateNames.m_socom2_5e0 = m_letterbox.m_curpos;
+    m_teamMateNames.Tick(dT);
+    if (theNetwork.m_bNetwork) {
+        m_infobox.Tick(dT);
+        m_spectatorinfo.Tick(dT);
+        if (func_002C64E0(12, pad) == 1 || func_002C60C0(12, pad))
+            m_spectatorinfo.Off();
+    }
+    m_bitmapReticule.HudTick(dT);
+    if (!(g_fElemsFadeInTime < 0.0f)) {
+        g_fElemsFadeInTime += dT;
+        if (g_fElemsFadeInTime <= 1.0f)
+            SetElemsTrans(0.0f);
+        else if (g_fElemsFadeInTime < 1.5f)
+            SetElemsTrans(2.0f * (g_fElemsFadeInTime - 1.0f));
+        else
+            SetElemsTrans(1.0f);
+        if (!(g_fElemsFadeInTime <= 1.5f))
+            g_fElemsFadeInTime = -1.0f;
+    }
+    hudTickScorePopup(pad, menustate, dT);
+    if (theNetwork.m_bNetwork && data_003DC3E0) {
+        m_infobox.On();
+        m_timertext.On();
+        m_num_connected.On();
+    }
+    if (!data_003DC3E0 || (theNetwork.m_bNetwork && hudIsScorePopupOn())) {
+        m_ammodisplay.Off();
+        m_infobox.Off();
+        m_mapcompass.Off();
+        m_spectatorinfo.Off();
+        m_actionbitmap.Off();
+        m_bitmapReticule.Off();
+        m_bitmapReticule.OnPauseTest();
+        for (unsigned int i = 0; i < 6; i++)
+            m_piggyback_text[i].Off();
+        m_timertext.Off();
+        m_socom2_4ec0.Off();
+        m_num_connected.Off();
+    }
+    if (theNetwork.m_bNetwork && !data_0044FE10.IsActive())
+        func_002C6C70();
+    if (!theNetwork.m_bNetwork && player->m_socom2_e1_4 && menustate == stateNone) {
+        if (owner != player) {
+            m_infobox.Tick(dT);
+        } else {
+            m_infobox.Off();
+            for (unsigned int i = 0; i < 6; i++)
+                m_piggyback_text[i].Off();
+        }
     }
 }
 
