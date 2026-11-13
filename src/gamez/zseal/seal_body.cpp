@@ -5249,9 +5249,9 @@ extern "C" void func_005781C0(CZSealBody *seal)
 }
 
 extern "C" {
-/* the ladder's climb taken or let go (OVL2 0x5B1C80, seal_env.cpp's), the two damage anims' pushes
+/* the SEAL put on a ladder by its index (OVL2 0x5B1C80, seal_env.cpp's), the two damage anims' pushes
  * (OVL2 0x5A2390, 0x5A2490) and the fall's (OVL2 0x5A21B0, seal_env.cpp's) */
-void func_005B1C80(CZSealBody *seal, int ladder);
+bool func_005B1C80(CZSealBody *seal, int ladder);
 CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type);
 CZBodyAnimBlend *func_005A21B0(CZSealBody *seal);
 }
