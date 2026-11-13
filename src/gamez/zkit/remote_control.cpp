@@ -117,7 +117,7 @@ bool func_00587F50(CZSealBody *seal);
 /* the firepoint (OVL2 0x5DF370, seal_weapon.cpp's) */
 bool GetFP__10CZSealBodyFR6CPnt3D(CZSealBody *seal, CPnt3D &fp);
 /* the kit's current item fired (SOCOM 1's CZKit::FireCur; OVL2 0x5C6510) */
-CZProjectile *func_005C6510(CZKit *kit, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
+CZProjectile *FireCur__5CZKitFPC6CPnt3DPC6CPnt3DPC6CPnt3D(CZKit *kit, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
 }
 
 /* the remote SEAL moved toward where its console last said it was: snapped when far off or a
@@ -231,9 +231,9 @@ bool CRemoteCtrl::PreTick(float dT)
         if (seal->m_eb8) {
             seal->m_eb8->Virtual60(&fp);
             seal->m_eb8->Virtual68(&aim);
-            func_005C6510(&seal->m_kit, &fp, &aim, &m_entity->m_velW);
+            FireCur__5CZKitFPC6CPnt3DPC6CPnt3DPC6CPnt3D(&seal->m_kit, &fp, &aim, &m_entity->m_velW);
         } else if (GetFP__10CZSealBodyFR6CPnt3D(seal, fp)) {
-            func_005C6510(&seal->m_kit, &fp, &aim, &m_entity->m_velW);
+            FireCur__5CZKitFPC6CPnt3DPC6CPnt3DPC6CPnt3D(&seal->m_kit, &fp, &aim, &m_entity->m_velW);
         }
     }
     return true;

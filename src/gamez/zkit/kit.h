@@ -204,6 +204,10 @@ public:
     /* a grenade thrown from a point at a velocity, an explosive placed instead (OVL2 0x5BD030;
      * SOCOM 1's) */
     CZProjectile *FireGrenade(const CPnt3D *pos, const CPnt3D *vel);
+    /* an item's round fired from a point along a direction at the shooter's velocity, and the
+     * selected item's (OVL2 0x5C5340 and 0x5C6510; SOCOM 1's Fire and FireCur) */
+    CZProjectile *Fire(int index, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
+    CZProjectile *FireCur(const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
     /* the reticle's offsets and size turned into the body's accuracy factors, in the world at the
      * player's aim (OVL2 0x5BD100; SOCOM 1's SetCurAccuracy, whose burst term SOCOM II dropped) */
     void SetCurAccuracy();

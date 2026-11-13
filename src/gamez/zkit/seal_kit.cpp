@@ -929,6 +929,14 @@ static inline bool KitIsRemote(CKitBody *body)
     return body->m_control ? ((CKitSealCtrl *)body->m_control)->IsRemote() : false;
 }
 
+/* (KitIsRemote's shape: the result narrowed in the call's arm too; the name ours) */
+static inline bool KitIsPlayerB(CKitBody *body)
+{
+    bool r = body->m_control ? (bool)((CKitSealCtrl *)body->m_control)->IsPlayer() : false;
+
+    return r;
+}
+
 /* the kit set up (OVL2 0x5C7E00; SOCOM 1's Init, 0x2AE9E0, call for call): the reload, empty-click
  * and laser designator's two sounds found by name; the flashlight's light map made, placed at the
  * origin as -0.0 -- the projection's translation and the node's position both, through one pointer
@@ -1574,6 +1582,447 @@ void CZKit::AttachItemNode(int kind, const char *part)
 }
 #pragma auto_inline reset
 
+/* what the kit's fire reads besides: the anim it runs (OVL1's CZAnim::ActivateArg), the unit told of
+ * the player's shot (seal_unit.cpp's CSealUnit), the network's remote messages (OVL2 0x5E7F20) and the
+ * shot's message (OVL1 0x2BBF10), the app camera's shake (camera.h's), the SEAL's stats (0x58C, its
+ * counters 0x545100-0x545140), a turret's fire anim (OVL1 0x3D22A0, unclaimed) and the silencer test
+ * (OVL1 0x3C5AC0) */
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+};
+
+enum UNIT_MESSAGE { UNIT_MESSAGE_FORCE = 0x10000 };
+
+class CSealUnit {
+public:
+    void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+    static CSealUnit *GetUnitByTeam(unsigned int team);
+};
+
+class CAppCamera {
+public:
+    void BeginShake(float xAmp, float xAmpRand, float xDecay, float xRate, float yAmp, float yAmpRand,
+                    float yDecay, float yRate);
+};
+
+extern CAppCamera *appCamera;
+extern unsigned char data_0045A0C1;
+
+void PlayRemoteMsg(CEntity *e, int msg, int arg);
+void SaveFireMessage(CZSealBody *seal, const CPnt3D *vel);
+
+extern "C" {
+void IncrPrimaryRoundsFired__10CSealStatsFi(void *stats, int n);
+void IncrSecondaryRoundsFired__10CSealStatsFi(void *stats, int n);
+void IncrGrenadesUsed__10CSealStatsFi(void *stats, int n);
+CZAnim *func_003D22A0(CZFTSWeapon *w, CEntity *turret);
+bool func_003C5AC0(EQUIP_ITEM id);
+void SetCurZoomState__10CZSealBodyF9ZOOMSTATE(CZSealBody *body, int state);
+void *GetNode__7CEntityFv(CZSealBody *seal);
+}
+
+/* a point copied field by field through its address (the target keeps &a.y and &a.z in saved
+ * registers across the turret's call; the name ours) */
+static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
+{
+    dst->x = src->x;
+    dst->y = src->y;
+    dst->z = src->z;
+}
+
+/* the pickup as the kit reads it (zseal.h's CPickup: its stash and its owner's id; zseal.h is not included here) */
+class CPickup {
+public:
+    enum PU_TYPE { PU_TYPE_FIRST = 0, PU_TYPE_LAST = 255 };
+    static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);
+    unsigned int GetPickupNetEntityID();
+
+    unsigned char _0[0x8];
+    CZItemStash *m_data;   // 0x8
+    unsigned char _c[0x10 - 0xc];
+    unsigned int m_owner;   // 0x10
+};
+
+/* the player as the shot reads it: the arrows of where it was shot at from (hud_bitmapreticule.cpp's
+ * view: E, N, W, S at the even places) and its current fire point (zseal.h's m_curr_firept) */
+struct CKitFireTarget {
+    unsigned char _0[0xefc];
+    unsigned char m_threatdir[4];   // 0xefc
+    float m_threatscale[8];   // 0xf00
+    float m_threatangle[8];   // 0xf20
+    unsigned char _f40[0x14bc - 0xf40];
+    zdb::CNode *m_curr_firept;   // 0x14bc
+};
+
+/* a turret as the shot reads it (zveh.h's CTurret: its pitch node and its thermal sight) */
+struct CKitTurret {
+    unsigned char _0[0x284];
+    zdb::CNode *m_pitchNode;   // 0x284
+    unsigned char _288[0x298 - 0x288];
+    bool m_thermal;   // 0x298
+};
+
+/* an entity as a turret, or none (inline; the name ours) */
+static inline CKitTurret *AsTurret(CEntity *e)
+{
+    return e && e->m_type == 3 ? (CKitTurret *)e : 0;
+}
+
+/* the cross product through VU0 (CPnt3D::Cross's body without the normalising; the name ours) */
+static inline void KitCross(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+{
+    sceVu0FVECTOR r;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = a->x;
+    va[1] = a->y;
+    va[2] = a->z;
+    va[3] = 1.0f;
+    vb[0] = b->x;
+    vb[1] = b->y;
+    vb[2] = b->z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(r, va, vb);
+    out->x = r[0];
+    out->y = r[1];
+    out->z = r[2];
+}
+
+/* a dot product through references (inline; the name ours: the distance and both side tests through it
+ * keep the target's address temporaries closer than the products written in place) */
+static inline float KitDot(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/* the world's tree (inline; the name ours: taken through it, the spilled world numbers after the pickup
+ * and sits lowest in the frame, as the target's 192 -- a plain local sits above the item's type) */
+static inline zdb::CWorld *KitWorld()
+{
+    return zdb::CWorld::m_world;
+}
+
+/* the selected item fired (OVL2 0x5C6510; SOCOM 1's FireCur) */
+CZProjectile *CZKit::FireCur(const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v)
+{
+    return Fire(m_selected_item, pos, vel, v);
+}
+
+/* an item's round fired (OVL2 0x5C5340; SOCOM 1's Fire): the player's unit told of the player's shot; an
+ * enemy round passing the live player within its weapon's sound radius lights the threat arrows by its side
+ * and its front; the remote messages of a grenade or the bomb; the player's shake; a grenade's model; the
+ * tracer counted for an unsilenced automatic; the fire delay; then a projectile -- its region, flyout,
+ * tracer and flags, the model hung on it rotated along the shot --, the scope's kick, the adrenaline, the
+ * pickup by kind, the fire anim on the fire point (a turret's pitch node), the projectile node hidden, the
+ * weapon's Fire (a breaching SEAL told of its charge, or the shot's message saved), the stats, the recoil  *
+ * OPEN (the kit's round 66), 0x11D8 against 0x11D0, the frame exact: the threat block's address temporaries --
+ * the target keeps &fwd.y/&fwd.z in s3/s2 from the cross product's inputs on and reloads the player's node for
+ * the forward row, here &player->m_node is held (s2) and &d.y/&d.z (s6/s7) from the distance on (a block-scoped
+ * d, a distance inline, pointer negation/flattening inlines all no better); the team test loads the body before
+ * the player; FindChild's `move a0` scheduled a word early; ~56 register-only differences (UsesAmmo's item in v0,
+ * the target's a0). The item's type an EQUIP_ITEM (an unsigned char local takes a word slot and the frame grows
+ * 16), the ammunition's double test `if (!ammo) { if (!ammo) { ammo = ...; if (!ammo) return 0; } }`, the
+ * rotation `SetRotation((const CQuat *)&r)` (the cast keeps the null test), the two turret reads in place
+ * (`e ? AsTurret(e) : 0`, then `if (e) { t = AsTurret(e); if (t) ... }`) */
+CZProjectile *CZKit::Fire(int index, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v)
+{
+    if (KitIsPlayerB((CKitBody *)m_body) && !data_0045A0C1) {
+        CSealUnit *unit = CSealUnit::GetUnitByTeam(1);
+
+        if (unit)
+            unit->Notify(ftsGetPlayer__Fv(), (UNIT_MESSAGE)3, 0);
+    }
+    zdb::CWorld *world = KitWorld();
+    CZSealBody *player = ftsGetPlayer__Fv();
+
+    if (!(((CEntity *)player)->m_team & ((CEntity *)m_body)->m_team) && ((CKitBody *)player)->m_alive) {
+        const CPnt3D *at = (const CPnt3D *)((CEntity *)player)->m_node->m_matrix.m_matrix[3];
+        CPnt3D d;
+
+        pos->Sub(at, &d);
+        float distSq = KitDot(d, d);
+
+        if (distSq < 1210000.0f) {
+            CZFTSWeapon *cur = GetItemByIndex(m_selected_item);
+
+            if (cur && distSq < cur->m_soundradiusSq) {
+                CPnt3D fwd = *(const CPnt3D *)((CEntity *)player)->m_node->m_matrix.m_matrix[2];
+                CPnt3D a = *pos - *at;
+                CPnt3D up = CPnt3D::unit_y;
+
+                KitCross(&fwd, &up, &d);
+                float scale = 1.0f - 8.264463e-7f * distSq;
+
+                fwd.x = -fwd.x;
+                fwd.y = -fwd.y;
+                fwd.z = -fwd.z;
+                fwd.y = 0.0f;
+                a.y = 0.0f;
+                d.y = 0.0f;
+                CKitFireTarget *t = (CKitFireTarget *)player;
+                float dot = KitDot(a, fwd);
+
+                if (dot < 0.0f) {
+                    t->m_threatdir[3] = 1;
+                    float ang = fabsf(dot);
+                    t->m_threatscale[6] = fabsf(scale);
+                    t->m_threatangle[6] = ang;
+                    t->m_threatscale[2] = 0.0f;
+                    t->m_threatangle[2] = 0.0f;
+                } else {
+                    t->m_threatdir[1] = 1;
+                    float ang = fabsf(dot);
+                    t->m_threatscale[2] = fabsf(scale);
+                    t->m_threatangle[2] = ang;
+                    t->m_threatscale[6] = 0.0f;
+                    t->m_threatangle[6] = 0.0f;
+                }
+                dot = KitDot(a, d);
+                if (dot < 0.0f) {
+                    t->m_threatdir[0] = 1;
+                    float ang = fabsf(dot);
+                    t->m_threatscale[0] = fabsf(scale);
+                    t->m_threatangle[0] = ang;
+                    t->m_threatscale[4] = 0.0f;
+                    t->m_threatangle[4] = 0.0f;
+                } else {
+                    t->m_threatdir[2] = 1;
+                    float ang = fabsf(dot);
+                    t->m_threatscale[4] = fabsf(scale);
+                    t->m_threatangle[4] = ang;
+                    t->m_threatscale[0] = 0.0f;
+                    t->m_threatangle[0] = 0.0f;
+                }
+            }
+        }
+    }
+    CZFTSWeapon *w = GetItemByIndex(index);
+    CZAmmo *ammo = (CZAmmo *)GetAmmoByIndex(index);
+    CZFTSWeapon *firing = GetFiringItem(index);
+
+    if (!w)
+        return 0;
+    if (!ammo) {
+        if (!ammo) {
+            ammo = w->GetDefaultAmmo();
+            if (!ammo)
+                return 0;
+        }
+    }
+    EQUIP_ITEM id = w->m_ID;
+    EQUIP_ITEM type = w->GetIDType();
+
+    CZSealBody *body = m_body;
+
+    if (data_0045A0C1) {
+
+        switch ((unsigned char)id) {
+        case 123:
+        case 122:
+        case 128:
+        case 127:
+        case 126:
+        case 121:
+            if (!KitIsPlayerB((CKitBody *)body) && (((CEntity *)ftsGetPlayer__Fv())->m_team & ((CEntity *)body)->m_team))
+                PlayRemoteMsg((CEntity *)body, 38, 0);
+            break;
+        case 154:
+            PlayRemoteMsg((CEntity *)body, 69, 0);
+            break;
+        }
+    }
+    zdb::CModel *model = 0;
+
+    if (player == m_body && (CZWeapon::IsPrimary(id) || CZWeapon::IsSecondary(id)) && (unsigned char)id != 11) {
+        CTargetMods *mods = w->TargetMods(GetStance__10CZSealBodyCFb(m_body, true));
+        bool shake = mods->m_socom2_58 != 0.0f && mods->m_socom2_68 != 0.0f;
+
+        if (shake)
+            appCamera->BeginShake(mods->m_socom2_4c, mods->m_socom2_50, mods->m_socom2_54, mods->m_socom2_58,
+                                  mods->m_socom2_5c, mods->m_socom2_60, mods->m_socom2_64, mods->m_socom2_68);
+    }
+    if (w && type == 121 || type == 230 || w->IsGrenadeLauncherAmmo())
+        model = (zdb::CModel *)zdb::CWorld::GetModel(w->GetModelName());
+    unsigned char kind = w ? w->GetIDType() : 255;
+
+    if (kind == 31 || kind == 51 || kind == 91 || kind == 141 || kind == 205) {
+        EQUIP_ITEM sid = w ? w->m_ID : (EQUIP_ITEM)255;
+
+        if (!func_003C5AC0(sid) && (unsigned char)sid != 255)
+            m_tracercount++;
+    }
+    bool last = false;
+    CKitTurret *turret = AsTurret((CEntity *)((CKitBody *)m_body)->m_eb8);
+
+    if (turret && w && GetAmmoCount(m_selected_item) == 1)
+        last = 1;
+    else if (w && GetAmmoCount(m_selected_item) == 0)
+        last = true;
+    int sel = m_selected_item;
+
+    if (UsesAmmo(sel) && last)
+        SetFireDelay(func_003D2C40(w), false);
+    else if (w && w->m_reloadAfterShot) {
+        if (!firing || firing->m_ID != 142) {
+            if (UsesAmmo(sel) && GetAmmoCount(sel) > 1 && m_fire_delay == 0.0f || (unsigned char)id == 186)
+                SetFireDelay(func_003D2C20(w), true);
+        }
+    }
+    if (w) {
+        unsigned char item = id;
+
+        if (item != 11) {
+        CZProjectile *p = CZWeapon::m_pProjectilelist->GetNextFreeProjectile();
+        CZSealBody *pl = ftsGetPlayer__Fv();
+
+        if (!p)
+            return p;
+        p->m_c0 = ((zdb::IntersectStruct *)((char *)m_body + 0x400))->GetRegion();
+        zdb::CNode *inst = p->GetInstance();
+
+        if (((CEntity *)pl)->m_team & ((CEntity *)m_body)->m_team)
+            p->m_flyout_idx = 0;
+        else
+            p->m_flyout_idx = 1;
+        p->m_tracer_count = m_tracercount;
+        p->SetUseFlyout(m_body == pl);
+        p->SetIsPlayer(!KitIsRemote((CKitBody *)m_body));
+        if (model) {
+            CQuat r;
+            CQuat q;
+
+            q.Align(CPnt3D::unit_x, *vel);
+            if (!((CKitBody *)m_body)->m_eb8)
+                ((CEntity *)m_body)->m_quat.Mul(&q, &r);
+            inst->SetModel(model);
+            inst->SetActive(false);
+            inst->SetRotation((const CQuat *)&r);
+            inst->SetPosition((const PNT3D *)pos);
+            if (!w->IsDirectFire()) {
+                inst->m_socom2_a1_bits.bit2 = true;
+                inst->m_bumpmap = true;
+                inst->m_socom2_a1_bits.bit3 = true;
+                zdb::CWorld::m_world->AddTextureAssetCharacter((zdb::_RenderPhase)2, inst);
+            }
+            world->AddChild(inst);
+        }
+        if (((CKitBody *)m_body)->m_200 > 4 && w) {
+            if (m_burst_count > 1)
+                SetCurZoomState__10CZSealBodyF9ZOOMSTATE(m_body, 1);
+            else
+                StartSniperKick();
+        }
+        AdrenalineIncr__10CZSealBodyFf(m_body, 0.35f);
+        float timer = w->GetTimer(0);
+
+        w->GetTimer(1);
+        CPickup *pickup = 0;
+        unsigned int owner = ((CEntity *)m_body)->m_id;
+
+        if (item == 121 || item == 126)
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)1, inst, p);
+        else if (item == 122 || item == 127 || item == 173 || item == 178 || item == 125 || item == 128)
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)2, inst, p);
+        else if (item == 123)
+            pickup = CPickup::Create(owner, (CPickup::PU_TYPE)3, inst, p);
+        if (item == 171 || item == 172 || item == 173 || item == 174 || item == 175 || item == 181 || item == 182
+            || item == 183 || type == 230) {
+            CZFTSWeapon *l = dynamic_cast<CZFTSWeapon *>(CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)141));
+
+            if (l)
+                firing = l;
+        }
+        CZAnim *anim;
+
+        if (type != 121 && type != 230) {
+            CEntity *e = (CEntity *)((CKitBody *)m_body)->m_eb8;
+            CKitTurret *t = e ? AsTurret(e) : 0;
+
+            if (t && t->m_thermal && ((CKitBody *)m_body)->m_200 > 0)
+                anim = func_003D22A0(firing, (CEntity *)t);
+            else
+                anim = firing->GetFireAnim(((CKitBody *)m_body)->m_200 > 0);
+        } else
+            anim = firing->GetFireAnim(((CKitBody *)m_body)->m_200 > 0);
+        if (firing != w)
+            firing->PlayFireSound(pos);
+        if (anim) {
+            zdb::CNode *fire = ((CEntity *)m_body)->GetFirepointNode(0);
+            zdb::CNode *from = 0;
+
+            if (w->IsGrenadeLauncherAmmo())
+                from = ((CEntity *)m_body)->GetFirepointNode("firepoint_203");
+            if (!from)
+                from = ((CKitFireTarget *)m_body)->m_curr_firept;
+            CEntity *e = (CEntity *)((CKitBody *)m_body)->m_eb8;
+
+            if (e) {
+                CKitTurret *t = AsTurret(e);
+
+                if (t) {
+                    fire = t->m_pitchNode;
+                    from = 0;
+                }
+            }
+            if (fire && CZWeapon::m_allowFireAnimations) {
+                if (from)
+                    anim->ActivateArg(3, 3, fire, 5, from->m_matrix.m_matrix[3], 6, v, 0);
+                else
+                    anim->ActivateArg(3, 2, fire, 6, v, 0);
+            }
+        }
+        if (item == 186 || item == 146) {
+            zdb::CNode *n = ((CEntity *)m_body)->GetFirepointNode(0);
+
+            if (n) {
+                zdb::CNode *c;
+
+                if (n && (c = n->FindChild("projectile", true)))
+                    c->SetActive(false);
+            }
+        }
+        if (timer != 9999999.0f) {
+            CZSealBody *b = m_body;
+
+            w->Fire((zdb::CNode *)GetNode__7CEntityFv(b), ammo, pos, vel, v, p, ((CEntity *)b)->m_id, 0);
+            CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
+
+            if (ai) {
+                if (ai->AiStateIs(4)) {
+                    CKitState *st = ai->GetAiState();
+
+                    st = st && st->m_state == 4 ? st : 0;
+                    st->m_84 = p;
+                }
+            }
+        } else {
+            CZSealBody *b = m_body;
+
+            w->Fire((zdb::CNode *)GetNode__7CEntityFv(b), ammo, pos, vel, v, p, ((CEntity *)b)->m_id, 0);
+            if (!m_shot && data_0045A0C1)
+                SaveFireMessage(m_body, vel);
+        }
+        if (w) {
+            EQUIP_ITEM t = w->GetIDType();
+
+            if (CZWeapon::IsPrimaryType(t))
+                IncrPrimaryRoundsFired__10CSealStatsFi((char *)m_body + 0x58c, 1);
+            else if (CZWeapon::IsSecondaryType(t))
+                IncrSecondaryRoundsFired__10CSealStatsFi((char *)m_body + 0x58c, 1);
+            else if ((unsigned char)t == 121)
+                IncrGrenadesUsed__10CSealStatsFi((char *)m_body + 0x58c, 1);
+        }
+        p->m_pickup = pickup;
+        if (w)
+            Recoil(w);
+        return p;
+        }
+    }
+    return 0;
+}
+
 extern "C" {
 /* the body's carrying modes and its gear (seal_body.cpp's CZSealBody members, OVL2 0x5A70F0,
  * 0x5A7260, 0x58B040 -- spelled by their mangled names, CZSealBody being incomplete here) and the
@@ -2183,15 +2632,6 @@ void func_0057D510(CZSealBody *body, float step);
 
 /* the knock's vertical screen scale, kept (SOCOM 1's recoil_constscl; OVL2 bss 0x66B678) */
 static float recoil_constscl;
-
-/* a point copied field by field through its address (the target keeps &a.y and &a.z in saved
- * registers across the turret's call; the name ours) */
-static inline void CopyPoint(CPnt3D *dst, const CPnt3D *src)
-{
-    dst->x = src->x;
-    dst->y = src->y;
-    dst->z = src->z;
-}
 
 /* (OVL2 0x5C3360: kit.h's; SOCOM 1's Recoil) */
 void CZKit::Recoil(CZFTSWeapon *w)
@@ -3176,13 +3616,6 @@ void CZKit::SetCurAccuracy()
         acc2.m_factor = 0.707f * (size * (tanf(0.5f * fovy) / hh));
 }
 
-extern "C" {
-/* the kit's fire (SOCOM 1's CZKit::Fire(int, const CPnt3D *, const CPnt3D *, const CPnt3D *); OVL2
- * 0x5C5340, unwritten) and an explosive placed (SOCOM 1's HandleRemotePlaceExplosive, which took the
- * point and the SEAL's rotation: SOCOM II's takes two more, here 0; OVL2 0x5BC730, unwritten) */
-CZProjectile *func_005C5340(CZKit *kit, int index, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
-}
-
 /* a grenade thrown from a point at a velocity -- the current item fired with no spin, or, an
  * explosive (151; SOCOM 1's 150), placed with the SEAL's rotation (OVL2 0x5BD030; SOCOM 1's) */
 CZProjectile *CZKit::FireGrenade(const CPnt3D *pos, const CPnt3D *vel)
@@ -3194,7 +3627,7 @@ CZProjectile *CZKit::FireGrenade(const CPnt3D *pos, const CPnt3D *vel)
         return 0;
     if (w->GetIDType() == IDTYPE_EXPLOSIVE)
         return (CZProjectile *)HandleRemotePlaceExplosive(pos, (const CQuat *)((char *)m_body + 0x50), 0, 0);
-    return func_005C5340(this, m_selected_item, pos, vel, &v);
+    return Fire(m_selected_item, pos, vel, &v);
 }
 
 /* an item by index, wrapped, handed back through a pointer (OVL2 0x5BC6A0; SOCOM 1's) */
@@ -3342,19 +3775,6 @@ void SendPickupAckMessage__Fiii8AckUnion(int who, int id, int obj, AckUnion ack)
 void func_002BA2C0(int count, unsigned int netid, short *ids, unsigned int id, unsigned int owner);
 int strcasecmp(const char *a, const char *b);
 }
-
-/* the pickup as the kit reads it (zseal.h's CPickup: its stash and its owner's id; zseal.h is not included here) */
-class CPickup {
-public:
-    enum PU_TYPE { PU_TYPE_FIRST = 0, PU_TYPE_LAST = 255 };
-    static CPickup *Create(unsigned int owner, PU_TYPE type, zdb::CNode *node, void *data);
-    unsigned int GetPickupNetEntityID();
-
-    unsigned char _0[0x8];
-    CZItemStash *m_data;   // 0x8
-    unsigned char _c[0x10 - 0xc];
-    unsigned int m_owner;   // 0x10
-};
 
 /* the body's entity id (CEntity's, +4) */
 struct CKitIdBody {
@@ -4115,7 +4535,6 @@ inline void CDynGrenade::Initalize(const CMatrix *m, const CPnt3D &aim, float di
 /* the throw of a grenade the SEAL held: the hand's place, a player's solved at no power, an AI's by its
  * fire parameters (0x55EAA0, zseal.h's) -- each fired through 0x5C5340 */
 extern "C" bool func_0055EAA0(void *ai, void *params, bool clear);
-CZProjectile *func_005C5340(CZKit *kit, int index, const CPnt3D *pos, const CPnt3D *vel, const CPnt3D *v);
 
 /* what the throw reads of the SEAL (zseal.h's CZSealBody and CSealCtrl) */
 struct CKitThrowBody {
@@ -4211,7 +4630,7 @@ void CZKit::OnDeath()
                     CDynGrenade g;
 
                     g.Initalize(b->m_node, b->m_aim, dist, 0.0f, p);
-                    func_005C5340(this, m_selected_item, &g.m_pos, &g.m_vel, zero);
+                    Fire(m_selected_item, &g.m_pos, &g.m_vel, zero);
                 } else if (KitIsAi((CKitBody *)m_body)) {
                     CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
                     CPnt3D q;
@@ -4220,7 +4639,7 @@ void CZKit::OnDeath()
                     CKitFireParams *fp = (CKitFireParams *)((char *)ai + 0x370);
 
                     func_0055EAA0(ai, fp, true);
-                    func_005C5340(this, m_selected_item, &q, &fp->m_vel, zero);
+                    Fire(m_selected_item, &q, &fp->m_vel, zero);
                     fp->m_flags &= 0xFBDFFFFF;
                     fp->m_58 = 0.0f;
                 }
@@ -4236,11 +4655,6 @@ void CZKit::OnDeath()
 /* what the placing reads besides: the pickups (zseal.h's CPickup; OVL2 0x542B90), the bomb's state
  * (CZBombState, OVL1 0x2C2090: from the SEAL's id, a state and a point), the world's tree (OVL1 bss
  * 0x45C380: CWorld::m_world) and the local player (OVL1 bss 0x440C38, ftsPlayer) */
-
-class CZAnim {
-public:
-    CZAnim *ActivateArg(int type, ...);
-};
 
 class CZBombState {
 public:
@@ -4482,13 +4896,6 @@ static inline bool PlaceOk(CKitFireBody *fb)
     return ok;
 }
 
-/* (KitIsRemote's shape: the result narrowed in the call's arm too; the name ours) */
-static inline bool KitIsPlayerB(CKitBody *body)
-{
-    bool r = body->m_control ? (bool)((CKitSealCtrl *)body->m_control)->IsPlayer() : false;
-
-    return r;
-}
 
 /* a pull of the trigger: the laser's target fetched or the lock dropped; else, unless the binoculars are up,
  * by the item -- the remote charges (four at most, the message once) and the mines placed by an anim, the
@@ -4721,7 +5128,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
                 ((CKitSealCtrl *)body->m_control)->PerturbAimVector(&v);
                 ((CEntity *)m_body)->m_quat.Apply(&v, &v, 1);
             }
-            func_005C5340(this, index, &fp, &v, &((CKitBody *)m_body)->m_velW);
+            Fire(index, &fp, &v, &((CKitBody *)m_body)->m_velW);
             if (!WeaponIsLauncherMode(index)) {
                 if ((t != 81 || m_shot == 0) && !((CKitThrowBody *)m_body)->InfiniteAmmo()) {
                     int n = wrap(index, m_num_items);
@@ -4914,7 +5321,7 @@ bool CZKit::TickExplosives(float dT)
                 CDynGrenade g;
 
                 g.Initalize(b->m_node, b->m_aim, dist, power, p);
-                func_005C5340(this, m_selected_item, &g.m_pos, &g.m_vel, zero);
+                Fire(m_selected_item, &g.m_pos, &g.m_vel, zero);
             } else if (KitIsAi((CKitBody *)m_body)) {
                 CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
                 CPnt3D q;
@@ -4923,7 +5330,7 @@ bool CZKit::TickExplosives(float dT)
                 CKitFireParams *fp = (CKitFireParams *)((char *)ai + 0x370);
 
                 func_0055EAA0(ai, fp, true);
-                func_005C5340(this, m_selected_item, &q, &fp->m_vel, zero);
+                Fire(m_selected_item, &q, &fp->m_vel, zero);
                 fp->m_flags &= 0xFBDFFFFF;
                 fp->m_58 = 0.0f;
             }
