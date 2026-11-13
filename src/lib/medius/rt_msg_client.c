@@ -2615,13 +2615,13 @@ typedef struct rt_msg_client_notify_info {
 
 /* SOCOM 1's process_client_connect_notify (round 16b; its callback moved to 0x8C, the connection
  * perhaps gone after it): another client's id and address, its public key kept for type 8.
- * OPEN (4 words short, 106 differ): the target -- SOCOM 1's copy alike -- copies pMsg into a1 before
- * its null test (`beq v0,v1; move a1,s0; b ret; li v0,2`) and keeps the block moves' address in a1
- * (`a1 = pMsg + 2` after the id, `a1 += 16` before the key), never stepping pMsg itself; every
- * spelling tried -- pMsg stepped, &pMsg[nOffset], a cursor assigned once or twice, the null test on
- * the cursor or on &pMsg[nOffset] -- tests s0 and folds the address into the loads' offsets
- * (build/scratch/gcc/v_ccn.c). The length test is a guard (the target compares in v1, the hoisted
- * `li v0,1` holding v0: round 14b's rule the other way round). */
+ * The block moves read a cursor INITIALISED AT ITS DECLARATION to pMsg (GCC round 75, open since
+ * round 16b at 4 words short): the null test is on the cursor, which the target copies into a1 in
+ * the validity test's slot (`beq v0,v1; move a1,s0`), and it is reassigned `pMsg + 2` after the id
+ * (which reads pMsg itself), so it lives in a1. The same cursor first assigned after the call
+ * (`pData = pMsg;` at the test) tests s0 and folds the address into the loads. The length
+ * test is a guard (the target compares in v1, the hoisted `li v0,1` holding v0: round 14b's rule the
+ * other way round). */
 unsigned char rt_msg_client_process_client_connect_notify(rt_msg_client_connection *pConnection, int nType,
                                                 unsigned char *pMsg, unsigned int nLength)
 {
@@ -2630,10 +2630,11 @@ unsigned char rt_msg_client_process_client_connect_notify(rt_msg_client_connecti
     unsigned int nOffset = 0;
     unsigned char bHasKey = 0;
     unsigned short nId;
+    unsigned char *pData = pMsg;
 
     if (rt_msg_client_is_valid_connection(pConnection) != 1)
         return 2;
-    if (pMsg == 0)
+    if (pData == 0)
         return 2;
     if (nType == 8)
         bHasKey = 1;
@@ -2643,7 +2644,7 @@ unsigned char rt_msg_client_process_client_connect_notify(rt_msg_client_connecti
         return 1;
     if (rt_msg_get_u2byte(pMsg, &nClient) != 0)
         return 7;
-    pMsg += 2;
+    pData = pMsg + 2;
     nOffset += 2;
     if (bHasKey) {
         if (nLength - nOffset != 80)
@@ -2652,10 +2653,10 @@ unsigned char rt_msg_client_process_client_connect_notify(rt_msg_client_connecti
         if (nLength - nOffset != 16)
             return 1;
     }
-    memcpy(info.szAddress, pMsg, 16);
-    pMsg += 16;
+    memcpy(info.szAddress, pData, 16);
+    pData += 16;
     if (bHasKey) {
-        memcpy(info.abKey, pMsg, 64);
+        memcpy(info.abKey, pData, 64);
         KM_SetPublicKey(pConnection->nId, nClient, info.abKey);
     }
     if (pConnection->pfnClientConnect != 0) {
