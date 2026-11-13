@@ -4451,8 +4451,9 @@ typedef struct DmeHostPeerParams {
 
 /* SOCOM 1's RemoteClientDisconnectEvent grown (0x6164E0): a client gone from a world -- its objects freed, the world's
  * client callback told, and when this client was the one closing the world, the world closed */
-/* OPEN (round 26b): d=10: the first arm's `beqzl v1,..; b tail; lw v1,20(v1)` where this gives bnezl, and the report's
- * store order (pClient last; not permuted). */
+/* GCC round 74a (open since round 26b, d=10): the first arm carries its own copy of the state-3 tail and `return
+ * DME_OK` -- cross-jumping after reload merges it into the else arm's copy, leaving the target's `beqzl; b tail; lw
+ * v1,20(v1)` (a `goto tail` gives bnezl); the report filled in its own order, the state and user last. */
 int func_006164E0(int nWorld, int nClient)
 {
     struct {
@@ -4484,7 +4485,9 @@ int func_006164E0(int nWorld, int nClient)
         result = func_0061C720(nWorld, nMyClient, &pClient);
         if (result != DME_OK || pClient == 0)
             return result;
-        goto tail;
+        if (pClient->nState == 3)
+            func_0061F920(nWorld, 0, 0, 0);
+        return DME_OK;
     } else if (pClient->bConnected != 0) {
         func_006126E8(&pEntry, nWorld, nClient);
         if (pEntry != 0)
@@ -4504,11 +4507,11 @@ int func_006164E0(int nWorld, int nClient)
                     if (result != DME_OK || pWorld == 0)
                         return result;
                     memset(&report, 0, sizeof(report));
-                    report.nState = pClient->nState;
-                    report.nUser = pWorld->field_434;
                     report.nWorld = nWorld;
                     report.nClient = nClient;
                     report.pClient = pClient;
+                    report.nState = pClient->nState;
+                    report.nUser = pWorld->field_434;
                     pWorld->field_430(&report);
                 }
             }
@@ -4522,13 +4525,54 @@ int func_006164E0(int nWorld, int nClient)
     } else {
         if (pWorld->field_440 != 0)
             pWorld->field_440--;
-tail:
         if (pClient->nState == 3)
             func_0061F920(nWorld, 0, 0, 0);
     }
     return DME_OK;
 }
 
+extern int dme_pad_619DD8_0;
+extern int dme_pad_619DD8_1;
+extern int dme_pad_619DD8_2;
+extern int dme_pad_619DD8_3;
+extern int dme_pad_619DD8_4;
+extern int dme_pad_619DD8_5;
+extern int dme_pad_619DD8_6;
+extern int dme_pad_619DD8_7;
+extern int dme_pad_619DD8_8;
+extern int dme_pad_619DD8_9;
+extern int dme_pad_619DD8_10;
+extern int dme_pad_619DD8_11;
+extern int dme_pad_619DD8_12;
+extern int dme_pad_619DD8_13;
+extern int dme_pad_619DD8_14;
+extern int dme_pad_619DD8_15;
+extern int dme_pad_619DD8_16;
+extern int dme_pad_619DD8_17;
+extern int dme_pad_619DD8_18;
+extern int dme_pad_619DD8_19;
+extern int dme_pad_619DD8_20;
+extern int dme_pad_619DD8_21;
+extern int dme_pad_619DD8_22;
+extern int dme_pad_619DD8_23;
+extern int dme_pad_619DD8_24;
+extern int dme_pad_619DD8_25;
+extern int dme_pad_619DD8_26;
+extern int dme_pad_619DD8_27;
+extern int dme_pad_619DD8_28;
+extern int dme_pad_619DD8_29;
+extern int dme_pad_619DD8_30;
+extern int dme_pad_619DD8_31;
+extern int dme_pad_619DD8_32;
+extern int dme_pad_619DD8_33;
+extern int dme_pad_619DD8_34;
+extern int dme_pad_619DD8_35;
+extern int dme_pad_619DD8_36;
+extern int dme_pad_619DD8_37;
+extern int dme_pad_619DD8_38;
+extern int dme_pad_619DD8_39;
+extern int dme_pad_619DD8_40;
+extern int dme_pad_619DD8_41;
 /* SOCOM 1's NetOpenDataStream grown (0x619DD8): a free stream slot of this client's block made open, its ring buffer
  * allocated; 21 for a client without a block, 20 for no free slot */
 /* OPEN (round 26b): d=14 with the stream in a one-member struct (a real alias set; a plain pointer's alias word did not

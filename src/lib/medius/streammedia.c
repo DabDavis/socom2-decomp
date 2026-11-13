@@ -404,35 +404,39 @@ int func_00643790(void)
     return 0;
 }
 
-/* OPEN (20 words, the right size): the 21 default stores schedule in another order than the
- * target's (1, 0, 9, 10, 2..8, 11..20 there); 17 source orders tried -- offset order, grouped by
- * value, each constant's last use first -- past ccperm's reach (21 statements). */
+/* the default parameters. GCC round 74a (open since written, 20 words; 17 source orders tried): the
+ * 21 stores issue in source order exactly, the three constants' li after the first store -- stores
+ * sched1 may not reorder, through a volatile view (2.96 never moves a volatile MEM). Plain, sched1
+ * hoists each constant's last store by register weight (an[6], an[7], an[8], then an[20]). */
 int func_006437E0(STREAM_PARAMS *pParams)
 {
+    volatile int *an;
+
     if (pParams == 0)
         return 23;
     memset(pParams, 0, sizeof(*pParams));
-    pParams->an[1] = 0;
-    pParams->an[0] = 1;
-    pParams->an[9] = 16;
-    pParams->an[10] = 8000;
-    pParams->an[2] = 1;
-    pParams->an[3] = 1;
-    pParams->an[4] = 0;
-    pParams->an[5] = 1;
-    pParams->an[6] = 16;
-    pParams->an[7] = 8000;
-    pParams->an[8] = 1;
-    pParams->an[11] = 0;
-    pParams->an[12] = 0;
-    pParams->an[13] = 0;
-    pParams->an[14] = 0;
-    pParams->an[15] = 0;
-    pParams->an[16] = 0;
-    pParams->an[17] = 0;
-    pParams->an[18] = 0;
-    pParams->an[19] = 0;
-    pParams->an[20] = 0;
+    an = pParams->an;
+    an[1] = 0;
+    an[0] = 1;
+    an[9] = 16;
+    an[10] = 8000;
+    an[2] = 1;
+    an[3] = 1;
+    an[4] = 0;
+    an[5] = 1;
+    an[6] = 16;
+    an[7] = 8000;
+    an[8] = 1;
+    an[11] = 0;
+    an[12] = 0;
+    an[13] = 0;
+    an[14] = 0;
+    an[15] = 0;
+    an[16] = 0;
+    an[17] = 0;
+    an[18] = 0;
+    an[19] = 0;
+    an[20] = 0;
     return 0;
 }
 
@@ -929,8 +933,9 @@ int func_006447C0(int nWorld, int nClient)
     return 0;
 }
 
-/* OPEN (wrong size, 0x120 against 0x11C): the peer description's seven fields and the frame;
- * not diagnosed further. */
+/* a client's addresses to the voice library. GCC round 74a (open since written, 0x120 against 0x11C):
+ * the voice library is handed the peer description itself (`move a1,sp`), not the info
+ * func_00644610 fills from it -- the info's address was the one live across the call, in s0. */
 int func_006448A0(STREAM_CLIENT *pClient)
 {
     STREAM_PEER peer;
@@ -966,7 +971,7 @@ int func_006448A0(STREAM_CLIENT *pClient)
     result = func_00644610(&peer, &info);
     if (result != 0)
         return result;
-    result = func_006451E0(func_0062BED8(pSession->hAudio, &info), 42);
+    result = func_006451E0(func_0062BED8(pSession->hAudio, &peer), 42);
     if (result != 0)
         return result;
     pMember->bTalking = bValid;
@@ -1105,9 +1110,11 @@ int func_00644C90(void *hAudio, int a1, unsigned short *pMsg)
     return 1;
 }
 
-/* OPEN (wrong size): the client query's reply. The target materialises 1 in v0 once and uses it
- * for the waiting test and as the return value of the next three tests; nine shapes tried (guards,
- * one `&&`, nested ifs, a result variable set to 1, the 0x644C90 shape that matched). */
+/* the client query's reply. GCC round 74a (open since written; nine guard shapes tried): the 1
+ * materialised in v0 before the waiting test is a `return 1` hoisted from below a NESTED if -- the
+ * waiting and client tests each wrap the rest (`if (x == 1) { if (y == z) {...} } return 1;`), and the
+ * found stores go through a block's own copy of pSession: the int store kills purge_addressof's bare
+ * slot, so pSession itself is loaded again for the second store. */
 int func_00644D20(void *hAudio, int a1, int *pMsg)
 {
     STREAM_SESSION *pSession = 0;
@@ -1120,17 +1127,22 @@ int func_00644D20(void *hAudio, int a1, int *pMsg)
         return 0;
     if (!func_0061D440(pSession->query.nClient))
         return 0;
-    if (pSession->bWaiting != 1)
-        return 1;
-    if (pMsg[5] != pSession->query.nClient)
-        return 1;
-    if (pMsg[4] == 0)
-        return 1;
-    if (func_00644B20(pSession, pMsg[4], &pSession->query.nIndex) != 0)
-        return 0;
-    pSession->query.nFound = 1;
-    pSession->bWaiting = 0;
-    return 0;
+    if (pSession->bWaiting == 1) {
+        if (pMsg[5] == pSession->query.nClient) {
+            if (pMsg[4] == 0)
+                return 1;
+            if (func_00644B20(pSession, pMsg[4], &pSession->query.nIndex) != 0)
+                return 0;
+            {
+            STREAM_SESSION *pFound = pSession;
+
+            pFound->query.nFound = 1;
+            pFound->bWaiting = 0;
+            }
+            return 0;
+        }
+    }
+    return 1;
 }
 
 /* the voice library's data callbacks, passed on to the application's */
@@ -1258,9 +1270,10 @@ int func_00645018(void *hAudio, int a1, int a2)
 }
 
 /* the voice library's connect callback: the local address known, every joined member announced */
-/* OPEN (37 words, the right size): the member loop -- `bJoined == 1 && bAnnounced == 0` folds
- * into the target's one word load and 0x00FF00FF mask (fold_truthop), here too; the registers
- * around the two voice-library calls differ. Not iterated. */
+/* (GCC round 74a, open since written at 37 words: the port stored through a block's own copy of
+ * pSession -- the int store kills the bare slot purge_addressof leaves, and the target does not
+ * load pSession again for the address argument; the rest followed. The member loop's `bJoined == 1
+ * && bAnnounced == 0` folds into one word load and a 0x00FF00FF mask, fold_truthop's.) */
 int func_006450B0(void *hAudio, int nAddr, int nPort)
 {
     STREAM_SESSION *pSession = 0;
@@ -1271,8 +1284,12 @@ int func_006450B0(void *hAudio, int nAddr, int nPort)
 
     if (func_00644480(hAudio, &pSession) != 0)
         return -1;
-    pSession->nPort = nPort;
-    func_0062BD30(nAddr, pSession->szAddr);
+    {
+        STREAM_SESSION *p = pSession;
+
+        p->nPort = nPort;
+        func_0062BD30(nAddr, p->szAddr);
+    }
     result = func_006451E0(func_0062BEA0(pSession->hAudio, &nId), 42);
     if (result != 0)
         return result;
