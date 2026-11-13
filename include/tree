@@ -75,6 +75,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <msl_utility>   /* std::swap, which the tree's swap calls: declared before use, as <algorithm> */
 #include <new>
 #include <stdio.h>
 #include <stdlib.h>
