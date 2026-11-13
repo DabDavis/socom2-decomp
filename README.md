@@ -2066,6 +2066,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEAL sensors, round 72** (six rows byte-exact: CSealCtrl::ScanTick 0x600550 (0x79C, zkit/seal_look.cpp),
+  CSealCtrl::SensorTick 0x5C9B30 (0x63C), CSealCtrlAi::OnSetTargetVisible 0x5CA470 (0x580), SensorPreTick 0x5CBA20 (0x6AC) --
+  seal_sensors.cpp -- 0x55E670 (0x430, SOCOM 1's ComputeThrowFireParams(AI_FIREPARAMS &) by its calls; NOT yet renamed: its
+  source still defines the placeholder and its callers 0x55EAA0/0x55F0A0 are in seal_ai.cpp -- rename row and source together),
+  all unwritten before, and OVL2's GetBBox copy 0x541510 (`#pragma inline_depth(8)` at seal.cpp's end, as zanim_cmd_tick.cpp's
+  for OVL1's). 0x560B20 renamed AcquireAiAware__11CSealCtrlAiFP11CSealCtrlAib (SOCOM 1's by place and body, a bool added;
+  callers in seal_aievent.cpp and seal_sensors.cpp respelled, objcmp same by address), at size, 4 register-only off: the
+  target keeps this AI's alertness in f1 and reloads it into f2 -- the reload is a hoisted invariant numbered after the named
+  local, popped first. Not reached: 0x561550 (SOCOM 1's DoReaction by place; 0x561B90 SetDoReaction), 0x558AE0, 0x5605A0,
+  seal.cpp's 0x54EDF0 and 0x549F30, seal_sensors.cpp's three open rows. zseal.h, objcmp --by-address: CSealCtrlAi declares
+  OnSetTargetVisible, SensorPreTick, AcquireAiAware (slot +0xAC names the override). data.txt: the guarded statics 0x66B7D0/D8
+  and 0x66B220-0x66B263):
+  - AN IF/ELSE INTO A NAMED LOCAL IS NOT A TERNARY: the ternary's front-end temporary numbers after every named local, pops
+    first and takes the low saved FPR (0x55E670's flight time, by igdump).
+  - `bool r = A(); return r && !B();` puts A's sltu in v0 and narrows into the result in the slot. `b ? NotB(this) : b` keeps
+    the first operand's zero tested again at the join (`&&` jumps past it; `if (b) b = ...` adds an andi).
+  - of a pair of identical field accesses through an iterator, spelling one `(*t).` stops MW keeping the field's address in a
+    saved register across calls. `SameTeam(e, te)` through an inline hoists and spills `&e->m_team` (in place it does not).
+  - a chance stays in the frame only through seal_airesponse.cpp's Chance shape (odds by value, read through `const float &`).
+    A view local `CSealLook *l = Look(this)` stops `Look(this)->` keeping every member's address in a saved register.
 - **Tells from the SEAL AI, round 72** (three rows byte-exact: CAiHidePlanner::is_goal 0x5F8570 (1 slot: `r = m_hide ? vis <=
   m_thresh : vis >= m_thresh;`, the UI's round-31 if-versus-ternary rule), 0x562C80 (a stray `andi` since round 56), CSealCtrlAi::Tick
   0x56FD00 (29); SetTarget 0x566540 at size (7 structural: the mode test's layout), 0x569E40 23 to 6. Is() (Pop, PopTo, CAiSBreach,
