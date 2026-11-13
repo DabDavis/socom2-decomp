@@ -2066,6 +2066,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC recogniser, SDK and OVL1 libraries, round 77** (four rows byte-exact, every OPEN note wrong: sase_libquan.c's
+  squared distance 0x24C000 (since 34a: one difference variable reused for both axes), libmc.c's sceMcWrite (`base = (int)buff -
+  16;` its own statement; both arms store size, origin, buffer as ps2sdk's mcWrite), sase_coder.c's frame coder 0x2488A0 (since 44a:
+  the level pointer assigned after the asserts, and the asserts spelling `NellyNull` as the image's strings do), sase_codepv.c's
+  index decoder 0x2487E8 (since 19a: `iFlag = iIndex & 8;` after the asserts)):
+  - A LOCAL INITIALISED AT ITS DECLARATION IS BORN IN THE PROLOGUE; ASSIGNED AFTER THE ASSERTS IT CHANGES ITS LIVE LENGTH and
+    global-alloc's order with it (the `addiu`/`andi` still schedules into the prologue, so the code reads the same).
+  - ONE TEMPORARY REUSED FOR TWO VALUES ORDERS THE SCHEDULE (the second assignment waits for the first use); with two, sched1's
+    register-weight tie-break picks the loads that are a pointer's last use.
+  - A TERM KEPT INTACT IN THE TARGET (`addiu a0,s1,-16; subu`) WHERE OURS GETS `addiu 16; subu` IS FOLD'S REASSOCIATION, at the
+    tree level before RTL: put the term in its own statement (if the .rtl dump already shows the reassociated form, no
+    combine-level spelling helps).
+  - A REGISTER-ONLY MISS CAN HIDE A STRING MISMATCH: the scorer reports content relocations only once the instructions match --
+    read the image's assert strings before trusting a macro's `#e`.
 - **Tells from the GCC code, round 76** (seven Medius rows byte-exact: rt_p2p's peer searches 0x639A90 and 0x63B410 and 0x639FB8
   (since 22b), rt_udp 0x63F168, dmemessage 0x61ED48 (51 structural; re-read from the target as code), rt_crypt KM_Create (since
   8b), rt_msg_client 0x635228 (since 27b); five notes misdiagnosed. Nearer, not committed (variants in the lane's scratch,
