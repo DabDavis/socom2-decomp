@@ -1205,16 +1205,54 @@ struct CTLookAt : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
-/* a scripted AI group (ai_group.cpp's class, OVL2 0x60C190-0x60EDFF: its Find by id, 0x60E460) */
+/* a scripted AI group (ai_group.cpp's class, OVL2 0x60C190-0x60EDFF: its Find by id, 0x60E460, and
+ * what CTGroup::Begin builds one with -- ai_group.cpp's declarations) */
 class CAiGroup {
 public:
+    /* a camera point: a position and how to read it (ai_group.cpp's) */
+    struct campoint {
+        CPnt3D m_pos;   // 0x0
+        unsigned int m_flags;   // 0xc
+    };
+
     static CAiGroup *Find(int id);
+    static CAiGroup *Create(int n, int steps);
+    bool AddMember(CSealCtrlAi *ai);
+    void SetMemberLoc(unsigned int i, const CAiMapLoc &loc);
+    void AddStep(unsigned int n);
+    void EndStep();
+    void AddCamera(const campoint &from, const campoint &to, float time);
+    void AddSound(const char *name, float time);
+    void AddSound(int member, const char *name, float time);
+    void AddZAnim(int member, const char *name, float time);
+    void AddAnim(int member, short anim, float length, float time);
+    void Start();
+    /* (ai_group.cpp's inlines) */
+    void SetFlag(unsigned int f, unsigned int on) { SetFlags(on ? f : 0, on ? 0 : f); }
+    void SetFlags(unsigned int set, unsigned int clear)
+    {
+        m_flags &= ~clear;
+        m_flags |= set;
+    }
+
+    unsigned int m_flags;   // 0x0
+    int m_id;   // 0x4
+    CAiMapLoc m_goal;   // 0x8
 };
 
-/* ai::GROUP (SOCOM II's) */
+/* ai::GROUP (SOCOM II's): the members' names, their cells, then each step's actions -- a stream
+ * Parse writes and Begin reads back (the names ours) */
 struct CTGroup : TASK_HDR {
-    unsigned char _8[0x14 - 0x8];
+    unsigned char m_count;   // 0x8: the members
+    unsigned char m_steps;   // 0x9
+    unsigned char m_haslocs : 1;   // 0xa bit 0: a cell for each member follows the names
+    unsigned char m_flag4 : 1;   // bit 1: the group's flag 4
+    unsigned char m_flag8 : 1;   // bit 2: the group's flag 8
+    unsigned char _a3 : 5;
+    unsigned char _b[0x10 - 0xb];
+    CAiMapLoc m_goal;   // 0x10: the group's goal cell
     unsigned int m_14;   // 0x14: the group's id (CAiGroup::Find's), 0 once ended
+    char m_data[4];   // 0x18: the stream
 
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);    /* (RegisterCommands' handlers, unwritten) */
@@ -2768,6 +2806,141 @@ extern "C" bool func_005DAF50(TASK_GROUPPOS *out, _zrdr *r, unsigned int flags)
         }
     }
     return ok;
+}
+
+/* the group built from the block's stream: its members by name (the SEALs the AI drives), their
+ * cells, the flags; each step's actions -- a member's sound, anim or ZAnim, a camera move, the
+ * group's sound, each with an optional time (flag 0x10000) and the anim an optional length (0x20000)
+ * -- and the group started (OVL2 0x5D9840; SOCOM II's command, the AI asked for and unused). A ZAnim
+ * falls through into the camera move: the target's own missing break. Byte-exact (the kit's round
+ * 63, unwritten before): the members' count read through a const view in the first loop (a plain
+ * read is CSE'd into the cells' loop, which the target reads again; a const cast at the read makes
+ * the count's address an invariant in s0); the step's count a one-element array `= { 0 }` (the
+ * target's byte-zero loop with its count before the address's null test); each read's `p += 4`
+ * before the call that takes the value (the add in the call's slot); the time zeroed after the
+ * flags' copy, the anim's length declared ahead of the anim (its swc1 first, from an f0 the switch
+ * shares); IsAi as a ternary on the controller (zseal.h's inline over `r` leaves out the `b; andi`);
+ * SetFlag over a (bool) of each bit (the sltu); Create takes the steps too (a1 set for the call) */
+void CTGroup::Begin(_zanim_cmd_hdr *hdr)
+{
+    TASK_SEAL(CTGroup);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    CAiGroup *g = CAiGroup::Create(cmd->m_count, cmd->m_steps);
+
+    if (!g)
+        return;
+
+    const char *p = cmd->m_data;
+
+    cmd->m_14 = g->m_id;
+    g->m_goal = cmd->m_goal;
+    const CTGroup &c = *cmd;
+
+    for (int i = 0; i < c.m_count; i++) {
+        const char *name = p;
+
+        p += strlen(p) + 1;
+        CEntity *e = CEntity::GetEntityList().GetEntity(name);
+        CZSealBody *s = (CZSealBody *)(e && e->m_type == CEntity::ENT_TYPE_SEAL ? e : 0);
+
+        if (s && (s->m_control ? ((CSealCtrl *)s->m_control)->IsAi() : false))
+            g->AddMember(SealAi(s));
+    }
+    if (cmd->m_haslocs) {
+        for (int i = 0; i < cmd->m_count; i++) {
+            CAiMapLoc loc;
+
+            memcpy(&loc, p, 4);
+            p += 4;
+            g->SetMemberLoc(i, loc);
+        }
+    }
+    g->SetFlag(4, (bool)cmd->m_flag4);
+    g->SetFlag(8, (bool)cmd->m_flag8);
+    for (int step = 0; step < cmd->m_steps; step++) {
+        unsigned int n[1] = { 0 };
+
+        memcpy(&n[0], p, 4);
+        p += 4;
+        g->AddStep(n[0]);
+        for (unsigned int j = 0; j < n[0]; j++) {
+            unsigned int flags = 0;
+
+            memcpy(&flags, p, 4);
+            float time = 0.0f;
+
+            p += 4;
+            switch (flags & 0xff00) {
+            case 0x200: {
+                const char *name = p;
+
+                p += strlen(p) + 1;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                g->AddSound((unsigned char)flags, name, time);
+                break;
+            }
+            case 0x100: {
+                float length = 0.0f;
+                int anim = 0;
+
+                memcpy(&anim, p, 4);
+                p += 4;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                if (flags & 0x20000) {
+                    memcpy(&length, p, 4);
+                    p += 4;
+                }
+                g->AddAnim((unsigned char)flags, (short)anim, length, time);
+                break;
+            }
+            case 0x500: {
+                const char *name = p;
+
+                p += strlen(p) + 1;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                g->AddZAnim((unsigned char)flags, name, time);
+            }
+            case 0x300: {
+                CAiGroup::campoint from;
+                CAiGroup::campoint to;
+
+                from.m_flags = 0;
+                to.m_flags = 0;
+                memcpy(&from, p, 16);
+                memcpy(&to, p + 16, 16);
+                p += 32;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                g->AddCamera(from, to, time);
+                break;
+            }
+            case 0x400: {
+                const char *name = p;
+
+                p += strlen(p) + 1;
+                if (flags & 0x10000) {
+                    memcpy(&time, p, 4);
+                    p += 4;
+                }
+                g->AddSound(name, time);
+                break;
+            }
+            }
+        }
+        g->EndStep();
+    }
+    g->Start();
 }
 
 /* running until the group is gone (OVL2 0x5D9710) */
