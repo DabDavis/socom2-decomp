@@ -6411,7 +6411,8 @@ extern "C" bool func_0059D830(CZSealBody *seal)
  * CLadderList : vector<CLadderData>) */
 class CLadderData {
 public:
-    unsigned char _0[0x1c];
+    unsigned char _0[0x18];
+    zdb::CNode *m_node;   // 0x18: the ladder's node, its faces the DIs (0x5B1C80; the name ours)
     int m_users;   // 0x1c (the names ours)
     unsigned int m_owner;   // 0x20: the entity id of the SEAL holding it
     int m_index;   // 0x24: the index a SEAL taking it holds (0x5B1130 stores it to m_ladder)
@@ -6888,8 +6889,8 @@ extern "C" void func_005B1130(unsigned char b, int index)
 }
 
 extern "C" {
-/* (OVL2 0x5B1C80, not written: the ladder taken up by its index) */
-void func_005B1C80(CZSealBody *seal, int ladder);
+/* (OVL2 0x5B1C80, below: the SEAL put on a ladder by its index) */
+bool func_005B1C80(CZSealBody *seal, int index);
 }
 
 /* the SEAL's hold on a ladder ticked: in state 1 a held ladder the SEAL can no longer take lets the
@@ -7811,6 +7812,174 @@ extern "C" void func_005B1750(CZSealBody *seal, const CPnt3D *refpt, const CPnt3
         if (seal->m_carry->m_eb8)
             func_00545EE0(seal->m_carry, 1);
     }
+}
+
+extern "C" {
+/* the anim a SEAL climbing down a ladder turns by (OVL1 data, an AnimType read as a short) */
+extern short data_003DEAE0;
+/* how near two of a rung's heights must be to be its two ends (OVL2 data) */
+extern float data_006506B8;
+bool func_0052EB60(const float &a, const float &b, const float &eps);
+/* (OVL2 0x57F690 and 0x57F880, seal_body.cpp's: the ladder anims pushed; 0x5B1890, below) */
+CZBodyAnimBlend *func_0057F690(CZSealBody *seal);
+CZBodyAnimBlend *func_0057F880(CZSealBody *seal);
+CZBodyAnimBlend *func_005B1890(CZSealBody *seal);
+}
+
+/* the cross product of two points through VU0, normalised (CPnt3D::Cross's body with its flag set, an
+ * inline here; the name ours) */
+static inline void CrossNormVU0(const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+{
+    sceVu0FVECTOR r;
+    sceVu0FVECTOR va;
+    sceVu0FVECTOR vb;
+
+    va[0] = a->x;
+    va[1] = a->y;
+    va[2] = a->z;
+    va[3] = 1.0f;
+    vb[0] = b->x;
+    vb[1] = b->y;
+    vb[2] = b->z;
+    vb[3] = 1.0f;
+    sceVu0OuterProduct(r, va, vb);
+    sceVu0Normalize(r, r);
+    out->x = r[0];
+    out->y = r[1];
+    out->z = r[2];
+}
+
+/* one point less another, by value (an inline over CPnt3D::Sub; the name ours) */
+static inline CPnt3D Less(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+
+    a.Sub(&b, &r);
+    return r;
+}
+
+/* the SEAL put on a ladder by its index: none, and the SEAL is off every ladder (false); else the face of
+ * the ladder's node whose height (over 15 or not) suits the climb's way -- up a short face, down a tall
+ * one -- found, its rung (the two ends of a level edge) taken: up, the ladder anim's goal set on the
+ * rung's middle and the SEAL turned onto the face at the anim's rate; down, the climb-down anim homed
+ * onto it; then the ladder taken (OVL2 0x5B1C80, new in SOCOM II: 0x5B1570 and 0x5880E0 call it; the name
+ * ours). The DI walk's iterator ASSIGNED (`it = begin()`: a temporary, the iterator and the postfix ++'s two
+ * copies all in memory); the face's three points as references declared together (the third's address
+ * held in s7 across the first Sub); the named points declared in the target's slot order, the edges
+ * initialised from a by-value inline; the turn's rate computed into a local before the three stores
+ * (a CPnt3D temporary adds a slot); the down-climb's height as 15.6f + y (ref.y is not forwarded) */
+extern "C" bool func_005B1C80(CZSealBody *seal, int index)
+{
+    CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(index);
+
+    if (!ladder) {
+        func_0059D750(seal);
+        return false;
+    }
+    CPnt3D fwd;
+    CPnt3D norm;
+    CPnt3D lo;
+    CPnt3D hi;
+    zdb::CNode *node = ladder->m_node;
+    CMatrix m;
+
+    node->BuildMTW(m);
+    zdb::CDIVector &dis = node->m_di;
+
+    TransformVectors(&seal->m_node->m_matrix, &CPnt3D::unit_nz, &fwd, 1);
+    unsigned char up = seal->m_climb.m_up;
+    bool found = false;
+    zdb::CDIVector::iterator it;
+
+    for (it = dis.begin(); it != dis.end(); it++) {
+        zdb::CDI *di = *it;
+        const CPnt3D &a = *(CPnt3D *)&di->m_pnts[0];
+        const CPnt3D &b = *(CPnt3D *)&di->m_pnts[1];
+        const CPnt3D &c = *(CPnt3D *)&di->m_pnts[2];
+        float top = -99999.0f;
+        float bot = 99999.0f;
+        CPnt3D n;
+        CPnt3D e1 = Less(b, a);
+        CPnt3D e2 = Less(c, a);
+        CPnt3D pts[4];
+
+        CrossNormVU0(&e1, &e2, &n);
+        TransformVectors(&m, &n, &norm, 1);
+        for (unsigned int i = 0; i < di->m_flags.m_ptcount; i++) {
+            CPnt3D q = *(CPnt3D *)&di->m_pnts[i];
+
+            m.Transform(&q, &pts[i], 1);
+            if (pts[i].y > top)
+                top = pts[i].y;
+            if (pts[i].y < bot)
+                bot = pts[i].y;
+            if (i != 0 && func_0052EB60(pts[i].y, pts[i - 1].y, data_006506B8)) {
+                lo = pts[i - 1];
+                hi = pts[i];
+            }
+        }
+        bool low = top - bot <= 15.0f;
+
+        if ((low && up) || (!low && !up)) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        func_0059D750(seal);
+        return false;
+    }
+    CPnt3D mid;
+
+    mid.x = 0.5f * lo.x + 0.5f * hi.x;
+    mid.y = 0.5f * lo.y + 0.5f * hi.y;
+    mid.z = 0.5f * lo.z + 0.5f * hi.z;
+    if (up) {
+        CZBodyAnimBlend *b = func_0057F690(seal);
+        REFPT_INFO &info = b->m_refpt_info;
+
+        info.m_goal_pos = mid;
+        info.m_goal_norm = norm;
+        info.m_valid = 1;
+        CQuat inv = seal->m_quat;
+        CPnt3D d;
+
+        inv.vec.x = -inv.vec.x;
+        inv.vec.y = -inv.vec.y;
+        inv.vec.z = -inv.vec.z;
+        inv.Apply(&norm, &d, 1);
+        float c = d.x * CPnt3D::unit_nz.x + d.y * CPnt3D::unit_nz.y + d.z * CPnt3D::unit_nz.z;
+
+        if (c < 0.0f) {
+            float a = SafeAcosH(c);
+
+            if (d.x < 0.0f)
+                a = 6.2831855f - a;
+            CZBodyAnimBlend *t = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEAE0, 0, 0, 13);
+            CZSIScriptCommon *s = t->Representative()->m_anim;
+
+            float rate = -a / s->LoopTime();
+
+            seal->m_velR.x = 0.0f;
+            seal->m_velR.y = rate;
+            seal->m_velR.z = 0.0f;
+        } else
+            func_005B1890(seal);
+    } else {
+        CZBodyAnimBlend *b = func_0057F880(seal);
+        CPnt3D ref;
+
+        func_0058C2F0(seal, b->Representative()->m_anim, &ref);
+        ref.y = 15.6f;
+        mid.y = 15.6f + seal->m_posW.y;
+        NegateInto(&norm, &norm);
+        HomingOf(b)->Aim(b, &ref, &norm, &mid);
+        CPnt3D z = CPnt3D::zero;
+
+        b->m_homing.m_target_refpt_m = z;
+    }
+    TakeLadder(seal, index);
+    return true;
 }
 
 extern "C" {
