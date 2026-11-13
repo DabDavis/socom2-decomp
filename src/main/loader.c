@@ -102,7 +102,7 @@ int func_001C5EC0(const char *name, void *buf)
 
 int sceGsSyncV(int mode);
 
-typedef unsigned int u_long128 __attribute__((mode(TI)));
+#include <eetypes.h>	/* u_char ... u_long, and the one 128-bit type */
 
 /* libgraph's BITBLTBUF (Sony's sceGsBitbltbuf) */
 typedef struct {

@@ -46,7 +46,7 @@ CVU::CVU(unsigned int unit)
         EnableIntc(4);
         p = VU0_MEM;
         for (i = 0; i < 256; i++)
-            *p++ = 0xCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD;
+            *p++ = Z_Q128(CDCDCDCDCDCDCDCD, CDCDCDCDCDCDCDCD);
     }
     m_refCount++;
     m_unit = unit;

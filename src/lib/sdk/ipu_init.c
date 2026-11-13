@@ -10,10 +10,7 @@
  * a volatile quadword -- a plain read is CSE'd into one load, 0x228 against 0x238). Names: SOCOM
  * 1's (s1:exact; iqval and vqval the demo's LOCAL labels, data.txt's rows). */
 
-typedef unsigned int u_int;
-typedef unsigned short u_short;
-typedef unsigned char u_char;
-typedef int u_long128 __attribute__((mode(TI)));
+#include <eetypes.h>	/* u_char ... u_long, and the one 128-bit type */
 
 #define IPU_CMD		((volatile u_int *)0x10002000)
 #define IPU_CTRL	((volatile u_int *)0x10002010)

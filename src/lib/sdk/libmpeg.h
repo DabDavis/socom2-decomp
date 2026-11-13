@@ -6,11 +6,7 @@
 #ifndef SC_LIBMPEG_H
 #define SC_LIBMPEG_H
 
-typedef unsigned int u_int;
-typedef unsigned short u_short;
-typedef unsigned char u_char;
-typedef unsigned long u_long;
-typedef int u_long128 __attribute__((mode(TI)));
+#include <eetypes.h>	/* u_char ... u_long, and the one 128-bit type */
 
 #define IPU_CMD		((volatile u_long *)0x10002000)
 #define IPU_CMD_W	((volatile u_int *)0x10002000)	/* a command is written as a word */
@@ -266,8 +262,8 @@ typedef struct {
 	char pad10a4[0x10C0 - 0x10A4];
 } MpegDec;
 
-/* the layout, checked where the code says it */
-#define MPEG_AT(T, f, off) typedef char _at_##T##_##f[(int)&((T *)0)->f == (off) ? 1 : -1]
+/* the layout, checked where the code says it (on the EE: <zport.h>'s Z_LAYOUT_OK is the test itself) */
+#define MPEG_AT(T, f, off) typedef char _at_##T##_##f[Z_LAYOUT_OK((int)&((T *)0)->f == (off)) ? 1 : -1]
 MPEG_AT(sceMpeg, sys, 0x40);
 MPEG_AT(MpegDec, work, 0x44);
 MPEG_AT(MpegDec, ptsGapSet, 0x70);
@@ -277,10 +273,10 @@ MPEG_AT(MpegDec, picture_structure, 0x174);
 MPEG_AT(MpegDec, ref, 0x1B8);
 MPEG_AT(MpegDec, mb, 0x590);
 MPEG_AT(MpegDec, _810, 0x810);
-typedef char _at_MpegMB_size[sizeof(MpegMB) == 0x140 ? 1 : -1];
+typedef char _at_MpegMB_size[Z_LAYOUT_OK(sizeof(MpegMB) == 0x140) ? 1 : -1];
 MPEG_AT(MpegDec, dirty, 0x818);
 MPEG_AT(MpegDec, mp, 0x858);
 MPEG_AT(MpegDec, _10a0, 0x10A0);
-typedef char _at_MpegDec_size[sizeof(MpegDec) == 0x10C0 ? 1 : -1];
+typedef char _at_MpegDec_size[Z_LAYOUT_OK(sizeof(MpegDec) == 0x10C0) ? 1 : -1];
 
 #endif

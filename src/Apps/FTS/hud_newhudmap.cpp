@@ -460,7 +460,7 @@ void SetupNorthIndicator(CZSealBody *pViewer)
 
     GetSealDir(pViewer, &dir);
     const float *z = &dir.z;
-    float fInvLength = __rsqrt(1.0f, dir.x * dir.x + *z * *z);
+    float fInvLength = Z_RSQRT(1.0f, dir.x * dir.x + *z * *z);
     float fNormX = dir.x * fInvLength;
     float fNormZ = *z * fInvLength;
     float fFrontEndX = 600.0f - 30.0f * fNormX;

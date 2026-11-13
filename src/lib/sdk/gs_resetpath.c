@@ -5,8 +5,7 @@
  * STMOD 0, MSKPATH3 0, BASE 0, OFFSET 0, ITOP 0) and the GIF (CTRL RST). Name: SOCOM 1's
  * (s1:exact; the local static the demo's `init_vif_regs.3`, data.txt's row). */
 
-typedef unsigned int u_int;
-typedef int u_long128 __attribute__((mode(TI)));
+#include <eetypes.h>	/* u_char ... u_long, and the one 128-bit type */
 
 #define VIF1_FBRST	((volatile u_int *)0x10003C10)
 #define VIF1_ERR	((volatile u_int *)0x10003C20)

@@ -28,8 +28,7 @@
  * prove it positive; the packet indexed and the receive buffer walked, so the count's copy comes
  * before the giv's init; left: the fno test in v1 and the handler in a2, where this takes v0/v1). */
 
-typedef unsigned int u_int;
-typedef unsigned int u_long128 __attribute__((mode(TI)));
+#include <eetypes.h>	/* u_char ... u_long, and the one 128-bit type */
 
 typedef struct {
 	u_int psize:8;

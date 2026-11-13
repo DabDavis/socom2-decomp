@@ -32,7 +32,7 @@ enum tag_ZVIS_FOV {
     ZVIS_FOV_NUM = 3
 };
 
-typedef unsigned int _word128 __attribute__((mode(TI)));
+typedef u_long128 _word128;   /* <eetypes.h>'s, through znode.h */
 
 /* the per-frame block the camera hands the VU (SOCOM 1's DWARF) */
 class tag_FrameSetup {

@@ -3,11 +3,7 @@
  * 0x12000000) and the register-pair blocks the sceGsSetDef* functions fill. A GS register's
  * bitfields are spelt here as whole u_long words: the code stores and loads them whole. */
 
-typedef unsigned long u_long;
-typedef unsigned int u_int;
-typedef unsigned short u_short;
-typedef unsigned char u_char;
-typedef int u_long128 __attribute__((mode(TI)));
+#include <eetypes.h>	/* u_char ... u_long, and the one 128-bit type */
 
 typedef struct {
 	short sceGsInterMode;		/* 0: SCE_GS_NOINTERLACE, 1: SCE_GS_INTERLACE */

@@ -707,7 +707,7 @@ extern "C" void func_001F21B0(CObjectiveCounts *counts)
         iSec -= ts * 10;
         szTime[8] = '0' + iSec;
     } else {
-        __memcpy((void *)szTime, (void *)"999:59:59", sizeof(szTime));
+        Z_MEMCPY((void *)szTime, (void *)"999:59:59", sizeof(szTime));
     }
     UIVar("TimeInGame") = szTime;
 }

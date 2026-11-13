@@ -87,8 +87,8 @@ void zRndrInit()
     u_long128 *p = (u_long128 *)0x1100C000;
     for (unsigned int i = 0; i < 1024; i += 8) {
         for (int k = 0; k < 4; k++) {
-            *p++ = (u_long128)0xCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD;
-            *p++ = (u_long128)0xCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD;
+            *p++ = (u_long128)Z_Q128(CDCDCDCDCDCDCDCD, CDCDCDCDCDCDCDCD);
+            *p++ = (u_long128)Z_Q128(CDCDCDCDCDCDCDCD, CDCDCDCDCDCDCDCD);
         }
     }
     FlushCache(0);

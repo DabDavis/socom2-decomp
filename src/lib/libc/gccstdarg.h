@@ -6,8 +6,14 @@
 #ifndef SC_GCCSTDARG_H
 #define SC_GCCSTDARG_H
 
+#include <zport.h>
+
 typedef __builtin_va_list va_list;
+#if Z_PORT
+#define va_start(v, l)	__builtin_va_start(v, l)
+#else
 #define va_start(v, l)	__builtin_stdarg_start((v), l)
+#endif
 #define va_end		__builtin_va_end
 #define va_arg		__builtin_va_arg
 

@@ -158,8 +158,8 @@ namespace zdb {
 inline unsigned int CVisual::GetVid()
 {
     if (m_stack_vid.empty()) {
-        __I_break(0);
-        __I_nop();
+        Z_I_BREAK(0);
+        Z_I_NOP();
     }
     return (unsigned int)m_stack_vid.top();
 }

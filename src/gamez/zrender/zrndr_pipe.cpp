@@ -1827,8 +1827,8 @@ bool CPipe::RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
 inline unsigned int zdb::CVisual::GetVid()
 {
     if (m_stack_vid.empty()) {
-        __I_break(0);
-        __I_nop();
+        Z_I_BREAK(0);
+        Z_I_NOP();
     }
     return (unsigned int)m_stack_vid.top();
 }
@@ -1902,8 +1902,8 @@ void CPipe::CAlpha::Add(zdb::CNode *atom, zdb::CNode *node, zdb::CVisual *visual
 static inline void PopVid()
 {
     if (zdb::CVisual::m_stack_vid.empty()) {
-        __I_break(0);
-        __I_nop();
+        Z_I_BREAK(0);
+        Z_I_NOP();
     }
     zdb::CVisual::m_stack_vid.pop();
 }
