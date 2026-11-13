@@ -1,5 +1,5 @@
 /* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
-/* The socket layer's core (MAIN 0x1C1CD0-0x1C4CC0, after BIND's inet_ntop.c): a socket API over
+/* The socket layer's core (MAIN 0x1C20D8-0x1C4CC0, after BIND's inet_ntop.c and inet_heap.c): a socket API over
  * Sony's libinet RPC client (sceInetCreate/Open/Send/Recv/Close/Control/Name2Address/Address2Name/
  * Abort) and libnet (sceLibnetInitialize/Terminate), the -O0 BSD-name wrappers of inet_bsd.c its
  * callers. Not in SOCOM 1's demo (it links no network), so every row keeps its placeholder and
@@ -7,12 +7,7 @@
  * -O2 -G0 (the drafts that matched first matched under 991111: dtls13010 compiles this C the same).
  *
  * What it holds, in the image's order (GCC round 20a):
- *  - the allocator: two hooks (0x1E5F70, 0x1E5F74) that default to newlib's malloc and free, and a
- *    first-fit heap the caller can hand it (func_001C2028 installs it as the hooks): every block a
- *    12-byte header {next, prev, size} on one of two lists kept in address order -- the used list,
- *    each allocation linked in before the used block that follows its free block, and the free list,
- *    each release linked in before the free block after its run of used neighbours and merged with
- *    both free neighbours;
+ *  - (the allocator, 0x1C1CD0-0x1C20D8, is inet_heap.c: below);
  *  - the lock: one semaphore (0x1CE620), created at the first use;
  *  - each thread's context (0x68 bytes: its libnet client at +20, an error number at +12), found by
  *    the thread id on a list (0x1CE628) of at most 255, the oldest dropped first.
@@ -68,14 +63,9 @@
  * insn short of jump2's minimum of two against the lock path's), and inside each arm sched1 slips
  * the `move a0` between the li and the sw (the li's latency), as the target's arms have it.
  *
- * OPEN: func_001C1D40, the first-fit allocation (0x14C against 0x150: the target computes the
- *   remainder as (size' - 12) - size from the loop's own load of the block's size, and after a split
- *   reloads the new block's size where the exact fit keeps the loop's -- nine spellings of the
- *   remainder over four loop forms are all a word short; build/scratch/gcc/gen_malloc.py);
- *   func_001C1E90, the release (0x1B0 against 0x198: the run of used neighbours is walked with the
- *   size held from the start, the merges reuse the adjacency sums -- the walk's shape is not yet the
- *   target's); func_001C2028, the heap's set-up (right size, 34: the first `return -1` is the one
- *   the second test jumps back to, and nine stores in another order -- not yet permuted);
+ * The allocator (0x1C1CD0-0x1C20D8) is inet_heap.c since GCC round 79: its own object, built
+ * without strict aliasing.
+ * OPEN:
  *   func_001C4A20, gethostbyaddr (0x1EC against 0x1FC: the target cross-jumps the type, length
  *   and h_errno paths into the lock failure's call and keeps the errno path's call apart, this
  *   compile merges all four; its h_errno 2 and 4 stored from the checked type and length, as the
@@ -96,8 +86,8 @@ struct SemaParam {
 	u_int option;
 };
 
-extern void *malloc(size_t n);
-extern void free(void *p);
+extern void *func_001C1CD0(size_t n);	/* inet_heap.c */
+extern void func_001C1D08(void *p);
 extern int CreateSema(struct SemaParam *p);
 extern int WaitSema(int sema);
 extern int SignalSema(int sema);
@@ -125,13 +115,6 @@ extern int sceInetControl(void *cd, void *buf, int s, int code, void *ptr, int l
 extern int sceInetName2Address(void *cd, void *buf, int flags, void *paddr, const char *name, int ms,
 			       int nretry);
 
-/* the first-fit heap's block header: the payload follows it */
-typedef struct _blk {
-	struct _blk *next;	/* 0x0 */
-	struct _blk *prev;	/* 0x4 */
-	u_int size;		/* 0x8: the payload's */
-} BLK;
-
 /* a thread's context */
 typedef struct _ctx {
 	struct _ctx *next;	/* 0x00 */
@@ -147,190 +130,10 @@ typedef struct _ctx {
 	int prio;		/* 0x64 */
 } CTX;
 
-extern void *(*data_001E5F70)(size_t n);	/* the allocator's hooks */
-extern void (*data_001E5F74)(void *p);
-extern BLK *data_001E5F78;			/* the used list */
-extern BLK *data_001E5F7C;
-extern BLK *data_001E5F80;			/* the free list */
-extern BLK *data_001E5F84;
-extern void *data_001E5F88;			/* the heap */
-extern void *data_001E5F8C;
 extern int data_001CE620;			/* the lock */
 extern int data_001CE624;			/* the contexts: how many */
 extern CTX *data_001CE628;			/* the list */
 extern CTX *data_001CE62C;
-
-void *func_001C1CD0(size_t n)
-{
-	if (data_001E5F70)
-		return data_001E5F70(n);
-	return malloc(n);
-}
-
-void func_001C1D08(void *p)
-{
-	if (data_001E5F74 == 0) {
-		free(p);
-		return;
-	}
-	data_001E5F74(p);
-}
-
-void *func_001C1D40(size_t size)
-{
-	BLK *p, *b, *n;
-	u_int rest;
-
-	size = (size + 3) & ~3U;
-	for (p = data_001E5F80; p; p = p->next)
-		if (size < p->size)
-			break;
-	if (p == 0)
-		return 0;
-
-	b = p;
-	rest = p->size - sizeof(BLK) - size;
-	if (rest) {
-		/* split: the rest stays free, in b's place */
-		p = (BLK *)((char *)b + sizeof(BLK) + size);
-		b->size = size;
-		p->size = rest;
-		p->next = b->next;
-		if (p->next)
-			p->next->prev = p;
-		else
-			data_001E5F84 = p;
-		p->prev = b->prev;
-		if (p->prev)
-			p->prev->next = p;
-		else
-			data_001E5F80 = p;
-	} else {
-		if (b->next)
-			b->next->prev = b->prev;
-		else
-			data_001E5F84 = b->prev;
-		if (b->prev)
-			b->prev->next = b->next;
-		else
-			data_001E5F80 = b->next;
-	}
-
-	/* the used list in address order: before the block that follows the free one */
-	n = (BLK *)((char *)p + p->size + sizeof(BLK));
-	if (data_001E5F78 == 0) {
-		b->prev = 0;
-		b->next = 0;
-		data_001E5F7C = b;
-		data_001E5F78 = b;
-	} else if ((void *)n >= data_001E5F8C) {
-		b->next = 0;
-		b->prev = data_001E5F7C;
-		data_001E5F7C->next = b;
-		data_001E5F7C = b;
-	} else {
-		b->prev = n->prev;
-		if (n->prev)
-			n->prev->next = b;
-		else
-			data_001E5F78 = b;
-		b->next = n;
-		n->prev = b;
-	}
-	return (char *)b + sizeof(BLK);
-}
-
-void func_001C1E90(void *ptr)
-{
-	BLK *b, *p, *n;
-	u_int size;
-
-	if (ptr == 0)
-		return;
-	b = (BLK *)((char *)ptr - sizeof(BLK));
-
-	/* off the used list */
-	if (b->next)
-		b->next->prev = b->prev;
-	else
-		data_001E5F7C = b->prev;
-	if (b->prev)
-		b->prev->next = b->next;
-	else
-		data_001E5F78 = b->next;
-
-	/* the free block after b's run of used neighbours */
-	size = b->size;
-	p = b;
-	while (p->next == (BLK *)((char *)p + p->size + sizeof(BLK)))
-		p = p->next;
-	n = (BLK *)((char *)p + p->size + sizeof(BLK));
-	if ((void *)n < data_001E5F8C) {
-		b->prev = n->prev;
-		if (n->prev)
-			n->prev->next = b;
-		else
-			data_001E5F80 = b;
-		b->next = n;
-		n->prev = b;
-	} else {
-		b->next = 0;
-		b->prev = data_001E5F84;
-		if (data_001E5F84)
-			data_001E5F84->next = b;
-		else
-			data_001E5F80 = b;
-		data_001E5F84 = b;
-	}
-
-	/* merged with the free neighbours */
-	p = b->prev;
-	if (p && (BLK *)((char *)p + p->size + sizeof(BLK)) == b) {
-		p->size = p->size + sizeof(BLK) + size;
-		p->next = p->next->next;
-		if (p->next)
-			p->next->prev = p;
-		else
-			data_001E5F84 = p;
-		b = p;
-	}
-	n = b->next;
-	if (n && (BLK *)((char *)b + b->size + sizeof(BLK)) == n) {
-		b->size = b->size + sizeof(BLK) + n->size;
-		b->next = n->next;
-		if (n->next)
-			n->next->prev = b;
-		else
-			data_001E5F84 = b;
-	}
-}
-
-int func_001C2028(void *heap, u_int size)
-{
-	u_int mis;
-	BLK *b;
-
-	mis = (u_int)heap & 3;
-	if (mis) {
-		if (size < mis)
-			return -1;
-		size -= mis;
-		heap = (char *)heap + mis;
-	}
-	if (size < sizeof(BLK))
-		return -1;
-	b = heap;
-	data_001E5F80 = b;
-	data_001E5F84 = b;
-	b->prev = 0;
-	b->next = 0;
-	data_001E5F8C = (char *)heap + size;
-	data_001E5F70 = func_001C1D40;
-	data_001E5F74 = func_001C1E90;
-	b->size = size - sizeof(BLK);
-	data_001E5F88 = heap;
-	return 0;
-}
 
 int func_001C20D8(void)
 {
