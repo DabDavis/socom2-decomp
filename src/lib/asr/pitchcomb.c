@@ -8,8 +8,8 @@
  * their use. NormE_Processing (round 17c), ControlPitchCombiner (round 22c: SOCOM 1's body,
  * 0x5028F0 -- the constructor's control slot, moved before InitPitchCombiner in SOCOM II),
  * FlushPitchCombiner, ProcessPitchCombiner and ConstructPitchCombiner (round 23c) and
- * LogPitchProcessing (round 24c) are written, PitchCombinerReset OPEN; InitPitchCombiner (round
- * 25c) OPEN.
+ * LogPitchProcessing (round 24c) are written; PitchCombinerReset and InitPitchCombiner (round
+ * 25c) byte-exact since GCC round 75 (their flag stores through a volatile view).
  * The vendor halves the lead (+156) as `p->f156 / 2` (round 24c): the C front end shortens the
  * division to the unsigned char's own type, so its load is another RTL expression than the
  * zero-extended read a compare or a `>> 1` makes -- CSE keeps the two apart, which is the re-read
@@ -431,32 +431,16 @@ static __inline__ void ResetRing(RING *r, int len)
  * default `move v0,zero` left out of the `beq`'s slot (round 13c's definition-order rule; with the
  * reset only declared, 3 words).
  * The lead is read once (CSE merges its reads; `/ 2` or `>> 1`, through a local or not, alike).
- * OPEN (round 22c, the right size, 18 words: one store's place): every word is the target's but the
- * last `= 1` flag store, which the target leaves last (in `jr`'s slot) and sched1 here issues before
- * the ring cursors' stores -- the store that is the constant 1's last use (the QImode pseudo's
- * REG_DEAD) outranks the cursor stores, which free their own registers too and then go in source
- * order; whichever of the three 1-flags comes last in the source jumps so (all 36 placements of
- * each, build/scratch/gcc/fd/pc3.py), and a chained assignment, a local `one`, the flags before the
- * cursors or copied from +184 do not stop it (pc4.py).
- * Round 23c, read off cc1's dumps: the store enters sched1 with REG_DEAD on both the 1 and p
- * (weight -2), so under rank_for_schedule's (priority, weight, luid) every source order puts it
- * first; the target's order needs it held back until the other stores issue. `do { p->f183 = 1; }
- * while (0)` does that (its LOOP_BEG note makes the store a scheduling barrier): sched1's output is
- * then the target's, but the barrier stands in sched2 too, where flush_pending_lists gives every
- * load one dependent more and the depend-count tie-break issues each base load before the srl
- * beside it (4 words; with -fno-schedule-insns2 the reset matches, and NormE_Processing and
- * ControlPitchCombiner do not -- sched2 is on). So the vendor's hold is in sched1 only; volatile flags,
- * inlines for the tail or the cursors, a pointer to the flags and the block's own pointer do not
- * give it (build/scratch/gcc/pr1.py).
- * Round 24c: sched1 ranks (priority, weight, ...), so the target's store -- issued in source order,
- * after the weight -1 cursor stores -- had weight 0: neither the 1 nor p died at it in sched1 (or it
- * waited on every earlier store), and SOCOM 1's compile keeps the same order, so it is the source's.
- * A separate constant (`p->f182 + 1`, `!p->f182`, `p->f182 ^ 1` ...) only moves the jump to the
- * other 1-store (0x29C); an unused label, `if (1)`, `return;`, the address or value respelled,
- * `/ 2` for the halvings change nothing (build/scratch/gcc/r24c/v_last.py, v_reset.py). Not
- * found: what keeps p or the 1 live past the last store in sched1 and leaves no code. */
+ * Byte-exact since GCC round 75: the tail's stores go through a volatile view of the block
+ * (`volatile PITCHCOMB *v = p`, the reads through p): every store in source order, f183's `= 1`
+ * last in `jr`'s slot. OPEN from round 22c to 74 as "sched1 issues the 1's dying store first" --
+ * true, but the remedy was the view, not the store's place: rounds 22c-24c tried volatile FLAGS
+ * only (the cursor stores then still pass them), a do/while(0) barrier (sched2 too), inlines,
+ * chained and copied constants -- 36 placements and ~40 spellings (build/scratch/gcc/fd/pc3.py,
+ * pc4.py, pr1.py, r24c/v_last.py, v_reset.py). */
 static void PitchCombinerReset(PITCHCOMB *p)
 {
+    volatile PITCHCOMB *v = p;
     int lead;
 
     ResetRing(&p->r80, p->nring);
@@ -466,24 +450,24 @@ static void PitchCombinerReset(PITCHCOMB *p)
     ResetRing(&p->r96, p->nring);
     ResetRing(&p->out, p->nring);
     lead = p->f156 >> 1;
-    p->r112.wr = p->r112.base + lead;
-    p->r96.wr = p->r96.base + lead;
-    p->out.wr = p->out.base + (p->nwin >> 1);
-    p->f76 = p->r60.rd;
-    p->rd = p->e.rd;
-    p->f184 = 1;
-    p->f185 = 0;
-    p->f144 = 0;
-    p->f172 = 0;
-    p->f159 = 0;
-    p->f161 = 0;
-    p->f162 = 0;
-    p->f160 = 0;
-    p->f163 = 0;
-    p->f164 = 0;
-    p->fill = 1;
-    p->f182 = 0;
-    p->f183 = 1;
+    v->r112.wr = p->r112.base + lead;
+    v->r96.wr = p->r96.base + lead;
+    v->out.wr = p->out.base + (p->nwin >> 1);
+    v->f76 = p->r60.rd;
+    v->rd = p->e.rd;
+    v->f184 = 1;
+    v->f185 = 0;
+    v->f144 = 0;
+    v->f172 = 0;
+    v->f159 = 0;
+    v->f161 = 0;
+    v->f162 = 0;
+    v->f160 = 0;
+    v->f163 = 0;
+    v->f164 = 0;
+    v->fill = 1;
+    v->f182 = 0;
+    v->f183 = 1;
 }
 
 /* the block's commands: 200 resets it, 201 sets the flag at +182, 255 frees its eight buffers and
@@ -522,22 +506,25 @@ static int ControlPitchCombiner(PITCHCOMB *p, unsigned char cmd)
  * two thresholds read. Round 25c: the rings' length is the larger of the lead and the window (the
  * target's first count is `andi a1,a3,0xff` of a 7 CSE cannot fold, f156 keeping its own `li 7`; a
  * constant 7 shares f156's and is 2 words short; SOCOM 1's code has the same pair).
- * OPEN (round 25c, the right size, 16 words): the head's schedule -- the target stores the frame's
- * values from the call's register and zero-extends after the store; through an unsigned short
- * local the `andi` comes first, read back from the field it is reloaded after the queue-size stores
- * (23 words; c1/c2 copies, an int local: 17-21 or 2 words short) -- and the tail's last 1-store,
- * PitchCombinerReset's open order: sched1 issues f183's store (the 1's REG_DEAD) first of the three,
- * the target in source order (a do/while(0) on it: 64 words, sched2's). */
+ * Byte-exact since GCC round 75 (build/scratch/gcc2-r75/v_ipc*.py): the profile's count read
+ * into an unsigned int and stored from it (the `sh` from the call's register, the zero-extension
+ * after: an unsigned short local stores its masked copy), f172 cleared before nout is set (the
+ * other 23 orders of the head's pairs and the queue sizes miss by 4-15: nring's 7 takes a1 and the 1
+ * a3 -- the order moves local-alloc's lengths), and the tail's flags from the norm on through
+ * PitchCombinerReset's volatile view. OPEN from round 25c to 74, read as the head's schedule and
+ * the reset's dying-store order. */
 static int InitPitchCombiner(PITCHCOMB *p)
 {
     TOS *tos = p->b.tos;
     unsigned short n;
     int lead;
+    unsigned int r;
 
-    n = _tosGetProfileU32(p, 1, 21);
-    p->nvals = n;
-    p->nout = 5;
+    r = _tosGetProfileU32(p, 1, 21);
+    p->nvals = r;
+    n = r;
     p->f172 = 0;
+    p->nout = 5;
     p->b.inputs[0].size = 4;
     p->b.inputs[1].size = 1;
     p->b.inputs[2].size = (n + 1) * sizeof(float);
@@ -584,18 +571,22 @@ static int InitPitchCombiner(PITCHCOMB *p)
     p->weights[2] = 0.0f;
     p->weights[3] = 1.0f;
     p->weights[4] = 2.0f;
-    p->norm = 10;
-    p->f184 = 1;
-    p->fill = 1;
-    p->f183 = 1;
-    p->f159 = 0;
-    p->f161 = 0;
-    p->f162 = 0;
-    p->f160 = 0;
-    p->f163 = 0;
-    p->f164 = 0;
-    p->f182 = 0;
-    p->f185 = 0;
+    {
+        volatile PITCHCOMB *v = p;
+
+        v->norm = 10;
+        v->f184 = 1;
+        v->fill = 1;
+        v->f183 = 1;
+        v->f159 = 0;
+        v->f161 = 0;
+        v->f162 = 0;
+        v->f160 = 0;
+        v->f163 = 0;
+        v->f164 = 0;
+        v->f182 = 0;
+        v->f185 = 0;
+    }
     p->f188 = _tosGetProfileFloat(p, 2, 0.0f);
     p->f192 = _tosGetProfileFloat(p, 3, 100000.0f);
     return 0;
