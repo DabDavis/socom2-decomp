@@ -329,6 +329,192 @@ void CSealCtrl::SensorPreTick(float dT)
     }
 }
 
+/* a random float, a minimum and a range (zkit.h's Rfloat, which this unit does not include: SOCOM 1's
+ * operator float inlined) */
+class Rfloat {
+public:
+    Rfloat(float min, float max) : m_min(min), m_range(max - min) {}
+    operator float() const
+    {
+        float f;
+
+        if (m_range == 0.0f)
+            f = m_min;
+        else {
+            float r = 4.656613e-10f * rand();
+            f = m_min + m_range * r;
+        }
+        return f;
+    }
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+CZSealBody *ftsGetPlayer();
+
+/* the entity as a SEAL, or 0 (a ternary: the zero's arm falls through, the SEAL's joins after it; an
+ * inline, the name ours) */
+static inline CZSealBody *SensorSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* the AI's own target (ai_target.cpp's CAiTarget, the AI's at 0x67C: only what the sighting asks) and
+ * its validity test and update from a target (OVL2 0x60A850, 0x60A6A0 -- ai_target.cpp's, unnamed) */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+    void OnSetVisible(bool visible);
+};
+
+extern "C" bool func_0060A850(void *target);
+extern "C" void func_0060A6A0(void *target, CTarget *t);
+
+/* the mission's clock, and the time since a mark on it (OVL2 0x5750B0, 0x5750C0: seal_command.cpp's
+ * out-of-line copies) */
+extern "C" float func_005750B0(void);
+extern "C" float func_005750C0(float t);
+
+/* the AI's reaction to a fresh sighting: a sound played and, unless it already crouches, a stance
+ * asked (OVL2 0x605770, unwritten; the name unknown) */
+extern "C" void func_00605770(CSealCtrlAi *ai, bool stance, CHARACTER_SOUND sound, float chance);
+
+/* the AI's bit 16, and not its bit 17, as bools (inlines, the names ours: the second materialised --
+ * the target tests its `xori` -- and both read off one load of the byte). Joined as `b ? NotBit17 : b`:
+ * the first's zero tested again at the join, where `&&` jumps past it and `if (b) b = ...` narrows */
+static inline bool Bit16(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit16 ? true : false;
+}
+
+static inline bool NotBit17(const CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit17 ? true : false);
+}
+
+/* a chance taken (an inline, seal_airesponse.cpp's Chance's shape: the odds by value, read through a
+ * reference -- the target keeps them in the frame and their address in a saved register across rand) */
+static inline bool SensorChance(float odds)
+{
+    const float &c = odds;
+    Rfloat r(0.0f, 1.0f);
+
+    return r <= c;
+}
+
+/* a target seen or lost by the AI (OVL2 0x5CA470, CSealCtrlAi's slot +0xAC; SOCOM 1's, rewritten): the
+ * fresh-sighting bit as the base's; seen anew (not yet bit 9) -- a Navy SEAL calls the enemy out to the
+ * player; else one not heard (bit 8) that the AI's own target is not holding, or one unseen for 3
+ * seconds, makes the AI react: at once when it is unaware and the target within 250, else one time in
+ * four (the alertness then not raised); the callout made; a SEAL enemy's sighting counted, a rushing one
+ * (or one armed beyond 250) marked 0x400, the latter announced; the target heard, the AI's event reset,
+ * the sighting's time taken, the AI's target told -- then bit 11 once seen for longer than the target
+ * delay, visible, the alertness specific. Lost: the AI's target, if this is it, remembered where it was
+ * for 1-3 seconds, the alertness by direction; bit 11 cleared after 5 seconds, bit 9 cleared. Every
+ * local declared first (params s8, react s3, the AI's target s2 -- only the update's argument -- friendly
+ * s6, heard s7, current s1, the SEAL s0; the distance f21 before the alertness f20); the Navy SEAL bit
+ * read before the visible test; a rushing AI through zseal.h's AiStateIs; the sound's bits as Bit16's
+ * bool `b ? NotBit17(this) : b` */
+void CSealCtrlAi::OnSetTargetVisible(CTarget &target, bool visible, zdb::DiIntersect *di)
+{
+    AI_PARAMS *params;
+    bool react;
+    CAiTarget *mine;
+    bool friendly;
+    bool heard;
+    bool current;
+    CZSealBody *seal;
+    float dist;
+    float aware;
+
+    params = &m_aiParams;
+    mine = (CAiTarget *)m_67c;
+    current = *(CEntity **)m_67c == target.m_ent;
+    friendly = (target.m_ent->m_team & m_entity->m_team) != 0;
+    bool fresh = di ? diNonVolCount > 0 : true;
+
+    if (fresh)
+        target.m_flags |= 2;
+    else
+        target.m_flags &= ~2;
+    if (visible) {
+        seal = SensorSeal(target.m_ent);
+        dist = target.m_distSq;
+        aware = 0.0f;
+        heard = (target.m_flags & 0x100) != 0;
+        bool navy = IsNavySeal();
+
+        if (!(target.m_flags & 0x200)) {
+            if (navy)
+                EnemyCallout(target.m_ent, ftsGetPlayer());
+            else {
+                if (!heard) {
+                    react = true;
+                    if (func_0060A850(m_67c)) {
+                        bool held = func_0060A850(m_67c) && (m_6a8 & 0x200);
+
+                        if (!held)
+                            react = ((CAiTarget *)m_67c)->GetTimeSinceLastSighting() > 3.0f;
+                        else
+                            react = false;
+                    }
+                    if (react) {
+                        if (GetAiAware() < AIA_GENERAL && dist < 62500.0f) {
+                            aware = -1.0f;
+                            func_00605770(this, true, (CHARACTER_SOUND)70, 1.0f);
+                        } else if (SensorChance(0.25f)) {
+                            aware = 0.0f;
+                            func_00605770(this, true, (CHARACTER_SOUND)70, 1.0f);
+                        }
+                    }
+                }
+                EnemyCallout(target.m_ent, 0);
+            }
+            if (seal && !friendly && !heard)
+                seal->m_stats.IncrTimesSeen(1);
+            if (!(target.m_flags & 0x400) && seal && !friendly) {
+                if (dist < 62500.0f) {
+                    CSealCtrlAi *ai = ((CSealCtrl *)seal->m_control)->GetSealCtrlAi();
+
+                    if (ai && ai->AiStateIs(AI_STATE_RUSH))
+                        target.m_flags |= 0x400;
+                } else if (seal->GetWeaponState() == 1) {
+                    target.m_flags |= 0x400;
+                    bool b = Bit16(this);
+
+                    if (b ? NotBit17(this) : b)
+                        PlayAiSound((CHARACTER_SOUND)64, 1.0f, (CAiEvent::EVENT)-1);
+                }
+            }
+            target.m_flags |= 0x100;
+            ((CAiEvent *)&m_event)->Initalize();
+            target.m_unk20 = func_005750B0();
+            if (current)
+                ((CAiTarget *)m_67c)->OnSetVisible(true);
+        }
+        if (!(func_005750C0(target.m_unk20) <= params->target_delay))
+            target.m_flags |= 0x800;
+        target.m_flags |= 0x200;
+        SetAiAware(AIA_SPECIFIC, 0, aware);
+        if (func_0060A850(m_67c) && current)
+            func_0060A6A0(mine, &target);
+    } else {
+        if (target.m_flags & 0x200) {
+            if (current && func_0060A850(m_67c)) {
+                SetAiEvent((CAiEvent::EVENT)2, Rfloat(1.0f, 3.0f), &target.m_ent->m_posW);
+                ((CAiTarget *)m_67c)->OnSetVisible(false);
+            }
+            SetAiAware(AIA_DIRECTION, 0, -1.0f);
+        }
+        if (!(func_005750C0(target.m_unk20) <= 5.0f))
+            target.m_flags &= ~0x800;
+        target.m_flags &= ~0x200;
+        if (current)
+            func_0060A6A0(mine, &target);
+    }
+}
+
 /* the online test (seal_command.cpp's 0x5750A0) */
 extern "C" int func_005750A0(void);
 
@@ -1282,13 +1468,6 @@ static inline zdb::DiIntersect *SensorDirTake(CDiPool::dir *d)
 static inline float SensorDirAge(const CDiPool::dir *d)
 {
     return d ? d->m_age : 0.0f;
-}
-
-/* the entity as a SEAL, or 0 (a ternary: the zero's arm falls through, the SEAL's joins after it; an
- * inline, the name ours) */
-static inline CZSealBody *SensorSeal(CEntity *e)
-{
-    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
 }
 
 /* the entity as a turret, or 0 (a ternary, as SensorSeal; the name ours) */

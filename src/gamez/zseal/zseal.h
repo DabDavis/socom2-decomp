@@ -1611,6 +1611,8 @@ public:
     virtual void OnSetHealth(float health, float old);
     /* a target taken (SOCOM 1's; OVL2 0x566540, seal_ai.cpp's) */
     virtual void SetTarget(CTarget *target);
+    /* a target seen or lost (SOCOM 1's; OVL2 0x5CA470, seal_sensors.cpp's) */
+    virtual void OnSetTargetVisible(CTarget &target, bool visible, zdb::DiIntersect *di);
     /* a projectile's hit taken (SOCOM 1's; OVL2 0x572330, seal_ai.cpp's) */
     virtual void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj);
     /* a projectile's flight heard (SOCOM 1's; OVL2 0x5729F0, seal_ai.cpp's) */
