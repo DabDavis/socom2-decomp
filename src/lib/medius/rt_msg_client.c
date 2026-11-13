@@ -1603,8 +1603,8 @@ extern int rt_circ_buf_create(rt_circ_buf *pBuf, unsigned int nSize, void *pMemo
 
 /* SOCOM 1's rt_msg_client_create_new_connection_index grown (0x635228, between udp_update's row and free_connection_index): the first free
  * slot (the table ten longer when there is none), the connection and its channels by kind, their buffers at least 584 bytes each. */
-/* OPEN (round 27b): SOCOM 1's rt_msg_client_create_new_connection_index grown: the first loop's `b; addiu s4` (the table size's address in both exits)
- * and the registers from it (s3 the index, s4 that address, s5 the new size). */
+/* GCC round 76 (open since round 27b, 18 structural): the free-slot walk breaks (a `goto found` past the if gave other exits)
+ * and the empty table's arm sets i = 0 again in an else -- the target's `b; addiu s4` latch exit and the index in s3. */
 unsigned char func_00635228(unsigned short *pnConnection, unsigned int nKind, unsigned int nSendSize, unsigned int nRecvSize)
 {
     void *pNew = 0;
@@ -1627,11 +1627,12 @@ unsigned char func_00635228(unsigned short *pnConnection, unsigned int nKind, un
     if (nRecvSize == 0)
         return 2;
     if (gnConnectionArraySize != 0) {
-        for (i = 0; i < gnConnectionArraySize; i++)
+        for (i = 0; i < gnConnectionArraySize; i++) {
             if (gapConnections[i] == 0)
-                goto found;
-    }
-found:
+                break;
+        }
+    } else
+        i = 0;
     pSize = &gnConnectionArraySize;
     if (i == *pSize) {
         nSize = *pSize + 10;

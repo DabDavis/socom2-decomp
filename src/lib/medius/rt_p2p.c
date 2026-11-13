@@ -15,14 +15,11 @@
  * if / else if / else of two sends and `return 6`; a range test whose `return 8` the target
  * branches past is `if (n >= 0 && n < count) {...} else return 8;`; 0x6398C0's tests are positive
  * on the connection (`!= -1` first, the else arm second).
- * OPEN: the peer searches 0x639A90 and 0x63B410: the loop is the target's as `for (i = 0; ; i++)
- * { if (i >= n) break; ... }` (bound hoisted, i * 40 recomputed, unrotated) -- what is left is the
- * second guard: the target keeps `if (pP2p == 0) return 2;` as its own `jr ra` (not if-converted,
- * the -2 stored through v0), ours if-converts it (ce: IF-CASE-1) and shares the first guard's
- * v0 = 2; posnest/else/goto/dup-store/result spellings all convert or move the loop;
- * 0x639FB8 (2: the stores'
- * order -- sched1 issues the three entry stores by register weight, the base's and the 7's deaths
- * putting nState first; every source order and a chained -1 tried). The rows this note once listed as not written
+ * Round 76: the peer searches 0x639A90 and 0x63B410 byte-exact -- the second guard stores the -2
+ * again in its own arm (`if (pP2p == 0) { *pnIndex = -2; return 2; }`): a two-insn THEN block is
+ * not hoisted by ifcvt's find_if_case_1, so the -2 takes v0 and the arm keeps its own `jr ra`.
+ * 0x639FB8 byte-exact too (open since round 22b: sched1 issued the three entry stores by register weight) --
+ * the stores go through a volatile view of the entry, in source order. The rows this note once listed as not written
  * (0x6395B8, 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63ACA0, 0x63B708, 0x63B9A0, 0x63C4F0) are written since: all
  * byte-exact but 0x63ACA0, whose OPEN note stands above it.
  * Round 22b: 0x63A618 (a send to one peer or every one in use), 0x63B2F0 (a peer found by its second
@@ -448,8 +445,10 @@ int func_00639A90(RT_P2P *pP2p, int *pnIndex)
     if (pnIndex == 0)
         return 2;
     *pnIndex = -2;
-    if (pP2p == 0)
+    if (pP2p == 0) {
+        *pnIndex = -2;
         return 2;
+    }
     for (i = 0; ; i++) {
         if (i >= pP2p->nEntries)
             break;
@@ -590,9 +589,11 @@ int func_00639FB8(RT_P2P *pP2p, int *pnIndex)
         return 2;
     func_0063B480(pP2p, &nState, &nIndex);
     if (nState == 0) {
-        pP2p->pEntries[0].nConn2 = -1;
-        pP2p->pEntries[0].nConn = -1;
-        pP2p->pEntries[0].nState = 7;
+        volatile RT_P2P_ENTRY *e = &pP2p->pEntries[0];
+
+        e->nConn2 = -1;
+        e->nConn = -1;
+        e->nState = 7;
         *pnIndex = 0;
         return 0;
     }
@@ -1151,8 +1152,10 @@ int func_0063B410(RT_P2P *pP2p, int nConn, int *pnIndex)
     if (pnIndex == 0)
         return 2;
     *pnIndex = -2;
-    if (pP2p == 0)
+    if (pP2p == 0) {
+        *pnIndex = -2;
         return 2;
+    }
     for (i = 0; ; i++) {
         if (i >= pP2p->nEntries)
             break;

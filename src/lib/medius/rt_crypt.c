@@ -15,8 +15,9 @@
  * clearing after it (KM_GetGameSessionKey); one key-master variable reused for both ends
  * (KM_CopyKeys); `i = 64; while (i-- > 0)` (func_0062FDD8: the target tests the old index with
  * bgtz); the cipher state is word-aligned (KM_CopyKeys moves its last word with lw/sw).
- * OPEN: KM_Create (8 words: the target puts `move a0,s0` in the `nKMID < 0` test's bgez slot,
- * shared by both calls; 2.96 here makes it a bgezl carrying the lui), func_0062F818 (8 bytes short:
+ * KM_Create (GCC round 76, open since round 8b): the sign test is `nKMID & 0x80000000`, as the software
+ * path's id test below -- `< 0` gave a bgezl carrying the lui where the target shares `move a0,s0` in a bgez slot.
+ * OPEN: func_0062F818 (8 bytes short:
  * the target sets the result to 0 inside each of the three branches, a copy 2.96 here sinks into
  * IsNullRSAKey's delay slot -- result first, last, or set in each branch all give the same; 62s on
  * master's tools), 0x630DF0 (21 words: KM_Decrypt's body, byte-exact there, with the key master a
@@ -250,7 +251,7 @@ int KM_Create(int nKMID, int nLocalClientID, RSAKey *pServerKey)
     pKM->next = gpKeyMaster;
     if (nKMID == -1)
         KM_SetLocalKeyPair(nKMID, &data_00676340);
-    else if (nKMID < 0)
+    else if (nKMID & 0x80000000)
         KM_SetLocalKeyPair(nKMID, &data_00676240);
     else
         KM_SetLocalKeyPair(nKMID, &data_006762C0);

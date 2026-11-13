@@ -946,11 +946,14 @@ int func_0063F148(RT_UDP *pUdp, unsigned char b)
     return 0;
 }
 
+/* GCC round 76: the sends' results joined into one `if (result != 0) { fail: ... }` (0x63E5E8's
+ * shape): written as three error arms, sched1 issued the key fetch's -1 first */
 int func_0063F168(RT_UDP *pUdp, unsigned int nConn)
 {
     RSAKey key;
     RT_UDP_HEADER header;
     RT_UDP_CONN *pConn;
+    int result;
 
     if (pUdp == 0)
         return 1;
@@ -962,20 +965,17 @@ int func_0063F168(RT_UDP *pUdp, unsigned int nConn)
     pConn->nState = 8;
     if (func_0063DC90() == 1) {
         func_0062FCD8(-1, pConn->nKMID, &key);
-        if (func_00640B70(pUdp, pConn, &key) != 0) {
-            pConn->nState = 6;
-            return 7;
-        }
+        result = func_00640B70(pUdp, pConn, &key);
     } else {
-        if (func_0063F948(pUdp, pConn, 4, &header) != 0) {
-            pConn->nState = 6;
-            return 7;
-        }
+        if (func_0063F948(pUdp, pConn, 4, &header) != 0)
+            goto fail;
         header.nType |= 0x40;
-        if (func_0063FA28(pConn, &header, 0, 0) != 0) {
-            pConn->nState = 6;
-            return 7;
-        }
+        result = func_0063FA28(pConn, &header, 0, 0);
+    }
+    if (result != 0) {
+fail:
+        pConn->nState = 6;
+        return 7;
     }
     return 0;
 }
