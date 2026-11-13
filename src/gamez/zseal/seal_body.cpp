@@ -2686,7 +2686,12 @@ extern "C" bool func_0057F7D0(CZSealBody *seal)
  * inverting a branch over the return block, not the front end's if-return pairing; a label before the
  * call's return and the call through an inline wrapper (7), a `== false` ternary (0x80), the whole-body
  * inline typed int or unsigned char, or the outer typed int (0x84), and the tests as an inline
- * returning the SEAL or 0 (0x94) are no better; the kit's CSE-off pragma round the body is 0x88. */
+ * returning the SEAL or 0 (0x94) are no better; the kit's CSE-off pragma round the body is 0x88.
+ * Round 77 (build/scratch/mw-r77/v_f530*.py): round 76's dead-store arm gives the LAYOUT -- `bool r = false;` and BOTH
+ * tests `{ r = false; goto done; }`, `r = func_00589900(seal); done: return r;` -- word for word but the call's result
+ * then takes an `andi` (r bool or int, `!= false`, `(bool)`, `r = r`: 0x80, d=4); `return func_00589900(seal);` there
+ * leaves a `b` over the empty done block instead (0x80, d=4); the IsRemote test alone dead-stored, or `return r` in the
+ * arms, falls back to the 7. */
 extern "C" bool func_0057F530(CZSealBody *seal)
 {
     if (seal->IsRemote())
