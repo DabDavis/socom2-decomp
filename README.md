@@ -2066,6 +2066,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC libraries, round 30** (three rows byte-exact, all unwritten before, 10,028 bytes: DynProgAccNBestOptSil
+  0x4ED6E0 (0x198C, `static` as NoOptSil); libusbkb's Read result handler 0x1BEFF8 (0x574, MAIN's last unwritten GCC row:
+  bytes +0x08..+0x90 of the state at 0x1E41C0 are the last packet read, Sony's 0x88-byte USBKBDATA_t); rt_msg_client.c's
+  type-29 handler 0x637510 (0x3F0: a debug request -- memory read, digests, state words, an address search -- answered with
+  a type-29 message; Medius 0x610000-0x66A000's last unwritten GCC row, the rest there, 0x668710-0x668FB0, Metrowerks):
+  - OptSil: the new silence token is a variable of its own, filled through `z` then `y = z; x->f24 = y;` -- y gets no
+    callee-saved register (a2, `sq a2,64(sp)`) and score takes s8; filling y directly costs 25 sq/lq pairs. One z for the
+    whole branch. The next state's phoneme its own `nk = k >> 2` (s1); `flag = 0` after the state's score (flag s7, bt t0);
+    `prev = 0` a statement after the declarations (best's store first).
+  - libusbkb: the repeat switch's explicit `case 0:`; one count variable per register (j and n, a3 and t3); the ring pop
+    tested `== 0`, the miss in the else; the 0x88-byte copy a byte loop on the function's `int i` (a block-local u_int swaps
+    a1/a2, a struct assignment becomes ldl/sdl).
+  - CPROP FOLDS ONLY THE FIRST ADD: 0x637510's size is a running count from the header's 9, each case `+=`; gcse's cprop
+    folds a case's first add into a constant (`li s0,13`) but not a later one that reads it. The search index starts at the
+    running size (`j = nSize`); the 499-byte clamp goes through a local set to 499 (both `?:` and `if` compare against 500).
+  - near misses left (2-5 words, scheduling and registers): ProcessVad, InitCalculateDistances, 0x6200D0, 0x63B5D0,
+    0x63C170, 0x63F168, 0x6419E8; grid.c 0x625690, 0x639FB8, 0x639A90 unchanged.
 - **Tells from the engine, OVL1's back half** (three rows byte-exact: CAppCamera::ClipCameraChord 0x29BF70 (0xC38, was
   0xC48), CPnt3D::Reflect 0x308EF0 (0xD0, was 0xDC), CQuat::Align 0x306D40 (0x288, was 50 instructions off); no include/
   change. Of the 44 open rows at or above 0x260000 only two have no source -- the cdeque insert 0x286160 and
