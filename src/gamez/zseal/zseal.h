@@ -1386,7 +1386,9 @@ public:
     /* bit 22: set when a player's detonated shot hits the AI (OnWeaponHit 0x572330; the name ours) */
     unsigned int m_aibit22 : 1;
     unsigned int m_bits23 : 9;
-    unsigned char _268[0x26c - 0x268];
+    /* bit 0: with bit 0 of OVL1 0x44D4D0's word, an AI SEAL's body keeps its probes (CZSealBody::PostPreTick
+     * 0x54AA30 reads the word; the name ours) */
+    unsigned int m_268;   // 0x268
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
     unsigned char m_26d;   // 0x26d (cleared with 0x26c by the constructor; the name ours)
     unsigned char m_26e;   // 0x26e: a mode byte (2 refuses SetSprayTimer; the name ours)
@@ -2157,6 +2159,9 @@ public:
     virtual ~CZSealBody();
     virtual void PreTick(float dT);                                         /* +0x14 */
     virtual void Tick(float dT);                                            /* +0x18 */
+    /* the delayed probes taken ahead of the step, between PreTick and Tick (OVL2 0x54AA30, seal.cpp; new
+     * in SOCOM II, CEntity's is empty) */
+    virtual void PostPreTick(float dT);                                     /* +0x1C */
     virtual void ComputeNextPosition(float dT);                             /* +0x28 */
     virtual void PrePostTick(float dT);                                     /* +0x20 */
     virtual void PostTick(float dT);                                        /* +0x24 */
