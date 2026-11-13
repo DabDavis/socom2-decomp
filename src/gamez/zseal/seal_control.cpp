@@ -1825,8 +1825,10 @@ void CSealCtrl::OnMissionEnd()
 }
 
 /* how far the SEAL may face a flash and not be blinded through its eyes (SOCOM 1's FLASHBANG_DOT, OVL2
- * data 0x65E640: 0 here, a variable read with lwc1) */
-float FLASHBANG_DOT = 0.0f;
+ * data 0x65E640, read with lwc1): the cosine of 75 degrees (SOCOM 1's 50), built by the unit's
+ * initialiser __sinit_seal_control.cpp (OVL2 0x668BE0, SOCOM 1's less its CSTable; between
+ * seal_body.cpp's and seal_env.cpp's in the ctors) -- 0 in the image until then */
+float FLASHBANG_DOT = cosf(0.017453292f * 75.0f);
 
 /* the square of the distance between two points (an inline: its difference a local of its own, below
  * the direction's temporary on the stack) */
