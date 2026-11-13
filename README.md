@@ -2066,6 +2066,26 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 70** (CHUD::Init 0x1FA360 (0xF98) and CHUD::Tick 0x1F7FF0 (0x1158) byte-exact, both unwritten
+  before, SOCOM 1's bodies; with them the font's out-of-line copies from hud_main.cpp -- C2DFont::Reset 0x1FB370, CPnt3D()
+  0x1FB3C0, vector<CTexHandle*>() 0x1FB3D0, map<Us,C2DGlyph>() 0x1FB3F0, the glyph tree's constructor, CSaferStr() 0x1E7B60
+  and its destructor; hud_main.cpp whole but its four head inline copies; every layout change class-local to the unit):
+  - the font's constructor inlines one level only with `CSaferStr() {}` inline over basic_string's init -> clear_words ->
+    zero (the font's tree six high); declared out of line, the whole font inlines.
+  - Init's two loop counters declared ahead of the backdrop's texture (igreplay: the texture numbered after both -- s1,
+    counters s2; a counter at the top, or one variable for both loops, did nothing). The piggyback loop's font declared
+    before `y`, assigned on its own line (y s5, font s6); GetString into its own local.
+  - A NOP BEFORE A LABEL ENDS A BLOCK: Init's timer-box Add2D inside `if (!net)`, Tick's `m_socom2_1a0ec = 0` inside the
+    map-zoom block, `weapon.Off()` inside the UpdateHudWeapon() block.
+  - the radio menu kind a byte enum (`li; movz; andi`, constants by `li`). `menustate == stateNone || menustate ==
+    stateWeaponSel` folds to one unsigned range test with a branch-built bool. `!(net && (!net || func_002C2FA0()))` gives the
+    target's redundant second `beqz` (an inline returning bool adds two `sltu`). The fade-in arms one static inline loading
+    theHUD once into a saved register; the gauge's float read before GetHUDOwner() (fixes v1/v0); ftsGetPlayer() into a local.
+  - for CZPauseTest::Init 0x202520 (unwritten): each line sets id and byte, flags 0 and 1, flag 2 if the id is -1, then after
+    reloading m_items flags 2-4. Lines in order (byte id f0..f4): 0 0xEC60 11011; 1 0xEC62 10010; 2 0xEC61 11010; 3 0xEC67
+    11110; 8 -1 11110; 5 -1 01110; 9 -1 11110; 4 -1 01110; 6 0xEC65 10110; 7 0xEC63 10110; 11 -1 01110; 10 -1 01110. Then three
+    GetSoundByName into 0xBD0/0xBD4/0xBD8, a twelve-line IsSelectable placement loop, the bitmaps and strings, each child
+    through `__list_deleter` insert.
 - **Tells from the engine, OVL1's back half, round 2** (`__sinit_node_main.cpp` 0x4028D0 byte-exact -- node_main.cpp defines
   CLight::m_tick_list and CNode::m_deferred_visuals -- and ~list<CVisual *> 0x3177C0 from source, its draft dropped;
   ~CTickLightList 0x317820 now emitted there, 6 off -- the target inlines the deleter's clear four this-tests deep, here
