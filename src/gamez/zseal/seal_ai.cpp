@@ -8559,8 +8559,9 @@ extern "C" float data_00651028;
 /* another SEAL seen (level 1), unless it is the AI's own or, asked to, one it need not avoid within
  * five: a first sighting keeps its cell, the SEAL and the flag; more of the same SEAL add up, another
  * restarts the record on it; whether the record now holds an untaken level 1 (OVL2 0x558440, new in
- * SOCOM II: 0x54F7E0 calls it four times, 0x567900 once; the name unknown) */
-extern "C" bool func_00558440(CAlertLevel *a, CSealCtrlAi *ai, CZSealBody *seal, bool avoid, float amount)
+ * SOCOM II: 0x54F7E0 calls it four times, 0x567900 once; the name unknown -- the amount before the flag:
+ * 0x54F7E0 loads its amount argument ahead of the flag, which the order of the list gives) */
+extern "C" bool func_00558440(CAlertLevel *a, CSealCtrlAi *ai, CZSealBody *seal, float amount, bool avoid)
 {
     if (seal && seal != ai->m_entity) {
         if (!avoid || ShouldAvoid((CZSealBody *)ai->m_entity, seal, data_00651028)) {
