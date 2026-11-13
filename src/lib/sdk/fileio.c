@@ -11,10 +11,8 @@
  * power-off handler and its interrupt, _fs_version, sceFsReset, the path calls (_sceCallCode and its
  * five wrappers, sceMkdir, sceGetstat, sceSync, sceRename, sceSymlink), sceAddDrv and the descriptor
  * calls sceClose, sceDopen, sceDclose, sceDread. Round 17a: sceOpen, sceIoctl2, sceFormat,
- * sceChstat, sceMount, sceDevctl, sceReadlink byte-exact; sceLseek, sceLseek64, sceRead and
- * sceWrite written and OPEN (the no-wait path, diagnosed above sceLseek). Not written:
- * _sceFs_Rcv_Intr, sceFsInit (its version reply sets the unnamed .data word at 0x1CCD50),
- * sceIoctl (its queue scan and the uncached ring at 0x1DCC50 indexed by the word at 0x1CCD48).
+ * sceChstat, sceMount, sceDevctl, sceReadlink byte-exact; round 46a: _sceFs_Rcv_Intr, sceLseek,
+ * sceLseek64, sceRead, sceWrite and sceIoctl (the object whole, 40 of 40).
  *
  * Shapes read off the target: a request pointer initialised at its declaration (&_send_data in a
  * saved register from the entry) while the RPC call names &_send_data itself (rebuilt from the
@@ -220,7 +218,7 @@ struct _sceFsLseek64 {
 extern void sceSifWriteBackDCache(void *, int);
 extern void *memcpy(void *, const void *, unsigned int);
 
-int _sceFs_q[32] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+volatile int _sceFs_q[32] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 		     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static int _fs_init = 0;
 static int _fs_semid = -1;
@@ -296,6 +294,93 @@ static struct _sceFsIob *get_iob(int fd)
 	io = &_iob[fd];
 	SignalSema(_fs_iob_semid);
 	return io;
+}
+
+/* The reply interrupt: which of the two receive buffers the server filled (the packet's +12, when
+ * it double-buffers), the reply's header word by word out of the uncached buffer, the reply's data
+ * to its destination, the extra payload of the calls that have one, then the request's semaphore
+ * -- or, for a no-wait request (negative), the slot in _sceFs_q that holds it. */
+struct _sceFsRdata {
+	int size1;
+	int size2;
+	char *dest1;
+	char *dest2;
+	char buf1[64];
+	char buf2[64];
+};
+
+extern int data_001CCD48;	/* the receive buffer the last reply used */
+extern int iSignalSema(int);
+
+void _sceFs_Rcv_Intr(void *pkt, void *arg)
+{
+	int h_sema; int h_code; char *h_dest; int h_size; void *h_to; int h_len;
+	char *p;
+	struct _sceFsRdata *r;
+	char *d, *u;
+	int i;
+	int n = 0;
+	char *q;
+	u_int len;
+
+	if (data_001CCD50)
+		n = ((int *)pkt)[3];
+	q = _rcv_data_cmd + n * 1088;
+	data_001CCD48 = n;
+	n = 0x20000000;
+	p = (char *)((u_int)q | n);
+	memcpy(&h_sema, p, 4);
+	memcpy(&h_code, p + 4, 4);
+	memcpy(&h_dest, p + 8, 4);
+	memcpy(&h_size, p + 12, 4);
+	if (h_sema >= 0)
+		memcpy(h_dest, p + 16, h_size);
+	switch (h_code) {
+	case 2:
+		r = (struct _sceFsRdata *)(p + 20);
+		if (r->size1 > 0) {
+			d = r->dest1;
+			u = (char *)UNCACHED(d);
+			for (i = 0; i < r->size1; i++)
+				d[i] = u[i] = r->buf1[i];
+		}
+		if (r->size2 > 0) {
+			d = r->dest2;
+			u = (char *)UNCACHED(d);
+			for (i = 0; i < r->size2; i++)
+				d[i] = u[i] = r->buf2[i];
+		}
+		break;
+	case 11:
+		memcpy(&h_to, p + 20, 4);
+		memcpy(h_to, p + 24, 324);
+		break;
+	case 12:
+		memcpy(&h_to, p + 20, 4);
+		memcpy(h_to, p + 24, 64);
+		break;
+	case 23:
+	case 25:
+	case 26:
+		memcpy(&h_to, p + 20, 4);
+		memcpy(&h_len, p + 24, 4);
+		len = h_len;
+		if (len > 1024) {
+			h_len = 1024;
+			len = 1024;
+		}
+		memcpy(h_to, p + 28, len);
+		break;
+	}
+	if (h_sema < 0) {
+		h_sema = -h_sema;
+		for (i = 0; i < 32; i++)
+			if (_sceFs_q[i] == h_sema) {
+				_sceFs_q[i] = -1;
+				break;
+			}
+	} else
+		iSignalSema(h_sema);
 }
 
 static void _sceFsSemInit(void)
@@ -522,28 +607,18 @@ int sceClose(int fd)
 	return 0;
 }
 
-/* OPEN (round 17a; sceLseek64, sceRead and sceWrite with it): the no-wait descriptor
- * (SCE_NOWAIT, 0x8000 in its iob flag) queues the request's semaphore in _sceFs_q and negates
- * it, and returns 0 without waiting for the reply. The queue's loop is right (a for loop whose
- * body ends in if-break: rotated whole, its exit code duplicated before it, the copy's jump into
- * it leaving loop.c out -- the target's peeled first test and unreduced givs). Two differences
- * remain, both before the RPC:
- *  - the target tests `flag & 0x8000` twice, `andi v0,s3,0x8000` at each test; here GCSE's PRE
- *    finds the second fully redundant ("PRE: redundant insn ... reaching reg") and keeps the first
- *    result in a saved register (s4), which moves the allocation of every argument (sceRead's
- *    buffer and count s7/s8 against the target's s6/s7). No flag of this cc1 changes it
- *    (-fno-gcse loses nine matched functions, -fno-edge-lcm is 990721's PRE, edge-lm/sm,
- *    expensive-optimizations, cse-skip-blocks, rerun-*, thread-jumps ...), nor every 991111
- *    build; nor a long, unsigned short, hard-register or second-variable flag, the tail or the
- *    queue as an __inline__, a nowait variable. Making the second test another expression (a
- *    long flag, `(int)flag & 0x8000`) gives the target's first 60 words exactly: the vendor's
- *    PRE did not see the two tests as one.
- *  - the peeled test's delay slot: the target keeps `move a2,zero` (i = 0) before the load and
- *    fills the bne's slot with the `lui` PRE inserted on both of its successors; this sched2 order
- *    is the target's insn for insn, and reorg's backward scan takes i = 0 into the slot. (A label,
- *    an asm or a call between i = 0 and the test would stop that scan; none is in the source.)
- * Both point at the vendor's GCSE/reorg rather than the text (libscf's adddate/subdate, round 12a,
- * are the other place this build's GCSE does more than the target's). */
+/* The no-wait descriptor (SCE_NOWAIT, 0x8000 in its iob flag; sceLseek64, sceRead and sceWrite with
+ * it) queues the request's semaphore in _sceFs_q and negates it, and returns 0 without waiting for
+ * the reply. The queue's loop: a for loop whose body ends in if-break, rotated whole, its exit code
+ * duplicated before it, the copy's jump into it leaving loop.c out -- the target's peeled first test
+ * and unreduced givs. Closed in round 46a, open since round 17a by two shapes:
+ *  - the queue is `volatile int _sceFs_q[32]` (reorg: a volatile store never takes a delay slot, a
+ *    volatile load is not moved -- so i = 0 stays above the first load and the bne's slot takes the
+ *    `lui` PRE inserted; no function of the unit is lost by it);
+ *  - the two `flag & 0x8000` tests are not one expression for GCSE: the second is written
+ *    `(short)flag & 0x8000` (a `long` mask, `flag & m`, does the same). The narrowing goes at
+ *    combine, so the code is `andi v0,s3,0x8000` both times, but PRE saw two expressions and made no
+ *    reaching register in a saved register (s4 here for 200 words: every argument's allocation moved). */
 int sceLseek(int fd, int offset, int whence)
 {
 	struct _sceFsCall *p = &_send_data;
@@ -595,7 +670,7 @@ int sceLseek(int fd, int offset, int whence)
 		DeleteSema(sema);
 		return -11;
 	}
-	if (flag & 0x8000) {
+	if ((short)flag & 0x8000) {
 		DeleteSema(sema);
 		return 0;
 	}
@@ -629,7 +704,7 @@ struct _sceFsWrite {
 	int iob;
 };
 
-/* OPEN, as sceLseek (above): the no-wait test, and the queue's delay slot. Unless the
+/* The no-wait path as sceLseek's (above). Unless the
  * descriptor was opened SCE_NOWBDC (0x20000000) the buffer is written back first. */
 int sceRead(int fd, void *buf, int nbyte)
 {
@@ -685,7 +760,7 @@ int sceRead(int fd, void *buf, int nbyte)
 		DeleteSema(sema);
 		return -11;
 	}
-	if (flag & 0x8000) {
+	if ((short)flag & 0x8000) {
 		DeleteSema(sema);
 		return 0;
 	}
@@ -694,13 +769,13 @@ int sceRead(int fd, void *buf, int nbyte)
 	return result;
 }
 
-/* OPEN, as sceLseek. The buffer's bytes up to its next 16-byte boundary travel in the request
+/* The no-wait path as sceLseek's. The buffer's bytes up to its next 16-byte boundary travel in the request
  * (read uncached, after the write-back): the IOP's DMA moves whole quadwords. */
 int sceWrite(int fd, const void *buf, int nbyte)
 {
 	struct _sceFsWrite *p = (struct _sceFsWrite *)&_send_data;
 	struct _sceFsIob *io;
-	int i, sema, ret, flag, head;
+	int i, j, sema, ret, flag, head;
 	struct SemaParam s;
 	int result;
 
@@ -715,8 +790,8 @@ int sceWrite(int fd, const void *buf, int nbyte)
 		return -9;
 	}
 	p->fd = io->i_fd;
-	p->buf = buf;
 	p->nbyte = nbyte;
+	p->buf = buf;
 	p->iob = io - _iob;
 	s.initCount = 0;
 	s.maxCount = 1;
@@ -736,18 +811,18 @@ int sceWrite(int fd, const void *buf, int nbyte)
 		}
 		SignalSema(_fs_fsq_semid);
 	}
-	if ((u_int)buf & 15)
-		head = (((u_int)buf >> 4) << 4) + 16 - (u_int)buf;
-	else
+	if (((u_int)buf & 15) == 0)
 		head = 0;
+	else
+		head = (((u_int)buf >> 4) << 4) + 16 - (u_int)buf;
 	if (nbyte < head)
 		head = nbyte;
 	if (!(flag & 0x20000000))
 		sceSifWriteBackDCache((void *)buf, nbyte);
 	buf = (const void *)UNCACHED(buf);
 	p->head = head;
-	for (i = 0; i < head; i++)
-		p->data[i] = ((const char *)buf)[i];
+	for (j = 0; j < head; j++)
+		p->data[j] = ((const char *)buf)[j];
 	if (sceSifCallRpc(&_cd, 3, 0, &_send_data, sizeof(struct _sceFsWrite), _rcv_data_rpc, 4, 0, 0) < 0) {
 		DeleteSema(sema);
 		_sceFsSigSema();
@@ -759,7 +834,7 @@ int sceWrite(int fd, const void *buf, int nbyte)
 		DeleteSema(sema);
 		return -11;
 	}
-	if (flag & 0x8000) {
+	if ((short)flag & 0x8000) {
 		DeleteSema(sema);
 		return 0;
 	}
@@ -784,10 +859,13 @@ struct _sceFsIoctl {
 extern void *data_001DBF88;	/* the request's argument, for the reply */
 extern int data_001CCD48;	/* the receive buffer the last reply used */
 
-/* requests 1-3 answered here: whether a queued request's semaphore is waiting, and the last reply's first word or doubleword read
- * uncached out of its 1088-byte buffer; the rest go to the IOP. OPEN (GCC round 45a, right size, the first time written, all but the
- * first 0x40 bytes and the registers they shift): the target holds the constant 1 in s5 from the top (`li s5,1` under get_iob, one
- * use: the switch's `beql s1,s5`); an unused `int one = 1` is not emitted, a `(void)` use of it changes nothing. */
+/* requests 1-3 answered here: whether a queued request's semaphore is waiting, and the last reply's
+ * first word or doubleword read uncached out of its 1088-byte buffer (its +16); the rest go to the
+ * IOP. The target holds the constant 1 in s5 from the top (`li s5,1` under get_iob) for one use, the
+ * switch's `beql s1,s5`: CSE replaces case 1's constant by a register holding it, on its path from
+ * the top (skip-blocks and follow-jumps carry the table that far), which a variable set once and
+ * unused gives nowhere -- `int one = 1;` and a second `one = 1;` in the case (round 46a; round 45a
+ * had the declaration alone: "not emitted"; a use of it in the arm, `*... = one`, is 3 words off). */
 int sceIoctl(int fd, int request, void *arg)
 {
 	struct _sceFsIoctl *p = (struct _sceFsIoctl *)&_send_data;
@@ -795,6 +873,7 @@ int sceIoctl(int fd, int request, void *arg)
 	int i, sema, ret;
 	struct SemaParam s;
 	int result;
+	int one = 1;
 
 	io = get_iob(fd);
 	_sceFsWaitS(5);
@@ -809,6 +888,7 @@ int sceIoctl(int fd, int request, void *arg)
 	p->f1048 = 0;
 	switch (request) {
 	case 1:
+		one = 1;
 		WaitSema(_fs_fsq_semid);
 		for (i = 0; i < 32; i++)
 			if (_sceFs_q[i] != -1)
@@ -821,11 +901,11 @@ int sceIoctl(int fd, int request, void *arg)
 		_sceFsSigSema();
 		return 0;
 	case 2:
-		*(int *)arg = *(int *)UNCACHED(_rcv_data_cmd + data_001CCD48 * 1088);
+		*(int *)arg = *(int *)UNCACHED(_rcv_data_cmd + 16 + data_001CCD48 * 1088);
 		_sceFsSigSema();
 		return 0;
 	case 3:
-		*(long *)arg = *(long *)UNCACHED(_rcv_data_cmd + data_001CCD48 * 1088);
+		*(long *)arg = *(long *)UNCACHED(_rcv_data_cmd + 16 + data_001CCD48 * 1088);
 		_sceFsSigSema();
 		return 0;
 	}
@@ -1492,7 +1572,7 @@ long sceLseek64(int fd, long offset, int whence)
 		DeleteSema(sema);
 		return -11;
 	}
-	if (flag & 0x8000) {
+	if ((short)flag & 0x8000) {
 		DeleteSema(sema);
 		return 0;
 	}
