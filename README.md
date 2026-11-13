@@ -2066,6 +2066,16 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks register-only rows, round 76** (CEntity::UpdateTargetList 0x2A0450, 20 register-only, byte-exact: one
+  bare `CEntity *ent;` shared by the add and slice walks, and the bumped count a named local in its own block `{ int count =
+  robin.m_count + 1; robin.setup(..., count, ...); }` -- each alone 17 and 24. igreplay's wanted numbering per row, none reached:
+  0x5B3890 dx at 33.5 (between d.y's and d.z's CSEs), AcquireAiAware ma 44.5+, LoadLeadRangeLayouts row 47.5-55.5,
+  LoadCharLayouts place 47.5+ (strength reduction reuses any named base as the induction variable), 0x260B40 z at 112.5 (codegen
+  range: no split web reaches it); ClearSlot's used and i are pushed in different simplify sweeps -- interference, not numbering;
+  AnimSet::Load, UpdateNameTables, GetAnimSetIndex, CAiSUseVehicle::Tick unchanged):
+  - A NAMED LOCAL igreplay WANTS NUMBERED AFTER THE IRO TEMPORARIES IS ONE BARE VARIABLE SHARED BY TWO SCOPES, ASSIGNED IN EACH:
+    SplitLifetimes gives the later web an `@N` numbered after the scalarised members and the CSEs; the earliest definition's web
+    keeps the name. A dead first definition, a constant-offset reassignment or a copy (`oa = ma`) is propagated away, no web.
 - **Tells from the Metrowerks structural rows, round 76** (CanUseDoorAction 0x5EC4E0 byte-exact; AttackTick 0x563E10 4 to 2 (both
   `AiBit16 && NotBit17` tests through a Bit16OnlyT inline `bool r = AiBit16(ai); r = r ? !AiBit17(ai) : r;`; left the AsTurretOf
   false arm's slot); CZKit::CanPickup 0x5BA770 at size, 0 structural / 55 register-only -- a SOURCE MISTAKE, GetId() needed in
