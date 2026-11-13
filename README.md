@@ -2066,6 +2066,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from OVL1, round 74** (OnIsEquipmentSelected 0x280790 (long open), BitmapReticule::UpdateColor 0x215C10 (3 nops) and
+  CZNewHudMap::GetScrollPermissions 0x20AAC0 (27 structural) byte-exact; CAiEvent::GetNextEvent 0x50EA50 at size (0x1A4), 8 off: the
+  target computes the bit block's mask first, here the word. Tried: HandleOpenPad (volatile reads fix the load order but the two
+  KEY_STATE locals swap a1/a2; igreplay finds no placement), LoadLeadRangeLayouts (9), GetIntersect, GetArg, plan_legcomplete,
+  SeekGlyph, Create3Sided, CheckStickVelocity, DeleteNode, GetAnimSetIndex. No header change):
+  - A HAND-ROTATED WALK WHOSE LATCH READS A VOLATILE COUNT RE-READS COUNT AND DATA EVERY PASS, size first, while the guard keeps
+    begin()'s shared load: OnIsEquipmentSelected's latch `i != iterator(v->data + v->size)` over a local view `struct WeapView
+    { void *c; volatile unsigned int size; CCharacterWeap *data; }` (data volatile too, or an unrotated `for`, gives 0x140).
+  - AN EXTRA INLINE LEVEL AROUND A CALL KEEPS ITS BLOCKS LABELLED: the `b` before a join stays unfilled, the join labels keep
+    their nops (UpdateColor's GetArmingDistance through ArmDistOf inside ArmDist); a ternary arm's call through an inline with
+    an argument keeps if/else labels IRO would rebuild into a conditional (GetNextEvent's size).
+  - A VOLATILE READ OF ONE FIELD PINS THE WHOLE LOCAL STRUCT IN MEMORY (its three stores, no saved FPRs); the other field read as
+    an index off that field's address (`(&ptDir.x)[2]`) is reloaded in each block (GetScrollPermissions).
 - **Tells from the last unwritten rows, round 73** (seven of the ten rows with no source byte-exact: DoReaction__11CSealCtrlAiFv
   0x561550 (the demo's 0x2604E0, called from CSealCtrlAi::Tick), HandleSliding__10CZSealBodyFf 0x54EDF0 (SOCOM 1's demo 0x254130),
   HandleEvent's corpse reaction 0x558AE0, the step's wall check 0x549F30, and three OVL2 initialisers named by their stores:
