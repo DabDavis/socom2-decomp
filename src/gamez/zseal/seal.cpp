@@ -4947,8 +4947,7 @@ extern CProbeHit data_0066AAD0[64];
 extern float data_0064FD10;
 extern float data_0064FD18;
 extern float data_0064FD20;
-/* the weapon wall push-out switch (OVL2 bss 0x66B000, never written) */
-extern unsigned char noWeaponWallPush;
+/* (the weapon wall push-out switch, OVL2 bss 0x66B000: declared above, with C++ linkage) */
 /* an alert record raised at a point (OVL2 0x5582B0, seal_ai.cpp's tail call to 0x5582C0) and at a cell
  * (OVL2 0x558030, seal_ai.cpp's) */
 void func_005582B0(CAiStamp *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount);

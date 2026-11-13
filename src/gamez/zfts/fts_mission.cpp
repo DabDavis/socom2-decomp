@@ -3620,10 +3620,6 @@ void CMission::AI_PARAMS::Reset()
     nosnooze_limit = 5;
 }
 
-extern "C" {
-extern float data_003DE5F0;   /* (10: the shortest respawn time) */
-}
-
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_findSTRING(const _zrdr *rdr, const char *tag, const char **out);
 extern "C" char *strcpy(char *dst, const char *src);
