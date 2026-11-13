@@ -2066,6 +2066,37 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from OVL1, round 68** (CSpectatorInfo, a unit nobody had written, whole in the new src/Apps/FTS/hud_spectatorinfo.cpp:
+  Tick 0x2425E0, On 0x242A40, Off 0x242A30, Wipe 0x242AB0, Empty 0x242B20 (names ours: CHUD::ReInit_Uninit's and
+  ReInit_Init's calls), Init 0x242BB0, `__sinit_hud_spectatorinfo.cpp` 0x3FFA50; its destructor 0x242F80 and constructor
+  0x243060 now from source, their drafts dropped):
+  - a unit found by its initialiser's statics: 0x3FFA50 builds bss 0x414900-0x414960, read only by 0x2425E0 and 0x242BB0.
+    Its data floats follow hud_healthbar's at 0x3DCF10, 8 apart (MW 3.0's function-local layout, written as file statics);
+    the bss float 0x414920 is `static float s_valuey = s_labely;`, copied from 0x3DCF98 and stored last.
+  - `p ? p+K : 0` then the caller's own `beqz` on it is an inline's ternary over a member (`return appCamera ?
+    &appCamera->m_view : 0;`), left unthreaded; a derived-to-base conversion in its place is threaded into the caller's
+    test, 8 bytes short (CTCM::HandleClosedPad's GetTcmRootName the same shape). Scan: `b +2; addiu rX,rX,K; move rX,zero;
+    beqz rX`.
+  - a non-virtual `Reset()` on a C2D subclass silently overrides C2D's virtual Reset and the call goes through the vtable:
+    check a new member name against C2D's virtuals.
+  - the stats sum the SEAL's two CSealStats at 0x544 and 0x58C: kills +0xC, deaths +0x12, headshots +0x0, score +0x3C
+    (signed short).
+  - next unwritten here: CZPauseTest::Init 0x202520, hud_mpweaponsel.cpp's slot-item setter 0x23ECA0, CHUD::Tick 0x1F7FF0
+    and Init 0x1FA360 (SOCOM 1 bodies), hud_scorepopup.cpp's tick 0x22BE20 (SOCOM II's own; a 992-byte frame).
+- **Tells from MAIN, the loader** (src/main/loader.c whole, 10 of 10: the boot ELF's `main` 0x1C4CC0 -- the unit carries
+  `/* sc: overlay=MAIN */` so the row's `ovl-copy: main` scores here -- the disc boot 0x1C59C0 (DNAS.BIN, then FTSCORE and
+  ZSEALETC out of APACHE00.ZDB), the card boot 0x1C5B30, the entry readers 0x1C5EC0 (disc/host) and 0x1C61A0 (card), the
+  card's overlay loader 0x1C60B0, the card-error screen 0x1C6390, the picture fade 0x1C6570, the GS reset 0x1C67C0):
+  - the unit is `#pragma auto_inline off`: deferred auto-inlining expands 0x1C5DA0 into 0x1C59C0 whatever the order;
+    `inline` functions still expand. main's three inlines (the CD start, the card check, the save-directory check) each
+    get their own frame slots.
+  - `result > -10` gives `slti at; bnez at`, `>= -9` computes into v0. An `unsigned char ok`: `ok == 0` masks (`andi`),
+    `!ok` tests the register. `while (!sceSifRebootIop(p))` keeps the negation as a value (`sltu; xori`).
+  - sceOpen needs Sony's variadic prototype. Fades: `a += -0.1f` (`-=` gives `sub.s`), `a >= 0.0f` (`c.lt.s; bc1f`).
+    sceGsDisplay as `unsigned int` bitfields (DY read and written as a word; `u_long` fields make it a doubleword).
+  - APACHE00.ZDB's header read 0xA0 bytes into a 0x100 local, each entry 0x5C into 0x60; the later-declared local takes the
+    lower address. The card reader's entry offset and size are `unsigned`, loaded ahead of the fd.
+  - still open in MAIN: libusbkb's Read result handler 0x1BEFF8 (0x574, GCC, an 0x88-byte struct copy), unwritten.
 - **Recovered from interrupted lane worktrees** (uncommitted drafts, scored against master and taken only where they gain):
   the SEALs' round 61 -- CZSealBody's ConfigureAuxPartAnim 0x58ACC0 and SetupEyes 0x58B1A0 byte-exact, UpdateLODFlags
   0x552850 named and written (SOCOM 1's names and order, see the rows' notes); medius audio.c's 0x610C20 byte-exact with
