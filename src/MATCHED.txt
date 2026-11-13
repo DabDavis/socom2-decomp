@@ -11224,6 +11224,7 @@
 0x005EBDC0 __as__8CAiStateFRC8CAiState
 0x005EBF00 func_005EBF00
 0x005EC230 func_005EC230
+0x005EC4E0 CanUseDoorAction__FP10CZSealBodyP11CNodeActionf
 0x005EC9F0 InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit
 0x005ECCD0 CreateMultiPlayerUnits__9CSealUnitFv
 0x005ECEF0 UnInit__9CSealUnitFv

@@ -2066,6 +2066,18 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the Metrowerks structural rows, round 76** (CanUseDoorAction 0x5EC4E0 byte-exact; AttackTick 0x563E10 4 to 2 (both
+  `AiBit16 && NotBit17` tests through a Bit16OnlyT inline `bool r = AiBit16(ai); r = r ? !AiBit17(ai) : r;`; left the AsTurretOf
+  false arm's slot); CZKit::CanPickup 0x5BA770 at size, 0 structural / 55 register-only -- a SOURCE MISTAKE, GetId() needed in
+  both reads of the weapon id; left: the shared `-1` temporary's colour (igreplay: node v98 anywhere 104.5-117.5 fixes it). Wrong
+  notes: CanPickup's "GetId() tried without gain" (in one read only), AttackTick's "1 off" (4, two hidden by structdiff),
+  CanUseDoorAction's CSE story (a dead store). The turret test's zero moves (AttackTick, 0x569E40, SetTarget): ~40 more
+  spellings; the target's null and false arms share an explicit `move zero` block -- a dead-store arm is the likely lead):
+  - A `beqz` OVER AN UNFILLED `b` TO A SHARED RETURN IS AN ARM HOLDING A DEAD STORE: `{ r = 0; goto done; }` (`return r` folds
+    the known value into the slot; a bare goto inverts into one `bnez`).
+  - STRUCTDIFF NORMALISES BRANCH TARGETS: a "1 structural" row can hide threaded branches -- check scdiff's differing count. An
+    `&&` of bool inlines threads the first test's false branch past the join's `beqz`; a self-assigning ternary keeps the join.
+  - READ EVERY USE OF A FIELD AS ITS ACCESSOR: CanPickup closed only with GetId() in both reads.
 - **Tells from the Metrowerks re-diff sweep, round 75** (C2DStringCursor::SeekGlyph 0x362350 and Advance 0x3625E0 byte-exact, open
   since round 61, through their shared inline SetPiece's alpha clamp `m_color[3] = (int)((float)(int)(128.0f * cap) < alpha ?
   (float)(int)(128.0f * cap) : alpha);` with `cap = cap;` ahead (Advance its own `return;` after the '#B' recursion). Nearer:
