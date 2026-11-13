@@ -376,11 +376,10 @@ extern int data_00686A14;               /* the reply's message type */
 extern int func_0061C998(unsigned int nWorld, int nValue);
 void func_0061F920(unsigned int nWorld, int nClient, int nValue1, int nValue2);
 
-/* OPEN (round 26b): d=9, only the report's block: the target loads pClient (t0) before pWorld (a2) and stores 12, 20,
- * 16, then the callback's load, 4, 0, 8. All 720 orders of the six stores leave those two loads swapped (this one is
- * the best of them, with nUser int or pointer alike), and declaring the callback with the extra registers as arguments
- * adds moves (d=97 and more), so it takes one. Everything else is exact: the master pointer in a one-member struct
- * gives its PRE load on the false edge (d=30 to 14), nState a local for the `sb a1`. */
+/* Byte-exact (round 77): the report's stores in field order but nUser after nState (nWorld, nClient, pClient,
+ * nState, nUser, nData; 3 of the 720 orders match, the three putting nUser fifth with nWorld/nClient/pClient first).
+ * Round 26b's "all 720 orders leave the loads swapped" predates the nState local. The master pointer in a one-member
+ * struct gives its PRE load on the false edge, nState a local for the `sb a1`. */
 int func_0061F518(unsigned int nConnection, int nUnused, unsigned int nClient, DmeClientStateMsg *pMsg)
 {
     DmeClientStateReport report;
@@ -418,11 +417,11 @@ int func_0061F518(unsigned int nConnection, int nUnused, unsigned int nClient, D
         func_0061C998(nConnection, pMsg->nClient);
     if (pWorld->pfnClientCallback != 0 && pClient->field_2A == 0) {
         memset(&report, 0, sizeof(report));
-        report.nUser = pWorld->field_42C;
         report.nWorld = nConnection;
         report.nClient = pMsg->nClient;
         report.pClient = pClient;
         report.nState = pClient->nState;
+        report.nUser = pWorld->field_42C;
         report.nData = pMsg->nData;
         ((void (*)(DmeClientStateReport *))pWorld->pfnClientCallback)(&report);
         pClient->field_2A = bConnected;
