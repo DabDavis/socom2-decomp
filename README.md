@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit, round 66** (CZKit::FireCur 0x5C6510 from source -- SOCOM 1's `return Fire(m_selected_item, pos, vel,
+  v);`, found from Fire's callers; matched by its draft before, the draft dropped; CZKit::Fire 0x5C5340 written (SOCOM 1's by
+  signature), 0x11D8 of 0x11D0, frame and every slot right, 36 structural and ~56 register-only off: the threat-arrow block
+  keeps the forward vector's y/z addresses in s3/s2 and re-reads the player's node where here `&player->m_node` (s2) and the
+  distance's y/z (s6/s7) are held; the team test loads m_body before the player; FindChild's `move a0,v0` one early; its OPEN
+  note lists the tries. Both declared in kit.h, callers in seal_kit.cpp and remote_control.cpp respelled. IssueCommand
+  0x5E8E10 52 to 50 (`size() > 3`); CSealCtrlAi::PreTick 0x5CCCD0 is written, 496 off, untouched):
+  - A BYTE LOCAL TAKES A WORD SLOT: the item type as `unsigned char` grows the frame by 16; as EQUIP_ITEM it packs into the
+    byte at 231, as the target.
+  - a spilled pointer read through a one-line inline (KitWorld()) numbers after the named locals and takes the lowest slot.
+  - `SetRotation((const CQuat *)&r)` keeps the pointer overload's null test (again). `if (!ammo) { if (!ammo) { ammo =
+    w->GetDefaultAmmo(); if (!ammo) return 0; } }` is the double `bnez s8`. `if (n) { if (n && (c = n->FindChild(..))) .. }`
+    the double `beqz` with no `move v0,zero`. `CPnt3D fwd = *(const CPnt3D *)row` keeps fwd in memory (CopyPoint scalarises).
+  - ranges as `||` equality chains fold to `addiu; sltiu at`, as `>=`/`<=` to `slti` pairs. Turret reads in place (`e ?
+    AsTurret(e) : 0`; nested ifs for the fire point; a TurretOf inline adds nops before labels). The player's item `EQUIP_ITEM
+    id` (`lb`) and `unsigned char item = id;` inside `if (w)`.
 - **Tells from the SEALs, round 66** (CAiSPursue::Tick 0x559930 (0xE28) byte-exact, unwritten before, SOCOM 1's body in
   seal_ai.cpp; CAiSHold::Tick 0x6060C0 (0x6D8), 16 off since the kit's round 61, byte-exact through ai_states.h alone:
   CAiState::SetFlags sets its dirty bit by `*(volatile unsigned int *)&m_flags |= 0x80000000;` -- objcmp over 672 units: only
