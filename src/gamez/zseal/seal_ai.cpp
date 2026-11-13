@@ -403,7 +403,8 @@ static inline bool HasKind8Flag100(const CAiStateStack &st)
  * of kind 2 with flag 0x20, a kind 8 state on the stack has flag 0x100, or a kind 10 is on it -- else
  * by the target's flag 0x800 (OVL2 0x5658D0, new in SOCOM II: AttackTick asks it; the name unknown).
  * The tests take the stack by reference: handed the controller, MW keeps the stack's address in a saved
- * register for both calls, where the target recomputes it for each */
+ * register for both calls, where the target recomputes it for each. Pinned: AttackTick calls it */
+#pragma auto_inline off
 extern "C" bool func_005658D0(CSealCtrlAi *ai)
 {
     bool r = false;
@@ -417,6 +418,7 @@ extern "C" bool func_005658D0(CSealCtrlAi *ai)
     }
     return r;
 }
+#pragma auto_inline reset
 
 /* an item given the SEAL with its rounds: added at the kit's end unless it holds one, the rounds set
  * -- none for 0, else topped up to the count; whether it holds the item (OVL2 0x5657C0, new in SOCOM II:
@@ -2957,6 +2959,24 @@ public:
         m_range = range;
         SetBit8(true);
     }
+    /* (the defaults without a range: AttackTick builds one in place, then gives it the target's range
+     * -- the range's call comes after the stores) */
+    CAiWepHint()
+    {
+        SetMode(0);
+        m_2 = 2;
+        m_auto = 1;
+        m_burst = 1;
+        SetBit8(false);
+        m_range = 0.0f;
+        SetHasWeapon(false);
+        SetHigh(0);
+    }
+    void SetRange(float range)
+    {
+        SetBit8(true);
+        m_range = range;
+    }
     void SetMode(unsigned int m) { m_mode = m; }
     void SetBit8(bool b) { m_bit8 = b; }
     void SetHasWeapon(bool b) { m_hasWeapon = b; }
@@ -4790,7 +4810,8 @@ public:
     float GetTimeSinceLastSighting() const;
 
     CEntity *m_entity;   // 0x0
-    unsigned char _4[0x58 - 0x4];
+    CPnt3D m_pos;   // 0x4: where the target is (AttackTick aims at it)
+    unsigned char _10[0x58 - 0x10];
     CPnt3D m_lastPos;   // 0x58: where the target was last seen
 };
 
@@ -5054,6 +5075,294 @@ extern "C" bool func_00564D20(CSealCtrlAi *ai, EQUIP_ITEM item, const CPnt3D *ta
     } else
         r = false;
     return r;
+}
+
+extern "C" {
+/* the fire set up from the kit, and its shot checked (OVL2 0x55F3B0, 0x55F0A0: below); whether the AI
+ * goes for a long shot (OVL2 0x607830, the AI states' range; the name unknown); the time an attack's
+ * discipline decays by, the hold's chance scale, the weapon's least accuracy, the aim cone's three
+ * values and the switch letting every grenade through (OVL2 data; the names ours) */
+bool func_0055F3B0(AI_FIREPARAMS *p, CZKit *kit, const CPnt3D *pos, const CPnt3D *vel, unsigned int flags);
+bool func_0055F0A0(CSealCtrlAi *ai, AI_FIREPARAMS *p);
+bool func_00607830(CSealCtrlAi *ai);
+extern float data_0064FE28;
+extern float data_00650270;
+extern float data_00650278;
+extern float data_00650280;
+extern float data_00650288;
+extern float data_00650290;
+extern bool data_0066B218;
+}
+
+/* a lerp as AttackTick's aim cone takes it, the weight's complement first (the name ours) */
+static inline float LerpW(float a, float b, float t)
+{
+    return (1.0f - t) * a + t * b;
+}
+
+/* AttackTick's own shapes of SetTarget's turret test (inlines, the names ours): the entity as a turret
+ * -- the null test an `if`, the kind a negated ternary (only so the kind's test is `beq` to the turret
+ * arm, as the target's); bit 16 without 17, negated, through the materialised getters (the plain
+ * bit-field tests reload the byte where the target reuses the earlier `andi`); the turret's three flags */
+static inline CTurretFlags *AsTurretOf(CEntity *e)
+{
+    if (e)
+        return e->m_type != CEntity::ENT_TYPE_TURRET ? 0 : (CTurretFlags *)e;
+    return 0;
+}
+static inline bool NotBit16OnlyOf(CSealCtrlAi *ai) { int r = AiBit16(ai); if (r) r = AiBit17(ai) ^ 1; return r ^ 1; }
+static inline bool TurretOpenTo(CSealCtrlAi *ai, const CTurretFlags *t)
+{
+    bool r = false;
+    bool b = false;
+    bool a = false;
+
+    if (NotBit16OnlyOf(ai) && (t->m_flags & 2))
+        a = true;
+    if (a && t->NoBit10())
+        b = true;
+    if (b && (t->m_flags & 0x20))
+        r = true;
+    return r;
+}
+
+/* SetTarget's CanAttack over those (an inline, the name ours) */
+static inline bool CanAttackTarget(CSealCtrlAi *ai, CEntity *e)
+{
+    bool r = false;
+
+    if (e) {
+        switch (e->m_type) {
+        case CEntity::ENT_TYPE_TURRET:
+            r = TurretOpenTo(ai, AsTurretOf(e));
+            break;
+        case 4:
+            r = false;
+            break;
+        default:
+            r = true;
+            break;
+        }
+    }
+    return r;
+}
+
+/* the fight's frame: the spray kept up, else the target attacked -- the weapon chosen and reloaded, the
+ * pursuit or the target state pushed, the aim set and the trigger pulled; whether the weapon fires
+ * (SOCOM 1's AttackTick; OVL2 0x563E10). The locals declared first, in reverse of their saved
+ * registers (kit s0, the SEAL s1, the weapon state and the target's entity s2, the squad, the target
+ * and the fire s4, the item and the fire flag s5, the state s6). The hint built by its default
+ * constructor, then given the range (the call after the stores, the range kept in $f21); the clock's
+ * read through a volatile view (only so is it loaded into $f2 and the elapsed time into $f1).
+ * OPEN, 1 instruction off: AsTurretOf's false arm -- the target's `b` to the shared null block keeps
+ * a nop in its delay slot where this fills it with `move a2,zero` (~40 spellings of the test: nested
+ * and negated ternaries, `&&` ifs, switches, early returns) */
+bool CSealCtrlAi::AttackTick(float dT, bool b)
+{
+    CAiState *state;
+    bool fire;
+    CZFTSWeapon *item;
+    AI_FIREPARAMS *fp;
+    CAiTargetFlags *t;
+    CSealUnit *unit;
+    CEntity *ent;
+    WEAPON_STATE ws;
+    CZSealBody *seal;
+    CZKit *kit;
+
+    seal = (CZSealBody *)m_entity;
+    unit = m_unit;
+    kit = &seal->m_kit;
+    if (func_005659E0(this, dT)) {
+        if (kit->WillFireWeapon()) {
+            m_5c0 = data_004365C0;
+            return true;
+        }
+        return false;
+    }
+    state = GetAiState();
+    if (!(m_stateStack.m_14 & 2)) {
+        func_00565B80(this, seal->GetWeaponState());
+        return false;
+    }
+    item = kit ? kit->GetCurItem() : 0;
+    if (!item)
+        return false;
+    if ((m_entity->m_team & 0x40000) && item->m_ID == 11)
+        return false;
+    ws = (WEAPON_STATE)2;
+    if ((m_4c & 0x20) || unit->m_a4 || (m_aibit11 ? true : false))
+        ws = (WEAPON_STATE)1;
+    bool lost = true;
+
+    if (func_0060A850(m_67c)) {
+        if (!TargetHeld(this))
+            lost = ((CAiTarget *)m_67c)->GetTimeSinceLastSighting() > 3.0f;
+        else
+            lost = false;
+    }
+    bool found = !lost;
+
+    if (!found) {
+        func_00565B80(this, ws);
+        return false;
+    }
+    seal->SetWeaponState((WEAPON_STATE)1);
+    if (!TargetHeld(this) || !b) {
+        func_00565B80(this, (WEAPON_STATE)1);
+        return false;
+    }
+    if (!func_0060F9A0(this)) {
+        CAiWepHint hint;
+        float range = ((CTarget *)m_67c)->GetRange();
+
+        hint.SetRange(range);
+        hint.m_burst = 1;
+        bool empty = !kit->CurItemHasAmmo();
+
+        if (empty || CAiWepHint::GetWeaponAccuracy(item, range, false) < data_00650270)
+            ChooseWeapon(hint);
+        if (!kit->CurMagHasAmmo()) {
+            if (kit->CurItemHasAmmo()) {
+                if (PushAiState(AI_STATE_RELOAD, 0))
+                    GetAiState()->SetActive(true);
+            } else if (IsNavySeal())
+                kit->SetItemAmmo(kit->GetSelectedItemNum(), 0, 30, 1);
+            else if (PushAiState(AI_STATE_NOAMMO, 0))
+                GetAiState()->SetActive(true);
+            func_00565B80(this, ws);
+            return false;
+        }
+    }
+    ent = ((CAiTarget *)m_67c)->m_entity;
+    t = (CAiTargetFlags *)m_67c;
+    bool may = !Bit16Only(this);
+
+    if (!may)
+        may = (t->m_flags & 0x400) != 0;
+    bool att = may;
+
+    if (may)
+        att = CanAttackTarget(this, ent);
+    fire = att;
+
+    if (att) {
+        if (!func_0060F9A0(this) && !AiStateIs(AI_STATE_TARGET) && !AiStateIs(AI_STATE_PURSUE)) {
+            bool far = func_00607830(this);
+
+            if (!far)
+                far = ((CZSealBody *)m_entity)->m_kit.HasSniperRifle();
+            bool stay = far;
+
+            if (!far) {
+                bool in = !IsNavySeal();
+
+                if (in) {
+                    bool r = false;
+
+                    if (AiMaps.GetRegionTypeContainer((CAiMap::region::TYPE)6, m_entity->m_mapLocValid))
+                        r = true;
+                    in = r;
+                }
+                stay = in;
+            }
+            if (stay || !state->CanPursue(this) || !m_unit->m_escortees.empty()
+                || (IsNavySeal() && !m_aware.m_value) || Chance(0.25f)) {
+                if (PushAiState(AI_STATE_TARGET, 0)) {
+                    CAiState *s = GetAiState();
+
+                    s = s && s->m_state == AI_STATE_TARGET ? s : 0;
+                    s->m_time = 2.5f;
+                    s->SetActive(true);
+                }
+            } else if (PushAiState(AI_STATE_PURSUE, 0)) {
+                CAiState *s = GetAiState();
+                CAiSPursue *p = (CAiSPursue *)(s && s->m_state == AI_STATE_PURSUE ? s : 0);
+
+                p->m_timer = IsNavySeal() ? 5.0f : -1.0f;
+                if (AiBit16(this) && NotBit17(this))
+                    p->SetFlags(4, 2);
+                p->SetActive(true);
+            }
+        }
+        fire = func_005658D0(this);
+    }
+    if (!fire) {
+        SetTrigger(false);
+        return false;
+    }
+    if (!func_0060F9A0(this)) {
+        if (ent->m_noshoot ? true : false) {
+            SetTrigger(false);
+            if (IsNavySeal()) {
+                PlayAiSound((CHARACTER_SOUND)5, 1.0f, (CAiEvent::EVENT)1);
+                func_00565110(this, (EQUIP_ITEM)123, (CTarget *)t, 32);
+            }
+            return false;
+        }
+        if (!IsNavySeal() && !(m_5c8 < 3.0f) && !(*(volatile float *)&data_004365C0 - m_770 <= data_0064FF80)) {
+            if (data_0066B218 || Chance(data_00650278 * m_aiParams.training))
+                func_00565110(this, (EQUIP_ITEM)255, (CTarget *)t, 0);
+            m_770 = data_004365C0;
+        }
+        float dot = SetGoalDir((GOAL_TYPE)4, &((CAiTarget *)t)->m_pos, false);
+
+        if (dot < LerpW(data_00650288, data_00650280, data_00650290) || !fire) {
+            SetTrigger(false);
+            return false;
+        }
+    }
+    fp = &m_fire;
+
+    if ((m_fire.m_flags & 0x4000000) && !(fp->m_timeout <= 3.0f)) {
+        DropAim(*fp);
+        m_748 = RollTime(m_734);
+        m_744 = m_748 + RollTime(m_73c);
+    }
+    bool ok;
+
+    if (!(fp->m_flags & 0x4000000)) {
+        CPnt3D pos;
+        CPnt3D vel = ent->m_velW;
+
+        ent->GetTargetPosW(&pos);
+        func_0055F3B0(fp, kit, &pos, &vel, 6);
+        bool expired = m_744 > m_748;
+
+        m_744 -= dT;
+        bool r = expired;
+
+        if (expired)
+            r = func_0055F0A0(this, fp);
+        ok = r;
+    } else {
+        m_744 -= dT;
+        ok = func_0055EAA0(this, fp, false);
+    }
+    if (ok)
+    {
+        bool f = FireWhenReady(*fp, dT);
+
+        SetTrigger(f, *(float *)&fp->_44[0x50 - 0x44]);
+    }
+    else {
+        SetTrigger(false);
+        DropAim(*fp);
+    }
+    if (m_744 <= 0.0f) {
+        func_00565D30(this);
+        m_748 = RollTime(m_734);
+        m_744 = m_748 + RollTime(m_73c);
+    }
+    bool fired = seal->m_kit.WillFireWeapon();
+
+    if (fired) {
+        if (AiBit16(this) && NotBit17(this))
+            PlayAiSound((CHARACTER_SOUND)66, 1.0f, CAiEvent::AIE_NONE);
+        m_dicipline.m_value *= data_0064FE28;
+        m_5c0 = data_004365C0;
+    }
+    return fired;
 }
 
 /* the fire parameters set up from the kit for a target -- its spot and its velocity (none: still) --

@@ -276,6 +276,10 @@ public:
     void ReParentToPistol();
     /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
     bool CurItemHasAmmo();
+    /* whether the magazine in the item in hand has rounds, and whether the kit holds a sniper rifle
+     * (kit.h's; OVL2 0x5BD530, 0x5C85D0 -- AttackTick asks both) */
+    unsigned char CurMagHasAmmo();
+    bool HasSniperRifle();
     /* whether the item is the one in use (kit.h's; OVL2 0x5B98C0 -- ai::INVIEW's tick asks it) */
     bool IsUsingItem(EQUIP_ITEM item);
     /* the items held, an item set at an index, its magazines and rounds, its ammunition set -- with a
@@ -595,13 +599,16 @@ public:
     CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
     /* the squad's SEALs, the leader first (seal_unit.cpp's slist m_seals) */
     std::list<CZSealBody *> m_seals;   // 0x64
-    unsigned char _70[0x9c - 0x70];
+    std::list<CZSealBody *> m_escortees;   // 0x70: the escorted SEALs (seal_unit.cpp's)
+    unsigned char _7c[0x9c - 0x7c];
     /* the squad's current order: its kind a byte at 8 (a kill by the local player under order 19
      * counts twice: 0x545290; the names ours) */
     struct CSealUnitOrder {
         unsigned char _0[8];
         unsigned char m_8;
     } *m_9c;   // 0x9c
+    unsigned char _a0[0xa4 - 0xa0];
+    unsigned char m_a4;   // 0xa4: the ambush (seal_unit.cpp's; SOCOM 1's m_ambush)
 };
 
 /* the network (SOCOM II's theNetwork at 0x45A0C0: SOCOM 1's flags at 8 and 9, the states lane's
@@ -1028,7 +1035,10 @@ public:
     /* SOCOM 1's AI_LOOK, a signed byte (AIL_ALL is -1: compared with `lb`); the enum is
      * seal_look.cpp's (the kit lane's), so a plain signed char here -- 9 is AIL_DEPLOY */
     signed char m_look_mode;   // 0x24 (SOCOM 1's 0x20)
-    unsigned char _25[0x54 - 0x25];
+    unsigned char _25[0x4c - 0x25];
+    /* flags: bit 5 keeps an attacking AI's weapon up as it lets go (AttackTick 0x563E10; the name ours) */
+    unsigned int m_4c;   // 0x4c
+    unsigned char _50[0x54 - 0x50];
     /* the scan's timer (SOCOM 1's m_scan_timer, at 0x54 in both builds; the constructor makes it
      * CAiTimer(0.0f)) */
     CAiTimer m_scan_timer;   // 0x54
