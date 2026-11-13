@@ -2197,6 +2197,105 @@ extern "C" bool func_00555420(CSealCtrlAi *ai, CAiPathBytes *path, CAiRouteBytes
     return r;
 }
 
+/* whether the AI's target is lost to it: none, or none held and not seen for three seconds
+ * (seal_aievent.cpp's TargetGone and its int-returning compare, copied -- the held test an `&&` here:
+ * this unit's 0x60A850 answers a bool, and `!= 0` on it masks before the sltu; the names ours) */
+static inline int StaleSighting(float t, float limit)
+{
+    return t > limit;
+}
+
+extern "C" float GetTimeSinceLastSighting__9CAiTargetCFv(const void *target);
+
+static inline unsigned char TargetLost(CSealCtrlAi *ai, float limit = 3.0f)
+{
+    unsigned char gone = true;
+
+    if (func_0060A850(ai->m_67c)) {
+        bool held = func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200);
+
+        if (!held) {
+            gone = StaleSighting(GetTimeSinceLastSighting__9CAiTargetCFv(ai->m_67c), limit);
+        } else
+            gone = false;
+    }
+    return gone;
+}
+
+/* the AI's "docorpse" (bit 12) as a bool (IsNavySeal's shape: the sltu at its test) */
+static inline bool DoCorpse(CSealCtrlAi *ai)
+{
+    return ai->m_aibit12 ? true : false;
+}
+
+extern "C" {
+/* how long a SEAL has lain dead, 0 alive (OVL2 0x548050, seal.cpp's) and whether the AI goes for a
+ * long shot (OVL2 0x607830) */
+float func_00548050(CZSealBody *seal);
+bool func_00607830(CSealCtrlAi *ai);
+}
+
+/* a friendly corpse found: unless the AI holds or saw its target in three seconds, has no "docorpse"
+ * (bit 12), is a Navy SEAL and the body not the player's, goes for a long shot, holds a sniper rifle
+ * or (no Navy SEAL) stands in a region of kind 6, an event state of kind 5 is pushed at the body --
+ * flags 0x32; dead under five seconds with a live killer, the killer's place its second point and the
+ * wait 1 + 2 t / 5, else the killer's or the body's place and the name "on_corpse" -- then flags 1 and
+ * 4, made active; whether one was (OVL2 0x558AE0, new in SOCOM II: HandleEvent's corpse event calls
+ * it; the name ours) */
+extern "C" bool func_00558AE0(CSealCtrlAi *ai, CZSealBody *seal)
+{
+    bool r = false;
+    CEntity *e = ai->m_entity;
+
+    if ((seal ? (e->m_team & seal->m_team) != 0 : false) && TargetLost(ai) && DoCorpse(ai)
+        && (!ai->IsNavySeal() || seal->IsPlayer())) {
+        bool far = func_00607830(ai);
+
+        if (!far)
+            far = ((CZSealBody *)ai->m_entity)->m_kit.HasSniperRifle();
+        bool stay = far;
+
+        if (!far) {
+            bool in = !ai->IsNavySeal();
+
+            if (in) {
+                bool rr = false;
+
+                if (AiMaps.GetRegionTypeContainer((CAiMap::region::TYPE)6, ai->m_entity->m_mapLocValid))
+                    rr = true;
+                in = rr;
+            }
+            stay = in;
+        }
+        if (!stay && ai->PushAiState(AI_STATE_EVENT, 0)) {
+            float dead = func_00548050(seal);
+            CEntity *k = CEntity::m_list.GetEntityById(seal->m_lastkiller_id);
+            CZSealBody *killer = k && k->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)k : 0;
+            CAiState *s = ai->GetAiState();
+            CAiSEvent *st = s && s->m_state == AI_STATE_EVENT ? (CAiSEvent *)s : 0;
+
+            st->SetFlags(0x32, 0);
+            if (dead < 5.0f && killer && killer->m_isAlive) {
+                const CPnt3D *at = &killer->m_posW;
+
+                st->SetEvent(5, &seal->m_posW, at);
+                st->SetFlags(1, 0);
+                st->m_80 = 1.0f + 2.0f * (dead / 5.0f);
+            } else {
+                const CPnt3D *at = killer ? &killer->m_posW : &seal->m_posW;
+
+                st->SetEvent(5, &seal->m_posW, at);
+                st->SetFlags(1, 0);
+                st->SetName("on_corpse");
+            }
+            st->SetFlags(4, 0);
+            st->SetActive(true);
+            r = true;
+        }
+    }
+    return r;
+}
+
 /* the AI's glance counts at 0x284 (zseal.h's bytes; the class and names ours): the cell last counted
  * from, the range counted and the rise worth a look, and two direction counts -- the latest at m_c, the
  * other turned into the rise since the one before (0x558640). A count by direction of the risen one
