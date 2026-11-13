@@ -364,7 +364,7 @@ void CBody::BodySetState(int state)
  * follow the source: the top through TopBlend() (s0) and the homing through Homing() (s1), the
  * loop flag and the two pointers declared first, uninitialised (s3, s2, s1), the fraction read
  * after the flag */
-CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, short id, char state)
+CZBodyAnimBlend *CBody::PushBlend(CZSIScriptCommon *anim, int id, int state)
 {
     bool looped;
     CZBodyAnimBlend *blend;

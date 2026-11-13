@@ -628,7 +628,8 @@ public:
     void Destroy();
     void ClearBlendOverlay();
     CZBodyAnimBlend *PopBlend();
-    CZBodyAnimBlend *PushBlend(CZSIScriptCommon *anim, short id, char state);
+    /* (the id and the state ints: 0x588BC0 passes both unnarrowed -- the body stores them by sh and sb) */
+    CZBodyAnimBlend *PushBlend(CZSIScriptCommon *anim, int id, int state);
     /* the parts: one marked live or not, eased toward their saved poses, placed on their nodes,
      * their poses saved, read back from their nodes (SOCOM II's; the names ours but SOCOM 1's
      * SmoothAnims) */

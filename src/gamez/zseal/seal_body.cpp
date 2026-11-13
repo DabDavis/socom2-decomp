@@ -106,7 +106,7 @@ void *func_00555170(void *v);
 
 extern "C" {
 bool func_005551A0(unsigned short flags, unsigned short bits);
-void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, bool flag, int kind);
 /* the peek anims (AnimTypes statics, OVL1 data, before SwapRifle's; the names unknown) */
 extern short data_003DEB00;
 extern short data_003DEB08;
@@ -308,10 +308,10 @@ unsigned char CZSealBody::PeekBaseState()
 
 /* a blended anim pushed to everyone, for a SEAL the network plays (OVL1 0x2BBAF0: SOCOM 1's
  * NetSendPushBlend with a time, fts_remote.cpp's) and an anim pushed on the body (OVL2 0x588BC0,
- * not written yet: an anim type, the state, a flag and a kind) */
+ * below: an anim type, the state, a flag and a kind) */
 extern "C" {
 void func_002BBAF0(unsigned int obj, unsigned int anim, int slot, bool on, int time);
-void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, bool flag, int kind);
 bool func_00589900(CZSealBody *seal);
 void *func_00555170(void *v);
 unsigned short func_0058A920(unsigned short flags, unsigned short bits, bool on);
@@ -1581,7 +1581,7 @@ void ParentPistolToRHandCallback(void *data, void *arg);
  * the blends the type replaces popped, the push itself, the body's parts given the anim's aux objects and
  * a pistol's parenting timed on the pistol's anims, the push told to the network for a SEAL this console
  * plays unless a kind says not (OVL2 0x588BC0: SOCOM 1's PushBlend, before PopBlend in both builds) */
-extern "C" void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind)
+extern "C" void *func_00588BC0(CZSealBody *seal, AnimType type, int state, bool flag, int kind)
 {
     seal->SetLimp(true);
     CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
@@ -1602,7 +1602,11 @@ extern "C" void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int f
         seal->ClearBlendOverlay();
         blend = seal->AddBlendOverlay(type);
     } else {
-        int base = func_0058C960(seal, (AnimType)seal->m_animset->BaseAnim(type));
+        /* (assigned twice: the second web is split off late, a temporary numbered after every
+         * ClearStack copy's, so it takes s3 above the parameters -- one initialiser gives s0) */
+        int base = seal->m_animset->BaseAnim(type);
+
+        base = func_0058C960(seal, (AnimType)base);
         CZSIScriptCommon *script = seal->m_animset->GetScript((AnimType)base, seal->m_weapon_id);
 
         if (!script) {
@@ -1649,7 +1653,8 @@ extern "C" void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int f
             }
         } else if (base == data_003DEF00 || base == data_003DEEF8)
             seal->ClearStack(1, true);
-        blend = ((CBody *)seal)->PushBlend(script, base, state);
+        /* (qualified: a cast to CBody * tests the SEAL for null) */
+        blend = seal->CBody::PushBlend(script, base, state);
         if (!blend) {
             seal->SetLimp(false);
             return 0;
