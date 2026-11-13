@@ -34,7 +34,10 @@
  * does) and `pid = rpc_id` stored first; what is left is the client's paddr and pid stores in
  * the other order, and sched1 decides it: pid's store is the last use of the loaded rpc_id, so it
  * outranks paddr's on register pressure as soon as the load's latency allows, in every order and
- * type tried. Not adopted (the unit's types are the other functions' too). */
+ * type tried. Not adopted (the unit's types are the other functions' too). GCC r80: 17 -> 2 with
+ * the unit's types kept, the packet written through a one-member union (alias set 0, as libmrpc's
+ * requests, byte-exact that way): every packet store in source order, serve's load before the
+ * client store, pid read before paddr's store; the same two words left (paddr and pid swapped). */
 
 typedef unsigned int u_int;
 typedef unsigned short u_short;
@@ -330,7 +333,8 @@ static void *_sceRpcGetFPacket2(sceSifRpcState *d, int rid)
 	return (char *)d->client_table + rid * 64;
 }
 
-/* OPEN, 9 words: the bind case's three copies are scheduled here as the loads first (buff's above
+/* Byte-exact as written (checked GCC r80: the note below predates the match). Was OPEN, 9 words:
+ * the bind case's three copies are scheduled here as the loads first (buff's above
  * serve's store), and the switch's two branches to the join are plain where the target's are
  * likely ones; the target keeps every load after the store before it. Not strict aliasing (without
  * it, 22 words and the wrong size), not the reply packet's field types (void, int, a struct
@@ -533,22 +537,22 @@ int sceSifCallRpc(sceSifClientData *bd, u_int fno, u_int mode, void *send, int s
 		  int rsize, sceSifEndFunc end_function, void *end_param)
 {
 	struct SemaParam sema;
-	sceSifRpcCallPkt *call;
+	union { sceSifRpcCallPkt c; } *call;
 
 	call = _sceRpcGetPacket(&_data_table);
 	if (call == 0)
 		return -1;
+	bd->rpcd.pid = call->c.rpc_id;
 	bd->rpcd.paddr = call;
-	bd->rpcd.pid = call->rpc_id;
 	bd->func = end_function;
 	bd->para = end_param;
-	call->fno = fno;
-	call->size = ssize;
-	call->receive = (u_int)receive;
-	call->rsize = rsize;
-	call->pkt_addr = call;
-	call->client = bd;
-	call->serve = bd->serve;
+	call->c.fno = fno;
+	call->c.size = ssize;
+	call->c.receive = (u_int)receive;
+	call->c.rsize = rsize;
+	call->c.pkt_addr = call;
+	call->c.serve = bd->serve;
+	call->c.client = bd;
 	if (!(mode & 2)) {
 		if (send == receive) {
 			sceSifWriteBackDCache(send, ssize < rsize ? rsize : ssize);
@@ -561,9 +565,9 @@ int sceSifCallRpc(sceSifClientData *bd, u_int fno, u_int mode, void *send, int s
 	}
 	if (mode & 1) {
 		if (end_function == 0)
-			call->rmode = 0;
+			call->c.rmode = 0;
 		else
-			call->rmode = 1;
+			call->c.rmode = 1;
 		bd->rpcd.tid = -1;
 		if (sceSifSendCmd(0x8000000A, call, 64, send, bd->buff, ssize) != 0)
 			return 0;
@@ -577,7 +581,7 @@ int sceSifCallRpc(sceSifClientData *bd, u_int fno, u_int mode, void *send, int s
 		_sceRpcFreePacket((sceSifRpcPkt *)call);
 		return -3;
 	}
-	call->rmode = 1;
+	call->c.rmode = 1;
 	if (sceSifSendCmd(0x8000000A, call, 64, send, bd->buff, ssize) == 0) {
 		DeleteSema(bd->rpcd.tid);
 		_sceRpcFreePacket((sceSifRpcPkt *)call);

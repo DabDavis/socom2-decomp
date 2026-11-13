@@ -9,7 +9,8 @@
  * (_sceSifMInitCheck in .data; _packet_buffer and _data_table@libmrpc in .bss), and the packets and
  * the client are sifrpc.c's types (GCC r25a: their alias sets read off the schedules there) with
  * the multi-thread client's fields after them (the unbind packet's client void *, as sifrpc's call
- * packet's). GCC r25a, new: 7 of 9 byte-exact, sceSifMInitRpc in sifrpc's init order. */
+ * packet's). GCC r25a, new: 7 of 9 byte-exact, sceSifMInitRpc in sifrpc's init order; 9 of 9 since
+ * GCC r80, the requests' packets through a union (sceSifMPkt). */
 
 typedef unsigned int u_int;
 typedef unsigned short u_short;
@@ -103,6 +104,14 @@ typedef struct {
 	int rmode;			/* 0x30 */
 	void *serve;			/* 0x34 */
 } sceSifMCallPkt;
+
+/* the packet as the three requests write it: through a union, so every field store has alias set 0
+ * and keeps its place against the client's (GCC round 80) */
+typedef union {
+	sceSifMBindPkt bind;
+	sceSifMUnBindPkt unbind;
+	sceSifMCallPkt call;
+} sceSifMPkt;
 
 typedef struct {
 	int pid;			/* 0x00: the next request's id, never 0 */
@@ -242,7 +251,7 @@ int sceSifMBindRpc(sceSifMClientData *cd, u_int command, u_int mode)
 int sceSifMBindRpcParam(sceSifMClientData *cd, u_int command, u_int mode, int param0, int param1, int param2)
 {
 	struct SemaParam sema;
-	sceSifMBindPkt *bind;
+	sceSifMPkt *bind;
 	int s;
 
 	if (mode != 0) {
@@ -266,14 +275,14 @@ int sceSifMBindRpcParam(sceSifMClientData *cd, u_int command, u_int mode, int pa
 		DeleteSema(cd->sema);
 		return -1;
 	}
+	cd->rpcd.pid = bind->bind.rpc_id;
 	cd->rpcd.paddr = bind;
-	cd->rpcd.pid = bind->rpc_id;
-	bind->sid = command;
-	bind->param0 = param0;
-	bind->param1 = param1;
-	bind->param2 = param2;
-	bind->pkt_addr = bind;
-	bind->client = cd;
+	bind->bind.sid = command;
+	bind->bind.param0 = param0;
+	bind->bind.param1 = param1;
+	bind->bind.param2 = param2;
+	bind->bind.pkt_addr = bind;
+	bind->bind.client = cd;
 	sema.maxCount = 1;
 	sema.initCount = 0;
 	sema.option = 0;
@@ -296,18 +305,13 @@ int sceSifMBindRpcParam(sceSifMClientData *cd, u_int command, u_int mode, int pa
 	return 0;
 }
 
-/* OPEN (4 words, right size): the target loads the packet's rpc_id into v0 first, so reorg puts
- * the null check's `li v0,-1` in a beqz's slot straight to the epilogue; here a1 takes it (the
- * stores in this order, the nearest of 720: tools/ccperm.py). Round 79, re-diffed: the slot is
- * right now; the 4 words are cd->serve's load, which the target issues after the pkt_addr and client
- * stores (void * against void *: the strict-aliasing conflict of the client store) and this compile
- * hoists to the top. Writing serve last (or after client) gives that dependence but hoists the void *
- * stores over the pid's, the paddr store into a bnezl slot (0x120); 720 orders again, and with client
- * typed sceSifMClientData *: 4 at best (build/scratch/gcc2-r79/vunbind*.py). */
+/* Byte-exact since GCC round 80: the packet written through sceSifMPkt -- a union, so each field
+ * store has alias set 0 and keeps its source place against the client's loads and stores (round 79's
+ * 720 orders all ran under the struct's own alias sets). */
 int sceSifMUnBindRpc(sceSifMClientData *cd, u_int mode)
 {
 	struct SemaParam sema;
-	sceSifMUnBindPkt *ub;
+	sceSifMPkt *ub;
 	int s;
 
 	if (mode != 0) {
@@ -318,12 +322,12 @@ int sceSifMUnBindRpc(sceSifMClientData *cd, u_int mode)
 	ub = _sceRpcGetPacket(&_data_table);
 	if (ub == 0)
 		return -1;
-	cd->rpcd.pid = ub->rpc_id;
+	cd->rpcd.pid = ub->unbind.rpc_id;
 	cd->rpcd.paddr = ub;
-	ub->serve = cd->serve;
-	ub->sid = cd->command;
-	ub->client = cd;
-	ub->pkt_addr = ub;
+	ub->unbind.sid = cd->command;
+	ub->unbind.pkt_addr = ub;
+	ub->unbind.client = cd;
+	ub->unbind.serve = cd->serve;
 	sema.maxCount = 1;
 	sema.initCount = 0;
 	sema.option = 0;
@@ -343,14 +347,14 @@ int sceSifMUnBindRpc(sceSifMClientData *cd, u_int mode)
 	return cd->unbind;
 }
 
-/* OPEN (a word short): sifrpc.c's sceSifCallRpc with the lock and the alignment checks -- the same
- * open schedule of the client's four and the packet's seven stores, and the null check laid out
- * the other way (the target's bnez carries the stack argument's load in its slot). */
+/* sifrpc.c's sceSifCallRpc with the lock and the alignment checks. Byte-exact since GCC round 80:
+ * the packet through sceSifMPkt's union (every store in source order: fno, pkt_addr, the sizes, the
+ * client), the client's pid read before its paddr store. */
 int sceSifMCallRpc(sceSifMClientData *cd, u_int fno, u_int mode, void *send, int ssize, void *receive,
 		   int rsize, sceSifEndFunc end_function, void *end_param)
 {
 	struct SemaParam sema;
-	sceSifMCallPkt *call;
+	sceSifMPkt *call;
 	int s;
 
 	if (mode != 0) {
@@ -369,17 +373,17 @@ int sceSifMCallRpc(sceSifMClientData *cd, u_int fno, u_int mode, void *send, int
 	call = _sceRpcGetPacket(&_data_table);
 	if (call == 0)
 		return -1;
-	cd->rpcd.pid = call->rpc_id;
+	cd->rpcd.pid = call->call.rpc_id;
 	cd->rpcd.paddr = call;
 	cd->func = end_function;
 	cd->para = end_param;
-	call->fno = fno;
-	call->size = ssize;
-	call->receive = (u_int)receive;
-	call->rsize = rsize;
-	call->pkt_addr = call;
-	call->client = cd;
-	call->serve = cd->serve;
+	call->call.fno = fno;
+	call->call.pkt_addr = call;
+	call->call.size = ssize;
+	call->call.receive = (u_int)receive;
+	call->call.rsize = rsize;
+	call->call.client = cd;
+	call->call.serve = cd->serve;
 	if (send == receive) {
 		sceSifWriteBackDCache(send, ssize < rsize ? rsize : ssize);
 	} else {
@@ -390,9 +394,9 @@ int sceSifMCallRpc(sceSifMClientData *cd, u_int fno, u_int mode, void *send, int
 	}
 	if (mode & 1) {
 		if (end_function == 0)
-			call->rmode = 0;
+			call->call.rmode = 0;
 		else
-			call->rmode = 1;
+			call->call.rmode = 1;
 		cd->rpcd.tid = -1;
 		if (sceSifSendCmd(0x8000001A, call, 64, send, cd->buff, ssize) != 0)
 			return 0;
@@ -407,7 +411,7 @@ int sceSifMCallRpc(sceSifMClientData *cd, u_int fno, u_int mode, void *send, int
 		_sceRpcFreePacket((sceSifRpcPkt *)call);
 		return -3;
 	}
-	call->rmode = 1;
+	call->call.rmode = 1;
 	if (sceSifSendCmd(0x8000001A, call, 64, send, cd->buff, ssize) == 0) {
 		_sceRpcFreePacket((sceSifRpcPkt *)call);
 		DeleteSema(s);
