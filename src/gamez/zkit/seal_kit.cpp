@@ -4908,14 +4908,26 @@ static inline int AtLeast(int a, int b)
     return b <= a ? a : b;
 }
 
-/* whether the charge is within reach, not running (inline: the tests in a register; the name ours) */
+/* the charge within reach; not running (inlines, each compare a bool local returned: the value in a
+ * register tested with no `andi` -- the kit's round 71; the names ours) */
+static inline bool KitInReach(CKitFireBody *fb)
+{
+    bool r = fb->m_208 < 396.0f;
+
+    return r;
+}
+
+static inline bool KitIdle(CKitFireBody *fb)
+{
+    bool r = fb->m_e84 == 0.0f;
+
+    return r;
+}
+
+/* whether the charge is within reach, not running (inline; the name ours) */
 static inline bool PlaceOk(CKitFireBody *fb)
 {
-    bool ok = fb->m_208 < 396.0f;
-
-    if (ok)
-        ok = fb->m_e84 == 0.0f;
-    return ok;
+    return KitInReach(fb) && KitIdle(fb);
 }
 
 
@@ -4932,7 +4944,14 @@ static inline bool PlaceOk(CKitFireBody *fb)
  * The kit's round 65: the bound is AtLeast's `b <= a ? a : b` (the target's slti/movn, d=407 -> 296),
  * and with it the function stops filling slots from the fall-through: 0xF10 now, 16 bytes long --
  * the place-charge test's two float compares are the target's values with no `andi` (bool, int, a
- * ternary, `&&`, if/else and an int return all keep one) */
+ * ternary, `&&`, if/else and an int return all keep one).
+ * The kit's round 71: 0xF00, the target's size, d=200, register-only: each compare through its own
+ * inline (`bool r = a < b; return r;`, KitInReach/KitIdle) joined by `&&` drops the `andi`s (the
+ * `ok` form, or the inlines into `ok`, keep them); the type's byte an `int t` (the unsigned char's
+ * hoisted ETYPCON(t) took s5: 225 to 214). Left: this s4, index s3, w s1, ammo s0, shots s5, t s2
+ * against the target's s5, s4, s3, s2, s1, s0 -- MW pops t, shots, ammo, w, index, this; the 24
+ * declaration orders of w, ammo, shots and t (block top or function top) 209-214; the gun's rounds as
+ * an inline member is called, not inlined (0xD10: inline_max_size) */
 void CZKit::HandleFireWeapon(int index, float a, float b)
 {
     EQUIP_ITEM id = m_item[index]->GetId();
@@ -5067,7 +5086,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
         m_burst_count++;
         m_81c = b;
     } else {
-        unsigned char t = type;
+        int t = (unsigned char)type;
 
         if (t == 121) {
         bool can = func_0059D830(m_body);
