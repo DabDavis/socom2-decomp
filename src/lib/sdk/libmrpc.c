@@ -298,7 +298,12 @@ int sceSifMBindRpcParam(sceSifMClientData *cd, u_int command, u_int mode, int pa
 
 /* OPEN (4 words, right size): the target loads the packet's rpc_id into v0 first, so reorg puts
  * the null check's `li v0,-1` in a beqz's slot straight to the epilogue; here a1 takes it (the
- * stores in this order, the nearest of 720: tools/ccperm.py). */
+ * stores in this order, the nearest of 720: tools/ccperm.py). Round 79, re-diffed: the slot is
+ * right now; the 4 words are cd->serve's load, which the target issues after the pkt_addr and client
+ * stores (void * against void *: the strict-aliasing conflict of the client store) and this compile
+ * hoists to the top. Writing serve last (or after client) gives that dependence but hoists the void *
+ * stores over the pid's, the paddr store into a bnezl slot (0x120); 720 orders again, and with client
+ * typed sceSifMClientData *: 4 at best (build/scratch/gcc2-r79/vunbind*.py). */
 int sceSifMUnBindRpc(sceSifMClientData *cd, u_int mode)
 {
 	struct SemaParam sema;
