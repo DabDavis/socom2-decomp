@@ -1001,6 +1001,29 @@ float CCamera::GetZ(CPnt3D *pos)
     CPnt4D aPos(pos->x, pos->y, pos->z, 1.0f);
     CPnt4D *aPosPtr = &aPos;
 
+#if Z_PORT
+    /* vsub.xyz d = pos - p; vmul.xyz d *= dir; w = ((1*d.x) + 1*d.y) + 1*d.z (the ACC chain with
+     * vf0.w); the whole register stored over aPos, as the sqc2 does */
+    {
+        const float *dir = (const float *)CamDir;
+        const float *cp = (const float *)CamPos;
+        float *a = (float *)aPosPtr;
+        float d[3], acc;
+        int k;
+
+        for (k = 0; k < 3; k++)
+            d[k] = cp[k] - a[k];
+        for (k = 0; k < 3; k++)
+            d[k] = d[k] * dir[k];
+        acc = 1.0f * d[0];
+        acc = acc + 1.0f * d[1];
+        acc = acc + 1.0f * d[2];
+        a[0] = d[0];
+        a[1] = d[1];
+        a[2] = d[2];
+        a[3] = acc;
+    }
+#else
     asm volatile {
         lqc2 vf3, 0(CamDir)
         lqc2 vf4, 0(CamPos)
@@ -1012,6 +1035,7 @@ float CCamera::GetZ(CPnt3D *pos)
         vmaddz.w vf6, vf0, vf6
         sqc2 vf6, 0(aPosPtr)
     }
+#endif
     return aPosPtr->w;
 }
 

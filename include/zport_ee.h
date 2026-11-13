@@ -187,14 +187,20 @@ static inline unsigned int z_vu0_clip(const float *fs, float w)
     return z_vu0.clip;
 }
 
-/* whether an upper op's result sets its lane's zero or sign MAC flag (PCSX2's VU_MAC_UPDATE: sign
- * from the sign bit, -0 included; zero for 0 and for a denormal, which VU0 flushes) */
-static inline int z_vu0_zero_or_sign(float r)
+/* the status flag's sticky zero and sign bits (ZS 0x40, SS 0x80) one upper op's lane result sets
+ * (PCSX2's VU_MAC_UPDATE: sign from the sign bit, -0 included; zero for 0 and for a denormal,
+ * which VU0 flushes) */
+static inline unsigned int z_vu0_zs(float r)
 {
     union { float f; unsigned int u; } v;
+    unsigned int s = 0;
 
     v.f = r;
-    return (v.u & 0x80000000) != 0 || (v.u & 0x7F800000) == 0;
+    if (v.u & 0x80000000)
+        s |= 0x80;
+    if ((v.u & 0x7F800000) == 0)
+        s |= 0x40;
+    return s;
 }
 
 #ifdef __cplusplus
