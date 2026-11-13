@@ -4007,11 +4007,11 @@ static inline bool ProbePart(CZSealBody *seal, CZBodyPart *part, const CPnt3D *o
  * from the delayed set's count (m_ef4, m_ef8): along the push from the spine and from the head, hands and
  * feet while a top anim holds or finishes, else ahead along the push, from the head, and either side --
  * the prone and rolling SEAL's tilted by the ground. Out of probes, it stops at once.
- * Open (round 70): at the target's frame, 4 instructions short, every call, branch, slot and register placed
- * but the facing row's: the target loads m_node again in the still and strafe arms (and pads two `b`s with a
- * nop), where IRO_CommonSubs here reuses pos's load of it (igdump: `*(this + 40)` computed at the pos, reused
- * in both arms) -- a volatile or const view, inline wrappers, pos through an inline, in each arm or each
- * stance arm, a label, all leave the reuse or worsen. The level (0.0f in f20) is a variable: the constant
+ * Byte-exact in round 71 (4 short since its writing, round 70): the node read once through a volatile view
+ * into a local for pos -- its load pinned there, so CSE no longer hands it to the facing arms, which load
+ * m_node again as the target (a volatile or const view in the arms alone was folded or ignored); the strafe
+ * arm's row through a float pointer (the node v0, &dir.y v1); the AI test as the ternary (the null path joins
+ * at the `andi`). The level (0.0f in f20) is a variable: the constant
  * spelled leaves f20 to the step and the frame's FPRs one short */
 void CZSealBody::PostPreTick(float dT)
 {
@@ -4055,7 +4055,7 @@ void CZSealBody::PostPreTick(float dT)
             IsCurrentBlend((AnimType)AnimTypes::ReceiveRestraints))
             check = false;
     } else if (!nopush) {
-        if (IsAi() && !AiProbes(this)) {
+        if ((m_control ? ((CSealCtrl *)m_control)->IsAi() : false) && !AiProbes(this)) {
             check = false;
             halt = false;
         } else if (still && !notdone && wt == 0.0f)
@@ -4105,7 +4105,8 @@ void CZSealBody::PostPreTick(float dT)
             break;
         }
 
-        CPnt3D *pos = (CPnt3D *)m_node->m_matrix.m_matrix[3];
+        zdb::CNode *pn = ((volatile CZSealBody *)this)->m_node;
+        CPnt3D *pos = (CPnt3D *)pn->m_matrix.m_matrix[3];
         CPnt3D dir;
         CPnt3D side;
         CPnt3D a, b;
@@ -4118,11 +4119,11 @@ void CZSealBody::PostPreTick(float dT)
             dir.z = m[2][2];
             dir = dir * -1.0f;
         } else if (strafe) {
-            float (*m)[4] = m_node->m_matrix.m_matrix;
+            float *m = m_node->m_matrix.m_matrix[2];
 
-            dir.x = m[2][0];
-            dir.y = m[2][1];
-            dir.z = m[2][2];
+            dir.x = m[0];
+            dir.y = m[1];
+            dir.z = m[2];
             Negate(dir);
         } else
             dir = m_f44;
