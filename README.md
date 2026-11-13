@@ -2066,6 +2066,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC libraries, round 29** (DynProgAccNBestNoOptSil 0x4EC598 (0x1144) byte-exact from the interrupted
+  lane's nbestdp.c draft, d=379 to 0; nbestdp.c 15 of 17, lib/asr 626 of 653; the NBTOKEN/NBWORD/NBLINK retyping loses
+  nothing; the forward declaration `static`, as SOCOM 1's LOCAL):
+  - A VARIABLE'S LAST MENTION PICKS CSE'S CLASS HEAD: at `prev = t; t = prev->next` make_regs_eqv keeps `prev` the head
+    only if it is mentioned after `t`'s last use (the copied exit test): `pe = prev = 0` after the token loop gives the
+    target's `lw s1,0(s7)`, and prev's extra reference outweighs phen's global-alloc priority (1090 vs 1079), settling s7/s8.
+  - one variable for the state word and the next phoneme (`k = *st; phen = k >> 2; ... k = *st; k >>= 2;`) keeps one
+    pseudo, both loads in a1.
+  - swap order is source order (stores through different bases may alias). A memory destination reloads the free list:
+    `*fl_ = *(int **)*fl_`. `&w->links` through `NBLINK **pl` gives `addiu s1,s6,16` held across the call.
+  - the `x != 0` arm first keeps the branch (`beql; move`); the other way round jump.c makes a `movz`.
+  - open: grid.c 0x625690 (7 words: the natural test falls back to CSE2 replacing the arm's zero with `result`; `volatile
+    int result` sizes right, d=45, but cross-jump keeps case 0's copy and the frame puts result at 96 not 104 -- result is a
+    spill in the target, not a volatile); func_00639FB8 (2 words, store order: all 24 orders tried); func_00639A90 (2
+    words: the target builds -2 in v0, the second `return 2` its own `jr ra; li v0,2`). Next: DynProgAccNBestOptSil
+    0x4ED6E0 (0x198C), NoOptSil's shape with a state level more.
 - **Tells from OVL1, round 68** (CSpectatorInfo, a unit nobody had written, whole in the new src/Apps/FTS/hud_spectatorinfo.cpp:
   Tick 0x2425E0, On 0x242A40, Off 0x242A30, Wipe 0x242AB0, Empty 0x242B20 (names ours: CHUD::ReInit_Uninit's and
   ReInit_Init's calls), Init 0x242BB0, `__sinit_hud_spectatorinfo.cpp` 0x3FFA50; its destructor 0x242F80 and constructor

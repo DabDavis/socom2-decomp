@@ -8796,6 +8796,7 @@
 0x004EC130 func_004EC130
 0x004EC1F8 CleanUpParBTProc
 0x004EC3A0 PrunDynProg
+0x004EC598 DynProgAccNBestNoOptSil
 0x004EF070 CopyParBT
 0x004EF6C8 FindBestBacktraces
 0x004EF950 FindBestRecognised
