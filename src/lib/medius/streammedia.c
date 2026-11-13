@@ -1105,9 +1105,11 @@ int func_00644C90(void *hAudio, int a1, unsigned short *pMsg)
     return 1;
 }
 
-/* OPEN (wrong size): the client query's reply. The target materialises 1 in v0 once and uses it
- * for the waiting test and as the return value of the next three tests; nine shapes tried (guards,
- * one `&&`, nested ifs, a result variable set to 1, the 0x644C90 shape that matched). */
+/* the client query's reply. GCC round 74a (open since written; nine guard shapes tried): the 1
+ * materialised in v0 before the waiting test is a `return 1` hoisted from below a NESTED if -- the
+ * waiting and client tests each wrap the rest (`if (x == 1) { if (y == z) {...} } return 1;`), and the
+ * found stores go through a block's own copy of pSession: the int store kills purge_addressof's bare
+ * slot, so pSession itself is loaded again for the second store. */
 int func_00644D20(void *hAudio, int a1, int *pMsg)
 {
     STREAM_SESSION *pSession = 0;
@@ -1120,17 +1122,22 @@ int func_00644D20(void *hAudio, int a1, int *pMsg)
         return 0;
     if (!func_0061D440(pSession->query.nClient))
         return 0;
-    if (pSession->bWaiting != 1)
-        return 1;
-    if (pMsg[5] != pSession->query.nClient)
-        return 1;
-    if (pMsg[4] == 0)
-        return 1;
-    if (func_00644B20(pSession, pMsg[4], &pSession->query.nIndex) != 0)
-        return 0;
-    pSession->query.nFound = 1;
-    pSession->bWaiting = 0;
-    return 0;
+    if (pSession->bWaiting == 1) {
+        if (pMsg[5] == pSession->query.nClient) {
+            if (pMsg[4] == 0)
+                return 1;
+            if (func_00644B20(pSession, pMsg[4], &pSession->query.nIndex) != 0)
+                return 0;
+            {
+            STREAM_SESSION *pFound = pSession;
+
+            pFound->query.nFound = 1;
+            pFound->bWaiting = 0;
+            }
+            return 0;
+        }
+    }
+    return 1;
 }
 
 /* the voice library's data callbacks, passed on to the application's */
