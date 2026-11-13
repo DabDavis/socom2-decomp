@@ -41,7 +41,11 @@
  * expand_call loads the callback's pointer before load_register_parameters, so the argument comes after it
  * at equal priority and dependents; a PRECOMPUTED argument (`*(volatile int *)&nLocal`) puts its load first
  * as the target has it, but a volatile load cannot fill the slot (0x1B8); a 64-bit or short parameter, a
- * pointer local, `(*p)()` leave it. The lead: an argument expression that emits an insn when expanded). */
+ * pointer local, `(*p)()` leave it. The lead: an argument expression that emits an insn when expanded.
+ * Round 78: the RTL already has the argument's load (397) before the pointer's (399); combine folds it into
+ * the a1 set, which stays glued to the call. `n = nLocal;` above the test (a local loaded before the
+ * branch) gives the `beq; lw a1` and the jalr's nop exactly, but gcse's PRE then reuses n for
+ * func_0063C3D0's argument -- a reload after the callback, and that call's `lw a2` leaves the jal slot). */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern char *strncpy(char *dst, const char *src, unsigned int n);

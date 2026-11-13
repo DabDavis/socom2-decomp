@@ -20,7 +20,9 @@
  * OPEN: func_0062F818 (8 bytes short:
  * the target sets the result to 0 inside each of the three branches, a copy 2.96 here sinks into
  * IsNullRSAKey's delay slot -- result first, last, or set in each branch all give the same; 62s on
- * master's tools) (0x630DF0 byte-exact since round 78: KM_Decrypt's dead
+ * master's tools; round 78: the jump pass's early if-conversion makes `result = -3` a conditional move
+ * before gcse, whose cprop then carries the arms' zeros into it and deletes them -- the target's
+ * conversion came after gcse; a switch, an inline, a copy, six test spellings leave it) (0x630DF0 byte-exact since round 78: KM_Decrypt's dead
  * 0x80000000 re-check arm kept, below). The ciphers' shapes, measured: one
  * `return nHeader` with the branches nested (the header lives in s5 from the entry); KM_Decrypt's
  * cases in the order 0xE0000000, 0x80000000, 0x60000000, 0x20000000, 0, then 0x40000000 with the

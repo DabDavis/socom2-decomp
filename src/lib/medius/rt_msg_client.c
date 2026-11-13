@@ -3486,7 +3486,8 @@ extern int rt_comm_send_to(int nChannelId, char *szAddress, unsigned short nPort
  * `return 0` is a join the nothing-to-send path reaches (`move v0,zero` kept; without one 2.96 folds
  * `if (result) return result; return 0;` into `return result`, 3 words short) -- the label here is a
  * stand-in for SCEA's shape, not known. OPEN (2 words): send_to's channel and port loads come in the
- * other order. The internals' results are unsigned char (no `andi` on any returned result:
+ * other order (round 78: equal priority and dependents; sched1 takes the port's load for INSN_REG_WEIGHT --
+ * pComm's REG_DEAD lands on it, the last of the argument loads in RTL order). The internals' results are unsigned char (no `andi` on any returned result:
  * get_connection, get_valid_connection, get_header and 0x638500 so typed). */
 unsigned char func_006385F0(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned int nLength, unsigned short *pnSent)
 {
