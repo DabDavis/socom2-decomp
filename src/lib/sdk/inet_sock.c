@@ -1,5 +1,5 @@
 /* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
-/* The socket layer's core (MAIN 0x1C20D8-0x1C4CC0, after BIND's inet_ntop.c and inet_heap.c): a socket API over
+/* The socket layer's core (MAIN 0x1C1CD0-0x1C4CC0, after BIND's inet_ntop.c): a socket API over
  * Sony's libinet RPC client (sceInetCreate/Open/Send/Recv/Close/Control/Name2Address/Address2Name/
  * Abort) and libnet (sceLibnetInitialize/Terminate), the -O0 BSD-name wrappers of inet_bsd.c its
  * callers. Not in SOCOM 1's demo (it links no network), so every row keeps its placeholder and
@@ -7,7 +7,7 @@
  * -O2 -G0 (the drafts that matched first matched under 991111: dtls13010 compiles this C the same).
  *
  * What it holds, in the image's order (GCC round 20a):
- *  - (the allocator, 0x1C1CD0-0x1C20D8, is inet_heap.c: below);
+ *  - the allocator, 0x1C1CD0-0x1C20D8 (first below: its own comment);
  *  - the lock: one semaphore (0x1CE620), created at the first use;
  *  - each thread's context (0x68 bytes: its libnet client at +20, an error number at +12), found by
  *    the thread id on a list (0x1CE628) of at most 255, the oldest dropped first.
@@ -63,8 +63,8 @@
  * insn short of jump2's minimum of two against the lock path's), and inside each arm sched1 slips
  * the `move a0` between the li and the sw (the li's latency), as the target's arms have it.
  *
- * The allocator (0x1C1CD0-0x1C20D8) is inet_heap.c since GCC round 79: its own object, built
- * without strict aliasing.
+ * The allocator (0x1C1CD0-0x1C20D8) was inet_heap.c in GCC rounds 79-80, built without strict
+ * aliasing; back here since round 81, its block header a union (below).
  * OPEN:
  *   func_001C4A20, gethostbyaddr (0x1EC against 0x1FC: the target cross-jumps the type, length
  *   and h_errno paths into the lock failure's call and keeps the errno path's call apart, this
@@ -86,8 +86,263 @@ struct SemaParam {
 	u_int option;
 };
 
-extern void *func_001C1CD0(size_t n);	/* inet_heap.c */
-extern void func_001C1D08(void *p);
+/* The allocator (MAIN 0x1C1CD0-0x1C20D8, before the lock): two hooks
+ * (0x1E5F70, 0x1E5F74) that default to newlib's malloc and free, and a first-fit heap the caller can
+ * hand it (func_001C2028 installs it as the hooks): every block a 12-byte header {next, prev, size}
+ * on one of two lists kept in address order -- the used list, each allocation linked in before the
+ * used block that follows its free block, and the free list, each release linked in before the free
+ * block after its run of used neighbours and merged with both free neighbours.
+ *
+ * THE HEADER IS A UNION (GCC round 81; round 79 split these rows into inet_heap.c, built
+ * -fno-strict-aliasing): the set-up 0x1C2028 keeps its nine stores in source order -- the globals'
+ * and the header's interleaved, no store passing another -- and the allocation and the release
+ * reload a block's size after the links are stored: the header's fields and the globals may alias.
+ * K&R's `union header { struct { ... } s; Align x; }` gives exactly that under the socket layer's
+ * own strict aliasing -- every field access is through the union, alias set 0 (c_get_alias_set) --
+ * and compiles all five rows to the same words as round 79's separate -fno-strict-aliasing object
+ * (cdis identical, 0x1C1D40/0x1C1E90/0x1C2028 included). One unit, one flag set, the object's .bss
+ * (0x1E5F70-0x1E5F8C) next to the socket layer's (0x1E5F90): the split was a stand-in. (The hook
+ * setters 0x1C20B8/0x1C20C8 between the set-up and the lock are still m2c drafts.)
+ *
+ * The allocation keeps the block's size from the search in a local (sz), used for the remainder
+ * and, after an exact fit, for the next block; after a split the local is reloaded from the new free
+ * block (the target's `lw v1,8(a1)` in both arms' slots). The next block's address reuses p, its
+ * offset `sz + sizeof(BLK)` kept intact (fold otherwise reassociates it to (p + sz) + 12). The release
+ * reads each unlink's other link into a local first (the slot loads), walks the used run on the
+ * fields, and sums `+= sizeof(BLK) + x`, which keeps the adjacency test's (size + 12) for the add.
+ *
+ * Round 80: the allocation's exact fit reads each unlink's other link into its own local first, as
+ * the release does (t, u: one variable for both moves a register), and the split's last link sets
+ * sz in each arm (the target's `lw v1,8(a1)` in both branches' slots); the remainder is two
+ * pseudos, `avail = sz - sizeof(BLK); rest = avail - size;` (one variable set twice trades sz and
+ * rest between v1 and a3). The release's second merge names the computed neighbour (m) -- the
+ * loads go through the sum's register, not through n -- and the first takes `t = b->s.next` after
+ * `b = n` and steps `t = t->s.next` as its own statement.
+ *
+ * OPEN (round 81): func_001C1D40 (2: the split's `lw v1,0(a2)` (b->s.next) one slot ahead of the
+ * target's, before `addiu v0,a0,12` -- sched1 ranks the load first in every statement order tried
+ * and under every flag), func_001C1E90 (1: the first merge's size store through n (a1) where the
+ * load before it and the link store after it go through b (a0) -- CSE canonicalises both pseudos to
+ * b after `b = n`, b living longer (make_regs_eqv); 72 orders of the five statements, n or b in each
+ * place, all 1; round 81 under the union: 96 orders, n or b in each of three places, all >= 1 -- the
+ * target's b->next load passes the size store, which under alias set 0 needs both addresses in one
+ * pseudo, yet the store's register is n's: a size store written before `b = n` stays on a1 but is
+ * then pinned ahead of the load, 4 words), func_001C2028 (23: heap+size computed right after the
+ * first store and kept in t1, heap in t2 -- local-alloc's t1 is end's only if sched1 starts it early
+ * and stores it after `size - 12` (t0) is born; an `end` local at any of five places changes
+ * nothing; round 81: all 40,320 orders of the eight statements after the first store, none (16 words
+ * at best, ccperm); the globals as one struct share their %hi, 0x10 short). */
+
+extern void *malloc(size_t n);
+extern void free(void *p);
+
+/* the first-fit heap's block header: the payload follows it */
+typedef union _blk {
+	struct {
+		union _blk *next;	/* 0x0 */
+		union _blk *prev;	/* 0x4 */
+		u_int size;		/* 0x8: the payload's */
+	} s;
+	int x;
+} BLK;
+
+extern void *(*data_001E5F70)(size_t n);	/* the allocator's hooks */
+extern void (*data_001E5F74)(void *p);
+extern BLK *data_001E5F78;			/* the used list */
+extern BLK *data_001E5F7C;
+extern BLK *data_001E5F80;			/* the free list */
+extern BLK *data_001E5F84;
+extern void *data_001E5F88;			/* the heap */
+extern void *data_001E5F8C;
+
+void *func_001C1CD0(size_t n)
+{
+	if (data_001E5F70)
+		return data_001E5F70(n);
+	return malloc(n);
+}
+
+void func_001C1D08(void *p)
+{
+	if (data_001E5F74 == 0) {
+		free(p);
+		return;
+	}
+	data_001E5F74(p);
+}
+
+void *func_001C1D40(size_t size)
+{
+	BLK *p, *b, *n, *t, *u;
+	u_int rest, sz, avail;
+
+	size = (size + 3) & ~3U;
+	for (p = data_001E5F80; p; p = p->s.next) {
+		sz = p->s.size;
+		if (size < sz)
+			break;
+	}
+	if (p == 0)
+		return 0;
+
+	avail = sz - sizeof(BLK);
+	rest = avail - size;
+	b = p;
+	if (rest) {
+		/* split: the rest stays free, in b's place */
+		p = (BLK *)((char *)b + sizeof(BLK) + size);
+		n = b->s.next;
+		b->s.size = size;
+		p->s.size = rest;
+		p->s.next = n;
+		if (n)
+			n->s.prev = p;
+		else
+			data_001E5F84 = p;
+		p->s.prev = b->s.prev;
+		if (p->s.prev) {
+			p->s.prev->s.next = p;
+			sz = p->s.size;
+		} else {
+			data_001E5F80 = p;
+			sz = p->s.size;
+		}
+	} else {
+		t = b->s.prev;
+		if (b->s.next)
+			b->s.next->s.prev = t;
+		else
+			data_001E5F84 = t;
+		u = b->s.next;
+		if (b->s.prev)
+			b->s.prev->s.next = u;
+		else
+			data_001E5F80 = u;
+	}
+
+	/* the used list in address order: before the block that follows the free one */
+	p = (BLK *)((char *)p + (sz + sizeof(BLK)));
+	if (data_001E5F78 == 0) {
+		b->s.prev = 0;
+		b->s.next = 0;
+		data_001E5F7C = b;
+		data_001E5F78 = b;
+	} else if ((void *)p >= data_001E5F8C) {
+		b->s.next = 0;
+		b->s.prev = data_001E5F7C;
+		data_001E5F7C->s.next = b;
+		data_001E5F7C = b;
+	} else {
+		b->s.prev = p->s.prev;
+		if (b->s.prev)
+			b->s.prev->s.next = b;
+		else
+			data_001E5F78 = b;
+		b->s.next = p;
+		p->s.prev = b;
+	}
+	return (char *)b + sizeof(BLK);
+}
+
+void func_001C1E90(void *ptr)
+{
+	BLK *b, *p, *n, *t, *m;
+	u_int size;
+
+	if (ptr == 0)
+		return;
+	b = (BLK *)((char *)ptr - sizeof(BLK));
+
+	/* off the used list */
+	t = b->s.prev;
+	if (b->s.next)
+		b->s.next->s.prev = t;
+	else
+		data_001E5F7C = t;
+	t = b->s.next;
+	if (b->s.prev)
+		b->s.prev->s.next = t;
+	else
+		data_001E5F78 = t;
+
+	/* the free block after b's run of used neighbours */
+	size = b->s.size;
+	p = b;
+	while (p->s.next == (BLK *)((char *)p + (p->s.size + sizeof(BLK))))
+		p = p->s.next;
+	p = (BLK *)((char *)p + (p->s.size + sizeof(BLK)));
+	if ((void *)p < data_001E5F8C) {
+		b->s.prev = p->s.prev;
+		if (b->s.prev)
+			b->s.prev->s.next = b;
+		else
+			data_001E5F80 = b;
+		b->s.next = p;
+		p->s.prev = b;
+	} else {
+		b->s.next = 0;
+		b->s.prev = data_001E5F84;
+		if (b->s.prev)
+			b->s.prev->s.next = b;
+		else
+			data_001E5F80 = b;
+		data_001E5F84 = b;
+	}
+
+	/* merged with the free neighbours */
+	n = b->s.prev;
+	if (n && (BLK *)((char *)n + (n->s.size + sizeof(BLK))) == b) {
+		b = n;
+		t = b->s.next;
+		n->s.size += sizeof(BLK) + size;
+		t = t->s.next;
+		b->s.next = t;
+		if (b->s.next)
+			b->s.next->s.prev = b;
+		else
+			data_001E5F84 = b;
+	}
+	n = b->s.next;
+	if (n && (m = (BLK *)((char *)b + (b->s.size + sizeof(BLK)))) == n) {
+		t = m->s.next;
+		b->s.size += sizeof(BLK) + m->s.size;
+		b->s.next = t;
+		if (t)
+			t->s.prev = b;
+		else
+			data_001E5F84 = b;
+	}
+}
+
+int func_001C2028(void *heap, u_int size)
+{
+	u_int mis;
+	BLK *b;
+
+	mis = (u_int)heap & 3;
+	if (mis) {
+		if (size < mis) {
+		fail:
+			return -1;
+		}
+		heap = (char *)heap + mis;
+		size -= mis;
+	}
+	if (size < sizeof(BLK))
+		goto fail;
+	b = heap;
+	data_001E5F80 = b;
+	data_001E5F84 = b;
+	b->s.prev = 0;
+	b->s.next = 0;
+	data_001E5F8C = (char *)heap + size;
+	data_001E5F70 = func_001C1D40;
+	data_001E5F74 = func_001C1E90;
+	b->s.size = size - sizeof(BLK);
+	data_001E5F88 = heap;
+	return 0;
+}
+
 extern int CreateSema(struct SemaParam *p);
 extern int WaitSema(int sema);
 extern int SignalSema(int sema);
