@@ -10,7 +10,8 @@
  * order: CollectDummyMemory and InitViterbi (OPEN) (round 20c), BacktraceWordsParBT (OPEN) (round
  * 36c), ControlNBestDynProgProcess and ConstructNBestDynProg (round 41c), InitNBestDynProgProcess and
  * PrunDynProg (round 19c; PrunDynProg closed in 20c), InitDynprogContext and SOCOM II's
- * func_004EC130 (round 21c), FindBestRecognised (round 17c), ExtendBacktraceStack, ScoreCompare
+ * func_004EC130 (round 21c), DynProgAccNBestNoOptSil (GCC libraries' round 29), FindBestRecognised
+ * (round 17c), ExtendBacktraceStack, ScoreCompare
  * (NAME@nbestdp in the map: the iso-word object has its own). SOCOM II's rows hold SOCOM 1's in
  * order: 0x4EB5E8 is CollectDummyMemory's position, 0x4EB7D8 InitViterbi's, 0x4EBCB0
  * InitDynprogContext's, 0x4EC130 new (the context's release, which SOCOM 1's
@@ -51,7 +52,7 @@ typedef struct BTREC {
     int f8;                             /* +8: the score */
     unsigned short users;               /* +12 */
     unsigned short f14;                 /* +14: the word */
-    short *f16;                         /* +16: the end state, null at the utterance's start */
+    unsigned short *f16;                /* +16: the end state, null at the utterance's start */
 } BTREC;
 
 /* a link of a backtrace's chain (three words): the backtrace it holds and the next link; a
@@ -65,26 +66,27 @@ typedef struct BTLINK {
 /* a token on the active lists at +112 (seven words) and +116 (five) */
 typedef struct NBTOKEN {
     struct NBTOKEN *next;               /* +0 */
-    short f4;                           /* +4 */
-    unsigned char f6;                   /* +6 */
-    short *state;                       /* +8 */
+    short f4;                           /* +4: the score */
+    unsigned char f6;                   /* +6: entered from a word (f16 its link's slot) */
+    unsigned short *state;              /* +8 */
     BTREC *bt;                          /* +12 */
-    int *f16;                           /* +16 */
-    int *f20;                           /* +20 */
-    int f24;                            /* +24 */
+    struct NBTOKEN *f16;                /* +16: the state's predecessor's token, or a word link's slot */
+    struct NBTOKEN **f20;               /* +20: the word's slot for its word-end token */
+    struct NBTOKEN *f24;                /* +24: the token this one passed to the next state */
 } NBTOKEN;
 
 /* a link of a word record's list (two words) */
 typedef struct NBLINK {
     struct NBLINK *next;                /* +0 */
+    NBTOKEN *tok;                       /* +4: the word-start state's token */
 } NBLINK;
 
 /* a word record on the list at +120 (five words): its backtrace and a list of links */
 typedef struct NBWORD {
     struct NBWORD *next;                /* +0 */
-    int pad4;
+    short f4;                           /* +4: the score */
     BTREC *bt;                          /* +8 */
-    int pad12;
+    unsigned int word;                  /* +12 */
     NBLINK *links;                      /* +16 */
 } NBWORD;
 
@@ -137,7 +139,7 @@ typedef struct NBESTDP {
     unsigned int f72;                   /* +72: a bit per word, in bytes */
     int f76;                            /* +76 */
     int *states;                        /* +80: per word an offset into it, then the states */
-    short *f84;                         /* +84: a short per state */
+    unsigned short *f84;                /* +84: a short per state */
     BTSTACK *stack;                     /* +88: the stack's first record */
     NBRESULT *results;                  /* +92 */
     unsigned int f96;                   /* +96: the garbage arrays' frames */
@@ -152,8 +154,8 @@ typedef struct NBESTDP {
     int **wstates;                      /* +132: per word, its first active state in f136 */
     int *f136;                          /* +136: the active states, word by word */
     int f140;                           /* +140 */
-    int *f144;                          /* +144 */
-    int *f148;                          /* +148: a word per word, and f152 more */
+    NBWORD **f144;                      /* +144: per word its record */
+    NBTOKEN **f148;                     /* +148: a word per word, and f152 more */
     unsigned int f152;                  /* +152 */
     unsigned short *flags;              /* +156: a word's flags (bit 0: in the pass) */
     char pad160[4];
@@ -186,7 +188,7 @@ typedef struct NBESTDP {
     short f280;                         /* +280: profile 14 */
     char pad282[2];
     int f284;                           /* +284 */
-    int f288;                           /* +288 */
+    short *f288;                        /* +288: per word-start state the entry's penalty */
 } NBESTDP;
 
 /* the context the pass runs on (ControlNBestDynProgProcess's command): its words' flags and
@@ -196,8 +198,8 @@ typedef struct NBCTX {
     unsigned int nwords;                /* +4 */
     int f8;                             /* +8 */
     unsigned short *flags;              /* +12 */
-    short *f16;                         /* +16 */
-    int f20;                            /* +20 */
+    unsigned short *f16;                /* +16 */
+    short *f20;                         /* +20 */
     int *offsets;                       /* +24 */
     int *states;                        /* +28 */
     unsigned char *active;              /* +32: a bit per state, the high bit first */
@@ -216,7 +218,7 @@ static NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTOKEN *t);
 extern void heap_Free(void *heap, void *p);
 extern void *heap_Alloc(void *heap, unsigned int size);
 extern unsigned char _tosErrorLog(void *log, unsigned short code);
-extern int DynProgAccNBestNoOptSil();
+static int DynProgAccNBestNoOptSil();
 extern int DynProgAccNBestOptSil();
 static void NBestDynProgProcess(NBESTDP *d, void **in);
 extern void ExpandGarbageArrays(NBESTDP *d);
@@ -301,7 +303,7 @@ static void CollectDummyMemory(NBESTDP *d)
 
 /* a record of N words from the scheduler's free list of its size, else from a new chunk */
 #define ALLOC_REC(tos, k, p) { int **fl_ = &(tos)->fa.free[k]; \
-    if (*fl_ != 0) { (p) = (void *)*fl_; *fl_ = *(int **)(p); } \
+    if (*fl_ != 0) { (p) = (void *)*fl_; *fl_ = *(int **)*fl_; } \
     else (p) = (void *)fastallo_AllocateMemoryFromChunk(&(tos)->fa, k); }
 
 /* a new utterance's start: the backtrace stack made, the last pass's memory given back, the
@@ -359,7 +361,7 @@ static void InitViterbi(NBESTDP *d)
                 t->bt = bt;
                 t->state = d->f84 + *s;
                 t->f24 = 0;
-                t->f16 = &d->f140;
+                t->f16 = (NBTOKEN *)&d->f140;
                 t->f6 = 1;
                 t->next = head;
                 head = t;
@@ -643,6 +645,512 @@ static void PrunDynProg(NBESTDP *d)
             n = 0;
         d->nhist = n;
     }
+}
+
+/* a phoneme's score this frame, asked of the scorer the first time (32767: not yet scored) */
+#define SCORE(d, scores, k) \
+    ((scores)[k] != 32767 ? (scores)[k] : ((scores)[k] = (d)->f44((d)->f40, (k))))
+
+/* the best-scoring token of this frame kept at +276: an equal score takes it only if its state's word
+ * can end the utterance (the first end state's word id, bit 1 of its flags) */
+#define KEEP_BEST(d, t, score, best) \
+    if ((score) <= (best)) { \
+        if ((score) == (best)) { \
+            unsigned short *st_ = (t)->state; \
+            while ((*st_ & 1) == 0) \
+                st_++; \
+            if ((d)->flags[st_[1] + (st_[2] << 16)] & 2) \
+                (d)->f276 = (t); \
+        } else \
+            (d)->f276 = (t); \
+        (best) = (score); \
+    }
+
+/* one frame's token passing over the seven-word tokens, the word-end tokens and the word records.
+ * Byte-exact (0x1144) with, each measured:
+ * - the token loop's one variable for the state word and the next state's phoneme (`k`, then
+ *   `k = *st; k >>= 2;`): one pseudo, so both sit in a1 (k's argument register) as the target's;
+ * - `pe = prev = 0` after the token loop: a mention of prev after the loop's exit test makes prev
+ *   outlive t, so cse's make_regs_eqv keeps prev as its class's head at `prev = t; t = prev->next`
+ *   (the target's `lw s1,0(s7)`), prev's extra reference outweighs phen's in global-alloc (s7/s8);
+ * - a backtrace's link pushed and swapped as `x = bt->links; bt->links = l; l->next = x` and
+ *   `f = bt->f8; p = bt->prev; bt->f8 = l->f8; bt->prev = l->bt; l->f8 = f; l->bt = p`;
+ * - the new backtrace in the word-end loop filled through n, `bt = n` after its last field;
+ *   the new word record a pseudo of its own (nw: a1, not wr's saved register), its word read before
+ *   its backtrace and links are stored;
+ * - the free lists' pop `*fl_ = *(int **)*fl_` (reloaded after a store through a memory
+ *   destination, as `lp->next`), and the word's own list through `NBLINK **pl = &w->links` (the
+ *   target's `addiu s1,s6,16` kept across the call);
+ * - the link test `if (l->tok != 0) { if (l->tok->state == st) tk = l->tok; } else flag = 1;`
+ *   (the if-else the other way round is converted to `movz`); the state's run of sc, q, qe in that
+ *   order (their spill slots); the word loop's `links` read once (the target tests it in v1) and its
+ *   kept records joining the step at the bottom (`pw = w; w = w->next`, the freed one `continue`s);
+ *   the frame count stored before the best score. */
+static int DynProgAccNBestNoOptSil(NBESTDP *d)
+{
+    DPTOS *tos = d->tos;
+    int count;
+    int best = 32767;
+    int limit;
+    short *scores = d->f56;
+    NBTOKEN *t, *prev = 0, *next;
+    NBWORD *w;
+    NBTOKEN *e, *pe;
+
+    PrunDynProg(d);
+    limit = d->level + d->f280;
+    t = d->tok7;
+    count = d->frame;
+    while (t != 0) {
+        unsigned short *st = t->state;
+        int score = t->f4;
+        unsigned int k = *st;
+        BTREC *bt = t->bt;
+        unsigned int phen = k >> 2;
+        NBTOKEN *o;
+
+        if ((k & 1) == 0) {
+            st++;
+            k = *st;
+            k >>= 2;
+            if (t->f24 == 0) {
+                int nscore = score + SCORE(d, scores, k);
+
+                if (nscore <= limit) {
+                    if (*t->state & 2) {
+                        BTREC *n;
+
+                        ALLOC_REC(tos, 5, n);
+                        n->prev = bt;
+                        bt->users++;
+                        n->f16 = t->state;
+                        n->users = 0;
+                        n->links = 0;
+                        n->f14 = d->f176;
+                        n->f8 = score + d->f284;
+                        bt = n;
+                    }
+                    ALLOC_REC(tos, 7, o);
+                    o->state = st;
+                    if (prev == 0)
+                        prev = o;
+                    o->f4 = nscore;
+                    o->bt = bt;
+                    count++;
+                    o->f24 = 0;
+                    o->f16 = t;
+                    bt->users++;
+                    o->next = d->tok7;
+                    d->tok7 = o;
+                    o->f6 = 0;
+                    bt = t->bt;
+                    o->f20 = t->f20;
+                    t->f24 = o;
+                    KEEP_BEST(d, o, nscore, best);
+                }
+            }
+            if (t->f6 == 0 && (o = t->f16) != 0 && o->f4 < score) {
+                int os = o->f4;
+                BTREC *x;
+
+                score = os;
+                if (*o->state & 2) {
+                    BTREC *n;
+
+                    ALLOC_REC(tos, 5, n);
+                    n->prev = o->bt;
+                    o->bt->users++;
+                    n->f16 = o->state;
+                    n->users = 0;
+                    n->links = 0;
+                    n->f14 = d->f176;
+                    n->f8 = os + d->f284;
+                    x = n;
+                } else
+                    x = o->bt;
+                t->bt = x;
+                x->users++;
+                if (--bt->users == 0)
+                    CleanUpParBTProc(d, bt);
+            }
+            score += SCORE(d, scores, phen);
+            t->f4 = score;
+            if (score > limit) {
+                if (t->f6)
+                    *(int *)t->f16 = 0;
+                else if (t->f16 != 0)
+                    goto hasprev;
+                if (--t->bt->users == 0)
+                    CleanUpParBTProc(d, t->bt);
+                if (t->f24 != 0)
+                    t->f24->f16 = 0;
+                {
+                    NBTOKEN *nx = t->next;
+
+                    FREE_REC(tos, 7, t);
+                    if (prev != 0)
+                        prev->next = nx;
+                    else
+                        d->tok7 = nx;
+                    t = nx;
+                }
+                count--;
+                continue;
+hasprev:
+                if (t->f24 != 0) {
+                    if (score >= 30720)
+                        t->f4 = 30719;
+                    prev = t;
+                    t = prev->next;
+                    continue;
+                }
+                if (--t->bt->users == 0)
+                    CleanUpParBTProc(d, t->bt);
+                t->f16->f24 = 0;
+                {
+                    NBTOKEN *nx = t->next;
+
+                    FREE_REC(tos, 7, t);
+                    if (prev != 0)
+                        prev->next = nx;
+                    else
+                        d->tok7 = nx;
+                    t = nx;
+                }
+                count--;
+                continue;
+            }
+            KEEP_BEST(d, t, score, best);
+        } else {
+            NBTOKEN *x = *t->f20;
+
+            if (x != 0) {
+                if (score < x->f4) {
+                    BTREC *old;
+
+                    x->state = st;
+                    x->f4 = score;
+                    old = x->bt;
+                    x->bt = bt;
+                    bt->users++;
+                    if (old != 0 && --old->users == 0)
+                        CleanUpParBTProc(d, old);
+                }
+            } else if (score <= limit) {
+                NBTOKEN *y;
+
+                ALLOC_REC(tos, 5, y);
+                y->f16 = t;
+                y->state = st;
+                y->f4 = score;
+                y->bt = bt;
+                bt->users++;
+                y->next = d->tok5;
+                d->tok5 = y;
+                y->f16 = (NBTOKEN *)t->f20;
+                *t->f20 = y;
+            }
+            if (t->f6 == 0 && (o = t->f16) != 0 && o->f4 < score) {
+                int os = o->f4;
+                BTREC *x;
+
+                score = os;
+                if (*o->state & 2) {
+                    BTREC *n;
+
+                    ALLOC_REC(tos, 5, n);
+                    n->prev = o->bt;
+                    o->bt->users++;
+                    n->f16 = o->state;
+                    n->users = 0;
+                    n->links = 0;
+                    n->f14 = d->f176;
+                    n->f8 = os + d->f284;
+                    x = n;
+                } else
+                    x = o->bt;
+                t->bt = x;
+                x->users++;
+                if (--bt->users == 0)
+                    CleanUpParBTProc(d, bt);
+            }
+            score += SCORE(d, scores, phen);
+            t->f4 = score;
+            KEEP_BEST(d, t, score, best);
+            if (t->f4 > limit) {
+                if (t->f24 == 0) {
+                    if (--t->bt->users == 0)
+                        CleanUpParBTProc(d, t->bt);
+                    if (t->f6)
+                        *(int *)t->f16 = 0;
+                    else if (t->f16 != 0)
+                        t->f16->f24 = 0;
+                    {
+                        NBTOKEN *nx = t->next;
+
+                        FREE_REC(tos, 7, t);
+                        if (prev != 0)
+                            prev->next = nx;
+                        else
+                            d->tok7 = nx;
+                        t = nx;
+                    }
+                    count--;
+                    continue;
+                }
+                if (t->f4 >= 30720)
+                    t->f4 = 30719;
+            }
+        }
+        prev = t;
+        t = prev->next;
+    }
+    pe = prev = 0;
+    for (e = d->tok5; e != 0; ) {
+        int score = e->f4;
+
+        if (score <= limit) {
+            unsigned short *st = e->state;
+            unsigned int word = st[1] + (st[2] << 16);
+            NBWORD *wr = d->f144[word];
+            BTREC *bt = e->bt;
+
+            if (wr != 0) {
+                if (score < wr->f4) {
+                    wr->f4 = score;
+                    if (wr->bt != 0) {
+                        BTLINK *l;
+                        BTREC *p;
+                        int f;
+
+                        ALLOC_REC(tos, 3, l);
+                        l->bt = bt;
+                        bt->users++;
+                        l->next = 0;
+                        l->f8 = score + d->f284;
+                        {
+                            BTLINK *x = wr->bt->links;
+
+                            wr->bt->links = l;
+                            l->next = x;
+                        }
+                        f = wr->bt->f8;
+                        p = wr->bt->prev;
+                        wr->bt->f8 = l->f8;
+                        wr->bt->prev = l->bt;
+                        l->f8 = f;
+                        l->bt = p;
+                    } else {
+                        BTREC *n;
+
+                        ALLOC_REC(tos, 5, n);
+                        n->prev = bt;
+                        bt->users++;
+                        n->f16 = st;
+                        n->users = 0;
+                        n->links = 0;
+                        n->f14 = d->f176;
+                        n->f8 = score + d->f284;
+                        bt = n;
+                        wr->bt = bt;
+                        bt->users++;
+                    }
+                } else {
+                    BTLINK *l;
+
+                    ALLOC_REC(tos, 3, l);
+                    l->bt = bt;
+                    bt->users++;
+                    l->next = 0;
+                    l->f8 = score + d->f284;
+                    {
+                        BTLINK *x = wr->bt->links;
+
+                        wr->bt->links = l;
+                        l->next = x;
+                    }
+                }
+            } else {
+                BTREC *n;
+
+                ALLOC_REC(tos, 5, n);
+                n->prev = bt;
+                bt->users++;
+                n->f16 = st;
+                n->users = 0;
+                n->links = 0;
+                n->f14 = d->f176;
+                n->f8 = score + d->f284;
+                {
+                    NBWORD *nw;
+
+                    ALLOC_REC(tos, 5, nw);
+                    nw->f4 = score;
+                    nw->word = st[1] + (st[2] << 16);
+                    nw->bt = n;
+                    nw->links = 0;
+                    n->users++;
+                    nw->next = d->words;
+                    d->words = nw;
+                    d->f144[word] = nw;
+                }
+            }
+            if (--e->bt->users == 0)
+                CleanUpParBTProc(d, e->bt);
+            e->bt = 0;
+            e->f4 = 32767;
+            pe = e;
+            e = e->next;
+        } else {
+            if (e->bt != 0 && --e->bt->users == 0)
+                CleanUpParBTProc(d, e->bt);
+            *(int *)e->f16 = 0;
+            next = e->next;
+            FREE_REC(tos, 5, e);
+            if (pe != 0)
+                pe->next = next;
+            else
+                d->tok5 = next;
+            e = next;
+        }
+    }
+    {
+        NBWORD *pw = 0;
+        NBWORD *nw;
+
+        for (w = d->words; w != 0; ) {
+            int score = w->f4;
+            NBLINK *lp = 0;
+            NBLINK *links = w->links;
+            NBLINK *l = links;
+            unsigned int word = w->word;
+
+            if (score <= limit) {
+                BTREC *bt = w->bt;
+                int *p = d->wstates[word];
+                int *pe = d->wstates[word + 1];
+
+                if (p < pe) {
+                    do {
+                        int s = *p;
+                        int sc = score + d->f288[s];
+                        int *q = d->states + d->states[s];
+                        int *qe = d->states + d->states[s + 1];
+
+                        do {
+                            NBTOKEN *tk = 0;
+                            int flag = 0;
+                            unsigned short *st = d->f84 + *q++;
+                            unsigned int k = *st >> 2;
+                            int tscore = sc + SCORE(d, scores, k);
+
+                            if (l != 0) {
+                                if (l->tok != 0) {
+                                    if (l->tok->state == st)
+                                        tk = l->tok;
+                                } else
+                                    flag = 1;
+                            }
+                            if (tk != 0) {
+                                if (tscore < tk->f4) {
+                                    tk->f4 = tscore;
+                                    if (--tk->bt->users == 0)
+                                        CleanUpParBTProc(d, tk->bt);
+                                    tk->bt = bt;
+                                    bt->users++;
+                                    KEEP_BEST(d, tk, tscore, best);
+                                }
+                                lp = l;
+                                l = l->next;
+                            } else if (tscore <= limit) {
+                                NBTOKEN *nt;
+
+                                ALLOC_REC(tos, 7, nt);
+                                nt->state = st;
+                                count++;
+                                nt->f4 = tscore;
+                                nt->bt = bt;
+                                nt->f24 = 0;
+                                nt->f16 = 0;
+                                bt->users++;
+                                nt->next = d->tok7;
+                                d->tok7 = nt;
+                                nt->f6 = 0;
+                                if (!flag) {
+                                    if (lp != 0) {
+                                        ALLOC_REC(tos, 2, lp->next);
+                                        lp->next->next = l;
+                                        l = lp->next;
+                                    } else {
+                                        NBLINK **pl = &w->links;
+
+                                        ALLOC_REC(tos, 2, *pl);
+                                        w->links->next = l;
+                                        l = w->links;
+                                    }
+                                }
+                                nt->f6 = 1;
+                                nt->f16 = (NBTOKEN *)&l->tok;
+                                l->tok = nt;
+                                nt->f20 = d->f148 + d->nwords + (p - d->f136);
+                                KEEP_BEST(d, nt, tscore, best);
+                                lp = l;
+                                l = l->next;
+                            } else if (flag && l != 0) {
+                                NBLINK *x = l;
+
+                                if (lp != 0)
+                                    lp->next = l->next;
+                                else
+                                    w->links = l->next;
+                                l = l->next;
+                                FREE_REC(tos, 2, x);
+                            }
+                        } while (q < qe);
+                        p++;
+                    } while (p < pe);
+                }
+                if (--bt->users == 0)
+                    CleanUpParBTProc(d, bt);
+                w->bt = 0;
+                w->f4 = 32767;
+            } else {
+                if (links != 0) {
+                    do {
+                        if (l->tok == 0) {
+                            NBLINK *x = l;
+
+                            if (lp != 0)
+                                lp->next = l->next;
+                            else
+                                w->links = l->next;
+                            l = l->next;
+                            FREE_REC(tos, 2, x);
+                        } else {
+                            lp = l;
+                            l = l->next;
+                        }
+                    } while (l != 0);
+                }
+                if (w->links == 0) {
+                    d->f144[word] = 0;
+                    nw = w->next;
+                    FREE_REC(tos, 5, w);
+                    if (pw != 0)
+                        pw->next = nw;
+                    else
+                        d->words = nw;
+                    w = nw;
+                    continue;
+                }
+            }
+            pw = w;
+            w = w->next;
+        }
+    }
+    d->frame = count;
+    d->f274 = best;
+    return 0;
 }
 
 /* a backtrace copied (five words, its user count left 0) with its chain of links (three words
@@ -947,10 +1455,6 @@ static __inline__ unsigned char WordEnded(NBESTDP *d)
  * adds but not the shared store, and put the four saved registers in another order. The frame
  * pointer is a local (the fill loop's halfword stores would make in[1] a reload), the word-end
  * test compares `f64 > beam` (its loads in that order) */
-/* a phoneme's score this frame, asked of the scorer the first time (32767: not yet scored) */
-#define SCORE(d, scores, k) \
-    ((scores)[k] != 32767 ? (scores)[k] : ((scores)[k] = (d)->f44((d)->f40, (k))))
-
 static void NBestDynProgProcess(NBESTDP *d, void **in)
 {
     short *scores = d->f56;
