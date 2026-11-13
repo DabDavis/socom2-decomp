@@ -14,7 +14,7 @@
  * neither store order nor the nmb update's place gives it (build/scratch/gcc/v_ch3.py, v_ch3b.py).
  * _doCSC2 (0x1B8 against 0x1C0): the frame block's stores and the division's check scheduled
  * otherwise -- the waiting loop reads err, npass and count through a volatile view as the target
- * does, the rest not yet measured. Not written: _csc_storeRefImage (0x288). */
+ * does, the rest not yet measured. */
 
 #include "libmpeg.h"
 
@@ -162,4 +162,61 @@ static int _ch4dma(int ch, void *arg)
 	}
 	asm volatile ("sync.l; ei");
 	return 0;
+}
+
+/* GCC round 72a: a picture stored colour-converted -- the stream's DMA stopped, the IPU reset if it
+ * stalled on an error, its FIFO cleared, the picture sent back into the IPU by channel 4 (in pieces
+ * by _ch4dma when it passes 0xFFFF quadwords) and converted into the caller's buffer, the stream
+ * restarted */
+void _csc_storeRefImage(MpegDec *d, MpegRef *ref)
+{
+	sceMpegCbData cbdata;
+	CscDma dma;
+	int nmb = ref->mbw * ref->mbh;
+	int id, ie;
+
+	cbdata.type = sceMpegCbStopDMA;
+	_dispatchMpegCallback(d->mp, &cbdata);
+	if (*IPU_CTRL & 0x4000)
+		*IPU_CTRL_NV = 0x40000000;
+	while ((int)*IPU_CTRL < 0)
+		;
+	_sendIpuCommand(d, 0);
+	while ((int)*IPU_CTRL < 0)
+		;
+	dma.qwc = nmb * 24;
+	dma.addr = ref->buf & 0x0fffffff;
+	if (dma.qwc > 0xffff) {
+		id = AddDmacHandler2(4, (int (*)(int, void *, void *))_ch4dma, 0, &dma);
+		*D_STAT = 0x10;
+		EnableDmac(4);
+		ie = DIntr();
+		*D4_MADR = dma.addr;
+		*D4_QWC = 0xffff;
+		*D4_CHCR = 0x101;
+		if (ie)
+			EIntr();
+		dma.addr = (dma.addr + 0xffff0) & 0x0fffffff;
+		dma.qwc -= 0xffff;
+		if (nmb < 1024)
+			_doCSC(d, (u_long128 *)d->imageBuf, nmb);
+		else
+			_doCSC2(d, (u_long128 *)d->imageBuf, nmb);
+		DisableDmac(4);
+		RemoveDmacHandler(4, id);
+	} else {
+		ie = DIntr();
+		*D4_MADR = ref->buf & 0x0fffffff;
+		*D4_QWC = dma.qwc;
+		*D4_CHCR = 0x101;
+		if (ie)
+			EIntr();
+		dma.qwc = 0;
+		if (nmb < 1024)
+			_doCSC(d, (u_long128 *)d->imageBuf, nmb);
+		else
+			_doCSC2(d, (u_long128 *)d->imageBuf, nmb);
+	}
+	cbdata.type = sceMpegCbRestartDMA;
+	_dispatchMpegCallback(d->mp, &cbdata);
 }
