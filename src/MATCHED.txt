@@ -719,6 +719,8 @@
 0x001A4D60 QueueInit
 0x001A4D88 QueuePeekWriteDone
 0x001A4DC8 QueuePeekReadDone
+0x001A4E08 sceTtyHandler
+0x001A4FA0 sceTtyWrite
 0x001A50F0 sceTtyRead
 0x001A51C0 sceTtyInit
 0x001A5280 kputchar
@@ -2465,6 +2467,7 @@
 0x0024AD48 func_0024AD48
 0x0024AEB0 func_0024AEB0
 0x0024AF50 func_0024AF50
+0x0024B028 func_0024B028
 0x0024B560 func_0024B560
 0x0024B720 func_0024B720
 0x0024B7E8 func_0024B7E8
@@ -8553,6 +8556,7 @@
 0x004C6FF0 gsapi_EngineStart
 0x004C7328 gsapi_Init
 0x004C7420 gsapi_GetVersion
+0x004C7508 gsapi_LanguageLoadBuffer
 0x004C7718 gsapi_LanguageUnLoad
 0x004C77F8 gsapi_EngineSetImmediateContext
 0x004C7948 gsapi_ContextLoadBuffer
@@ -8603,6 +8607,7 @@
 0x004CA620 asrspi_SetParamList
 0x004CAA58 asrspi_GetParamList
 0x004CAD38 asrspi_GetActiveWords
+0x004CAF38 asrspi_ActivateWords
 0x004CB4D8 asrspi_DeActivateWords
 0x004CB868 asrspi_Start
 0x004CBAF8 asrspi_Stop

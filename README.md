@@ -2066,6 +2066,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC SDK and recogniser, round 82** (five rows byte-exact: sase_libquan.c's 0x24B028 (since 44a: the codebook walked
+  by its own pointer in the for's init list), tty.c's sceTtyHandler 0x1A4E08 and sceTtyWrite 0x1A4FA0 (ps2sdk's reconstruction, open
+  since 11a, rewritten from the target and the image's four `TTY:` strings), asrspi_ActivateWords 0x4CAF38 (was m2c's shape: `n ==
+  -1` the then-arm, FindWord's id first), gsapi_LanguageLoadBuffer 0x4C7508 (since 10c: values through their own stepped pointer).
+  Sharpened, not closed: asrspi_cbResult at size, 2 off (one `notify` cast to an int-returning type keeps the duplicate blocks --
+  a stand-in, uncommitted), 0x1C1D40 (now a sched2 tie: dependents 3 vs 1), 0x1C1E90, sceSifCallRpc, libnetb_udp_init_buffer,
+  _initRefImages (three uncombined mults by 384)):
+  - AN INIT THE TARGET PLACES AMONG A LOOP'S SOURCE INITS IS A POINTER BIV IN THE FOR'S INIT LIST, NOT A GIV (loop.c inserts a
+    reduced giv's init after every init preceding the loop note).
+  - A CONSTANT GIV START (`li a3,12`, loads at 0(a3)) WHERE OURS FOLDS THE OFFSET INTO THE DISPLACEMENT IS A WALKING POINTER.
+  - A RECONSTRUCTION FROM ANOTHER SDK IS NOT A DRAFT TO PERMUTE: rewrite it from the target and the image's strings.
+  - a parameter reused as a later count and index is one pseudo with more references (the first saved register).
+  - sched1 ties go to INSN_REG_WEIGHT, sched2 has none: it ranks by dependents, then sched1's order -- fixing sched1 can still
+    lose in sched2. Two identical call blocks the target keeps apart differ in RTL (`call` vs `call_value`): cross-jumping
+    compares patterns, not assembly.
 - **Tells from the GCC Medius code, round 82** (rc.c's RCEncrypt 0x62A720 (15) and RCDecrypt 0x62A7C8 (36): the reloaded S[i] in the
   output index a variable of its own, `u = S[i]; ... S[(unsigned char)(u + t)]`; rt_frag 0x645380 (18 registers): `nExpect++` at the
   end of each arm of the walk. Unchanged: 0x63C8A0 (32; the target puts the offset first in the pointer sum, only an integer-cast
