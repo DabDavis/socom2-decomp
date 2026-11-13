@@ -6962,6 +6962,218 @@ static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
     return (CHomingAim *)&b->m_homing;
 }
 
+/* the homing's turn: the angle between the wall's normal in the SEAL's frame and the reference
+ * direction, its rate over the frame about the sign of their cross's y (an inline; the name ours) */
+static inline float SafeAcosH(float c)
+{
+    if (!(c < 1.0f))
+        return 0.0f;
+    if (c <= -1.0f)
+        return 3.1415927f;
+    return acosf(c);
+}
+
+/* the homing stepped, the first way: the reference point's place in the world measured against the
+ * point it closes on, the blend turned at the rate (held within 1.5 pi) that lays its reference
+ * direction onto the wall's normal, and moved by the rest in the SEAL's frame over the frame, each
+ * part held within 30 -- the rest's length on the flat returned, the dot of the two directions given
+ * back when asked (OVL2 0x5B2D20; SOCOM 1's HomingTick's other half, new in SOCOM II: CZSealBody's
+ * Tick_0 calls it for a blend flagged 64; the name ours) */
+/* a vector turned by a node's rotation in place (an inline over TransformVectors: its VU0 temporaries a
+ * level deeper, under the caller's own; the name ours) */
+static inline void RotateBy(const zdb::CNode *node, CPnt3D *v)
+{
+    TransformVectors(&node->m_matrix, v, v, 1);
+}
+
+extern "C" float func_005B2D20(CZSealBody *seal, float *cosOut)
+{
+    CPnt3D f;
+    CPnt3D e;
+    CPnt3D g;
+    CPnt3D nrm;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    CHoming *h = &top->m_homing;
+
+    if (!h)
+        return 999999.0f;
+    float t = top->m_tfrac;
+
+    top->Representative()->m_anim->TrueLoopTime();
+    if (func_005551A0(top->m_flags, 32))
+        t = 1.0f - t;
+    CPnt3D a = h->m_int_w;
+
+    a.Sub(&seal->m_posW, &a);
+    CPnt3D b = seal->GetRootPart()->m_pos;
+
+    RotateBy(seal->m_node, &b);
+    a.Sub(&b, &a);
+    CQuat inv = seal->m_quat;
+
+    inv.vec.x = -inv.vec.x;
+    inv.vec.y = -inv.vec.y;
+    inv.vec.z = -inv.vec.z;
+    inv.Apply(&h->m_norm_w, &nrm, 1);
+    CQuat q = CQuat::identity;
+    CPnt3D *ref = &h->m_refvec_m;
+    float c = nrm.x * ref->x + nrm.y * ref->y + nrm.z * ref->z;
+
+    if (cosOut)
+        *cosOut = c;
+    float ang = SafeAcosH(c);
+    CPnt3D rot;
+
+    rot.x = 0.0f;
+    rot.y = ang / seal->m_2e0;
+    if (!(rot.y <= 4.712389f))
+        rot.y = 4.712389f;
+    else if (rot.y < -4.712389f)
+        rot.y = -4.712389f;
+    rot.z = 0.0f;
+    CPnt3D axis;
+
+    CrossVU0(*ref, nrm, &axis);
+    if (axis.y < 0.0f)
+        rot.y = -rot.y;
+    rot.Scale(axis.Length(), &rot);
+    top->m_drot = rot;
+    CPnt3D half;
+    CQuat al;
+
+    rot.Scale(-0.5f * seal->m_2e0, &half);
+    q.Exp(&half);
+    al.Align(*ref, nrm);
+    CPnt3D p;
+    CPnt3D p2;
+
+    al.Apply(&h->m_refpt_m, &p, 1);
+    TransformVectors(&seal->m_node->m_matrix, &p, &p2, 1);
+    quadW(t);
+    a.Sub(&p2, &e);
+    f = e;
+
+    inv.Apply(&f, &g, 1);
+    float len = sqrtf(e.x * e.x + e.z * e.z);
+
+    g.x /= seal->m_2e0;
+    g.y /= seal->m_2e0;
+    g.z /= seal->m_2e0;
+
+    if (!(g.x <= 30.0f))
+        g.x = 30.0f;
+    else if (g.x < -30.0f)
+        g.x = -30.0f;
+    if (!(g.y <= 30.0f))
+        g.y = 30.0f;
+    else if (g.y < -30.0f)
+        g.y = -30.0f;
+    if (!(g.z <= 30.0f))
+        g.z = 30.0f;
+    else if (g.z < -30.0f)
+        g.z = -30.0f;
+    top->m_dpos = g;
+    top->m_homing.m_1c++;
+    return len;
+}
+
+/* the homing stepped: the blend turned at the rate that lays its reference direction onto the wall's
+ * normal, and moved by the share quadW gives of what is left between its reference point, turned and
+ * placed in the world, and the point it closes on -- the step's length on the flat returned, the dot
+ * of the two directions given back when asked (OVL2 0x5B3340; SOCOM 1's HomingTick's body, the
+ * position now the root's, its fly test 44/46; CZSealBody's Tick_0 calls it with no out; the name
+ * ours) */
+extern "C" float func_005B3340(CZSealBody *seal, float *cosOut)
+{
+    CPnt3D d2;
+    CPnt3D d;
+    CPnt3D d3;
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    CHoming *h = &top->m_homing;
+
+    if (!h)
+        return 999999.0f;
+    float t = top->m_tfrac;
+
+    if (func_005551A0(top->m_flags, 32))
+        t = 1.0f - t;
+    CQuat inv = seal->m_quat;
+
+    inv.vec.x = -inv.vec.x;
+    inv.vec.y = -inv.vec.y;
+    inv.vec.z = -inv.vec.z;
+    CPnt3D nrm;
+
+    inv.Apply(&h->m_norm_w, &nrm, 1);
+    top->Representative()->m_anim->TrueLoopTime();
+    CPnt3D *ref = &h->m_refvec_m;
+    float c = nrm.x * ref->x + nrm.y * ref->y + nrm.z * ref->z;
+
+    if (cosOut)
+        *cosOut = c;
+    float ang = SafeAcosH(c);
+    CPnt3D rot;
+
+    rot.x = 0.0f;
+    rot.y = ang / seal->m_2e0;
+    if (!(rot.y <= 6.2831855f))
+        rot.y = 6.2831855f;
+    else if (rot.y < -6.2831855f)
+        rot.y = -6.2831855f;
+    rot.z = 0.0f;
+    CPnt3D axis;
+
+    CrossVU0(*ref, nrm, &axis);
+    if (axis.y < 0.0f)
+        rot.y = -rot.y;
+    rot.Scale(axis.Length(), &rot);
+    top->m_drot = rot;
+    CPnt3D half;
+    CQuat q;
+    CQuat al;
+
+    rot.Scale(-0.5f * seal->m_2e0, &half);
+    q.Exp(&half);
+    al.Align(*ref, nrm);
+    CPnt3D p;
+    CPnt3D p2;
+
+    al.Apply(&h->m_refpt_m, &p, 1);
+    TransformVectors(&seal->m_node->m_matrix, &p, &p2, 1);
+    p2.x = -p2.x;
+    p2.y = -p2.y;
+    p2.z = -p2.z;
+    CPnt3D r = h->m_int_w;
+
+    p2.Add(&r, &p2);
+    CPnt3D w;
+
+    CZBodyPart *root = seal->m_root;
+
+    seal->m_node->m_matrix.Transform(&root->m_pos, &w, 1);
+    p2.Sub(&w, &d);
+    float s = quadW(t);
+
+    s = sqrtf(s);
+    d.Scale(s, &d);
+    q.Apply(&d, &d2, 1);
+    inv.Apply(&d2, &d3, 1);
+    if (seal->IsCurrentBlend((AnimType)44) ||
+        (seal->IsCurrentBlend((AnimType)46) &&
+         func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 32)))
+        d3.y = 0.0f;
+    float len = sqrtf(d.x * d.x + d.z * d.z);
+
+    d3.Scale(1.0f / seal->m_2e0, &d3);
+    top->m_dpos = d3;
+    CPnt3D v = seal->m_velM;
+
+    v.Scale(seal->m_2e0, &v);
+    h->m_refpt_m.Sub(&v, &h->m_refpt_m);
+    top->m_homing.m_1c++;
+    return len;
+}
+
 /* a point brought onto a ladder's run between its two ends, on the flat: within 3 of one end only, put
  * 3 from that end along the run; within 3 of both -- or asked for the middle -- put at the middle; false,
  * left as it is, when it is near neither (OVL2 0x5B3A60, new in SOCOM II: 0x5B2620 calls it three times,
