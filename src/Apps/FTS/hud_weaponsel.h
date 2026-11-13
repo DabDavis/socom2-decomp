@@ -375,6 +375,8 @@ public:
     void HandlePad(CPad *pad, float dT);
     /* a chosen weapon put in a selected slot (0x23FEF0; the name ours) */
     void SetSlot(int slot, CZWeapon *weapon);
+    /* the weapon leaving a slot takes its companions with it (0x23ECA0; the name ours) */
+    void ClearSlot(int slot, EQUIP_ITEM item);
     /* the selector's tick (0x240600; the name ours, after SOCOM 1's CWeaponSel::HudTick) */
     void HudTick(CPad *pad, float dT);
     /* the selector laid out (0x23E030; the name ours) */

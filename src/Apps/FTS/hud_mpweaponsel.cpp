@@ -141,6 +141,7 @@ class CZWeapon {
 public:
     const char *GetDescription() const;
     EQUIP_ITEM GetIDType();
+    static EQUIP_ITEM GetIDType(EQUIP_ITEM item);
     static bool IsPrimary(EQUIP_ITEM item);
     static bool IsSecondary(EQUIP_ITEM item);
     static bool IsLauncher(EQUIP_ITEM item);
@@ -514,8 +515,9 @@ void SlotList::SetTrans(float trans)
             m_slots[i]->SetTrans(trans);
 }
 
-/* a slot's item put in its place, the equipment slots' picks redone (0x23ECA0; no row named yet) */
-extern "C" void func_0023ECA0(CMPWeaponSel *sel, int slot, EQUIP_ITEM item);
+/* a weapon's slot kind (zweapon's, OVL1 0x3D3750: 1 a primary taking companions, 2 a two-slot
+ * weapon; no row named yet) */
+extern "C" int func_003D3750(EQUIP_ITEM item);
 
 /* the weapon's second slot count (zweapon's, OVL1 0x3C5970: the int at 0x27C; no row named yet) */
 extern "C" int func_003C5970(CZWeapon *weapon);
@@ -529,7 +531,7 @@ extern "C" int func_003C5970(CZWeapon *weapon);
 #pragma auto_inline off
 void CMPWeaponSel::SetSlot(int slot, CZWeapon *weapon)
 {
-    func_0023ECA0(this, slot, weapon ? weapon->m_item : (EQUIP_ITEM)255);
+    ClearSlot(slot, weapon ? weapon->m_item : (EQUIP_ITEM)255);
 
     EQUIP_ITEM item = weapon->m_item;
 
@@ -627,6 +629,166 @@ void CMPWeaponSel::SetSlot(int slot, CZWeapon *weapon)
         m_1530 = old->m_item;
     }
     m_selected[slot].SetWeapon(weapon);
+}
+#pragma auto_inline reset
+
+/* the weapon leaving a slot takes its companions with it (0x23ECA0; the name ours -- SetSlot's
+ * first call, with the incoming item): the displaced items (m_1530/m_1531) are first moved on to
+ * items no slot holds; an M203 weapon's grenades turned off and its 141 and 175-174 replaced by
+ * them, the grenade launcher's 179, the 203's 175 and the F2000's 183 likewise, a class-101 weapon
+ * giving way to another class's takes its 195 back; a two-slot weapon's pair item (185, 186, else
+ * 254) replaced by fresh picks; then the slot emptied */
+/* the weapon of an item, through the list as a local (an assignment the loops' invariant pass pulls
+ * into their out-of-line preheaders) */
+static inline CZWeapon *GetWeaponOf(EQUIP_ITEM item)
+{
+    CZWeaponList &list = CZWeapon::m_listWeapons;
+
+    return list.GetWeapon(item);
+}
+
+#pragma auto_inline off
+void CMPWeaponSel::ClearSlot(int slot, EQUIP_ITEM item)
+{
+    EQUIP_ITEM old = m_selected[slot].m_weapon ? m_selected[slot].m_weapon->m_item : (EQUIP_ITEM)255;
+    EQUIP_ITEM pick = (EQUIP_ITEM)255;
+    EQUIP_ITEM held0 = m_1530;
+    EQUIP_ITEM held1 = m_1531;
+    EQUIP_ITEM saved0 = NextFreeEquipment(held0, -1);
+    EQUIP_ITEM saved1 = NextFreeEquipment(held1, -1);
+
+    if (saved1 != m_1531 && saved1 == saved0)
+        saved1 = PickEquipment(0, pick, saved1);
+    switch (saved0) {
+    case 154:
+    case 195:
+    case 254:
+    case 255:
+        saved0 = PickEquipment(0, (EQUIP_ITEM)255, (EQUIP_ITEM)255);
+    }
+    switch (saved1) {
+    case 154:
+    case 195:
+    case 254:
+    case 255:
+        saved1 = PickEquipment(0, (EQUIP_ITEM)255, saved0);
+    }
+
+    if (func_003D3750(old) == 1) {
+        if (CZFTSWeapon::IsM203Weapon(old)) {
+            Set203(false);
+
+            bool used = false;
+            int i = FindEquipment((EQUIP_ITEM)141, -1);
+
+            if (i != -1) {
+                CZWeapon *w = GetWeaponOf(saved0);
+
+                if (w)
+                    SetSlot(i, w);
+                m_1530 = (EQUIP_ITEM)255;
+            }
+
+#define REPLACE_GRENADE(n) \
+            { \
+                int j = FindEquipment((EQUIP_ITEM)(n), -1); \
+\
+                while (j != -1) { \
+                    m_1531 = (EQUIP_ITEM)255; \
+                    pick = PickEquipment(pick, (EQUIP_ITEM)255, (EQUIP_ITEM)255); \
+\
+                    bool third = false; \
+                    used = !used; \
+                    if (used && j == 3) \
+                        third = true; \
+                    CZWeapon *w = GetWeaponOf(third ? saved1 : pick); \
+\
+                    if (w) \
+                        SetSlot(j, w); \
+                    j = FindEquipment((EQUIP_ITEM)(n), -1); \
+                    used = used ? i == 3 : false; \
+                } \
+            }
+            REPLACE_GRENADE(175)
+            REPLACE_GRENADE(171)
+            REPLACE_GRENADE(172)
+            REPLACE_GRENADE(173)
+            REPLACE_GRENADE(174)
+#undef REPLACE_GRENADE
+        } else {
+#define REPLACE_ITEM(n) \
+            { \
+                bool second = false; \
+                int j = FindEquipment((EQUIP_ITEM)(n), -1); \
+\
+                while (j != -1) { \
+                    (&m_1530)[second] = (EQUIP_ITEM)255; \
+                    pick = PickEquipment(pick, (EQUIP_ITEM)255, (EQUIP_ITEM)255); \
+\
+                    CZWeapon *w = GetWeaponOf(second ? pick : saved0); \
+\
+                    if (w) \
+                        SetSlot(j, w); \
+                    j = FindEquipment((EQUIP_ITEM)(n), -1); \
+                    second = true; \
+                } \
+            }
+            if (old == 143) {
+                SetGL(false);
+                REPLACE_ITEM(179)
+            } else if (old == 142) {
+                Set203(false);
+                REPLACE_ITEM(175)
+            } else if (old == 63) {
+                SetF2000(false);
+                REPLACE_ITEM(183)
+            } else if (CZWeapon::GetIDType(old) == 101 && CZWeapon::GetIDType(item) != 101) {
+                int j = FindEquipment((EQUIP_ITEM)195, -1);
+
+                if (j != -1) {
+                    PickEquipment(pick, (EQUIP_ITEM)255, (EQUIP_ITEM)255);
+
+                    CZWeapon *w = GetWeaponOf(saved0);
+
+                    if (w)
+                        SetSlot(j, w);
+                }
+            }
+#undef REPLACE_ITEM
+        }
+    } else if (func_003D3750(old) == 2) {
+        EQUIP_ITEM pair = (EQUIP_ITEM)254;
+
+        if (old == 145)
+            pair = (EQUIP_ITEM)185;
+        else if (old == 146)
+            pair = (EQUIP_ITEM)186;
+
+        bool fresh = false;
+
+        if (saved0 == item)
+            fresh = true;
+        int k = 0;
+        int j = FindEquipment(pair, -1);
+
+        while (j != -1) {
+            pick = PickEquipment(pick, (EQUIP_ITEM)255, (EQUIP_ITEM)255);
+            while (pick == item)
+                pick = PickEquipment(-1, (EQUIP_ITEM)255, item);
+
+            CZWeapon *w = GetWeaponOf(fresh ? pick : saved0);
+
+            if (w)
+                SetSlot(j, w);
+            j = FindEquipment(pair, -1);
+            fresh = true;
+            (&m_1530)[k] = (EQUIP_ITEM)255;
+            k++;
+        }
+    }
+    CWeaponSlot *cur = &m_selected[slot];
+
+    cur->SetWeapon(0);
 }
 #pragma auto_inline reset
 
