@@ -9,7 +9,7 @@
  * assigns first and re-forms the address from it, 2 words long). GCC round 27a: the
  * autocorrelation of the resampled power spectrum 0x24A438 (its Q15 accumulator set before the
  * spectrum's pointer: two words the other way; the host's memcpy, data_001D55B4, copies the lags
- * out). GCC round 44a: the peaks' filter 0x24A210 and the LPC envelope 0x24A5A8 (OPEN, below). The detector itself, 0x249FA8.
+ * out). GCC round 44a: the peaks' filter 0x24A210 and the LPC envelope 0x24A5A8 (round 78, below). The detector itself, 0x249FA8.
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0
@@ -170,7 +170,7 @@ extern float ceilf(float);
 extern void func_0024D370(const float *pfMag, int iStart, int iEnd, int iMaxPeaks, int *piPeakFreq, int *piNPeaks);
 extern void func_0024C8E8(const float *pAutoCorr, int iLpcOrder, float *pfLPCoef, float *pfPARCOR, float *pfResidEnrg);
 extern void func_0024D330(const float *pfIn, float *pfOut, int n, float fGamma);
-extern void func_0024A5A8(const float *pfLpc, int iOrder, float *pfEnv, int iBins);
+extern void func_0024A5A8(const float *pfAlpc, int iOrder, float *pfMaskEnv, int iBins);
 
 /* the power spectrum's peaks, those above its LPC envelope's fifth of the residual and above the frame's floor kept;
  * four sentinels after them */
@@ -221,10 +221,12 @@ extern void func_00251B78(float *pfRe, float *pfIm, int n);
 /* the LPC envelope: the predictor's power spectrum at iBins points (Q15 steps through the 128-point transform of the
  * coefficients, zero-padded), its last point the one before when it falls off the end. The step's product is the
  * expression in the loop, not an accumulator (loop.c's giv: `li a2,16384` after the test), j++ in the arm keeps (j + 1) << 2
- * from folding. OPEN (GCC round 44a; 12 words at 8 bytes short, everything but the loop's first lines): the target holds k * 8
- * in two registers (`sll a0,v0,3; move v0,a0; addu a0,a0,sp; addu v1,sp,v0`) and loads the imaginary part first; 26 spellings
- * of the two terms (locals, a pointer, the terms swapped, k doubled in place: build/scratch/gcc/r44/v_a5a8*.py) share one. */
-void func_0024A5A8(const float *pfLpc, int iOrder, float *pfEnv, int iBins)
+ * from folding. GCC round 78 (open since 44a, 8 bytes short): the loop's body is two statements on one index -- `j = 2 *
+ * (...) >> 15; pfMaskEnv[i] = afSpec[j] * afSpec[j]; j++; pfMaskEnv[i] += afSpec[j] * afSpec[j];` -- the store and the
+ * reload of pfMaskEnv[i] between them is what holds k * 8 in two registers (`sll a0,v0,3; move v0,a0`); the doubled
+ * value straight into j (no k in the loop) gives the sra v0. And the asserts name the parameters pfAlpc and pfMaskEnv
+ * (the image's strings: a content mismatch the register miss had hidden). */
+void func_0024A5A8(const float *pfAlpc, int iOrder, float *pfMaskEnv, int iBins)
 {
 	float afSpec[130];
 	float afRe[65], afIm[65];
@@ -232,9 +234,9 @@ void func_0024A5A8(const float *pfLpc, int iOrder, float *pfEnv, int iBins)
 	int i, k, j, iStep;
 
 #line 811 "../../SaseEncVad/source/LDPDA.c"
-	assert(pfLpc != NellyNull);
-	assert(pfEnv != NellyNull);
-	data_001D55B4(afSpec, pfLpc, (iOrder + 1) * 4);
+	assert(pfAlpc != NellyNull);
+	assert(pfMaskEnv != NellyNull);
+	data_001D55B4(afSpec, pfAlpc, (iOrder + 1) * 4);
 	i = iOrder + 1;
 	data_001D55B0(&afSpec[i], 0, (130 - i) * 4);
 	func_00251AF8(afSpec, 128, afRe, afIm);
@@ -243,16 +245,18 @@ void func_0024A5A8(const float *pfLpc, int iOrder, float *pfEnv, int iBins)
 	fStep = 64.0F / (float)iBins * 32768.0F;
 	iStep = (int)((fStep > 0.0F) ? fStep + 0.5F : fStep - 0.5F);
 	for (i = 0; i < iBins - 1; i++) {
-		k = (iStep * i + 0x4000) >> 15;
-		pfEnv[i] = afSpec[2 * k] * afSpec[2 * k] + afSpec[2 * k + 1] * afSpec[2 * k + 1];
+		j = 2 * ((iStep * i + 0x4000) >> 15);
+		pfMaskEnv[i] = afSpec[j] * afSpec[j];
+		j++;
+		pfMaskEnv[i] += afSpec[j] * afSpec[j];
 	}
 	k = (iStep * i + 0x4000) >> 15;
 	j = 2 * k;
 	if (j >= 128)
-		pfEnv[i] = pfEnv[i - 1];
+		pfMaskEnv[i] = pfMaskEnv[i - 1];
 	else {
 		j++;
-		pfEnv[i] = afSpec[2 * k] * afSpec[2 * k] + afSpec[j] * afSpec[j];
+		pfMaskEnv[i] = afSpec[2 * k] * afSpec[2 * k] + afSpec[j] * afSpec[j];
 	}
 }
 
