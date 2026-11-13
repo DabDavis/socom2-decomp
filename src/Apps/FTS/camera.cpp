@@ -203,18 +203,21 @@ inline void FillVec(CPnt4D &v, const CPnt3D &p)
     v.w = 1.0f;
 }
 
+/* a vector's length in the ground plane, read through the reference (the name ours) */
+inline float LenXZ(const CPnt3D &v)
+{
+    return sqrtf(v.x * v.x + v.z * v.z);
+}
+
 /* the chord from the aim (p0) to the goal (p1) cut against the world: the goal pulled a little out, the
  * short tether's length eased, the hit nearest the aim given as the out point -- and then four feelers from
  * it (right, left, up, down, 0.75 each) pushing it off the walls (SOCOM 1's; SOCOM II's the shorter tether
  * through the entity's own check).
- * OPEN, 0xC48 of 0xC38, RightVec's accesses only (everything else byte-exact, the saved registers and the
- * frame included: the spill pick wants Vec's two address temporaries spilled and rematerialised, which the view
- * vector read through a reference gives; the characters' switch is a for fully unrolled). The target keeps
- * &RightVec + 8 in a saved register for the length's read and the right vector's alone; the normalise's read and
- * store and the scale's store of RightVec are frame-relative (hence its z read scheduled ahead of x's store), and
- * &RightVec + 4 has no temporary. Here IRO_CommonSubs merges them all (pass 1: y's store and read; pass 2: z).
- * Tried: helpers by reference and pointer, a reference local before the test, a by-value and a reference assign
- * helper (the product then sits a pass too deep). */
+ * Byte-exact since the engine back half's round 1 (0xC48 before): the right vector's length and its fill into the
+ * VU vector read it through a reference (LenXZ, FillVec), so &RightVec + 8 is the one address the two share -- a
+ * saved register in the target -- while &RightVec + 4, read once that way, folds into the frame; every other access
+ * (the normalise, the scale's store) is the local's own, frame-relative. Either helper alone is 0xC40; LenXZ over a
+ * pointer 31 instructions off. */
 void CAppCamera::ClipCameraChord(float dT, CPnt3D *p0, CPnt3D *p1, CPnt3D *pout)
 {
     bool flag = m_cam_death_state != 0;
@@ -289,7 +292,7 @@ void CAppCamera::ClipCameraChord(float dT, CPnt3D *p0, CPnt3D *p1, CPnt3D *pout)
 
     Vec.ToRightXZ(&RightVec);
 
-    float rlen = sqrtf(RightVec.x * RightVec.x + RightVec.z * RightVec.z);
+    float rlen = LenXZ(RightVec);
 
     if (rlen != 0.0f) {
         rlen = 1.0f / rlen;
@@ -309,10 +312,7 @@ void CAppCamera::ClipCameraChord(float dT, CPnt3D *p0, CPnt3D *p1, CPnt3D *pout)
     CPnt4D up;
     CPnt4D right;
 
-    right.x = RightVec.x;
-    right.y = RightVec.y;
-    right.z = RightVec.z;
-    right.w = 1.0f;
+    FillVec(right, RightVec);
 
     CPnt4D view;
 
