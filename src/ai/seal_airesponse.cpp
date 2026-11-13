@@ -1073,7 +1073,7 @@ int CAiSShotAt::Tick(CSealCtrlAi *ai)
 
         if (!has || !(ai->m_stateStack.m_timer < m_time)) {
             step = STEP_5;
-            if (ai->m_718 <= data_0064FF60 && ai->SetGoalPos(GOAL_MOVE, &m_5c, 5.0f)) {
+            if (ai->m_underfire.m_value <= data_0064FF60 && ai->SetGoalPos(GOAL_MOVE, &m_5c, 5.0f)) {
                 ai->SetAiMode((AI_MODE)4);
                 step = STEP_7;
             }

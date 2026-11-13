@@ -1347,7 +1347,9 @@ public:
      * bit 19: the sightings ticked in PostTick (the names ours) */
     unsigned int m_aibit18 : 1;
     unsigned int m_aibit19 : 1;
-    unsigned int m_bits20 : 2;
+    unsigned int m_aibit20 : 1;
+    /* bit 21: the scan ticked in Tick while the state allows it (0x56FD00; the name ours) */
+    unsigned int m_aibit21 : 1;
     /* bit 22: set when a player's detonated shot hits the AI (OnWeaponHit 0x572330; the name ours) */
     unsigned int m_aibit22 : 1;
     unsigned int m_bits23 : 9;
@@ -1465,22 +1467,17 @@ public:
     unsigned char _6ac[0x6ec - 0x6ac];
     float m_6ec;   // 0x6ec (1 from the constructor)
     float m_6f0;   // 0x6f0: the time since death (PostMortemPreTick 0x56EE80 runs it up; the name ours)
-    /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
-    float m_6f4;   // 0x6f4
-    float m_6f8;   // 0x6f8
-    unsigned char _6fc[0x700 - 0x6fc];
-    /* the scale EventTick's walks hear at, by a table's entry 6 (0x5750D0; the name ours) */
-    float m_700;   // 0x700
-    float m_704;   // 0x704: with 0x700, 0x70c and 0x710 set to 1 by the constructor
-    unsigned char _708[0x70c - 0x708];
-    float m_70c;   // 0x70c
-    float m_710;   // 0x710
-    unsigned char _714[0x718 - 0x714];
-    /* what 0x572240 gathers from an alert: the amounts summed, a point the alert fills, and its word
-     * at 4 (the names ours) */
-    float m_718;   // 0x718
-    unsigned int m_71c;   // 0x71c
-    unsigned char _720[0x724 - 0x720];
+    /* SOCOM 1's four decays (its m_courage, m_audiofactor, m_dicipline and m_underfire, in its order:
+     * seal_aiparams.cpp's SEAL_AI_PARAMS builds them as CAiDecays, and Tick 0x56FD00 runs each with the
+     * alertness's decay inlined): the courage, its range and goal set together unless it stands at 42
+     * (0x570D90); the scale EventTick's walks hear at, by a table's entry 6 (0x5750D0); the discipline
+     * (the controller's constructor sets the audio factor's and the discipline's to 1); what 0x572240
+     * gathers from an alert, the amounts summed (its goal zeroed as a word) */
+    CAiDecay m_courage;   // 0x6f4
+    CAiDecay m_audiofactor;   // 0x700
+    CAiDecay m_dicipline;   // 0x70c
+    CAiDecay m_underfire;   // 0x718
+    /* a point the alert fills, and its word (the names ours) */
     CPnt3D m_724;   // 0x724
     int m_730;   // 0x730
     /* two random times, each an Rfloat {min, range} (the units' own class: read through a cast), and
@@ -1528,6 +1525,9 @@ public:
     virtual bool PostMortemPreTick(float dT);
     /* the creep's line walk, then the base's (OVL2 0x567350, seal_ai.cpp's) */
     virtual void CreepTick(float dT, bool b);
+    /* the AI's frame: the scan, the fudge velocities, the alertness's decays and band (OVL2 0x56FD00,
+     * seal_ai.cpp's) */
+    virtual bool Tick(float dT);
     /* the sightings, the stance, the rescue and the alertness's score (OVL2 0x56F970, seal_ai.cpp's) */
     virtual bool PostTick(float dT);
     virtual bool SlideTick(float dT);
