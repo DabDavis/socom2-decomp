@@ -11,8 +11,13 @@
  * is plain (sceTtyRead, byte-exact only so). The packet is set in field order, `reserved` first (GCC
  * round 28a: sceTtyInit closed, open since round 11a).
  *
- * OPEN: sceTtyHandler (97s) and sceTtyWrite (78s) are ps2sdk's reconstruction adapted to Sony's
- * queue, not yet fitted. */
+ * sceTtyHandler and sceTtyWrite (GCC round 82; open since 11a as ps2sdk's reconstruction) rewritten
+ * from the target and the image's four "TTY: ..." kprintf strings: the handler checks the receive size
+ * (unsigned, > 320) and both transfers' results, copies the packet's bytes from offset 12 with no
+ * queue-full test, and reuses its `param` for the receive's count and the copy's index (one pseudo:
+ * the three in s0, ti in s1); the send's count is its own variable (dies before any call: a1). The
+ * write ignores DIntr's result and calls EIntr unconditionally, counts `while (len--)`, and starts
+ * both counters at their declarations (before DIntr: s1, s4). */
 
 typedef unsigned int u_int;
 typedef unsigned short u_short;
@@ -54,6 +59,7 @@ extern int sceDeci2ExSend(int, void *, u_short);
 extern int DIntr(void);
 extern int EIntr(void);
 extern void FlushCache(int);
+extern int kprintf(const char *fmt, ...);
 
 extern tty_packet wbuf, rbuf;
 extern struct tinfo tinfo;
@@ -85,38 +91,43 @@ static void QueuePeekReadDone(tty_queue *q)
 
 static void sceTtyHandler(int event, int param, void *opt)
 {
-	struct tinfo *info = opt;
+	struct tinfo *ti = opt;
 	tty_packet *pkt;
-	int ret, i;
+	int n;
 
 	switch (event) {
 	case 1:
 	case 2:
 		if (param) {
-			ret = sceDeci2ExRecv(info->socket, info->rptr + info->rlen, param);
-			info->rlen += ret;
+			if ((u_int)(ti->rlen + param) > 320)
+				kprintf("TTY: packet size larger than expect\n");
+			param = sceDeci2ExRecv(ti->socket, ti->rptr + ti->rlen, param);
+			if (param < 0)
+				kprintf("TTY: receive error");
+			ti->rlen += param;
 			break;
 		}
-		pkt = (tty_packet *)info->rptr;
-		for (i = 0; i < pkt->length - 12; i++) {
-			if (info->read_queue->count >= info->read_queue->size)
-				break;
-			*info->read_queue->wp = pkt->buf[i];
-			QueuePeekWriteDone(info->read_queue);
+		pkt = (tty_packet *)ti->rptr;
+		for (param = 12; param < pkt->length; param++) {
+			*ti->read_queue->wp = ti->rptr[param];
+			QueuePeekWriteDone(ti->read_queue);
 		}
-		info->rlen = 0;
+		ti->rlen = 0;
 		break;
 	case 3:
-		ret = sceDeci2ExSend(info->socket, info->wptr, info->wlen);
-		if (ret < 0) {
-			info->writing = 0;
+		n = sceDeci2ExSend(ti->socket, ti->wptr, ti->wlen);
+		if (n < 0) {
+			kprintf("TTY: send err %d\n", n);
+			ti->writing = 0;
 			break;
 		}
-		info->wptr += ret;
-		info->wlen -= ret;
+		ti->wptr += n;
+		ti->wlen -= n;
 		break;
 	case 4:
-		info->writing = 0;
+		if (ti->wlen)
+			kprintf("TTY: err ti->wlen=%08x\n", ti->wlen);
+		ti->writing = 0;
 		break;
 	}
 }
@@ -124,24 +135,24 @@ static void sceTtyHandler(int event, int param, void *opt)
 int sceTtyWrite(char *buf, int len)
 {
 	tty_packet *pkt;
-	int oldintr, i, n;
+	int n = 0, i = 0;
 	char *wp;
 
 	if (tinfo.writing)
 		return -1;
-	oldintr = DIntr();
+	DIntr();
 	tinfo.writing = 1;
 	tinfo.wptr = (char *)((u_int)&wbuf | 0x20000000);
 	pkt = (tty_packet *)((u_int)&wbuf | 0x20000000);
-	n = 0;
 	wp = pkt->buf;
-	for (i = 0; i < len; i++) {
+	while (len--) {
 		if (*buf == '\n') {
 			*wp++ = '\r';
 			if (++n >= 256)
 				break;
 		}
 		*wp++ = *buf++;
+		i++;
 		if (++n >= 256)
 			break;
 	}
@@ -149,14 +160,12 @@ int sceTtyWrite(char *buf, int len)
 	pkt->length = tinfo.wlen;
 	if (sceDeci2ReqSend(tinfo.socket, pkt->destination) < 0) {
 		tinfo.writing = 0;
-		if (oldintr)
-			EIntr();
+		EIntr();
 		return -1;
 	}
 	while (tinfo.writing)
 		sceDeci2Poll(tinfo.socket);
-	if (oldintr)
-		EIntr();
+	EIntr();
 	return i;
 }
 
