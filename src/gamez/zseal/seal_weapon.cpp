@@ -483,7 +483,7 @@ void CZSealBody::WeaponsTick(float dT)
             return;
         case 4:
             break;
-        case 1:
+        case 1: {
             /* (a const holder keeps its number, below the current time's and the down time's: the sum f0, the time f1 --
              * the kit's round 61, after 40-odd spellings of the plain field) */
             const float hold = v->m_wep_holdT;
@@ -494,6 +494,7 @@ void CZSealBody::WeaponsTick(float dT)
             } else
                 v->m_wep_seq.Tick(dT);
             break;
+        }
         case 2:
             v->m_wep_seq.Tick(dT);
             if (v->m_wep_seq.m_currT <= 0.0f) {

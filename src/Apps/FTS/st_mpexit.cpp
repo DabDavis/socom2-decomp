@@ -1212,7 +1212,7 @@ bool CMPExitState::Tick(float dT)
         break;
     }
     case 5:
-    case 3:
+    case 3: {
         if (bMaster)
             CZGameState::UpdateLocalGame(pGame);
         CEntity::PurgeEntities();
@@ -1229,6 +1229,7 @@ bool CMPExitState::Tick(float dT)
         theGame.Pop(0);
         theUIVarManager.Reset();
         return true;
+    }
     case 1:
         theGame.Pop(0);
         theGame.Switch(&theGame.m_menuState, 0);

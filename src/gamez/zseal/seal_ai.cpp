@@ -7431,13 +7431,14 @@ bool CSealCtrlAi::PreTick(float dT)
     switch ((unsigned char)mode) {
     case 0:
         break;
-    case 2:
+    case 2: {
         bool creep = m_goal_type == 1 && ((bool)m_goal_dir_valid || (bool)m_goal_pos_valid);
 
         if (creep)
             CreepTick(dT, false);
         func_0056A760(this, 0, true);
         break;
+    }
     case 5:
         SlideTick(dT);
         break;

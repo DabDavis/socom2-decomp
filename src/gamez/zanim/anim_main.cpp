@@ -573,11 +573,13 @@ int CZAnimMain::GetAnimSetIndex(const char *name, bool create)
                 goto named;
             }
         }
-        int n = m_animset_count;
+        {
+            int n = m_animset_count;
 
-        NewAnimSet(n);
-        index = n;
-        m_animset_list[index].m_IsAvailable = 0;
+            NewAnimSet(n);
+            index = n;
+            m_animset_list[index].m_IsAvailable = 0;
+        }
     named:
         if (name)
             m_animset_list[index].Name(name);

@@ -3260,18 +3260,20 @@ unsigned int CanUseDoorAction(CZSealBody *seal, CNodeAction *a, float range)
     }
     if (range < minRange)
         goto done;
-    CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi();
-    const CAiMapLoc &from = ((CEntity *)seal)->m_mapLocValid;
+    {
+        CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi();
+        const CAiMapLoc &from = ((CEntity *)seal)->m_mapLocValid;
 
-    if (seal->IsPlayer() || ai && (ai->m_navyseal ? true : false)) {
-        CAiMap::action *act = 0;
-        CAiMapLoc loc;
+        if (seal->IsPlayer() || ai && (ai->m_navyseal ? true : false)) {
+            CAiMap::action *act = 0;
+            CAiMapLoc loc;
 
-        if (AiMaps.GetActionById(a->m_id, loc, &act) && IsDoorAct(act) && !act->m_state) {
-            CAiMap::DIR d = CAiMap::GetClosestDir(from, loc);
+            if (AiMaps.GetActionById(a->m_id, loc, &act) && IsDoorAct(act) && !act->m_state) {
+                CAiMap::DIR d = CAiMap::GetClosestDir(from, loc);
 
-            if (CAiMap::GetDirCos(d, (CAiMap::DIR)act->m_direction) > 0.0f)
-                r = 1;
+                if (CAiMap::GetDirCos(d, (CAiMap::DIR)act->m_direction) > 0.0f)
+                    r = 1;
+            }
         }
     }
 done:
