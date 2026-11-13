@@ -602,7 +602,14 @@ bool CAiMaps::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float 
  * frame -- n declared in the loop lays it below v (n 256, v 272: declaration order) where the target
  * has n 272 above v 256 -- and the FPRs (vz f22 / vy f20 / the half-cell f21 against f20 / f21 / f22);
  * with n at the top and vy / vz named (0x568) the reset stays memberwise, through a {long long; float}
- * cast as well (0x568, 69 off) */
+ * cast as well (0x568, 69 off)
+ * The AI map's round 1 (build/scratch/aimap-r1/v_gc*.py; 41 -> 18 instructions): the FPRs are the target's with `half` DECLARED
+ * (uninitialised) ahead of vy / vz and assigned where it was -- the later a float is declared the lower its FPR (vz f20, vy f21,
+ * half f22); declared there with its initialiser the multiply moves up (63 off). The neighbour's cell declared first in the loop
+ * (`ncell = 0` ahead of nd: the target's `move v0,zero` slot) or nd an unsigned char gives the target's odd `andi s0,v1,0x0` in
+ * the modulo's negative arm and its registers. Left: n / v's slots (n 272 above v 256) and &CPnt3D::zero in v1 -- v through
+ * `CPnt3D(...)`, an inline's result (NRVO or not), n direct-initialised or in a block, the quadrant / dot / push reading v or n
+ * more or less (a use-weight test): no change */
 bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
                                 CAiMapLoc &cell)
 {
@@ -616,6 +623,7 @@ bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float r
 
     GetCellCenter(loc, &center);
     CPnt3D v = *pos - center;
+    float half;
     float vy = v.y;
     float vz = v.z;
     DIR d;
@@ -625,13 +633,12 @@ bool CAiMap::GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float r
     else
         d = vz < 0.0f ? (DIR)6 : (DIR)4;
     bool found = false;
-    float half = 0.5f * m_dx;
-
+    half = 0.5f * m_dx;
     for (int i = 0; i < 3; i += 2) {
         CPnt3D n = CPnt3D::zero;
+        CAiCell *ncell = 0;
         DIR nd = (DIR)((d + i + 8) % 8);
         CAiMapLoc nloc;
-        CAiCell *ncell = 0;
 
         if (GetNeighbor(loc, nd, nloc, ncell) && !ncell->IsTraversable()) {
             GetDirVec(nd, n);
