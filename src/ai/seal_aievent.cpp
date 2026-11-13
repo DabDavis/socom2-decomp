@@ -66,7 +66,7 @@ void CSealCtrlAi::EventTick(float dT)
         held = true;
     if (!((zVid.frameNumber ^ e->m_id) & 1) && alternate)
         return;
-    float scale = m_700;
+    float scale = m_audiofactor.m_value;
     handled = false;
     pos = &e->m_posW;
 
