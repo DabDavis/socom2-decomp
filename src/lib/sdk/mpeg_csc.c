@@ -12,9 +12,11 @@
  * every access while it reuses npass - 1: every field volatile is 0x158, none 0x13C); what is left
  * is the plain QWC/CHCR stores' schedule (`sw -0x4FE0($at)` before `-0x5000($at)` in both arms) --
  * neither store order nor the nmb update's place gives it (build/scratch/gcc/v_ch3.py, v_ch3b.py).
- * _doCSC2 (0x1B8 against 0x1C0): the frame block's stores and the division's check scheduled
- * otherwise -- the waiting loop reads err, npass and count through a volatile view as the target
- * does, the rest not yet measured. */
+ * _doCSC2 (right size since GCC round 83, 6 words): the waiting loop is plain C over the struct --
+ * only count is volatile, so err and npass are loaded once, err hoisted out of the do-while by
+ * loop.c (the target's two loads before the loop, `beqz a0` after it); the block's stores npass
+ * first, then err (or addr), count, nmb, addr (12 of 120 orders tie). Left: the D3 QWC/CHCR
+ * stores' value and address registers swapped (v1 the value in the target), as _ch3dmaCSC's. */
 
 #include "libmpeg.h"
 
@@ -109,11 +111,11 @@ static void _doCSC2(MpegDec *d, u_long128 *buf, int nmb)
 	CscData cd;
 	int id, ie, err;
 
-	cd.count = 0;
+	cd.npass = nmb / 1023 + 1;
 	cd.err = 0;
+	cd.count = 0;
 	cd.nmb = nmb;
 	cd.addr = ((u_int)buf + 0xffc00) & 0x0fffffff;
-	cd.npass = nmb / 1023 + 1;
 	while ((int)*IPU_CTRL < 0)
 		;
 	id = AddDmacHandler2(3, (int (*)(int, void *, void *))_ch3dmaCSC, 0, &cd);
@@ -129,8 +131,8 @@ static void _doCSC2(MpegDec *d, u_long128 *buf, int nmb)
 	cbdata.type = sceMpegCbBackground;
 	_dispatchMpegCallback(d->mp, &cbdata);
 	do
-		err = ((volatile CscData *)&cd)->err;
-	while (((volatile CscData *)&cd)->npass > ((volatile CscData *)&cd)->count);
+		err = cd.err;
+	while (cd.npass > cd.count);
 	if (err)
 		_Error(d, "CSC handler error\n");
 	while ((int)*IPU_CTRL < 0)
