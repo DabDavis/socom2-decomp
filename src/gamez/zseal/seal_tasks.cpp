@@ -260,10 +260,10 @@ const char *get_param_name(AI_PARAM p)
     return s;
 }
 
-/* the commands' ids (SOCOM 1's ai_cmdid, 0x18 bytes: RegisterCommands stores every command's id
+/* the commands' ids (SOCOM 1's ai_cmdid, 0x18 bytes there, 0x10 here -- seal_weapon.cpp's nullAimPoint follows at 0x66B7F0: RegisterCommands stores every command's id
  * in the first word, which each Parse copies into its block's type; the third is the type of the
  * command argument that carries a task's SEAL) */
-int ai_cmdid[6];
+int ai_cmdid[4];
 
 /* the command argument a task's SEAL comes in (the name ours): the SEAL at 0xC */
 struct TASK_PARAM {

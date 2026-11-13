@@ -1755,6 +1755,11 @@ public:
     bool InStance(SEAL_STANCE stance, bool fromState);
     /* the weapon fired once ready (OVL2 0x563BD0; SOCOM 1's) */
     bool FireWhenReady(AI_FIREPARAMS &params, float delay);
+    /* a grenade's throw worked out (OVL2 0x55E670; SOCOM 1's, by its calls) */
+    bool ComputeThrowFireParams(AI_FIREPARAMS &params);
+    /* the reaction bit 7 asks for: courage, a rush, a flight or a surrender (OVL2 0x561550; SOCOM 1's,
+     * by place: Tick's call) */
+    void DoReaction();
     /* the bit 2 at 0x264 set, never for a SEAL whose team has bit 17 or 26 or that holds no item
      * (OVL2 0x56D890: CAiSPlan::Tick and CAiState::Signal call it; the name ours) */
     void SetAiBit2(bool on);
@@ -2524,6 +2529,8 @@ public:
     /* a landing taken: its damage, the anim its grade or the pace asks and the state it leaves -- in
      * state 8 the ladder and the climb let go (SOCOM 1's; OVL2 0x5AF590) */
     void HandleLanding(float speed);
+    /* the slide down a slope too steep to stand on (SOCOM 1's; OVL2 0x54EDF0, seal.cpp's) */
+    void HandleSliding(float dT);
     /* the health taken from the six locations' values: dead when the head's or the body's runs out
      * (a bullet in the head a head shot), else their weighted average (SOCOM 1's; OVL2 0x5A54D0; the
      * six values' setter 0x5A5790 calls it too) */

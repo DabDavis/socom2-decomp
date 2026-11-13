@@ -10,6 +10,11 @@
 
 #include "zseal.h"
 
+/* the aim point that stands for none (SOCOM 1's LOCAL nullAimPoint, 0x5090C0 there; OVL2 bss 0x66B7F0,
+ * right after seal_tasks.cpp's ai_cmdid): built by the unit's initialiser, __sinit_seal_weapon.cpp
+ * (OVL2 0x668F30, SOCOM 1's same three stores), and read by nothing in SOCOM II */
+static CPnt3D nullAimPoint(-9999999.0f, -9999999.0f, -9999999.0f);
+
 /* the aim's point and goal (SOCOM 1's at 0x10A0 and 0x10AC, here 0x3A0 on: zseal.h keeps the
  * body's tail as bytes -- the view and the names ours) */
 struct CSealAimView {

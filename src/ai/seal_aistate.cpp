@@ -57,10 +57,11 @@ inline void SetMask488(CSealCtrlAi *ai, unsigned int set, unsigned int clear)
     ((CAiCtrl488 *)ai)->m_488 |= set;
 }
 
-/* the state an empty stack answers with (SOCOM 1's _unknown, 0x509870: this unit's static,
- * built by its initialiser; OVL2 bss 0x66B990 -- declared here, not defined, so this unit emits
- * no initialiser yet) */
-extern CAiSUnknown _unknown;
+/* the state an empty stack answers with (SOCOM 1's _unknown, 0x509870: this unit's static; OVL2 bss
+ * 0x66B990), built by the unit's initialiser __sinit_seal_aistate.cpp (OVL2 0x668F60: CAiState(0)
+ * called, the table stored, ~CAiSUnknown 0x5F8800 registered -- SOCOM 1's less its CSTable, its
+ * Reset inlined in CAiState's constructor) */
+CAiSUnknown _unknown;
 
 extern "C" {
 /* the controller's helpers the goto's events call (OVL2 0x555810, 0x555820, 0x5558A0, 0x5558D0

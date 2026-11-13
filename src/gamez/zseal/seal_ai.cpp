@@ -2197,6 +2197,105 @@ extern "C" bool func_00555420(CSealCtrlAi *ai, CAiPathBytes *path, CAiRouteBytes
     return r;
 }
 
+/* whether the AI's target is lost to it: none, or none held and not seen for three seconds
+ * (seal_aievent.cpp's TargetGone and its int-returning compare, copied -- the held test an `&&` here:
+ * this unit's 0x60A850 answers a bool, and `!= 0` on it masks before the sltu; the names ours) */
+static inline int StaleSighting(float t, float limit)
+{
+    return t > limit;
+}
+
+extern "C" float GetTimeSinceLastSighting__9CAiTargetCFv(const void *target);
+
+static inline unsigned char TargetLost(CSealCtrlAi *ai, float limit = 3.0f)
+{
+    unsigned char gone = true;
+
+    if (func_0060A850(ai->m_67c)) {
+        bool held = func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200);
+
+        if (!held) {
+            gone = StaleSighting(GetTimeSinceLastSighting__9CAiTargetCFv(ai->m_67c), limit);
+        } else
+            gone = false;
+    }
+    return gone;
+}
+
+/* the AI's "docorpse" (bit 12) as a bool (IsNavySeal's shape: the sltu at its test) */
+static inline bool DoCorpse(CSealCtrlAi *ai)
+{
+    return ai->m_aibit12 ? true : false;
+}
+
+extern "C" {
+/* how long a SEAL has lain dead, 0 alive (OVL2 0x548050, seal.cpp's) and whether the AI goes for a
+ * long shot (OVL2 0x607830) */
+float func_00548050(CZSealBody *seal);
+bool func_00607830(CSealCtrlAi *ai);
+}
+
+/* a friendly corpse found: unless the AI holds or saw its target in three seconds, has no "docorpse"
+ * (bit 12), is a Navy SEAL and the body not the player's, goes for a long shot, holds a sniper rifle
+ * or (no Navy SEAL) stands in a region of kind 6, an event state of kind 5 is pushed at the body --
+ * flags 0x32; dead under five seconds with a live killer, the killer's place its second point and the
+ * wait 1 + 2 t / 5, else the killer's or the body's place and the name "on_corpse" -- then flags 1 and
+ * 4, made active; whether one was (OVL2 0x558AE0, new in SOCOM II: HandleEvent's corpse event calls
+ * it; the name ours) */
+extern "C" bool func_00558AE0(CSealCtrlAi *ai, CZSealBody *seal)
+{
+    bool r = false;
+    CEntity *e = ai->m_entity;
+
+    if ((seal ? (e->m_team & seal->m_team) != 0 : false) && TargetLost(ai) && DoCorpse(ai)
+        && (!ai->IsNavySeal() || seal->IsPlayer())) {
+        bool far = func_00607830(ai);
+
+        if (!far)
+            far = ((CZSealBody *)ai->m_entity)->m_kit.HasSniperRifle();
+        bool stay = far;
+
+        if (!far) {
+            bool in = !ai->IsNavySeal();
+
+            if (in) {
+                bool rr = false;
+
+                if (AiMaps.GetRegionTypeContainer((CAiMap::region::TYPE)6, ai->m_entity->m_mapLocValid))
+                    rr = true;
+                in = rr;
+            }
+            stay = in;
+        }
+        if (!stay && ai->PushAiState(AI_STATE_EVENT, 0)) {
+            float dead = func_00548050(seal);
+            CEntity *k = CEntity::m_list.GetEntityById(seal->m_lastkiller_id);
+            CZSealBody *killer = k && k->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)k : 0;
+            CAiState *s = ai->GetAiState();
+            CAiSEvent *st = s && s->m_state == AI_STATE_EVENT ? (CAiSEvent *)s : 0;
+
+            st->SetFlags(0x32, 0);
+            if (dead < 5.0f && killer && killer->m_isAlive) {
+                const CPnt3D *at = &killer->m_posW;
+
+                st->SetEvent(5, &seal->m_posW, at);
+                st->SetFlags(1, 0);
+                st->m_80 = 1.0f + 2.0f * (dead / 5.0f);
+            } else {
+                const CPnt3D *at = killer ? &killer->m_posW : &seal->m_posW;
+
+                st->SetEvent(5, &seal->m_posW, at);
+                st->SetFlags(1, 0);
+                st->SetName("on_corpse");
+            }
+            st->SetFlags(4, 0);
+            st->SetActive(true);
+            r = true;
+        }
+    }
+    return r;
+}
+
 /* the AI's glance counts at 0x284 (zseal.h's bytes; the class and names ours): the cell last counted
  * from, the range counted and the rise worth a look, and two direction counts -- the latest at m_c, the
  * other turned into the rise since the one before (0x558640). A count by direction of the risen one
@@ -2959,6 +3058,196 @@ extern "C" void func_00561B90(CSealCtrlAi *ai, bool now)
         theMission.FadeToEndMission(10.0f, 0);
     } else if (ai->m_400 >= 0.0f)
         ai->m_400 -= data_0066B0F8;
+}
+
+extern "C" {
+int rand(void);
+/* the nearest enemy SEAL within a range of a point (OVL2 0x569E40, defined below) */
+CZSealBody *func_00569E40(CSealCtrlAi *ai, const CPnt3D *pos, float range);
+}
+
+/* a random value from lo up to hi, lo itself for none between (Rfloat(lo, hi - lo)'s operator float,
+ * whose class is defined further down: written out here, inline) and a chance taken by value read
+ * through a reference (Chance's shape) -- the names ours */
+static inline float PickBetween(float lo, float hi)
+{
+    float range = hi - lo;
+
+    if (range == 0.0f)
+        return lo;
+    float r = 4.656613e-10f * (float)rand();
+
+    return lo + range * r;
+}
+
+/* whether two entities share no team (an inline; the name ours) */
+static inline int Foes(const CEntity *a, const CEntity *b)
+{
+    return (a->m_team & b->m_team) == 0;
+}
+
+/* a decay's value raised to another past it (by a scale), unless it stands at 42 (an inline: the
+ * scale kept as a multiply; the name ours) */
+static inline void RaiseDecay(CAiDecay &d, float v, float k)
+{
+    if (!(v <= k * d.m_value) && data_0064FE48 != d.m_value)
+        d.m_value = v;
+}
+
+static inline bool ChanceOf(float chance)
+{
+    const float &c = chance;
+
+    return PickBetween(0.0f, 1.0f) <= c;
+}
+
+/* bit 7 set or cleared (0x561E20's body without its Navy SEAL test; an inline, the name ours) */
+static inline bool SetBit7(CSealCtrlAi *ai, bool on, signed char c)
+{
+    bool cleared = !on && ai->m_aibit7 != 0;
+
+    ai->m_aibit7 = on;
+    if (ai->m_aibit7) {
+        memset(ai->m_3e4, 0, sizeof(ai->m_3e4));
+        ai->m_3e0 = c;
+    } else if (cleared)
+        ai->m_courage.m_value = ai->m_courage.m_goal;
+    return ai->m_aibit7;
+}
+
+/* the reaction's two squared ranges (OVL2 data 0x6502D8, 0x6502F0: 300 and 200 squared, read as
+ * variables) */
+extern "C" float data_006502D8;
+extern "C" float data_006502F0;
+
+/* the reaction to bit 7 (the no-ammo state's): the bit cleared (0x561E20 with -1), then the byte at
+ * 0x3E0 decides -- -1 for one chosen: four weights from the floats at 0x3E4 (a quarter of one more
+ * each), the SEALs among the entity's targets within 300 counted friend and foe at each nearer one
+ * (the friends from one), none foe reacting 0; the fourth weight halved with a lone friend and a foe
+ * within 200, else none; the second scaled by friends over foes, the third by its inverse, the second
+ * none without a target; surrender by the AI's own odds (3), else a weighted pick -- 0 or 4 the
+ * courage raised to the threat (unless it stands at 42), 1 a rush, 2 a flight from the nearest enemy
+ * SEAL within 150 (its squad kept), 3 a surrender after a pop to the script state (flag 8 when the
+ * byte gave it) (OVL2 0x561550: SOCOM 1's DoReaction by place, CSealCtrlAi::Tick's call; the name
+ * ours). Byte-exact from the first draft's shape by: bit 7 tested through a const view (a plain test is
+ * CSE'd into the inline's `cleared`, the target reloads the byte), `cleared` as `!on && bit != 0`, the
+ * team test through an inline taking the entities (its `&e->m_team` hoisted), the else arm first in the
+ * fourth weight's test, a cumulative pick, the cases laid out 3, 2, 1, 0/4, the courage raised through
+ * an inline keeping its `1.0f *`, the weight's odds read into a local in the loop (the constants
+ * materialised ahead), reaction and fixed declared before the entity, the parameters after it */
+void CSealCtrlAi::DoReaction()
+{
+    signed char reaction;
+    bool fixed;
+    CEntity *e = this->m_entity;
+
+    if (((const CSealCtrlAi *)this)->m_aibit7) {
+        SetBit7(this, false, -1);
+        reaction = this->m_3e0;
+        AI_PARAMS *params = &this->m_aiParams;
+        fixed = false;
+
+        if (reaction == -1) {
+            const float *odds = (const float *)this->m_3e4;
+            float w[4];
+
+            for (int j = 0; j < 4; j++) {
+                float o = odds[j];
+
+                w[j] = 0.25f * (1.0f + o);
+            }
+            float nearest[2] = { 1e8f, 1e8f };
+            CZSealBody *seal[2] = { 0 };
+            int count[2] = { 1, 0 };
+            CTargetList &targets = e->m_targets;
+
+            for (CTargetList::iterator i = targets.begin(); i != targets.end(); ++i) {
+                CZSealBody *s = AsSeal(i->m_ent);
+
+                if (s) {
+                    float d = i->m_distSq;
+
+                    if (!(d <= data_006502D8))
+                        break;
+                    int foe = Foes(e, s);
+
+                    if (d < nearest[foe]) {
+                        nearest[foe] = d;
+                        seal[foe] = s;
+                        count[foe]++;
+                    }
+                }
+            }
+            if (!count[1])
+                reaction = 0;
+            else {
+                if (!(count[0] < 2 && nearest[1] <= data_006502F0))
+                    w[3] = 0.0f;
+                else
+                    w[3] *= 0.5f;
+                float ratio = (float)count[0] / (float)count[1];
+
+                w[1] *= ratio;
+                w[2] *= 1.0f / ratio;
+                if (!func_0060A850(this->m_67c))
+                    w[1] = 0.0f;
+                if (ChanceOf(params->surrender))
+                    reaction = 3;
+                else {
+                    float sum = 0.0f;
+
+                    for (int j = 0; j < 4; j++)
+                        sum += w[j];
+                    float pick = PickBetween(0.0f, sum);
+
+                    float acc = 0.0f;
+
+                    for (int k = 0; k < 4; k++) {
+                        acc += w[k];
+                        if (pick < acc) {
+                            reaction = k;
+                            break;
+                        }
+                    }
+                }
+            }
+        } else
+            fixed = true;
+        switch (reaction) {
+        case 3:
+            this->PopToAiState(AI_STATE_SCRIPT, false);
+            if (this->PushAiState(AI_STATE_SURRENDER, fixed ? 8 : 0)) {
+                CAiState *s = this->GetAiState();
+
+                s = s && s->m_state == AI_STATE_SURRENDER ? s : 0;
+                s->SetActive(true);
+            }
+            break;
+        case 2:
+            if (this->PushAiState(AI_STATE_FLEE, 0)) {
+                CAiState *s = this->GetAiState();
+                CAiSFlee *st = s && s->m_state == AI_STATE_FLEE ? (CAiSFlee *)s : 0;
+                CZSealBody *from = func_00569E40(this, &this->m_entity->m_posW, 150.0f);
+
+                if (from)
+                    st->m_60 = (unsigned int)((CSealCtrl *)from->m_control)->m_unit;
+                st->SetActive(true);
+            }
+            break;
+        case 1:
+            if (this->PushAiState(AI_STATE_RUSH, 0)) {
+                CAiState *s = this->GetAiState();
+
+                s = s && s->m_state == AI_STATE_RUSH ? s : 0;
+                s->SetActive(true);
+            }
+            break;
+        case 0:
+        case 4:
+            RaiseDecay(this->m_courage, this->m_targetThreat.m_value, 1.0f);
+            break;
+        }
+    }
 }
 
 extern "C" {
@@ -4968,7 +5257,6 @@ static inline CEntity *TargetOf(CSealCtrlAi *ai)
     return *(CEntity **)ai->m_67c;
 }
 
-extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p);
 
 /* a shot asked for by the fire parameters (flags 0x4000000 and 0x40000) taken: flag 4 with a target
  * aims at the target's spot and speed first; either way the aim (0x55E670) fires when ready, and
@@ -4983,9 +5271,9 @@ extern "C" bool func_0055EAA0(CSealCtrlAi *ai, AI_FIREPARAMS *p, bool clear)
         if ((p->m_flags & 4) && func_0060A850(ai->m_67c)) {
             p->m_targetPos = TargetOf(ai)->m_posW;
             p->m_targetVel = TargetOf(ai)->m_velW;
-            if (func_0055E670(ai, p))
+            if (ai->ComputeThrowFireParams(*p))
                 ai->FireWhenReady(*p, 0.0f);
-        } else if (func_0055E670(ai, p))
+        } else if (ai->ComputeThrowFireParams(*p))
             ai->FireWhenReady(*p, 0.0f);
         if (clear) {
             p->m_flags &= ~0x4000000;
@@ -5848,7 +6136,7 @@ extern "C" bool func_0055F0A0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
         bool done;
 
         if (flags & 0x40000) {
-            done = func_0055E670(ai, p);
+            done = ai->ComputeThrowFireParams(*p);
             ai->SetTrigger(false);
             ai->SetTrigger(false);
         } else if (flags & 0x80000) {
@@ -5954,20 +6242,20 @@ struct CThrowView {
  * statics by the throw's kind, flags 0x10 and 0x20): false out of reach or with no flight; else the
  * throw vector (the flat direction over the time, or by the fixed scale under flag 1, and the upward
  * speed), its power (the reach's share, at least the abort threshold), the aim straight ahead, the
- * stance cleared, the time, and flags 0x0E100000. Written from the target (the round 72 SEALs; the name
- * kept: its callers 0x55EAA0 and 0x55F0A0 are the AI lane's): the reach's record through a throw_params
+ * stance cleared, the time, and flags 0x0E100000. Written from the target (the round 72 SEALs; renamed
+ * with its callers 0x55EAA0 and 0x55F0A0 in round 73, objcmp same by address): the reach's record through a throw_params
  * pointer (s3), the abort threshold declared ahead of the share and read after it (its slot above),
  * `dy >= 0 ? 10 + dy : 10`; the floats declared first, vy, reach, dy, t, len (f23, f22, f21 shared by
  * dy and t, f20) -- the time an if/else into a named local: as a ternary its front-end temporary is
  * numbered after every named local, popped first and takes f20 (igdump) */
-extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
+bool CSealCtrlAi::ComputeThrowFireParams(AI_FIREPARAMS &params)
 {
     float vy;
     float reach;
     float dy;
     float t;
     float len;
-    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    CZSealBody *seal = (CZSealBody *)m_entity;
     static CPnt3D hand(3.5f, 19.3f, 3.9f);
     static CPnt3D hand_left(7.8f, 10.13f, -5.31f);
     static CPnt3D hand_under(-8.83f, 11.47f, -6.48f);
@@ -5975,15 +6263,15 @@ extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     CPnt3D from;
     CPnt3D target;
 
-    if (p->m_flags & 0x10)
+    if (params.m_flags & 0x10)
         off = &hand_under;
-    else if (p->m_flags & 0x20)
+    else if (params.m_flags & 0x20)
         off = &hand_left;
     ((CMatrix *)seal->m_node)->Transform(off, &from, 1);
-    target = p->m_targetPos;
-    if (p->m_flags & 2)
-        CAi::Extrapolate(&p->m_targetPos, &p->m_targetVel, 1.5f, &target);
-    if (!ai->IsNavySeal()) {
+    target = params.m_targetPos;
+    if (params.m_flags & 2)
+        CAi::Extrapolate(&params.m_targetPos, &params.m_targetVel, 1.5f, &target);
+    if (!IsNavySeal()) {
         PNT2D noise = { 0 };
 
         noise.x = data_006503E0;
@@ -6000,8 +6288,8 @@ extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     d.y = 0.0f;
     len = d.Normalize();
 
-    p->m_dist = len;
-    p->m_lookDirW = d;
+    params.m_dist = len;
+    params.m_lookDirW = d;
     CharacterDynamics::throw_params *tp = &seal->GetDynamics()->m_throw_params;
     reach = tp->max_distance_stand;
 
@@ -6019,19 +6307,19 @@ extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     else
         t = t2;
 
-    d.Scale(p->m_flags & 1 ? data_006503F0 : len / t, &d);
+    d.Scale(params.m_flags & 1 ? data_006503F0 : len / t, &d);
     d.y = vy;
-    ((CThrowView *)p)->m_throwVec = d;
+    ((CThrowView *)&params)->m_throwVec = d;
     float least;
     float share = len / reach;
 
     least = tp->m_abort_threshold;
 
-    ((CThrowView *)p)->m_throwPower = ai::_max(least, share);
-    p->m_aimDirM = CPnt3D::unit_nz;
-    p->m_68 = (SEAL_STANCE)0;
-    ((CThrowView *)p)->m_54 = t;
-    ModifyFireFlags(p, 0xE100000, 0);
+    ((CThrowView *)&params)->m_throwPower = ai::_max(least, share);
+    params.m_aimDirM = CPnt3D::unit_nz;
+    params.m_68 = (SEAL_STANCE)0;
+    ((CThrowView *)&params)->m_54 = t;
+    ModifyFireFlags(&params, 0xE100000, 0);
     return true;
 }
 #pragma auto_inline reset
@@ -7199,9 +7487,8 @@ extern float data_00650068;
 extern float data_00650070;
 /* a value eased toward a goal at a rate (SOCOM 1's _decay<f>: OVL2 0x5551C0, another unit's copy) */
 float *func_005551C0(float *v, const float *goal, float rate, float dT);
-/* (OVL2 0x5604C0: 0x5605A0 with the kind held; 0x561550, unwritten) */
+/* (OVL2 0x5604C0: 0x5605A0 with the kind held) */
 bool func_005604C0(CSealCtrlAi *ai);
-void func_00561550(CSealCtrlAi *ai);
 }
 
 /* a decay run a frame: exponentially or linearly toward its goal, snapped to it within 0.005 (or
@@ -7308,7 +7595,7 @@ bool CSealCtrlAi::Tick(float dT)
             }
         }
     }
-    func_00561550(this);
+    DoReaction();
     float d;
     float now = seal->m_health;
 

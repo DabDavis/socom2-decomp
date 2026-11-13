@@ -418,6 +418,7 @@ public:
 
 class CAiSUnknown : public CAiState {
 public:
+    CAiSUnknown() : CAiState(AI_STATE_UNKNOWN) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual int Tick(CSealCtrlAi *ai);
     virtual ~CAiSUnknown();

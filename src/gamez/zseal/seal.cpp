@@ -3309,6 +3309,7 @@ extern "C" bool func_0054F410(CZSealBody *seal, const CPnt3D *from, CPnt3D *to)
  * edge drops less than 4 under a SEAL that is not prone; on a flatter one, only kind 0 -- the kind is
  * the polygon's three bits at 28, 4 with no polygon (OVL2 0x54F330, new in SOCOM II: 0x54EDF0 asks
  * it of the ground hit; the name unknown) */
+#pragma auto_inline off
 extern "C" bool func_0054F330(CZSealBody *seal, zdb::IntersectStruct *hit)
 {
     if (!hit->m_node)
@@ -3325,6 +3326,148 @@ extern "C" bool func_0054F330(CZSealBody *seal, zdb::IntersectStruct *hit)
         return true;
     }
     return type == 0;
+}
+#pragma auto_inline reset
+
+/* a material's extension (int_material.h's CMaterialEx, which zweapon.h's stand-in of the table leaves
+ * incomplete -- seal_env.cpp's view): only its first two flags and the float before them */
+struct CMaterialEx {
+    unsigned char _0[0x38];
+    float m_38;   // 0x38: the height a slide's ground is raised by (0x54EDF0; the name ours)
+    unsigned int m_volumetric : 1;   // 0x3c: VOLUMETRIC
+    unsigned int m_liquid : 1;   // bit 1: LIQUID
+    unsigned int m_flags2 : 30;
+
+    /* (written `? true : false`, as seal_env.cpp's: the bit converted, sltu, before its test) */
+    bool IsVolumetric() { return m_volumetric ? true : false; }
+    bool IsLiquid() { return m_liquid ? true : false; }
+};
+
+/* a material's extension, the first one for an index past the table (seal_env.cpp's) */
+static inline CMaterialEx *MaterialEx(unsigned int i)
+{
+    if (i >= CMaterialExArray::m_materialex_list.size())
+        i = 0;
+    return (CMaterialEx *)CMaterialExArray::m_materialex_list[i];
+}
+
+extern "C" {
+/* the slide's anim type (OVL1 0x3DEAD8, seal_body.cpp's) */
+extern short data_003DEAD8;
+/* the ground under a point, the hit returned (CZSealBody::SealGetAltitude, seal_env.cpp's: zseal.h
+ * declares it void, as its definition ignores SealProcessAltitude's hit there -- SOCOM 1's returned it) */
+zdb::IntersectStruct *SealGetAltitude__10CZSealBodyFP6CPnt3Df(CZSealBody *seal, CPnt3D *pos, float f);
+}
+
+/* the slide down a slope too steep to stand on (OVL2 0x54EDF0: SOCOM 1's HandleSliding by place and body,
+ * ComputeNextPosition calls it unless climbing over): airborne, a slide's anim popped and the slide's speed
+ * cleared. On a ground hit 0x54F330 says stops the SEAL: a slide begun (speed 0) from the velocity across
+ * the ground along the slope -- the slope's level cross (VU0) turned down; the speed grown by gravity as the
+ * slope falls (1 - the slide direction's y); the step's x and z down the slope; the ground found below each
+ * of the steps from 1 to 10 by 0.1, the step's y taken to it (raised by its material's m_38) and the
+ * altitude kept when it is within the fall; past a quarter of gravity the slide's anim pushed (state 6)
+ * unless on top, carrying or changing weapons. Off such ground: the anim popped, a landing above the
+ * landing rate handled, the speed cleared */
+void CZSealBody::HandleSliding(float dT)
+{
+    if (!this->m_airborne) {
+    if (func_0054F330(this, &this->m_last_altitude)) {
+        float g = theCharacterDynamics.m_gravity;
+        CPnt3D flat = this->m_1344;
+
+        flat.y = 0.0f;
+        flat.Normalize();
+        if (this->m_1340 == 0.0f) {
+            CPnt3D v = this->m_velW;
+
+            v.y = 0.0f;
+            float speed = v.Normalize();
+            CPnt3D n = this->m_1344;
+            CPnt3D side = CPnt3D::zero;
+
+            if (n.x && n.z) {
+                side.x = 1.0f;
+                side.z = -n.x / n.z;
+                side.Normalize();
+            } else if (n.x)
+                side.z = 1.0f;
+            else
+                side.x = 1.0f;
+            sceVu0FVECTOR c;
+            sceVu0FVECTOR va;
+            sceVu0FVECTOR vb;
+
+            va[0] = side.x;
+            va[1] = side.y;
+            va[2] = side.z;
+            va[3] = 1.0f;
+            vb[0] = n.x;
+            vb[1] = n.y;
+            vb[2] = n.z;
+            vb[3] = 1.0f;
+            sceVu0OuterProduct(c, va, vb);
+            CPnt3D cr;
+
+            cr.x = c[0];
+            cr.y = c[1];
+            cr.z = c[2];
+            if (!(cr.y <= 0.0f)) {
+                cr.x = -cr.x;
+                cr.y = -cr.y;
+                cr.z = -cr.z;
+            }
+            this->m_1340 = speed * Dot(v, cr);
+        }
+        zdb::IntersectStruct *hit = 0;
+        float fall;
+        float step = 1.0f;
+
+        this->m_1340 += (1.0f - this->m_1344.y) * (g * dT);
+        fall = this->m_1340 * dT;
+        float k = fall * this->m_1344.y;
+
+        this->m_f44.x = k * this->m_1344.x;
+        this->m_f44.z = k * this->m_1344.z;
+        CPnt3D pos = this->m_posW;
+
+        while (!hit && step < 10.0f) {
+            CPnt3D q;
+            CPnt3D p = pos + this->m_f44 * step;
+
+            q.x = p.x;
+            q.y = p.y;
+            q.z = p.z;
+            q.y -= fall;
+            hit = SealGetAltitude__10CZSealBodyFP6CPnt3Df(this, &q, fabsf(fall));
+            step += 0.1f;
+        }
+        if (hit) {
+            float y = hit->m_pos.y + MaterialEx(hit->GetMaterial())->m_38;
+
+            this->m_f44.y = y - pos.y;
+            if (fabsf(this->m_f44.y) <= fabsf(fall)) {
+                this->m_alt = y;
+                this->m_bit8 = true;
+            }
+        }
+        if (this->m_1340 > 0.25f * g && !this->IsCurrentBlend((AnimType)data_003DEAD8) &&
+            !(this->m_state == stateCarrying || this->m_state == 10) && !this->IsChangingWeapons(true))
+            func_00588BC0(this, (AnimType)data_003DEAD8, 6, 0, 0);
+    } else {
+        if (this->IsCurrentBlend((AnimType)data_003DEAD8)) {
+            this->PopBlend();
+            this->BodySetState(SealTop(this)->m_state);
+        }
+        if (this->m_1340 > theCharacterDynamics.m_landFallRate &&
+            !(this->m_state == stateCarrying || this->m_state == 10))
+            this->HandleLanding(this->m_1340);
+        this->m_1340 = 0.0f;
+    }
+    } else if (this->IsCurrentBlend((AnimType)data_003DEAD8)) {
+        this->PopBlend();
+        this->BodySetState(SealTop(this)->m_state);
+        this->m_1340 = 0.0f;
+    }
 }
 
 /* the height a direction reaches over the length of b - a, turned by a matrix's rotation (OVL2
@@ -3457,27 +3600,6 @@ extern "C" bool func_0054E760(CZSealBody *seal, CPnt3D *pos, CPnt3D *pt)
     return true;
 }
 
-/* a material's extension (int_material.h's CMaterialEx, which zweapon.h's stand-in of the table leaves
- * incomplete -- seal_env.cpp's view): only its first two flags */
-struct CMaterialEx {
-    unsigned char _0[0x3c];
-    unsigned int m_volumetric : 1;   // 0x3c: VOLUMETRIC
-    unsigned int m_liquid : 1;   // bit 1: LIQUID
-    unsigned int m_flags2 : 30;
-
-    /* (written `? true : false`, as seal_env.cpp's: the bit converted, sltu, before its test) */
-    bool IsVolumetric() { return m_volumetric ? true : false; }
-    bool IsLiquid() { return m_liquid ? true : false; }
-};
-
-/* a material's extension, the first one for an index past the table (seal_env.cpp's) */
-static inline CMaterialEx *MaterialEx(unsigned int i)
-{
-    if (i >= CMaterialExArray::m_materialex_list.size())
-        i = 0;
-    return (CMaterialEx *)CMaterialExArray::m_materialex_list[i];
-}
-
 /* a part's height in the SEAL's body, raised by an offset of none (an inline, the name ours: the
  * target stores the zero to a stack slot of its own ahead of the call -- not moved into its delay
  * slot -- and reloads it after: a volatile local; a plain one, a parameter, a const reference or a
@@ -3571,7 +3693,6 @@ extern "C" {
  * and seal_body.cpp's) and the step held to a wall (OVL2 0x54A3D0, below) */
 void func_005B0C70(CZSealBody *seal, zdb::IntersectStruct *hit);
 bool func_00549F30(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit);
-void func_0054EDF0(CZSealBody *seal, float dT);
 bool func_0057B510(CZSealBody *seal);
 bool func_00587FE0(CZSealBody *seal);
 bool func_00587F10(CZSealBody *seal);
@@ -3723,7 +3844,7 @@ void CZSealBody::ComputeNextPosition(float dT)
         }
     }
     if (!IsCurrentBlend((AnimType)AnimTypes::ClimbOver))
-        func_0054EDF0(this, dT);
+        HandleSliding(dT);
     if (m_animset != data_0044D410) {
         m_gunner_pos = NextPos(this);
     }
@@ -4617,6 +4738,86 @@ extern unsigned char noWeaponWallPush;
 
 /* bit 0 of 0x258 set (an inline, the name ours: the target inserts the constant, `andi v1,zero,1`) */
 static inline void Set258(CZSealBody *seal, bool b) { seal->m_258_0 = b; }
+
+/* the step against a wall the player's step meets, by the weapon: with a node hit, a unit normal, both points on
+ * nodes, the body not blending in, the top blend's flag 0x40 (or anim data_003DEF08), the body not on a ladder
+ * or hanging and the switch off -- the points moved to the step, the line from the aim to the fire point cut by
+ * the hit's plane (false when both lie more than 0.3 in front of it); cut short of 0.3 past the fire point and
+ * not rolling: prone and cut behind the aim, the step stopped when the normal faces up no more than the slope
+ * limit; else (prone, the weapon under full weight and a steep wall: false; under half and not anim
+ * data_003DEF08: false) a slope-limited wall pushes m_f44 back out along the normal by 0.85 of what the
+ * remaining length's depth into it, a steeper one clears bit 0 of 0x258 when cut before the fire point (OVL2
+ * 0x549F30, new in SOCOM II: ComputeNextPosition 0x54D9A0 asks it of the nearest wall into bit 1 of 0x258; the
+ * name unknown) */
+extern "C" bool func_00549F30(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit)
+{
+    if (!hit->m_node)
+        return false;
+    if (!_close_enough(Dot(hit->m_norm, hit->m_norm), 1.0f, 0.0001f))
+        return false;
+    if (!seal->m_curr_aimpt || !seal->m_curr_firept)
+        return false;
+    if (!(seal->m_interp1 <= 0.0f))
+        return false;
+    bool push = true;
+
+    if (!(hit->m_norm.y <= theCharacterDynamics.m_maxSlopeCos))
+        push = false;
+    if (!func_005551A0(((CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends))->m_flags, 0x40) &&
+        !seal->IsCurrentBlend((AnimType)data_003DEF08))
+        return false;
+    if (seal->m_state == stateClimbLadder || seal->m_state == stateHang)
+        return false;
+    if (noWeaponWallPush)
+        return false;
+    CPnt3D aim;
+    CPnt3D fire;
+
+    seal->m_curr_aimpos.Add(pos, &aim);
+    seal->m_curr_firepos.Add(pos, &fire);
+    CPnt3D dir = fire;
+
+    dir.Sub(&aim, &dir);
+    float len = dir.Normalize();
+    CPnt3D da;
+    CPnt3D df;
+
+    aim.Sub(&hit->m_pos, &da);
+    fire.Sub(&hit->m_pos, &df);
+    if (Dot(hit->m_norm, da) > 0.29999998f && Dot(hit->m_norm, df) > 0.29999998f)
+        return false;
+    float t = LineIntersectPlane(PlaneConstant(hit->m_norm, hit->m_pos), hit->m_norm, aim, fire);
+    float lim = 1.0f + 0.29999998f / len;
+    bool cut = t < lim;
+
+    if (seal->IsCurrentBlend((AnimType)data_003DEC58))
+        cut = false;
+    if (cut) {
+        if (seal->m_state == stateProne && t < 0.0f && push)
+            seal->m_f44 = CPnt3D::zero;
+        else {
+            if (seal->m_state == stateProne && seal->m_wep_seq.Weight() < 1.0f && !push)
+                return false;
+            if (seal->m_wep_seq.Weight() < 0.5f && !seal->IsCurrentBlend((AnimType)data_003DEF08))
+                return false;
+            if (push) {
+                CPnt3D v = dir;
+
+                v.Scale(len * (lim - t), &v);
+                float dot = Dot(v, hit->m_norm);
+
+                if (dot < 0.0f) {
+                    CPnt3D n = hit->m_norm;
+
+                    n.Scale(0.85f * -dot, &n);
+                    seal->m_f44.Add(&n, &seal->m_f44);
+                }
+            } else if (t < 1.0f)
+                Set258(seal, false);
+        }
+    }
+    return true;
+}
 
 /* the weapon's aim and fire points kept out of a wall: with a node hit, a unit normal, both points on
  * nodes, the top blend's flag 0x40, the body not prone, hanging or on a ladder and the switch off, the
