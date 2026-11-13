@@ -368,6 +368,41 @@ found_it:                                                                   \
     TASK_PARAM *param = found ? (TASK_PARAM *)found : 0;                    \
     CZSealBody *seal = param ? param->m_seal : 0
 
+/* the same with the SEAL a variable declared ahead of the block and set by if/else (CTTeam::Tick's: the
+ * ternary's temporary numbers after every named local and colours after the block; declared ahead of
+ * the block and assigned in both arms it colours before it, as the target -- the kit's round 71) */
+#define TASK_SEAL_FIRST(T)                                                  \
+    unsigned int type = ai_cmdid[2];                                        \
+    int index = ((TASK_HDR *)hdr)->m_param;                                 \
+    int i;                                                                  \
+    CZSealBody *seal;                                                       \
+    T *cmd = (T *)hdr;                                                      \
+    CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;                      \
+    _zanim_cmd_hdr *found;                                                  \
+                                                                            \
+    if (!list) {                                                            \
+        found = 0;                                                          \
+        goto found_it;                                                      \
+    }                                                                       \
+    for (i = 0;; i++) {                                                     \
+        _zanim_cmd_hdr *p = list->GetCmd(i);                                \
+        bool end = !(bool)p;                                                \
+                                                                            \
+        if (end)                                                            \
+            break;                                                          \
+        if (p->data_type == type && index-- == 0) {                         \
+            found = p;                                                      \
+            goto found_it;                                                  \
+        }                                                                   \
+    }                                                                       \
+    found = 0;                                                              \
+found_it:                                                                   \
+    TASK_PARAM *param = found ? (TASK_PARAM *)found : 0;                    \
+    if (param)                                                              \
+        seal = param->m_seal;                                               \
+    else                                                                    \
+        seal = 0
+
 /* a block allocated and its header made: the type the registration left, the size (SOCOM II's
  * _calloc called without the file and line SOCOM 1's passed) */
 template <class T> inline T *NewTask()
@@ -4392,24 +4427,14 @@ bool CTCreate::Tick(_zanim_cmd_hdr *hdr, float *dT)
 /* the SEAL joins or leaves the teams, its AI's events, its squad and the team valves brought up to
  * it; ismember does nothing here (OVL2 0x5CEA40; SOCOM 1's, which updated the AI's events only --
  * its team read once ahead of the switch, as SOCOM 1's too: the load in the first compare's delay slot)
- * OPEN, 20 instructions: the block and the find's counter swap saved registers (the target's block
- * s2, counter s3, the SEAL sharing the counter's; here the block s3, the counter and the SEAL s2) --
- * the target colours the block before the SEAL where every other handler's allocation is numbering
- * order; the find's five declarations in all 60 orders (build/scratch/kit/v_team2.py, best 17), the
- * controller/AI order, the team local first, a second block pointer after the AI: none moves it.
- * The kit's round 49: MW's colouring replayed against the target (`tools/igreplay.py --target --movers`
- * over the counter, the block and the SEAL) gives it in 224 numberings, every one with the SEAL --
- * here the find's ternary temporary, numbered after every named local -- ahead of the block: the SEAL
- * a variable numbered before `cmd`. A dead first definition (`CZSealBody *seal = 0;` first, after the
- * index, after the counter) and a ternary reading it (`seal = param ? param->m_seal : seal`) leave the
- * colouring as it is (MW folds the 0 in), an `if (param) seal = ...` costs 3 instructions (0x200);
- * the block through TaskBlock<T> (a temporary, CTPlay's) stays 20 off. The kit's round 60: igreplay on the block alone wants it
- * numbered 43.5-45.5, among the linearizer's ternary temporaries (the SEAL's and the controller's); the block in a one-member
- * struct (numbered by the scalariser, after them) or declared after the find gives the counter's register right but
- * swaps the block with the AI (14 off) */
+ * Byte-exact since the kit's round 71 (TASK_SEAL_FIRST): the SEAL a named variable declared between the
+ * counter and the block, assigned by if/else after the find -- numbered before `cmd`, as igreplay wanted
+ * (round 49). A ternary into it (`seal = param ? param->m_seal : 0`) stays 20 off (the linearizer's
+ * temporary keeps the numbering); declared after the block, 20 off. Rounds 49-60 tried a dead first
+ * definition and `if (param) seal = ...` without the else (0x200) */
 bool CTTeam::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
-    TASK_SEAL(CTTeam);
+    TASK_SEAL_FIRST(CTTeam);
     CEntityCtrl *ctrl = seal ? seal->m_control : 0;
     CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
