@@ -2281,6 +2281,107 @@ void _outputFrame(MpegDec *d, int frameNo, int output)
 		d->ptmSet = 2;
 }
 
+/* GCC round 72a: the reference slots turned over for the next picture -- a B picture decodes into
+ * each structure's fourth slot, an I or P picture into the newer of the two references (swapped
+ * first, unless it is a second field); a broken link invalidates the older reference; returns
+ * whether the picture's references are valid. The decoded picture's record takes the picture's
+ * time stamps, flags, centre offsets and display size. Byte-exact so: `ok` declared first (its
+ * pseudo below ref's) but cleared after ref's initialiser (the scheduler takes ref's `move` first);
+ * the other field's reference a variable copied into `t` (the target selects into the load's
+ * register, then copies it: one variable leaves 8 off); the final switch's frame case first, as in
+ * _decPicture (in source order 1, 2, 3 global-alloc ranks `ps`, 2678, over ref, 2675 -- t0/t1 swapped
+ * throughout). */
+int _updateRefImage(MpegDec *d, int second)
+{
+	int ok;
+	MpegRef *ref = 0;
+	MpegRef *t, *other;
+	int n;
+
+	ok = 0;
+	n = d->picture_structure == 3 ? 2 : 4;
+
+	if (d->picture_coding_type == 3) {
+		d->ref[0][2] = d->ref[0][3];
+		d->ref[1][2] = d->ref[1][3];
+		d->ref[2][2] = d->ref[2][3];
+		if (d->nI + d->nP >= n) {
+			d->brokenLink = 0;
+			d->broken_link = 0;
+			d->closed_gop = 0;
+		}
+		if ((d->brokenLink || d->broken_link) && !d->closed_gop) {
+			d->ref[0][0]->valid = 0;
+			d->ref[1][0]->valid = 0;
+			d->ref[2][0]->valid = 0;
+		}
+		d->brokenLink = 0;
+		d->broken_link = 0;
+		if (d->picture_structure == 3) {
+			if ((d->ref[0][0]->valid == 1 || d->closed_gop) && d->ref[0][1]->valid == 1)
+				ok = 1;
+		} else {
+			if (((d->ref[1][0]->valid == 1 && d->ref[2][0]->valid == 1) || d->closed_gop) &&
+				d->ref[1][1]->valid == 1 && d->ref[2][1]->valid == 1)
+				ok = 1;
+		}
+	} else {
+		if (!second) {
+			t = d->ref[0][0];
+			d->ref[0][0] = d->ref[0][1];
+			d->ref[0][1] = t;
+			t = d->ref[1][0];
+			d->ref[1][0] = d->ref[1][1];
+			d->ref[1][1] = t;
+			t = d->ref[2][0];
+			d->ref[2][0] = d->ref[2][1];
+			d->ref[2][1] = t;
+		}
+		d->ref[0][2] = d->ref[0][1];
+		d->ref[1][2] = d->ref[1][1];
+		d->ref[2][2] = d->ref[2][1];
+		if (d->picture_structure == 3) {
+			if (d->picture_coding_type != 2 || d->ref[0][0]->valid == 1)
+				ok = 1;
+		} else {
+			other = d->picture_structure == 1 ? d->ref[2][1] : d->ref[1][1];
+			t = other;
+			if (d->picture_coding_type != 2 || (second && t->valid == 1) ||
+				(d->ref[1][0]->valid == 1 && d->ref[2][0]->valid == 1))
+				ok = 1;
+		}
+	}
+	switch (d->picture_structure) {
+	case 3:
+		ref = d->ref[0][2];
+		break;
+	case 1:
+		ref = d->ref[1][2];
+		break;
+	case 2:
+		ref = d->ref[2][2];
+		break;
+	}
+	ref->valid = 0;
+	ref->pts = d->pts;
+	ref->dts = d->dts;
+	ref->_2c = d->picture_coding_type;
+	ref->_30 = d->picture_structure;
+	ref->_34 = d->progressive_sequence;
+	ref->_38 = d->progressive_frame;
+	ref->_3c = d->top_field_first;
+	ref->_40 = d->repeat_first_field;
+	ref->centre[0] = d->frame_centre_horizontal_offset[0];
+	ref->centre[1] = d->frame_centre_horizontal_offset[1];
+	ref->centre[2] = d->frame_centre_horizontal_offset[2];
+	ref->centre[3] = d->frame_centre_vertical_offset[0];
+	ref->centre[4] = d->frame_centre_vertical_offset[1];
+	ref->centre[5] = d->frame_centre_vertical_offset[2];
+	ref->dispWidth = d->display_horizontal_size;
+	ref->dispHeight = d->display_vertical_size;
+	return ok;
+}
+
 extern int sprintf(char *buf, const char *fmt, ...);
 extern int DIntr(void);
 extern int EIntr(void);
@@ -2300,6 +2401,64 @@ int _isOutSizeOK(MpegDec *d, MpegRef *ref)
 		_Error(d, buf);
 	}
 	return ok;
+}
+
+/* GCC round 72a: a picture stored as RAW8 -- each macroblock column through the scratchpad (to it
+ * by channel 9, out of it by channel 8), a field picture's two fields interleaved into the caller's
+ * buffer at half its stride. Byte-exact so: `nf` declared first (the spill slots: d at 0(sp), nf
+ * at 4, dst at 8) and the destination stepped before the source (in the other order the new
+ * source is stepped in place and only the destination goes through a copy: 8 off) */
+void _cpr8(MpegDec *d, MpegRef *ref)
+{
+	int nf;
+	u_int src = ref->buf & 0x0fffffff;
+	u_int dst = d->imageBuf & 0x0fffffff;
+	int size, qwc, stride;
+	int f, i, ie;
+	u_int out;
+
+	if (d->picture_structure == 3 || !d->imageY) {
+		size = ref->mbh * 384;
+		qwc = size >> 4;
+		if (d->imageY)
+			stride = (d->imageY >> 4) * 384;
+		else
+			stride = size;
+		nf = 1;
+	} else {
+		stride = (d->imageY >> 4) * 192;
+		size = (ref->mbh >> 1) * 384;
+		nf = 2;
+		qwc = size >> 4;
+	}
+	for (f = 0; f < nf; f++) {
+		out = dst;
+		for (i = 0; i < ref->mbw; i++) {
+			ie = DIntr();
+			*D9_SADR = 0;
+			*D9_MADR = src;
+			*D9_QWC = qwc;
+			*D9_CHCR = 0x101;
+			if (ie)
+				EIntr();
+			while (*D9_CHCR & 0x100)
+				;
+			ie = DIntr();
+			*D8_SADR = 0;
+			*D8_MADR = out;
+			*D8_QWC = qwc;
+			*D8_CHCR = 0x100;
+			if (ie)
+				EIntr();
+			while (*D8_CHCR & 0x100)
+				;
+			while (*D8_QWC)
+				;
+			out += stride;
+			src += size;
+		}
+		dst += d->imageSize * 192;
+	}
 }
 
 /* GCC round 30a: a frame output -- its time stamps and flags into the caller's sceMpeg, the
