@@ -943,6 +943,157 @@ extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
     }
 }
 
+/* the cell a step from a cell in a direction reaches and its cell, and whether a step may end on it;
+ * false off the map (ai_target.cpp's TraversableNeighbor: GetMapId, GetCell and the cell's test called
+ * out of line) */
+static inline bool ShotAtNeighbor(const CAiMap &map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &out,
+                                  CAiCell *&cell)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map.m_nx && y >= 0 && y < map.m_ny) {
+        out.x = x;
+        out.y = y;
+        out.m_mapid = map.GetMapId();
+        cell = map.GetCell(out, 0);
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+extern "C" {
+/* the controller's alertness set with a point (OVL2 0x561110, zseal.h's SetAiAware) and the way to
+ * look from a spot (0x559580, seal_ai.cpp's) */
+CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out, int n,
+                          int *got);
+}
+
+/* a point negated into another, by pointer (inline: in place, the reads and the writes two forms, each field once in
+ * each -- frame-relative, where in place on the local the second access of a field takes an address temporary;
+ * the name ours, CPnt3D's Scale(f, out) shape) */
+static inline void ShotAtNeg(const CPnt3D *v, CPnt3D *o)
+{
+    o->x = -v->x;
+    o->y = -v->y;
+    o->z = -v->z;
+}
+
+/* the alert the shot-at state still moves on (OVL2 data) */
+extern float data_0064FF60;
+
+/* shot at (OVL2 0x6089F0; SOCOM 1's grown): straight to the end for an AI with bit 7; a target taken
+ * (mode byte 4) ends it on entry, else after the entry's wait the reaction (2): alert at the shot's
+ * point, a look there, the throttle, a crouch, the goto pushed there; 3 the reaction alone; 4 a step
+ * up to three cells away from the shot -- a goal there, the shot's point the SEAL's -- and 6 waits on
+ * the goal; with little alert left a move to the point (7). Byte-exact (round 65, unwritten before):
+ * the count unsigned and tested `n-- > 0` (`move; beqz` -- a plain `n--` beside the inline's `&&`
+ * materialises `sltu; xori`, a signed `> 0` gives `blez`); the facing reversed through a pointer
+ * helper (in place the second access of y and z takes an address temporary) */
+int CAiSShotAt::Tick(CSealCtrlAi *ai)
+{
+    STEP step = (STEP)m_phase;
+    CEntity *seal = ai->m_entity;
+
+    if (ai->m_aibit7)
+        step = STEP_5;
+    switch (step) {
+    case STEP_0:
+        if (ai->m_26c == 4) {
+            func_00609190(this, ai);
+            ai->SetAiAware(AIA_GENERAL, 0, 0.0f);
+            step = STEP_5;
+        } else {
+            if (!(ai->m_stateStack.m_timer < m_time))
+                step = STEP_2;
+            ai->SetAiMode((AI_MODE)4);
+        }
+        break;
+    case STEP_2: {
+        CAiMapLoc loc;
+
+        func_00609190(this, ai);
+        ai->SetAiAware(AIA_DIRECTION, &m_5c, -1.0f);
+        if (ai->SetLookPosW((AI_LOOK)6, &m_5c)) {
+            ai->ModifyLookFlags(1, 6);
+            ai->SetLookTimer(CAiTimer::infinite);
+        }
+        func_00570F90(ai, 1.0f);
+        ai->ChangeStanceDelayed((SEAL_STANCE)0, (SEAL_STANCE)1, 0.15f);
+        if (AiMaps.GetLocation(&m_5c, loc))
+            func_005F0B30(ai, &m_5c, 5, 3, 4);
+        step = STEP_4;
+        break;
+    }
+    case STEP_3:
+        func_00609190(this, ai);
+        step = STEP_5;
+        break;
+    case STEP_4: {
+        CAiMapLoc loc(seal->m_mapLocValid);
+        CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+        if (map) {
+            CPnt3D dir = seal->m_posW - m_5c;
+
+            dir.Normalize();
+            CAiMap::DIR d = func_00559580(&loc, &dir, 0x40000, 0, 10, 0);
+            CAiCell *found = 0;
+            CAiCell *cell = 0;
+            unsigned int n = 3;
+            CAiMapLoc next;
+
+            while (n-- > 0 && ShotAtNeighbor(*map, loc, d, next, cell)) {
+                found = cell;
+                loc = next;
+            }
+            if (found) {
+                CPnt3D c;
+
+                if (map->GetCellCenter(loc, &c) && ai->SetGoalPos(GOAL_MOVE, &c, 3.0f)) {
+                    ShotAtNeg(&dir, &dir);
+                    ai->SetGoalDir(GOAL_MOVE, &dir, true);
+                    m_5c.x = seal->m_posW.x;
+                    m_5c.y = seal->m_posW.y;
+                    m_5c.z = seal->m_posW.z;
+                    ai->SetAiMode((AI_MODE)4);
+                    ai->SetAiBit2(true);
+                    m_time = ai->m_stateStack.m_timer + 2.5f;
+                    step = STEP_6;
+                    func_00609190(this, ai);
+                }
+            }
+        }
+        if (step != STEP_6)
+            step = STEP_5;
+        break;
+    }
+    case STEP_6: {
+        bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+        if (!has || !(ai->m_stateStack.m_timer < m_time)) {
+            step = STEP_5;
+            if (ai->m_718 <= data_0064FF60 && ai->SetGoalPos(GOAL_MOVE, &m_5c, 5.0f)) {
+                ai->SetAiMode((AI_MODE)4);
+                step = STEP_7;
+            }
+        }
+        break;
+    }
+    case STEP_7: {
+        bool has = (bool)ai->m_goal_dir_valid || (bool)ai->m_goal_pos_valid;
+
+        if (!has)
+            step = STEP_5;
+        break;
+    }
+    }
+    UpdatePhase(step);
+    if (step == STEP_5)
+        SetActive(false);
+    return Result();
+}
+
 /* a word's bits under a mask, the mask a parameter (the name ours): asked for all of them (~0) the
  * AND survives as the 32-bit zero extension `dsll32/dsrl32` before the branch -- written in place,
  * `& ~0u` folds away */

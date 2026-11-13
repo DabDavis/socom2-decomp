@@ -1009,6 +1009,8 @@ class CAiSShotAt : public CAiState {
 public:
     CAiSShotAt() : CAiState(AI_STATE_SHOTAT) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x6089F0) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x609340): over after 15 seconds; earlier, when the AI's byte at 0x32C is set, the
      * sub-state ended and step 3 taken */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
