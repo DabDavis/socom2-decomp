@@ -7,6 +7,7 @@
 
 extern float *data_001D5598;		/* the cosine table, 256 points a turn (0x3EA7E8) */
 
+#define NellyNull 0
 extern void __assert(const char *file, int line, const char *expr);
 extern int func_00248718(float fPv);
 extern int func_00248760(float fPv, float fRef, float fMid);
@@ -38,19 +39,22 @@ typedef struct {
 
 /* the frame coder: the four scalar parameters quantised and decoded back into the parameter block, the coefficient
  * set saved (a builtin memcpy, 48 bytes through ldl/ldr: its memory conflicts with every store, so the int store above
- * it stays above it, where a struct assignment's would not) and quantised, the encoder's history updated. OPEN (18 words,
- * right size, GCC round 44a: every instruction but two saved registers, as the CodePv's next door): the target gives the
- * encoder block s1 and the level pointer s2, here the other way round -- global-alloc's order, both 8 references, the
- * pointer's 55 insns live to the block's 58 (priority 24/55 against 24/58); locals, typed parameters and the tail's order
- * do not move it. func_002487E8's float parameter is its FIRST (its load precedes the store and a1, a2 as the target's). */
+ * it stays above it, where a struct assignment's would not) and quantised, the encoder's history updated. The level pointer is set AFTER
+ * the asserts (GCC round 77; open since round 44a, 18 words: two saved registers swapped): set at its declaration it is
+ * 55 insns live against the block's 58 at 8 references each, and global-alloc took it first; set after the asserts both
+ * are 57 live (.lreg's count), a tie the lower pseudo -- the block -- wins, as the target's s1 (the addiu still lands in
+ * the prologue's slot). The asserts
+ * spell the codec's NellyNull (the image's strings say so; with 0 the two string offsets missed, hidden under the
+ * registers). func_002487E8's float parameter is its FIRST (its load precedes the store and a1, a2 as the target's). */
 void func_002488A0(int *piQuanIndex, void *pvEncMblk, void *pvParamMblk)
 {
 	CoderParam *pParam = pvParamMblk;
-	float *pfLevel = pParam->afLevel;
+	float *pfLevel;
 	CoderEnc *pEnc = pvEncMblk;
 
-	CODER_ASSERT((piQuanIndex != 0) && (pvEncMblk != 0), 99);
-	CODER_ASSERT(pvParamMblk != 0, 100);
+	CODER_ASSERT((piQuanIndex != NellyNull) && (pvEncMblk != NellyNull), 99);
+	CODER_ASSERT(pvParamMblk != NellyNull, 100);
+	pfLevel = pParam->afLevel;
 	piQuanIndex[1] = func_00248760(pEnc->fPvPrev, pParam->fPv, pfLevel[1]);
 	func_002487E8(pEnc->fPvPrev, piQuanIndex[1], &pParam->fPv, &pParam->afLevel[1]);
 	piQuanIndex[2] = func_00250BE0(pfLevel[0]);
