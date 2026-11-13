@@ -9543,6 +9543,121 @@ extern float data_0064FE58;
 extern float data_0064FFE8;
 }
 
+extern "C" {
+/* the throttles' rates by the AI's mode, their scale (all 1), the walk's scale under look mode 9, the
+ * forward throttle a leaning SEAL holds, the creep's two throttles, each axis's rate rising and falling,
+ * and the closeness that ends a change (OVL2 data 0x6500A0 on, 0x64FFB0 on; the names ours) */
+extern float data_006500A0[8];
+extern CPnt4D data_006500D0;
+extern float data_006500E0;
+extern float data_006500E8;
+extern float data_006500F0;
+extern float data_006500F8;
+extern float data_0064FFB0[3];
+extern float data_0064FFC0[3];
+extern float data_0064FFD0;
+}
+
+/* two points apart (an inline bool: each compare materialised; the name ours) */
+static inline bool PointsDiffer(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x != b.x || a.y != b.y || a.z != b.z;
+}
+
+/* a throttle moved toward its goal: by the axis's rate -- falling when the goal is the smaller -- scaled
+ * by the mode's and the frame's time, never past it; at once with no rate, and once close enough (an
+ * inline, three times in 0x56C550; the name ours) */
+static inline float ApproachThrottle(CSealCtrlAi *ai, int axis, float goal, float dT)
+{
+    float d;
+    float &t = ai->m_throttle[axis];
+    float cur = t;
+
+    d = goal - cur;
+    if (d != 0.0f) {
+        float k = data_006500A0[(unsigned char)ai->m_3f4];
+        float rate = fabsf(goal) >= fabsf(cur) ? data_0064FFB0[axis] : data_0064FFC0[axis];
+
+        if (!(rate <= 0.0f)) {
+            float step = dT * (rate * k) * (d >= 0.0f ? 1.0f : -1.0f);
+
+            step = fabsf(step) <= fabsf(d) ? step : d;
+            t += step;
+            if (_close_enough(t, goal, data_0064FFD0))
+                t = goal;
+        } else
+            t = goal;
+    }
+    return t;
+}
+
+/* the AI's throttles run toward the goals it asks: none while an anim 0x5712F0 plays holds them (all
+ * zeroed); the goals scaled -- the walk's two at look mode 9 outside a restraint, the third nil for a
+ * restrained SEAL lying down -- the fourth copied; a leaning SEAL (state 4) only forward; a creep
+ * (the stamp's bit) toward its direction in the SEAL's frame -- from standstill a nudge each way, else
+ * the throttles turned onto it (OVL2 0x56C550, new in SOCOM II: PreTick calls it; the name ours). The
+ * approach an inline holding the throttle by reference from its top and returning it (the pointer in a
+ * saved register on both arms, x and y read back through it); its tests `>=` (`c.lt.s; bc1t` to the
+ * second arm), d declared first (FPRs: d f20, cur f21, k f22); the SEAL through SealOf (an inline
+ * result numbers after the three references: s0, as the target -- a named local takes s1) */
+void func_0056C550(CSealCtrlAi *ai, float dT)
+{
+    CZSealBody *seal = SealOf(ai);
+    CPnt4D scale = data_006500D0;
+
+    if (!ai->AiStateIs((AI_STATE)9) && ai->m_look_mode == 9) {
+        scale.x = data_006500E0;
+        scale.y = data_006500E0;
+    }
+    if (seal->m_restrained && CZSealBody::GetStanceFromState(((CZSealBody *)ai->m_entity)->GetStance(data_006502D0), ai->m_stance) == STANCE_PRONE)
+        scale.z = 0.0f;
+    if (func_005712F0(ai, ai->m_sound)) {
+        ai->m_throttle[1] = 0.0f;
+        ai->m_throttle[2] = 0.0f;
+        ai->m_throttle[0] = 0.0f;
+        ai->m_throttle[3] = 0.0f;
+        return;
+    }
+    ai->m_sound = -1;
+    float x = ApproachThrottle(ai, 0, ai->m_throttle_goal[0] * scale.x, dT);
+    float y = ApproachThrottle(ai, 1, ai->m_throttle_goal[1] * scale.y, dT);
+
+    ApproachThrottle(ai, 2, ai->m_throttle_goal[2] * scale.z, dT);
+    ai->m_throttle[3] = *(float *)&ai->m_260;
+    if (((CZSealBody *)ai->m_entity)->m_state == 4) {
+        ai->m_throttle[1] = 0.0f;
+        ai->m_throttle[2] = 0.0f;
+        if (x == 0.0f)
+            ai->m_throttle[0] = data_006500E8;
+    } else if (ai->m_stamp.m_8 & 1) {
+        if (PointsDiffer(ai->m_780, CPnt3D::zero)) {
+            func_005B3890(seal, 1);
+            CQuat q;
+            CPnt3D dir;
+
+            q.w = seal->m_quat.w;
+            q.vec.x = -seal->m_quat.vec.x;
+            q.vec.y = -seal->m_quat.vec.y;
+            q.vec.z = -seal->m_quat.vec.z;
+            q.Apply(&ai->m_780, &dir, 1);
+            if (x == 0.0f && y == 0.0f) {
+                ai->m_throttle[0] = dir.z >= 0.0f ? data_006500F0 : -data_006500F0;
+                if (ai->m_26c != 4)
+                    ai->m_throttle[1] = dir.x >= 0.0f ? data_006500F8 : -data_006500F8;
+            } else {
+                CPnt3D t(y, 0.0f, -x);
+
+                t.Normalize();
+                dir.Normalize();
+                float dot = Dot(t, dir);
+
+                ai->m_throttle[0] = x * dot;
+                ai->m_throttle[1] = y * dot;
+            }
+        }
+    }
+}
+
 /* the flags word at 0x268: `clear` cleared, `set` set (an inline; the name ours) */
 static inline void SetFlags268(CSealCtrlAi *ai, unsigned int set, unsigned int clear)
 {
