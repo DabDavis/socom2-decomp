@@ -2066,6 +2066,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the GCC SDK, round 79** (nothing closed; the socket layer's allocator 0x1C1CD0-0x1C20D8 moved out of inet_sock.c into the
+  new src/lib/sdk/inet_heap.c, `ee-gcc2.9-991111-01-dtls13010 -O2 -G0 -fno-strict-aliasing` (the flag unit-wide on inet_sock.c loses
+  10 rows): 0x1C1D40 (allocate) and 0x1C1E90 (release) now at size (28 and 6 off), 0x1C2028 (set-up) 34 to 23. Stale notes:
+  sceSifMUnBindRpc (now cd->serve's load after the client store; 720 orders re-run, 4 at best), exp2 0x251850 (its untouched frame
+  is an addressable local in a dead arm -- `if (0) { long t[2]; }` gives the 16 bytes, nothing else moves). Larger target frames
+  also in Actual_DP and sceSifInitCmd, unchecked; InitPitchDP's extra 16 bytes are a saved s4):
+  - STORES KEPT IN SOURCE ORDER ACROSS UNRELATED TYPES (globals interleaved with a struct's fields) MEAN NO STRICT ALIASING: the
+    object is its own unit with `-fno-strict-aliasing` -- test with `--sub` on the flags plus `--all` on the old unit; a unit that
+    loses rows without it means a split, not a unit-wide flag.
+  - a value kept from a loop's load on one path and reloaded on another is a local with an explicit reload at the arm's end.
+    `p + (x + C)` kept as `addiu; addu` needs the parentheses. `y += C + x` keeps `(y + C)` for CSE (`y = y + C + x`
+    reassociates). A field read back through the address just compared is `(t = ...) == n` with the fields read through t.
+  - `if (0)` is deleted before RTL: a dead local's frame but no join -- the dead arm the frame tell asks for must die after
+    expansion.
 - **Tells from the Metrowerks rows, round 79** (nothing closed; a source-mistake sweep over every open MW row. CHangulFont::LoadCharLayouts
   0x35B9D0 30 to 24: A WRONG TAG -- each part's list looked up as "Jamo" where the image's string at 0x3F89A0 is "Styles" (found by
   `scdiff -v` over all 108 WRONG rows; the other four content mismatches were jump tables or shifted pairs). CZKit::HandleFireWeapon
