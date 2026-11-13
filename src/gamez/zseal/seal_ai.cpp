@@ -3847,7 +3847,10 @@ struct CTurretFlags {
 /* the entity as a turret, if it is one (an inline, the name ours) */
 static inline CTurretFlags *AsTurretFlags(CEntity *e)
 {
-    return e ? (TypeOf(e) == CEntity::ENT_TYPE_TURRET ? (CTurretFlags *)e : 0) : 0;
+    CTurretFlags *t = (CTurretFlags *)e;
+
+    t = t ? (TypeOf(e) != CEntity::ENT_TYPE_TURRET ? 0 : t) : t;
+    return t;
 }
 
 /* the AI's bit 16 set without bit 17 (an inline, the name ours) */
@@ -3863,7 +3866,10 @@ static inline bool Bit16Only(CSealCtrlAi *ai)
 }
 static inline bool NotBit16Only(CSealCtrlAi *ai)
 {
-    return !(AiBit16(ai) && !AiBit17(ai));
+    int r = AiBit16(ai);
+
+    r = r ? AiBit17(ai) ^ 1 : r;
+    return r ^ 1;
 }
 
 /* whether the SEAL may lie down where it stands (inline helpers, the names ours): its cell holds an
@@ -3911,15 +3917,10 @@ static inline bool NotNavySeal(const CSealCtrlAi *ai)
  * `&&` or a bool local in StackIs fold it into branches), 0x60A850 a bool (round 58: 0x60A850 returns
  * bool in the row's own unit, the test `bool ok = func_0060A850(t) && (t->m_flags & 0x200)`), `exposed`
  * declared bare ahead of the SEAL (igreplay --movers: numbered before it, s1 and s0 as the target).
- * OPEN, 17 instructions -- ONE WORD: the bit-16-without-17 test's merge gets an `andi v0,0xff` the
- * target lacks (the other 16 are branch offsets it shifts, until the 8-byte pad after `exposed = true`
- * absorbs it). The andi is MW converting the `!` of the bit-17 bool into the && value (igdump: op1087
- * into the temporary, in the bit-17 block) -- a bool, int, unsigned or unsigned char variable, the
- * helper or the caller, `!(x != 0)`, `x ? false : true`, `^ true`, a `!= 0` accessor, `!x ? true :
- * false`, `(bool)!x` and `x != true` all keep it;
- * `== false` drops it but compiles to xor/sltiu; `(b16 ? !b17 : false) == false` moves it to the merge
- * and drops the first sltu (7); the target's `sltu; xori` reaches the branch clean
- * (build/scratch/seal-r56/v_c80*.py) */
+ * The bit-16-without-17 test a self-assigning ternary `only = only ? !AiBit17(ai) : only;` (round 72;
+ * open since round 56 at one word): Bit16Only's `if (r) r = !AiBit17(ai);` -- and ~20 spellings of the
+ * `!` -- kept an `andi v0,0xff` at the merge; the ternary joins the two values unmasked. AttackTick
+ * keeps Bit16Only's if-form (the ternary there is 0xECC). */
 extern "C" bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance)
 {
     bool exposed;
@@ -3937,7 +3938,10 @@ extern "C" bool func_00562C80(CSealCtrlAi *ai, SEAL_STANCE stance)
         bool ok = func_0060A850(t) && (t->m_flags & 0x200);
 
         if (ok) {
-            if (!Bit16Only(ai)) {
+            bool only = AiBit16(ai);
+
+            only = only ? !AiBit17(ai) : only;
+            if (!only) {
                 if (t->m_vec.y * t->m_vec.y / t->m_distSq > 0.07f)
                     exposed = true;
                 if (t->m_distSq < 62500.0f)
@@ -4018,7 +4022,15 @@ static inline bool TakesTargets(CSealCtrlAi *ai, CEntity *e)
  * when the AI drives it, on no team the entity is on, while the entity takes targets. The targets
  * are kept nearest first, so the first past the range ends the walk (OVL2 0x569E40, new in SOCOM
  * II: 0x561550 and CAiSGoto::Tick ask it; the names ours).
- * OPEN, 23 instructions (the size right; round 50 -- 24 with round 49's `r2 = range; r2 *= r2`, whose
+ * OPEN, 3 instructions (23 to 3 in round 72: AsTurretFlags and NotBit16Only as SELF-ASSIGNING
+ * TERNARIES -- `t = t ? (TypeOf(e) != TURRET ? 0 : t) : t;` and `int r = AiBit16(ai); r = r ?
+ * AiBit17(ai) ^ 1 : r; return r ^ 1;` -- the bit test now the target's `sltu; beqz; ... xori` value and
+ * one `xori` at the join; a bool r renormalises with sltu, `!r` and `r == false` too). Left: the
+ * turret test's zero moves -- the target's null arm and false arm each `move a0,zero` (the null one
+ * in the `beqz`'s slot, the true arm's `move a0,s4` in the `beq`'s), where the self-assigning form
+ * keeps nops there and moves s4 for the false arm; `: 0` in either arm, `== TURRET ? t : 0`, the
+ * single-case switch, if/return and if-assign forms are 0x2D4-0x2DC.
+ * History (round 50, 24 with round 49's `r2 = range; r2 *= r2`, whose
  * second operand MW propagates back to $f12: the parameter squared in place, `range *= range`, gives
  * the target's `mul.s $f20,$f20,$f20`). Right: the kind read through a
  * reference-returning inline (TypeOf: its address hoisted into s0, the kind reused by the turret
@@ -5006,8 +5018,7 @@ static inline CTurretFlags *AsTurret(CEntity *e)
 {
     CTurretFlags *t = (CTurretFlags *)e;
 
-    if (!e || e->m_type != CEntity::ENT_TYPE_TURRET)
-        t = 0;
+    t = t ? (e->m_type != CEntity::ENT_TYPE_TURRET ? 0 : t) : t;
     return t;
 }
 
@@ -5058,13 +5069,14 @@ static inline CEntity *TargetEnt(const CTarget *t)
  * bit 2 a weapon chosen for the target's range -- a hint's mode 1 under bit 16 without 17 -- and without
  * it, once, an enemy's squad's sound for a player's SEAL (OVL2 0x566540, slot 0xB0: SOCOM 1's SetTarget,
  * SOCOM II's CanAttack inline).
- * OPEN, 0x3B0 against 0x3A8 -- every instruction the target's but: (1) AsTurret's join takes an 8-byte pad
- * the target lacks (its `move t0,zero` runs straight on: `if` pads, every ternary spelling folds into a
- * materialised sltu / movz; two words then shift two more pads); (2) the mode: the target's `li v0,1` comes
+ * OPEN, 7 structural (at the target's size since round 72: AsTurret's `t = t ? (e->m_type != TURRET ? 0 : t)
+ * : t;`, a self-assigning ternary, drops the 8-byte pad its `if` gave the join -- the round-58 note had
+ * every ternary spelling folding into sltu / movz); left, the mode: the target's `li v0,1` comes
  * from the block's top (a logical temporary, live through the hint's stores: no block temporary may take v0),
  * `int mode = 1` declared ahead of the hint gets the same shape in a0 -- the node is deferred in the target
  * (degree over K, coloured first), and `(bit16 && !bit17)` written as a value materialises with sltu instead
- * (build/scratch/seal-r58/v_540*.py). */
+ * (build/scratch/seal-r58/v_540*.py); and the `!bit16 || bit17` test laid out `bnez` to the zero block over a
+ * `b` to the join, where MW falls into it (round 72: else-arm, nested, goto, helper and ternary spellings alike). */
 void CSealCtrlAi::SetTarget(CTarget *target)
 {
     if (target ? ((CAiTargetFlags *)m_67c)->m_entity == target->m_ent : !((CAiTargetFlags *)m_67c)->m_entity)
@@ -6934,10 +6946,12 @@ void func_00561550(CSealCtrlAi *ai);
 }
 
 /* a decay run a frame: exponentially or linearly toward its goal, snapped to it within 0.005 (or
- * the linear step) -- inline, SOCOM 1's Tick called _decay and _close_enough as here (the name ours) */
-static inline void DecayTick(CAiDecay *d, float rate, float dT)
+ * the linear step) -- inline, SOCOM 1's Tick called _decay and _close_enough as here (the name ours).
+ * The 0.005 a DEFAULT ARGUMENT (round 72): its slot (address-taken by _close_enough) is stored as the
+ * arguments are evaluated, right to left -- ahead of the discipline's `m_navyseal ? a : b` rate, as
+ * the target; a local initialised in the body stores it after the ternary */
+static inline void DecayTick(CAiDecay *d, float rate, float dT, float eps = 0.005f)
 {
-    float eps = 0.005f;
 
     if (d->m_goal != d->m_value) {
         if (d->m_type == CAiDecay::EXPONENTIAL) {
@@ -6978,7 +6992,10 @@ static inline void FudgeDecay(CPnt3D &p, float k, float dT)
         p -= p * k * dT;
 }
 
-/* the AI's frame (OVL2 0x56FD00, slot 0x10: SOCOM 1's Tick, rewritten) */
+/* the AI's frame (OVL2 0x56FD00, slot 0x10: SOCOM 1's Tick, rewritten). Byte-exact (round 72, 29 off
+ * before): the fixed-courage test one `&&` (`go = TargetHeld(this) && dist < k`: the held bool joined
+ * unmasked, its andi in the branch's slot -- `if (go) go = ...` masked it first); lim and threat
+ * declared bare ahead of range (range f2, threat f3, lim f4); DecayTick's eps a default argument */
 bool CSealCtrlAi::Tick(float dT)
 {
     ALERT_BAND band;
@@ -6999,18 +7016,19 @@ bool CSealCtrlAi::Tick(float dT)
     } else
         m_780 = m_78c = m_798 = CPnt3D::zero;
     if (!data_0045A0C1) {
+        float lim;
+        float threat;
         float range = m_courage.m_value;
-        float threat = m_targetThreat.m_value;
-        float lim = data_00650060 * range;
+
+        threat = m_targetThreat.m_value;
+        lim = data_00650060 * range;
 
         if (!(m_navyseal ? true : false) && !m_aibit7 && !(seal->m_team & 0x4000000)) {
             bool go = false;
             bool fixed = data_0064FE40 == m_aiParams.courage;
 
             if (fixed) {
-                go = TargetHeld(this);
-                if (go)
-                    go = *(float *)(m_67c + 0x10) < data_00650070;
+                go = TargetHeld(this) && *(float *)(m_67c + 0x10) < data_00650070;
             } else if (data_0064FE48 != range) {
                 bool b = lim <= threat;
 
