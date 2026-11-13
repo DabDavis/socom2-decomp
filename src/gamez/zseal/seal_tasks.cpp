@@ -313,6 +313,33 @@ template <class T> inline T *TaskBlock(_zanim_cmd_hdr *hdr)
 }
 
 #define TASK_SEAL(T) TASK_SEAL_AS(T, (T *)hdr)
+/* the same find with the end tested on the argument itself, no bool between (CTMove::Begin's) */
+#define TASK_SEAL_PLAIN(T)                                                  \
+    int index = ((TASK_HDR *)hdr)->m_param;                                 \
+    unsigned int type = ai_cmdid[2];                                        \
+    T *cmd = (T *)hdr;                                                      \
+    CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;                      \
+    int i;                                                                  \
+    _zanim_cmd_hdr *found;                                                  \
+                                                                            \
+    if (!list) {                                                            \
+        found = 0;                                                          \
+        goto found_it;                                                      \
+    }                                                                       \
+    for (i = 0;; i++) {                                                     \
+        _zanim_cmd_hdr *p = list->GetCmd(i);                                \
+                                                                            \
+        if (!p)                                                             \
+            break;                                                          \
+        if (p->data_type == type && index-- == 0) {                         \
+            found = p;                                                      \
+            goto found_it;                                                  \
+        }                                                                   \
+    }                                                                       \
+    found = 0;                                                              \
+found_it:                                                                   \
+    TASK_PARAM *param = found ? (TASK_PARAM *)found : 0;                    \
+    CZSealBody *seal = param ? param->m_seal : 0
 #define TASK_SEAL_AS(T, BLOCK)                                              \
     unsigned int type = ai_cmdid[2];                                        \
     int index = ((TASK_HDR *)hdr)->m_param;                                 \
@@ -3202,6 +3229,172 @@ void CTMacro::Begin(_zanim_cmd_hdr *hdr)
 
     if (seal ? SealAi(seal) : 0)
         cmd->m_anim = ZAnim.GetAnim(cmd->m_name.m_str, 0);
+}
+
+/* the index'th SEAL argument's SEAL, the handlers' find as an inline (the name ours) */
+inline CZSealBody *TaskSealAt(int n)
+{
+    unsigned int type = ai_cmdid[2];
+    int index = n;
+    CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;
+    int i;
+    _zanim_cmd_hdr *found;
+
+    if (!list) {
+        found = 0;
+        goto found_it;
+    }
+    for (i = 0;; i++) {
+        _zanim_cmd_hdr *p = list->GetCmd(i);
+        if (!p)
+            break;
+        if (p->data_type == type && index-- == 0) {
+            found = p;
+            goto found_it;
+        }
+    }
+    found = 0;
+found_it:
+    TASK_PARAM *param = found ? (TASK_PARAM *)found : 0;
+
+    return param ? param->m_seal : 0;
+}
+
+/* a direction made a unit vector across the ground, left as it is when it has no length there (the
+ * name ours) */
+static inline void NormalizeXZ(CPnt3D &v)
+{
+    float len = sqrtf(v.x * v.x + v.z * v.z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        v.x = ((const CPnt3D &)v).x * inv;
+        v.z = ((const CPnt3D &)v).z * inv;
+    }
+}
+
+/* whether a point is not another (the name ours) */
+static inline bool PntDiffers(const CPnt3D &a, const CPnt3D &b)
+{
+    return a.x != b.x || a.y != b.y || a.z != b.z;
+}
+
+/* the move set as the SEAL's goal: to a node's point, offset back toward the SEAL and facing it
+ * (kind 1); to a point of the SEAL's own frame (2); beside another SEAL -- its frame's point facing
+ * away from it, or the line from the SEAL to it (3); facing along another SEAL's direction (4); the
+ * AI told to move, and the task blocking while it does (OVL2 0x5D5D00; SOCOM 1's, 0x2B9C90 in the
+ * demo, the matrices now Transform's). Byte-exact (the kit's round 63, unwritten before): the find
+ * TASK_SEAL_PLAIN -- the end tested on the argument itself (the target branches on a0, no sltu/xori
+ * bool) and the index declared before the type, the list before the counter (type s2, index s3,
+ * counter s0, list s1); the second and third finds TaskSealAt, the list before the counter too, into
+ * ONE `other` declared at the top (the fourth kind's other in s0 across no call); the ground
+ * normalise an inline over a reference whose scaling reads through a const view (the target reloads
+ * x and z after the divide); the far SEAL's line from it through a pointer local (a1 set before
+ * a0); the timer's two words chained off the static (one load); dir negated member by member (a
+ * constructed temporary takes 16 more bytes of frame) */
+void CTMove::Begin(_zanim_cmd_hdr *hdr)
+{
+    TASK_SEAL_PLAIN(CTMove);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
+
+    if (!seal || !ctrl)
+        return;
+
+    CPnt3D dir;
+    CPnt3D pos;
+    int mode = 0;
+    CZSealBody *other;
+
+    switch (cmd->m_kind) {
+    case 0:
+        break;
+    case 1: {
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->m_node, false);
+
+        if (node) {
+            CMatrix m;
+
+            if (node->BuildMTW(m)) {
+                CPnt3D d(0.0f, 0.0f, 0.0f);
+
+                m.Transform(&cmd->m_pos, &pos, 1);
+                seal->m_posW.SubXZ(&pos, &d);
+                d.y = 0.0f;
+                NormalizeXZ(d);
+                dir.x = -d.x;
+                dir.y = -d.y;
+                dir.z = -d.z;
+                d.Scale(cmd->m_dist, &d);
+                pos.Add(&d, &pos);
+                mode = 3;
+            }
+        }
+        break;
+    }
+    case 3: {
+        other = TaskSealAt(cmd->m_node);
+
+        if (other) {
+            CPnt3D d(0.0f, 0.0f, 0.0f);
+
+            if (PntDiffers(cmd->m_pos, CPnt3D::zero)) {
+                other->m_node->m_matrix.Transform(&cmd->m_pos, &pos, 1);
+                pos.SubXZ(&other->m_posW, &d);
+                d.y = 0.0f;
+                NormalizeXZ(d);
+                dir.x = -d.x;
+                dir.y = -d.y;
+                dir.z = -d.z;
+            } else {
+                const CPnt3D *mine = &seal->m_posW;
+
+                other->m_posW.SubXZ(mine, &d);
+                NormalizeXZ(d);
+                dir = d;
+                d.Scale(cmd->m_dist, &d);
+                other->m_posW.Add(&d, &pos);
+            }
+            mode = 3;
+        }
+        break;
+    }
+    case 2:
+        cmd->m_pos.Scale(cmd->m_dist, &pos);
+        seal->m_node->m_matrix.Transform(&pos, 1);
+        mode = 1;
+        break;
+    case 4: {
+        other = TaskSealAt(cmd->m_node);
+
+        if (other) {
+            CPnt3D d(0.0f, 0.0f, 0.0f);
+
+            TransformVectors(&other->m_node->m_matrix, &cmd->m_dir, &d, 1);
+            NormalizeXZ(d);
+            mode = 2;
+            dir = d;
+        }
+        break;
+    }
+    }
+    if (mode) {
+        static float timeout = 0.4f;
+        CSealCtrl *sc = (CSealCtrl *)seal->m_control;
+        CSealCtrlAi *sai = sc->GetSealCtrlAi();
+
+        sc->SetGoalPos(GOAL_MOVE, (mode & 1) ? &pos : 0, 3.0f);
+        sc->SetGoalDir(GOAL_MOVE, (mode & 2) ? &dir : 0, false);
+        sc->m_goal_timer.m_min = sc->m_goal_timer.m_timer = timeout;
+        sc->m_goal_timer.m_range = 0.0f;
+        sc->m_goal_tolerance = 1.0f;
+        if (sai) {
+            sai->SetAiMode((AI_MODE)5);
+            cmd->m_blocking = 1;
+        } else
+            cmd->SetBlocking(false);
+    }
 }
 
 /* running, when blocking, while the AI moves to its goal (OVL2 0x5D5B40) */
