@@ -9800,6 +9800,514 @@ extern "C" bool func_00558440(CAlertLevel *a, CSealCtrlAi *ai, CZSealBody *seal,
     return a->m_c == 0 && a->m_level == 1;
 }
 
+extern "C" {
+/* a cell's link and an action by its id (ai_maps.h's, OVL2 0x52D810; fts_action.cpp's, OVL1 0x2B4D80) */
+void *GetCellLink__7CAiMapsFRC9CAiMapLoc(CAiMaps *maps, const CAiMapLoc &loc);
+CNodeAction *GetActionById__11CNodeActionFUi(unsigned int id);
+/* the action state set up for a node action (OVL2 0x5F0180, the AI states') */
+void func_005F0180(CAiSAction *s, CSealCtrlAi *ai, CNodeAction *na, int mode);
+/* the path-recover state set up for a cell (OVL2 0x604340, the AI states' seal_aistate range) */
+void func_00604340(CAiSPathRecover *s, const CAiMapLoc *loc);
+/* the follow's constants (OVL2 data, read as variables) */
+extern float data_00650138;
+extern float data_006501A8;
+extern float data_006501B0;
+extern float data_006501B8;
+extern float data_006501C0;
+extern float data_006501C8;
+extern float data_006501D0;
+extern float data_0064FDA8;
+extern float data_0064FDC0;
+extern float data_0066B200;
+extern unsigned char data_0066B2C8;
+extern unsigned char data_0066B1E8;
+}
+
+/* a valve's value (valve.h's CValve, the halfword at 4) */
+struct CPathValve {
+    unsigned char _0[4];
+    unsigned short m_value;   // 0x4
+};
+
+/* the pull along the facing toward a point, held within the speed (CreepTick's, the spring's rest a
+ * guarded static) */
+static inline float PullAlong(const CSealCtrl *c, float goal, float pos, float v)
+{
+    static float rest0 = data_00650130;
+    float hi;
+    float x;
+    float lo;
+    float speed = c->m_speed;
+
+    hi = speed;
+    lo = -speed;
+    x = rest0 * goal - (data_00650130 * -pos + data_00650134 * v);
+    x *= data_0066B0F8;
+    x += v;
+    _saturate(&x, lo, hi);
+    return x;
+}
+
+/* the pull across, held within the speed to 1 (CreepTick's second) */
+static inline float PullAcross(const CSealCtrl *c, float goal, float pos, float v)
+{
+    static float rest1 = data_00650128;
+    float top;
+    float z;
+    float speed = c->m_speed;
+
+    top = ai::_min(speed, data_0064FDA0);
+    z = rest1 * goal - (data_00650128 * pos + data_0065012C * v);
+    z *= data_0066B0F8;
+    z += v;
+    _saturate(&z, -top, top);
+    return z;
+}
+
+/* the SEAL at a cell, by the grid steps across and along (an inline: its two tests one bool) */
+static inline bool AtCell(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    static int x0 = 0;
+    static int y0 = 0;
+    int tol = 0;
+    int dx = a.x - b.x;
+    int dy = a.y - b.y;
+
+    return _close_enough(dx, x0, tol) && _close_enough(dy, y0, tol);
+}
+
+/* the pull toward a speed limit, held within the speed (an inline) */
+static inline float PullTo(const CSealCtrl *c, float limit, float v)
+{
+    float hi;
+    float x;
+    float lo;
+    float speed = c->m_speed;
+
+    x = -data_00650138 * (v - limit);
+    hi = speed;
+    x *= data_0066B0F8;
+    x += v;
+    lo = -speed;
+    _saturate(&x, lo, hi);
+    return x;
+}
+
+/* a cell's action there and another than one given (an inline bool) */
+static inline bool Differs(const CAiMap::action *a, const CAiMap::action *b)
+{
+    return a && a != b;
+}
+
+/* either of two flags (an inline: the `||` its own bool) */
+static inline bool Either(bool a, bool b)
+{
+    return a || b;
+}
+
+/* the AI's strafe allowed, by its bit or the global switch (an inline: the `||` its own bool) */
+static inline bool Strafes(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit3 || data_0066B1E8;
+}
+
+/* the alert raised and not yet taken (an inline bool: 0x558440's return) */
+static inline bool AlertHeld(const CAlertLevel *a)
+{
+    return a->m_c == 0 && a->m_level == 1;
+}
+
+/* the path's action state on top, or none (an inline) */
+static inline CAiSAction *TopAction(CSealCtrlAi *ai)
+{
+    CAiState *s = ai->GetAiState();
+
+    return (CAiSAction *)(s && s->m_state == AI_STATE_ACTION ? s : 0);
+}
+
+static inline CAiSPathRecover *TopRecover(CSealCtrlAi *ai)
+{
+    CAiState *s = ai->GetAiState();
+
+    return (CAiSPathRecover *)(s && s->m_state == AI_STATE_PATHRECOVER ? s : 0);
+}
+
+/* the path followed: still planning, the creep; no points, the path dropped and mode 1; at a cell with
+ * an action ahead -- a door, a ladder, a node action -- the action taken; climbing, the ladder mode;
+ * then the line to the next point walked, a blocked or met cell raising the alert, the leg tracked and
+ * each leg's end popping the next point; the throttles from the pull along and across the leg, or
+ * toward the goal's direction, and the fudge velocity's push back onto the leg (OVL2 0x567900, SOCOM
+ * 1's PathFollowTick, CSealCtrlAi::PreTick's mode-3 arm) */
+void CSealCtrlAi::PathFollowTick(float dT)
+{
+    CAiPath *path = (CAiPath *)&m_path;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CPnt3D *pos = &seal->m_posW;
+    CAiMapLoc *here = &seal->m_mapLocValid;
+
+    if (path->IsPlanning()) {
+        StopThrottles(false);
+        CreepTick(dT, true);
+        return;
+    }
+    if (!path->HasPoints()) {
+        func_0056C080(this, path, here);
+        StopThrottles(false);
+        SetAiMode((AI_MODE)1);
+        return;
+    }
+
+    CAiPath::point *cur = &path->m_points[path->m_points.size() - 1];
+    CAiPath::point *next = &path->m_points[path->m_points.size() - 2];
+    CAiCell *cell = AiMaps.GetCell(cur->m_loc);
+
+    if (!cell) {
+        path->Clear();
+        func_0056C080(this, path, here);
+        StopThrottles(false);
+        SetAiMode((AI_MODE)1);
+        return;
+    }
+
+    bool same = true;
+
+    if (cur->m_loc.m_mapid != here->m_mapid)
+        same = false;
+
+    int delta = AiMaps.GetLocationDelta(*here, cur->m_loc);
+    bool last = path->m_points.size() == 1;
+
+    if (cell->HasAction() && !last) {
+        CAiMap::action *act = (CAiMap::action *)GetCellAction__7CAiMapsFRC9CAiMapLoc(&AiMaps, cur->m_loc);
+
+        switch (act->m_type) {
+        case 7:
+            if (act->m_state == 0) {
+                StopThrottles(false);
+                return;
+            }
+            break;
+        case 4:
+            if (next && (delta < 2 || !same)) {
+                bool link = GetCellLink__7CAiMapsFRC9CAiMapLoc(&AiMaps, cur->m_loc) != 0;
+                CAiMap::action *nact = (CAiMap::action *)GetCellAction__7CAiMapsFRC9CAiMapLoc(&AiMaps, next->m_loc);
+                unsigned char go;
+
+                if (link) {
+                    go = Differs(nact, act);
+                    if (!go) {
+                        CAiMap::action *hact = (CAiMap::action *)GetCellAction__7CAiMapsFRC9CAiMapLoc(&AiMaps, *here);
+
+                        if (nact && hact && hact != nact)
+                            go = true;
+                    }
+                } else
+                    go = true;
+                if (go) {
+                    float alt = pos->y;
+                    unsigned int flags = 1;
+                    bool ok = AiMaps.GetAltitude(next->m_loc, alt);
+                    float dy = alt - pos->y;
+
+                    if (!link && ok && fabsf(dy) < data_006501A8)
+                        go = false;
+                    if (go) {
+                        if (!(dy <= 0.0f))
+                            flags |= 8;
+                        else
+                            flags |= 0x10;
+                        if (m_do_aimap_collide)
+                            flags |= 0x80000;
+                        StopThrottles(false);
+                        m_448 = flags;
+                        m_440 = (unsigned int)cell;
+                        m_444 = (CAiLadderLeg *)act;
+                        SetAiMode((AI_MODE)7);
+                        return;
+                    }
+                }
+            }
+            break;
+        case 1: {
+            CNodeAction *na = GetActionById__11CNodeActionFUi(act->m_actionId);
+
+            if (na && next && ((CPathValve *)na->m_valve)->m_value == 0) {
+                unsigned int mode = 0;
+
+                if (AiStateIs(AI_STATE_ACTION)) {
+                    CAiSAction *s = TopAction(this);
+
+                    if (s->m_phase < 5 && s->m_58 != na)
+                        mode = 3;
+                }
+                if (PushAiState(AI_STATE_ACTION, mode)) {
+                    CAiSAction *s = TopAction(this);
+
+                    func_005F0180(s, this, na, 1);
+                    s->SetFlags(2, 0);
+                    s->m_active = true;
+                    if (GetAiAware() == AIA_UNAWARE && !IsNavySeal() && !(seal->m_team & 0x20000)) {
+                        m_61c = next->m_loc;
+                        m_620 = cur->m_loc;
+                    }
+                    return;
+                }
+                StopThrottles(false);
+                return;
+            }
+            break;
+        }
+        case 0:
+        case 2:
+        case 3:
+        case 5:
+        case 6:
+            break;
+        }
+    } else if (*here == m_61c) {
+        CAiMap::action *act = (CAiMap::action *)GetCellAction__7CAiMapsFRC9CAiMapLoc(&AiMaps, m_620);
+
+        m_61c = CAiMapLoc::invalid;
+        if (act && act->m_type != 4) {
+            CNodeAction *na = GetActionById__11CNodeActionFUi(act->m_actionId);
+
+            if (na && ((CPathValve *)na->m_valve)->m_value == 1 && PushAiState(AI_STATE_ACTION, 0)) {
+                CAiSAction *s = TopAction(this);
+
+                func_005F0180(s, this, na, 0);
+                AiMaps.GetCellCenter(*here, &s->m_60);
+                s->SetFlags(2, 0);
+                s->m_active = true;
+                return;
+            }
+        }
+    }
+    if (func_0054F6E0(seal, true, true, true)) {
+        float y = m_entity->m_posW.y;
+        unsigned int flags;
+
+        if (next) {
+            float alt;
+
+            AiMaps.GetAltitude(next->m_loc, alt);
+            if (!(alt <= y))
+                flags = 8;
+            else
+                flags = 0x10;
+        } else
+            flags = 0x10;
+        if (m_do_aimap_collide)
+            flags |= 0x80000;
+        StopThrottles(false);
+        m_448 = flags;
+        SetAiMode((AI_MODE)7);
+        return;
+    }
+
+    float limit = m_speed;
+
+    if (last && m_3f4 != 6)
+        limit = 0.0f;
+    else if (cur->m_flags & 1)
+        limit = 0.0f;
+    else if (cur->m_flags & 2)
+        limit = 0.35f;
+    if (!delta || AtCell(*here, cur->m_loc)) {
+        RouteLegBack(this);
+        PathFollowTick(dT);
+        return;
+    }
+
+    SEAL_LINEWALK w;
+
+    func_0056A130(this, cur->m_loc, &w, 30.0f);
+    if (w.m_8 && seal->m_restrained && PushAiState(AI_STATE_PATHRECOVER, 0)) {
+        CAiSPathRecover *s = TopRecover(this);
+
+        func_00604340(s, &cur->m_loc);
+        s->SetFlags(1, 0);
+        s->m_active = true;
+        return;
+    }
+    if (w.m_metid != CEntity::invalidId && func_00569550(this, w.m_metid)) {
+        StopThrottles(true);
+        return;
+    }
+
+    CAlertLevel *alert = (CAlertLevel *)&m_stamp;
+
+    if (w.m_blocked)
+        func_00558030(alert, this, &w.m_metloc, true, dT);
+    else if (!data_0066B2C8 && w.m_met) {
+        CEntity *met = func_00569AA0(m_entity, &w.m_metloc);
+
+        if (met)
+            func_00558440(alert, this, (CZSealBody *)met, dT, true);
+    }
+    if (AlertHeld(alert) && alert->m_amount < 1.0f) {
+        StopThrottles(true);
+        return;
+    }
+
+    CPnt3D *to = &m_leg_to;
+    const CMatrix *m = &m_entity->m_node->m_matrix;
+    CPnt3D face(-m->m_matrix[2][0], 0.0f, -m->m_matrix[2][2]);
+
+    face.Normalize();
+
+    CPnt3D right(-face.z, 0.0f, face.x);
+    CPnt3D d = *to - *pos;
+    float dist = LenXZ(d);
+
+    if (dist != 0.0f) {
+        float inv = 1.0f / dist;
+
+        d.x *= inv;
+        d.z *= inv;
+    }
+
+    float t = 0.0f;
+    float side = 0.0f;
+    float along = DotP(face, d);
+    float off = side;
+    CPnt3D proj;
+    CPnt3D flat(pos->x, 0.0f, pos->z);
+    unsigned char onLeg = flat.DistToVector(&m_leg_from, &m_leg_to, &proj, &t);
+
+    if (onLeg) {
+        if (t == 0.0f)
+            onLeg = false;
+        else {
+            CPnt3D v = proj - flat;
+
+            v.Scale(1.0f / t, &v);
+            side = -DotP(right, v);
+            off = t * (side >= 0.0f ? 1.0f : -1.0f);
+            v = m_leg_from - proj;
+            m_leg_done = LenXZ(v);
+        }
+    }
+
+    static float near = 0.5f + data_006501B0;
+
+    if (onLeg && 0.1f * dist < (float)cur->m_width && t <= data_006501B0) {
+        RouteLegBack(this);
+        PathFollowTick(dT);
+        return;
+    }
+    if ((last && dist <= m_pathTolerance) || dist < data_006501B8) {
+        RouteLegBack(this);
+        PathFollowTick(dT);
+        return;
+    }
+    if (m_leg_dot != 0.0f && !(m_leg_dot <= 0.0f) && along < 0.0f &&
+        (delta < 2 || (next && AiMaps.CanTravelLine(*here, next->m_loc, 0)))) {
+        RouteLegBack(this);
+        PathFollowTick(dT);
+        return;
+    }
+    m_leg_dot = along;
+    m_strafe_time += dT;
+
+    float thr[3] = { 0.0f };
+    bool alerted = Masked(m_stamp.m_8, 0);
+    bool slow = false;
+
+    if (IsNavySeal() && m_look_mode == 9) {
+        static float slowSpeed = data_0064FDC0;
+
+        if (m_speed <= slowSpeed && m_stance != STANCE_PRONE)
+            slow = true;
+    }
+
+    bool turn = true;
+
+    if (!(m_aibit2 || slow)) {
+        bool v = m_goal_type == 4;
+
+        if (v) {
+            v = m_goal_dir_valid != 0;
+            if (!v)
+                v = m_goal_pos_valid != 0;
+        }
+        if (v)
+            v = (m_stateStack.m_14 & 2) != 0;
+        if (!v)
+            turn = false;
+    }
+
+    bool strafe = false;
+    bool ok = false;
+
+    bool quiet = !(alerted ? true : false);
+
+    if (quiet) {
+        if (Strafes(this))
+            ok = true;
+    }
+    if (ok && onLeg)
+        strafe = true;
+    if (strafe) {
+        float goal = func_005698A0(this);
+        float v = m_throttle[1];
+
+        thr[1] = fabs(side) * PullAcross(this, goal, off, v);
+
+        float len = m_leg_len - m_leg_done;
+
+        d = *to - proj;
+        d.y = 0.0f;
+        if (len != 0.0f)
+            d.Scale(1.0f / len, &d);
+        onLeg = false;
+    }
+
+    float dot = 0.0f;
+
+    if (turn && m_goal_dir_valid) {
+        float ahead = dist * along;
+        float across = dist * DotP(right, d);
+
+        thr[0] = PullAlong(this, 0.0f, ahead, m_throttle[0]);
+        thr[1] = PullAcross(this, 0.0f, -across, m_throttle[1]);
+        d = m_goal_dir;
+        thr[2] = ComputeTurnThrottle(&face, &d, &dot);
+    } else {
+        thr[2] = ComputeTurnThrottle(&face, &d, &dot);
+        if (!(dist <= data_006501C8) || !(along < data_006501C0) || ((CZSealBody *)m_entity)->m_state == 4) {
+            if (limit == 0.0f)
+                thr[0] = PullAlong(this, 0.0f, dist, m_throttle[0]);
+            else
+                thr[0] = PullTo(this, limit, m_throttle[0]);
+        }
+        float push;
+
+        if (dot < data_0066B200) {
+            float lo = -data_006501D0;
+
+            _saturate(&thr[0], lo, data_006501D0);
+        }
+        if (onLeg && !(t <= near)) {
+            CPnt3D dir;
+
+            proj.SubXZ(pos, &dir);
+            dir.y = 0.0f;
+            dir.Normalize();
+
+            CPnt3D fv = m_fudge_velM;
+            push = data_0066B100 * (DotP(right, dir) * t);
+            float lo = -data_0064FDA8;
+
+            _saturate(&push, lo, data_0064FDA8);
+            fv.x += push;
+            SetFudgeVelM(&fv);
+        }
+    }
+    SetThrottle(1, thr[1]);
+    SetThrottle(2, thr[2]);
+    SetThrottle(0, thr[0]);
+}
+
 /* whether a map's cell (its first layer's) lies inside: CAiMap::GetCell inlined one level, its pieces
  * the calls ai.h names (OVL2 0x5561C0, new in SOCOM II: the grenade state's Tick, 0x565460 and the
  * AI states call it; the name unknown) */
@@ -9950,8 +10458,3 @@ extern "C" void func_00567340(CEntityCtrl *ctrl, unsigned int axis, float value)
     ctrl->m_throttle[axis] = value;
 }
 
-/* the template tail's other instance, explicit until its callers are written: _close_enough over ints
- * (OVL2 0x575CB0: 0x567900 calls it twice, as UpdateAiMapLoc does) -- _max<f> (0x575C50), the tail's first,
- * comes with seal_control.cpp's caller, _min<f> (0x575C80) with CSealCtrl::CreepTick's: an explicit
- * instantiation in the unit makes it auto-inline at the call */
-template bool _close_enough<int>(const int &, const int &, const int &);

@@ -1489,7 +1489,11 @@ public:
     /* the walk along the leg: how far is done, a word, the time since the side step was last picked
      * and the side step itself (0x5698A0 reads them as floats, 0x56C080 clears them; the names ours) */
     float m_leg_done;   // 0x608
-    unsigned int m_60c;   // 0x60c
+    union {
+        unsigned int m_60c;   // 0x60c
+        /* the facing's agreement with the leg as the follow last saw it (PathFollowTick; the name ours) */
+        float m_leg_dot;   // 0x60c
+    };
     float m_strafe_time;   // 0x610
     float m_strafe;   // 0x614
     CAiMapLoc m_leg_cell;   // 0x618
