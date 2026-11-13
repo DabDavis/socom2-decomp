@@ -79,7 +79,7 @@ void func_00645290(RT_FRAG_BUF *pBuf, unsigned int nSeq, void *pData, unsigned i
         pSlot->nLength = 0;
         pBuf->nCount--;
     }
-    if ((nSeq & 0x40000000) && ((d = nIndex - (pBuf->nLatest & RT_FRAG_SEQ)) & 0x40))
+    if ((nSeq & 0x40000000) && ((nIndex - (pBuf->nLatest & RT_FRAG_SEQ)) & 0x40))
         pBuf->nLatest = nSeq;
     pSlot->nSeq = nSeq;
     if (nLength == 0)
