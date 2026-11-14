@@ -511,8 +511,13 @@ void Draw3DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
  * unit's `as=` line gives the map's CPnt4D name): 4-aligned with an implicit copy, the callee
  * copies each into its frame through four FPU registers (lwc1/swc1, as SOCOM 1's 0x245930 does)
  * -- zmath.h's 16-aligned CPnt4D copies with lq/sq (0xD4 against 0x12C), and with zparticle.h's
- * written copy constructor the callee copies nothing (the MSL headers' round 17 survey) */
+ * written copy constructor the callee copies nothing (the MSL headers' round 17 survey). The port
+ * builds no `as=` rename into a tree unit's object, so it defines the map's signature itself */
+#if Z_PORT
+void RenderLineWorld(CPnt4D p0, CPnt4D p1, CPnt4D c0, CPnt4D c1)
+#else
 void RenderLineWorld(PNT4D p0, PNT4D p1, PNT4D c0, PNT4D c1)
+#endif
 {
     if (clip3DLine((CPnt4D *)&zdb::CWorld::m_world->m_camera->m_ClipSet, (CPnt4D *)&p0, (CPnt4D *)&p1)) {
         if (c0.w >= 0.9921875f && c1.w >= 0.9921875f)

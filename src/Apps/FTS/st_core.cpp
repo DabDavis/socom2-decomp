@@ -1037,7 +1037,18 @@ bool CCoreState::Tick(float dT)
         if (!theReco.m_running && !m_hud->PauseGame())
             m_hud->m_flashfx.Tick(dT);
         m_hud->m_flashfx.Draw(cam);
+#if Z_PORT
+        /* the port: through the table, as MW calls it (0x1EC380) -- the member is the HUD's
+         * CZPauseTest (hud_main.cpp), not this view: a call on the member object itself the host
+         * binds to CTickItem::Draw */
+        {
+            CTickItem *item = &m_hud->m_18900;
+
+            item->Draw(cam);
+        }
+#else
         m_hud->m_18900.Draw(cam);
+#endif
         func_0022D590()->Draw(cam);
         zdb::CVisual::AlphaEnable(false);
     } else {

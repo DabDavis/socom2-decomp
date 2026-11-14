@@ -289,7 +289,7 @@ public:
     virtual void MyTick(float dT);
     virtual const char *GetReaderFileName();
     virtual int Slot14();   /* SOCOM II's, before PrepControls (the name ours) */
-    virtual void PrepControls(CTextureRelocMgr *reloc);
+    virtual void PrepControls(zdb::CTextureRelocMgr *reloc);   /* 0x1F3B30, zdb's (zui.cpp's) */
     /* a frame of the menu (SOCOM 1's; 0x3654C0, named by SOCOM 1's calls: the UI's round 27) */
     void Tick(float dT);
     void Draw2dOnly();
