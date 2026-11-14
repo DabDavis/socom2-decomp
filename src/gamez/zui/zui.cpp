@@ -301,6 +301,9 @@ public:
     /* the menu's frame and the pad's input (SOCOM 1's) */
     void Tick(float dT);
     void HandlePad(const CPad *pad);
+    /* the menu's planes drawn (SOCOM 1's) */
+    void Draw2dOnly();
+    void DrawForeplane();
     /* the pop-up is showing (ours: the tick holds the keyboard's input while it is) */
     bool PopupShowing() { return m_popupnode && m_popupnode->m_active; }
     /* a design object's control made in the menu's font, with a node of its own under the node it
@@ -847,6 +850,39 @@ void CGameMenu::Clear()
     zUIScheduler.ClearFreeList(true);
     theUIVarManager.CollectGarbage();
     m_has_mpeg_background = false;
+}
+
+/* the render pipe, as far as the menu's planes go (zrndr_pipe.cpp's CPipe: its node at 0x630 and
+ * its simpletrans flag at 0x711, which fts_state.h calls the UI node and the UI's rendering; at the
+ * same offsets on the host -- the class has no virtuals) */
+class CPipe {
+public:
+    void RenderUiNode(zdb::CNode *node);
+
+    unsigned char _0[0x630];
+    zdb::CNode *m_uiNode;   // 0x630
+    unsigned char _634[0x711 - 0x634];
+    unsigned char m_renderingUi;   // 0x711
+};
+extern CPipe thePipe;
+
+/* the menu's 2D only: its own node drawn as the UI, the backplane the pipe's node (SOCOM 1's;
+ * written for the port, M3: its draft passed `this` as the node, MW's m_nodeTop at 0) */
+void CGameMenu::Draw2dOnly()
+{
+    thePipe.m_uiNode = m_pBackplaneNode;
+    thePipe.m_renderingUi = 1;
+    thePipe.RenderUiNode(&m_nodeTop);
+    thePipe.m_renderingUi = 0;
+}
+
+/* the foreplane drawn as the UI (SOCOM 1's; written for the port, M3: its draft read MW's 0xC8) */
+void CGameMenu::DrawForeplane()
+{
+    thePipe.m_uiNode = m_pForeplaneNode;
+    thePipe.m_renderingUi = 1;
+    thePipe.RenderUiNode(m_pForeplaneNode);
+    thePipe.m_renderingUi = 0;
 }
 
 /* a pad (zinput.h's CPad, which this unit cannot include beside zui_spec.h: each button's state and
