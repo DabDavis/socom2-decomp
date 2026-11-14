@@ -6991,7 +6991,7 @@
 0x0037C100 0x8 Get2DVisual__9C2DVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C110 0x70 __dt__11CScrollTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C180 0x14 SetMapOffset__9CPlainBmpFii  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact
-0x0037C1A0 0x8 func_0037C1A0  # OVL1
+0x0037C1A0 0x8 UpdateUIVar__9CPlainBmpFP11CUIVariable  # OVL1; the port M2 lane: slot +0x80 of CPlainBmp's table 0x407950 (the slot after the tables) and, through the thunk 0x37D100, of its UIVarMixin table; empty (zui_2d.cpp)
 0x0037C1B0 0x70 __dt__11CRadioStripFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C220 0xA0 DrawBackground__9C2DButtonFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C2C0 0x24 SetBackgroundAlpha__9C2DButtonFf  # OVL1; split by the integrator: a 0x24-byte virtual call (slot 0x34 through the object at +0x1A0, the float scaled by 128), padded to 0x37C2F0; s1:vtable (the HUD lane: s1vtables' pairing; the background at 0x1A0 given 128 times the alpha)
@@ -7036,7 +7036,7 @@
 0x0037D0D0 0x8 @192@__dt__9CCheckBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CCheckBoxFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0E0 0x8 @192@UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9C2DButtonFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0F0 0x8 @192@__dt__11CRadioStripFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37C1B0` ~CRadioStrip, `addiu a0,a0,-192`)
-0x0037D100 0x8 func_0037D100  # OVL1
+0x0037D100 0x8 @128@UpdateUIVar__9CPlainBmpFP11CUIVariable  # OVL1; the port M2 lane: MW's this-adjusting thunk (j 0x37C1A0, a0 -= 0x80), slot +0xC of CPlainBmp's UIVarMixin table 0x407950+0x70 (zui_2d.cpp)
 0x0037D110 0x8 @128@__dt__12CPopUpDialogFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x27C8D0` ~CPopUpDialog, `addiu a0,a0,-128`)
 0x0037D120 0x8 @152@__dt__11CScrollTextFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37C110` ~CScrollText, `addiu a0,a0,-152`)
 0x0037D130 0x8 @152@UpdateUIVar__8C2DClockFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x36B0A0` C2DClock::UpdateUIVar, `addiu a0,a0,-152`)

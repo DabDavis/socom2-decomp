@@ -154,8 +154,8 @@ public:
         UpdateUIVar(var);
     }
     /* the variable changed (an override takes a new primary slot after all the tables, so the
-     * secondary tables' offsets stand) */
-    virtual void UpdateUIVar(CUIVariable *var);
+     * secondary tables' offsets stand). Pure: the mixin's table 0x4050B0 holds 0 in its slot */
+    virtual void UpdateUIVar(CUIVariable *var) = 0;
 
     CUIVariable *m_uivar;   // 0x4
 };   // 8 bytes
@@ -241,6 +241,9 @@ public:
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void SetMapOffset(int x, int y);
+    /* the variable ignored (0x37C1A0, empty: the slot after the tables, +0x80, and the mixin's
+     * through the thunk 0x37D100) */
+    virtual void UpdateUIVar(CUIVariable *var);
     void SetPulse(float period);
     void LoadSpec(const CImageSpec &spec, zdb::CTexHandle *tex);
 
@@ -576,9 +579,13 @@ public:
     /* slot 12: the caption ticks with the button (0x37C600) */
     virtual void Tick(float dT) { _strCaption.Tick(dT); }
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
-    virtual void SetBackgroundAlpha(float a);
-    virtual void Slot27();
-    virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    /* pure, as the table 0x407820 holds them (0 in slots 0x50, 0x54 and 0x70-0x78): C2D's
+     * SetActive and SetNormal made pure again, and the three new */
+    virtual void SetActive() = 0;
+    virtual void SetNormal() = 0;
+    virtual void SetBackgroundAlpha(float a) = 0;
+    virtual void Slot27() = 0;
+    virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr) = 0;
     void SetCaptionStyle(const CPnt3D &color, bool pulse, float time, float min, float max);
     /* the text's place in the button (inline: the pop-up's command, y loaded first; the name ours) */
     void SetTextOffset(int x, int y)
@@ -676,6 +683,8 @@ public:
     virtual ~C2DButton();
     /* slot 26: the background's alpha, a fraction of 128 (0x37C2C0) */
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
+    /* slot 27 (0x370C20, its draft's; the five button tables hold it) */
+    virtual void Slot27();
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void SetCanHandleInput(bool val);
     virtual bool HandlePad(const CPad *pad, int port);
@@ -1330,6 +1339,12 @@ void CPlainBmp::Tick(float dT)
             m_curtrans += 6.2831855f;
         SetTrans(64.0f + 64.0f * sinf(m_curtrans));
     }
+}
+
+/* the variable ignored (0x37C1A0: the slot after the tables, +0x80 of 0x407950, and the mixin's
+ * slot through the thunk 0x37D100) */
+void CPlainBmp::UpdateUIVar(CUIVariable *var)
+{
 }
 
 /* slot 25: moved, keeping its size */
