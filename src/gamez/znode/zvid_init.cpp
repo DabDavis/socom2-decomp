@@ -321,6 +321,25 @@ extern "C" void func_003B28D0(GS_STOREIMAGE_REGS *si)
 #define ZV_VIF1_FIFO ((volatile u_long128 *)0x10005000)
 #define ZV_GS_CSR ((volatile unsigned long *)0x12001000)
 #define ZV_GS_BUSDIR ((volatile unsigned long *)0x12001040)
+#if Z_PORT
+/* the port's (M3): these registers through the direct calls, not the trap (zport.h's Z_REG) */
+#undef ZV_D1_CHCR
+#define ZV_D1_CHCR Z_REG(unsigned int, 0x10009000)
+#undef ZV_D1_MADR
+#define ZV_D1_MADR Z_REG(unsigned int, 0x10009010)
+#undef ZV_D1_QWC
+#define ZV_D1_QWC Z_REG(unsigned int, 0x10009020)
+#undef ZV_GIF_CTRL
+#define ZV_GIF_CTRL Z_REG(unsigned int, 0x10003000)
+#undef ZV_VIF1_STAT
+#define ZV_VIF1_STAT Z_REG(unsigned int, 0x10003C00)
+#undef ZV_VIF1_FBRST
+#define ZV_VIF1_FBRST Z_REG(unsigned int, 0x10003C10)
+#undef ZV_GS_CSR
+#define ZV_GS_CSR Z_REG(unsigned long, 0x12001000)
+#undef ZV_GS_BUSDIR
+#define ZV_GS_BUSDIR Z_REG(unsigned long, 0x12001040)
+#endif
 
 /* the quadword written into VIF1's FIFO when the GS never finishes (0x3E1430, initialised data; not
  * named) */
@@ -1309,6 +1328,29 @@ struct sceGsDBuff {
 #define GS_DISPFB2 ((volatile unsigned long *)0x12000090)
 #define GS_DISPLAY2 ((volatile unsigned long *)0x120000A0)
 #define GS_BGCOLOR ((volatile unsigned long *)0x120000E0)
+#if Z_PORT
+/* the port's (M3): these registers through the direct calls, not the trap (zport.h's Z_REG) */
+#undef GS_PMODE
+#define GS_PMODE Z_REG(unsigned long, 0x12000000)
+#undef GS_EXTWRITE
+#define GS_EXTWRITE Z_REG(unsigned long, 0x120000D0)
+#undef T0_COUNT
+#define T0_COUNT Z_REG(unsigned int, 0x10000000)
+#undef GS_SMODE2
+#define GS_SMODE2 Z_REG(unsigned long, 0x12000020)
+#undef GS_DISPFB1
+#define GS_DISPFB1 Z_REG(unsigned long, 0x12000070)
+#undef GS_DISPLAY1
+#define GS_DISPLAY1 Z_REG(unsigned long, 0x12000080)
+#undef GS_DISPFB2
+#define GS_DISPFB2 Z_REG(unsigned long, 0x12000090)
+#undef GS_DISPLAY2
+#define GS_DISPLAY2 Z_REG(unsigned long, 0x120000A0)
+#undef GS_BGCOLOR
+#define GS_BGCOLOR Z_REG(unsigned long, 0x120000E0)
+#endif
+
+
 
 /* the MPEG player's tick between frames (zmpeg.h's class: only the call) */
 class CMPEG {

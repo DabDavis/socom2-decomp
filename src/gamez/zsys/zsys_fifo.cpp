@@ -42,6 +42,44 @@ typedef struct {
 #define D_CTRL ((volatile unsigned int *)0x1000E000)
 #define D_RBSR ((volatile unsigned int *)0x1000E040)
 #define D_RBOR ((volatile unsigned int *)0x1000E050)
+#if Z_PORT
+/* the port's (M3): these registers through the direct calls, not the trap (zport.h's Z_REG) */
+#undef D1_CHCR
+#define D1_CHCR Z_REG(unsigned int, 0x10009000)
+#undef D1_MADR
+#define D1_MADR Z_REG(unsigned int, 0x10009010)
+#undef D1_QWC
+#define D1_QWC Z_REG(unsigned int, 0x10009020)
+#undef D1_TADR
+#define D1_TADR Z_REG(unsigned int, 0x10009030)
+#undef D2_CHCR
+#define D2_CHCR Z_REG(unsigned int, 0x1000A000)
+#undef D2_TADR
+#define D2_TADR Z_REG(unsigned int, 0x1000A030)
+#undef D8_CHCR
+#define D8_CHCR Z_REG(unsigned int, 0x1000D000)
+#undef D8_MADR
+#define D8_MADR Z_REG(unsigned int, 0x1000D010)
+#undef D8_QWC
+#define D8_QWC Z_REG(unsigned int, 0x1000D020)
+#undef D8_SADR
+#define D8_SADR Z_REG(unsigned int, 0x1000D080)
+#undef D9_CHCR
+#define D9_CHCR Z_REG(unsigned int, 0x1000D400)
+#undef D9_MADR
+#define D9_MADR Z_REG(unsigned int, 0x1000D410)
+#undef D9_QWC
+#define D9_QWC Z_REG(unsigned int, 0x1000D420)
+#undef D9_SADR
+#define D9_SADR Z_REG(unsigned int, 0x1000D480)
+#undef D_CTRL
+#define D_CTRL Z_REG(unsigned int, 0x1000E000)
+#undef D_RBSR
+#define D_RBSR Z_REG(unsigned int, 0x1000E040)
+#undef D_RBOR
+#define D_RBOR Z_REG(unsigned int, 0x1000E050)
+#endif
+
 
 #define D8_CHCR_F ((tD_CHCR *)0x1000D000)
 #define D_CTRL_F ((tD_CTRL *)0x1000E000)
@@ -189,6 +227,48 @@ void zSysFifoSetSync(bool sync)
     s_fifoSync = sync;
 }
 
+#if Z_PORT
+/* the port's (M3): the same kick through the platform's direct register calls -- the original's eight
+ * register accesses each trapped (two signals, two mprotects), ~2,000 kicks a mission frame */
+void zSysFifoKick(u_long128 *packet, unsigned int qwc)
+{
+    unsigned int tadr, madr, remain, size;
+    unsigned int drain = (unsigned int)mfifoDrainTADR;
+
+    sprBeingKicked = packet;
+    if ((unsigned int)packet < 0x70000000 + 2 * SPR_PACKET_SIZE) {
+        u_long128 *tail = packet + qwc;
+
+        if (((unsigned int *)tail)[-4] & 0x30000000) {
+            *(unsigned long *)tail = 0x1111111110000000;
+            ((unsigned long *)tail)[1] = 0;
+            qwc++;
+        }
+    }
+    size = qwc * 16;
+    if (!s_fifoSync) {
+        do {
+            while ((tadr = z_ee_reg_read(drain)) == 0)
+                ;
+            madr = z_ee_reg_read(0x1000D010);
+            remain = tadr == madr ? 0x80000 : (tadr + 0x80000 - madr) & 0x7FFF0;
+        } while (remain <= size);
+    } else if (z_ee_reg_read(0x10009000) & 0x100) {
+        do {
+            while ((tadr = z_ee_reg_read(drain)) == 0)
+                ;
+            madr = z_ee_reg_read(0x1000D010);
+        } while (tadr != madr);
+    }
+    while (z_ee_reg_read(0x1000D400) & 0x100)
+        puts("D9 Busy");
+    while (z_ee_reg_read(0x1000D000) & 0x100)
+        puts("D8 Busy");
+    z_ee_reg_write(0x1000D080, (unsigned int)packet);
+    z_ee_reg_write(0x1000D020, qwc);
+    z_ee_reg_write(0x1000D000, z_ee_reg_read(0x1000D000) | 0x100);
+}
+#else
 void zSysFifoKick(u_long128 *packet, unsigned int qwc)
 {
     static unsigned int tadr;
@@ -229,6 +309,7 @@ void zSysFifoKick(u_long128 *packet, unsigned int qwc)
     *D8_QWC = qwc;
     D8_CHCR_F->STR = 1;
 }
+#endif
 
 _word128 *CSPR::Kick(_word128 *end, bool getNew)
 {

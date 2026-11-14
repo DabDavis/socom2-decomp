@@ -41,6 +41,12 @@ extern "C" {
  * Medius clock, rt_audio.c and rt_time_platform.c, divides it into milliseconds) */
 unsigned int z_ee_cop0_count(void);
 
+/* a register of the EE's read and written without the platform's trap (two signals and two mprotects
+ * an access): the device's refresh and its write work called directly. For the hot paths only --
+ * zsys_fifo.cpp's kick, ~2,000 a mission frame at eight accesses each (M3's 4.5 frames/s) */
+unsigned int z_ee_reg_read(unsigned int addr);
+void z_ee_reg_write(unsigned int addr, unsigned int value);
+
 /* ---- VU0 ------------------------------------------------------------------------------------ */
 
 /* VU0's register file: what macro-mode code leaves for a micro program or for the next function,

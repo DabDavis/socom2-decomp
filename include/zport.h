@@ -89,6 +89,38 @@ struct z_qword { unsigned int w[4]; } __attribute__((aligned(16)));
  * its non-IEEE answers (M1) */
 #include "zport_ee.h"
 
+#ifdef __cplusplus
+/* a hot unit's register macro through the platform's direct calls instead of its trap (M3's frame
+ * rate): `#define D9_CHCR Z_REG(unsigned int, 0x1000D400)` keeps `*D9_CHCR & 0x100`, `*D9_CHCR = 0x101`
+ * and `*D1_CHCR |= 0x100` as written. A 64-bit register's high word goes first, then the low word,
+ * whose write runs the device */
+typedef __typeof__(0ULL) z_u64;   /* (abi.h redefines `long` on the host) */
+template <class T> struct z_reg {
+    unsigned int a;
+    operator T() const
+    {
+        if (sizeof(T) == 8)
+            return (T)((z_u64)z_ee_reg_read(a + 4) << 32 | z_ee_reg_read(a));
+        return (T)z_ee_reg_read(a);
+    }
+    z_reg &operator=(T v)
+    {
+        if (sizeof(T) == 8)
+            z_ee_reg_write(a + 4, (unsigned int)((z_u64)v >> 32));
+        z_ee_reg_write(a, (unsigned int)v);
+        return *this;
+    }
+    z_reg &operator|=(T v) { return *this = (T)((T)*this | v); }
+    z_reg &operator&=(T v) { return *this = (T)((T)*this & v); }
+};
+template <class T> struct z_regp {
+    unsigned int a;
+    z_reg<T> operator*() const { return z_reg<T>{a}; }
+    operator volatile T *() const { return (volatile T *)a; }
+};
+#define Z_REG(T, addr) (z_regp<T>{addr})
+#endif
+
 #else /* the PS2: the original tokens */
 
 #define Z_QWORD_TYPEDEF(base, name) typedef base name __attribute__((mode(TI)))
