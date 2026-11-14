@@ -1403,6 +1403,72 @@ extern "C" void func_005B0420(CZSealBody *seal)
     seal->SetLanded(false);
 }
 
+/* the step's hit slots set from a hit, or their node cleared without one (OVL2 0x5B0BB0-0x5B0D30, after
+ * the probe's answer; the names unknown): the wall's held to (0x1120), the step's (0x1100), the wall's
+ * held to with no probe hit (0x1140, its polygon too), the last weapon hit (0x10E0); and the wall's hold
+ * with its two points (0x1090), dropped through 0x5B3890 without a hit. Written for the port, M3: the
+ * drafts wrote MW's offsets -- on the host 0x5483D0's hold read a float as its polygon */
+extern "C" void func_005B3890(CZSealBody *seal, int drop_now);
+
+extern "C" void func_005B0BB0(CZSealBody *seal, const zdb::IntersectStruct *hit)
+{
+    if (hit) {
+        seal->m_1120.m_pos = hit->m_pos;
+        seal->m_1120.m_norm = hit->m_norm;
+        seal->m_1120.m_node = hit->m_node;
+        return;
+    }
+    seal->m_1120.m_node = 0;
+}
+
+extern "C" void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit)
+{
+    if (hit) {
+        seal->m_1100.m_pos = hit->m_pos;
+        seal->m_1100.m_norm = hit->m_norm;
+        seal->m_1100.m_node = hit->m_node;
+        return;
+    }
+    seal->m_1100.m_node = 0;
+}
+
+extern "C" void func_005B0C70(CZSealBody *seal, zdb::IntersectStruct *hit)
+{
+    if (hit) {
+        seal->m_1140.m_pos = hit->m_pos;
+        seal->m_1140.m_norm = hit->m_norm;
+        seal->m_1140.m_node = hit->m_node;
+        seal->m_1140.m_poly = hit->m_poly;
+        return;
+    }
+    seal->m_1140.m_node = 0;
+}
+
+extern "C" void func_005B0CD0(CZSealBody *seal, zdb::IntersectStruct *hit)
+{
+    if (hit) {
+        seal->m_wephit.m_pos = hit->m_pos;
+        seal->m_wephit.m_norm = hit->m_norm;
+        seal->m_wephit.m_node = hit->m_node;
+        return;
+    }
+    seal->m_wephit.m_node = 0;
+}
+
+extern "C" void func_005B0D30(CZSealBody *seal, const zdb::IntersectStruct *hit, CPnt3D *a, CPnt3D *b)
+{
+    if (hit) {
+        seal->m_1090.m_pos = hit->m_pos;
+        seal->m_1090.m_poly = hit->m_poly;
+        seal->m_1090.m_norm = hit->m_norm;
+        seal->m_1090.m_node = hit->m_node;
+        seal->m_1090.m_from = *a;
+        seal->m_1090.m_to = *b;
+        return;
+    }
+    func_005B3890(seal, 1);
+}
+
 /* the intersection pool let go: each deleted, the array freed, the words cleared (OVL2 0x5B61A0, new
  * in SOCOM II; CCoreState::UnInit, CMPExitState::Init and CMission::ReOpen_Unload1 call it) */
 extern "C" void func_005B61A0()

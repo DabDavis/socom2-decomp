@@ -22,11 +22,12 @@ struct ZCAM_VIEW {
 };
 class CPipeCamera {
 public:
-    unsigned char _0[0x3b0];   // 0x0
+    /* (the host's offsets 0x10 on: zcamera.h's CCamera measured, its m_mtxSet at 0x300) */
+    unsigned char _0[Z_OFS(0x3b0, 0x3c0)];   // 0x0
     /* zcamera.h's m_mtxSet.mtxViewToScreen (SOCOM 1's at 0x380): the screen scale on its diagonal */
-    float m_viewToScreen[4][4];   // 0x3b0
-    ZCAM_VIEW *m_mtx;   // 0x3f0
-    unsigned char _3f4[0x520 - 0x3f4];   // 0x3f4
+    float m_viewToScreen[4][4];   // 0x3b0 (host 0x3c0)
+    ZCAM_VIEW *m_mtx;   // 0x3f0 (host 0x400)
+    unsigned char _3f4[Z_OFS(0x520, 0x530) - Z_OFS(0x3f4, 0x404)];   // 0x3f4
     /* zcamera.h's m_vuFogAlt: the altitude fog's two vectors as the VU takes them */
     CPnt4D m_vuFogAlt[2];   // 0x520
 };

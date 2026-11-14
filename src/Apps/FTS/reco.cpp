@@ -19,6 +19,7 @@
  * probe calling them from below, the value goes to a saved register and is moved back. */
 
 #include <stdio.h>
+#include "zport.h"
 #include <string.h>
 #include <vector>
 
@@ -134,9 +135,10 @@ public:
     int GetDepth() { return m_path.size(); }
     std::vector<int> &GetPath() { return m_path; }
 
-    unsigned char _0[0x750];
-    unsigned char m_state;   // 0x750
-    std::vector<int> m_path;   // 0x754
+    unsigned char _0[Z_OFS(0x750, 0x738)];
+    unsigned char m_state;   // 0x750 (host 0x738: hud_tcm.h's, measured)
+    unsigned char _751[Z_OFS(0x754, 0x74c) - Z_OFS(0x751, 0x739)];
+    std::vector<int> m_path;   // 0x754 (host 0x74c)
 };
 
 extern CTCM theTCM;
