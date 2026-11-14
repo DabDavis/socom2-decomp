@@ -114,7 +114,7 @@ void CGrid::gridAddNodeToGrids(CNode *node)
 
     CBBox box;
 
-    GridWorldBBox(node, *(CMatrix *)node, &box);
+    GridWorldBBox(node, static_cast<tag_NODE_PARAMS *>(node)->m_matrix, &box);
 
     float tx = 0.0001f * (box.m_max.x - box.m_min.x);
     int x0 = (int)(m_InvCellDim * (tx + (box.m_min.x - m_origin.x)));

@@ -14,6 +14,7 @@
 #ifndef ZPARTICLE_H
 #define ZPARTICLE_H
 
+#include <zport.h>
 #include <vector>
 #include <limits>
 #include <list>
@@ -225,7 +226,7 @@ public:
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
-    unsigned char _0[0x40];   // 0x0: tag_NODE_PARAMS
+    unsigned char _0[Z_OFS(0x40, 0x4c)];   // 0x0: tag_NODE_PARAMS (the host's: after the vptr, at 16)
     CBBox m_bbox;   // 0x40 (znode.h's)
     unsigned short m_type;   // 0x58: 2 for an instance of a model (znode.h's)
     unsigned char _5a[2];   // 0x5a
@@ -299,6 +300,9 @@ public:
     /* the eight corners' view test (zcamera.h's: 2 out of view) */
     unsigned char TestFOV(PNT4D *bbox8, unsigned int *clipWord, bool testGuardBand);
 
+#if Z_PORT
+    unsigned char _host0[16];   /* the host's CNode: its vtable pointer first, the 16-aligned matrix at 16 */
+#endif
     float m_matrix[4][4];   // 0x0: the node's matrix, its position the last row (CNode's)
 };
 /* the world, as much as the particles use (znode.h's class brings zmath.h's CPnt4D with it) */

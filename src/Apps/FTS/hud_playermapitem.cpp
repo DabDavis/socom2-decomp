@@ -14,7 +14,10 @@ class CEntityCtrl;
 namespace zdb {
 class CNode {
 public:
-    CMatrix m_matrix;   // 0x0
+#if Z_PORT
+    unsigned char _host0[16];   /* the host's: the vtable pointer first, tag_NODE_PARAMS at 16 */
+#endif
+    CMatrix m_matrix;   // 0x0 (host 0x10)
 };
 
 class CTexHandle {

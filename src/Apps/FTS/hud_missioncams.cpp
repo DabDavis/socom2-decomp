@@ -202,8 +202,8 @@ class CWorld {
 public:
     static CWorld *m_world;
 
-    unsigned char _0[0x5dc];
-    unsigned char m_night_mission;   // 0x5dc
+    unsigned char _0[Z_OFS(0x5dc, 0x5e8)];   /* the host's: CNode's vptr first, its 16-aligned base after */
+    unsigned char m_night_mission;   // 0x5dc (host 0x5e8)
     unsigned char _5dd[3];
     PNT4D m_lensfx_nvg;   // 0x5e0
     PNT4D m_lensfx_starlightscope;   // 0x5f0

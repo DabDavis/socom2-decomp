@@ -29,8 +29,8 @@ class CNode {
 public:
     char *GetName() { return m_name; }
 
-    unsigned char _0[0x90];
-    char *m_name;   // 0x90
+    unsigned char _0[Z_OFS(0x90, 0x9c)];   /* the host's: the vtable pointer first, tag_NODE_PARAMS at 16 */
+    char *m_name;   // 0x90 (host 0x9c)
 };
 
 /* a texture's size and a handle's texture (c2dbitmap.cpp's views) */
@@ -66,8 +66,8 @@ public:
 
 class CWorld {
 public:
-    unsigned char _0[0x128];
-    CCamera *m_camera;   // 0x128
+    unsigned char _0[Z_OFS(0x128, 0x134)];   /* the host's: CNode's vptr first, its 16-aligned base after */
+    CCamera *m_camera;   // 0x128 (host 0x134)
     static CWorld *m_world;
 };
 }

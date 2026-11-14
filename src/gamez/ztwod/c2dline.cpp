@@ -271,8 +271,8 @@ public:
 
 class CWorld {
 public:
-    unsigned char _0[0x128];
-    CCamera *m_camera;   // 0x128
+    unsigned char _0[Z_OFS(0x128, 0x134)];   /* the host's: CNode's vptr first, its 16-aligned base after */
+    CCamera *m_camera;   // 0x128 (host 0x134)
     static CWorld *m_world;
 };
 }

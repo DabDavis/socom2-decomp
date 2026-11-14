@@ -58,6 +58,12 @@ struct z_qword { unsigned int w[4]; } __attribute__((aligned(16)));
 /* a layout check `typedef char x[c ? 1 : -1]`: the EE's offsets are not the host's */
 #define Z_LAYOUT_OK(c) 1
 
+/* a unit's restatement of a class (its members at MW's offsets, the rest padding) padded to the
+ * host's offset instead: HOST is the real class's offset under the port's ABI (the Itanium vtable
+ * pointer first, 16-aligned bases, the port's tools/odrcheck.py measuring each restatement against
+ * the real class). `unsigned char _0[Z_OFS(0x128, 0x134)]` */
+#define Z_OFS(mw, host) (host)
+
 /* Metrowerks' intrinsics */
 #define Z_RSQRT(a, x) ((a) / __builtin_sqrtf(x))
 #define Z_MEMCPY __builtin_memcpy
@@ -81,6 +87,7 @@ struct z_qword { unsigned int w[4]; } __attribute__((aligned(16)));
 #define Z_VA_END(ap)
 
 #define Z_LAYOUT_OK(c) (c)
+#define Z_OFS(mw, host) mw
 
 #define Z_RSQRT(a, x) __rsqrt(a, x)
 #define Z_MEMCPY __memcpy

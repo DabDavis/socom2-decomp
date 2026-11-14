@@ -161,12 +161,17 @@ class ListItem {
 public:
     ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols);
 
+#if Z_PORT
+    void *m_vptr;   /* the host's: zui_2d.cpp's class has virtuals, the vtable pointer first (MW's at 0x2c) */
+#endif
     ActionItem m_action;   // 0x0
     ActionItem m_action2;   // 0x10
     char *m_text;   // 0x20
     bool m_24;   // 0x24
     void *m_impl;   // 0x28
-    int m_2c;   // 0x2c
+#if !Z_PORT
+    int m_2c;   // 0x2c: MW's vtable pointer
+#endif
 };
 
 /* the focus action's event name (ours: a literal in the list box's constructor; an array apart from the

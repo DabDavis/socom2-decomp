@@ -289,9 +289,17 @@ extern CPipe thePipe;
 
 class CGameMenu {
 public:
+#if Z_PORT
+    /* the host's offsets (zui.cpp's class under the Itanium ABI: its vtable pointer first, the
+     * 16-aligned m_nodeTop at 0x10, the class 0x900 bytes) */
+    unsigned char _0[0xe0];
+    zdb::CNode *m_pBackplaneNode;   // host 0xe4
+    unsigned char _c8[0x900 - 0xe8];
+#else
     unsigned char _0[0xc4];
     zdb::CNode *m_pBackplaneNode;   // 0xc4 (SOCOM 1's DWARF)
     unsigned char _c8[0x910 - 0xc8];
+#endif
 
     CGameMenu();
     virtual ~CGameMenu();
@@ -311,8 +319,12 @@ public:
     void RestartBackgroundMPEG(const char *name);   /* 0x366A00 */
     void HaltBackgroundMPEG();   /* 0x366B10 */
 
+#if Z_PORT
+} __attribute__((aligned(16)));
+#else
     unsigned char _914[0x920 - 0x914];
 };
+#endif
 
 class CExitMenu : public CGameMenu {
 public:

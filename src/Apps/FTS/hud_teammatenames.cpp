@@ -161,8 +161,8 @@ class CNode {
 public:
     bool Rendered(int frames);
 
-    unsigned char _0[0x5c];
-    unsigned char m_5c;   // 0x5c: bit 0, shown
+    unsigned char _0[Z_OFS(0x5c, 0x6c)];   /* the host's: the vtable pointer first, tag_NODE_PARAMS at 16 */
+    unsigned char m_5c;   // 0x5c (host 0x6c): bit 0, shown
 };
 }
 
@@ -216,8 +216,8 @@ struct CTeamNamesCamera {
 namespace zdb {
 class CWorld {
 public:
-    unsigned char _0[0x128];
-    CTeamNamesCamera *m_camera;   // 0x128
+    unsigned char _0[Z_OFS(0x128, 0x134)];   /* the host's: CNode's vptr first, its 16-aligned base after */
+    CTeamNamesCamera *m_camera;   // 0x128 (host 0x134)
 
     static CWorld *m_world;
 };

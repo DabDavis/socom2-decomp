@@ -135,6 +135,10 @@ public:
     CPlainBmp m_upArrow;        // 0x100
     CPlainBmp m_downArrow;      // 0x1a0
     bool m_240;                 // 0x240
+#if Z_PORT
+    unsigned char _241[15];     /* zui_2d.cpp's tail, which the host's ABI would otherwise lend to a
+                                 * derived class's members (CScrollText's m_250 at 0x230, not 0x224) */
+#endif
 };   // 0x250 bytes
 
 /* wrapped text scrolling by itself (SOCOM 1's CScrollText; SOCOM II's 0x270 bytes) */
@@ -201,8 +205,8 @@ public:
     /* set up from its spec (0x376BD0, zui_2d.cpp's) */
     void LoadSpec(const CButtonSpec &spec);
 
-    unsigned char _c8[0x440 - 0xc8];
-} __attribute__((aligned(16)));   // 0x440 bytes
+    unsigned char _c8[Z_OFS(0x440, 0x430) - 0xc8];   /* the host's size: zui_2d.cpp's class, 0x430 under the Itanium ABI */
+} __attribute__((aligned(16)));   // 0x440 bytes (host 0x430)
 
 /* a strip of choices (SOCOM 1's CRadioStrip; SOCOM II's 0x450 bytes) */
 class CRadioStrip : public C2DButton {

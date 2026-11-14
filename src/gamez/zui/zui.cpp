@@ -225,8 +225,8 @@ public:
     void SetPosition(float x, float y, float z);
     void SetName(const char *name);
 
-    unsigned char _0[0x5c];
-    unsigned int m_active : 1;   // 0x5c (znode.h's)
+    unsigned char _0[Z_OFS(0x5c, 0x68)];   /* the host's: after the vtable pointer, tag_NODE_PARAMS at 16 */
+    unsigned int m_active : 1;   // 0x5c (host 0x6c) (znode.h's)
     unsigned int m_5c : 31;
     virtual ~CNode();                                     /* +0x08 */
     virtual CNode *_Copy(CNode *to) const;
@@ -242,9 +242,13 @@ public:
     virtual bool Read(void *io);
     virtual bool SetActive(bool on);                      /* +0x38 */
     unsigned char _64[0x9c - 0x64];
-    float m_Opacity;   // 0x9c
+    float m_Opacity;   // 0x9c (host 0xa8)
     unsigned char _a0[0xc0 - 0xa0];
+#if Z_PORT
+} __attribute__((aligned(16)));   /* the host's: tag_NODE_PARAMS is 16-aligned, the class 0xd0 bytes */
+#else
 };
+#endif
 
 /* the world (znode.h's zdb::CWorld: only its root, the node models are added under) */
 class CWorld : public CNode {

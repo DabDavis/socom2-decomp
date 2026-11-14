@@ -542,7 +542,12 @@ void Destruction_Instance::Tick(float dT)
             m_node->SetRotation(&rot);
         }
         SetDiagonal(m, m_axis[0], m_axis[1], m_axis[2]);
+#if Z_PORT
+        /* the node's matrix: tag_NODE_PARAMS, at 16 on the host (after the vtable pointer), at 0 in MW */
+        sceVu0MulMatrix(m.m_matrix, *(float (*)[4][4])((char *)m_node + 16), m.m_matrix);
+#else
         sceVu0MulMatrix(m.m_matrix, *(float (*)[4][4])m_node, m.m_matrix);
+#endif
         m_node->m_Opacity = m_opacity;
         m_node->SetMatrix(&m);
     }

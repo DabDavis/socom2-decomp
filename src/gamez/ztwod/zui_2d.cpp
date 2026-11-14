@@ -2433,9 +2433,12 @@ public:
     void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
     CPnt3D GetPosition() const { return *(const CPnt3D *)m_matrix.m_matrix[3]; }
 
-    CMatrix m_matrix;   // 0x0
-    unsigned char _40[0x90 - sizeof(CMatrix)];
-    char *m_name;   // 0x90
+#if Z_PORT
+    unsigned char _host0[16];   /* the host's: the vtable pointer first, tag_NODE_PARAMS at 16 */
+#endif
+    CMatrix m_matrix;   // 0x0 (host 0x10)
+    unsigned char _40[Z_OFS(0x90, 0x8c) - sizeof(CMatrix)];
+    char *m_name;   // 0x90 (host 0x9c)
 };
 }
 
