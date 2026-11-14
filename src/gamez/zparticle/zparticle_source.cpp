@@ -48,6 +48,13 @@ void Source::SetActive(bool on)
     }
 }
 
+/* a source's live particles let go of (SOCOM II's, OVL1 0x329AA0: the live list's RemoveSource on
+ * it; the name ours) */
+extern "C" void func_00329AA0(Source *source)
+{
+    Instance::list.RemoveSource(source);
+}
+
 /* the source's collision box made (below) */
 extern "C" void func_0032AD20(Source *s);
 

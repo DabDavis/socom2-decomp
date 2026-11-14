@@ -284,6 +284,42 @@ static inline zdb::tag_ZVIS_FOV SourceFOV(const Source *s)
     return (zdb::tag_ZVIS_FOV)s->m_fovFlag;
 }
 
+/* the pool filled to n particles, each new one recycled into it (SOCOM II's, OVL1 0x327E40: the MP
+ * exit state's 2000; the name ours) */
+extern "C" void func_00327E40(int n)
+{
+    Instance *q = Instance::m_instance_pool.m_head;
+    int count = 0;
+
+    if (q)
+        while (q) {
+            q = q->m_next;
+            count++;
+        }
+    if (count < n)
+        while (count < n) {
+            Instance *p = new Instance;
+
+            if (p)
+                p->Recycle();
+            count++;
+        }
+}
+
+/* SOCOM 1's (0x327C70, slot 0x08 of the table 0x406A00, the class's key function): the properties'
+ * count dropped, then the source's */
+void Instance::Expire()
+{
+    if (m_props) {
+        m_props->DecRefCount(1);
+        m_props = 0;
+    }
+    if (m_source) {
+        m_source->m_refcount--;
+        m_source = 0;
+    }
+}
+
 /* SOCOM 1's (its camera matrix dropped): a live particle buffered for drawing -- its distance from
  * the camera, its age as a fraction of its life, its size by the properties' scale, its source's
  * extents grown, faded out by distance, its box tested against the view unless its source says
@@ -433,6 +469,27 @@ Destruction_Instance *Destruction_Instance::Create(const CPnt4D &pos, const CPnt
     p->m_listNext = Instance::list.m_head;
     Instance::list.m_head = p;
     return p;
+}
+
+/* the node's instance given back (zparticle.cpp's, 0x3223D0) */
+void ReleaseInstance(zdb::CNode *node);
+
+/* SOCOM 1's (0x3275B0, slot 0x08 of the table 0x4069E0, the class's key function): the properties'
+ * count dropped, the node given back, then the source's count dropped */
+void Destruction_Instance::Expire()
+{
+    if (m_props) {
+        m_props->DecRefCount(1);
+        m_props = 0;
+    }
+    if (m_node) {
+        ReleaseInstance(m_node);
+        m_node = 0;
+    }
+    if (m_source) {
+        m_source->m_refcount--;
+        m_source = 0;
+    }
 }
 
 /* the piece's node moved to it while it lives */
