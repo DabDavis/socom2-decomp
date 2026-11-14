@@ -1188,6 +1188,14 @@ void CZSealBody::OnRecycleEntity(CEntity *e)
     ((CSealCtrl *)m_control)->OnRecycleEntity(e);
 }
 
+/* (OVL2 0x547780; SOCOM 1's, the controller's call). Written for the port, M3: its draft read the
+ * controller at 0xC0 (the host's too) but called it through MW's vtable, and stood outside the SEAL's,
+ * which took CEntity's */
+void CZSealBody::ResetToInitialState()
+{
+    ((CSealCtrl *)m_control)->ResetToInitialState();
+}
+
 extern "C" {
 /* the victim struck down (OVL2 0x547860, seal.cpp's) -- not written yet; the killer's credit is
  * CZSealBody::HandleKiller (OVL2 0x59EE20, seal_env.cpp's) */
@@ -1226,6 +1234,39 @@ bool CZSealBody::ExecuteAction_CQBAttack(CZSealBody *victim)
         }
     }
     return done;
+}
+
+/* a knife attack on a victim: the stab's anim run, the victim struck down and the kill credited,
+ * counted unless the attacker has the skipped set (OVL2 0x546B50; SOCOM 1's, StabBuddy on the victim
+ * first). Written for the port, M3: its draft called StabBuddy without the victim (on the host
+ * garbage) and wrote the victim's killer and the stats at MW's 0xFBC and 0x5AE-0x5B8 */
+bool CZSealBody::ExecuteAction_KnifeAttack(CZSealBody *victim)
+{
+    if (!victim)
+        return false;
+    StabBuddy(victim);
+    unsigned int id = m_id;
+
+    victim->m_lastkiller_id = id;
+    func_00547860(victim);
+    victim->HandleKiller(id, false);
+    if (m_animset != data_0044D400) {
+        m_stats.m_count[0x22 / 2]++;
+        m_stats.m_count[0x2c / 2]++;
+        m_stats.m_count[0x24 / 2] += 4;
+    }
+    return true;
+}
+
+/* a dead buddy picked up from a crouch (OVL2 0x546C00, after the knife attack; CSealCtrl's action
+ * button calls it; the name unknown). Written for the port, M3: its draft called CrouchToPickupBuddy
+ * without the buddy */
+extern "C" bool func_00546C00(CZSealBody *seal, CZSealBody *buddy)
+{
+    if (!buddy)
+        return false;
+    seal->CrouchToPickupBuddy(buddy);
+    return true;
 }
 
 /* a victim restrained (OVL2 0x546A00) */
@@ -5937,6 +5978,16 @@ extern "C" void func_00547860(CZSealBody *victim)
         PlayRemoteMsg(victim, 40, 0);
     else if (killer)
         PlayRemoteMsg(killer, 39, 0);
+}
+
+/* the SEAL struck down by a killer: the killer kept, the victim's fall, the kill handled (OVL2 0x547AA0,
+ * after 0x547A90; the network's kill and the weapon hits call it; the name unknown). Written for the
+ * port, M3: its draft wrote the killer at MW's 0xFBC and called 0x547860 without the SEAL */
+extern "C" void func_00547AA0(CZSealBody *seal, unsigned int killer, bool b)
+{
+    seal->m_lastkiller_id = killer;
+    func_00547860(seal);
+    seal->HandleKiller(killer, b);
 }
 
 /* the entity the SEAL works as a turret, if it is one */

@@ -389,6 +389,10 @@ public:
     /* a weapon's ammunition taken in, the rounds read and handed back (SOCOM 1's PickupAmmo by its
      * arguments, the kit lane's round 32; OVL2 0x5BB000 -- HandlePickupAck's eight takes call it) */
     void PickupAmmo(class CZFTSWeapon *weapon, class CZAmmo *ammo, int *rounds);
+    /* an ammunition pickup taken, and the projectile shown in the hand (kit.h's; OVL2 0x5BB990,
+     * 0x5B85A0) */
+    void PickupAmmo(class CPickup *pickup);
+    void ShowProjectile();
     /* the fire mode set (kit.h's; OVL2 0x5C37B0, the kit lane's -- FIREMODE comes through zchar.h's
      * zweapon.h) */
     bool SetCurFireMode(FIREMODE mode);
@@ -2222,6 +2226,15 @@ public:
      * seal_weapon.cpp) */
     bool GetNodePos(const zdb::CNode *node, CPnt3D &pos, bool world);
     virtual bool Virtual68(CPnt3D *out);
+    /* back to the mission's start: the controller's (CEntity's slot +0x44 overridden: OVL2 0x547780,
+     * seal.cpp's) */
+    virtual void ResetToInitialState();
+    /* the target's, the head's and the neck's places in the world: the part (the spine's top, the head,
+     * the neck) through the node's matrix (CEntity's slots +0x30-+0x38 overridden: OVL2 0x5A3220,
+     * 0x5A31C0, 0x5A3160, after GetHeadParams; seal_env.cpp's) */
+    virtual CPnt3D *GetTargetPosW(CPnt3D *out);
+    virtual CPnt3D *GetHeadPosW(CPnt3D *out);
+    virtual CPnt3D *GetNeckPosW(CPnt3D *out);
     /* the root part and the state set (CBody's virtuals, overridden), with one of the SEAL's own
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
      * primary pointer (Destroy's state set reads +0x90) */

@@ -2572,6 +2572,33 @@ CNodeAction *CZSealBody::GetReticuleAction(bool b)
     return r;
 }
 
+/* the two accessors' copies, a node's parent and its extension (OVL2 0x5AA600, 0x5AA610: MW inlines
+ * them into the recursion below and calls them at the depth its inlining stops), and the action a node
+ * offers, searched up its parents when asked (OVL2 0x5AA470; SOCOM 1's, recursive: MW inlines the
+ * recursion five deep). Written for the port, M3: the drafts read the node at MW's 0x64 and 0x94 (on the
+ * host the node's table comes first) */
+extern "C" zdb::CNode *func_005AA600(zdb::CNode *node)
+{
+    return node->m_parent;
+}
+
+extern "C" zdb::CNodeEx *func_005AA610(zdb::CNode *node)
+{
+    return node->m_nodeEx;
+}
+
+CNodeAction *CNodeAction::GetAction(zdb::CNode *node, bool deep)
+{
+    CNodeAction *a = 0;
+
+    if (node) {
+        a = dynamic_cast<CNodeAction *>(func_005AA610(node));
+        if (!a && deep)
+            a = GetAction(func_005AA600(node), true);
+    }
+    return a;
+}
+
 /* the head's place and its look's direction in the world, each when asked (OVL2 0x5A3070; SOCOM 1's
  * GetHeadParams, after CheckForRegionTrigger in both builds -- SOCOM 1's filled both always) */
 void CZSealBody::GetHeadParams(CPnt3D *pos, CPnt3D *dir)
@@ -2582,6 +2609,31 @@ void CZSealBody::GetHeadParams(CPnt3D *pos, CPnt3D *dir)
     }
     if (dir)
         TransformVectors(&m_node->m_matrix, &m_look.m_curr_dir, dir, 1);
+}
+
+/* the neck's, the head's and the target's places in the world: the part's place in the body through
+ * the node's matrix (OVL2 0x5A3160, 0x5A31C0, 0x5A3220: CEntity's slots +0x38, +0x34, +0x30, the target
+ * the spine's top). Written for the port, M3: the drafts read the parts at MW's 0x30C, 0x308, 0x310 and
+ * the body at MW's 0x170 (on the host 0xc lower), and stood outside the vtable, which took CEntity's */
+CPnt3D *CZSealBody::GetNeckPosW(CPnt3D *out)
+{
+    PartInSpace(m_neck, 0, out, 0);
+    m_node->m_matrix.Transform(out, 1);
+    return out;
+}
+
+CPnt3D *CZSealBody::GetHeadPosW(CPnt3D *out)
+{
+    PartInSpace(m_head, 0, out, 0);
+    m_node->m_matrix.Transform(out, 1);
+    return out;
+}
+
+CPnt3D *CZSealBody::GetTargetPosW(CPnt3D *out)
+{
+    PartInSpace(m_spinehi, 0, out, 0);
+    m_node->m_matrix.Transform(out, 1);
+    return out;
 }
 
 /* the head's look's direction in the world: through the node's rotation (OVL2 0x5AF500; SOCOM 1's,
@@ -8869,4 +8921,145 @@ void CZSealBody::SealGetAltitude(CPnt3D *pos, float f)
     SetAltitudeCharacters(di, chars);
     node->SetActive(active);
     SealProcessAltitude(hits, pos, f);
+}
+
+/* ---- Written for the port, M3 (the drafts of OVL2 0x59DCE0-0x5ACA10, which the host could not run as
+ * they stood: each says what its draft got wrong) ---- */
+
+extern "C" {
+/* the anims the remaining tests ask about (OVL1 data, an anim type's id each) */
+extern short data_003DEC80;
+extern short data_003DEC90;
+extern short data_003DECA0;
+}
+
+/* the player's bomb marker let go: the bomb's node deleted, the anchor deleted and forgotten (OVL2
+ * 0x59DCE0, before DropMPBomb; fts_net_bomb.cpp's bomb state calls it; the name unknown). Its draft
+ * read the anchor at MW's 0xEC0 (on the host 0xc lower) */
+extern "C" void func_0059DCE0()
+{
+    CPickup::DeleteMPBombNode();
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player) {
+        CCompass::DeleteAnchor(player->m_mpbomb_anchor);
+        player->CompassAnchor_MPBomb(0);
+    }
+}
+
+/* the bomb (item 154) dropped where the SEAL stands, asked of the bomb's state, and the satchel worn on
+ * the back hidden (OVL2 0x59DD30; SOCOM 1's DropMPBomb). Its draft reached the kit and the body at MW's
+ * 0x5E0 and 0x170 and called the node's SetActive through MW's vtable */
+void CZSealBody::DropMPBomb()
+{
+    if (m_kit.HasItem((EQUIP_ITEM)154)) {
+        CZBombState::RequestNewBombState(m_id, (CZBombState::EnumBombState)1, &m_posW);
+        zdb::CNode *gear = FindAuxNode("Satchel", false);
+
+        if (gear)
+            gear->SetActive(false);
+    }
+}
+
+/* the satchel worn on the back shown or hidden (OVL2 0x59DF60; SOCOM 1's EnableMPBombGear). Its draft
+ * reached the body at MW's 0x170 and the node's SetActive through MW's vtable */
+void CZSealBody::EnableMPBombGear(bool on)
+{
+    zdb::CNode *gear = FindAuxNode("Satchel", false);
+
+    if (gear)
+        gear->SetActive(on);
+}
+
+/* an ammunition pickup taken by a live SEAL (OVL2 0x59F6F0, after 0x59F610; PickupObject calls it; the
+ * name unknown). Its draft passed the kit at MW's 0x5E0 and no pickup: on the host the kit's call read
+ * garbage */
+extern "C" void func_0059F6F0(CZSealBody *seal, CPickup *pickup)
+{
+    if (seal->m_isAlive)
+        seal->m_kit.PickupAmmo(pickup);
+}
+
+/* the SEAL's rifle or pistol drawn again by the item kept, with the throwables' set bound: unless one
+ * of the two draws already plays its flag-32 part; the item set (OVL2 0x5A6EB0; seal.cpp's turret exit
+ * calls it; the name unknown). Its draft read the set at MW's 0x528, the blends at 0x1C0 and wrote the
+ * item at 0xF79 */
+extern "C" bool func_005A6EB0(CZSealBody *seal, char item, int n)
+{
+    if (seal->m_animset != data_0044D410)
+        return false;
+    if ((seal->IsCurrentBlend((AnimType)data_003DF108) || seal->IsCurrentBlend((AnimType)data_003DF110)) &&
+        func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 32))
+        return false;
+    switch ((unsigned char)item) {
+    case 1:
+        func_00588BC0(seal, (AnimType)data_003DF108, 0, 1, 0);
+        seal->m_item = ITEM_RIFLE;
+        break;
+    case 2:
+        func_00588BC0(seal, (AnimType)data_003DF110, 0, 1, 0);
+        seal->m_item = ITEM_PISTOL;
+        break;
+    }
+    return true;
+}
+
+/* the SEAL's weapon put away for the turret's: with the throwables' set bound, only while a draw plays
+ * its flag-32 part; the set bound again and the draw pushed by the item (OVL2 0x5A6FC0; seal.cpp's
+ * turret entry; the name unknown). Its draft read the set at MW's 0x528 and the blends at 0x1C0 */
+extern "C" bool func_005A6FC0(CZSealBody *seal, char item, int n)
+{
+    if (seal->m_animset == data_0044D410) {
+        if (seal->IsCurrentBlend((AnimType)data_003DF108) || seal->IsCurrentBlend((AnimType)data_003DF110)) {
+            if (!func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 32))
+                return false;
+        } else
+            return false;
+    }
+    switch ((unsigned char)item) {
+    case 1:
+        seal->BindAnimSet(data_0044D410, false);
+        func_00588BC0(seal, (AnimType)data_003DF108, 0, 0, 0);
+        break;
+    case 2:
+        seal->BindAnimSet(data_0044D410, false);
+        func_00588BC0(seal, (AnimType)data_003DF110, 0, 0, 0);
+        break;
+    }
+    return true;
+}
+
+/* the throwables' reload's timed callback: the kit's projectile shown (OVL2 0x5A78C0, PushReload's).
+ * Its draft passed the kit at MW's 0x5E0 */
+extern "C" void func_005A78C0(void *body, void *data)
+{
+    ((CZSealBody *)body)->m_kit.ShowProjectile();
+}
+
+/* whether one of six anims is on top (42, 33, 44 and three of OVL1's), the top fetched and left
+ * unread (OVL2 0x5A78D0; the reticule and the camera ask it; the name unknown). Its draft fetched the
+ * top at MW's 0x1C0 */
+extern "C" bool func_005A78D0(CZSealBody *seal)
+{
+    func_00555170(&seal->m_blends);
+    if (seal->IsCurrentBlend((AnimType)42) || seal->IsCurrentBlend((AnimType)data_003DEC90) ||
+        seal->IsCurrentBlend((AnimType)33) || seal->IsCurrentBlend((AnimType)data_003DECA0) ||
+        seal->IsCurrentBlend((AnimType)data_003DEC80) || seal->IsCurrentBlend((AnimType)44))
+        return true;
+    return false;
+}
+
+/* whether a hit node may take the weapon's hit: offline always; online not a dead SEAL's (OVL2
+ * 0x5ACA10; zwep_weapon.cpp asks it; the name unknown). Its draft passed GetSeal no node */
+extern "C" bool func_005ACA10(zdb::CNode *node)
+{
+    bool ok = true;
+
+    if (theNetwork.m_9) {
+        CZSealBody *seal = CZSealBody::GetSeal(node);
+
+        if (seal && !seal->m_isAlive)
+            ok = false;
+    }
+    return ok;
 }
