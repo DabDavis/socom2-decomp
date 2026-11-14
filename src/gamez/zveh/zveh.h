@@ -268,6 +268,10 @@ public:
     virtual void UpdateAiMapLoc();
     virtual void OnMissionStart();
     virtual void UpdateCompassAnchor();
+    /* +0x0C: the scope's frame, the pitch joint's matrix (OVL1 0x2C7BE0: the inline's copy fts_net_platform.cpp
+     * emits after UpdateLocalPlatform, its first caller). Undeclared, the host's table kept CEntity's -- the
+     * node's matrix (M3) */
+    virtual const CMatrix *GetPosW() const { return &m_2c0; }
     /* may the SEAL mount it (CEntity's slot +0x5C: 0x3A90C0, out of line in veh_turret.cpp) */
     virtual bool Virtual5C(CZSealBody *seal, CTurret *turret);
     /* the three new slots CTurret answers (+0x60, +0x64, +0x68; see above): two points and the

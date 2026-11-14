@@ -79,10 +79,15 @@ public:
 class CTurret : public CEntity {
 public:
     static CTurret *Create(int index);
+    /* +0x0C: the pitch joint's matrix (zveh.h's; its out-of-line copy emitted here, OVL1 0x2C7BE0, after
+     * UpdateLocalPlatform -- the first function to call it) */
+    virtual const CMatrix *GetPosW() const { return &m_2c0; }
 
     unsigned char _8[0x2a8 - 0x8];
     int m_ammo;   // 0x2a8
-    unsigned char _2ac[0x3b0 - 0x2ac];
+    unsigned char _2ac[0x2c0 - 0x2ac];
+    CMatrix m_2c0;   // 0x2c0
+    unsigned char _300[0x3b0 - 0x300];
     float m_3b0;   // 0x3b0: the aim's first angle
     float m_3b4;   // 0x3b4: its target, from the network
     float m_3b8;   // 0x3b8: the second angle
