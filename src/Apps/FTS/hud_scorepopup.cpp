@@ -421,15 +421,15 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x3dc - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0x3dc) - 0xe2];
     CObjUnderReticule *m_reticuleObject;   // 0x3dc
-    unsigned char _3e0[0x544 - 0x3e0];
+    unsigned char _3e0[Z_SEALBODY_OFS(0x544) - Z_SEALBODY_OFS(0x3e0)];
     CSealStats m_stats[2];   // 0x544
-    unsigned char _5d4[0x5e0 - 0x5d4];
+    unsigned char _5d4[Z_SEALBODY_OFS(0x5e0) - Z_SEALBODY_OFS(0x5d4)];
     CZKit m_kit;   // 0x5e0
-    unsigned char _5e1[0xfc8 - 0x5e1];
+    unsigned char _5e1[Z_SEALBODY_OFS(0xfc8) - Z_SEALBODY_OFS(0x5e1)];
     int m_persona;   // 0xfc8
-    unsigned char _fcc[0xfd1 - 0xfcc];
+    unsigned char _fcc[Z_SEALBODY_OFS(0xfd1) - Z_SEALBODY_OFS(0xfcc)];
     unsigned char m_hidden;   // 0xfd1
 };
 

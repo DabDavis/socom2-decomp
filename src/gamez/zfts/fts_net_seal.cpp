@@ -281,37 +281,37 @@ public:
     CSealCtrl *m_ctrl;   // 0xc0
     unsigned char _c4[4];
     unsigned int m_c8;   // 0xc8: CEntity's flags (0x20000 an escortee: SOCOM 1's at 0xc4)
-    unsigned char _cc[0x220 - 0xcc];
+    unsigned char _cc[Z_SEALBODY_OFS(0x220) - 0xcc];
     unsigned char m_220;   // 0x220: the kills the network last gave
-    unsigned char _221[0x224 - 0x221];
+    unsigned char _221[Z_SEALBODY_OFS(0x224) - Z_SEALBODY_OFS(0x221)];
     int m_224;   // 0x224: a count the kills move, kept within 1 to 10
     float m_228;   // 0x228: taken by the network packet and cleared
-    unsigned char _22c[0x374 - 0x22c];
+    unsigned char _22c[Z_SEALBODY_OFS(0x374) - Z_SEALBODY_OFS(0x22c)];
     signed char m_desiredState;   // 0x374 (zseal.h's)
     signed char m_desiredStance;   // 0x375
-    unsigned char _376[0x550 - 0x376];
+    unsigned char _376[Z_SEALBODY_OFS(0x550) - Z_SEALBODY_OFS(0x376)];
     unsigned short m_550;   // 0x550
-    unsigned char _552[0x556 - 0x552];
+    unsigned char _552[Z_SEALBODY_OFS(0x556) - Z_SEALBODY_OFS(0x552)];
     unsigned short m_556;   // 0x556
-    unsigned char _558[0x580 - 0x558];
+    unsigned char _558[Z_SEALBODY_OFS(0x580) - Z_SEALBODY_OFS(0x558)];
     short m_580;   // 0x580
-    unsigned char _582[0x598 - 0x582];
+    unsigned char _582[Z_SEALBODY_OFS(0x598) - Z_SEALBODY_OFS(0x582)];
     unsigned short m_598;   // 0x598
-    unsigned char _59a[0x59e - 0x59a];
+    unsigned char _59a[Z_SEALBODY_OFS(0x59e) - Z_SEALBODY_OFS(0x59a)];
     unsigned short m_59e;   // 0x59e
-    unsigned char _5a0[0x5c8 - 0x5a0];
+    unsigned char _5a0[Z_SEALBODY_OFS(0x5c8) - Z_SEALBODY_OFS(0x5a0)];
     short m_5c8;   // 0x5c8
-    unsigned char _5ca[0x5e0 - 0x5ca];
+    unsigned char _5ca[Z_SEALBODY_OFS(0x5e0) - Z_SEALBODY_OFS(0x5ca)];
     CZKit m_kit;   // 0x5e0
-    unsigned char _5e1[0xf7a - 0x5e1];
+    unsigned char _5e1[Z_SEALBODY_OFS(0xf7a) - Z_SEALBODY_OFS(0x5e1)];
     signed char m_netlife;   // 0xf7a (zseal.h's)
-    unsigned char _f7b[0xfbc - 0xf7b];
+    unsigned char _f7b[Z_SEALBODY_OFS(0xfbc) - Z_SEALBODY_OFS(0xf7b)];
     int m_lastkiller_id;   // 0xfbc (zseal.h's)
     int m_fc0;   // 0xfc0: the death's kind (zseal.h's)
-    unsigned char _fc4[0xfc8 - 0xfc4];
+    unsigned char _fc4[Z_SEALBODY_OFS(0xfc8) - Z_SEALBODY_OFS(0xfc4)];
     int m_fc8;   // 0xfc8: the client that owns it, -1 a remote's (SOCOM 1's at 0xeb8)
     unsigned char m_fcc;   // 0xfcc: cleared once its remote object is made (SOCOM 1's at 0xec0)
-    unsigned char _fcd[0xfcf - 0xfcd];
+    unsigned char _fcd[Z_SEALBODY_OFS(0xfcf) - Z_SEALBODY_OFS(0xfcd)];
     unsigned char m_fcf;   // 0xfcf (SOCOM 1's at 0xec7)
     unsigned char _fd0;
     unsigned char m_fd1;   // 0xfd1
@@ -319,15 +319,15 @@ public:
     int m_fd4;   // 0xfd4: a network time the lobby is told at (SOCOM II's; the names ours)
     float m_fd8;   // 0xfd8
     int m_fdc;   // 0xfdc: ten seconds past its creation (SOCOM 1's at 0xec8)
-    unsigned char _fe0[0xffc - 0xfe0];
+    unsigned char _fe0[Z_SEALBODY_OFS(0xffc) - Z_SEALBODY_OFS(0xfe0)];
     float m_ffc[6];   // 0xffc: six values run down (zseal.h's)
     float m_1014[6];   // 0x1014: and their full values
-    unsigned char _102c[0x1044 - 0x102c];
+    unsigned char _102c[Z_SEALBODY_OFS(0x1044) - Z_SEALBODY_OFS(0x102c)];
     float m_1044;   // 0x1044
-    unsigned char _1048[0x105d - 0x1048];
+    unsigned char _1048[Z_SEALBODY_OFS(0x105d) - Z_SEALBODY_OFS(0x1048)];
     unsigned char _105d_0 : 6;
     unsigned char m_joined : 1;   // 0x105d, bit 6: set when it joins its unit (SOCOM 1's at 0xf59; the name ours)
-    unsigned char _105e[0x144c - 0x105e];
+    unsigned char _105e[Z_SEALBODY_OFS(0x144c) - Z_SEALBODY_OFS(0x105e)];
     CPnt3D m_aim_goal;   // 0x144c (zseal.h's)
 };
 

@@ -62,9 +62,9 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (the HUD's units test it)
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x538 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0x538) - 0xe2];
     int m_lastaction;   // 0x538: the action last run
-    unsigned char _53c[0xfc8 - 0x53c];
+    unsigned char _53c[Z_SEALBODY_OFS(0xfc8) - Z_SEALBODY_OFS(0x53c)];
     CZNetPersona *m_persona;   // 0xfc8
 
     /* (ours: the node action's test reads the player's sides through it -- expanded ahead of the

@@ -39,7 +39,7 @@ public:
     int m_4;   // 0x4: its network object (SOCOM 1's m_NetObjectIndex)
     unsigned char _8[0xc0 - 0x8];
     CActionCtrl *m_ctrl;   // 0xc0
-    unsigned char _c4[0x3b0 - 0xc4];
+    unsigned char _c4[Z_SEALBODY_OFS(0x3b0) - 0xc4];
     int m_3b0;   // 0x3b0 (SOCOM 1's at 0x318): handed to the action's anim
 };
 

@@ -80,9 +80,9 @@ public:
     unsigned char _c4[0xe1 - 0xc4];
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
-    unsigned char _e2[0x200 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0x200) - 0xe2];
     ZOOMSTATE m_zoomstate;   // 0x200
-    unsigned char _201[0x5e0 - 0x201];
+    unsigned char _201[Z_SEALBODY_OFS(0x5e0) - Z_SEALBODY_OFS(0x201)];
     CZKit m_kit;   // 0x5e0
 };
 

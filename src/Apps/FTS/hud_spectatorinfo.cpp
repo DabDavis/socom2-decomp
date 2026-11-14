@@ -45,9 +45,9 @@ public:
     const char *m_name;   // 0x14
     unsigned char _18[0xc8 - 0x18];
     unsigned int m_c8;   // 0xc8: bit 17 a spectator's flag (the name ours)
-    unsigned char _cc[0x544 - 0xcc];
+    unsigned char _cc[Z_SEALBODY_OFS(0x544) - 0xcc];
     CSealStats m_stats[2];   // 0x544: the game's and the round's
-    unsigned char _5d4[0xfc8 - 0x5d4];
+    unsigned char _5d4[Z_SEALBODY_OFS(0xfc8) - Z_SEALBODY_OFS(0x5d4)];
     int m_player;   // 0xfc8
 };
 

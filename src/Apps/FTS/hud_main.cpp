@@ -128,13 +128,13 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (MapCompass::On tests it too)
     unsigned char _e1_5 : 3;
-    unsigned char _e2[Z_OFS(0x200, 0x1f4) - 0xe2];
-    signed char m_socom2_200;   // 0x200 (host 0x1f4: zseal.h's m_zoomstate): the seal's state (2-3 none, 4 the binoculars' 9x, 5-12 the kit's zoom)
-    unsigned char _201[Z_OFS(0x5e0, 0x5d4) - Z_OFS(0x201, 0x1f5)];
-    CZKit m_kit;   // 0x5e0 (host 0x5d4)
-    unsigned char _5e4[0xfb4 - 0x5e4];
+    unsigned char _e2[Z_SEALBODY_OFS(0x200) - 0xe2];
+    signed char m_socom2_200;   // 0x200 (zseal.h's m_zoomstate): the seal's state (2-3 none, 4 the binoculars' 9x, 5-12 the kit's zoom)
+    unsigned char _201[Z_SEALBODY_OFS(0x5e0) - Z_SEALBODY_OFS(0x201)];
+    CZKit m_kit;   // 0x5e0
+    unsigned char _5e4[Z_SEALBODY_OFS(0xfb4) - Z_SEALBODY_OFS(0x5e4)];
     float m_socom2_fb4;   // 0xfb4: when the seal died, against the mission's clock at 0xE0
-    unsigned char _fb8[0xfc4 - 0xfb8];
+    unsigned char _fb8[Z_SEALBODY_OFS(0xfc4) - Z_SEALBODY_OFS(0xfb8)];
     int m_socom2_fc4;   // 0xfc4: the id of the entity a spectator watches
 };
 

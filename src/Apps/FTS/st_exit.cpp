@@ -77,23 +77,23 @@ public:
     unsigned int m_e0_0 : 12;   // 0xe0 (zentity.h's flags: m_blink_eyes ... m_include_in_targetlist)
     unsigned int m_isAlive : 1;   // 0xe0, bit 12 (zentity.h's)
     unsigned int m_e0_13 : 19;
-    unsigned char _e4[0x58c - 0xe4];
+    unsigned char _e4[Z_SEALBODY_OFS(0x58c) - 0xe4];
     unsigned short m_58c;   // 0x58c
-    unsigned char _58e[0x590 - 0x58e];
+    unsigned char _58e[Z_SEALBODY_OFS(0x590) - Z_SEALBODY_OFS(0x58e)];
     unsigned short m_590;   // 0x590: the shots that hit (the accuracy rating's)
-    unsigned char _592[0x594 - 0x592];
+    unsigned char _592[Z_SEALBODY_OFS(0x594) - Z_SEALBODY_OFS(0x592)];
     unsigned short m_594;   // 0x594: the shots fired
-    unsigned char _596[0x598 - 0x596];
+    unsigned char _596[Z_SEALBODY_OFS(0x598) - Z_SEALBODY_OFS(0x596)];
     unsigned short m_kills;   // 0x598
-    unsigned char _59a[0x5a2 - 0x59a];
+    unsigned char _59a[Z_SEALBODY_OFS(0x5a2) - Z_SEALBODY_OFS(0x59a)];
     unsigned short m_5a2;   // 0x5a2
-    unsigned char _5a4[0x5ae - 0x5a4];
+    unsigned char _5a4[Z_SEALBODY_OFS(0x5ae) - Z_SEALBODY_OFS(0x5a4)];
     unsigned short m_5ae;   // 0x5ae
-    unsigned char _5b0[0x5b4 - 0x5b0];
+    unsigned char _5b0[Z_SEALBODY_OFS(0x5b4) - Z_SEALBODY_OFS(0x5b0)];
     unsigned short m_5b4;   // 0x5b4
-    unsigned char _5b6[0x5b8 - 0x5b6];
+    unsigned char _5b6[Z_SEALBODY_OFS(0x5b8) - Z_SEALBODY_OFS(0x5b6)];
     unsigned short m_5b8;   // 0x5b8
-    unsigned char _5ba[0x1044 - 0x5ba];
+    unsigned char _5ba[Z_SEALBODY_OFS(0x1044) - Z_SEALBODY_OFS(0x5ba)];
     float m_health;   // 0x1044 (zseal.h's)
 
     /* out of health (the name ours) */

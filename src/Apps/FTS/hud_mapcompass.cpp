@@ -59,7 +59,7 @@ public:
     unsigned char _e1_5 : 3;
     unsigned char _e2[0xe8 - 0xe2];
     CAiMapLoc m_maploc;   // 0xe8 (SOCOM 1's at 0xe4)
-    unsigned char _ec[0x200 - 0xec];
+    unsigned char _ec[Z_SEALBODY_OFS(0x200) - 0xec];
     signed char m_socom2_200;   // 0x200: under 2 while the seal lives
     bool IsDead() { return m_socom2_200 >= 2; }
 };

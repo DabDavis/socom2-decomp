@@ -64,6 +64,15 @@ struct z_qword { unsigned int w[4]; } __attribute__((aligned(16)));
  * the real class). `unsigned char _0[Z_OFS(0x128, 0x134)]` */
 #define Z_OFS(mw, host) (host)
 
+/* the same, for the 38 units' restatements of CZSealBody (zseal.h), as one function of MW's offset
+ * measured against the real class's host layout (tools/restatecheck.py): below 0x170 (CEntity, up to
+ * its m_SOPList) the same; CEntity is 0x164 on the host against MW's 16-aligned 0x170, so CBody and
+ * all after it to m_wateranimnode (MW 0x1380, which the host's 16-alignment brings back to 0x1380)
+ * 0xc lower; that zdb::CNode is 0xd0 on the host against 0xc0, so all after it (m_aim_dir, MW 0x1440)
+ * 0x10 higher */
+#define Z_SEALBODY_OFS(mw)                                                                        \
+    ((mw) < 0x170 ? (mw) : (mw) < 0x1380 ? (mw) - 0xc : (mw) < 0x1440 ? (mw) : (mw) + 0x10)
+
 /* Metrowerks' intrinsics */
 #define Z_RSQRT(a, x) ((a) / __builtin_sqrtf(x))
 #define Z_MEMCPY __builtin_memcpy
@@ -88,6 +97,7 @@ struct z_qword { unsigned int w[4]; } __attribute__((aligned(16)));
 
 #define Z_LAYOUT_OK(c) (c)
 #define Z_OFS(mw, host) mw
+#define Z_SEALBODY_OFS(mw) (mw)
 
 #define Z_RSQRT(a, x) __rsqrt(a, x)
 #define Z_MEMCPY __memcpy

@@ -151,14 +151,14 @@ public:
     unsigned int _e0 : 12;   // 0xe0: CEntity's flags
     unsigned int m_isAlive : 1;
     unsigned int _e0_13 : 19;
-    unsigned char _e4[0x544 - 0xe4];
+    unsigned char _e4[Z_SEALBODY_OFS(0x544) - 0xe4];
     CSealStats m_game_stats;   // 0x544
     CSealStats m_round_stats;   // 0x58c
-    unsigned char _5d4[0xfb0 - 0x5d4];
+    unsigned char _5d4[Z_SEALBODY_OFS(0xfb0) - Z_SEALBODY_OFS(0x5d4)];
     unsigned char m_fb0;   // 0xfb0: 6 a state the round's survival does not count (unproven)
-    unsigned char _fb1[0xfc8 - 0xfb1];
+    unsigned char _fb1[Z_SEALBODY_OFS(0xfc8) - Z_SEALBODY_OFS(0xfb1)];
     int m_fc8;   // 0xfc8: what its clan's tag is looked up by
-    unsigned char _fcc[0xfd1 - 0xfcc];
+    unsigned char _fcc[Z_SEALBODY_OFS(0xfd1) - Z_SEALBODY_OFS(0xfcc)];
     unsigned char m_fd1;   // 0xfd1: kept from respawning at the round's end (unproven)
     unsigned char m_fd2;   // 0xfd2
 

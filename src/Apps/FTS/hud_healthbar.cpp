@@ -17,7 +17,7 @@ extern CZNetwork theNetwork;
 /* the owner as the bar reads it: its health, 0 to 1 */
 class CZSealBody {
 public:
-    unsigned char _0[0x1044];
+    unsigned char _0[Z_SEALBODY_OFS(0x1044)];
     float m_health;   // 0x1044
 };
 

@@ -89,7 +89,7 @@ public:
     void HandleBombDefuse();   /* OVL2 0x59DA70 */
     static void CreateMPBombPickup(const CPnt3D *pos, bool placed);
 
-    unsigned char _0[0x58c];
+    unsigned char _0[Z_SEALBODY_OFS(0x58c)];
     unsigned char m_58c[0x5e0 - 0x58c];   // 0x58c
     CZKit m_kit;   // 0x5e0
 };

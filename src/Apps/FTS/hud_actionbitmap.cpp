@@ -180,9 +180,9 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4 (the action icon shown only with it)
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x5e0 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0x5e0) - 0xe2];
     CZKit m_kit;   // 0x5e0
-    unsigned char _5f0[0xed0 - 0x5f0];
+    unsigned char _5f0[Z_SEALBODY_OFS(0xed0) - Z_SEALBODY_OFS(0x5f0)];
     unsigned int m_action_available;   // 0xed0: a bit per action (zseal.h's; SOCOM 1's ActionAvailableMask)
     unsigned int m_action_selection;   // 0xed4: the selected action's bit
     unsigned char m_action_display_on;   // 0xed8

@@ -10,6 +10,7 @@
  * 0x45A0C0 and 0x45A0C1, so SOCOM II dropped the two team indices ahead of them (the map row
  * has moved). */
 
+#include "zport.h"
 #include <list>
 
 #include "../zmath/zmath.h"
@@ -115,16 +116,16 @@ public:
     CEntityCtrl *m_ctrl;   // 0xc0
     unsigned char _c4[0xc8 - 0xc4];
     unsigned int m_team;   // 0xc8: the team's bits (zentity.h's)
-    unsigned char _cc[0x220 - 0xcc];
+    unsigned char _cc[Z_SEALBODY_OFS(0x220) - 0xcc];
     unsigned char m_fire_count;   // 0x220 (SOCOM 1's at 0x17c)
-    unsigned char _221[0x228 - 0x221];
+    unsigned char _221[Z_SEALBODY_OFS(0x228) - Z_SEALBODY_OFS(0x221)];
     float m_fire_y;   // 0x228 (SOCOM 1's at 0x184)
-    unsigned char _22c[0xfc8 - 0x22c];
+    unsigned char _22c[Z_SEALBODY_OFS(0xfc8) - Z_SEALBODY_OFS(0x22c)];
     int m_fc8;   // 0xfc8: the client it belongs to (SOCOM 1's at 0xeb8)
-    unsigned char _fcc[0xfd4 - 0xfcc];
+    unsigned char _fcc[Z_SEALBODY_OFS(0xfd4) - Z_SEALBODY_OFS(0xfcc)];
     int m_fd4;   // 0xfd4: when it was last hit (the network's time)
     float m_fd8;   // 0xfd8: a copy of 0x1044 at the hit
-    unsigned char _fdc[0x1044 - 0xfdc];
+    unsigned char _fdc[Z_SEALBODY_OFS(0x1044) - Z_SEALBODY_OFS(0xfdc)];
     float m_1044;   // 0x1044
 
     /* a command given to another SEAL (OVL2's, SOCOM 1's at the same call) */

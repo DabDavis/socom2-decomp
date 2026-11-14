@@ -52,9 +52,9 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x5e0 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0x5e0) - 0xe2];
     CZKit m_kit;   // 0x5e0
-    unsigned char _5e1[0x105d - 0x5e1];
+    unsigned char _5e1[Z_SEALBODY_OFS(0x105d) - Z_SEALBODY_OFS(0x5e1)];
     unsigned char _105d_0 : 1;
     unsigned char m_orderchanged : 1;   // 0x105d bit 1
     unsigned char _105d_2 : 6;

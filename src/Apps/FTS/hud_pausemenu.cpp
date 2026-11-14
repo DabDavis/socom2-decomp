@@ -260,9 +260,9 @@ public:
 
     unsigned char _0[0xc0];
     CSealCtrl *m_ctrl;   // 0xc0
-    unsigned char _c4[0x200 - 0xc4];
+    unsigned char _c4[Z_SEALBODY_OFS(0x200) - 0xc4];
     ZOOMSTATE m_zoomstate;   // 0x200
-    unsigned char _201[0x5e0 - 0x201];
+    unsigned char _201[Z_SEALBODY_OFS(0x5e0) - Z_SEALBODY_OFS(0x201)];
     CZKit m_kit;   // 0x5e0
 };
 

@@ -74,7 +74,7 @@ class CZSealBody {
 public:
     unsigned char _0[0x14];
     const char *m_name;   // 0x14
-    unsigned char _18[0xfc8 - 0x18];
+    unsigned char _18[Z_SEALBODY_OFS(0xfc8) - 0x18];
     int m_player;   // 0xfc8
 };
 

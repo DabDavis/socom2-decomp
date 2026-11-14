@@ -190,7 +190,7 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0xfc8 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0xfc8) - 0xe2];
     int m_player;   // 0xfc8
 };
 

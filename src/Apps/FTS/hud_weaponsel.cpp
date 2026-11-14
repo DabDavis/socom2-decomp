@@ -101,11 +101,11 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4: the selector opens only with it (hud_main.cpp's)
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x174 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0x174) - 0xe2];
     short m_state;   // 0x174: 9 keeps the weapons (SOCOM 1's byte at 0x11D)
-    unsigned char _176[0x5e0 - 0x176];
+    unsigned char _176[Z_SEALBODY_OFS(0x5e0) - Z_SEALBODY_OFS(0x176)];
     CZKit m_kit;   // 0x5e0
-    unsigned char _kit_end[0xeb8 - 0x5e0 - sizeof(CZKit)];
+    unsigned char _kit_end[Z_SEALBODY_OFS(0xeb8) - Z_SEALBODY_OFS(0x5e0) - sizeof(CZKit)];
     int m_socom2_eb8;   // 0xeb8: set, the weapons are kept (SOCOM II's)
 
     CZKit *GetKit() { return &m_kit; }

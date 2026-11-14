@@ -123,7 +123,7 @@ class CZSealBody : public CEntity {
 public:
     static CZSealBody *Create(const CCharacterType *type, const char *name, CSealCtrl *ctrl);
 
-    unsigned char _170[0x105c - 0x170];
+    unsigned char _170[Z_SEALBODY_OFS(0x105c) - Z_SEALBODY_OFS(0x170)];
     /* 0x105c: SOCOM 1's bits at 0xf58 (zseal.h's names) */
     unsigned int m_HudUpdateViewCone : 1;
     unsigned int m_hudwashit : 1;

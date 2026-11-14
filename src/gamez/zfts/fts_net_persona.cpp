@@ -4,6 +4,7 @@
  * SOCOM II rewrote it: the list is a table of 24 clients (SOCOM 1's a list<int>), and the teams
  * swap sides (the two team masks trade places when the swap flag is set). Only some of it so far.
  * Defined in reverse of their image order (-inline deferred). */
+#include "zport.h"
 
 /* a network object as CZNetwork's table hands it out (only its kind's first letter and its
  * data) */
@@ -196,7 +197,7 @@ public:
     unsigned char _0[0xe1];
     unsigned char _e1_0 : 4;
     unsigned char m_e1_4 : 1;   // 0xe1, bit 4: clear on a player who has not spawned (the name ours)
-    unsigned char _e2[0xfc8 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0xfc8) - 0xe2];
     int m_fc8;   // 0xfc8 (SOCOM 1's at 0xeb8)
 };
 

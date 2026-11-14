@@ -48,7 +48,7 @@ public:
 
     unsigned char _0[0xc0];
     CEntityCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x374 - 0xc4];
+    unsigned char _c4[Z_SEALBODY_OFS(0x374) - 0xc4];
     signed char m_stance;   // 0x374 (SOCOM 1 read m_desiredState, 0x304)
 };
 

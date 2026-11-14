@@ -202,30 +202,30 @@ public:
     unsigned char _e1_0 : 4;
     unsigned char m_socom2_e1_4 : 1;   // 0xe1 bit 4
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x170 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0x170) - 0xe2];
     CBody m_body;   // 0x170
     short m_174;   // 0x174: 9 hides the error marker (SOCOM 1's byte at 0x11D)
-    unsigned char _176[0x1c0 - 0x176];
+    unsigned char _176[Z_SEALBODY_OFS(0x1c0) - Z_SEALBODY_OFS(0x176)];
     RTStack<CZBodyAnimBlend> m_animStack;   // 0x1c0
-    unsigned char _1cc[0x200 - 0x1cc];
+    unsigned char _1cc[Z_SEALBODY_OFS(0x200) - Z_SEALBODY_OFS(0x1cc)];
     ZOOMSTATE m_zoomstate;   // 0x200
-    unsigned char _201[0x208 - 0x201];
+    unsigned char _201[Z_SEALBODY_OFS(0x208) - Z_SEALBODY_OFS(0x201)];
     float m_208;   // 0x208: how far the reticle's point is, squared
-    unsigned char _20c[0x258 - 0x20c];
+    unsigned char _20c[Z_SEALBODY_OFS(0x258) - Z_SEALBODY_OFS(0x20c)];
     unsigned char m_258_0 : 1;   // 0x258 bit 0 (zseal.h's)
-    unsigned char _259[0x3c0 - 0x259];
+    unsigned char _259[Z_SEALBODY_OFS(0x3c0) - Z_SEALBODY_OFS(0x259)];
     CPnt3D m_target3c0;   // 0x3c0
-    unsigned char _3cc[0x5e0 - 0x3cc];
+    unsigned char _3cc[Z_SEALBODY_OFS(0x5e0) - Z_SEALBODY_OFS(0x3cc)];
     CZKit m_kit;   // 0x5e0, to 0xe4c
-    unsigned char _e4c[0xeb8 - 0xe4c];
+    unsigned char _e4c[Z_SEALBODY_OFS(0xeb8) - Z_SEALBODY_OFS(0xe4c)];
     CEntity *m_eb8;   // 0xeb8: the turret it works
-    unsigned char _ebc[0xefc - 0xebc];
+    unsigned char _ebc[Z_SEALBODY_OFS(0xefc) - Z_SEALBODY_OFS(0xebc)];
     /* where it was hit from, and each of the eight arrows' strength and angle (SOCOM 1's DWARF: E, N,
      * W, S at the even places, the diagonals between) */
     unsigned char m_threatdir[4];   // 0xefc
     float m_threatscale[8];   // 0xf00
     float m_threatangle[8];   // 0xf20
-    unsigned char _f40[0xfc8 - 0xf40];
+    unsigned char _f40[Z_SEALBODY_OFS(0xfc8) - Z_SEALBODY_OFS(0xf40)];
     int m_persona;   // 0xfc8
 };
 

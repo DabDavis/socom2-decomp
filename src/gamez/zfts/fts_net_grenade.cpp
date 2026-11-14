@@ -5,6 +5,7 @@
  * (SOCOM 1's update callback made one UpdateGrenade call). Defined in reverse of their image
  * order (-inline deferred). */
 
+#include "zport.h"
 #include "../zmath/zmath.h"
 
 extern "C" {
@@ -85,7 +86,7 @@ public:
 
 class CZSealBody {
 public:
-    unsigned char _0[0x5e0];
+    unsigned char _0[Z_SEALBODY_OFS(0x5e0)];
     unsigned char m_kit[4];   // 0x5e0: the kit (a CZKit)
 };
 

@@ -146,7 +146,7 @@ public:
     unsigned int _e0 : 12;   // 0xe0: the flag word
     unsigned int m_isAlive : 1;
     unsigned int _e0_13 : 19;
-    unsigned char _e4[0x170 - 0xe4];
+    unsigned char _e4[Z_OFS(0x170, 0x164) - 0xe4];   /* host 0x164: no 16-aligned tail */
 
     /* every entity (zentity.h's CEntityList, a list of pointers and nothing more) */
     static std::list<CEntity *> m_list;
@@ -180,7 +180,7 @@ public:
     CBody &Body() { return *this; }
 
     short m_state;   // 0x174: 8 dead, 2 prone (SOCOM 1's SEAL_STATE: the body's, at its +4)
-    unsigned char _176[0x200 - 0x176];
+    unsigned char _176[Z_SEALBODY_OFS(0x200) - Z_SEALBODY_OFS(0x176)];
     /* the zoom: the state, the one before, the change flagged, the field of view (zseal.h's names,
      * SOCOM 1's DWARF's at 0x160-0x167; the game states' round 52). zseal.h types the two states
      * ZOOMSTATE, a signed byte under -enum min -- thezoom.cpp defines that enum itself, so they are
@@ -190,35 +190,35 @@ public:
     unsigned char m_zoomstate_echo;   // 0x202
     unsigned char _203;
     float m_zoom_range;   // 0x204
-    unsigned char _208[0x2e8 - 0x208];
+    unsigned char _208[Z_SEALBODY_OFS(0x2e8) - Z_SEALBODY_OFS(0x208)];
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c: the body's root part)
-    unsigned char _2ec[0x375 - 0x2ec];
+    unsigned char _2ec[Z_SEALBODY_OFS(0x375) - Z_SEALBODY_OFS(0x2ec)];
     SEAL_PEEK m_desiredPeek;   // 0x375
-    unsigned char _376[0x5e0 - 0x376];
+    unsigned char _376[Z_SEALBODY_OFS(0x5e0) - Z_SEALBODY_OFS(0x376)];
     CZKit m_kit;   // 0x5e0 (SOCOM 1: 0x520)
-    unsigned char _5e4[0xea8 - 0x5e4];
+    unsigned char _5e4[Z_SEALBODY_OFS(0xea8) - Z_SEALBODY_OFS(0x5e4)];
     /* the camera watching the SEAL, if any (SOCOM II's: a follow online sets its mode, the name
      * ours) */
     CAppCamera *m_camera;   // 0xea8
-    unsigned char _eac[0xf7a - 0xeac];
+    unsigned char _eac[Z_SEALBODY_OFS(0xf7a) - Z_SEALBODY_OFS(0xeac)];
     /* the SEAL's life as the network reports it, 1 up (zseal.h's m_netlife, a NET_LIFE byte) */
     unsigned char m_netlife;   // 0xf7a
-    unsigned char _f7b[0xfc4 - 0xf7b];
+    unsigned char _f7b[Z_SEALBODY_OFS(0xfc4) - Z_SEALBODY_OFS(0xf7b)];
     /* who last hurt the SEAL, by entity id (SOCOM 1's at 0xeb4, the death camera's killer) */
     unsigned int m_lastHitBy;   // 0xfc4
-    unsigned char _fc8[0x105c - 0xfc8];
+    unsigned char _fc8[Z_SEALBODY_OFS(0x105c) - Z_SEALBODY_OFS(0xfc8)];
     unsigned int _105c : 23;   // 0x105c: zseal.h's flag word (SOCOM 1's at 0xf58)
     unsigned int m_inwater : 1;
     unsigned int _105c_24 : 8;
     unsigned char _b0 : 5;   // 0x1060
     unsigned char m_zooming : 1;
     unsigned char _b6 : 2;
-    unsigned char _1061[0x1070 - 0x1061];
+    unsigned char _1061[Z_SEALBODY_OFS(0x1070) - Z_SEALBODY_OFS(0x1061)];
     CQuat m_fwdlook;   // 0x1070 (SOCOM 1: 0xf60; RotateHead sets it, the death camera reads its x)
-    unsigned char _1080[0x1344 - 0x1080];
+    unsigned char _1080[Z_SEALBODY_OFS(0x1344) - Z_SEALBODY_OFS(0x1080)];
     /* SOCOM II's: a scale the prone first-person camera reads, its y at least 0.5 (the name ours) */
     CPnt3D m_1344;   // 0x1344
-    unsigned char _1350[0x1458 - 0x1350];
+    unsigned char _1350[Z_SEALBODY_OFS(0x1458) - Z_SEALBODY_OFS(0x1350)];
     CPnt3D m_aim_point;   // 0x1458 (SOCOM 1: 0x10b8)
 };
 
