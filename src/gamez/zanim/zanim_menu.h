@@ -608,7 +608,14 @@ public:
     CWrappedText();
     virtual ~CWrappedText();
 
+#if Z_PORT
+    /* the host's size: zui_2d.cpp's class is 0x230 bytes under the host's ABI (tools/odrcheck.py
+     * in the port), where this restatement's MW padding made 0x250 -- and moved every member after
+     * a CWrappedText (CPopUpDialog's) */
+    unsigned char _98[0x230 - sizeof(C2DString)];
+#else
     unsigned char _98[0x250 - 0x98];
+#endif
 } __attribute__((aligned(16)));   // 0x250 bytes
 
 /* a button (zui_2d.h's C2DButton, 0x440 bytes: its constructor 0x377800 and destructor 0x377510
@@ -618,7 +625,11 @@ public:
     C2DButton();
     ~C2DButton();
 
+#if Z_PORT
+    unsigned char _0[0x430];   /* the host's size of zui_2d.cpp's class (MW's 0x440) */
+#else
     unsigned char _0[0x440];
+#endif
 } __attribute__((aligned(16)));
 
 /* the menu's pop-up (SOCOM 1's CPopUpDialog: a plain bitmap with its text, a 2D object, two buttons;

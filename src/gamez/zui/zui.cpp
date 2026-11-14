@@ -714,8 +714,16 @@ public:
      * CPopUpDialog::Load, there called in the same place; the HUD's round 58 named it) */
     bool Load(zdb::CTextureRelocMgr *mgr);
 
+#if Z_PORT
+    /* zui_2d.cpp's members up to the font, so the host's offsets follow (MW's padding put the font
+     * 0x20 past the class's own, and Load read a null font) */
+    zdb::CTextureRelocMgr *m_mgr;
+    CWrappedText m_text;
+    C2DFont *m_font;
+#else
     unsigned char _a0[0x300 - 0xa0];
     C2DFont *m_font;   // 0x300
+#endif
 };
 class CMenuStack {
 public:
