@@ -670,9 +670,12 @@ public:
     unsigned int m_numDetails;   // 0x64
 };   // 0x68 bytes
 
+/* a mesh's piece (SOCOM 1's; vis_mesh.cpp's: its table __vt__Q23zdb8CSubMesh 0x408330 overrides
+ * Read, its key function -- the destructor implicit) */
 class CSubMesh : public CVisual {
 public:
     CSubMesh(CMesh *mesh);
+    virtual bool Read(zar::CZAR &zar);
     int m_index;   // 0x68: its place in its mesh's matrices (the names ours)
     CVisual *m_mesh;   // 0x6c
 };
@@ -1289,8 +1292,11 @@ public:
 /* a model (SOCOM 1's DWARF) */
 class CModel : public CNode {
 public:
-    int m_variant;   // 0xc0
-    unsigned char m_bForceExport;   // 0xc4
+    /* SOCOM II's order, the reverse of SOCOM 1's DWARF: the constructor (0x318C40) clears a byte
+     * at 0xC0 and a word at 0xC4, and hookupVisuals tests the byte where SOCOM 1 tested
+     * m_bForceExport */
+    unsigned char m_bForceExport;   // 0xc0
+    int m_variant;   // 0xc4
     CRefList m_list;   // 0xc8
     unsigned char m_bbox_valid;   // 0xd4
     CAssetLib *m_AssetLib;   // 0xd8

@@ -130,7 +130,7 @@ bool hookupVisuals(CZAR *zar, CKey *key, CNode *node, CModel *model, CVisBase *b
             }
         }
     }
-    if (list.size() == 0 || *(unsigned char *)&model->m_variant || model->GetMesh()) {
+    if (list.size() == 0 || model->m_bForceExport || model->GetMesh()) {
         CVisualVector::iterator v = visuals.begin();
         CVisualVector::iterator e = visuals.end();
         CVisual *visual = 0;

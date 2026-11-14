@@ -8,6 +8,18 @@
 
 namespace zdb {
 
+/* a model named: a node of type 7, no library, its bounds not yet valid, no variant (SOCOM 1's;
+ * OVL1 0x318C40, the unit's last function) */
+CModel::CModel(const char *name)
+{
+    m_AssetLib = 0;
+    m_type = 7;
+    m_bbox_valid = 0;
+    SetName(name);
+    m_variant = 0;
+    m_bForceExport = 0;
+}
+
 /* a model let go of: taken off its library (the library's copy of it found by name), each
  * instance and cross-reference of it untied (SetModel(0) inlined: a cross-reference's children
  * deleted, the model and its name cleared, the dead arm of the name's ternary left in), the list

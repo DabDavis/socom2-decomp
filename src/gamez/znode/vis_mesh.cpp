@@ -7,6 +7,7 @@
 #include "znode.h"
 #include <string.h>
 #include "../zsys/zsys_public.h"
+#include "../zar/zar.h"
 
 namespace zdb {
 
@@ -519,6 +520,23 @@ void CMesh::SetMeshTextureSelects(_word128 *head, _word128 *names)
             }
         }
     }
+}
+
+/* a piece of a mesh: type 2, the word at 0x1C 3, no matrix yet (SOCOM 1's; OVL1 0x3B8CD0) */
+CSubMesh::CSubMesh(CMesh *mesh)
+{
+    m_type = 2;
+    m_1c = 3;
+    m_index = 0xABCD;
+    m_mesh = mesh;
+}
+
+/* its matrix's index, then the visual's own (SOCOM 1's; OVL1 0x3B8C20, the key function: the table
+ * 0x408330 and the implicit destructor's copy 0x3B8C70 come out with it) */
+bool CSubMesh::Read(zar::CZAR &zar)
+{
+    zar.Fetch("matrix_id", (unsigned int *)&m_index);
+    return CVisual::Read(zar);
 }
 
 /* a decal unlinked from the mesh's list, its link cleared (SOCOM 1's) */
