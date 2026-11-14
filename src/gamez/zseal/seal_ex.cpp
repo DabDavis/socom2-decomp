@@ -4,6 +4,14 @@
  * reverse of their image order (-inline deferred). */
 
 #include "../zrdr/zrdr.h"
+#include "zseal.h"
+
+/* a weapon's hit on a SEAL's node: the SEAL takes it (SOCOM 1's CSealEx::OnWeaponHit, the same tail
+ * call; OVL2 0x5B8260, the class's key function -- its table 0x669570 comes out with it) */
+int CSealEx::OnWeaponHit(zdb::CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile)
+{
+    return m_seal->OnWeaponHit(hit, projectile);
+}
 
 /* a tag's values as a mask, a bit per value: the array's numbers each shifted into place, 0 for
  * anything but an array (SOCOM 1's ftmask_create__FP5_zrdr, the same walk over SOCOM II's
