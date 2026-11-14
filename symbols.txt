@@ -7146,9 +7146,9 @@
 0x00386BF0 0x15C __ct__11CUIVariableFRC11CUIVariable  # OVL1; the UI lane, round 13: by its body (zui_var.cpp: CUIVariable's copy constructor -- _zrdr() and UIVarMixin() inline, the tables 0x4050B0, 0x4062B0/0x4062B8 stored at 8, 0x10, 8, the watcher vector zeroed and reserved for 16, the name made in theUIVarManager's current table, the longevity copied lb/sb; fts_mission.cpp's vector<CUIVariable> insert 0x2B1BD0 calls it for each copy)
 0x00386D50 0x84 OnTableFull__12CUIVarSTableFPCc  # OVL1; by hand (slot 0x18 of CUIVarSTable's table 0x407D20, CSTable's OnTableFull overridden: CollectGarbage, then the string made in the new current table, guarded against recursion) -- zui_var.cpp
 0x00386DE0 0x8 OnCreateString__7CSTableFPc  # OVL1; ours (slot 0x14 of CSTable's 0x4081D0 and CUIVarSTable's 0x407D20 vtables, empty; CreateString calls it with each string it adds; the inline virtual's copy emitted with zui_var.cpp's CUIVarSTable)
-0x00386DF0 0x8 func_00386DF0  # OVL1
-0x00386E00 0x8 func_00386E00  # OVL1
-0x00386E10 0x8 func_00386E10  # OVL1
+0x00386DF0 0x8 @12@UnSerialize__13CUIVarManagerFPCcP8CRdrFilei  # OVL1; the port M2 lane: MW's this-adjusting thunk (j 0x385610, a0 -= 12: CSaveModule's place), slot +0x18 of __vt__13CUIVarManager 0x407CF0; zui_var.cpp emits it with ~CUIVarManager
+0x00386E00 0x8 @12@Serialize__13CUIVarManagerFi  # OVL1; the port M2 lane: MW's this-adjusting thunk (j 0x385670, a0 -= 12), slot +0x14 of 0x407CF0; zui_var.cpp emits it with ~CUIVarManager
+0x00386E10 0x8 @12@__dt__13CUIVarManagerFv  # OVL1; the port M2 lane: MW's this-adjusting thunk (j 0x385CE0, a0 -= 12), slot +0x10 of 0x407CF0 (the save module's destructor slot); zui_var.cpp emits it with ~CUIVarManager
 0x00386E20 0x114 __dt__14CUIMapCtrlSpecFv  # OVL1; by its vtable (slot 0x08 of __vt__14CUIMapCtrlSpec 0x407D40) -- the UI-widgets lane
 0x00386F40 0xC GetType__14CUIMapCtrlSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00386F50 0x98 __dt__15CUIVariableSpecFv  # OVL1; s1:order by hand (SOCOM 1's __dt__15CUIVariableSpecFv after GetType__14CUIMapCtrlSpecFv: the name freed, the value's children deleted and the value, the CSTable member) -- zui_cleanup.cpp

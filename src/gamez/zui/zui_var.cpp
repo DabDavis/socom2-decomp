@@ -288,6 +288,13 @@ bool UIVarMixin::DetachUIVar(CUIVariable *var)
     return false;
 }
 
+/* the variables emptied, then the tables, the save module and the vector (SOCOM 1's; OVL1
+ * 0x385CE0, the class's key function: its table 0x407CF0 comes out with it) */
+CUIVarManager::~CUIVarManager()
+{
+    clear();
+}
+
 /* the temporary variables destroyed, the garbage collected (SOCOM 1's) */
 void CUIVarManager::Reset()
 {

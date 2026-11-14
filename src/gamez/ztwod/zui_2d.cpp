@@ -874,8 +874,16 @@ public:
  * with 0 */
 class CPopUpDialog : public CPlainBmp {
 public:
-    /* declared, not defined: stand-ins whose implicit destructors would supersede the drafts */
-    virtual ~CPopUpDialog();
+    /* inline, as zanim_menu.h's (its out-of-line copy is zanim_menu.cpp's, 0x27C8D0): so the
+     * class's key function is Draw, and this unit emits its table (0x4073A0) and the thunk
+     * 0x37D110 */
+    virtual ~CPopUpDialog()
+    {
+        if (m_32c) {
+            delete m_32c;
+            m_32c = 0;
+        }
+    }
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual bool HandlePad(const CPad *pad, int port);
@@ -896,7 +904,7 @@ public:
     IPNT2D m_textOffset;   // 0x304
     int m_width;   // 0x30c: its command's WIDTH
     int m_height;   // 0x310: its command's HEIGHT
-    unsigned char _314[0x32c - 0x314];
+    C2D m_314;   // 0x314 (zanim_menu.h's: the destructor destroys it after the buttons)
     C2D *m_32c;   // 0x32c
     CValve *m_330;   // 0x330: the valve the answer is set in (the two buttons drawn only with one)
     int m_choice;   // 0x334: the button chosen, 1 or 2
@@ -5779,15 +5787,36 @@ public:
 
 extern CPipe thePipe;
 
-/* a 2D object drawn by the world's render pipe (SOCOM 1's C2DVisual, a zdb::CVisual made from a
- * C2D: zanim_menu.h's, the object at 0x68; its destructor declared first so that this unit does
- * not take its table) */
-class C2DVisual {
+/* a visual (znode.h's zdb::CVisual, as zui.cpp restates it: its vtable pointer at 0x20, 0x68
+ * bytes; the slots as __vt__Q23zdb7CVisual holds them) */
+class CBBox;
+namespace zar {
+class CZAR;
+}
+class C2DVisual;
+namespace zdb {
+class CVisual {
 public:
-    virtual ~C2DVisual();
-    virtual void Render(CMatrix *m);
+    unsigned char _0[0x20];
+    virtual ~CVisual();                                 /* +0x08 */
+    virtual void Render(CMatrix *mtw);                  /* +0x0C */
+    virtual void ComputeBBox(CBBox *box);               /* +0x10 */
+    virtual void UpdateCentroid();                      /* +0x14 */
+    virtual bool Read(zar::CZAR &zar);                  /* +0x18 */
+    virtual C2DVisual *Get2DVisual() { return 0; }      /* +0x1C */
+    unsigned char _24[0x68 - 0x24];
+};
+}
 
-    unsigned char _4[0x68 - 4];
+/* a 2D object drawn by the world's render pipe (SOCOM 1's C2DVisual, a zdb::CVisual made from a
+ * C2D: zanim_menu.h's, the object at 0x68). Render is its key function: this unit takes its table
+ * (0x4072D0), with the implicit destructor's copy (0x37C0A0) and Get2DVisual's (0x37C100) */
+class C2DVisual : public zdb::CVisual {
+public:
+    virtual void Render(CMatrix *m);
+    /* the visual is a 2D one: itself */
+    virtual C2DVisual *Get2DVisual() { return this; }
+
     C2D *m_2d;   // 0x68
     zdb::CTextureRelocMgr *m_mgr;   // 0x6c
 };
