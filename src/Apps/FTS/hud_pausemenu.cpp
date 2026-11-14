@@ -482,6 +482,15 @@ CZPauseTest::CZPauseTest()
     m_be4 = 0;
 }
 
+/* the lines cleared and their array deleted, then the members (OVL1 0x205480; the table 0x405320
+ * comes with it): the bitmaps' and polys' implicit destructors inline, the strings' out of line */
+CZPauseTest::~CZPauseTest()
+{
+    Clear();
+    delete[] m_items;
+    m_items = 0;
+}
+
 /* the menu closed (CHUD::ReInit_Uninit's first call; SOCOM 1's, 0x1AC there): the voices resumed,
  * the player's pad's four face buttons let go, the menu state put back; offline with the player
  * driving, the night mission's lens colour put back unless a lens effect is up, the camera's zoom
