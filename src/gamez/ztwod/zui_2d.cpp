@@ -3171,8 +3171,15 @@ void CHProgressBar::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
     CPlainBmp::Draw(m, mgr);
     mgr->PreGetSprPacket(0);
     zVid_Scissor(0, 0, 640, 448);
+#if Z_PORT
+    /* the menu's node through the real class (zui.cpp's UiCurMenuFindChild): UiGetCurMenu holds the
+     * menu, whose m_nodeTop is at 0 only under MW */
+    zdb::CNode *UiCurMenuFindChild(const char *name, bool deep);
+    zdb::CNode *node = UiCurMenuFindChild(m_str.c_str(), true);
+#else
     CMenuNode *menu = UiGetCurMenu();
     zdb::CNode *node = menu->FindChild(m_str.c_str(), true);
+#endif
 
     if (node)
         node->SetPosition(p[1].x, p[0].y, 0.0f);

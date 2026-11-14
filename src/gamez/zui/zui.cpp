@@ -715,6 +715,17 @@ C2D *CGameMenu::Add2dNode(CDesignDlgObj *obj)
 }
 #pragma auto_inline reset
 
+#if Z_PORT
+/* the port: a child of the menu being shown found by name. UiGetCurMenu's static holds the menu
+ * (`data_0049EA90 = this` above), and CHProgressBar::Draw (zui_2d.cpp) searches it as the menu's
+ * node: under MW m_nodeTop is at the menu's 0, on the host the vtable pointer is, so the node is
+ * reached through the member here, where the real class is */
+zdb::CNode *UiCurMenuFindChild(const char *name, bool deep)
+{
+    return data_0049EA90 ? data_0049EA90->m_nodeTop.FindChild(name, deep) : 0;
+}
+#endif
+
 /* slot 0x10: the menu's rdr (SOCOM 1's) */
 const char *CGameMenu::GetReaderFileName()
 {
