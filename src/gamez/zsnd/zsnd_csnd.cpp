@@ -340,6 +340,39 @@ extern "C" CSnd *func_00344BF0(const unsigned int *key, int lo, int hi)
     return func_00344BF0(key, lo, mid);
 }
 
+/* the sound list searched by hash: the binary search over the whole list, none when it is empty
+ * (0x344EE0), its wrapper (0x344F20: AddNewCSnd's and GetSoundByName's, out of line), and a sound by name, through its
+ * name's CRC-32 (SOCOM 1's GetSoundByName; none while sound is off) -- all three called out of line
+ * in this unit (LoadSounds and LoadCSnd call the last): pinned.
+ * Written for the port, M3: GetSoundByName's draft hashed no name and the wrapper's searched with no
+ * key (the EE's a0 passed on) -- on the host every lookup by name hashed a stale word */
+extern "C" unsigned int func_003A59C0(const char *name);
+#pragma auto_inline off
+extern "C" CSnd *func_00344EE0(const unsigned int *key)
+{
+    int hi = CSnd::m_soundlist.size() - 1;
+
+    if (hi == -1)
+        return 0;
+    return func_00344BF0(key, 0, hi);
+}
+
+extern "C" CSnd *func_00344F20(const unsigned int *hash)
+{
+    return func_00344EE0(hash);
+}
+
+CSnd *CSnd::GetSoundByName(const char *name)
+{
+    if (m_isDisabled)
+        return 0;
+    unsigned int hash = 0;
+
+    hash = func_003A59C0(name);
+    return func_00344F20(&hash);
+}
+#pragma auto_inline reset
+
 extern "C" void func_00344910(const char *name)
 {
     bool mp = false;
