@@ -331,6 +331,24 @@ bool CZAR::ReadDirectory(int dir, unsigned int mode)
     return ok;
 }
 
+/* the in-memory data buffer handed over: the buffer file under it lets it go, and the archive
+ * forgets it (SOCOM 1's; OVL1 0x257F90) */
+void *CZAR::ReleaseDataBuffer()
+{
+    if (m_databuffer) {
+        CBufferIO *io = dynamic_cast<CBufferIO *>(m_pFile);
+
+        if (io)
+            io->Release();
+        void *buf = m_databuffer;
+
+        m_databuffer = 0;
+        m_24 = 0;
+        return buf;
+    }
+    return 0;
+}
+
 int CZAR::ReadString(char **str)
 {
     int len = 0;

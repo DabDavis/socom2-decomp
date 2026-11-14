@@ -837,6 +837,16 @@ unsigned char tosInit(TOS *t, void *heap, TOSCB *cb, struct PROFILE *profiles, v
     return 1;
 }
 
+/* the architecture destroyed, then the small-block allocator, unless a block or queue refused
+ * (SOCOM 1's; casrClose calls it) */
+int tosDestruct(TOS *t)
+{
+    if (DestructArchitecture(t))
+        return 1;
+    fastallo_Terminate(&t->fa);
+    return 0;
+}
+
 /* inline: tosBaseBlockConstruct has it inlined (the log record still built on the stack) */
 __inline__ unsigned char _tosErrorLog(TOSLOG *log, unsigned short code)
 {
