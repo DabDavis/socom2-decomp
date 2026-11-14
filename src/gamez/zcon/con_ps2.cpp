@@ -436,6 +436,15 @@ void CConsole::Debug(int level, CPacket *packet, const char *prefix)
     }
 }
 
+/* the packet's data freed (OVL1 0x29DAD0; its table 0x405DD0 goes with it) */
+CPacket::~CPacket()
+{
+    if (m_data)
+        free(m_data);
+    m_data = 0;
+    m_size = 0;
+}
+
 /* whether two packets are the same: id, type and size alike (SOCOM 1's, the same code). The ids'
  * test is a bool assigned true (daddiu), each && its own materialised step; the two headers in
  * locals, a's first, give the target's registers (read straight off the packets, b's loads first) */
