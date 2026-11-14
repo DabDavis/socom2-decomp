@@ -23,6 +23,20 @@
 /* the string hash the lookups key on (0x3A59C0, an earlier unit's: a tail call into the util
  * unit's hash, not named yet) */
 extern "C" unsigned int func_003A59C0(const char *s);
+/* a name's place in the two indexes: 1 in the language's lines (m_lines, searched first), 2 in
+ * m_entries, 0 in neither, its offset and size returned (OVL1 0x34D480, StreamSoundVolPan's; the name
+ * unknown). Written for the port, M3: m2c's draft made the first Find with the list alone -- the
+ * name and the two out-pointers still in a1-a3 on the EE, garbage on the host. Behind Z_PORT: MW inlines
+ * Find here whatever the pragmas (0x15C against 0x7C), so the PS2 keeps the draft */
+#if Z_PORT
+extern "C" int func_0034D480(CSubtitleTable *table, const char *name, int *offset, int *size)
+{
+    if (table->m_lines.Find(name, offset, size))
+        return 1;
+    return table->m_entries.Find(name, offset, size) ? 2 : 0;
+}
+#endif
+
 
 /* the records with the hash of a name: its two words given back and true; else the records
  * walked (their dump compiled out) and false. The cursor is a plain pointer compared as an

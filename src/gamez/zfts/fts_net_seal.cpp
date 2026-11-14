@@ -177,7 +177,11 @@ public:
  * waits on) */
 class CSealCtrl {
 public:
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CSealCtrl();
+#else
     virtual void Slot08();
+#endif
     virtual void Slot0C();
     virtual void Slot10();
     virtual void Slot14();
@@ -229,7 +233,11 @@ public:
 
     /* CEntity's table: only the slot at +0x3C the creation callback calls with two of the
      * controller's members (the names ours) */
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CZSealBody();
+#else
     virtual void Slot08();
+#endif
     virtual void Slot0C();
     virtual void Slot10();
     virtual void Slot14();

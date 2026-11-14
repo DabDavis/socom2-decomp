@@ -394,7 +394,11 @@ public:
  * a virtual, through t9, where a function pointer goes through v0 */
 class CBarrelView {
 public:
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CBarrelView();
+#else
     virtual void V08();
+#endif
     virtual void V0C();
     virtual void V10();
     virtual void V14();

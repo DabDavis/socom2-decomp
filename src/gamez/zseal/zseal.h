@@ -1587,6 +1587,16 @@ public:
     void SetGroup(class CAiGroup *g);
     /* (0x573E60: the stack emptied, then the bases' destructors) */
     virtual ~CSealCtrlAi();
+    /* the controller's kind and its own virtuals, inline (OVL2 0x575BF0-0x575C40, their out-of-line copies
+     * at the unit's tail: the image's vtable, slots +0x2C/+0x30/+0x38/+0x78/+0x7C/+0x80). Undeclared, the
+     * host's vtable inherited CSealCtrl's -- an AI was no AI, GetSealCtrlAi null, and LoadVehicle never
+     * ran its InitAiBrain (M3) */
+    virtual bool IsPlayer() const { return false; }
+    virtual bool IsAi() const { return true; }
+    virtual CSealCtrlAi *GetSealCtrlAi() { return this; }
+    virtual void OnActionButton() {}
+    virtual void PerformReticleActions() {}
+    virtual void PerformProximityActions() {}
     virtual void SetThrottle(unsigned int axis, float value);
     /* the dead AI's corpse faded and recycled, or its respawns counted down (OVL2 0x56EE80) */
     virtual bool PostMortemPreTick(float dT);

@@ -558,7 +558,11 @@ extern "C" float floorf(float);
 /* the controller's player test (CSealCtrl's slot 0x30, fts_remote.cpp's IsPlayer) */
 class CSealCtrlQuery {
 public:
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CSealCtrlQuery();
+#else
     virtual void _slot0();
+#endif
     virtual void _slot1();
     virtual void _slot2();
     virtual void _slot3();

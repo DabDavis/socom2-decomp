@@ -55,7 +55,11 @@ public:
 
 class CEntityCtrl {
 public:
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CEntityCtrl();
+#else
     virtual void _slot0();
+#endif
     virtual void _slot1();
     virtual void _slot2();
     virtual void _slot3();

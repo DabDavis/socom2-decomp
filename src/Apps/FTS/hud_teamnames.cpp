@@ -16,7 +16,11 @@
  * 12, the order) -- the vtable pointer first, as CSealCtrl's is */
 class CSealCtrl {
 public:
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CSealCtrl();
+#else
     virtual void v0();
+#endif
     virtual void v1();
     virtual void v2();
     virtual void v3();

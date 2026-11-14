@@ -2724,7 +2724,12 @@ extern "C" bool func_0060A850(const CAiTarget *t);
  * view, the 42 slots before it unnamed here */
 class CUnitAiView {
 public:
-    virtual void v08(); virtual void v0c(); virtual void v10(); virtual void v14(); virtual void v18();
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CUnitAiView();
+#else
+    virtual void v08();
+#endif
+    virtual void v0c(); virtual void v10(); virtual void v14(); virtual void v18();
     virtual void v1c(); virtual void v20(); virtual void v24(); virtual void v28(); virtual void v2c();
     virtual void v30(); virtual void v34(); virtual void v38(); virtual void v3c(); virtual void v40();
     virtual void v44(); virtual void v48(); virtual void v4c(); virtual void v50(); virtual void v54();

@@ -18,7 +18,11 @@ extern "C" int strcasecmp(const char *a, const char *b);
  * ours) */
 class CActionCtrl {
 public:
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CActionCtrl();
+#else
     virtual void _slot0();
+#endif
     virtual void _slot1();
     virtual void _slot2();
     virtual void _slot3();

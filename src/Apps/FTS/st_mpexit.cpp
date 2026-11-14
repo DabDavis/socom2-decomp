@@ -172,7 +172,11 @@ public:
 class CSealNode {
 public:
     unsigned char m_params[0x60];
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CSealNode();
+#else
     virtual void v08();
+#endif
     virtual void v0c();
     virtual void v10();
     virtual void v14();

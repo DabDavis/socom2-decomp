@@ -36,7 +36,11 @@ class CNodeAction;
 /* the controller (zseal.h's: what the commands call) */
 class CSealCtrl {
 public:
+#if Z_PORT   /* the host: a virtual destructor first, two slots (Itanium) where MW's takes one */
+    virtual ~CSealCtrl();
+#else
     virtual void v8();
+#endif
     virtual void vC();
     virtual void v10();
     virtual void v14();
