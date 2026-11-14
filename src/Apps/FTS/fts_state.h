@@ -145,10 +145,19 @@ public:
     void RemoveDecals();   /* 0x31C880 (st_mpexit.cpp's call) */
     void ReleaseTextureAssetCharacters();   /* 0x31CED0 */
 
+#if Z_PORT
+    /* the host's offsets (znode.h's CWorld under the Itanium ABI: CNode's vtable pointer first and
+     * its 16-aligned parameter base after it put the node's members 0xC later than MW's) */
+    unsigned char _0[0x74];
+    std::vector<CNode *> m_nodes;   // host 0x74
+    unsigned char _80[0x134 - 0x80];
+    CCamera *m_camera;   // host 0x134
+#else
     unsigned char _0[0x68];
     std::vector<CNode *> m_nodes;   // 0x68
     unsigned char _74[0x128 - 0x74];
     CCamera *m_camera;   // 0x128
+#endif
 
     static CWorld *m_world;
 };
