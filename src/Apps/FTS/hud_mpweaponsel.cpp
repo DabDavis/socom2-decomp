@@ -117,7 +117,7 @@ public:
     static void HudText_to_upper(char *instr);
     static PNT4D m_hud_textcolor;   /* the HUD's text colour */
 
-    unsigned char _0[0x498];
+    unsigned char _0[Z_CHUD_OFS(0x498)];
     C2DFont *m_myfont;   // 0x498
 };
 

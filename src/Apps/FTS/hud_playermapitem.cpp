@@ -30,7 +30,7 @@ public:
 /* the HUD as the blip reads it: its compass (hud_main.cpp's CHUD) */
 class CHUD {
 public:
-    unsigned char _0[0x4fe0];
+    unsigned char _0[Z_CHUD_OFS(0x4fe0)];
     MapCompass m_compass;   // 0x4fe0
 };
 

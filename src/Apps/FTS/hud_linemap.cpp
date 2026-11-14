@@ -659,9 +659,9 @@ inline bool CZLineMap::IsObjectiveLine(const CAiMap::line &line) const
 /* the HUD (hud_main.cpp's, theHUD 0x408E58), as far as the labels' font and the compass go */
 class CHUD {
 public:
-    unsigned char _0[0x498];
+    unsigned char _0[Z_CHUD_OFS(0x498)];
     C2DFont *m_myfont;   // 0x498
-    unsigned char _49c[0x4fe0 - 0x49c];
+    unsigned char _49c[Z_CHUD_OFS(0x4fe0) - Z_CHUD_OFS(0x49c)];
     MapCompass m_compass;   // 0x4fe0
 };
 

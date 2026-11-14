@@ -158,7 +158,7 @@ public:
 
     static CZSealBody *GetHUDOwner();
 
-    unsigned char _0[0x498];
+    unsigned char _0[Z_CHUD_OFS(0x498)];
     C2DFont *m_myfont;   // 0x498
     /* the HUD's font (ours: SetupTeam's local, numbered as a temporary at the inline's expansion) */
     C2DFont *GetFont() const { return m_myfont; }

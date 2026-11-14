@@ -335,7 +335,7 @@ class CHUD {
 public:
     static CPnt4D m_hud_textcolor;
 
-    unsigned char _0[0x498];
+    unsigned char _0[Z_CHUD_OFS(0x498)];
     C2DFont *m_myfont;   // 0x498
 };
 

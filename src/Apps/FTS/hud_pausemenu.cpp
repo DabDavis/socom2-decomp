@@ -192,7 +192,7 @@ public:
     void Off();
     static class CZSealBody *GetHUDOwner();
 
-    unsigned char _0[0x11c90];
+    unsigned char _0[Z_CHUD_OFS(0x11c90)];
     CZNewHudMap *m_map;   // 0x11c90
 };
 

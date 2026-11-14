@@ -263,7 +263,7 @@ public:
     signed char m_hudrettype;   // 0xb0
     bool m_usehudret;   // 0xb1
     bool m_hudretchanged;   // 0xb2
-    unsigned char _b3[0x17b64 - 0xb3];
+    unsigned char _b3[Z_CHUD_OFS(0x17b64) - 0xb3];
     unsigned char m_17b64;   // 0x17b64
 };
 

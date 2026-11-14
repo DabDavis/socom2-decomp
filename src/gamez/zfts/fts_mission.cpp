@@ -46,16 +46,16 @@ public:
     void ReInit_Uninit();   /* 0x1FB790 */
     void ReInit_Init();   /* 0x1FB420 */
 
-    unsigned char _0[0x11c90];
+    unsigned char _0[Z_CHUD_OFS(0x11c90)];
     CZNewHudMap *m_newmap;   // 0x11c90 (SOCOM 1's map embedded, at 0xe370)
-    unsigned char _11c94[0x15ef4 - 0x11c94];
+    unsigned char _11c94[Z_CHUD_OFS(0x15ef4) - Z_CHUD_OFS(0x11c94)];
     float m_nvg_noise;   // 0x15ef4: SOCOM II's night vision noise, 0 to 128 (NVG_NOISE sets it; the name ours)
-    unsigned char _15ef8[0x1a100 - 0x15ef8];
+    unsigned char _15ef8[Z_CHUD_OFS(0x1a100) - Z_CHUD_OFS(0x15ef8)];
     CLetterBox m_letterbox;   // 0x1a100 (SOCOM 1's at 0x14280)
-    unsigned char _1a230[0x1a2d0 - 0x1a230];
+    unsigned char _1a230[Z_CHUD_OFS(0x1a2d0) - Z_CHUD_OFS(0x1a230)];
     unsigned char m_flashes[0xc];   // 0x1a2d0: a CFlashFXVector
     CZHudMissionCams m_missioncams;   // 0x1a2dc (SOCOM 1's at 0x14590)
-    unsigned char _1a698[0x1a6f5 - 0x1a698];
+    unsigned char _1a698[Z_CHUD_OFS(0x1a6f5) - Z_CHUD_OFS(0x1a698)];
     unsigned char m_ison : 1;   // 0x1a6f5 (SOCOM 1's at 0x14955)
 };
 

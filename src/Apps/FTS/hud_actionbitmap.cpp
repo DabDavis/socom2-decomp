@@ -731,7 +731,7 @@ public:
 
     static PNT4D m_hud_textcolor;   /* the HUD's text colour */
 
-    unsigned char _0[0x11c90];
+    unsigned char _0[Z_CHUD_OFS(0x11c90)];
     CZNewHudMap *m_newmap;   // 0x11c90
 };
 

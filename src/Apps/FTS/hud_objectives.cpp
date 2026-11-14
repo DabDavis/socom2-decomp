@@ -15,11 +15,11 @@
 /* the HUD: its menu state and mission cameras placed (SOCOM II's offsets) */
 class CHUD {
 public:
-    unsigned char _0[0x498];
+    unsigned char _0[Z_CHUD_OFS(0x498)];
     C2DFont *m_myfont;   // 0x498
-    unsigned char _49c[0x1a220 - 0x49c];
+    unsigned char _49c[Z_CHUD_OFS(0x1a220) - Z_CHUD_OFS(0x49c)];
     MENU_STATE m_menustate;   // 0x1a220
-    unsigned char _1a221[0x1a2dc - 0x1a221];
+    unsigned char _1a221[Z_CHUD_OFS(0x1a2dc) - Z_CHUD_OFS(0x1a221)];
     CZHudMissionCams m_missioncams;   // 0x1a2dc
 };
 

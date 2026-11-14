@@ -1325,6 +1325,14 @@ bool func_005582C0(CAiStamp *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount
 bool func_0059AD30(CZSealBody *seal, const CPnt3D *pos);
 }
 
+/* the ground probe's poly forgotten: -999, none (OVL2 0x5B0410, before the probe's answer; seal.cpp's
+ * SEAL set-up calls it; the name unknown. Written for the port, M3: its draft stored at MW's 0x2CC --
+ * on the host the size word of m_volumetricAltitudes, which the next clear walked from 0 to -999) */
+extern "C" void func_005B0410(CZSealBody *seal)
+{
+    seal->m_down_di = -999;
+}
+
 /* the ground probe's answer once the batch has run: a hit taken as the altitude (a SEAL's only its point),
  * the height set on a landing, the material's height added; no hit, with the switch on, an alert and the
  * SEAL back on the last ground; else that ground kept where the SEAL stands, lowered by its material's

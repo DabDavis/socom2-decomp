@@ -73,6 +73,12 @@ struct z_qword { unsigned int w[4]; } __attribute__((aligned(16)));
 #define Z_SEALBODY_OFS(mw)                                                                        \
     ((mw) < 0x170 ? (mw) : (mw) < 0x1380 ? (mw) - 0xc : (mw) < 0x1440 ? (mw) : (mw) + 0x10)
 
+/* the same for the units' restatements of the HUD (hud_main.cpp's CHUD, measured member by member
+ * against its MW offsets): the same to m_WeaponBackground's end (MW 0x480: that bitmap is 0x10
+ * shorter on the host), 0x10 lower to m_poseBitmap, 0x20 lower from m_bitmapReticule (MW 0x11df0)
+ * to the end (0x1acd0 against the host's 0x1acb0) */
+#define Z_CHUD_OFS(mw) ((mw) < 0x480 ? (mw) : (mw) < 0x11df0 ? (mw) - 0x10 : (mw) - 0x20)
+
 /* Metrowerks' intrinsics */
 #define Z_RSQRT(a, x) ((a) / __builtin_sqrtf(x))
 #define Z_MEMCPY __builtin_memcpy
@@ -98,6 +104,7 @@ struct z_qword { unsigned int w[4]; } __attribute__((aligned(16)));
 #define Z_LAYOUT_OK(c) (c)
 #define Z_OFS(mw, host) mw
 #define Z_SEALBODY_OFS(mw) (mw)
+#define Z_CHUD_OFS(mw) (mw)
 
 #define Z_RSQRT(a, x) __rsqrt(a, x)
 #define Z_MEMCPY __memcpy

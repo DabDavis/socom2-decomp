@@ -228,19 +228,45 @@ public:
     void Tick(float dT);
     void DrawPhase(zdb::_RenderPhase phase, zdb::CCamera *cam);
 
-    unsigned char _0[0x498];
-    C2DFont *m_myfont;   // 0x498
-    unsigned char _49c[0x4fe0 - 0x49c];
-    MapCompass m_compass;   // 0x4fe0
-    unsigned char _4fe1[0x18900 - 0x4fe1];
-    CTickItem m_18900;   // 0x18900
-    unsigned char _18910[0x1a2d0 - 0x18910];
-    CFlashFXVector m_flashfx;   // 0x1a2d0
-    unsigned char _1a2d1[0x1acd0 - 0x1a2d1];
+    /* the host's offsets (hud_main.cpp's class measured: m_myfont, m_mapcompass, m_pausetest,
+     * m_FlashFXVector, the size) through Z_OFS */
+    unsigned char _0[Z_OFS(0x498, 0x488)];
+    C2DFont *m_myfont;   // 0x498 (host 0x488)
+    unsigned char _49c[Z_OFS(0x4fe0, 0x4fd0) - Z_OFS(0x49c, 0x48c)];
+    MapCompass m_compass;   // 0x4fe0 (host 0x4fd0)
+    unsigned char _4fe1[Z_OFS(0x18900, 0x188e0) - Z_OFS(0x4fe1, 0x4fd1)];
+    CTickItem m_18900;   // 0x18900 (host 0x188e0: m_pausetest)
+    unsigned char _18910[Z_OFS(0x1a2d0, 0x1a2b0) - Z_OFS(0x18910, 0x188f0)];
+    CFlashFXVector m_flashfx;   // 0x1a2d0 (host 0x1a2b0: m_FlashFXVector)
+    unsigned char _1a2d1[Z_OFS(0x1acd0, 0x1acb0) - Z_OFS(0x1a2d1, 0x1a2b1)];
 };   // 0x1acd0 bytes (the core state's new)
 
 /* the entity's node as the tick hides it: its active bit, SetActive the 13th virtual (CNode's,
  * its vtable pointer at 0x60) */
+#if Z_PORT
+/* the host's shape (M3): the vtable pointer first, the destructor two slots (the Itanium ABI's) --
+ * SetActive still the 13th entry after it, 0x34; the active bit at 0x6c (zdb::CNode's, measured). MW's
+ * twelve slots before it here sent the call to CNode::Read */
+class CTickNode {
+public:
+    virtual ~CTickNode();
+    virtual void v0c();
+    virtual void v10();
+    virtual void v14();
+    virtual void v18();
+    virtual void v1c();
+    virtual void v20();
+    virtual void v24();
+    virtual void v28();
+    virtual void v2c();
+    virtual void v30();
+    virtual void v34();
+    virtual bool SetActive(bool on);
+    unsigned char _4[0x6c - 4];
+    unsigned int m_active : 1;   // 0x6c
+    unsigned int _6c : 31;
+};
+#else
 class CTickNode {
 public:
     unsigned char _0[0x5c];
@@ -260,6 +286,7 @@ public:
     virtual void v34();
     virtual bool SetActive(bool on);
 };
+#endif
 
 /* SOCOM II's voice recogniser (reco.cpp's CReco, theReco: main loads its files, the tick ticks
  * it; only what the tick reads -- bit 1 at 0x38, the engine running, is SOCOM 1's

@@ -655,6 +655,22 @@ int CSealAnim::AnimOverlay(float t)
     return m_count;
 }
 
+/* the adrenaline raised by an amount, held at 1, untouched once full (none reads as full) (OVL2 0x578150;
+ * SOCOM 1's, 0x58 bytes in both: CZKit::InitializeSniperKick tail-calls it. Written for the port, M3:
+ * its draft read the member at MW's 0xEB0) */
+void CZSealBody::AdrenalineIncr(float amount)
+{
+    CAdrenaline *a = m_adrenaline;
+    float level = a ? a->m_level : 1.0f;
+
+    if (level != 1.0f) {
+        level += amount;
+        if (!(level <= 1.0f))
+            level = 1.0f;
+        a->m_level = level;
+    }
+}
+
 /* the SEAL's adrenaline (OVL2 0x5781B0, the unit's last; SOCOM 1's, the same load) */
 CAdrenaline *CZSealBody::Adrenaline()
 {

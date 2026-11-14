@@ -106,11 +106,11 @@ public:
      * the name ours) */
     C2DFont *GetFont() { return m_myfont; }
 
-    unsigned char _0[0x498];
+    unsigned char _0[Z_CHUD_OFS(0x498)];
     C2DFont *m_myfont;   // 0x498
-    unsigned char _49c[0x1a100 - 0x49c];
+    unsigned char _49c[Z_CHUD_OFS(0x1a100) - Z_CHUD_OFS(0x49c)];
     CLetterBox m_letterbox;   // 0x1a100
-    unsigned char _1a101[0x1a220 - 0x1a101];
+    unsigned char _1a101[Z_CHUD_OFS(0x1a220) - Z_CHUD_OFS(0x1a101)];
     MENU_STATE m_menustate;   // 0x1a220
 };
 
