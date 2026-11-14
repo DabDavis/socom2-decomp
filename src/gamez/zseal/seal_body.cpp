@@ -228,7 +228,7 @@ extern "C" bool func_0057D710(CZSealBody *seal, short weapon)
             rep->m_anim = anim;
     }
     seal->SaveParts();
-    float t = ((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->Representative()->m_anim->m_20;
+    float t = ((CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0)))->Representative()->m_anim->m_20;
 
     seal->m_interp2 = seal->m_interp1 = t;
     return true;
@@ -273,7 +273,7 @@ extern "C" void func_0057D5E0(CZSealBody *seal, char item)
         if (anim)
             rep->m_anim = anim;
     }
-    seal->m_curblend = (AnimType)((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->Representative()->m_id;
+    seal->m_curblend = (AnimType)((CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0)))->Representative()->m_id;
     seal->m_curblend = (AnimType)seal->m_animset->BaseAnim(seal->m_curblend);
 }
 
@@ -333,7 +333,7 @@ SEAL_STATE CZSealBody::GetStance(bool flag) const
     SEAL_STATE state = (SEAL_STATE)m_state;
 
     if (flag) {
-        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
 
         if (!func_005551A0(top->m_flags, 0x40)) {
             bool b = func_005551A0(top->m_flags, 0x20);
@@ -390,7 +390,7 @@ extern "C" void func_00588B40(CZSealBody *seal, int time)
  * 0x587B40; SOCOM 1's CanHeadLook, the same tests -- SetLookDir calls it in both builds) */
 bool CZSealBody::CanHeadLook()
 {
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
 
     if (!top)
         return true;
@@ -414,7 +414,7 @@ bool CZSealBody::CanHeadLook()
  * (OVL2 0x587A30; SOCOM 1's CanPitch, the same tests, before CanHeadLook in both builds) */
 bool CZSealBody::CanPitch()
 {
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
 
     if (m_state == 8 || top->m_state == 8)
         return false;
@@ -465,7 +465,7 @@ static inline void SetOverlay(CBlendOverlay &o, ACTIVE_ANIM *a, float trig, floa
 CZBodyAnimBlend *CZSealBody::AddBlendOverlay(AnimType type)
 {
     ACTIVE_ANIM *a;
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     CZSIScriptCommon *script = m_animset->GetScript(type);
 
     if (!script)
@@ -553,7 +553,7 @@ static inline bool CutIn(bool back, float t, float x)
  * the loop's join); the result declared first (r s2, back s0) */
 bool CZSealBody::CanInterrupt()
 {
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
 
     if (top->IsDone(m_2e0))
         return false;
@@ -591,7 +591,7 @@ bool CZSealBody::CanInterrupt()
  * after CanInterrupt in both builds -- PreTick asks it; each pass overwrites the answer) */
 bool CZSealBody::CanTurn()
 {
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     bool r = false;
 
     for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
@@ -1085,7 +1085,7 @@ extern "C" void *func_0057DF20(CZSealBody *seal)
     seal->SetBit10(false);
     seal->m_1350 = seal->m_velW;
     func_00588B40(seal, 9);
-    return func_00555170((char *)seal + 0x1c0);
+    return func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 }
 
 namespace zdb {
@@ -1205,7 +1205,7 @@ extern "C" void func_0057F310(CZSealBody *seal)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -1241,7 +1241,7 @@ extern "C" CZBodyAnimBlend *func_0057E540(CZSealBody *seal)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -1562,7 +1562,7 @@ extern "C" int func_00589900(CZSealBody *seal)
         if (seal->IsCurrentBlend((AnimType)data_003DEED0) || seal->IsCurrentBlend((AnimType)data_003DEED8) ||
             seal->IsCurrentBlend((AnimType)data_003DEEF0) || seal->IsCurrentBlend((AnimType)data_003DEEE8)) {
             if (!seal->m_isAlive) {
-                CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+                CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 
                 b->m_state = 8;
             }
@@ -1769,7 +1769,7 @@ extern "C" void *func_00588BC0(CZSealBody *seal, AnimType type, int state, bool 
  * told to the network for a SEAL this console plays (OVL2 0x57F5B0, new in SOCOM II) */
 extern "C" CZBodyAnimBlend *func_0057F5B0(CZSealBody *seal)
 {
-    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 
     if (seal->IsCurrentBlend((AnimType)46)) {
         b->m_flags = func_0058A920(b->m_flags, 0x20, true);
@@ -1848,7 +1848,7 @@ extern "C" int func_0057F9C0(CZSealBody *seal)
         return false;
     if (seal->IsCurrentBlend((AnimType)data_003DEAE0))
         return false;
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 
     if (seal->m_state == 5 || top->m_state == 5)
         return false;
@@ -1893,7 +1893,7 @@ static inline CZBodyAnimBlend *StandN(CZSealBody *seal, int &n, int count)
         while (BlendCount(stack) > 1 && n > 0)
             c = seal->PopBlend(), n--;
         if (n <= 0)
-            func_00555170((char *)seal + 0x1c0);
+            func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
         else {
             if (c)
                 c->m_ctrl = 0;
@@ -2118,7 +2118,7 @@ CZBodyAnimBlend *CZSealBody::SetStanceIdle(AnimType type)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -2323,7 +2323,7 @@ extern "C" bool func_00580360(CZSealBody *seal, float t)
             n--;
         }
         if (n <= 0)
-            func_00555170((char *)seal + 0x1c0);
+            func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
         else {
             if (b)
                 b->m_ctrl = 0;
@@ -2459,7 +2459,7 @@ CZBodyAnimBlend *CZSealBody::PopBlend()
             n--;
         }
         if (n <= 0)
-            t = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+            t = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
         else {
             if (t)
                 t->m_ctrl = 0;
@@ -2481,7 +2481,7 @@ CZBodyAnimBlend *CZSealBody::PopBlend()
             n--;
         }
         if (n <= 0)
-            t = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+            t = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
         else {
             if (t)
                 t->m_ctrl = 0;
@@ -2516,7 +2516,7 @@ void CZSealBody::ClimbOver(float)
             n--;
         }
         if (n <= 0)
-            b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+            b = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
         else {
             if (b)
                 b->m_ctrl = 0;
@@ -2524,7 +2524,7 @@ void CZSealBody::ClimbOver(float)
         }
         func_00588BC0(this, (AnimType)AnimTypes::ClimbOver, 0, 0, 0);
     } else
-        func_00555170((char *)this + 0x1c0);
+        func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
 }
 
 /* the blends popped down to one, as 0x57F310 does, then anim 45 pushed from its start and anim 46 on
@@ -2541,7 +2541,7 @@ extern "C" CZBodyAnimBlend *func_0057F690(CZSealBody *seal)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -2583,7 +2583,7 @@ extern "C" CZBodyAnimBlend *func_0057F3E0(CZSealBody *seal)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -2609,7 +2609,7 @@ extern "C" CZBodyAnimBlend *func_0057F880(CZSealBody *seal)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -2642,7 +2642,7 @@ CZBodyAnimBlend *CZSealBody::ClearStack(unsigned int count, bool prone)
     while (BlendCount(stack) > count && n > 0)
         b = PopBlend(), n--;
     if (n <= 0)
-        return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        return (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     if (prone) {
         if (b)
             b->m_ctrl = 0;
@@ -2659,7 +2659,7 @@ extern "C" int func_0057F7D0(CZSealBody *seal)
         return false;
     if (seal->IsCurrentBlend((AnimType)data_003DEAE0))
         return false;
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 
     if (seal->m_state == 5 || top->m_state == 5)
         return false;
@@ -2738,12 +2738,12 @@ CZBodyAnimBlend *CZSealBody::ClearToBase(bool pop)
         n--;
     }
     if (n <= 0)
-        return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        return (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     if (pop && SignedBlendCount(stack) > 1)
         PopBlend();
     ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_ctrl = 0;
     m_desiredStance = STANCE_PRONE;
-    return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    return (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
 }
 
 /* bits of a halfword set or cleared (OVL2 0x58A920; seal_body.cpp's and seal_env.cpp's callers --
@@ -2894,7 +2894,7 @@ extern "C" void func_00579EF0(CZSealBody *seal)
 extern "C" void func_00579DA0(CZSealBody *seal, int a)
 {
     if (seal) {
-        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
         int n = 12;
         CBodyAnimBlendStack *stack = &seal->m_blends;
 
@@ -2903,7 +2903,7 @@ extern "C" void func_00579DA0(CZSealBody *seal, int a)
             n--;
         }
         if (n <= 0)
-            b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+            b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
         else {
             if (b)
                 b->m_ctrl = 0;
@@ -3047,7 +3047,7 @@ extern "C" void *func_0057DC80(CZSealBody *seal)
 {
     if (seal->m_state == 3)
         return seal->ClearToBase(false);
-    return func_00555170((char *)seal + 0x1c0);
+    return func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 }
 
 /* the state set: the controller told of a change first (OVL2 0x58A6B0; SOCOM 1's, virtual in SOCOM
@@ -3201,7 +3201,7 @@ static inline CZBodyAnimBlend *ClearStackOf(CZSealBody *seal, CBodyAnimBlendStac
     while (BlendCount(stack) > count && n > 0)
         b = seal->PopBlend(), n--;
     if (n <= 0)
-        return (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        return (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
     if (b)
         b->m_ctrl = 0;
     seal->m_desiredStance = STANCE_PRONE;
@@ -3281,7 +3281,7 @@ CZBodyAnimBlend *CZSealBody::InStateCrouch()
                         while (BlendCount(stack.v) > 2 && n > 0)
                             b = PopBlend(), n--;
                         if (n <= 0)
-                            func_00555170((char *)this + 0x1c0);
+                            func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
                         else {
                             if (b)
                                 b->m_ctrl = 0;
@@ -3431,7 +3431,7 @@ CZBodyAnimBlend *CZSealBody::InStateProne()
                 while (BlendCount(stack) > 2 && n > 0)
                     b = PopBlend(), n--;
                 if (n <= 0)
-                    func_00555170((char *)this + 0x1c0);
+                    func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
                 else {
                     if (b)
                         b->m_ctrl = 0;
@@ -3927,7 +3927,7 @@ CZBodyAnimBlend *CZSealBody::SealAnim(bool pop)
             n--;
         }
         if (n <= 0)
-            b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+            b = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
         else {
             if (b)
                 b->m_ctrl = 0;
@@ -4764,7 +4764,7 @@ CZBodyAnimBlend *CZSealBody::PickupBuddy(CZSealBody *buddy)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)buddy + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)buddy + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -4788,7 +4788,7 @@ CZBodyAnimBlend *CZSealBody::PickupBuddy(CZSealBody *buddy)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -4824,7 +4824,7 @@ CZBodyAnimBlend *CZSealBody::PutdownBuddy()
             n--;
         }
         if (n <= 0)
-            b = (CZBodyAnimBlend *)func_00555170((char *)c + 0x1c0);
+            b = (CZBodyAnimBlend *)func_00555170((char *)c + Z_SEALBODY_OFS(0x1c0));
         else {
             if (b)
                 b->m_ctrl = 0;
@@ -4848,7 +4848,7 @@ CZBodyAnimBlend *CZSealBody::PutdownBuddy()
             n--;
         }
         if (n <= 0)
-            b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+            b = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
         else {
             if (b)
                 b->m_ctrl = 0;
@@ -4954,7 +4954,7 @@ CZBodyAnimBlend *CZSealBody::StabBuddy(CZSealBody *victim)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -5005,7 +5005,7 @@ extern "C" CZBodyAnimBlend *func_00578D20(CZSealBody *seal, CZSealBody *victim)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)victim + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)victim + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -5074,7 +5074,7 @@ CZBodyAnimBlend *CZSealBody::RestrainBuddy(CZSealBody *victim)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -5162,7 +5162,7 @@ extern "C" CZBodyAnimBlend *func_005784A0(CZSealBody *seal, CZSealBody *victim)
         n--;
     }
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)victim + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)victim + Z_SEALBODY_OFS(0x1c0));
     else {
         if (b)
             b->m_ctrl = 0;
@@ -5320,7 +5320,7 @@ extern "C" void *func_005880E0(CZSealBody *seal, AnimType type, int state, bool 
             n--;
         }
         if (n <= 0)
-            b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+            b = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
         else {
             if (b)
                 b->m_ctrl = 0;
@@ -5429,16 +5429,16 @@ void GetFractionalRotations(const CPnt3D *v, float *a, float *b);
  * root's place the tick before (padding in zseal.h, read through these; the names ours) */
 static inline float &TickT0(CZSealBody *seal)
 {
-    return *(float *)((char *)seal + 0xfa8);
+    return *(float *)((char *)seal + Z_SEALBODY_OFS(0xfa8));
 }
 
 static inline float &Prev250(CZSealBody *seal)
 {
-    return *(float *)((char *)seal + 0x250);
+    return *(float *)((char *)seal + Z_SEALBODY_OFS(0x250));
 }
 
 struct CRootPrevView {
-    unsigned char _0[0x14c0];
+    unsigned char _0[Z_SEALBODY_OFS(0x14c0)];
     CPnt3D m_14c0;
 };
 #define RootPrev(seal) (((CRootPrevView *)(seal))->m_14c0)

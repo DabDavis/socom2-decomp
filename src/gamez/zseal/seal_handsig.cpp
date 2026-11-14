@@ -116,7 +116,7 @@ AnimType CZSealBody::DoHandSignal(SEAL_HANDSIGNAL sig)
     AnimType a = (AnimType)h->m_anim[i];
 
     if (a != animTypeUndefined &&
-        a != ((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_animType)
+        a != ((CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0)))->m_animType)
         func_00588BC0(this, a, stance, 0, 0);
     return a;
 }

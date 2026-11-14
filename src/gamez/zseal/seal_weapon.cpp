@@ -18,7 +18,7 @@ static CPnt3D nullAimPoint(-9999999.0f, -9999999.0f, -9999999.0f);
 /* the aim's point and goal (SOCOM 1's at 0x10A0 and 0x10AC, here 0x3A0 on: zseal.h keeps the
  * body's tail as bytes -- the view and the names ours) */
 struct CSealAimView {
-    unsigned char _0[0x1440];
+    unsigned char _0[Z_SEALBODY_OFS(0x1440)];
     CPnt3D m_aim_from;   // 0x1440
     CPnt3D m_aim_goal;   // 0x144c
     /* SOCOM 1's m_aim_point, m_reticle_pt and m_aim_norm (0x10b8-0x10e3 there) */
@@ -31,7 +31,7 @@ struct CSealAimView {
  * bits there are unsigned int -- the view and the name ours), set through an inline taking a bool
  * (`(b & 1) << 3` even for false) */
 struct CSealAimBits {
-    unsigned char _0[0x105f];
+    unsigned char _0[Z_SEALBODY_OFS(0x105f)];
     unsigned char _bits0 : 3;
     unsigned char m_aim_goal_valid : 1;   // 0x105f bit 3
 };
@@ -125,7 +125,7 @@ bool CZSealBody::CalcAimGoal(const CPnt3D *from, const CPnt3D *dir, CPnt3D *goal
  * spelled as offsets so that MW does not keep the goal's address for the stores */
 bool CZSealBody::SetAimDirR(const CPnt3D *dir, bool reset)
 {
-    bool ok = CalcAimGoal((CPnt3D *)((char *)this + 0x1440), dir, (CPnt3D *)((char *)this + 0x144c));
+    bool ok = CalcAimGoal((CPnt3D *)((char *)this + Z_SEALBODY_OFS(0x1440)), dir, (CPnt3D *)((char *)this + Z_SEALBODY_OFS(0x144c)));
 
     if (!ok && reset)
         ((CSealAimView *)this)->m_aim_goal = CPnt3D::unit_nz;
@@ -162,7 +162,7 @@ bool CZSealBody::SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool k
  * m_curr_firepos and m_curr_firept, 0x1100-0x111F there, 0x3A0 on here: zseal.h keeps the body's
  * tail as bytes -- the view ours) */
 struct CSealAimPoints {
-    unsigned char _0[0x14a0];
+    unsigned char _0[Z_SEALBODY_OFS(0x14a0)];
     CPnt3D m_curr_aimpos;   // 0x14a0
     zdb::CNode *m_curr_aimpt;   // 0x14ac
     CPnt3D m_curr_firepos;   // 0x14b0
@@ -406,14 +406,14 @@ bool CZSealBody::UpdateAimDir(bool keep)
  * the times 276 bytes on here, the sequence held at 0x1160 -- zseal.h keeps them as bytes; the view
  * and the names ours) */
 struct CSealWepView {
-    unsigned char _0[0x258];
+    unsigned char _0[Z_SEALBODY_OFS(0x258)];
     unsigned char m_258 : 1;   // 0x258 bit 0: SOCOM II's, tested before a draw starts (the name ours)
-    unsigned char _259[0xee4 - 0x259];
+    unsigned char _259[Z_SEALBODY_OFS(0xee4) - Z_SEALBODY_OFS(0x259)];
     float m_wep_upT;   // 0xee4
     float m_wep_holdT;   // 0xee8
     float m_wep_downT;   // 0xeec
     float m_wep_lenT;   // 0xef0
-    unsigned char _ef4[0x1160 - 0xef4];
+    unsigned char _ef4[Z_SEALBODY_OFS(0x1160) - Z_SEALBODY_OFS(0xef4)];
     CSequence m_wep_seq;   // 0x1160
 
 };

@@ -3695,7 +3695,7 @@ extern "C" zdb::IntersectStruct *func_0054E430(CZSealBody *seal)
             seal->GetNode()->SetActive(was);
             if (wall) {
                 if (!PassThrough(wall) && wall->m_node != hit->m_node) {
-                    func_005B0D30(seal, wall, (CPnt3D *)((char *)seal + 0x10b0), (CPnt3D *)((char *)seal + 0x10bc));
+                    func_005B0D30(seal, wall, (CPnt3D *)((char *)seal + Z_SEALBODY_OFS(0x10b0)), (CPnt3D *)((char *)seal + Z_SEALBODY_OFS(0x10bc)));
                     hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
                 }
             }
@@ -3726,7 +3726,7 @@ extern AnimSet *data_0044D410;
  * none when its node is clear (inlines, the names ours) */
 static inline zdb::IntersectStruct *Hit1100(CZSealBody *seal)
 {
-    return seal->m_1100.m_node ? (zdb::IntersectStruct *)((char *)seal + 0x1100) : 0;
+    return seal->m_1100.m_node ? (zdb::IntersectStruct *)((char *)seal + Z_SEALBODY_OFS(0x1100)) : 0;
 }
 
 static inline zdb::IntersectStruct *Hit1120(CZSealBody *seal)

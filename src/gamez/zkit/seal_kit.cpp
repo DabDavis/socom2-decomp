@@ -767,7 +767,7 @@ static inline bool KitIsPlayer(struct CKitBody *body);
 struct CKitBombBody {
     unsigned char _0[0xc8];
     unsigned int m_team;   // 0xc8
-    unsigned char _cc[0xec0 - 0xcc];
+    unsigned char _cc[Z_SEALBODY_OFS(0xec0) - 0xcc];
     CCompassAnchor *m_mpbomb_anchor;   // 0xec0
 };
 
@@ -1103,7 +1103,7 @@ void CZKit::Setup2XAmmo()
  * unit): taken into a local first, the member's offset folds into the inlined HasItem's loads --
  * cast in place (or the kit's address taken into a local), MW adds it once into a register */
 struct CKitBodyKit {
-    unsigned char _0[0x5e0];
+    unsigned char _0[Z_SEALBODY_OFS(0x5e0)];
     CZKit m_kit;   // 0x5e0
 };
 
@@ -1656,11 +1656,11 @@ public:
 /* the player as the shot reads it: the arrows of where it was shot at from (hud_bitmapreticule.cpp's
  * view: E, N, W, S at the even places) and its current fire point (zseal.h's m_curr_firept) */
 struct CKitFireTarget {
-    unsigned char _0[0xefc];
+    unsigned char _0[Z_SEALBODY_OFS(0xefc)];
     unsigned char m_threatdir[4];   // 0xefc
     float m_threatscale[8];   // 0xf00
     float m_threatangle[8];   // 0xf20
-    unsigned char _f40[0x14bc - 0xf40];
+    unsigned char _f40[Z_SEALBODY_OFS(0x14bc) - Z_SEALBODY_OFS(0xf40)];
     zdb::CNode *m_curr_firept;   // 0x14bc
 };
 
@@ -1918,7 +1918,7 @@ CZProjectile *CZKit::Fire(int index, const CPnt3D *pos, const CPnt3D *vel, const
 
         if (!p)
             return p;
-        p->m_c0 = ((zdb::IntersectStruct *)((char *)m_body + 0x400))->GetRegion();
+        p->m_c0 = ((zdb::IntersectStruct *)((char *)m_body + Z_SEALBODY_OFS(0x400)))->GetRegion();
         zdb::CNode *inst = p->GetInstance();
 
         if (((CEntity *)pl)->m_team & ((CEntity *)m_body)->m_team)
@@ -2047,11 +2047,11 @@ CZProjectile *CZKit::Fire(int index, const CPnt3D *pos, const CPnt3D *vel, const
             EQUIP_ITEM t = w->GetIDType();
 
             if (CZWeapon::IsPrimaryType(t))
-                IncrPrimaryRoundsFired__10CSealStatsFi((char *)m_body + 0x58c, 1);
+                IncrPrimaryRoundsFired__10CSealStatsFi((char *)m_body + Z_SEALBODY_OFS(0x58c), 1);
             else if (CZWeapon::IsSecondaryType(t))
-                IncrSecondaryRoundsFired__10CSealStatsFi((char *)m_body + 0x58c, 1);
+                IncrSecondaryRoundsFired__10CSealStatsFi((char *)m_body + Z_SEALBODY_OFS(0x58c), 1);
             else if ((unsigned char)t == 121)
-                IncrGrenadesUsed__10CSealStatsFi((char *)m_body + 0x58c, 1);
+                IncrGrenadesUsed__10CSealStatsFi((char *)m_body + Z_SEALBODY_OFS(0x58c), 1);
         }
         p->m_pickup = pickup;
         if (w)
@@ -3240,12 +3240,12 @@ bool CZKit::WillFireWeapon()
 
         if (!(trigger == 1 || trigger == 2 ? go : false) && !m_waiting_to_raise)
             go = false;
-        if (go && !m_waiting_to_raise && Weight__9CSequenceFv((char *)m_body + 0x1160) < 1.0f && m_item[m_selected_item]->IsDirectFire()) {
+        if (go && !m_waiting_to_raise && Weight__9CSequenceFv((char *)m_body + Z_SEALBODY_OFS(0x1160)) < 1.0f && m_item[m_selected_item]->IsDirectFire()) {
             m_waiting_to_raise = true;
             return false;
         }
         if (go) {
-            if (!(m_item[m_selected_item]->IsDirectFire() && Weight__9CSequenceFv((char *)m_body + 0x1160) < 1.0f)
+            if (!(m_item[m_selected_item]->IsDirectFire() && Weight__9CSequenceFv((char *)m_body + Z_SEALBODY_OFS(0x1160)) < 1.0f)
                 || m_item[m_selected_item]->GetIDType() == 205) {
                 if (m_burst_count < shots && CanFire__10CZSealBodyFbb(m_body, true, notThrown) && m_81c <= 0.0f) {
                     if (CurMagHasAmmo() || !UsesAmmo(m_selected_item)) {
@@ -3566,7 +3566,7 @@ bool CZKit::CurWeaponIsGrenadeLauncherMode()
 /* the body as the magazine test reads it (zseal.h's CZSealBody::m_infiniteammo, bit 5 of the word at
  * 0x105C, read as a byte; a view -- kit.h's stand-ins keep zseal.h out of this unit) */
 struct CKitAmmoBody {
-    unsigned char _0[0x105c];
+    unsigned char _0[Z_SEALBODY_OFS(0x105c)];
     unsigned int _bits : 5;
     unsigned int m_infiniteammo : 1;   // bit 5
 };
@@ -4600,19 +4600,19 @@ extern "C" bool func_0055EAA0(void *ai, void *params, bool clear);
 struct CKitThrowBody {
     unsigned char _0[0x28];
     const CMatrix *m_node;   // 0x28: its node (the matrix first)
-    unsigned char _2c[0x2f8 - 0x2c];
+    unsigned char _2c[Z_SEALBODY_OFS(0x2f8) - 0x2c];
     void *m_lhand;   // 0x2f8
-    unsigned char _2fc[0x300 - 0x2fc];
+    unsigned char _2fc[Z_SEALBODY_OFS(0x300) - Z_SEALBODY_OFS(0x2fc)];
     void *m_rhand;   // 0x300
-    unsigned char _304[0x404 - 0x304];
+    unsigned char _304[Z_SEALBODY_OFS(0x404) - Z_SEALBODY_OFS(0x304)];
     float m_404;   // 0x404
-    unsigned char _408[0x105c - 0x408];
+    unsigned char _408[Z_SEALBODY_OFS(0x105c) - Z_SEALBODY_OFS(0x408)];
     bool InfiniteAmmo() const { return m_infiniteammo ? true : false; }
 
     unsigned int m_105c_0 : 5;   // 0x105c
     unsigned int m_infiniteammo : 1;   // zseal.h's, bit 5
     unsigned int _105c_6 : 26;
-    unsigned char _1060[0x144c - 0x1060];
+    unsigned char _1060[Z_SEALBODY_OFS(0x144c) - Z_SEALBODY_OFS(0x1060)];
     CPnt3D m_aim;   // 0x144c
 };
 
@@ -4909,25 +4909,25 @@ struct CKitFireBody {
     /* the ladder's height while on one (the bit tested again by the inline; the names ours) */
     float LadderHeight() const { return m_onladder ? m_f88 : 0.0f; }
 
-    unsigned char _0[0x208];
+    unsigned char _0[Z_SEALBODY_OFS(0x208)];
     float m_208;   // 0x208
-    unsigned char _20c[0x258 - 0x20c];
+    unsigned char _20c[Z_SEALBODY_OFS(0x258) - Z_SEALBODY_OFS(0x20c)];
     unsigned char m_258;   // 0x258: bit 0, may fire
-    unsigned char _259[0x2e8 - 0x259];
+    unsigned char _259[Z_SEALBODY_OFS(0x2e8) - Z_SEALBODY_OFS(0x259)];
     void *m_2e8;   // 0x2e8: the part the charge is placed from
-    unsigned char _2ec[0xe84 - 0x2ec];
+    unsigned char _2ec[Z_SEALBODY_OFS(0xe84) - Z_SEALBODY_OFS(0x2ec)];
     float m_e84;   // 0xe84
-    unsigned char _e88[0xf88 - 0xe88];
+    unsigned char _e88[Z_SEALBODY_OFS(0xf88) - Z_SEALBODY_OFS(0xe88)];
     float m_f88;   // 0xf88
-    unsigned char _f8c[0x105c - 0xf8c];
+    unsigned char _f8c[Z_SEALBODY_OFS(0x105c) - Z_SEALBODY_OFS(0xf8c)];
     unsigned int _105c_0 : 2;   // 0x105c
     unsigned int m_aim_point_valid : 1;   // zseal.h's, bit 2
     unsigned int _105c_3 : 20;
     unsigned int m_onladder : 1;   // bit 23
     unsigned int _105c_24 : 8;
-    unsigned char _1060[0x1440 - 0x1060];
+    unsigned char _1060[Z_SEALBODY_OFS(0x1440) - Z_SEALBODY_OFS(0x1060)];
     CPnt3D m_1440;   // 0x1440: the aim direction
-    unsigned char _144c[0x1458 - 0x144c];
+    unsigned char _144c[Z_SEALBODY_OFS(0x1458) - Z_SEALBODY_OFS(0x144c)];
     CPnt3D m_1458;   // 0x1458: the point the aim looks at
 };
 
@@ -5220,7 +5220,7 @@ void CZKit::HandleFireWeapon(int index, float a, float b)
         if (ammo)
             shots = ammo->GetNumProjectilesFired();
         if (w->IsDirectFire())
-            Shot__10CSealStatsFRC10CZSealBody((char *)m_body + 0x58c, m_body);
+            Shot__10CSealStatsFRC10CZSealBody((char *)m_body + Z_SEALBODY_OFS(0x58c), m_body);
         for (m_shot = 0; m_shot < shots; m_shot++) {
             CPnt3D v = dir;
             CKitBody *body = (CKitBody *)m_body;
@@ -5476,7 +5476,7 @@ void func_005A64C0(CZSealBody *body, int item, CZKit::FIRE_CLASS c, bool b);
 
 /* the item in hand as the kit's frame reads it (CZSealBody's m_item, zseal.h's; the view ours) */
 struct CKitBodyItem {
-    unsigned char _0[0xf79];
+    unsigned char _0[Z_SEALBODY_OFS(0xf79)];
     signed char m_item;   // 0xf79
 };
 
@@ -5524,6 +5524,15 @@ CZKit::FIRE_CLASS CZKit::GetCurItemFireClass()
             c = FIRE_CLASS_THROWN;
     }
     return c;
+}
+
+/* an item's fire class: GetCurItemFireClass's tests on an item passed in (OVL2 0x5B8820, a static
+ * member, after it; written for the port, M3: m2c's draft, auto/ovl2/005B8820.c, called GetIDType
+ * without the item -- on the EE still in a0 -- and every SEAL's kit hung its models on one part's
+ * name, the seventh SEAL's Uzi on none: "grenade") */
+CZKit::FIRE_CLASS CZKit::GetItemFireClass(EQUIP_ITEM item)
+{
+    return FireClassOfId(item);
 }
 
 /* the first item of a fire class, or -1 (OVL2 0x5B8630, new in SOCOM II beside GetCurItemFireClass:

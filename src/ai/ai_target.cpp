@@ -508,7 +508,7 @@ struct CSensingView {
 /* a SEAL's light as the score last worked it out, and the frame it did (zseal.h's CZSealBody pads
  * them, 0x42C-0x433) */
 struct CSealLightView {
-    unsigned char _0[0x42c];
+    unsigned char _0[Z_SEALBODY_OFS(0x42c)];
     float m_light;   // 0x42c
     unsigned int m_light_frame;   // 0x430: zVid's frame number, its low word
 };

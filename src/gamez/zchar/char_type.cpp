@@ -1116,7 +1116,7 @@ char *CCharacterType::AddAnimSetName(const char *name)
 /* a SEAL's wait before its next pain sound (CZSealBody's float at 0x424, the name ours; zseal.h is
  * not included here) */
 struct CSealPainWait {
-    unsigned char _0[0x424];
+    unsigned char _0[Z_SEALBODY_OFS(0x424)];
     float m_painWait;   // 0x424
 };
 

@@ -1150,9 +1150,9 @@ bool run_anim(const char *name, void *arg);
 /* the SEAL's snake path (zseal.h's CZSealBody::m_snakePath, a CAiPath at 0x434), its aim point
  * (0x1458) and the action under its reticule (seal_env.cpp's) -- a view */
 struct CUnitSealView {
-    unsigned char _0[0x434];
+    unsigned char _0[Z_SEALBODY_OFS(0x434)];
     CAiPath m_snakePath;   // 0x434
-    unsigned char _4dc[0x1458 - 0x434 - sizeof(CAiPath)];
+    unsigned char _4dc[Z_SEALBODY_OFS(0x1458) - Z_SEALBODY_OFS(0x434) - sizeof(CAiPath)];
     CPnt3D m_aim_point;   // 0x1458
 };
 

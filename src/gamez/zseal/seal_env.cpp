@@ -384,7 +384,7 @@ void CZSealBody::HandleSealStep()
             return;
     }
 walking:
-    if (!func_005551A0(((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_flags, 64))
+    if (!func_005551A0(((CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0)))->m_flags, 64))
         return;
     t = ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_tfrac;
     t -= floorf(t);
@@ -1014,7 +1014,7 @@ extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
  * as event 15 (OVL2 0x5A2390, new in SOCOM II: 0x5880E0 calls it; the name unknown) */
 extern "C" CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type)
 {
-    if (!seal->m_isAlive || ((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->m_state == stateDead ||
+    if (!seal->m_isAlive || ((CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0)))->m_state == stateDead ||
         seal->m_state == stateDead)
         return 0;
     if (seal->m_eb8)
@@ -1777,7 +1777,7 @@ bool CZSealBody::CanFire(bool kit, bool timing)
  * tested twice in both -- which names the two pistol tosses: the SEALs, round 44) */
 bool CZSealBody::IsThrowing(bool started)
 {
-    short type = ((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_animType;
+    short type = ((CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0)))->m_animType;
 
     if (type == AnimTypes::ThrowGrenade || type == AnimTypes::CrouchThrowGrenade ||
         type == AnimTypes::ProneThrowGrenade || type == AnimTypes::TossGrenade ||
@@ -1991,7 +1991,7 @@ bool CZSealBody::IsChangingWeapons(bool kit)
 {
     if (kit && m_kit.m_requested_item)
         return true;
-    func_00555170((char *)this + 0x1c0);
+    func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     if (IsCurrentBlend((AnimType)53) || IsCurrentBlend((AnimType)54) || IsCurrentBlend((AnimType)55) ||
         IsCurrentBlend((AnimType)data_003DF0E0) || IsCurrentBlend((AnimType)data_003DF0E8) ||
         IsCurrentBlend((AnimType)data_003DF108) || IsCurrentBlend((AnimType)data_003DF110))
@@ -2008,7 +2008,7 @@ bool CZSealBody::IsChangingWeapons(bool kit)
  * GetFirstPersonCamPos asks it with 1, 1, 1; the names ours) */
 extern "C" bool func_005A77E0(CZSealBody *seal, int state33, int anim36, int anim35)
 {
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 
     /* (an if and two returns: the ternary, a bool local or an int return add the andi 0xff) */
     if (top)
@@ -2948,7 +2948,7 @@ bool CZSealBody::CanUseBodyCarry(CZSealBody *victim)
         return false;
     if (m_kit.IsUsingScope())
         return false;
-    if (m_state == statePeek || ((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_state == statePeek)
+    if (m_state == statePeek || ((CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0)))->m_state == statePeek)
         return false;
     if (m_state == stateCarrying || m_state == stateCarried)
         return false;
@@ -4705,7 +4705,7 @@ extern "C" void func_005A5DA0(CZSealBody *seal)
     if (seal->IsCurrentBlend((AnimType)53) || seal->IsCurrentBlend((AnimType)54) ||
         seal->IsCurrentBlend((AnimType)55) || seal->IsCurrentBlend((AnimType)data_003DF0E0) ||
         seal->IsCurrentBlend((AnimType)data_003DF0E8)) {
-        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 
         CallOnce(top->m_callback, seal);
         bool flag = func_005551A0(((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_flags, 0x20);
@@ -6391,7 +6391,7 @@ extern "C" bool func_0059D830(CZSealBody *seal)
 {
     if (!seal->m_isAlive)
         return false;
-    if (IsNoJumpAnim(((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->m_animType))
+    if (IsNoJumpAnim(((CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0)))->m_animType))
         return false;
     if (!seal->CanFire(true, true))
         return false;
@@ -7806,7 +7806,7 @@ extern "C" void func_005B3890(CZSealBody *seal, int drop_now)
 extern "C" void func_005B1750(CZSealBody *seal, const CPnt3D *refpt, const CPnt3D *intpt, const CPnt3D *dir)
 {
     if (seal->m_carry) {
-        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
         CPnt3D d = *dir;
 
         d.y = 0.0f;
@@ -8005,7 +8005,7 @@ void CZSealBody::AlignForClimb(bool done, CPnt3D &intpt, CPnt3D &at, CPnt3D *wal
 {
     if (done)
         return;
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + Z_SEALBODY_OFS(0x1c0));
     CPnt3D norm = *wall;
     CPnt3D ref;
 
@@ -8041,7 +8041,7 @@ void CZSealBody::AlignForClimb(bool done, CPnt3D &intpt, CPnt3D &at, CPnt3D *wal
  * homing's normal), the goal assigned field by field and its height taken before the offset is built */
 extern "C" CZBodyAnimBlend *func_005B1890(CZSealBody *seal)
 {
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
     REFPT_INFO &info = top->m_refpt_info;
 
     info.m_valid = 0;

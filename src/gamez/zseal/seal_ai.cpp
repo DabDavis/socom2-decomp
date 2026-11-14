@@ -8052,7 +8052,7 @@ int CAiSAnimate::Tick(CSealCtrlAi *ai)
     if (m_anim == -1)
         step = STEP_2;
 
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + Z_SEALBODY_OFS(0x1c0));
 
     switch (step) {
     case STEP_0:

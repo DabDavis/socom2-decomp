@@ -1841,7 +1841,7 @@ extern CAppCamera *appCamera;
 /* the SEAL's aim point (SOCOM 1's m_aim_goal and m_aim_point at 0x10AC/0x10B8, SOCOM II's 0x3A0 on:
  * zseal.h pads them) */
 struct CSensorAimView {
-    unsigned char _0[0x144c];
+    unsigned char _0[Z_SEALBODY_OFS(0x144c)];
     CPnt3D m_aim_goal;   // 0x144c
     CPnt3D m_aim_point;   // 0x1458
 };

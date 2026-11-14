@@ -65,13 +65,13 @@ struct CKitBody {
     unsigned char _e1 : 4;   // 0xe1
     unsigned char m_alive : 1;   // bit 4: CEntity's alive bit
     unsigned char _e1_5 : 3;
-    unsigned char _e2[0x170 - 0xe2];
+    unsigned char _e2[Z_SEALBODY_OFS(0x170) - 0xe2];
     /* 0x170: the CBody base (0x90 bytes: the parts FindPart searches, passed by its first byte) */
     unsigned char m_cbody[4];
     short m_state;   // 0x174: CBody's, the SEAL's state (zseal.h's: 9 stateCarrying)
-    unsigned char _176[0x200 - 0x176];
+    unsigned char _176[Z_SEALBODY_OFS(0x200) - Z_SEALBODY_OFS(0x176)];
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
-    unsigned char _201[0x300 - 0x201];
+    unsigned char _201[Z_SEALBODY_OFS(0x300) - Z_SEALBODY_OFS(0x201)];
     /* 0x388: attachments by kind, 8 bytes each -- the first word a record (zseal.h's CZBodyPart)
      * whose +0xC keeps the node hung on it (0x5C6980) and +0x1C its parent part (0x5C6A40: the
      * launcher's node moved last among its parent's children; the names ours) */
@@ -85,40 +85,40 @@ struct CKitBody {
         unsigned int m_4;
     };
     void *m_rhand;   // 0x300: the right hand's body part (zseal.h's m_rhand)
-    unsigned char _304[0x350 - 0x304];
+    unsigned char _304[Z_SEALBODY_OFS(0x350) - Z_SEALBODY_OFS(0x304)];
     /* 0x350, 0x354: the rifle's and the pistol's parts (zseal.h's m_rifle, m_pistol) */
     Attach::Record *m_rifle;
     Attach::Record *m_pistol;
-    unsigned char _358[0x388 - 0x358];
+    unsigned char _358[Z_SEALBODY_OFS(0x388) - Z_SEALBODY_OFS(0x358)];
     Attach m_attach[5];
 
     /* an attachment's part (inline; the name ours: ReParentToRifle's launcher part read through it
      * is numbered with the temporaries, after the three walks -- as a plain field read into a named
      * local it is numbered with the named locals and the saved registers shift) */
     Attach::Record *AttachPart(int kind) { return m_attach[kind].m_rec; }
-    unsigned char _3b0[0x3c0 - 0x3b0];
+    unsigned char _3b0[Z_SEALBODY_OFS(0x3c0) - Z_SEALBODY_OFS(0x3b0)];
     /* 0x3c0: the hit under the reticule (zseal.h's m_last_reticule: 0x5BE6F0 copies it whole and
      * reads its node) */
     zdb::IntersectStruct m_last_reticule;
-    unsigned char _3e0[0x5d4 - 0x3e0];
+    unsigned char _3e0[Z_SEALBODY_OFS(0x5d4) - Z_SEALBODY_OFS(0x3e0)];
     /* 0x5d4: CAccuracy (SOCOM 1's 0x514: FactorX, FactorY, Factor) -- SetCurAccuracy's */
     struct CKitAccuracy {
         float m_factorX;
         float m_factorY;
         float m_factor;
     } m_accuracy;
-    unsigned char _5e0[0xeb8 - 0x5e0];
+    unsigned char _5e0[Z_SEALBODY_OFS(0xeb8) - Z_SEALBODY_OFS(0x5e0)];
     /* 0xeb8: the entity the SEAL works -- a turret (zseal.h's m_eb8) */
     struct CKitMover *m_eb8;
-    unsigned char _ebc[0xf79 - 0xebc];
+    unsigned char _ebc[Z_SEALBODY_OFS(0xf79) - Z_SEALBODY_OFS(0xebc)];
     unsigned char m_f79;   // 0xf79: the item kind the body is asked for (ChangeItemModel's test; the name ours)
-    unsigned char _f7a[0xfd3 - 0xf7a];
+    unsigned char _f7a[Z_SEALBODY_OFS(0xfd3) - Z_SEALBODY_OFS(0xf7a)];
     unsigned char m_fd3;   // 0xfd3: zseal.h's: the SEAL respawned (FirstFrame keeps the hand's fire mode across it)
-    unsigned char _fd4[0x105e - 0xfd4];
+    unsigned char _fd4[Z_SEALBODY_OFS(0x105e) - Z_SEALBODY_OFS(0xfd4)];
     unsigned char _105e : 5;   // 0x105e: zseal.h's flag word at 0x105c, its bits 16-23
     unsigned char m_airborne : 1;   // bit 21: off the ground
     unsigned char _105e_6 : 2;
-    unsigned char _105f[0x1350 - 0x105f];
+    unsigned char _105f[Z_SEALBODY_OFS(0x1350) - Z_SEALBODY_OFS(0x105f)];
     CPnt3D m_1350;   // 0x1350: the velocity kept in the air (zseal.h's m_1350)
 };
 
@@ -477,6 +477,8 @@ public:
             c = FIRE_CLASS_THROWN;
         return c;
     }
+    /* an item's fire class (OVL2 0x5B8820; zseal.h's static -- the SEALs' callers -- the name ours) */
+    static FIRE_CLASS GetItemFireClass(EQUIP_ITEM item);
     int GetFireClassIndex(FIRE_CLASS c);
     /* whether a slot's item uses ammunition: held, and none of the ten kinds without (inline:
      * GetPickupSlot's; the name ours) and the slot a picked-up item takes (OVL2 0x5BAE60, new in

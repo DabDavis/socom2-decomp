@@ -291,7 +291,7 @@ int CAiSNoAmmo::Tick(CSealCtrlAi *ai)
     CEntity *seal = ai->m_entity;
 
     phase = m_phase;
-    CZKit *kit = (CZKit *)((char *)seal + 0x5e0);
+    CZKit *kit = (CZKit *)((char *)seal + Z_SEALBODY_OFS(0x5e0));
     CZFTSWeapon *w = GetItemByIndex__5CZKitCFi(kit, 0);
 
     GetAmmoByIndex__5CZKitFi(kit, 0);
@@ -3025,7 +3025,7 @@ int CAiSReload::Virtual14(CSealCtrlAi *ai, CAiState *sub)
             ai->PlayAiSound((CHARACTER_SOUND)68, 1.0f, CAiEvent::AIE_NONE);
             SetFlags(0, 1);
         }
-        Reload__5CZKitFv((char *)seal + 0x5e0);
+        Reload__5CZKitFv((char *)seal + Z_SEALBODY_OFS(0x5e0));
         if (m_flags & 4)
             ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 2, 1, -1.0f);
         else

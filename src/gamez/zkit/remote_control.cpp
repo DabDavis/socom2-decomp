@@ -44,7 +44,7 @@ extern CMission theMission;
 /* the SEAL's time of death (CZSealBody at 0xFB4, SOCOM 1's at 0xEA8; zseal.h does not name it --
  * the name ours) */
 struct CSealDeathTime {
-    unsigned char _0[0xfb4];
+    unsigned char _0[Z_SEALBODY_OFS(0xfb4)];
     float m_deathTime;   // 0xfb4
 };
 

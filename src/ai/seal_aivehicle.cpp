@@ -16,7 +16,7 @@ bool func_00546210(CEntity *seal, CEntity *vehicle);
 /* the SEAL's word at 0xEB8, which the vehicle state tests before letting go (zseal.h does not
  * name it -- the name ours) */
 struct CSealVehicleView {
-    unsigned char _0[0xeb8];
+    unsigned char _0[Z_SEALBODY_OFS(0xeb8)];
     void *m_eb8;   // 0xeb8
 
     /* an inline bool accessor: the caller reloads the SEAL for its next statement */

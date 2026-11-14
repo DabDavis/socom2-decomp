@@ -1357,7 +1357,7 @@ void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
 /* a SEAL's bit the signals set (CZSealBody at 0x105D, bit 1; zseal.h does not name it -- the
  * name ours) */
 struct CSealSignalBits {
-    unsigned char _0[0x105d];
+    unsigned char _0[Z_SEALBODY_OFS(0x105d)];
     unsigned char m_bit0 : 1;
     unsigned char m_signalled : 1;
 };
@@ -2994,7 +2994,7 @@ struct CAiUnitView {
 
 /* a SEAL's word at 0x518, measured against the followers' limits (a view; the name ours) */
 struct CAiSealView518 {
-    unsigned char _0[0x518];
+    unsigned char _0[Z_SEALBODY_OFS(0x518)];
     int m_518;   // 0x518
 };
 

@@ -226,15 +226,15 @@ void CZSealBody::InvalidateFollowParams()
  * 0x518/0x51c and 0x4dc-0x515: zseal.h keeps most of them as bytes -- the view ours, SOCOM 1's
  * names) */
 struct CFollowParamsView {
-    unsigned char _0[0x4dc];
+    unsigned char _0[Z_SEALBODY_OFS(0x4dc)];
     CPnt3D m_look_dir;   // 0x4dc
     CPnt3D m_formation_dir;   // 0x4e8
     CPnt3D m_saved_formation_dir;   // 0x4f4
-    unsigned char _500[0x510 - 0x500];
+    unsigned char _500[Z_SEALBODY_OFS(0x510) - Z_SEALBODY_OFS(0x500)];
     int m_formation_clock;   // 0x510
     unsigned char m_follow_params_are_current;   // 0x514
     unsigned char m_saved_formation_dir_is_valid;   // 0x515
-    unsigned char _516[0x518 - 0x516];
+    unsigned char _516[Z_SEALBODY_OFS(0x518) - Z_SEALBODY_OFS(0x516)];
     int m_MaxFollowerDistance;   // 0x518
     int m_MaxFollowerDistanceNext;   // 0x51c
 };
