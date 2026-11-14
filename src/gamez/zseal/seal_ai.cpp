@@ -3808,6 +3808,38 @@ extern "C" AI_WEAPON_KIND func_00560540(CSealCtrlAi *ai)
  * structurally exact from source, 0x5609F0 as real recursion 1 off. */
 extern "C" bool func_005605A0(CSealCtrlAi *ai, int a);
 
+#if Z_PORT
+extern "C" {
+void func_00570F90(CSealCtrlAi *ai, float t);
+/* the SEAL's anim kind taken, none for a negative kind (OVL2 0x58C5D0) */
+bool func_0058C5D0(CZSealBody *seal, int kind);
+int rand(void);
+}
+
+/* the port: 0x5605A0 as its code reads (the PS2 build keeps it unwritten, above): in a group only
+ * kind 6; kind 1 is 2 or 3 at even chances (the target inlines the call into itself twice, each
+ * level drawing the chance its own way); otherwise the kind's anim taken when the SEAL is not
+ * already in it, and the AI's speed factor asked again (0x570F90 with its own 0x768: 0x571000) */
+extern "C" bool func_005605A0(CSealCtrlAi *ai, int a)
+{
+    unsigned char kind = a;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    bool r = false;
+
+    if (ai->InGroup() && kind != 6)
+        return false;
+    if (kind == 1)
+        return func_005605A0(ai, (float)rand() * 4.656613e-10f <= 0.5f ? 2 : 3);
+    int w = data_0066AD00[kind];
+
+    if (w != seal->m_weapon_id) {
+        r = func_0058C5D0(seal, w);
+        func_00570F90(ai, ai->m_768);
+    }
+    return r;
+}
+#endif
+
 /* a weapon chosen; the kind held before it kept once it is (OVL2 0x5604D0; never auto-inlined: Tick
  * 0x56FD00 calls it) */
 #pragma auto_inline off

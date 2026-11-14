@@ -180,6 +180,18 @@ void func_00251678(const float *pfIn, float *pfOut)
  * stored to the int member is truncated here (dsll32/dsra32) where the target stores the 64-bit
  * register as it is -- d=19 of 29 words at best ((int) casts, an int member of the input union, a
  * 32-bit copy of the bits: right size, d=21). */
+#if Z_PORT
+/* the port: the fast log2 the PS2 build still links from the image (0x2517D8, read off its 29
+ * words): the exponent less 126, plus the mantissa rebuilt in [1, 2) as a line, (m / 2 - 1) * 2 */
+float func_002517D8(float fX)
+{
+	union { float f; unsigned int u; } x, m;
+
+	x.f = fX;
+	m.u = (x.u & 0x7FFFFF) | 0x3F800000;
+	return (float)(int)(((x.u >> 23) & 0xFF) - 126) + (m.f * 0.5F - 1.0F) * 2.0F;
+}
+#endif
 
 float func_00251700(float x)                    /* a frequency warp (the .lit4 constants) */
 {
