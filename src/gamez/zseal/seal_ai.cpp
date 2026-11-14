@@ -10807,6 +10807,15 @@ static inline float FlatDistSq(const CPnt3D *a, const CPnt3D *b)
  * read as a variable) */
 extern "C" float data_006504A0;
 
+/* (OVL2 0x5582B0, a tail call to the noise's record below: the sensors' hearing calls it; the name
+ * unknown). Written for the port, M3: its draft passed nothing on */
+extern "C" bool func_005582C0(CAlertLevel *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount);
+
+extern "C" bool func_005582B0(CAlertLevel *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount)
+{
+    return func_005582C0(a, ai, pos, amount);
+}
+
 /* a noise heard at a point (level 4): a first one keeps the point and its cell; more of it add up
  * unless it moved ten or more away, which restarts the record on the new point; whether the record
  * now holds an untaken level 4 (OVL2 0x5582C0, new in SOCOM II: 0x5582B0 tail-calls it, 0x5B0420

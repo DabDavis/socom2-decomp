@@ -281,6 +281,18 @@ void CAiSNoAmmo::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+extern "C" {
+/* (OVL2 0x5A0040, seal_env.cpp's range) */
+void func_005A0040(CZSealBody *seal);
+}
+
+/* the hands-up blend's callback: 0x5A0040 on the body (OVL2 0x608050, a tail call; the name unknown).
+ * Written for the port, M3: its draft passed nothing on */
+extern "C" void func_00608050(void *body, void *userdata)
+{
+    func_005A0040((CZSealBody *)body);
+}
+
 /* out of ammunition: crouched, weapon down, off to the nearest ammunition for the first item and
  * picking it up -- or, with none to reach, a reaction (not for the player's side) and done (OVL2
  * 0x608060; SOCOM 1's) */
