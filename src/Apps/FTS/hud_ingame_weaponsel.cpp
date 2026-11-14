@@ -102,6 +102,36 @@ inline void CInGameWeaponSel::OnClose()
     }
 }
 
+/* the selector made closed: no sound, the menu's places and offsets cleared, the icons 4 apart,
+ * the colours' pulses at their starts, nothing selected (SOCOM 1's; OVL1 0x2284C0, the unit's last
+ * function -- CHUD's constructor builds CHUD+0x2730 with it; its table 0x405150) */
+CInGameWeaponSel::CInGameWeaponSel()
+{
+    int i;
+
+    m_cursound = -1;
+    m_openstate = 0;
+    for (i = 0; i < 4; i++) {
+        m_menuposx[i] = 0.0f;
+        m_menuposy[i] = 0.0f;
+    }
+    m_nameoffsetx = 0.0f;
+    m_nameoffsety = 0.0f;
+    m_iconoffsetx = 4.0f;
+    m_iconoffsety = 4.0f;
+    m_current_item = 0;
+    m_curheight = 0.0f;
+    m_goalheight = 0.0f;
+    m_incCurcolor = 0;
+    m_curcolor = 1.0f;
+    for (i = 3; i >= 0; i--)
+        m_selected[i] = 0;
+    for (i = 3; i >= 0; i--)
+        m_icon_selected[i] = 0;
+    m_arrowcolor = 50.0f;
+    m_arrowincrement = 1;
+}
+
 namespace zdb {
 class CAssetList {
 public:
