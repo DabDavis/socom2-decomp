@@ -10347,8 +10347,8 @@
 0x00575BE0 0x8 CanAttack__10CAiSDeployCFv  # OVL2; s1:vtable (the SEALs, round 30: s1vtables' proposal, slot 0x24 of __vt__10CAiSDeploy -- CanAttack in CAiState's table; returns false; seal_ai.cpp's class defines it)
 0x00575BF0 0x8 GetSealCtrlAi__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575C00 0x8 OnActionButton__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00575C10 0x8 func_00575C10  # OVL2
-0x00575C20 0x8 func_00575C20  # OVL2
+0x00575C10 0x8 PerformReticleActions__11CSealCtrlAiFv  # OVL2; s1:vtable (CSealCtrlAi's slot +0x7C, the inline override's out-of-line copy: the port's vtable check)
+0x00575C20 0x8 PerformProximityActions__11CSealCtrlAiFv  # OVL2; s1:vtable (CSealCtrlAi's slot +0x80, the inline override's out-of-line copy: the port's vtable check)
 0x00575C30 0x8 IsPlayer__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575C40 0x8 IsAi__11CSealCtrlAiCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00575C50 0x2C _max<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (seal_ai.cpp's template tail after CSealCtrlAi's inline copies, as SOCOM 1's _max<f>__2aiFRCfRCf at 0x26C8A0; MW 3.0 mangles the return type); the larger by reference; CDynGrenade::ComputeTimeToImpact calls it where SOCOM 1's does
