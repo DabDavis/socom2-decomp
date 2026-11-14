@@ -1133,11 +1133,9 @@ void SkbToggleTextSel(CSoftKeyboard *skb)
     }
 }
 
-#if Z_PORT
-/* 0x3997F0 (its only source the draft auto/ovl1/003997F0.cpp; zui_skb.cpp's InvalidateSkbsDisplay
- * calls it): the three strings emptied and measured again, the nodes shown with strings 1 and 2
+/* 0x3997F0, byte-exact (the port's M3; zui_skb.cpp's InvalidateSkbsDisplay calls it): the three strings emptied and measured again, the nodes shown with strings 1 and 2
  * (0x4A1430, 0x4A1438: the drafts' words, not named here yet) and string 0's forgotten. Written
- * here because the strings are this unit's statics: the draft reached them at their image addresses
+ * here because the strings are this unit's statics: its draft reached them at their image addresses
  * (0x4A1450, 0x4A1520, 0x4A1370), which on the host are not the objects (never constructed), and
  * called SetString through MW's vtable layout (the pointer at +0xC, slot 0x70) */
 extern "C" int data_004A1430;
@@ -1155,7 +1153,7 @@ extern "C" void func_003997F0()
     s_textString0.UpdatePos();
 }
 
-/* 0x398FC0 (its only source the draft auto/ovl1/00398FC0.c; SkbPrepDisplay calls it): the three
+/* 0x398FC0 (byte-exact, the port's M3; SkbPrepDisplay calls it): the three
  * strings each put on a node of its own under the parent (zui.cpp's 0x36AB20), the nodes kept --
  * strings 1 and 2's in the drafts' words, string 0's as s_textNode */
 extern "C" zdb::CNode *func_0036AB20(C2D *obj, zdb::CTextureRelocMgr *mgr, zdb::CNode *parent);
@@ -1165,4 +1163,3 @@ extern "C" void func_00398FC0(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr)
     data_004A1438 = (int)func_0036AB20(&s_textString2, mgr, parent);
     s_textNode = func_0036AB20(&s_textString0, mgr, parent);
 }
-#endif
