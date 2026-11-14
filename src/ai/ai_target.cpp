@@ -119,7 +119,7 @@ public:
      * ModifyAimDir counts it down and aims wide of the target, whatever the accuracy) */
     int m_40;
     int m_44;   // 0x44
-    unsigned char _48[0x4c - 0x48];
+    int m_48;   // 0x48 (zeroed by the constructor)
     float m_time_acquired;   // 0x4c (SOCOM 1's at 0x38)
     float m_time_visible;   // 0x50 (SOCOM 1's at 0x3C)
     float m_time_lost_sight;   // 0x54 (SOCOM 1's at 0x40)
@@ -800,4 +800,30 @@ bool ai::CheckLineOfFire(const CEntity *e, const CTarget *t, float radius)
         }
     }
     return clear;
+}
+
+extern "C" {
+/* a figure of the AI's current row (OVL2 0x5750D0, seal_ai.cpp's) and the scale of the second (OVL2
+ * data 0x6510F0, read only here) */
+float func_005750D0(unsigned char i);
+extern float data_006510F0;
+/* (MAIN's libm) */
+float ceilf(float x);
+}
+
+/* (OVL2 0x60A940; SOCOM 1's, the two counters new: both set to the row's second figure scaled, rounded
+ * up; the union's target built by the initialiser list). Written for the port, M3: its draft called
+ * CTarget's constructor without the target */
+CAiTarget::CAiTarget() : m_target()
+{
+    m_aimBits = 0;
+    m_aim_noise = CPnt3D::zero;
+    m_48 = 0;
+    m_time_acquired = 0.0f;
+    m_time_visible = 0.0f;
+    m_time_lost_sight = 0.0f;
+    m_last_pos = CPnt3D::zero;
+    m_last_vel = CPnt3D::zero;
+    m_40 = m_44 = (int)ceilf(data_006510F0 * func_005750D0(2));
+    m_40 = m_44;
 }

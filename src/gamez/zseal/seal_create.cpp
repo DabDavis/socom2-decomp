@@ -800,3 +800,29 @@ extern "C" bool func_0059A8E0(_zanim_cmd_hdr *hdr, float *dT)
     }
     return true;
 }
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood) ---- */
+
+/* the SEAL's character (OVL2 0x599810; SOCOM 1's). Its draft read it at MW's 0x540 (on the host 0xc
+ * lower) */
+CCharacterType *CZSealBody::GetCharacter()
+{
+    return m_charType;
+}
+
+/* the camera's effects node taken off the SEAL's node and deleted (OVL2 0x599820; SOCOM 1's). Its draft
+ * called GetNode without the SEAL and the node's FindChild, DeleteChild and destructor through MW's
+ * vtable */
+void CZSealBody::DeleteCameraEffectsNode()
+{
+    zdb::CNode *fx = GetNode()->FindChild("camera_effects", true);
+
+    if (fx) {
+        zdb::CNode *parent = fx->m_parent;
+
+        if (parent)
+            parent->DeleteChild(fx);
+    }
+    if (fx)
+        delete fx;
+}

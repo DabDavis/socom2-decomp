@@ -1634,6 +1634,11 @@ public:
     virtual unsigned int GetAiNetState() const;
     /* slot 0xA4 (OVL2 0x574800: the current state's kind, or 0 -- SOCOM 1's GetAiStateEnum's body) */
     virtual AI_STATE GetJumpFlag() const;
+    /* back to the mission's start: the base's, the states cleared, the first task (OVL2 0x56DD50), and an
+     * entity recycled: its own SEAL's out of its squad, the mission ended for it (OVL2 0x56DDC0) --
+     * slots 0x58 and 0x48, seal_ai.cpp's */
+    virtual void ResetToInitialState();
+    virtual void OnRecycleEntity(CEntity *e);
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
@@ -2449,6 +2454,8 @@ public:
     void UpdateAimParams();
     /* the weapon's wait begun (OVL2 0x5DFFC0, seal_weapon.cpp's -- the constructor calls it) */
     void WepWaitOn();
+    /* and ended (OVL2 0x5DFFF0) */
+    void WepWaitOff();
     /* the aim at a point, with its surface normal, or none (SOCOM 1's; OVL2 0x5DF4E0, seal_weapon.cpp
      * -- the kit lane) */
     bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);

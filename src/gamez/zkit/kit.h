@@ -272,6 +272,10 @@ public:
      * weapon (OVL2 0x5C67D0, new in SOCOM II: the launcher-mode tests, GetReticuleByIndex and four
      * more call it; the name ours) */
     CZFTSWeapon *GetFiringItem(int index);
+    /* whether the item in hand may be changed: not waiting to fire, the fire's wait run out, not looking
+     * through the binoculars or a scope (OVL2 0x5C4FD0; SOCOM 1's -- an int, as hud_weaponsel.cpp's
+     * view declares it) */
+    int CanChangeItem();
     /* the mode after the selected item's: from its launcher ammunition's item when the mode is one
      * (4 and up, the mode the item kind), through 0x5C3EE0 with the item it fires from (OVL2
      * 0x5C4480, new in SOCOM II: 0x5C4600 passes the selected item, which it reads again itself --

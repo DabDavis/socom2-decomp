@@ -5598,3 +5598,31 @@ void CZKit::UpdateScopeModel()
             ShowScopes(this, false);
     }
 }
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood) ---- */
+
+/* whether an item's launcher mode is past 3: the mode after the item's own through 0x5C3EE0 with the
+ * item it fires from (OVL2 0x5C45C0; the fire mode's step asks it; the name unknown). Its draft passed
+ * GetFiringItem no index */
+extern "C" bool func_005C45C0(CZKit *kit, int index)
+{
+    return func_005C3EE0(kit, 0, kit->GetFiringItem(index), (EQUIP_ITEM)255) >= 4;
+}
+
+/* (OVL2 0x5C4FD0). Its draft read the body's zoom class at MW's 0x200 (on the host 0xc lower: through
+ * CKitBody here) */
+int CZKit::CanChangeItem()
+{
+    int zoom;
+
+    if (m_waiting_to_fire || !(m_firetime <= 0.0f) || (zoom = ((CKitBody *)m_body)->m_200) >= 5 || zoom == 4)
+        return 0;
+    return 1;
+}
+
+/* the explosive's damage set up again (OVL2 0x5C7830, a tail call; seal_create.cpp's SEAL set-up calls
+ * it; the name unknown). Its draft passed SetupExplosiveDamage no kit */
+extern "C" void func_005C7830(CZKit *kit)
+{
+    kit->SetupExplosiveDamage();
+}

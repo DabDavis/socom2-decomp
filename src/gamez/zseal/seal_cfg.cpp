@@ -798,6 +798,18 @@ void CZSealBody::SetMaxMotion()
     else
         set->m_aparams.m_ladder_updn = 0.0f;
 }
+/* the height of a type's reference point when its script has one, else 0 (OVL2 0x58C2B0, before
+ * 0x58C2F0; seal_env.cpp's ledge climb asks it; the name unknown). Written for the port, M3: its draft
+ * read the set at MW's 0x528 (on the host 0xc lower) and passed GetScript no type */
+extern "C" float func_0058C2B0(CZSealBody *seal, AnimType type)
+{
+    CZSIScriptCommon *a = seal->m_animset->GetScript(type);
+
+    if (a->m_4b_0)
+        return a->m_4c.y;
+    return 0.0f;
+}
+
 /* an anim's reference point when it has one, else the origin (OVL2 0x58C2F0, SOCOM 1's RefPoint by
  * role -- SOCOM 1's searched a list of points; SOCOM II reads the script's own -- so the name stays
  * a placeholder; CheckDILadder and three more call it) */

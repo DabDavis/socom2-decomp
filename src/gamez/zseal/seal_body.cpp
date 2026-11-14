@@ -6135,3 +6135,27 @@ void CZSealBody::Tick_0()
         r.Normalize(rot);
     }
 }
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood) ---- */
+
+/* whether the SEAL carries a body whose top blend homes (OVL2 0x579EA0, after the pickup's callback;
+ * seal.cpp's and seal_env.cpp's carry tests; the name unknown). Its draft read the carried body at MW's
+ * 0xEAC and the blends at 0x1C0 (on the host 0xc lower) */
+extern "C" bool func_00579EA0(CZSealBody *seal)
+{
+    if (seal->m_carry && ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_homing.m_blend)
+        return true;
+    return false;
+}
+
+/* a live SEAL's anim pushed unless its top blend is in state 8: the top kept when it already plays
+ * the type (OVL2 0x57D540, before SwapRifle; the kit's and seal_env.cpp's satchel anims; the name
+ * unknown). Its draft read the blends at MW's 0x1C0 */
+extern "C" void *func_0057D540(CZSealBody *seal, AnimType type, SEAL_STATE state)
+{
+    if (!seal->m_isAlive || ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->m_state == 8)
+        return 0;
+    if (seal->IsCurrentBlend(type))
+        return func_00555170(&seal->m_blends);
+    return func_00588BC0(seal, type, state, 0, 0);
+}
