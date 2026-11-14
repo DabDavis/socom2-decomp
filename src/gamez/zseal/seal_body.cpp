@@ -5490,6 +5490,14 @@ static inline void RecoilPart(CZBodyPart *part, const CQuat &q, const CPnt3D &t,
     }
 }
 
+/* whether the top blend's script takes the root's vertical velocity (the script's flag at 0x4A, bit 4:
+ * SetUseVelY's; OVL2 0x57B510, before Recoil -- ComputeNextPosition's and the fall's test; the name
+ * ours. Written for the port, M3: its draft read the blends at MW's 0x1C0) */
+extern "C" bool func_0057B510(CZSealBody *seal)
+{
+    return ((CZBodyAnimBlend *)func_00555170(&seal->m_blends))->Representative()->m_anim->m_4a_4;
+}
+
 /* the weapon's recoil played on the body: the kick decays by the time step (dropped under 0.01); a
  * turret takes it as its own; otherwise each part is turned by an exponential of a vector fixed for the
  * stance (the state's, else the one wanted) and the item (the rifle or the pistol), scaled by the kick,

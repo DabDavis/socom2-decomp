@@ -304,6 +304,8 @@ public:
     unsigned char _host0[16];   /* the host's CNode: its vtable pointer first, the 16-aligned matrix at 16 */
 #endif
     float m_matrix[4][4];   // 0x0: the node's matrix, its position the last row (CNode's)
+    unsigned char _40[Z_OFS(0xf0, 0x100) - Z_OFS(0x40, 0x50)];
+    float m_far_plane;   // 0xf0 (host 0x100): zcamera.h's tag_CAMERA_PARAMS's, after the CNode
 };
 /* the world, as much as the particles use (znode.h's class brings zmath.h's CPnt4D with it) */
 class CWorld : public CNode {
@@ -707,6 +709,7 @@ public:
     unsigned char m_fovFlag;   // 0x12d (SOCOM 1's tag_ZVIS_FOV: 2 never drawn, 1 drawn untested)
 
     int m_refcount;   // 0x130 (SOCOM 1: 0x12c): the live instances of this source (Tick counts them)
+    int m_134;   // 0x134: cleared with the count by the defaults (func_0032AB20; Create news 0x138)
 
     static float distanceFactor;   // 0x4884C0
     static float frequencyFactor;   // 0x4884C8

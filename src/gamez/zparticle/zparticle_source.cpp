@@ -237,6 +237,88 @@ void Source::List::Uninit()
 /* the shutdown's last step (OVL1, not named) */
 extern "C" void func_0032AB20(Source *s);
 
+#if Z_PORT
+/* the port's (M3): the source's defaults and its constructor, the two drafts (auto/ovl1/0032AB20.cpp,
+ * 0032A800.c) written against the class -- the constructor's draft called the defaults without the
+ * source (left in a0 on the EE), the defaults' draft read the world's camera at MW's 0x128 and its far
+ * plane at 0xF0, and turned off the collision node through MW's vtable. The ranges keep reading the
+ * eighteen .data floats the drafts read (0 and 1 on the disc; what they are is the decomp's open
+ * question). Not byte-exact: the PS2 build keeps the drafts */
+extern "C" float data_003DFEC8, data_003DFED0, data_003DFED8, data_003DFEE0, data_003DFEE8, data_003DFEF0,
+    data_003DFEF8, data_003DFF00, data_003DFF08, data_003DFF10, data_003DFF18, data_003DFF20, data_003DFF28,
+    data_003DFF30, data_003DFF38, data_003DFF40, data_003DFF48, data_003DFF50;
+
+extern "C" void func_0032AB20(Source *s)
+{
+    if (s->m_active) {
+        s->m_active = 0;
+        if (s->m_hasbbox && s->m_diNode)
+            s->m_diNode->SetActive(false);
+        s->m_goodPos = 0;
+    }
+    s->m_drawType = (PARTICLE_TYPE)0;
+    s->m_streakLen = 1.0f;
+    s->m_streakFade = 0.3f;
+    s->m_shuttingoff = 0;
+    s->m_goodPos = 0;
+    s->m_distInterval = 0;
+    s->m_period = 1.0f;
+    s->m_invPeriod = 1.0f;
+    s->m_numPeriods = -1;
+    s->m_phase = 0.0f;
+    s->m_number = 1;
+    float f = zdb::CWorld::m_world->m_camera->m_far_plane;
+    s->m_distance = f * f;
+    s->m_node = 0;
+    s->m_perturbPositionX.m_min = data_003DFEC8;
+    s->m_perturbPositionX.m_max = data_003DFED0;
+    s->m_perturbPositionY.m_min = data_003DFED8;
+    s->m_perturbPositionY.m_max = data_003DFEE0;
+    s->m_perturbPositionZ.m_min = data_003DFEE8;
+    s->m_perturbPositionZ.m_max = data_003DFEF0;
+    s->m_perParticleVelocity = 0;
+    s->m_perturbVelocityX.m_min = data_003DFEF8;
+    s->m_perturbVelocityX.m_max = data_003DFF00;
+    s->m_perturbVelocityY.m_min = data_003DFF08;
+    s->m_perturbVelocityY.m_max = data_003DFF10;
+    s->m_perturbVelocityZ.m_min = data_003DFF18;
+    s->m_perturbVelocityZ.m_max = data_003DFF20;
+    s->m_radiusRange.m_min = data_003DFF28;
+    s->m_radiusRange.m_max = data_003DFF30;
+    s->m_lifespanRange.m_min = data_003DFF38;
+    s->m_lifespanRange.m_max = data_003DFF40;
+    s->m_initialAgeRange.m_min = data_003DFF48;
+    s->m_initialAgeRange.m_max = data_003DFF50;
+    s->m_offset.x = s->m_offset.y = s->m_offset.z = 0.0f;
+    s->m_localVelocity.x = s->m_localVelocity.y = s->m_localVelocity.z = 0.0f;
+    s->m_worldVelocity.x = s->m_worldVelocity.y = s->m_worldVelocity.z = 0.0f;
+    s->m_inheritVelocity = 0;
+    s->m_props = Props::Create();
+    s->m_refcount = 0;
+    s->m_134 = 0;
+    s->m_fovFlag = 1;
+    s->m_landmark = 0;
+    s->m_tint = 0;
+    s->_14[0] = s->_14[1] = s->_14[2] = 1;
+    s->m_doAgeLOD = 1;
+    s->m_doSpawnLOD = 1;
+    s->m_freezable = 1;
+    s->m_frozen = 0;
+}
+
+extern "C" Source *func_0032A800(Source *s)
+{
+    new (&s->m_textures) std::vector<zdb::CTexHandle *>();
+    s->m_diNode = 0;
+    for (int i = 0; i < 6; i++)
+        s->m_diPolies[i] = 0;
+    s->m_particleEx = 0;
+    s->m_hasbbox = 0;
+    func_0032AB20(s);
+    return s;
+}
+#endif
+
 /* vectors through the matrix's rotation, each copied into an aligned vector and back (zmath.h's
  * TransformVectors, the particles' header standing in for it) */
 static inline void TransformVectors(const CMatrix *m, const CPnt3D *in, CPnt3D *out, int count)

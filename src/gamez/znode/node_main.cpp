@@ -742,6 +742,14 @@ void CNode::FreeAtom()
     m_AtomAlloc = 0;
 }
 
+/* the atom count set (OVL1 0x3149D0, SOCOM 1's; gridRemoveNodeFromGrids clears it. Written for the
+ * port, M3: its draft stored at MW's 0xA8, the count never cleared on the host, a moved node's atoms
+ * freed twice and the grid's cell lists made cycles -- the first SEAL's PostTick never returned) */
+void CNode::SetAtomCnt(int n)
+{
+    m_AtomCnt = n;
+}
+
 void CNode::InsertAtom(CGridAtom *atom)
 {
     m_Atom[m_AtomCnt++] = atom;
