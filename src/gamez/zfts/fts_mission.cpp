@@ -4694,6 +4694,15 @@ extern "C" bool func_002AA890()
     return true;
 }
 
+/* the scheduler's task for the mission (the task carries it): a frame of it, not done (SOCOM 1's).
+ * Written for the port, M3 (the port's own fix, its patch 0016): its draft called CMission::Tick
+ * with neither the mission nor the time (the EE's a0 and f12 passed on) */
+bool CMission::tick(float dT, void *data)
+{
+    static_cast<CMission *>(data)->Tick(dT);
+    return false;
+}
+
 /* the mission's frame (SOCOM 1's CMission::Tick; OVL1 0x2AA490): the clocks run -- the mission's
  * time, the wait before falling, the win/loss clock while the player's controller lives (0x2AA890
  * inlined) --; in a network game the round's clock (SOCOM 1's CNetClock::Tick, out of line there)

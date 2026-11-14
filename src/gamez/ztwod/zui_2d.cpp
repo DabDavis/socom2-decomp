@@ -1556,6 +1556,24 @@ void C2DButton::SetNormal()
     }
 }
 
+/* slot 27 (0x370C20, +0x74 of C2DButton's table and of the four deriving it): pressed -- when the
+ * button takes input, the press timed (0.2 s) and the active state shown as SetNormal shows the
+ * normal one. Written for the port, M3: its draft asked CanHandleInput through MW's vtable layout and
+ * wrote every member at MW's offset (on the host its 0.2 landed on the first action's state and
+ * event: the main menu's Cross on NEW GAME then matched no action) */
+void C2DButton::Slot27()
+{
+    if (CanHandleInput()) {
+        m_pressTime = 0.2f;
+        m_state = &m_active;
+        func_0036E840(this, m_active.m_tex);
+        func_0036E830(this, m_active.m_scale);
+        SetCaptionStyle(m_active.m_color, m_active.m_pulse, m_active.m_fadeTime, m_active.m_fadeMin,
+                        m_active.m_fadeMax);
+        m_background.SetPulse(m_active.m_period);
+    }
+}
+
 /* the caption's style as SetCaptionStyle sets it, for ShowState, which inlines what SetNormal
  * calls out of line (the four helpers are pinned for SetNormal; the name ours) */
 static inline void ApplyCaptionStyle(C2DString &caption, const CPnt3D &color, bool pulse, float time,
@@ -3174,7 +3192,7 @@ public:
     unsigned char _0[0x60];
     virtual ~CMenuNode();
     virtual void _Copy();
-    virtual void UpdateGrid();
+    virtual bool UpdateGrid();
     virtual void ReserveChildren(int n);
     virtual void AddChild(zdb::CNode *child);
     virtual int DeleteChild(zdb::CNode *child);
@@ -3883,7 +3901,7 @@ public:
     virtual int GetZAnimCmdType(const char *name);
     /* slot 18: the box made active (0x374CB0) */
     virtual void SetActive();
-    /* slot 19: the rows shown normal (0x376420, its m2c draft matches) */
+    /* slot 19: the rows shown normal (0x376420) */
     virtual void SetNormal();
     /* set up from its spec (0x375E20: CUIListBoxSpec::CreateDisplayObj's call) */
     void LoadSpec(const CUIListBoxSpec &spec, zdb::CTexHandle *tex, zdb::CTextureRelocMgr *mgr);
@@ -3978,6 +3996,33 @@ public:
     ActionItem m_actions[30];   // 0x420: the box's actions (the spec's ANIMATIONS)
     int m_numActions;   // 0x600
 };
+
+/* made normal: SetActive's counterpart -- the rows' colour for the highlight, the bar off, the
+ * highlight's bitmap given the normal texture (0xEC's), white, its alpha back to 80, the pulse
+ * stopped (SOCOM 1's CUIListBox::SetNormal). Written for the port, M3 (the port's own fix, in its
+ * patch 0014, made byte-exact): its draft read every member at MW's offset and called the bitmaps
+ * through MW's vtable layout (dlgMenu's list box faulted in it) */
+void CUIListBox::SetNormal()
+{
+    m_highlightColor = m_color;
+    m_bar.Off();
+
+    zdb::CTexHandle *t = m_texEC;
+
+    m_texF8 = t;
+    m_highlight.Load(0.0f, 0.0f, 10.0f, 10.0f, m_texF8);
+    if (!t)
+        m_highlight.SetHasTexture(false);
+    else
+        m_highlight.SetHasTexture(true);
+    m_highlight.SetColor(255.0f, 255.0f, 255.0f);
+    m_highlight.SetTrans(m_highlightAlpha);
+    m_highlight.SetTrans(100.0f);
+    m_highlightAlpha = 80;
+    m_pulseMin = 0.0f;
+    m_pulseMax = 0.0f;
+    m_pulseTime = 0.0f;
+}
 
 /* made active (SOCOM 1's CUIListBox::SetActive, 0x393D60 there; SOCOM II's body): the highlight's
  * colour, the bar on and loaded, the highlight's bitmap textured, white and at 100, the pulse's

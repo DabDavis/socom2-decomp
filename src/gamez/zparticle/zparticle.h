@@ -239,7 +239,7 @@ public:
     /* SOCOM II's vtable order (znode.h's), the pointer at 0x60; declared only */
     virtual ~CNode();
     virtual CNode *_Copy(CNode *to) const;
-    virtual void UpdateGrid();
+    virtual bool UpdateGrid();
     virtual void ReserveChildren(int n);
     virtual void AddChild(CNode *child);   // +0x18
     virtual int DeleteChild(CNode *child);   // +0x1c

@@ -1404,6 +1404,16 @@ inline _word128 *CVisual::VuDecals(_word128 *p)
     return p;
 }
 
+/* the visual drawn: its VU program built, when it has a mesh for its views (SOCOM 1's; slot 0xC).
+ * Written for the port, M3 (the port's own fix, its patch 0017): its draft tested MW's 0x34 (the
+ * mesh vector's size word) and called VuUpdate without the visual (the EE's a0 passed on) --
+ * dlgMenu's models faulted in GetChainData */
+void CVisual::Render(CMatrix *mtw)
+{
+    if (m_lodMesh.size() != 0)
+        VuUpdate();
+}
+
 /* the visual sent to the VU (SOCOM 1's VuUpdate, 0x30A900 in the demo -- SOCOM II's takes no
  * argument): the material band, the specular count and the saved selects reset, the chain found.
  * A chain the static at 0x4B4A60 marks goes as one packet: the object header, the opening commands by

@@ -90,6 +90,41 @@ void CZProjectileList::SetAllFlag18()
     }
 }
 
+/* a table's intersections deleted and forgotten (ours: UnInit's two tables -- the target tests the
+ * table's address before each walk) */
+static inline void DeleteDIs(DiIntersect **dis, int n)
+{
+    if (dis) {
+        for (int i = 0; i < n; i++) {
+            delete dis[i];
+            dis[i] = 0;
+        }
+    }
+}
+
+/* everything Init made deleted -- the charges and projectiles taken out (Clear), the slots'
+ * projectiles, the 60 direct and 30 indirect intersections, the used flags -- and the charges' list
+ * emptied (SOCOM 1's; Init calls it out of line: pinned). Written for the port, M3 (the port's own
+ * fix, its patch 0024): its draft called Clear without the list (the EE's a0 passed on) -- the
+ * mission's load thread faulted in it */
+#pragma auto_inline off
+void CZProjectileList::UnInit()
+{
+    Clear();
+    if (m_projectiles) {
+        delete[] m_projectiles;
+        m_projectiles = 0;
+    }
+    DeleteDIs(m_directFireDI, 60);
+    DeleteDIs(m_indirectFireDI, 30);
+    if (m_used) {
+        delete[] m_used;
+        m_used = 0;
+    }
+    m_explosives.clear();
+}
+#pragma auto_inline reset
+
 /* the first free slot's projectile: none when every slot is taken; the last used moved up to it,
  * the slot marked, the next free found, its node activated and the projectile initialised
  * (SOCOM 1's activated it only). The slot is declared after the two tests that read it: declared

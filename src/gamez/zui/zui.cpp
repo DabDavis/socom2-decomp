@@ -39,6 +39,8 @@ public:
     void ClearFreeList(bool all);
     /* the tasks run (CGameMenu::Tick's) */
     void Tick(float dT);
+    /* every task dropped (0x34E480, zsys_sched.cpp's) */
+    void Clear();
 
     unsigned char _0[0x20];
 };
@@ -230,7 +232,7 @@ public:
     unsigned int m_5c : 31;
     virtual ~CNode();                                     /* +0x08 */
     virtual CNode *_Copy(CNode *to) const;
-    virtual void UpdateGrid();
+    virtual bool UpdateGrid();
     virtual void ReserveChildren(int n);
     virtual void AddChild(CNode *child);                  /* +0x18 */
     virtual int DeleteChild(CNode *child);
@@ -1070,6 +1072,17 @@ static inline zdb::CNode *AddNode(C2D *obj, zdb::CTextureRelocMgr *mgr, zdb::CNo
     parent->FindChild(node, true);
     parent->AddChild(node);
     return node;
+}
+
+/* the menus' scheduler emptied, its free list with it (SOCOM 1's zUISchedulerClear; the menu
+ * state's UnInit and the game engine's). Written for the port, M3 (the port's own fix, its patch
+ * 0022): its draft named the scheduler by its image address (0x49EA50), on the host not the file
+ * static (never constructed there: leaving the briefing for the load screen faulted in
+ * ClearFreeList) */
+void zUISchedulerClear()
+{
+    zUIScheduler.Clear();
+    zUIScheduler.ClearFreeList(true);
 }
 
 /* 0x36AB20: AddNode's out-of-line copy (the soft keyboard's key and text nodes are made through it:
