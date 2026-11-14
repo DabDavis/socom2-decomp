@@ -777,6 +777,8 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     virtual bool HandlePad(const CPad *pad, int port);
+    /* C2DButton's tick, the pad's repeat clock advanced (0x3721E0, slot 0x38) */
+    virtual void Tick(float dT);
     void LoadSpec(const CSliderBarSpec &spec, zdb::CTexHandle *tex);
     /* the value's real written to the UI variable (ours: HandlePad's four arms) */
     inline void ApplyValue();
@@ -803,6 +805,8 @@ public:
     virtual int GetZAnimCmdType(const char *name);
 
     virtual bool HandlePad(const CPad *pad, int port);
+    /* the choice LoadSpec left shown first, then C2DButton's tick (0x370CB0, slot 0x38) */
+    virtual void Tick(float dT);
     /* the strip's two refreshes after a new choice: its buttons shown (SOCOM II's, 0x370D10, the name
      * ours) and its check boxes set (SOCOM 1's PressActive, 0x370DB0) */
     void ShowChoice();
@@ -4405,6 +4409,16 @@ inline void CSliderBar::ApplyValue()
         var->SetReal(v);
 }
 
+/* the slider's frame: the button's tick, then the clock HandlePad's held direction repeats on
+ * (slot 0x38 of CSliderBar's table 0x4075E0). Written for the port, M3: its draft
+ * called C2DButton::Tick with neither the slider nor the time (the EE's a0 and f12 passed on) and,
+ * never in the class, it was missing from the host's table -- a held direction never repeated */
+void CSliderBar::Tick(float dT)
+{
+    C2DButton::Tick(dT);
+    m_repeat += dT;
+}
+
 /* the pad on the slider (slot 15 of its vtable; the 2003 slider has no counterpart in SOCOM 1's): left
  * and right step its value by the interval, a percent each, clamped; a fresh press restarts the
  * repeat's clock and runs the menu's event; held, it steps once the clock has passed 0.4; each step
@@ -5783,6 +5797,20 @@ void CRadioStrip::ShowChoice()
     }
 }
 #pragma auto_inline reset
+
+/* the strip's frame: a choice LoadSpec set shown once (its buttons, then its check boxes), then the
+ * button's own tick (slot 0x38 of CRadioStrip's table 0x407430). Written for the port, M3: its
+ * draft called ShowChoice without the strip (the EE's a0 passed on) and, never in
+ * the class, it was missing from the host's table -- the strip's first choice never shown */
+void CRadioStrip::Tick(float dT)
+{
+    if (m_444) {
+        ShowChoice();
+        PressActive();
+        m_444 = false;
+    }
+    C2DButton::Tick(dT);
+}
 
 /* the render pipe as a 2D visual reads it: the opacity stack (zrndr_pipe.cpp's CPipe, OVL1 bss
  * 0x4887C0; its 0x720 bytes stood in) */

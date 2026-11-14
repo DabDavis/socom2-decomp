@@ -393,6 +393,21 @@ extern "C" void func_00344910(const char *name)
     }
 }
 
+/* the sound groups a file names loaded, unless sound is off (OVL1 0x3448E0: CSnd::SetupSoundGroups
+ * out of line -- the menu state's Init and its reboot callback load "UI" through it; the name
+ * unknown), and the jukebox's play lists read (0x3448D0, CMission::Open's "sndjukeboxm.rdr"). Written
+ * for the port, M3: the drafts called LoadSoundGroups and LoadPlaylists with no name (the EE's a0
+ * passed on) */
+extern "C" void func_003448E0(const char *name)
+{
+    CSnd::SetupSoundGroups(name);
+}
+
+extern "C" void func_003448D0(const char *name)
+{
+    CSndJukebox::LoadPlaylists(name);
+}
+
 inline void CSnd::LoadSounds(const char *name)
 {
     if (!m_isDisabled)
@@ -948,6 +963,15 @@ CSndInstance *CSnd::PlaySoundVolPanPitch(float vol, int pan, int pitch, bool one
     CSndInstance *r = PlaySoundVolPanPitch(vol, pan, pitch, inst, flags);
     m_isOneShot = old;
     return r;
+}
+
+/* a sound queued on the headset's voice queue (OVL1 0x3428F0; the name unknown -- the ZAnim sound
+ * command, CCharacterType::PlayAt and the SEALs' radio call it): the queue's Add with the caller's
+ * arguments. Written for the port, M3: the draft passed the three words on and dropped the two
+ * floats (the EE's f12 and f13 passed on) */
+extern "C" void func_003428F0(CSnd *sound, int id, const CPnt3D *pos, float delay, float vol)
+{
+    data_0048DEE0.Add(sound, id, pos, delay, vol);
 }
 
 /* the volume at a distance (SOCOM 1's CalcVol, an out-of-line function there at 0x2EC780 that its

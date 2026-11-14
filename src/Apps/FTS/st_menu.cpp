@@ -817,3 +817,27 @@ bool CMenuState::RunEventAnim(const char *eventname, const char *argument)
     }
     return result;
 }
+
+/* the menu state's three calls through to its menu, before RunEventAnim in the image (OVL1 0x1F3BB0-
+ * 0x1F3BE7; the names unknown -- zanim_menu.cpp's commands call them on theGame's menu state): the
+ * time the menu ignores the pad for (UISuspendInput's, its menu's m_900; none without a menu), the
+ * background film restarted under a name, and stopped. Written for the port, M3: the drafts read
+ * MW's offsets (the menu's m_900 at 0x900, on the host 0x8f0) and called the two films' members with
+ * no name and no menu (the EE's a1 and a0 passed on) */
+extern "C" bool func_001F3BE0(CMenuState *state)
+{
+    return state->m_menu->HaltBackgroundMPEG();
+}
+
+extern "C" void func_001F3BD0(CMenuState *state, const char *movie)
+{
+    state->m_menu->RestartBackgroundMPEG(movie);
+}
+
+extern "C" void func_001F3BB0(CMenuState *state, float time)
+{
+    CMenuStateMenu *menu = state->m_menu;
+
+    if (menu)
+        menu->m_900 = time;
+}

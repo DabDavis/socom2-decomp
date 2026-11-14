@@ -1326,3 +1326,13 @@ void CWeaponSel::PlaceHotSwapLabels()
         m_hotswapL2text.Off();
     }
 }
+
+/* the selector drawn (OVL1 0x2193C0, slot 0xC of CWeaponSel's vtable 0x405610 -- Draw(CCamera *),
+ * its only override: C2D's own, called by name; the unit's first function). Written for the port,
+ * M3: its draft called C2D::Draw with neither the selector nor the camera (the EE's a0 and a1
+ * passed on). The placeholder name stays: hud_weaponsel.h's class declares no Draw of its own, so
+ * the vtable every unit builds keeps C2D's -- on the host the same call */
+extern "C" void func_002193C0(CWeaponSel *sel, zdb::CCamera *cam)
+{
+    sel->C2D::Draw(cam);
+}
