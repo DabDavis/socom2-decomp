@@ -188,6 +188,20 @@ COverlayLine g_lineNorthIndRearShaft;
 zdb::CTexture *g_pFov;
 }
 
+#if Z_PORT
+/* the port: COverlayLine's destructor (0x20CE70) under its row's address name, with MW's destructor
+ * convention (a flag > 0 frees the storage; `this` returned) -- the drafts of the unit's two array
+ * destructors (0x20CE30, 0x20CE50) pass it to __destroy_arr, and the anonymous namespace makes the
+ * class's own internal on the host (MW's @unnamed@ names are global) */
+extern "C" void *func_0020CE70(COverlayLine *line, short flag)
+{
+    line->~COverlayLine();
+    if (flag > 0)
+        operator delete(line);
+    return line;
+}
+#endif
+
 /* the grid lines' alpha (a variable: read with lwc1) */
 static float s_gridTrans = 24.0f;
 

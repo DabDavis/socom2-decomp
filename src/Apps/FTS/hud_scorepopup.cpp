@@ -526,6 +526,16 @@ int GetTeamMembers(CZSealBody **arrSeals, int *arrKills, bool bTeam0)
 /* a tag's first two numbers as integers (below, 0x22B360) */
 IPNT2D GetTagIPNT2D(const _zrdr *rdr, const char *tag);
 
+/* the score pop-up's 2D object: one guarded static (0x412E20, its guard 0x412E00, its destructor
+ * record 0x412E08), C2D's constructor and CScorePopup's vtable 0x405990, ~CScorePopup registered --
+ * hud_main.cpp's CHUD::Init adds it (OVL1 0x22DDF0; the name not known) */
+extern "C" C2D *func_0022DDF0()
+{
+    static CScorePopup s_popup;
+
+    return &s_popup;
+}
+
 /* the message's window and text read (an inline of its own, ours: the erase temporaries of the
  * message's text id take the frame slot below the triggers' -- MW lays out an inline's inlines after
  * the caller's direct ones) */
@@ -610,6 +620,16 @@ void hudAddPopupDefinition(_zrdr *popup)
     if (msg) {
         msg->Read(popup);
     }
+}
+
+/* the message pop-ups' 2D object: one guarded static (0x412E50, its guard 0x412E38, its destructor
+ * record 0x412E40), CHudPopups' vtable 0x405A08, ~CHudPopups (0x22D600, emitted after it)
+ * registered -- st_core.cpp's draw calls it (OVL1 0x22D590; the name not known) */
+extern "C" C2D *func_0022D590()
+{
+    static CHudPopups s_popups;
+
+    return &s_popups;
 }
 
 /* the message for this map and any of these objects' names shown, once -- never in a network game
