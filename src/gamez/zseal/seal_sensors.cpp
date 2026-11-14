@@ -1914,3 +1914,12 @@ void CSealCtrlAi::UpdateViewCone()
     c->m_view_cone.m_cone_pos = pos;
     c->m_view_cone.m_cone_dir = d;
 }
+
+#if Z_PORT
+/* the port: OVL2's copy of GetRequest (0x5C9830, its row's `ovl-copy:`) that _GetTargetPerception calls
+ * by address -- seal_dipool.h's static inline, one copy here */
+extern "C" CDiPool::dir *func_005C9830(CDiPool::CDirList *free)
+{
+    return GetRequest(*free);
+}
+#endif

@@ -6433,3 +6433,25 @@ void CZSealBody::UpdateHostileAnchor()
  * the flags' level 5 gives four. A pragma acts through its state at the unit's end (deferred inlining):
  * objcmp against the unit without it -- GetBBox alone differs. */
 #pragma inline_depth(8)
+
+#if Z_PORT
+/* the port: OVL2's out-of-line copies that the SEAL units and two drafts call by address (on the PS2
+ * the jal must reach OVL2's copy, so the source spells the row) -- one copy on the host, each the
+ * function its row's `ovl-copy:` note names: _close_enough<f> (0x52EB60), CPnt3D's implicit
+ * assignment (0x539E90), _saturate<f> (0x539B70: the drafts 0x570F90 and 0x5C9720) */
+extern "C" bool func_0052EB60(const float &a, const float &b, const float &eps)
+{
+    return _close_enough(a, b, eps);
+}
+
+extern "C" CPnt3D *func_00539E90(CPnt3D *p, const CPnt3D *src)
+{
+    *p = *src;
+    return p;
+}
+
+extern "C" bool func_00539B70(float *v, const float &lo, const float &hi)
+{
+    return _saturate(v, lo, hi);
+}
+#endif
