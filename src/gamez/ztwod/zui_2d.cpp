@@ -289,6 +289,8 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    /* the string's tick, the arrows' (0x379AB0, slot 0x38) */
+    virtual void Tick(float dT);
     /* the lines laid out (ours: an accessor, the count read before the spacing's call) */
     int GetNumLines() { return m_numLines; }
 
@@ -324,6 +326,7 @@ public:
     virtual ~CScrollText();
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
+    virtual bool HandlePad(const CPad *pad, int port);
 
     int m_250;   // 0x250
     bool m_254;   // 0x254
@@ -869,6 +872,8 @@ class CHandlerButton : public C2DButton {
 public:
     virtual ~CHandlerButton();
     virtual bool HandlePad(const CPad *pad, int port);
+    /* the button's tick, then its children's (0x376530, slot 0x38) */
+    virtual void Tick(float dT);
     void LoadSpec(const CHandlerButtonSpec &spec);
 } __attribute__((aligned(16)));   // 0x440 bytes
 
@@ -1410,9 +1415,18 @@ C2DButton::~C2DButton()
 }
 
 /* the background loaded with a texture, the caption's scale (inlines' out-of-line copies after
- * SetNormal, matched as drafts) */
-extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex);
+ * SetNormal; the scale's matched as a draft) */
 extern "C" void func_0036E830(C2DButton *button, float scale);
+
+/* the background loaded with a state's texture at the button's size (0x36E840: SetNormal, SetActive,
+ * Slot27 and Tick call it out of line -- pinned). Written for the port, M3: its draft read the size
+ * at MW's 0x240 (on the host 0x230: CPlainBmp is 0x90 bytes there, 0xA0 here) */
+#pragma auto_inline off
+extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex)
+{
+    button->m_background.Load(0.0f, 0.0f, button->_fWidth, button->_fHeight, tex);
+}
+#pragma auto_inline reset
 
 /* set when a menu object takes actions (zui.cpp's global, SOCOM 1's g_hasAnims at gp-25344 there;
  * OVL1 bss 0x49EAA0) */
@@ -2171,6 +2185,22 @@ bool CWrappedText::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
         break;
     }
     return handled;
+}
+
+/* the wrapped text's frame: the string's tick, the up arrow's, and the down arrow faded with the
+ * up one (slot 0x38 of CWrappedText's table 0x4079E0; the arrows through references, as the target
+ * dispatches through their tables). Written for the port, M3: its draft called the arrows through
+ * MW's vtable layout (the pointer at +0xC, slots 0x38 and 0x34) at MW's offsets (the down arrow at
+ * 0x1A0, on the host 0x190) and, never in the class, it was missing from the host's table */
+void CWrappedText::Tick(float dT)
+{
+    C2DString::Tick(dT);
+    C2D &up = m_upArrow;
+
+    up.Tick(dT);
+    C2D &down = m_downArrow;
+
+    down.SetTrans(m_upArrow.GetTrans());
 }
 
 /* SCROLL_UP and SCROLL_DOWN as commands of their own (no argument), anything else the renderable
@@ -6254,6 +6284,42 @@ void C3StateButton::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
             _strCaption.Draw(mgr, 0, (int)p.z);
         }
     }
+}
+
+/* the pad on the scrolling text (slot 15 of CScrollText's table): down pressed (zinput.h's PAD_DOWN,
+ * 5) scrolls a line on while the lines shown stop short of the list's count, up (4) a line back to
+ * the first; taken
+ * when it scrolled (SOCOM 1's). Written for the port, M3: its draft asked CanHandleInput through
+ * MW's vtable layout (the pointer at +0xC, slot 0x48), and read the list's count at MW's 0 (on the
+ * host the vtable pointer) and the line at MW's 0x258 (on the host 0x238) */
+bool CScrollText::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    if (pad->m_state[5] == 1 && m_line < size() - m_25c) {
+        m_line++;
+        return true;
+    }
+    if (pad->m_state[4] == 1 && m_line > 0) {
+        m_line--;
+        return true;
+    }
+    return false;
+}
+
+/* the handler button's frame: the button's tick, then each child's (slot 0x38 of CHandlerButton's
+ * table 0x407700; the walk C2D::GetAssetLibs's). Written for the port, M3: its draft called
+ * C2DButton::Tick with neither the button nor the time (the EE's a0 and f12 passed on), walked the
+ * list at MW's offsets and ticked the children through MW's vtable layout; never in the class, it
+ * was missing from the host's table */
+void CHandlerButton::Tick(float dT)
+{
+    C2DButton::Tick(dT);
+    node_base *e;
+    iterator i = begin();
+
+    for (e = &end_node(); i != iterator(e); ++i)
+        (*i)->Tick(dT);
 }
 
 /* a press of button 9 (SOCOM 1's button 27) shows the button pressed and hands the pad to its

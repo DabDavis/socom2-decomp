@@ -596,6 +596,27 @@ zdb::CTexHandle *PrepTexture(const char *name, zdb::CTextureRelocMgr *mgr)
     return tex;
 }
 
+/* a button's four states' textures and its caption set: the caption's string and place when there
+ * is one, then the variable it watches shown (SOCOM 1's; CButtonSpec::InitializeButton's call). The
+ * second texture goes to the pressed state's slot, the third to the active one's. Written for the
+ * port, M3: its draft called SetString and UpdateUIVar through MW's vtable layout (the pointer at
+ * +0xC, slots 0x70 and 0x8C) */
+void InitButton(C2DButton *button, zdb::CTexHandle *normal, zdb::CTexHandle *active, zdb::CTexHandle *pressed,
+                zdb::CTexHandle *disabled, const char *caption)
+{
+    button->m_normalTex = normal;
+    button->m_pressedTex = active;
+    button->m_activeTex = pressed;
+    button->m_disabledTex = disabled;
+    button->_szCaption = (char *)caption;
+    if (caption) {
+        button->_strCaption.SetString(caption, true);
+        button->_strCaption.UpdatePos();
+    }
+    if (button->UIVarMixin::m_uivar)
+        button->UpdateUIVar(button->UIVarMixin::m_uivar);
+}
+
 /* both axes within r of the centre (SOCOM 1's) */
 bool IsStickNearCenter(float r)
 {

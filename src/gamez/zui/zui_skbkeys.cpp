@@ -76,7 +76,7 @@ extern "C" void func_00399040(unsigned short c, int arg);
 unsigned short SkbCaseLetter(unsigned short c, bool upper, bool wide);
 /* the keyboard's text given the composed pieces (0x398AE0: the argument first; whether it took
  * them) */
-extern "C" int func_00398AE0(int arg, CSkbPieces *pieces, bool fewer);
+extern "C" bool func_00398AE0(int arg, CSkbPieces *pieces, bool fewer);
 /* (the jamo is zui_hangul.h's JAMO, a byte enum: its lb copy and its andi 0xff compare, SkbTypeJamo's, are
  * the byte enum's signature -- README's ZAnim motion tells) */
 void SkbHangulTypeJamo(int arg, JAMO jamo);
@@ -1163,3 +1163,36 @@ extern "C" void func_00398FC0(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr)
     data_004A1438 = (int)func_0036AB20(&s_textString2, mgr, parent);
     s_textNode = func_0036AB20(&s_textString0, mgr, parent);
 }
+
+/* 0x399040 (the port's M3): a character typed into the text, then the composition cleared -- the
+ * USB keys' handlers and zui_skb.cpp's keypad type through it, the keyboard passed as a word. Its
+ * draft called SkbInsertChar with neither the character nor the keyboard (the EE's a0 and a1 passed
+ * on) */
+#pragma auto_inline off
+extern "C" void func_00399040(unsigned short c, int arg)
+{
+    SkbInsertChar(c, (CSoftKeyboard *)arg);
+    SkbHangulClear();
+}
+#pragma auto_inline reset
+
+/* 0x398AE0 (the port's M3; the unit's first function): the composed pieces put into the text -- with
+ * fewer jamo strings than pieces the previous piece's syllable replaces the last character typed
+ * (0x398C00, when there is one), else the last character is erased; then the last piece's syllable
+ * typed, whether it took being the answer. Its draft called SkbEraseBack without the keyboard (the
+ * EE's a0 passed on) */
+extern "C" void func_00398C00(unsigned short c, CSoftKeyboard *skb);
+
+#pragma auto_inline off
+extern "C" bool func_00398AE0(int arg, CSkbPieces *pieces, bool fewer)
+{
+    if (fewer) {
+        unsigned short c = pieces->PrevCode();
+
+        if (c)
+            func_00398C00(c, (CSoftKeyboard *)arg);
+    } else
+        SkbEraseBack((CSoftKeyboard *)arg);
+    return SkbInsertChar(pieces->LastCode(), (CSoftKeyboard *)arg);
+}
+#pragma auto_inline reset
