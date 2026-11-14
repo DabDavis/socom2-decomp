@@ -10,8 +10,10 @@ const CMatrix CMatrix::identity(1.0f, 0.0f, 0.0f, 0.0f,
                                 0.0f, 0.0f, 1.0f, 0.0f,
                                 0.0f, 0.0f, 0.0f, 1.0f);
 CMatrix CStack::m_stack[64];
-int CStack::m_pointer;
-CMatrix *CStack::m_top;
+/* initialised data, as the image holds them (0x3DF330 = -1, 0x3DF338 = &m_stack[-1]): the stack starts
+ * empty, the first push lands on m_stack[0] (the port found them uninitialised: m_top was 0) */
+int CStack::m_pointer = -1;
+CMatrix *CStack::m_top = m_stack - 1;
 
 void CMatrix::SetRows(const CPnt3D *r0, const CPnt3D *r1, const CPnt3D *r2, const CPnt3D *r3)
 {
