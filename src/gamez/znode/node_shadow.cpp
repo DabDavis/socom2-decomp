@@ -4,6 +4,11 @@
  * CProjectedMap_Object's destructor and constructor, which SOCOM II's has not. Defined in reverse
  * of their image order (-inline deferred). */
 
+#if Z_PORT
+#define Z_UNCACHED(p) ((unsigned int)(p))   /* the host's memory has no uncached mirror */
+#else
+#define Z_UNCACHED(p) ((unsigned int)(p) | 0x20000000)
+#endif
 #include <stdio.h>
 #include <string.h>
 #include "node_world.h"
@@ -180,9 +185,9 @@ void CRenderMap::Update(bool newTexture)
         m_mtx2.m_matrix[0][0] = m_bias * sx;
         m_mtx2.m_matrix[1][1] = m_bias * sy2;
         sceVu0MulMatrix(m_lightmap->m_worldToUV.m_matrix, m_mtx2.m_matrix, m_mtx0.m_matrix);
-        *(unsigned long *)((unsigned int)gs | 0x20000000) = 6;
+        *(unsigned long *)Z_UNCACHED(gs) = 6;
     } else
-        *(unsigned long *)((unsigned int)gs | 0x20000000) = 0;
+        *(unsigned long *)Z_UNCACHED(gs) = 0;
     _word128 *pk = (_word128 *)zSysSprGetPacket(0);
 
     pk[0].u128 = *(u_long128 *)m_dmaRef;

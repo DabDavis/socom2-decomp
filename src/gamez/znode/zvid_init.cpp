@@ -144,7 +144,13 @@ extern float ageRateLimits[5];
 extern CValve *lodLevel;
 
 /* an address through the EE's uncached mirror */
+#if Z_PORT
+/* the host is coherent and keeps no uncached mirror of its own memory (the image maps EE RAM's at
+ * 0x20100000, the host heap has none): under Z_PORT the address itself */
+#define UNCACHED(p) ((unsigned int)(p))
+#else
 #define UNCACHED(p) ((unsigned int)(p) | 0x20000000)
+#endif
 
 /* the machine's reset (OVL1 0x22ED10, st_reboot.cpp's) */
 void RebootAfterError();

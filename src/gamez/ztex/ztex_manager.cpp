@@ -68,7 +68,13 @@ struct sceGsMiptbp1 {
 };
 
 /* the uncached mirror of a main-memory address (the GIF reads the selects through it) */
+#if Z_PORT
+/* the host is coherent and keeps no uncached mirror of its own memory (the image maps EE RAM's at
+ * 0x20100000, the host heap has none): under Z_PORT the address itself */
+#define UNCACHED(p) ((unsigned int)(p))
+#else
 #define UNCACHED(p) ((unsigned int)(p) | 0x20000000)
+#endif
 
 /* the GS packets' register words (the SDK's libgraph macros) */
 #define SCE_GS_SET_BITBLTBUF(sbp, sbw, spsm, dbp, dbw, dpsm)                                            \

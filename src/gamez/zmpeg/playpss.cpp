@@ -75,7 +75,13 @@ extern int _Display_Height;   /* zmpeg.cpp's */
 #define D4_MADR ((volatile unsigned int *)0x1000B410)
 #define D4_QWC ((volatile unsigned int *)0x1000B420)
 #define T0_COUNT ((volatile unsigned int *)0x10000000)
+#if Z_PORT
+/* the host is coherent and keeps no uncached mirror of its own memory (the image maps EE RAM's at
+ * 0x20100000, the host heap has none): under Z_PORT the address itself */
+#define UNCACHED(p) ((void *)(p))
+#else
 #define UNCACHED(p) ((void *)(((unsigned int)(p) & 0x0FFFFFFF) | 0x20000000))
+#endif
 #define PATH3TAG_HALF ((((_Max_Height / 16) * 0xF0 + 10) * 4 + 63) / 64 * 256)
 
 /* the player's state (SOCOM 1's globals by name; SOCOM II's additions named ours) */
