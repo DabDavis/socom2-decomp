@@ -61,9 +61,9 @@ public:
     };
 
     CNodeAction(zdb::CNode *node, CZAnim *anim, CValve *valve, zdb::CTexHandle *tex);
-    /* the node's slot, SOCOM 1's OnAction (OVL1 0x2B4750: ExecuteAction for the body passed);
-     * declared only, so this unit emits no table */
-    virtual int OnWeaponHit(zdb::CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
+    /* the node's slot 0xC, SOCOM 1's OnAction (OVL1 0x2B4750: ExecuteAction for the body passed):
+     * the class's key function, so this unit emits its table (0x406390) */
+    virtual int OnAction(zdb::CNode *node, void *data);
 
     /* SOCOM II's, inlined into Close (no out-of-line copy in the image): the valve destroyed, the
      * description freed, the anims' vector after (SOCOM 1's called out of line) */
@@ -643,6 +643,13 @@ inline void SetDoneCallback(CZAnim *anim, void (*cb)(CZAnim *anim, void *arg), v
 {
     anim->m_done_callback = cb;
     anim->m_done_arg = arg;
+}
+
+/* a SEAL acting on the node: its first anim run for the body the data is (SOCOM 1's OnAction;
+ * OVL1 0x2B4750, the table's slot 0xC) */
+int CNodeAction::OnAction(zdb::CNode *node, void *data)
+{
+    return ExecuteAction((CZSealBody *)data, 0);
 }
 
 /* the action's anim done: the action free again, its uses counted (SOCOM II's; OVL1 0x2B46D0,

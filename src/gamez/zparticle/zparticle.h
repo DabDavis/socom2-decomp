@@ -169,7 +169,8 @@ namespace zdb {
 class CNodeEx {
 public:
     virtual int OnWeaponHit(CNode *node, IntersectStruct *hit, CZProjectile *projectile) { return -1; }
-    virtual int Slot0C() { return 0; }
+    /* a SEAL acting on the node, with its data (SOCOM 1's OnAction: none here, 0) */
+    virtual int OnAction(CNode *node, void *data) { return 0; }
     virtual bool Slot10(float amount) { return false; }
 };   // 4 bytes
 /* a vector of nodes (znode.h's class: the particles' node pool is one, SOCOM 1's
