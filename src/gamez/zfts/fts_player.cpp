@@ -105,10 +105,16 @@ public:
 
 /* a controller copying another's (SOCOM 1's CSealCtrlCopy: the player's controller under another
  * vtable; its constructor inline) */
+#if Z_PORT
+/* the port: made by seal_control.cpp, which sees the whole CSealCtrl -- this view names two of its
+ * virtuals, and the host's table for the copy would have only those (M3) */
+CSealCtrl *zport_NewSealCtrlCopy();
+#else
 class CSealCtrlCopy : public CSealCtrl {
 public:
     virtual ~CSealCtrlCopy();
 };
+#endif
 
 /* a character type (only its temporary types' cleanup and the lookup by name) */
 class CCharacterType {
@@ -311,10 +317,12 @@ extern "C" void func_002B3C70(CSealCtrl *ctrl, bool on)
     ctrl->m_171_7 = on;
 }
 
+#if !Z_PORT
 /* (OVL1 0x2B3B70: the copy controller's, linked after the unit's functions as SOCOM 1's is) */
 CSealCtrlCopy::~CSealCtrlCopy()
 {
 }
+#endif
 
 /* the squirm flag (OVL1 0x2B3B60) */
 bool ftsGetSquirm()
@@ -347,7 +355,11 @@ CZSealBody *ftsCreateSeal(const CCharacterType *type, const char *name, SEAL_CON
         ctrl = new CSealCtrlSquirm;
         break;
     case SEAL_CONTROL_COPY:
+#if Z_PORT
+        ctrl = zport_NewSealCtrlCopy();
+#else
         ctrl = new CSealCtrlCopy;
+#endif
         break;
     }
     body = 0;

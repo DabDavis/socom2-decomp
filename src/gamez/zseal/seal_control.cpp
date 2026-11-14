@@ -2635,3 +2635,20 @@ void ToggleFireModeSwap()
     func_002C6460(3, func_002C6430(12));
     func_002C6460(12, b);
 }
+
+#if Z_PORT
+/* the port: the player's copy controller (SOCOM 1's CSealCtrlCopy, OVL1's table 0x405xxx: CSealCtrl's
+ * slots, IsPlayer answering false -- 0x2B3BD0) made here, where the whole CSealCtrl is declared.
+ * fts_player.cpp's view of CSealCtrl names two of its virtuals only, so the host table it emitted
+ * for the copy had three entries and every other slot read past it (M3) */
+class CSealCtrlCopy : public CSealCtrl {
+public:
+    virtual ~CSealCtrlCopy() {}
+    virtual bool IsPlayer() const { return false; }
+};
+
+CSealCtrl *zport_NewSealCtrlCopy()
+{
+    return new CSealCtrlCopy;
+}
+#endif
