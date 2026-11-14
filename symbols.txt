@@ -1548,7 +1548,7 @@
 0x001F3550 0x394 func_001F3550  # OVL1
 0x001F38F0 0x20C func_001F38F0  # OVL1
 0x001F3B00 0xC GetReaderFileName__9CExitMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F3B10 0x8 func_001F3B10  # OVL1
+0x001F3B10 0x8 Slot14__9CExitMenuFv  # OVL1; by vtable (the vtable lane, M3: slot +0x14 of __vt__9CExitMenu -- CGameMenu's Slot14 overridden inline, 0, as CMPExitMenu's 0x226050; its copy after GetReaderFileName)
 0x001F3B20 0x8 MyTick__9CGameMenuFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F3B30 0x8 PrepControls__9CGameMenuFPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F3B40 0x68 __dt__7CFileIOFv  # OVL1; ~CFileIO: stores CFileIO's vtable 0x408180, calls its slot 0x0C (Close) through it, then honours the deleting flag; util_main.cpp's copy of the inline destructor is byte-exact with --target 0x1F3B40, completing __sinit_util_main.cpp (the UI's round 17, renamed at integration)
@@ -1584,7 +1584,7 @@
 0x001F6920 0xD0 __dt__10CLoadStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F69F0 0x7C __ct__10CLoadStateFv  # OVL1; s1:calls (CGameState's then CLoadState's vtable, "LoadState", InitThread; COurGame's constructor calls it)
 0x001F6A70 0xC GetReaderFileName__9CLoadMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F6A80 0x8 func_001F6A80  # OVL1
+0x001F6A80 0x8 Slot14__9CLoadMenuFv  # OVL1; by vtable (the vtable lane, M3: slot +0x14 of __vt__9CLoadMenu -- CGameMenu's Slot14 overridden inline, 0, as CMPExitMenu's 0x226050; its copy after GetReaderFileName)
 0x001F6A90 0x3C HideRangeText__4CHUDFv  # OVL1; ours by hand (the HUD lane, round 32: hud_main.cpp -- the range text, CHUD's C2DString at 0 (BitmapReticule's code prints "%dm"/"RANGE(m): ----" into it), turned off through its vtable and moved to (-100, -100); 0x213E20 calls it on theHUD; the first of the unit's four range-text members in the image, so defined last)
 0x001F6AD0 0x10 ShowRangeText__4CHUDFv  # OVL1; ours by hand (the HUD lane, round 32: hud_main.cpp -- the range text's On through its vtable, a tail call; 0x213E20 calls it on theHUD)
 0x001F6AE0 0x1C SetRangeTextPos__4CHUDFff  # OVL1; ours by hand (the HUD lane, round 32: hud_main.cpp -- the range text's C2DString::SetPos(int, int) with the two floats truncated, a tail call; 0x213E20 calls it three times on theHUD)

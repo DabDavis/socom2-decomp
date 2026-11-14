@@ -334,6 +334,9 @@ class CExitMenu : public CGameMenu {
 public:
     CExitMenu() {}
     virtual const char *GetReaderFileName();
+    /* CGameMenu's SOCOM II slot, nothing here (its copy 0x1F3B10 follows GetReaderFileName, as CMPExitMenu's).
+     * Undeclared, the host's table kept CGameMenu's, which answers 1 (M3) */
+    virtual int Slot14() { return 0; }
 };
 
 /* a message's kind (SOCOM II's: a byte enum -- CMenuState::DisplayMessage compares it lbu and
@@ -427,6 +430,9 @@ class CLoadMenu : public CGameMenu {
 public:
     CLoadMenu() {}
     virtual const char *GetReaderFileName();
+    /* CGameMenu's SOCOM II slot, nothing here (its copy 0x1F6A80 follows GetReaderFileName, as CMPExitMenu's).
+     * Undeclared, the host's table kept CGameMenu's, which answers 1 (M3) */
+    virtual int Slot14() { return 0; }
 };
 
 /* the mission's load: its screen while the core state loads (SOCOM 1's DWARF, without the E3
