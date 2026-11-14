@@ -547,6 +547,29 @@ static inline float MaxOf(float a, float b)
     return b > a ? b : a;
 }
 
+/* the clipping circle deleted, every map item deleted and dropped from the front, the objectives let
+ * go (the vector kept) and the player items' statics freed; then the members -- the objective
+ * list's implicit destructor inline, the item list's -- and the C2D (SOCOM 1's; OVL1 0x20BA00, the
+ * class's key function: the table 0x405440 comes with it) */
+CZNewHudMap::~CZNewHudMap()
+{
+    if (m_circleclipper) {
+        delete m_circleclipper;
+        m_circleclipper = 0;
+    }
+    if (m_itemlist.size()) {
+        do {
+            /* the last item, its iterator built from the sentinel's prev as pop_back builds it (back()
+             * through tail() keeps the sentinel's address in a register across the loop) */
+            delete *std::list<CZMapItem *>::iterator(
+                std::__list_deleter<const void *, std::allocator<const void *> >::iterator(m_itemlist.tail_ptr()->prev_));
+            m_itemlist.pop_back();
+        } while (m_itemlist.size());
+    }
+    m_objectivelist.FreeList(false);
+    CZPlayerMapItem::UnInitStaticItems();
+}
+
 /* the full-screen map centred between the viewer and the current objective (if the compass shows
  * it -- else left alone) and widened until both fit inside the frame, 20 units in, no wider than
  * the far tactical zoom allows (no SOCOM 1 counterpart; the name ours). The larger scale through

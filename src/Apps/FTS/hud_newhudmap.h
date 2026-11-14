@@ -18,6 +18,7 @@ class CWorld;
 class CCircleClip {
 public:
     CCircleClip() : m_Cx(0), m_Cy(0), m_Radius(0) {}
+    ~CCircleClip() {}
     /* the circle placed at once: its centre and radius computed before any is stored (the name
      * is ours) */
     void Set(float cx, float cy, float radius)
@@ -50,7 +51,6 @@ class CMissionObjectiveCam;
 class CZObjectiveList : public C2D {
 public:
     CZObjectiveList();
-    virtual ~CZObjectiveList();
     virtual void Draw(zdb::CCamera *cam);
     void Init();
     bool IsPlayingAnimation();
@@ -64,7 +64,29 @@ public:
     void FreeList(bool wipe_vector);
     CMissionObjectiveCam *GetCurrentObjectiveRetainer() const;
 
-    unsigned char _18[0x730 - 0x18];
+    /* hud_objectives.cpp's members (SOCOM 1's names): the map's destructor inlines the list's
+     * implicit one, which destroys them */
+    std::vector<C2DString *> m_objectivenames;   // 0x18
+    std::vector<C2DBitmap *> m_objectivecompletedbitmap;   // 0x24
+    std::vector<bool> m_vecSelectable;   // 0x30
+    C2DString m_heading;   // 0x3c
+    C2DString m_strMapHeading;   // 0xd4
+    C2DBitmap m_textbackground;   // 0x170
+    C2DBitmap m_mapbackground;   // 0x1f0
+    C2DBitmap m_backgrounddivider;   // 0x270
+    C2DString m_strAnalogL;   // 0x2f0
+    C2DString m_strAnalogR;   // 0x388
+    C2DString m_strCircleLabel;   // 0x420
+    C2DString m_strSquareLabel;   // 0x4b8
+    C2DString m_strTriLabel;   // 0x550
+    C2DString m_strXLabel;   // 0x5e8
+    C2DString m_arrAnchorStrings[1];   // 0x680
+    int m_selected_objective;   // 0x718
+    CMissionObjectiveCam *m_cur_selected_objective;   // 0x71c
+    zdb::CTexHandle *m_backgroundtex;   // 0x720
+    zdb::CTexHandle *m_checkboxtex;   // 0x724
+    zdb::CTexHandle *m_checktex;   // 0x728
+    unsigned char m_increment;   // 0x72c
 };
 
 class CHUD;
