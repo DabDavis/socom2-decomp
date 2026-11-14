@@ -21,8 +21,8 @@ void func_00525200(void *path);   /* (a CAiPath reset: its member at 0x98's, tai
 
 /* the world's camera (zdb::CWorld at 0x128; only that) */
 struct CWorldCamera {
-    unsigned char _0[0x128];
-    zdb::CCamera *m_camera;   // 0x128
+    unsigned char _0[Z_OFS(0x128, 0x134)];
+    zdb::CCamera *m_camera;   // 0x128 (host 0x134)
 };
 
 /* a halfword test: any of the bits (OVL2 0x5551A0; in the unit's tail, called where 0x54EA80 asks

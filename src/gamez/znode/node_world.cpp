@@ -1102,6 +1102,14 @@ void CWorld::AddTextureAssetCharacter(CAssetLib *lib, CNode *node)
     }
 }
 
+/* a node drawn with the textures of the character set a render phase names (SOCOM 1's; written for
+ * the port, M3: its draft, auto/ovl1/0031D5E0.c, asked FindLib without the phase -- on the EE still
+ * in a1 -- and ftsFixupAiMap's ammo boxes faulted in it) */
+void CWorld::AddTextureAssetCharacter(_RenderPhase phase, CNode *node)
+{
+    AddTextureAssetCharacter(CAssetMgr::m_assets.FindLib(phase), node);
+}
+
 /* a textured character's texture added for every character (SOCOM 1's) */
 void CWorld::AddTextureAssetCharacterAll(CTexHandle *tex)
 {

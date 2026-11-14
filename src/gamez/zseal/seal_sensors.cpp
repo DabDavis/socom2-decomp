@@ -915,8 +915,8 @@ struct CSensorCamera {
 };
 
 struct CSensorWorld {
-    unsigned char _0[0x128];
-    CSensorCamera *m_camera;   // 0x128
+    unsigned char _0[Z_OFS(0x128, 0x134)];
+    CSensorCamera *m_camera;   // 0x128 (host 0x134)
 };
 
 /* a turret's flag word (zveh.h's CTurret::m_flags at 0x3A4; only that) and its bits 1 and 4 (inlines,
