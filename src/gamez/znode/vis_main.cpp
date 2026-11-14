@@ -484,7 +484,7 @@ _word128 *CVisual::CopyBuffer(CVisBase **out, unsigned int vid)
  * each layer's data pointer set into the block after the layers (SOCOM 1's) */
 bool CVisual::Read(zar::CZAR &zar)
 {
-    zar.Fetch("vparams", this, 0x18);
+    zar.Fetch("vparams", static_cast<tag_VISUAL_HEAD *>(this), 0x18);
     if (m_bits.m_b10)
         m_1c = -2;
     else

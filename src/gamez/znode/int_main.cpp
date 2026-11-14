@@ -116,7 +116,7 @@ bool CDI::Read(CSaveLoad &io)
     bool ok = false;
 
     if (key) {
-        ok = zfile->Fetch("params", this, 12);
+        ok = zfile->Fetch("params", static_cast<tag_DI_HEAD *>(this), 12);
         if (ok) {
             if (m_flags.m_ditype == 0)
                 m_flags.m_ditype = 3;

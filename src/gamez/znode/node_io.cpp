@@ -213,7 +213,7 @@ bool CNode::Read(CSaveLoad &io)
         zar::CZAR *zfile = &io.m_zfile;
 
         SetName(zfile->GetOpenKey()->m_name);
-        zfile->Fetch("matrix", this, 64);
+        zfile->Fetch("matrix", static_cast<tag_NODE_PARAMS *>(this), 64);
         zfile->Fetch("bbox", &m_bbox, 24);
         if (zar::CKey *key = zfile->OpenKey("visuals")) {
             ReserveVisuals(key->size());

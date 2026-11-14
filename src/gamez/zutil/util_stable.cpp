@@ -122,7 +122,7 @@ void CSTable::LoadTable(void *buf, unsigned int bytes, bool owner)
             p += len;
             total += len;
         }
-        func_0028B0E0(this, n, 0);
+        func_0028B0E0(static_cast<std::vector<char *> *>(this), n, 0);
     }
     {
         unsigned int i;
