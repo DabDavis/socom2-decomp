@@ -29,24 +29,29 @@ class CTexHandle;
 class CTexture;
 
 /* the texture relocation managers (SOCOM 1's; the slots as CBatchRelocator's vtable 0x406C10 holds
- * them): a batch relocator is only its vtable pointer, all its state the texture manager's */
+ * them): a batch relocator is only its vtable pointer, all its state the texture manager's. The
+ * base's virtuals are inline and empty, its TakeDrawPacket pure: the image has no table of the
+ * base's own, and its empty slots' copies (0x1F5CB0-0x1F5CFF) are what CDblBufTextureRelocator's
+ * table 0x406F60 inherits. CBatchRelocator's key function is TakeDrawPacket (SOCOM 1's binding:
+ * the other four are inline copies, "?", and TakeDrawPacket global, "T"): ztex_manager.cpp's */
 class CTextureRelocMgr {
 public:
-    virtual void AddToBatch(CTexHandle *tex) const;
-    virtual void EndBatchReloc() const;
-    virtual void PreGetSprPacket(CTexHandle *tex);
-    virtual void StartBatchReloc() const;
-    virtual void TakeDrawPacket(u_long128 *packet, unsigned int qwc);
-    virtual void ClearAll();
+    virtual void AddToBatch(CTexHandle *tex) const {}
+    virtual void EndBatchReloc() const {}
+    virtual void PreGetSprPacket(CTexHandle *tex) {}
+    virtual void StartBatchReloc() const {}
+    virtual void TakeDrawPacket(u_long128 *packet, unsigned int qwc) = 0;
+    virtual void ClearAll() {}
 };
 
 class CBatchRelocator : public CTextureRelocMgr {
 public:
-    virtual void AddToBatch(CTexHandle *tex) const;
-    virtual void EndBatchReloc() const;
-    virtual void StartBatchReloc() const;
+    /* inline (ztex_manager.cpp defines them, ahead of its key function) */
+    inline virtual void AddToBatch(CTexHandle *tex) const;
+    inline virtual void EndBatchReloc() const;
+    inline virtual void StartBatchReloc() const;
     virtual void TakeDrawPacket(u_long128 *packet, unsigned int qwc);
-    virtual void ClearAll();
+    inline virtual void ClearAll();
 };
 }
 class CPad;

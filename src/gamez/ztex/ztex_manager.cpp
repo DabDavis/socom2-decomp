@@ -30,6 +30,7 @@
 #include "../znode/node_world.h"
 #include "../zrdr/zrdr.h"
 #include "../zsys/zsys_public.h"
+#include "../ztwod/ztwod.h"   /* zdb::CBatchRelocator */
 
 char *_strdup(const char *s, const char *file, int line);
 
@@ -88,8 +89,12 @@ namespace zdb {
 /* the template tail's vector of u_long128 pieces as zrndr_pipe.cpp's tail emitted them (the copies
  * the linker kept): the deleter's clear, called by the inlined clear()s */
 
-/* a batch relocator's draw: the packet kicked (SOCOM 1's TakeDrawPacket, its key function). Its
- * row is its draft's for now */
+/* a batch relocator's draw: the packet kicked (SOCOM 1's TakeDrawPacket, its key function: the
+ * table 0x406C10 comes out with it, and the four inline slots' copies, 0x355980-0x355A6F) */
+void CBatchRelocator::TakeDrawPacket(u_long128 *packet, unsigned int qwc)
+{
+    zSysFifoKick(packet, qwc);
+}
 
 /* SOCOM 1's: every field cleared, the packet vector and the dynamic list empty, the overflow check
  * on */
@@ -783,6 +788,38 @@ void CGSTexBuffer::DropChain()
     m_chainp = 0;
 }
 #pragma auto_inline reset
+
+/* a batch relocator's inline slots (zdb::CBatchRelocator, ztwod.h's; SOCOM 1's inline copies), each
+ * on the manager's first buffer: the dynamic lists and the chain started afresh; a handle listed
+ * and the chain dropped; the buffer loaded; and the lists, the packet buffer and the name given up */
+inline void CBatchRelocator::StartBatchReloc() const
+{
+    CTexManager::m_texmanager[0]->ClearDynTex();
+}
+
+inline void CBatchRelocator::EndBatchReloc() const
+{
+    CTexManager::m_texmanager[0]->Load(true);
+}
+
+inline void CBatchRelocator::AddToBatch(CTexHandle *tex) const
+{
+    CGSTexBuffer *buf = CTexManager::m_texmanager[0];
+
+    buf->m_dyntex_list.Add(tex, true);
+    buf->DropChain();
+}
+
+inline void CBatchRelocator::ClearAll()
+{
+    CGSTexBuffer *buf = CTexManager::m_texmanager[0];
+
+    buf->m_dyntex_list.Clear();
+    buf->m_pktbuf.clear();
+    if (buf->m_name)
+        _free(buf->m_name, 0, 0);
+    buf->m_name = 0;
+}
 
 /* the manager (SOCOM 1's static: its initialiser builds it and registers its destructor) */
 CTexManager CTexManager::m_texmanager;

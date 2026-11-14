@@ -162,12 +162,16 @@ public:
 };
 }
 
+void zSysFifoKick(u_long128 *packet, unsigned int qwc);   /* 0x350AB0 (zsys_public.h's) */
+
 /* the menus' texture relocator (SOCOM 1's DWARF: two GS buffers, 0x1C bytes; SOCOM II's has three,
  * from 0x8) */
 class CDblBufTextureRelocator : public zdb::CTextureRelocMgr {
 public:
     void Init();
     void PreGetSprPacket(zdb::CTexHandle *tex);
+    /* the packet kicked (an inline slot: its copy 0x365200 opens the unit, with the table) */
+    void TakeDrawPacket(u_long128 *packet, unsigned int qwc) { zSysFifoKick(packet, qwc); }
 
     int _iGsBufToFill;                    // 0x4
     zdb::CGSTexBuffer *_arrGsBufs[3];     // 0x8
