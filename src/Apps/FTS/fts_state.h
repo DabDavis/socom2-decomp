@@ -728,8 +728,11 @@ public:
     CGameState *m_TestVariable;   // 0x10
     CGameState *m_Stack[16];   // 0x14
     int m_MinIdlePeriod;   // 0x54
-    unsigned char m_StateChangeQueue[0x6c - 0x58];   // 0x58 (SOCOM 1's CStateCmdQueue, a deque)
-    unsigned int m_6c;   // 0x6c: the queue's count (CCoreState::Tick clears the screen while it holds any)
+    unsigned char m_StateChangeQueue[Z_OFS(0x6c, 0x70) - 0x58];   // 0x58 (SOCOM 1's CStateCmdQueue, a deque)
+    unsigned int m_6c;   // 0x6c (host 0x70): the queue's count (CCoreState::Tick clears the screen while it holds any)
+#if Z_PORT
+    unsigned char _host74[4];   /* the host's deque is 0x20 bytes: its trailing empty allocator (zgame.h's CGame, 0x80) */
+#endif
     int m_70;   // 0x70
     int m_pad;   // 0x74
 };

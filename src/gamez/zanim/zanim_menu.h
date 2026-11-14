@@ -572,11 +572,11 @@ public:
     unsigned int m_CurrentState;   // 0xc
     CGameState *m_TestVariable;   // 0x10
     CGameState *m_Stack[16];   // 0x14
-    unsigned char _54[0x78 - 0x54];
-    CMenuState m_menuState;   // 0x78 (SOCOM 1's at 0x7C)
+    unsigned char _54[Z_OFS(0x78, 0x80) - 0x54];   /* the host's CGame is 0x80 bytes (its deque 0x20) */
+    CMenuState m_menuState;   // 0x78 (SOCOM 1's at 0x7C; host 0x80)
     CLoadState m_loadState;   // 0xec (SOCOM 1's at 0xE0)
-    unsigned char m_coreState[0xd0];   // 0x110: a CCoreState (fts_state.h)
-    unsigned char _1e0[0x234 - 0x1e0];
+    unsigned char m_coreState[0xd0] __attribute__((aligned(16)));   // 0x110 (host 0x120): a CCoreState (fts_state.h)
+    unsigned char _1e0[Z_OFS(0x234, 0x244) - Z_OFS(0x1e0, 0x1f0)];
     unsigned char m_cinematicSubState[0x64];   // 0x234: a CCinematicState (fts_state.h)
 };
 extern COurGame theGame;

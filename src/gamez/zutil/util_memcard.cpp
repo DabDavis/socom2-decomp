@@ -7,6 +7,7 @@
  * MEMCARD_STATUS / MEMCARD_ERROR events, waits for the last asynchronous call before each
  * command, and added the asynchronous slots, the insertion poll and the reserve files. */
 
+#include <zport.h>
 #include "zutil.h"
 
 extern "C" {
@@ -86,8 +87,8 @@ public:
 
 class COurGame {
 public:
-    unsigned char _0[0x78];
-    CMenuState m_menuState;   // 0x78
+    unsigned char _0[Z_OFS(0x78, 0x80)];   /* the host's: zgame.h's CGame is 0x80 bytes there */
+    CMenuState m_menuState;   // 0x78 (host 0x80)
 };
 extern COurGame theGame;
 

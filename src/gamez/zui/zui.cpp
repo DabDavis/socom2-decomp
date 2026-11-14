@@ -441,14 +441,15 @@ public:
  * goes to by name (the menu state, the load state at 0xEC and the shutdown state at 0x298; ours) */
 class COurGame : public CGame {
 public:
-    CGameState *MenuState() { return (CGameState *)((char *)this + 0x78); }
-    CGameState *LoadState() { return (CGameState *)((char *)this + 0xec); }
-    CGameState *ShutdownState() { return (CGameState *)((char *)this + 0x298); }
+    /* (the host's offsets: fts_state.h's class under the Itanium ABI, its CGame 0x80 bytes) */
+    CGameState *MenuState() { return (CGameState *)((char *)this + Z_OFS(0x78, 0x80)); }
+    CGameState *LoadState() { return (CGameState *)((char *)this + Z_OFS(0xec, 0xf4)); }
+    CGameState *ShutdownState() { return (CGameState *)((char *)this + Z_OFS(0x298, 0x2a8)); }
 
-    unsigned char _0[0x8c];
-    CSaferStr m_ttySoundString;   // 0x8c: m_menuState.TtySoundString
-    unsigned char _98[0xa4 - 0x98];
-    CSnd *m_selectionSound;       // 0xa4: m_menuState.SelectionSound
+    unsigned char _0[Z_OFS(0x8c, 0x94)];
+    CSaferStr m_ttySoundString;   // 0x8c (host 0x94): m_menuState.TtySoundString
+    unsigned char _98[Z_OFS(0xa4, 0xac) - Z_OFS(0x98, 0xa0)];
+    CSnd *m_selectionSound;       // 0xa4 (host 0xac): m_menuState.SelectionSound
 };
 extern COurGame theGame;
 

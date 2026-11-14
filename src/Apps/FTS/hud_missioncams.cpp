@@ -233,8 +233,8 @@ public:
 
 class COurGame {
 public:
-    unsigned char _0[0x110];
-    CGameState m_coreState;   // 0x110
+    unsigned char _0[Z_OFS(0x110, 0x120)];   /* the host's: fts_state.h's COurGame, CGame 0x80 bytes, CCoreState 16-aligned */
+    CGameState m_coreState;   // 0x110 (host 0x120)
 };
 
 extern COurGame theGame;

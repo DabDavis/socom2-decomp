@@ -209,7 +209,7 @@ struct CTeamNamesCamNode {
 };
 
 struct CTeamNamesCamera {
-    unsigned char _0[0x3f0];
+    unsigned char _0[Z_OFS(0x3f0, 0x400)];   /* the host's: zcamera.h's m_mtxSet at 0x300 there */
     CTeamNamesCamNode *m_node;   // 0x3f0
 };
 

@@ -14,7 +14,7 @@ class CCamera {
 public:
     CCamera();
 
-    unsigned char _0[0x570];
+    unsigned char _0[Z_OFS(0x570, 0x580)];   /* zcamera.h's size: 0x580 on the host (CNode's vptr first, its base at 16) */
 };
 }
 

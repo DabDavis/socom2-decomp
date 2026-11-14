@@ -794,7 +794,7 @@ public:
     CGameState *m_TestVariable;   // 0x10
     CGameState *m_Stack[MAX_STATES];   // 0x14
     int m_MinIdlePeriod;   // 0x54
-    unsigned char m_StateChangeQueue[0x18];   // 0x58
+    unsigned char m_StateChangeQueue[Z_OFS(0x18, 0x20)];   // 0x58 (the host's deque is 0x20 bytes)
     unsigned int m_pad;   // 0x70
     float m_maxtick;   // 0x74
 };
