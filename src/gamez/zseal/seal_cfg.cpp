@@ -914,3 +914,32 @@ CObjAnims::~CObjAnims()
         delete *i;
     FreeVector(m_obj_anims);
 }
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood) ---- */
+
+extern "C" {
+/* (OVL2 0x57D710, seal_body.cpp's: whether the SEAL may take a weapon -- its short taken here as the int
+ * the caller holds: the target hands a1 on unnarrowed) */
+bool func_0057D710(CZSealBody *seal, int weapon);
+}
+
+/* a weapon's test, none for a negative one (OVL2 0x58C5D0, after BindAnimSet; seal_tasks.cpp asks it; the
+ * name unknown). Its draft called 0x57D710 without the SEAL or the weapon */
+extern "C" bool func_0058C5D0(CZSealBody *seal, int weapon)
+{
+    if (weapon < 0)
+        return false;
+    return func_0057D710(seal, weapon);
+}
+
+/* an anim type for the item in hand (OVL2 0x58C960, 0x58C820 with the SEAL's item; the name unknown). For
+ * the port only, M3: its draft (src/auto/ovl2/0058C960.c, kept for the PS2 build and left out of the port)
+ * read the item at MW's 0xF79. Not byte-exact here: the target loads the item signed (lb), and through
+ * 0x58C820's SEAL_ITEM_BYTE (unsigned) MW loads it lbu whatever the cast -- the original's item was some
+ * signed view this unit lacks */
+#if Z_PORT
+extern "C" AnimType func_0058C960(CZSealBody *seal, AnimType type)
+{
+    return func_0058C820(seal, type, (SEAL_ITEM_BYTE)seal->m_item);
+}
+#endif

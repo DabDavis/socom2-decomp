@@ -6506,3 +6506,38 @@ extern "C" bool func_00539B70(float *v, const float &lo, const float &hi)
     return _saturate(v, lo, hi);
 }
 #endif
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood: each read or wrote
+ * MW's offsets into the SEAL -- from 0x170 on 0xc lower on the host -- or dropped an argument) ---- */
+
+/* the compass's anchor let go and forgotten (OVL2 0x543480; the name unknown) */
+extern "C" void func_00543480(CZSealBody *seal)
+{
+    CCompass::DeleteAnchor(seal->m_compass_anchor);
+    seal->m_compass_anchor = 0;
+}
+
+/* the death's kind kept, the SEAL struck down (OVL2 0x547A90, before 0x547AA0; the name unknown). Its
+ * draft also called 0x547860 without the SEAL */
+extern "C" void func_00547A90(CZSealBody *seal, int kind)
+{
+    seal->m_fc0 = kind;
+    func_00547860(seal);
+}
+
+/* how long the SEAL has been dead, 0 while it lives (OVL2 0x548050, after OnDeath; the name unknown) */
+extern "C" float func_00548050(CZSealBody *seal)
+{
+    if (seal->m_isAlive)
+        return 0.0f;
+    return data_004365C0 - seal->m_time_of_death;
+}
+
+/* the throttles' scale set, held at most 1 (a negative one leaves it) (OVL2 0x553DC0; the name unknown) */
+extern "C" void func_00553DC0(CZSealBody *seal, float t)
+{
+    if (!(t < 0.0f))
+        seal->m_1368 = t;
+    if (!(t <= 1.0f))
+        seal->m_1368 = 1.0f;
+}

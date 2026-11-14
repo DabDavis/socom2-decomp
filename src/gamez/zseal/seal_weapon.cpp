@@ -581,3 +581,11 @@ void CZSealBody::WepWaitOff()
     v->m_wep_downT = 0.0f;
     v->m_wep_lenT = 0.0f;
 }
+
+/* the aim's direction against its goal, a dot product (OVL2 0x5DEE90, before UpdateAimParams; the name
+ * unknown). Its draft read both at MW's 0x1440 and 0x144C (on the host 0x10 higher) */
+extern "C" float func_005DEE90(CZSealBody *seal)
+{
+    return seal->m_aim_dir.x * seal->m_aim_goal.x + seal->m_aim_dir.y * seal->m_aim_goal.y +
+           seal->m_aim_dir.z * seal->m_aim_goal.z;
+}

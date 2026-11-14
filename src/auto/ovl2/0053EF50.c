@@ -7,11 +7,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK __dl__FPv();                                /* extern */
+void __dl__FPv(s32);                                /* extern */
 
 s32 __dt__14CCharacterWeapFv(s32 arg0, s64 arg1) {
     if ((arg0 != 0) && (((s64) (arg1 << 0x30) >> 0x30) > 0)) {
-        __dl__FPv();
+        __dl__FPv(arg0);
     }
     return arg0;
 }

@@ -6159,3 +6159,13 @@ extern "C" void *func_0057D540(CZSealBody *seal, AnimType type, SEAL_STATE state
         return func_00555170(&seal->m_blends);
     return func_00588BC0(seal, type, state, 0, 0);
 }
+
+/* the recoil's kick added to, held at 10 (OVL2 0x57D510, after Recoil; the weapon's fire calls it; the name
+ * unknown). Its draft wrote the kick at MW's 0x378 */
+extern "C" void func_0057D510(CZSealBody *seal, float step)
+{
+    float r = seal->m_recoilParam += step;
+
+    if (!(r < 10.0f))
+        seal->m_recoilParam = 10.0f;
+}

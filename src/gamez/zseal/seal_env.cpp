@@ -9063,3 +9063,65 @@ extern "C" bool func_005ACA10(zdb::CNode *node)
     }
     return ok;
 }
+
+/* the six run-down values' rates held: none below 0, the fourth at least 0, 30 or 60 (OVL2 0x5A0C00,
+ * 0x5A0CD0, 0x5A0DA0; the names unknown). Their drafts read the values at MW's 0x102C-0x1040 */
+extern "C" void func_005A0C00(CZSealBody *seal)
+{
+    if (seal->m_102c[0] < 0.0f)
+        seal->m_102c[0] = 0.0f;
+    if (seal->m_102c[3] < 0.0f)
+        seal->m_102c[3] = 0.0f;
+    if (seal->m_102c[2] < 0.0f)
+        seal->m_102c[2] = 0.0f;
+    if (seal->m_102c[1] < 0.0f)
+        seal->m_102c[1] = 0.0f;
+    if (seal->m_102c[4] < 0.0f)
+        seal->m_102c[4] = 0.0f;
+    if (seal->m_102c[5] < 0.0f)
+        seal->m_102c[5] = 0.0f;
+}
+
+extern "C" void func_005A0CD0(CZSealBody *seal)
+{
+    if (seal->m_102c[0] < 0.0f)
+        seal->m_102c[0] = 0.0f;
+    if (seal->m_102c[3] < 30.0f)
+        seal->m_102c[3] = 30.0f;
+    if (seal->m_102c[2] < 0.0f)
+        seal->m_102c[2] = 0.0f;
+    if (seal->m_102c[1] < 0.0f)
+        seal->m_102c[1] = 0.0f;
+    if (seal->m_102c[4] < 0.0f)
+        seal->m_102c[4] = 0.0f;
+    if (seal->m_102c[5] < 0.0f)
+        seal->m_102c[5] = 0.0f;
+}
+
+extern "C" void func_005A0DA0(CZSealBody *seal)
+{
+    if (seal->m_102c[0] < 0.0f)
+        seal->m_102c[0] = 0.0f;
+    if (seal->m_102c[3] < 60.0f)
+        seal->m_102c[3] = 60.0f;
+    if (seal->m_102c[2] < 0.0f)
+        seal->m_102c[2] = 0.0f;
+    if (seal->m_102c[1] < 0.0f)
+        seal->m_102c[1] = 0.0f;
+    if (seal->m_102c[4] < 0.0f)
+        seal->m_102c[4] = 0.0f;
+    if (seal->m_102c[5] < 0.0f)
+        seal->m_102c[5] = 0.0f;
+}
+
+extern "C" {
+/* the stats packed for the network (OVL2 0x545A30, seal.cpp's) */
+void func_00545A30(CSealStats *s, void *packet);
+}
+
+/* one of the SEAL's two stats packed (OVL2 0x5A1FD0; the name unknown). Its draft took the stats at MW's
+ * 0x544 and 0x58C */
+extern "C" void func_005A1FD0(CZSealBody *seal, void *packet, int first)
+{
+    func_00545A30(first ? &seal->m_stats2 : &seal->m_stats, packet);
+}

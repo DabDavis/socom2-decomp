@@ -11639,3 +11639,14 @@ AI_STATE CSealCtrlAi::GetJumpFlag() const
         return s->m_state;
     return AI_STATE_UNKNOWN;
 }
+
+/* the AI's target taken from what its entity knows of a SEAL, when it knows it (OVL2 0x5668F0, after
+ * SetTarget; the name unknown). Its draft passed FindTarget no entity and called SetTarget through MW's
+ * vtable */
+extern "C" void func_005668F0(CSealCtrlAi *ai, CZSealBody *seal)
+{
+    CTarget *t = ai->m_entity->m_targets.FindTarget(seal);
+
+    if (t)
+        ai->SetTarget(t);
+}
