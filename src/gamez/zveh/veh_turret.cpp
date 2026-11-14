@@ -884,6 +884,15 @@ void CTurret::Rotate(float dT)
     }
 }
 
+/* the pitch kicked and the turret turned at once, no time passing (0x3A7330: CZSealBody::Recoil's,
+ * the recoil's angle; the name unknown). Written for the port, M3: its draft stored the kick at MW's
+ * 0x3C0 -- CTurret is a CEntity, 0xC smaller on the host */
+extern "C" void func_003A7330(CTurret *turret, float kick)
+{
+    turret->m_3c0 = kick;
+    turret->Rotate(0.0f);
+}
+
 /* the AI's target (ai_target.cpp's class, OVL2): its sighting clock, the aim's spread and its
  * tick (0x60A460: kept current, dropped once it no longer counts) */
 class CAiTarget {
@@ -891,6 +900,7 @@ public:
     void Tick(CEntity *self, float dT);
     float GetTimeSinceLastSighting() const;
     void ModifyAimDir(CPnt3D *dir, float error, float limit);
+    void SetTarget(CTarget *target);   /* OVL2 0x60A5F0 */
 };
 
 /* an animation (zanim.h's CZAnim: only its activation with arguments) */
@@ -1275,6 +1285,46 @@ extern "C" void func_003A82C0(CTurret *t)
         }
     }
 }
+
+/* a target taken on or dropped (0x3A7EB0; the name unknown): the entry that is the target already
+ * held marked visible (0x200) and refreshed; else the held one's entry looked up, and the entry (or
+ * none) made the AI's target. Without a valid target an auto-scanning turret (flag 0x10) aims down
+ * its 45-degree sweep (x and z -0.707107: 0xBF3504F7). Written for the port, M3: its draft read the target and the flags at MW's
+ * offsets (CTurret is a CEntity, 0xC smaller on the host). Called out of line: pinned */
+#pragma auto_inline off
+extern "C" void func_003A7EB0(CTurret *t, CTarget *target)
+{
+    if (target && HoldsTarget(t, target)) {
+        target->m_flags |= 0x200;
+        func_0060A6A0(&t->m_target, target);
+    } else {
+        if (func_0060A850(&t->m_target))
+            t->m_targets.FindTarget(*(CEntity **)&t->m_target);
+        ((CAiTarget *)&t->m_target)->SetTarget(target);
+    }
+    if (!func_0060A850(&t->m_target) && (t->m_flags & 0x10)) {
+        t->m_398.x = -0.70710701f;
+        t->m_398.y = 0.0f;
+        t->m_398.z = -0.70710701f;
+    }
+}
+#pragma auto_inline reset
+
+/* the AI's half of the turret's PreTick (0x3A88C0): the fire bit (4) cleared, the target kept in
+ * sight (0x3A7A40), the fire control run (0x3A8030). Written for the port, M3: its draft cleared the
+ * bit at MW's 0x3A4 and called the sight test without the turret (the EE's a0 passed on). PreTick
+ * calls it out of line: pinned */
+extern "C" void func_003A7A40(CTurret *t);
+extern "C" void func_003A8030(CTurret *t, float dT);
+
+#pragma auto_inline off
+extern "C" void func_003A88C0(CTurret *turret, float dT)
+{
+    turret->m_flags &= ~4;
+    func_003A7A40(turret);
+    func_003A8030(turret, dT);
+}
+#pragma auto_inline reset
 
 /* the line of fire to the target clear (OVL2 0x609DF0, ai_util.cpp's) */
 namespace ai {

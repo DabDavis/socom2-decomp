@@ -467,6 +467,13 @@ CMesh::~CMesh()
     }
 }
 
+/* the mesh read as a visual (SOCOM 1's; slot 0x18: CVisual's Read). Written for the port, M3: its
+ * draft called CVisual::Read with neither the mesh nor the archive (the EE's a0 and a1 passed on) */
+bool CMesh::Read(zar::CZAR &zar)
+{
+    return CVisual::Read(zar);
+}
+
 /* a block of selects pointed at a buffer: its decals dropped, the buffer recorded in the head,
  * each matrix select given its matrix (the palette grown to reach it -- SOCOM 1's took the
  * palette as it was) and each data select offset into the buffer (SOCOM 1's; the names unused) */

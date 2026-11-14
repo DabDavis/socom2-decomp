@@ -423,6 +423,22 @@ void CNode::SetNodeEx(CNodeEx *ex, bool recurse)
     }
 }
 
+/* the node moved in its world's grid when its parent is the world (type 6); whether it was (SOCOM
+ * 1's; slot 0x10, SetMatrix and SetPosition call it through the table). Written for the port, M3 (the
+ * port's own fix, its patch 0015): its draft read the parent and the world's grid at MW's offsets
+ * (0x64, 0x684) -- on the host it read the world through a matrix word (dlgMenu's models, placed by
+ * CreateInstance, faulted in it) */
+bool CNode::UpdateGrid()
+{
+    CNode *parent = m_parent;
+
+    if (parent && parent->GetType() == 6) {
+        static_cast<CWorld *>(parent)->m_grid.Update(this);
+        return true;
+    }
+    return false;
+}
+
 /* the matrix set: copied, the grid told, marked changed (written for the port, M3: its draft
  * called UpdateGrid through MW's vtable layout and the copy without its arguments) */
 void CNode::SetMatrix(const CMatrix *m)

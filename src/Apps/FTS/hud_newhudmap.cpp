@@ -91,6 +91,7 @@ public:
  * then ftsGetTacMapZoomNear 0x2AF860, and SwitchMapToFullScreen 0x20A780 ftsGetTacMapZoom 0x2AF880) */
 float ftsGetTacMapZoomFar();
 float ftsGetTacMapZoom();
+float ftsGetTacMapZoomNear();   /* 0x2AF860 */
 /* an empty function of hud_linemap.cpp's (0x210120; SOCOM II's, unnamed) */
 extern "C" void func_00210120();
 
@@ -1201,6 +1202,37 @@ void CZNewHudMap::SwitchToCompassMap()
     if (retained)
         hudTriggerPopup((CTriggerSource *)retained);
     func_002B4380(0);
+}
+
+/* the full-screen map's zoom step by the right stick (0x20A330, TickFullScreenMap's; the name
+ * unknown): the world window narrowed at 24 a second, held between the tactical zooms' widths (the
+ * near one no narrower than s_minWorldWidth), else the zoom-in or zoom-out sound by the stick's
+ * sign. Written for the port, M3: its draft played the sounds through MW's vtable layout (CSnd's
+ * slot 0xC) */
+extern "C" void func_0020A330(CZNewHudMap *map, float stick)
+{
+    map->m_width -= 24.0f * stick;
+    float widest = 2200.0f / ftsGetTacMapZoomFar();
+
+    if (!(map->m_width <= widest)) {
+        map->m_width = widest;
+        return;
+    }
+    float narrowest = 2200.0f / ftsGetTacMapZoomNear();
+
+    if (narrowest < s_minWorldWidth)
+        narrowest = s_minWorldWidth;
+    if (map->m_width < narrowest) {
+        map->m_width = narrowest;
+        return;
+    }
+    if (!(stick <= 0.0f)) {
+        if (map->m_zoominsound)
+            map->m_zoominsound->PlaySound(0, 255);
+    } else if (stick < 0.0f) {
+        if (map->m_zoomoutsound)
+            map->m_zoomoutsound->PlaySound(0, 255);
+    }
 }
 
 /* the scroll's speed at the map's scale (36 in data; SOCOM 1's literal 20; the name ours) */

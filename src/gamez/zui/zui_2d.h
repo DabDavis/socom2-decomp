@@ -205,7 +205,18 @@ public:
     /* set up from its spec (0x376BD0, zui_2d.cpp's) */
     void LoadSpec(const CButtonSpec &spec);
 
-    unsigned char _c8[Z_OFS(0x440, 0x430) - 0xc8];   /* the host's size: zui_2d.cpp's class, 0x430 under the Itanium ABI */
+    /* the four states' textures, each the third word of zui_2d.cpp's 0x34-byte ButtonState (m_active
+     * 0xc8, m_pressed 0xfc, m_normal 0x130, m_disabled 0x164: the same offsets on the host, below the
+     * background's CPlainBmp at 0x1a0) -- InitButton's */
+    unsigned char _c8[0xd4 - 0xc8];
+    zdb::CTexHandle *m_activeTex;     // 0xd4
+    unsigned char _d8[0x108 - 0xd8];
+    zdb::CTexHandle *m_pressedTex;    // 0x108
+    unsigned char _10c[0x13c - 0x10c];
+    zdb::CTexHandle *m_normalTex;     // 0x13c
+    unsigned char _140[0x170 - 0x140];
+    zdb::CTexHandle *m_disabledTex;   // 0x170
+    unsigned char _174[Z_OFS(0x440, 0x430) - 0x174];   /* the host's size: zui_2d.cpp's class, 0x430 under the Itanium ABI */
 } __attribute__((aligned(16)));   // 0x440 bytes (host 0x430)
 
 /* a strip of choices (SOCOM 1's CRadioStrip; SOCOM II's 0x450 bytes) */

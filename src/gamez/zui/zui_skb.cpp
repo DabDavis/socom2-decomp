@@ -735,6 +735,14 @@ void SkbMoveCursor(CSoftKeyboard *skb, unsigned char dir)
     SkbMoveAlong(skb, axis, dir == 2 || dir == 4 ? func_0038C4C0 : func_0038C4B0);
 }
 
+/* the cursor moved, by the keyboard's pad handler for a direction (0x38CB80: 0x38DFC0 jumps to it
+ * with the active keyboard; it jumps on to SkbMoveCursor). Written for the port, M3: its draft
+ * called SkbMoveCursor with neither the keyboard nor the direction (the EE's a0 and a1 passed on) */
+extern "C" void func_0038CB80(CSoftKeyboard *skb, unsigned char dir)
+{
+    SkbMoveCursor(skb, dir);
+}
+
 /* a count of none (ours: an inline bool returning the negation, materialised before each branch) */
 static inline bool IsNone(int n)
 {
@@ -924,6 +932,23 @@ void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
         ShutdownBegin(menu);
         SkbPlaySound(4);
     }
+}
+
+/* the keyboard closed with the menu's event 29 (ON_SKB_CANCEL) run after it (0x38C000: the enter
+ * key's unchanged or empty text, and SkbPressKey's; the cancel sound after it) and the escape key's
+ * close (0x38BE40, SkbUsbKey's: no sound). The names unknown. Written for the port, M3: the drafts
+ * called ShutdownBegin with neither the keyboard nor the menu (the EE's a0 and a1 passed on) */
+extern "C" void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu)
+{
+    skb->ShutdownBegin(menu);
+    menu->RunEventAnim((ActionItem::EVENT)29, 0);
+    SkbPlaySound(3);
+}
+
+extern "C" void func_0038BE40(CSoftKeyboard *skb, CGameMenu *menu)
+{
+    skb->ShutdownBegin(menu);
+    menu->RunEventAnim((ActionItem::EVENT)29, 0);
 }
 
 /* the keyboard closing: the cursor's key let go, its elements hidden, the shared pieces put away,

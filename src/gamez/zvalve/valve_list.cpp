@@ -134,6 +134,26 @@ CValve *CValve::Create(const char *name, unsigned int value, VALVE_TYPE type)
     return valve;
 }
 
+/* a valve by name, made and listed if new; an existing one's type raised as the other Create raises
+ * it, its value left alone (SOCOM 1's two-argument Create; CZAnim::GetValve's, type 2). Written for
+ * the port, M3: its draft called GetByName with no name (the EE's a0 passed on) -- on the host the
+ * search compared every valve against a stale stack word */
+CValve *CValve::Create(const char *name, VALVE_TYPE type)
+{
+    CValve *valve = name ? GetByName(name) : 0;
+
+    if (!valve) {
+        valve = valvePool.Acquire(name, type);
+        m_list.push_back(valve);
+    } else {
+        if (type == (VALVE_TYPE)1 && valve->m_type != 3)
+            valve->m_type = 1;
+        if (type == (VALVE_TYPE)3)
+            valve->m_type = 3;
+    }
+    return valve;
+}
+
 /* a valve made dead: its type 2 and its callbacks gone (SOCOM 1's) */
 void CValve::Destroy(CValve *valve)
 {

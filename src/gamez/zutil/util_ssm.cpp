@@ -190,3 +190,14 @@ bool CSimpleStateMachine::StartThread(int stackSize, int priority)
         ::StartThread(m_thread, this);
     return true;
 }
+
+/* a text's CRC-32 (OVL1 0x3A59C0, the unit's first function, before StartThread: CRC32String's
+ * wrapper -- the sounds', the subtitles' and the DME's names are hashed through it; the name
+ * unknown). Written for the port, M3: its draft called CRC32String with no text (the EE's a0 passed
+ * on) */
+unsigned int CRC32String(const char *text);   /* util_crc.cpp's, 0x3A2370 */
+
+extern "C" unsigned int func_003A59C0(const char *text)
+{
+    return CRC32String(text);
+}

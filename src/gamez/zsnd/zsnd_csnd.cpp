@@ -340,6 +340,39 @@ extern "C" CSnd *func_00344BF0(const unsigned int *key, int lo, int hi)
     return func_00344BF0(key, lo, mid);
 }
 
+/* the sound list searched by hash: the binary search over the whole list, none when it is empty
+ * (0x344EE0), its wrapper (0x344F20: AddNewCSnd's and GetSoundByName's, out of line), and a sound by name, through its
+ * name's CRC-32 (SOCOM 1's GetSoundByName; none while sound is off) -- all three called out of line
+ * in this unit (LoadSounds and LoadCSnd call the last): pinned.
+ * Written for the port, M3: GetSoundByName's draft hashed no name and the wrapper's searched with no
+ * key (the EE's a0 passed on) -- on the host every lookup by name hashed a stale word */
+extern "C" unsigned int func_003A59C0(const char *name);
+#pragma auto_inline off
+extern "C" CSnd *func_00344EE0(const unsigned int *key)
+{
+    int hi = CSnd::m_soundlist.size() - 1;
+
+    if (hi == -1)
+        return 0;
+    return func_00344BF0(key, 0, hi);
+}
+
+extern "C" CSnd *func_00344F20(const unsigned int *hash)
+{
+    return func_00344EE0(hash);
+}
+
+CSnd *CSnd::GetSoundByName(const char *name)
+{
+    if (m_isDisabled)
+        return 0;
+    unsigned int hash = 0;
+
+    hash = func_003A59C0(name);
+    return func_00344F20(&hash);
+}
+#pragma auto_inline reset
+
 extern "C" void func_00344910(const char *name)
 {
     bool mp = false;
@@ -391,6 +424,21 @@ extern "C" void func_00344910(const char *name)
             break;
         }
     }
+}
+
+/* the sound groups a file names loaded, unless sound is off (OVL1 0x3448E0: CSnd::SetupSoundGroups
+ * out of line -- the menu state's Init and its reboot callback load "UI" through it; the name
+ * unknown), and the jukebox's play lists read (0x3448D0, CMission::Open's "sndjukeboxm.rdr"). Written
+ * for the port, M3: the drafts called LoadSoundGroups and LoadPlaylists with no name (the EE's a0
+ * passed on) */
+extern "C" void func_003448E0(const char *name)
+{
+    CSnd::SetupSoundGroups(name);
+}
+
+extern "C" void func_003448D0(const char *name)
+{
+    CSndJukebox::LoadPlaylists(name);
 }
 
 inline void CSnd::LoadSounds(const char *name)
@@ -948,6 +996,15 @@ CSndInstance *CSnd::PlaySoundVolPanPitch(float vol, int pan, int pitch, bool one
     CSndInstance *r = PlaySoundVolPanPitch(vol, pan, pitch, inst, flags);
     m_isOneShot = old;
     return r;
+}
+
+/* a sound queued on the headset's voice queue (OVL1 0x3428F0; the name unknown -- the ZAnim sound
+ * command, CCharacterType::PlayAt and the SEALs' radio call it): the queue's Add with the caller's
+ * arguments. Written for the port, M3: the draft passed the three words on and dropped the two
+ * floats (the EE's f12 and f13 passed on) */
+extern "C" void func_003428F0(CSnd *sound, int id, const CPnt3D *pos, float delay, float vol)
+{
+    data_0048DEE0.Add(sound, id, pos, delay, vol);
 }
 
 /* the volume at a distance (SOCOM 1's CalcVol, an out-of-line function there at 0x2EC780 that its

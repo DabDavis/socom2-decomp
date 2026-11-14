@@ -39,6 +39,8 @@ public:
     void ClearFreeList(bool all);
     /* the tasks run (CGameMenu::Tick's) */
     void Tick(float dT);
+    /* every task dropped (0x34E480, zsys_sched.cpp's) */
+    void Clear();
 
     unsigned char _0[0x20];
 };
@@ -230,7 +232,7 @@ public:
     unsigned int m_5c : 31;
     virtual ~CNode();                                     /* +0x08 */
     virtual CNode *_Copy(CNode *to) const;
-    virtual void UpdateGrid();
+    virtual bool UpdateGrid();
     virtual void ReserveChildren(int n);
     virtual void AddChild(CNode *child);                  /* +0x18 */
     virtual int DeleteChild(CNode *child);
@@ -594,6 +596,27 @@ zdb::CTexHandle *PrepTexture(const char *name, zdb::CTextureRelocMgr *mgr)
         return 0;
     mgr->AddToBatch(tex);
     return tex;
+}
+
+/* a button's four states' textures and its caption set: the caption's string and place when there
+ * is one, then the variable it watches shown (SOCOM 1's; CButtonSpec::InitializeButton's call). The
+ * second texture goes to the pressed state's slot, the third to the active one's. Written for the
+ * port, M3: its draft called SetString and UpdateUIVar through MW's vtable layout (the pointer at
+ * +0xC, slots 0x70 and 0x8C) */
+void InitButton(C2DButton *button, zdb::CTexHandle *normal, zdb::CTexHandle *active, zdb::CTexHandle *pressed,
+                zdb::CTexHandle *disabled, const char *caption)
+{
+    button->m_normalTex = normal;
+    button->m_pressedTex = active;
+    button->m_activeTex = pressed;
+    button->m_disabledTex = disabled;
+    button->_szCaption = (char *)caption;
+    if (caption) {
+        button->_strCaption.SetString(caption, true);
+        button->_strCaption.UpdatePos();
+    }
+    if (button->UIVarMixin::m_uivar)
+        button->UpdateUIVar(button->UIVarMixin::m_uivar);
 }
 
 /* both axes within r of the centre (SOCOM 1's) */
@@ -1049,6 +1072,17 @@ static inline zdb::CNode *AddNode(C2D *obj, zdb::CTextureRelocMgr *mgr, zdb::CNo
     parent->FindChild(node, true);
     parent->AddChild(node);
     return node;
+}
+
+/* the menus' scheduler emptied, its free list with it (SOCOM 1's zUISchedulerClear; the menu
+ * state's UnInit and the game engine's). Written for the port, M3 (the port's own fix, its patch
+ * 0022): its draft named the scheduler by its image address (0x49EA50), on the host not the file
+ * static (never constructed there: leaving the briefing for the load screen faulted in
+ * ClearFreeList) */
+void zUISchedulerClear()
+{
+    zUIScheduler.Clear();
+    zUIScheduler.ClearFreeList(true);
 }
 
 /* 0x36AB20: AddNode's out-of-line copy (the soft keyboard's key and text nodes are made through it:

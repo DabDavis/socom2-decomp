@@ -779,7 +779,7 @@ public:
     /* SOCOM II's vtable order (__vt__Q23zdb5CNode, 0x4067B0); the pointer is at 0x60 */
     virtual ~CNode();                                   /* +0x08 */
     virtual CNode *_Copy(CNode *to) const;   /* +0x0C: into `to`, or a new node when 0 */
-    virtual void UpdateGrid();
+    virtual bool UpdateGrid();
     virtual void ReserveChildren(int n);
     virtual void AddChild(CNode *child);                /* +0x18 */
     virtual int DeleteChild(CNode *child);

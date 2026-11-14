@@ -294,11 +294,15 @@ public:
      * 16-aligned m_nodeTop at 0x10, the class 0x900 bytes) */
     unsigned char _0[0xe0];
     zdb::CNode *m_pBackplaneNode;   // host 0xe4
-    unsigned char _c8[0x900 - 0xe8];
+    unsigned char _c8[0x8f0 - 0xe8];
+    float m_900;   // host 0x8f0 (clang -m32's layout of zui.cpp's class)
+    unsigned char _904[0x900 - 0x8f4];
 #else
     unsigned char _0[0xc4];
     zdb::CNode *m_pBackplaneNode;   // 0xc4 (SOCOM 1's DWARF)
-    unsigned char _c8[0x910 - 0xc8];
+    unsigned char _c8[0x900 - 0xc8];
+    float m_900;   // 0x900: a time the pad is ignored for (zui.cpp's)
+    unsigned char _904[0x910 - 0x904];
 #endif
 
     CGameMenu();
@@ -316,8 +320,8 @@ public:
     bool Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar);
     /* the background film (SOCOM 1's trio, by order and fields: the UI lane's round 13) */
     void TickMPEG();   /* 0x366940 */
-    void RestartBackgroundMPEG(const char *name);   /* 0x366A00 */
-    void HaltBackgroundMPEG();   /* 0x366B10 */
+    bool RestartBackgroundMPEG(const char *name);   /* 0x366A00 */
+    bool HaltBackgroundMPEG();   /* 0x366B10 */
 
 #if Z_PORT
 } __attribute__((aligned(16)));

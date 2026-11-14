@@ -289,6 +289,8 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    /* the string's tick, the arrows' (0x379AB0, slot 0x38) */
+    virtual void Tick(float dT);
     /* the lines laid out (ours: an accessor, the count read before the spacing's call) */
     int GetNumLines() { return m_numLines; }
 
@@ -324,6 +326,7 @@ public:
     virtual ~CScrollText();
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
+    virtual bool HandlePad(const CPad *pad, int port);
 
     int m_250;   // 0x250
     bool m_254;   // 0x254
@@ -777,6 +780,8 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     virtual bool HandlePad(const CPad *pad, int port);
+    /* C2DButton's tick, the pad's repeat clock advanced (0x3721E0, slot 0x38) */
+    virtual void Tick(float dT);
     void LoadSpec(const CSliderBarSpec &spec, zdb::CTexHandle *tex);
     /* the value's real written to the UI variable (ours: HandlePad's four arms) */
     inline void ApplyValue();
@@ -803,6 +808,8 @@ public:
     virtual int GetZAnimCmdType(const char *name);
 
     virtual bool HandlePad(const CPad *pad, int port);
+    /* the choice LoadSpec left shown first, then C2DButton's tick (0x370CB0, slot 0x38) */
+    virtual void Tick(float dT);
     /* the strip's two refreshes after a new choice: its buttons shown (SOCOM II's, 0x370D10, the name
      * ours) and its check boxes set (SOCOM 1's PressActive, 0x370DB0) */
     void ShowChoice();
@@ -865,6 +872,8 @@ class CHandlerButton : public C2DButton {
 public:
     virtual ~CHandlerButton();
     virtual bool HandlePad(const CPad *pad, int port);
+    /* the button's tick, then its children's (0x376530, slot 0x38) */
+    virtual void Tick(float dT);
     void LoadSpec(const CHandlerButtonSpec &spec);
 } __attribute__((aligned(16)));   // 0x440 bytes
 
@@ -1406,9 +1415,18 @@ C2DButton::~C2DButton()
 }
 
 /* the background loaded with a texture, the caption's scale (inlines' out-of-line copies after
- * SetNormal, matched as drafts) */
-extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex);
+ * SetNormal; the scale's matched as a draft) */
 extern "C" void func_0036E830(C2DButton *button, float scale);
+
+/* the background loaded with a state's texture at the button's size (0x36E840: SetNormal, SetActive,
+ * Slot27 and Tick call it out of line -- pinned). Written for the port, M3: its draft read the size
+ * at MW's 0x240 (on the host 0x230: CPlainBmp is 0x90 bytes there, 0xA0 here) */
+#pragma auto_inline off
+extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex)
+{
+    button->m_background.Load(0.0f, 0.0f, button->_fWidth, button->_fHeight, tex);
+}
+#pragma auto_inline reset
 
 /* set when a menu object takes actions (zui.cpp's global, SOCOM 1's g_hasAnims at gp-25344 there;
  * OVL1 bss 0x49EAA0) */
@@ -1535,6 +1553,24 @@ void C2DButton::SetNormal()
         SetCaptionStyle(m_normal.m_color, m_normal.m_pulse, m_normal.m_fadeTime, m_normal.m_fadeMin,
                         m_normal.m_fadeMax);
         m_background.SetPulse(m_normal.m_period);
+    }
+}
+
+/* slot 27 (0x370C20, +0x74 of C2DButton's table and of the four deriving it): pressed -- when the
+ * button takes input, the press timed (0.2 s) and the active state shown as SetNormal shows the
+ * normal one. Written for the port, M3: its draft asked CanHandleInput through MW's vtable layout and
+ * wrote every member at MW's offset (on the host its 0.2 landed on the first action's state and
+ * event: the main menu's Cross on NEW GAME then matched no action) */
+void C2DButton::Slot27()
+{
+    if (CanHandleInput()) {
+        m_pressTime = 0.2f;
+        m_state = &m_active;
+        func_0036E840(this, m_active.m_tex);
+        func_0036E830(this, m_active.m_scale);
+        SetCaptionStyle(m_active.m_color, m_active.m_pulse, m_active.m_fadeTime, m_active.m_fadeMin,
+                        m_active.m_fadeMax);
+        m_background.SetPulse(m_active.m_period);
     }
 }
 
@@ -2167,6 +2203,22 @@ bool CWrappedText::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
         break;
     }
     return handled;
+}
+
+/* the wrapped text's frame: the string's tick, the up arrow's, and the down arrow faded with the
+ * up one (slot 0x38 of CWrappedText's table 0x4079E0; the arrows through references, as the target
+ * dispatches through their tables). Written for the port, M3: its draft called the arrows through
+ * MW's vtable layout (the pointer at +0xC, slots 0x38 and 0x34) at MW's offsets (the down arrow at
+ * 0x1A0, on the host 0x190) and, never in the class, it was missing from the host's table */
+void CWrappedText::Tick(float dT)
+{
+    C2DString::Tick(dT);
+    C2D &up = m_upArrow;
+
+    up.Tick(dT);
+    C2D &down = m_downArrow;
+
+    down.SetTrans(m_upArrow.GetTrans());
 }
 
 /* SCROLL_UP and SCROLL_DOWN as commands of their own (no argument), anything else the renderable
@@ -3052,6 +3104,8 @@ public:
     /* the rectangle, the actions and the children from the spec (SOCOM 1's, the library unused) */
     void LoadSpec(const CUIMapCtrlSpec &spec, C2DFont *font, zdb::CAssetLib *lib,
                   zdb::CTextureRelocMgr *mgr);
+    /* the children drawn clipped to the rectangle (0x36D060, slot 0x10) */
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
@@ -3138,7 +3192,7 @@ public:
     unsigned char _0[0x60];
     virtual ~CMenuNode();
     virtual void _Copy();
-    virtual void UpdateGrid();
+    virtual bool UpdateGrid();
     virtual void ReserveChildren(int n);
     virtual void AddChild(zdb::CNode *child);
     virtual int DeleteChild(zdb::CNode *child);
@@ -3413,6 +3467,26 @@ void CUIMapCtrl::LoadSpec(const CUIMapCtrlSpec &spec, C2DFont *font, zdb::CAsset
 
         obj->SetMapOffset(e.m_xpos, e.m_ypos);
         push_back(obj);
+    }
+}
+
+/* the map drawn: while it is on, the children drawn scissored to the control's rectangle, the
+ * relocator's sprite packet prepared before and after (SOCOM 1's, slot 0x10 of the table 0x407260;
+ * the walk C2D::GetAssetLibs's). Written for the port, M3: its draft called the relocator and the
+ * children through MW's vtable layout (the children's pointer at +0xC) and walked the list at MW's
+ * offsets; never in the class, it was missing from the host's table */
+void CUIMapCtrl::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    if (IsOn()) {
+        mgr->PreGetSprPacket(0);
+        zVid_Scissor(m_left, m_top, m_right, m_bottom);
+        node_base *e;
+        iterator i = begin();
+
+        for (e = &end_node(); i != iterator(e); ++i)
+            (*i)->Draw(m, mgr);
+        mgr->PreGetSprPacket(0);
+        zVid_Scissor(0, 0, 640, 448);
     }
 }
 
@@ -3827,7 +3901,7 @@ public:
     virtual int GetZAnimCmdType(const char *name);
     /* slot 18: the box made active (0x374CB0) */
     virtual void SetActive();
-    /* slot 19: the rows shown normal (0x376420, its m2c draft matches) */
+    /* slot 19: the rows shown normal (0x376420) */
     virtual void SetNormal();
     /* set up from its spec (0x375E20: CUIListBoxSpec::CreateDisplayObj's call) */
     void LoadSpec(const CUIListBoxSpec &spec, zdb::CTexHandle *tex, zdb::CTextureRelocMgr *mgr);
@@ -3922,6 +3996,33 @@ public:
     ActionItem m_actions[30];   // 0x420: the box's actions (the spec's ANIMATIONS)
     int m_numActions;   // 0x600
 };
+
+/* made normal: SetActive's counterpart -- the rows' colour for the highlight, the bar off, the
+ * highlight's bitmap given the normal texture (0xEC's), white, its alpha back to 80, the pulse
+ * stopped (SOCOM 1's CUIListBox::SetNormal). Written for the port, M3 (the port's own fix, in its
+ * patch 0014, made byte-exact): its draft read every member at MW's offset and called the bitmaps
+ * through MW's vtable layout (dlgMenu's list box faulted in it) */
+void CUIListBox::SetNormal()
+{
+    m_highlightColor = m_color;
+    m_bar.Off();
+
+    zdb::CTexHandle *t = m_texEC;
+
+    m_texF8 = t;
+    m_highlight.Load(0.0f, 0.0f, 10.0f, 10.0f, m_texF8);
+    if (!t)
+        m_highlight.SetHasTexture(false);
+    else
+        m_highlight.SetHasTexture(true);
+    m_highlight.SetColor(255.0f, 255.0f, 255.0f);
+    m_highlight.SetTrans(m_highlightAlpha);
+    m_highlight.SetTrans(100.0f);
+    m_highlightAlpha = 80;
+    m_pulseMin = 0.0f;
+    m_pulseMax = 0.0f;
+    m_pulseTime = 0.0f;
+}
 
 /* made active (SOCOM 1's CUIListBox::SetActive, 0x393D60 there; SOCOM II's body): the highlight's
  * colour, the bar on and loaded, the highlight's bitmap textured, white and at 100, the pulse's
@@ -4403,6 +4504,16 @@ inline void CSliderBar::ApplyValue()
         v = m_center + 2.0f * (m_value - 0.5f) * (1.0f - m_center);
     if (var)
         var->SetReal(v);
+}
+
+/* the slider's frame: the button's tick, then the clock HandlePad's held direction repeats on
+ * (slot 0x38 of CSliderBar's table 0x4075E0). Written for the port, M3: its draft
+ * called C2DButton::Tick with neither the slider nor the time (the EE's a0 and f12 passed on) and,
+ * never in the class, it was missing from the host's table -- a held direction never repeated */
+void CSliderBar::Tick(float dT)
+{
+    C2DButton::Tick(dT);
+    m_repeat += dT;
 }
 
 /* the pad on the slider (slot 15 of its vtable; the 2003 slider has no counterpart in SOCOM 1's): left
@@ -5784,6 +5895,20 @@ void CRadioStrip::ShowChoice()
 }
 #pragma auto_inline reset
 
+/* the strip's frame: a choice LoadSpec set shown once (its buttons, then its check boxes), then the
+ * button's own tick (slot 0x38 of CRadioStrip's table 0x407430). Written for the port, M3: its
+ * draft called ShowChoice without the strip (the EE's a0 passed on) and, never in
+ * the class, it was missing from the host's table -- the strip's first choice never shown */
+void CRadioStrip::Tick(float dT)
+{
+    if (m_444) {
+        ShowChoice();
+        PressActive();
+        m_444 = false;
+    }
+    C2DButton::Tick(dT);
+}
+
 /* the render pipe as a 2D visual reads it: the opacity stack (zrndr_pipe.cpp's CPipe, OVL1 bss
  * 0x4887C0; its 0x720 bytes stood in) */
 class CPipe {
@@ -6226,6 +6351,42 @@ void C3StateButton::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
             _strCaption.Draw(mgr, 0, (int)p.z);
         }
     }
+}
+
+/* the pad on the scrolling text (slot 15 of CScrollText's table): down pressed (zinput.h's PAD_DOWN,
+ * 5) scrolls a line on while the lines shown stop short of the list's count, up (4) a line back to
+ * the first; taken
+ * when it scrolled (SOCOM 1's). Written for the port, M3: its draft asked CanHandleInput through
+ * MW's vtable layout (the pointer at +0xC, slot 0x48), and read the list's count at MW's 0 (on the
+ * host the vtable pointer) and the line at MW's 0x258 (on the host 0x238) */
+bool CScrollText::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    if (pad->m_state[5] == 1 && m_line < size() - m_25c) {
+        m_line++;
+        return true;
+    }
+    if (pad->m_state[4] == 1 && m_line > 0) {
+        m_line--;
+        return true;
+    }
+    return false;
+}
+
+/* the handler button's frame: the button's tick, then each child's (slot 0x38 of CHandlerButton's
+ * table 0x407700; the walk C2D::GetAssetLibs's). Written for the port, M3: its draft called
+ * C2DButton::Tick with neither the button nor the time (the EE's a0 and f12 passed on), walked the
+ * list at MW's offsets and ticked the children through MW's vtable layout; never in the class, it
+ * was missing from the host's table */
+void CHandlerButton::Tick(float dT)
+{
+    C2DButton::Tick(dT);
+    node_base *e;
+    iterator i = begin();
+
+    for (e = &end_node(); i != iterator(e); ++i)
+        (*i)->Tick(dT);
 }
 
 /* a press of button 9 (SOCOM 1's button 27) shows the button pressed and hands the pad to its
