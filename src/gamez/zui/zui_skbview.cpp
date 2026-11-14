@@ -435,6 +435,18 @@ void SkbFindSounds()
 }
 #pragma auto_inline reset
 
+/* a keyboard's node made under the display's root, by the keyboard's name, and hidden (0x3978D0:
+ * CSoftKeyboard::PrepForDisplay's; the name ours). Written for the port, M3: its draft called
+ * AddChild and SetActive through MW's CNode layout (the vtable pointer at +0x60, slots 0x18 and 0x38) */
+extern "C" zdb::CNode *func_003978D0(const CSaferStr &name)
+{
+    zdb::CNode *node = zdb::CNode::Create(name.c_str());
+
+    g_skbDisplayNode->AddChild(node);
+    node->SetActive(false);
+    return node;
+}
+
 /* the text: the edited buffer, or the one the keyboard opened with (0x3998A0 and 0x399D20 ask) */
 const char *SkbGetText(bool edited)
 {
@@ -443,6 +455,30 @@ const char *SkbGetText(bool edited)
 
 /* the display unit's reader of UiParams.rdr (0x397070, below) */
 void SkbReadUiParams(CRdrFile *file);
+
+/* the display's elements hidden as the keyboard closes: the scaling restarted as a shrink (2), the
+ * six bitmaps' nodes hidden where they have one, the caption's (0x394420: ShutdownBegin's; the name
+ * ours). Written for the port, M3: its draft called SetActive through MW's CNode layout (the vtable
+ * pointer at +0x60, slot 0x38) and read the nodes at MW's CBmpWithNode offset (0xA0, on the host
+ * 0x90) */
+extern "C" void func_00394420()
+{
+    s_scaleTime = 0.0f;
+    s_scaling = 2;
+    if (s_bmp0.m_node)
+        s_bmp0.m_node->SetActive(false);
+    if (s_bmp5.m_node)
+        s_bmp5.m_node->SetActive(false);
+    if (s_bmp4.m_node)
+        s_bmp4.m_node->SetActive(false);
+    if (s_bmp1.m_node)
+        s_bmp1.m_node->SetActive(false);
+    if (s_bmp2.m_node)
+        s_bmp2.m_node->SetActive(false);
+    if (s_bmp3.m_node)
+        s_bmp3.m_node->SetActive(false);
+    s_captionNode->SetActive(false);
+}
 
 /* the keyboards' display read again from UiParams.rdr (0x3943E0; CMission::Init calls it). This
  * unit's: it lies between ~CSkbKeyProps and 0x394420, and its two strings between s_padKeys and

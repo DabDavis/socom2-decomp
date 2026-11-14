@@ -508,3 +508,14 @@ void UnloadTheWorld()
         thePipe.Flush();
     }
 }
+
+#if Z_PORT
+/* the port, M3: the row's placeholder is this function (st_menu.cpp's UnInit and testUnload call it
+ * so). Its m2c draft (auto/ovl1/001E8FE0.cpp), which the PS2 build keeps for the byte-exact row,
+ * deletes the world through MW's CNode layout (the vtable pointer at +0x60) and inlines
+ * ~CNodeUniverse at MW's offsets: the port builds this instead and leaves the draft out */
+extern "C" void func_001E8FE0()
+{
+    UnloadTheWorld();
+}
+#endif

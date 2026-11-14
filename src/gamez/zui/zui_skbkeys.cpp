@@ -1138,8 +1138,8 @@ void SkbToggleTextSel(CSoftKeyboard *skb)
  * here because the strings are this unit's statics: its draft reached them at their image addresses
  * (0x4A1450, 0x4A1520, 0x4A1370), which on the host are not the objects (never constructed), and
  * called SetString through MW's vtable layout (the pointer at +0xC, slot 0x70) */
-extern "C" int data_004A1430;
-extern "C" int data_004A1438;
+extern "C" zdb::CNode *data_004A1430;
+extern "C" zdb::CNode *data_004A1438;
 extern "C" void func_003997F0()
 {
     data_004A1430 = 0;
@@ -1159,9 +1159,48 @@ extern "C" void func_003997F0()
 extern "C" zdb::CNode *func_0036AB20(C2D *obj, zdb::CTextureRelocMgr *mgr, zdb::CNode *parent);
 extern "C" void func_00398FC0(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr)
 {
-    data_004A1430 = (int)func_0036AB20(&s_textString1, mgr, parent);
-    data_004A1438 = (int)func_0036AB20(&s_textString2, mgr, parent);
+    data_004A1430 = func_0036AB20(&s_textString1, mgr, parent);
+    data_004A1438 = func_0036AB20(&s_textString2, mgr, parent);
     s_textNode = func_0036AB20(&s_textString0, mgr, parent);
+}
+
+/* 0x398BB0 and 0x398B50 (the port's M3; the keyboard's display shown and its close): the two edited
+ * strings' nodes shown; the two and the third string's hidden. Their drafts called SetActive through
+ * MW's CNode layout (the vtable pointer at +0x60, slot 0x38) */
+extern "C" void func_00398BB0()
+{
+    data_004A1430->SetActive(true);
+    data_004A1438->SetActive(true);
+}
+
+extern "C" void func_00398B50()
+{
+    data_004A1430->SetActive(false);
+    data_004A1438->SetActive(false);
+    s_textNode->SetActive(false);
+}
+
+/* 0x398EA0 (the port's M3; zui_skb.cpp's PrepForDisplay calls it): the text's three strings given
+ * their caps' looks and nodes -- strings 1 and 2 cap 0's in the first font, string 2 raised a line,
+ * string 0 cap 2's in the third -- string 1 current, the text the keyboard opened with set and the
+ * cursor put after it, the composition cleared, string 0 emptied and its node hidden. Its draft
+ * reached the strings at their image addresses (on the host not the objects) and called SetString
+ * and SetActive through MW's vtable layouts */
+void SkbApplyCapLook(C2DString *str, zdb::CNode *node, CSoftKeyboard *skb, unsigned char i, C2DFont *font,
+                     float dy);   /* zui_skbview.cpp's, 0x395440 */
+
+extern "C" void func_00398EA0(CSoftKeyboard *skb, CSkbFonts *fonts, const char *text)
+{
+    s_textSel = false;
+    SkbApplyCapLook(&s_textString1, data_004A1430, skb, 0, &fonts->m_fonts[0], 0.0f);
+    SkbApplyCapLook(&s_textString2, data_004A1438, skb, 0, &fonts->m_fonts[0], skb->m_c4);
+    SkbApplyCapLook(&s_textString0, s_textNode, skb, 2, &fonts->m_fonts[2], 0.0f);
+    SkbSetText(text, skb);
+    SkbCursorTo(strlen(text), skb, false);
+    SkbHangulClear();
+    s_textString0.SetString(0, true);
+    s_textString0.UpdatePos();
+    s_textNode->SetActive(false);
 }
 
 /* 0x399040 (the port's M3): a character typed into the text, then the composition cleared -- the

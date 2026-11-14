@@ -144,6 +144,20 @@ void FreeNodePool()
     FreeVector<std::vector<zdb::CNode *> >(particle_node_free_list);
 }
 
+/* SOCOM 1's: a node given back to the pool (grown ten at a time), switched off, its visuals deleted
+ * and taken out of the world. Written for the port, M3: its draft called SetActive and DeleteChild
+ * through MW's CNode layout (the vtable pointer at +0x60) and reached the pool's words at their image
+ * addresses */
+void ReleaseInstance(zdb::CNode *node)
+{
+    if (particle_node_free_list.size() == particle_node_free_list.capacity())
+        particle_node_free_list.reserve(particle_node_free_list.capacity() + 10);
+    particle_node_free_list.push_back(node);
+    node->SetActive(false);
+    node->DeleteVisuals();
+    zdb::CWorld::m_world->DeleteChild(node);
+}
+
 /* SOCOM 1's: a node from the pool (one more made when it is empty, the pool grown ten at a time),
  * put in the world and switched on */
 zdb::CNode *GetFreeInstance()

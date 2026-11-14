@@ -138,6 +138,20 @@ CKey *CZAR::CreateKey(const char *name)
     return key;
 }
 
+/* the file reopened, its directory read again, unless it is still open (SOCOM 1's). Written for the
+ * port, M3: its draft asked the file whether it was open through MW's vtable layout (CIO's slot
+ * 0x10) */
+bool CZAR::ReOpen(int dir, unsigned int mode)
+{
+    bool ok;
+
+    if (IsOpen())
+        ok = true;
+    else
+        ok = Open(m_filename, dir, mode, 0x10, false);
+    return ok;
+}
+
 bool CZAR::Flush()
 {
     if (!IsOpen())

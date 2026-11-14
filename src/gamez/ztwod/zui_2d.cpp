@@ -3086,6 +3086,8 @@ public:
     /* the rectangle, the actions and the children from the spec (SOCOM 1's, the library unused) */
     void LoadSpec(const CUIMapCtrlSpec &spec, C2DFont *font, zdb::CAssetLib *lib,
                   zdb::CTextureRelocMgr *mgr);
+    /* the children drawn clipped to the rectangle (0x36D060, slot 0x10) */
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
@@ -3447,6 +3449,26 @@ void CUIMapCtrl::LoadSpec(const CUIMapCtrlSpec &spec, C2DFont *font, zdb::CAsset
 
         obj->SetMapOffset(e.m_xpos, e.m_ypos);
         push_back(obj);
+    }
+}
+
+/* the map drawn: while it is on, the children drawn scissored to the control's rectangle, the
+ * relocator's sprite packet prepared before and after (SOCOM 1's, slot 0x10 of the table 0x407260;
+ * the walk C2D::GetAssetLibs's). Written for the port, M3: its draft called the relocator and the
+ * children through MW's vtable layout (the children's pointer at +0xC) and walked the list at MW's
+ * offsets; never in the class, it was missing from the host's table */
+void CUIMapCtrl::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    if (IsOn()) {
+        mgr->PreGetSprPacket(0);
+        zVid_Scissor(m_left, m_top, m_right, m_bottom);
+        node_base *e;
+        iterator i = begin();
+
+        for (e = &end_node(); i != iterator(e); ++i)
+            (*i)->Draw(m, mgr);
+        mgr->PreGetSprPacket(0);
+        zVid_Scissor(0, 0, 640, 448);
     }
 }
 
