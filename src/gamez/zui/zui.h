@@ -202,7 +202,9 @@ public:
  * the other table and the string made there (SOCOM 1's, no DWARF members of its own) */
 class CUIVarSTable : public CSTable {
 public:
-    CUIVarSTable();
+    /* inline: 0xFFFF bytes, 1024 strings -- its out-of-line copy (0x2B19D0) comes with the manager's
+     * __construct_array in __sinit_fts_mission.cpp */
+    CUIVarSTable() : CSTable(0xFFFF, 0x400) {}
     char *OnTableFull(const char *str);
 };   // 0x20 bytes
 

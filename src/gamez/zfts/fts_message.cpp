@@ -387,6 +387,13 @@ void C2DMessageString::SetString(const char *s, bool translate)
     m_text = s;
 }
 
+/* the queue's destructor: its lines deleted, then the two backgrounds and the C2D (OVL1 0x2B6EE0, its
+ * table 0x4063B0 with it) */
+C2DMessage_Q::~C2DMessage_Q()
+{
+    Clear_Messages();
+}
+
 /* the queue emptied: each line taken off and deleted, the queue's state cleared (OVL1 0x2B6DE0;
  * SOCOM 1's walk, SOCOM II's clears after it) */
 void C2DMessage_Q::Clear_Messages()
