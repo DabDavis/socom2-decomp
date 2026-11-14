@@ -6261,3 +6261,9 @@ void CSecureText::SetString(const char *s, bool translate)
         C2DString::SetString(stars, false);
     }
 }
+
+/* the secure text's destructor (implicit: the string's; its table 0x406FA0 goes with it, and the
+ * table's inline copies after it, 0x36AFA0-0x36AFEF) */
+CSecureText::~CSecureText()
+{
+}
