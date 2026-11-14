@@ -276,6 +276,39 @@ CZWeapon::CZWeapon()
     m_recoilPct = 0;
 }
 
+/* a string member freed and cleared (ours: the destructor's every step) */
+#define ZWEP_FREE(p)          \
+    do {                      \
+        if (p)                \
+            _free(p, 0, 0);   \
+        p = 0;                \
+    } while (0)
+
+/* every name freed, the animation arrays, the fire sounds' names, then the legal ammo list emptied
+ * (SOCOM 1's, with SOCOM II's members; 0x3D39E0, slot 0x08 of the table 0x4083E0 -- the class's key
+ * function) */
+CZWeapon::~CZWeapon()
+{
+    ZWEP_FREE(m_name);
+    ZWEP_FREE(m_description);
+    ZWEP_FREE(m_socom2_c);
+    ZWEP_FREE(m_icontexname);
+    ZWEP_FREE(m_texname);
+    ZWEP_FREE(m_hitanimname);
+    ZWEP_FREE(m_fireanimname);
+    ZWEP_FREE(m_defaultspecialanimname);
+    ZWEP_FREE(m_specialmaterialanimname);
+    ZWEP_FREE(m_associatedgearname);
+    ZWEP_FREE(m_modelname);
+    ZWEP_FREE(m_hitanim);
+    ZWEP_FREE(m_specialmaterialanim);
+    ZWEP_FREE(m_decalsetname);
+    ZWEP_FREE(m_reloadsoundname);
+    for (int i = 0; i < 3; i++)
+        ZWEP_FREE(m_firesoundname[i]);
+    m_LegalAmmoList.clear();
+}
+
 /* the projectiles in flight made for a count (SOCOM 1's) */
 bool CZWeapon::CreateProjectileList(int count)
 {
