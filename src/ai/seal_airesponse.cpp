@@ -1217,6 +1217,12 @@ inline void CAiSEventInterrupt(CAiSEvent *s, CSealCtrlAi *ai)
     }
 }
 
+/* the event's kind by name (OVL2 0x605A00) */
+const char *CAiSEvent::GetStatus() const
+{
+    return CAiEvent::GetEventString((CAiEvent::EVENT)(signed char)m_58);
+}
+
 /* the next step: 1 after 0; after 1, 2 with the flags' bit 0 or 3 with bit 1; after 2, 3 with bit
  * 1; else 8 -- kept, with the delay, and taken at once or after the wait (7) (OVL2 0x605950) */
 void CAiSEvent::NextStep(STEP *step, float delay)
@@ -3022,6 +3028,11 @@ struct CAiCtrlTarget {
 
 /* the reload's wait (a function-local static in the original: 8-byte-spaced data) */
 static float s_reloadWait = 0.5f;
+
+/* (OVL2 0x6089E0) */
+void CAiSReload::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+}
 
 /* the reload, the sub-step: a shout first when the flags' bit 0 asks (then cleared), the kit
  * reloaded, a stance -- crouched with bit 2, else kept or (bit 1) changed -- then a short wait

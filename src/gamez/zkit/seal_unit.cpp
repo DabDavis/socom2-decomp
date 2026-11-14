@@ -222,6 +222,10 @@ public:
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual bool Virtual44(AI_STATE state) { return state == m_state; }
     virtual bool Virtual48(int x, CAiState *other);
+    /* (seal_ai.cpp's other overrides: none defined here) */
+    virtual int Tick(CSealCtrlAi *ai);
+    virtual const char *GetStatus() const;
+    virtual bool CanAttack() const { return !(m_flags & 1); }
 
     float m_timer;   // 0x58 (SOCOM 1's 0x28)
     signed char m_5c;   // 0x5c

@@ -451,6 +451,8 @@ public:
     CAiSBreach() : CAiState(AI_STATE_BREACH), m_timer(0.0f) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual int Tick(CSealCtrlAi *ai);
+    /* +0x18: the step's name (0x5F33A0). Undeclared, the host's table kept CAiState's (M3) */
+    virtual const char *GetStatus() const;
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
     virtual bool Virtual34(CSealCtrlAi *ai, CAiEvent *e, CZSealBody *seal, bool enemy);
@@ -481,6 +483,8 @@ public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
     virtual int Tick(CSealCtrlAi *ai);
+    /* +0x18: the anim's name (0x5F4170). Undeclared, the host's table kept CAiState's (M3) */
+    virtual const char *GetStatus() const;
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanPursue(CSealCtrlAi *ai) const;
@@ -570,6 +574,8 @@ public:
     }
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual int Tick(CSealCtrlAi *ai);
+    /* +0x18: no name (0x5F1950). Undeclared, the host's table kept CAiState's (M3) */
+    virtual const char *GetStatus() const;
     virtual ~CAiSPlan();
 
     union {
@@ -618,6 +624,8 @@ public:
     virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
     /* +0x10 (0x5EFA50) */
     virtual int Tick(CSealCtrlAi *ai);
+    /* +0x18: the step's name (0x5F0390). Undeclared, the host's table kept CAiState's (M3) */
+    virtual const char *GetStatus() const;
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
     virtual bool CanScan() const;
@@ -676,6 +684,8 @@ public:
     /* +0x08 (0x5FDF80) */
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* +0x10 (0x5FB1C0, seal_aifollow.cpp's) */
+    /* +0x18: the step's name (0x5FDEC0). Undeclared, the host's table kept CAiState's (M3) */
+    virtual const char *GetStatus() const;
     virtual int Tick(CSealCtrlAi *ai);
     virtual bool Virtual3C(CSealCtrlAi *ai);
     virtual ~CAiSFollow();
@@ -902,6 +912,8 @@ public:
     /* +0x10 (0x604CE0) */
     virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x605800): an event interrupted by a held target or the AI's alarm */
+    /* +0x18: the event's kind by name (0x605A00). Undeclared, the host's table kept CAiState's (M3) */
+    virtual const char *GetStatus() const;
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     /* the step after `*step` picked by the flags and kept in m_8c, the delay in m_84, and
      * `*step` made it -- or 7, a wait, when there is a delay (OVL2 0x605950; its Tick calls it
@@ -1016,6 +1028,8 @@ public:
 class CAiSReload : public CAiState {
 public:
     CAiSReload() : CAiState(AI_STATE_RELOAD) {}
+    /* +0x08: nothing (0x6089E0). Undeclared, the host's table kept CAiState's (M3) */
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x608840): the reload itself -- a shout, the kit's reload, the stance, a wait */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);

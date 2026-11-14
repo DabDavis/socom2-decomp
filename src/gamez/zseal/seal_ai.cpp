@@ -38,6 +38,12 @@ class CAiSRescued : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
     virtual int Tick(CSealCtrlAi *ai);
+    /* slots 0x24, 0x28 and 0x30: a rescued SEAL neither attacks nor scans, and answers the script with
+     * its response (OVL2 0x555340-0x555360, the inlines' copies after the destructor's). Undeclared, the
+     * host's table kept CAiState's (M3) */
+    virtual bool CanAttack() const { return false; }
+    virtual bool CanScan() const { return false; }
+    virtual const char *GetScriptResponse() const { return "on_rescued"; }
     virtual ~CAiSRescued();
     void SetExtractValve(CValve *valve);
 
@@ -75,6 +81,11 @@ public:
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual bool Virtual44(AI_STATE state) { return state == m_state; }
     virtual bool Virtual48(int x, CAiState *other);
+    /* slot 0x18: the step's name (OVL2 0x55A810, after OnSignal) and slot 0x24: no attack while flag 1
+     * holds (0x575970, an inline's copy in the tail, after Virtual44's). Undeclared, the host's table
+     * kept CAiState's (M3) */
+    virtual const char *GetStatus() const;
+    virtual bool CanAttack() const { return !(m_flags & 1); }
     virtual ~CAiSPursue();
     /* a look cell (flag 2) or a cover cell (flag 4) to be found next (inlined with a bool; the
      * name ours) */
@@ -9598,6 +9609,31 @@ void CAiSPursue::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
         break;
     case SIGNAL_3:
         break;
+    }
+}
+
+/* the pursuit's step by name (OVL2 0x55A810; the strings the target's) */
+const char *CAiSPursue::GetStatus() const
+{
+    switch (m_phase) {
+    case 0:
+        return "delay";
+    case 1:
+        return "plan";
+    case 2:
+        return "goto";
+    case 3:
+        return "hold";
+    case 4:
+        return "panic";
+    case 5:
+        return "search";
+    case 6:
+        return "search_goto";
+    case 7:
+        return "search_pause";
+    default:
+        return "unknown";
     }
 }
 

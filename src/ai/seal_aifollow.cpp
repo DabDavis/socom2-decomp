@@ -725,6 +725,31 @@ static inline bool ClosingIn(CZSealBody *seal)
     return AiBit13(ai) && ai->GetAiState()->Virtual3C(ai) ? true : false;
 }
 
+/* the follow's step by name (OVL2 0x5FDEC0; the strings the target's) */
+const char *CAiSFollow::GetStatus() const
+{
+    switch (m_phase) {
+    case 0:
+        return "INIT";
+    case 2:
+        return "WAIT";
+    case 3:
+        return "FOLLOW";
+    case 7:
+        return "HIDE";
+    case 4:
+        return "HIDE PLAN";
+    case 5:
+        return "HIDE WAIT";
+    case 6:
+        return "HIDE FOLLOW";
+    case 8:
+        return "COVERING";
+    default:
+        return "UNKNOWN";
+    }
+}
+
 /* (OVL2 0x5FDD40; CAiSFollow::Tick's first call -- the master tested alive, IsAi through the local, the
  * AI through m_master again after that call).
  * The result one variable, zeroed in the early arm's delay slot; UpdatePhase(0) inlined; the navy SEAL bit

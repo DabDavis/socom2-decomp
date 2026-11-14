@@ -20,6 +20,7 @@
 #include "../gamez/zanim/zanim.h"
 
 #include <algorithm>
+#include <string.h>
 
 extern "C" {
 /* (CSealCtrlAi::RestoreAiMode, OVL2 0x56D090, zseal.h's: called twice on leaving the unknown state) */
@@ -281,6 +282,35 @@ static inline bool ActionCellTraversable(const CAiMapLoc &loc)
     CAiMap *map = AiMaps.GetMap(loc);
 
     return map ? IsTraversable__6CAiMapCFRC9CAiMapLoc(map, loc) : false;
+}
+
+/* the action's step by name (OVL2 0x5F0390; the strings the target's) */
+const char *CAiSAction::GetStatus() const
+{
+    switch (m_phase) {
+    case 0:
+        return "INIT";
+    case 1:
+        return "CREEP";
+    case 2:
+        return "PLAN";
+    case 3:
+        return "WAIT";
+    case 4:
+        return "GOTO";
+    case 5:
+        return "ALIGN";
+    case 6:
+        return "EXECUTE";
+    case 7:
+        return "ACTION";
+    case 8:
+        return "COMPLETE";
+    case 9:
+        return "FAILED";
+    default:
+        return "unknown";
+    }
 }
 
 /* the action state given its node action and mode (-1: the action's valve says): the action taken
@@ -603,6 +633,20 @@ static inline bool AnimPaused(const CZAnim *anim)
 /* the AI's sequence names (SOCOM 1's namespace sealai; OVL2 0x575210, seal_ai.cpp's) */
 namespace sealai {
 const char *get_aiseq(unsigned int i);
+}
+
+/* the script's anim by name, " CRIT" added to the kept copy when it is held -- the name itself returned,
+ * the copy never read here (OVL2 0x5F4170; SOCOM 1's, the same code: the copy a static of 64 bytes, the
+ * next bss row 0x40 on) */
+const char *CAiSScript::GetStatus() const
+{
+    static char status[64];
+    const char *name = m_58 ? ((CZAnim *)m_58)->GetName() : "";
+
+    strcpy(status, name);
+    if (m_hold)
+        strcat(status, " CRIT");
+    return name;
 }
 
 /* a response sequence run on the script's anim (m_58: ActivateEx stores it): with a name, while the
@@ -1118,6 +1162,12 @@ extern "C" bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int
     return r;
 }
 
+/* a plan has no step names (OVL2 0x5F1950) */
+const char *CAiSPlan::GetStatus() const
+{
+    return "";
+}
+
 /* a plan's events: reset; its route handed over on entry; on leaving for a sub-state the result
  * (4 when the route failed, or did not arrive while one was wanted) and its block freed (OVL2
  * 0x5F1800) */
@@ -1177,6 +1227,13 @@ void CAiSPlan::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
 class CAiSRescued : public CAiState {
 public:
     CAiSRescued() : CAiState(AI_STATE_RESCUED) {}
+    /* (its virtuals as seal_ai.cpp's class declares them: none defined here, so no table is emitted -- the
+     * port's vtable check reads this view's layout too) */
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    virtual int Tick(CSealCtrlAi *ai);
+    virtual bool CanAttack() const { return false; }
+    virtual bool CanScan() const { return false; }
+    virtual const char *GetScriptResponse() const { return "on_rescued"; }
     virtual ~CAiSRescued();
 
     unsigned char _58[0x64 - 0x58];
@@ -1185,6 +1242,15 @@ public:
 class CAiSPursue : public CAiState {
 public:
     CAiSPursue() : CAiState(AI_STATE_PURSUE) {}
+    /* (its virtuals as seal_ai.cpp's class declares them: none defined here, so no table is emitted -- the
+     * port's vtable check reads this view's layout too) */
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    virtual int Tick(CSealCtrlAi *ai);
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
+    virtual bool Virtual44(AI_STATE state) { return state == m_state; }
+    virtual bool Virtual48(int x, CAiState *other);
+    virtual const char *GetStatus() const;
+    virtual bool CanAttack() const { return !(m_flags & 1); }
     virtual ~CAiSPursue();
 
     unsigned char _58[0x60 - 0x58];
@@ -1198,7 +1264,11 @@ public:
         func_005F6F70(m_64);
         func_005F6F40(m_70);
     }
+    /* (its virtuals as seal_ai.cpp's class declares them: none defined here, so no table is emitted -- the
+     * port's vtable check reads this view's layout too) */
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
     virtual ~CAiSAnimate();
+    virtual int Tick(CSealCtrlAi *ai);
 
     unsigned char _58[0x64 - 0x58];
     unsigned char m_64[0xc];   // 0x64: a list (~CAiSAnimate erases it, 0x575CF0)
@@ -1208,7 +1278,14 @@ public:
 class CAiSGrenade : public CAiState {
 public:
     CAiSGrenade() : CAiState(AI_STATE_GRENADE) {}
+    /* (its virtuals as seal_ai.cpp's class declares them: none defined here, so no table is emitted -- the
+     * port's vtable check reads this view's layout too) */
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
+    virtual bool CanPursue(CSealCtrlAi *ai) const { return false; }
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
     virtual ~CAiSGrenade();
+    virtual int Tick(CSealCtrlAi *ai);
 
     unsigned char _58[0x70 - 0x58];
     CPnt3D m_70;   // 0x70
@@ -1223,6 +1300,13 @@ public:
 class CAiSDeploy : public CAiState {
 public:
     CAiSDeploy() : CAiState(AI_STATE_DEPLOY) {}
+    /* (its virtuals as seal_ai.cpp's class declares them: none defined here, so no table is emitted -- the
+     * port's vtable check reads this view's layout too) */
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    virtual int Tick(CSealCtrlAi *ai);
+    virtual bool CanAttack() const { return false; }
+    virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSDeploy();
 
     CPnt3D m_58;   // 0x58
@@ -2582,6 +2666,45 @@ inline bool BreachGrenadeOk(bool ok, int s)
     if (s != 6 && s != 7)
         r = ok;
     return r;
+}
+
+/* the breach's step by name (OVL2 0x5F33A0; the strings the target's -- a byte switch) */
+const char *CAiSBreach::GetStatus() const
+{
+    switch ((unsigned char)m_phase) {
+    case 0:
+        return "BEGIN";
+    case 1:
+        return "READY";
+    case 2:
+        return "STACK";
+    case 3:
+        return "STACK2";
+    case 4:
+        return "WAIT";
+    case 5:
+        return "OPEN";
+    case 6:
+        return "BANG";
+    case 7:
+        return "BANG_WAIT";
+    case 8:
+        return "PAUSE";
+    case 9:
+        return "ENTER";
+    case 10:
+        return "ENTER_WAIT";
+    case 11:
+        return "CLEAR";
+    case 12:
+        return "CLEAR_DONE";
+    case 13:
+        return "END";
+    case 14:
+        return "ABORT";
+    default:
+        return "UNKNOWN";
+    }
 }
 
 bool CAiSBreach::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
