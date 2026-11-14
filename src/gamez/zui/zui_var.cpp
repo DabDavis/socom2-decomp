@@ -110,6 +110,20 @@ CUIVariable::CUIVariable(const CUIVariable &v) : m_longevity(UIVL_DORMANT)
     m_longevity = v.m_longevity;
 }
 
+/* a dormant slot made the named variable: its name a string of the manager's current table, its
+ * longevity, and its value when given (FindDormantVar calls it; the copy constructor above makes its
+ * name the same way). Written for the port (M3), byte-exact: its draft called CreateString with the
+ * table alone -- on the EE the name was still in a1 from the caller. Called out of line: pinned */
+#pragma auto_inline off
+extern "C" void func_00386B80(CUIVariable *var, const char *name, _zrdr *value, UIVAR_LONGEVITY longevity)
+{
+    var->m_name = theUIVarManager.m_stab[theUIVarManager.m_currtab].CreateString(name);
+    var->m_longevity = longevity;
+    if (value)
+        var->Set(value);
+}
+#pragma auto_inline reset
+
 /* the variable emptied: its watchers detached, its value freed unless packed, made an integer
  * (SOCOM 1's Destroy; SOCOM II calls DetachAll for its first loop). Reset calls it out of line:
  * pinned */
