@@ -238,10 +238,10 @@ public:
     void SwitchToCompassMap();
     void SwitchToFullScreenMap();
 
-    unsigned char _0[0x498];
-    C2DFont *m_myfont;   // 0x498
-    unsigned char _49c[0x4fe0 - 0x49c];
-    MapCompass m_compass;   // 0x4fe0
+    unsigned char _0[Z_OFS(0x498, 0x488)];
+    C2DFont *m_myfont;   // 0x498 (host 0x488)
+    unsigned char _49c[Z_OFS(0x4fe0, 0x4fd0) - Z_OFS(0x49c, 0x48c)];
+    MapCompass m_compass;   // 0x4fe0 (host 0x4fd0: hud_main.cpp's m_mapcompass)
     MapCompass *GetCompass() { return &m_compass; }
 };
 
