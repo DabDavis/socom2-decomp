@@ -25,6 +25,13 @@ CSched_Manager::CSched_Manager() : m_inTick(false), m_priority(0.0f)
     m_FreeList.clear();
 }
 
+#if Z_PORT
+/* the port: the implicit destructor written (zanim.h's declaration): the free list, then the base */
+CSched_Manager::~CSched_Manager()
+{
+}
+#endif
+
 /* the task linked in before pos through the base's insert, its iterator handed back as it is --
  * two inline levels that each return the base's iterator (a STAND-IN for the original MSL's
  * list<T *>::insert, whose depths are not known: what it reproduces is the frame). MW lays out

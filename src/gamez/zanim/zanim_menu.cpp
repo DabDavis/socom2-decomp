@@ -253,7 +253,11 @@ extern CZWeaponList m_listWeapons__8CZWeapon;
 enum EQUIP_AMMO { AMMO_END = 254, AMMO_NONE = 255 };
 class CCharacterWeap {
 public:
+#if Z_PORT   /* the port: zchar.h's inline constructor, of which the host emits no out-of-line copy */
+    CCharacterWeap() : m_wepId(EQUIP_NONE), m_ammoId(AMMO_NONE), m_ammoCount(0), m_magCount(0) {}
+#else
     CCharacterWeap();                             /* 0x53EFD0 (OVL2: char_type.cpp's) */
+#endif
     CCharacterWeap(const CCharacterWeap &w);      /* 0x53EFA0 (OVL2: member by member) */
     ~CCharacterWeap();                            /* 0x53EF50 (OVL2: char_type.cpp's) */
     void SetupCharacterWeapon(EQUIP_ITEM item);   /* 0x53EEE0 */

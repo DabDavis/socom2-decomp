@@ -278,6 +278,11 @@ public:
  * first: defined here since round 42 (0x379D90), so this unit takes its table and the thunk 0x37D010 */
 class CWrappedText : public CRenderableString {
 public:
+#if Z_PORT
+    /* the port: zui_2d.h's inline constructor out of line, as the image's copy 0x27F250 is
+     * (zanim_menu.h's view calls it; the host emits an implicit one only as a base's) */
+    CWrappedText();
+#endif
     virtual ~CWrappedText();
     virtual void SetString(const char *s, bool translate);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
@@ -2102,6 +2107,16 @@ void CWrappedText::SetString(const char *s, bool translate)
     if (m_autoScroll)
         m_offset = 0;
 }
+
+#if Z_PORT
+/* the port: the inline constructor (the image's copy 0x27F250): the lines the window shows -1, the
+ * scroll and the arrows' textures cleared, the two arrows plain bitmaps, not one line only */
+CWrappedText::CWrappedText()
+    : m_shown(-1), m_c8(0), m_offset(0.0f), m_autoScroll(false), m_downTex(0), m_upTex(0),
+      m_displayOneLine(false)
+{
+}
+#endif
 
 /* the lines deleted, each taken off the list first (SOCOM 1's ~CWrappedText, 0x391480 there: the
  * same walk, ~CUIMapCtrl's shape), then the arrows and the renderable string */

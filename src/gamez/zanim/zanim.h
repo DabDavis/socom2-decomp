@@ -405,6 +405,12 @@ class CSched_Manager : public std::list<CSched_Task *> {
 public:
     /* SOCOM 1's (zsys_sched.cpp's initialiser builds zTaskScheduler through it, 0x34E860) */
     CSched_Manager();
+#if Z_PORT
+    /* the port: written (zsys_sched.cpp), so the host emits the complete-object destructor that
+     * zui.cpp's view of the class calls (clang emits only the base-object one of an implicit
+     * destructor; MW's implicit copy is 0x34EA70) */
+    ~CSched_Manager();
+#endif
     /* a task added in priority order, from the free list when it has one (SOCOM 1's, 0x34E6B0) */
     bool AddTask(const char *name, bool (*task)(float, void *), float priority, void *user_data);
     bool RemoveTask(void *task, bool all);

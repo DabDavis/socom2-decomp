@@ -8,7 +8,9 @@
 #include <string.h>
 #include <iostream>   /* (its pair is all __sinit_zanim_cmd_tick.cpp builds, 0x3FFB70) */
 
+#if !Z_PORT   /* the port: the host emits no out-of-line copy of zanim_anim.cpp's, so it inlines them */
 #define ZANIM_ARG_CTORS_CALLED
+#endif
 #include "zanim.h"
 #include "../zcamera/zcamera.h"
 #include "../znode/node_world.h"
