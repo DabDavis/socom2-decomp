@@ -7,6 +7,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+/* Z_PORT: con_ps2.cpp defines ~CPacketMsg in C++ for the host (this draft stores MW's tables); the
+ * PS2 build keeps the draft, byte-exact, as the hand-written one inlines ~CPacket into RecvPacket too */
+#if !Z_PORT
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK free(s32);                                  /* extern */
 extern M2C_UNK __vt__10CPacketMsg;
@@ -38,3 +41,4 @@ char *__dt__10CPacketMsgFv(char *arg0, s64 arg1) {
     }
     return arg0;
 }
+#endif

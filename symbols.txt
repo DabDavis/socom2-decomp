@@ -3664,7 +3664,7 @@
 0x0029E160 0x114 CheckEvent__8CConsoleFv  # OVL1; s1:align
 0x0029E280 0xA4 FindPacket__8CAckListFP7CPacket  # OVL1; s1:align
 0x0029E330 0xAC Clear__8CAckListFv  # OVL1; ours: ~CAckList (0x29E3E0) calls it first -- every packet deleted through std::transform onto the list itself, then clear(); SOCOM 1's ~CAckList (0x1EDF80) inlined the same
-0x0029E3E0 0x90 func_0029E3E0  # OVL1
+0x0029E3E0 0x90 __dt__8CAckListFv  # OVL1; the port M2 lane: ~CAckList (Clear, then the pointer list's teardown; a delete flag), what ~CConsole calls on its ack list at +0x10 (con_ps2.cpp)
 0x0029E470 0x70 GetEntityByIndex__11CEntityListCFUi  # OVL1; s1:order (CEntityList's first, as SOCOM 1's 0x1EE0F0: past the end gives none, else the walk index steps along a const_iterator); ent_main.cpp
 0x0029E4E0 0xB0 GetEntityById__11CEntityListCFUi  # OVL1; s1:order (CEntityList's second, as SOCOM 1's 0x1EE190: none for CEntity::invalidId (0x3EFFB0, SOCOM 1's invalidId__7CEntity), else the entity whose m_id matches); ent_main.cpp
 0x0029E590 0xE0 GetEntity__11CEntityListCFPCc  # OVL1; s1:order (CEntityList's third, as SOCOM 1's 0x1EE290: strcasecmp of the name against each entity's node's name); ent_main.cpp

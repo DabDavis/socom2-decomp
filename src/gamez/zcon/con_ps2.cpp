@@ -30,7 +30,9 @@ extern char _wbuf[];
 struct _con_packet_hdr {
     unsigned short size;   // 0x0
     unsigned short _2;
-    unsigned int _4;
+    unsigned short _4;   // 0x4: 0xE000 in a packet the console makes
+    unsigned char _6;   // 0x6: 'E' (the console's end of the link; an answer swaps the two)
+    unsigned char _7;   // 0x7: 'H'
     unsigned int id;   // 0x8
     unsigned int flags;   // 0xc
     unsigned int type;   // 0x10
@@ -149,14 +151,15 @@ struct DeletePacket {
 /* the packets sent that wait for an acknowledgement (SOCOM 1's; a pointer list and a timeout) */
 class CAckList : public std::list<CPacket *> {
 public:
-    /* ten seconds to wait (inline: the console's constructor stores it after the list's) */
-    CAckList() : m_timeout(10.0f) {}
-    /* (0x29E3E0, a draft: Clear, then the list's teardown) */
+    /* (0x29E3E0: Clear, then the list's teardown) */
     ~CAckList();
     void Clear();
     CPacket *FindPacket(CPacket *packet);
+};   // 0xc bytes: the wait is the console's (0x1C), stored between its two lists' constructions
 
-    float m_timeout;   // 0xc: 10 (the constructor's)
+/* the handlers' list (a class of its own: ~CConsole tears it down one inline level deeper than a
+ * plain pointer list -- four null tests, against ~CAckList's three; the name ours) */
+class CHandlerList : public std::list<CHandler *> {
 };
 
 /* the console (SOCOM 1's; the DECI2 socket at 0x30, -1 when closed; the members' names are ours) */
@@ -165,15 +168,17 @@ public:
     /* named, both lists made and emptied, not connected, then initialised (SOCOM 1's) */
     CConsole(const char *name);
     virtual ~CConsole();
-    virtual void OnDestroy();
+    /* the table's slots in its order (0x406180: OnConnect 0x29D1F0, OnDisconnect 0x29E070,
+     * OnDestroy 0x29E060) */
+    virtual void OnConnect();
     virtual void OnDisconnect();
+    virtual void OnDestroy();
 
     CHandler *FindHandler(const char *name);
     CHandler *FindHandler(unsigned int id);
     /* a handler for a packet type, made or updated (inline in SOCOM 1's OnConnect; out of line in
      * SOCOM II, 0x29CFC0: a placeholder outside this lane's range, its name ours) */
     unsigned int AddHandler(unsigned int id, const char *name, HANDLER fn, void *data);
-    void OnConnect();
     bool RecvPacket(CPacket *packet);
     int Send(CPacket *packet);
     int Tick();
@@ -193,7 +198,8 @@ public:
 
     std::string m_name;   // 0x4: the console's name
     CAckList m_acks;   // 0x10
-    std::list<CHandler *> m_handlers;   // 0x20
+    float m_ackTimeout;   // 0x1c: ten seconds to wait for an acknowledgement (the constructor's)
+    CHandlerList m_handlers;   // 0x20
     bool m_connected;   // 0x2c
     int m_socket;   // 0x30
     volatile int m_event;   // 0x34: the last DECI2 event, set by the socket's callback
@@ -216,6 +222,12 @@ CConsole CConsole::m_console("default console");
  * FindPacket's Compare, RecvPacket's handler lookups and GetFlags, Tick's RecvPacket), as in SOCOM
  * 1: the whole unit is pinned */
 #pragma auto_inline off
+
+/* every packet waiting deleted, then the list (OVL1 0x29E3E0, the console's destructor calls it) */
+CAckList::~CAckList()
+{
+    Clear();
+}
 
 /* every packet waiting deleted and the list emptied (SOCOM 1's ~CAckList inlined it; out of line
  * in SOCOM II, which the destructor calls first -- the name is ours): std::transform with a
@@ -436,6 +448,43 @@ void CConsole::Debug(int level, CPacket *packet, const char *prefix)
     }
 }
 
+/* a packet of a type made over a copy of the data, after a header the console fills: its size,
+ * the link's ends, the flags, the type and the next id (SOCOM 1's; OVL1 0x29DB50) */
+CPacket::CPacket(unsigned int type, const void *data, unsigned int size, unsigned int flags)
+    : m_data(0), m_size(0)
+{
+    m_size = size + sizeof(_con_packet_hdr);
+    m_data = (_con_packet_hdr *)calloc(m_size, 1);
+    memcpy((char *)m_data + sizeof(_con_packet_hdr), data, size);
+    _con_packet_hdr *hdr = m_data;
+
+    hdr->size = m_size;
+    hdr->_2 = 0;
+    hdr->_4 = 0xE000;
+    hdr->_6 = 'E';
+    hdr->_7 = 'H';
+    hdr = m_data;
+    hdr->flags = flags;
+    hdr->type = type;
+    hdr->id = ++_counter;
+}
+
+/* an answer to a packet: its bytes copied, flags set and cleared, the link's ends swapped (SOCOM
+ * 1's; OVL1 0x29DC30) */
+CPacket::CPacket(CPacket *packet, unsigned int set, unsigned int clear) : m_data(0), m_size(0)
+{
+    m_size = packet->m_size;
+    m_data = (_con_packet_hdr *)calloc(m_size, 1);
+    memcpy(m_data, packet->m_data, m_size);
+    _con_packet_hdr *hdr = m_data;
+
+    hdr->flags |= set;
+    hdr->flags &= ~clear;
+    unsigned char t = hdr->_6;
+    hdr->_6 = hdr->_7;
+    hdr->_7 = t;
+}
+
 /* the packet's data freed (OVL1 0x29DAD0; its table 0x405DD0 goes with it) */
 CPacket::~CPacket()
 {
@@ -491,6 +540,20 @@ unsigned int CPacket::GetPacketID() const
         return m_data->id;
     return 0;
 }
+
+#if Z_PORT
+/* the port: the arguments' array freed, then the packet's (SOCOM 1's; OVL1 0x29D910, whose PS2 row
+ * stays its draft's: the target inlines ~CPacket here alone -- RecvPacket's answer calls it out of
+ * line. ~CPacket made inline, or an auto-inline candidate, is inlined in both, and RecvPacket moves
+ * (0x29C -> 0x2BC against 0x2B4); a caller-side pragma (auto_inline, dont_inline) changes nothing
+ * under -inline deferred) */
+CPacketMsg::~CPacketMsg()
+{
+    if (m_args)
+        free(m_args);
+    m_args = 0;
+}
+#endif
 
 /* the argument count, 0 without data (SOCOM 1's) */
 unsigned int CPacketMsg::GetArgCount() const
@@ -556,14 +619,31 @@ void _on_error(CPacket *packet, CConsole *console, void *data)
 {
 }
 
-/* CConsole(const char *) 0x29D7B0 is its draft's (src/auto/ovl1/0029D7B0.c, renamed by its `as=`
- * line). Written here it is 3 instructions long (0xB0 against 0xA4): `CConsole(const char *name) :
- * m_name(name) { m_connected = false; m_handlers.clear(); m_acks.clear(); Initalize(); }` over the
- * ack list's inline `CAckList() : m_timeout(10.0f) {}` gives every call and store but keeps the
- * inlined constructor's `this` (s0 + 16) in s1 across the list's out-of-line constructor, where
- * the target stores the timeout at 28(s0); the timeout in the list's constructor body, through a
- * parameter (`m_acks(10.0f)`, a default argument), with the base named, or in the console's body
- * (late: 10 off) change nothing (build/scratch/core/v_conctor.py) */
+/* named, both lists made and emptied (the handlers' first), not connected, then initialised
+ * (SOCOM 1's; OVL1 0x29D7B0). The ten seconds' wait is the console's own member between its two
+ * lists, initialised in order -- as a member of an inline CAckList constructor MW kept the list's
+ * `this` in s1 across its constructor (0xB0 against 0xA4) */
+CConsole::CConsole(const char *name) : m_name(name), m_ackTimeout(10.0f)
+{
+    m_connected = false;
+    m_handlers.clear();
+    m_acks.clear();
+    Initalize();
+}
+
+/* disconnected and told so, every handler deleted, then the lists and the name (SOCOM 1's;
+ * OVL1 0x29D690) */
+CConsole::~CConsole()
+{
+    Disconnect();
+    OnDestroy();
+    while (m_handlers.size()) {
+        CHandler *h = m_handlers.front();
+
+        m_handlers.pop_front();
+        delete h;
+    }
+}
 
 CPacketMsg *CPacket::GetPacketMsg()
 {
