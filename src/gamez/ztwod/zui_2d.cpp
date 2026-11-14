@@ -5797,6 +5797,9 @@ class C2DVisual;
 namespace zdb {
 class CVisual {
 public:
+#if Z_PORT
+    CVisual();   /* the real one (vis_main.cpp): C2DVisual's constructor below calls it */
+#endif
     unsigned char _0[0x20];
     virtual ~CVisual();                                 /* +0x08 */
     virtual void Render(CMatrix *mtw);                  /* +0x0C */
@@ -5813,6 +5816,13 @@ public:
  * (0x4072D0), with the implicit destructor's copy (0x37C0A0) and Get2DVisual's (0x37C100) */
 class C2DVisual : public zdb::CVisual {
 public:
+#if Z_PORT
+    /* 0x370160: its only source was the draft auto/ovl1/00370160.c, which called CVisual's
+     * constructor without its `this` (on the EE it was still in a0) and stored MW's table (the image's
+     * 0x4072D0, at MW's 0x20): on the host the base constructor wrote through a stale pointer -- the
+     * executable's .got.plt, found with PLAT_WATCH -- loading dlgIntroScreen.rdr */
+    C2DVisual(C2D *c2d, zdb::CTextureRelocMgr *mgr);
+#endif
     virtual void Render(CMatrix *m);
     /* the visual is a 2D one: itself */
     virtual C2DVisual *Get2DVisual() { return this; }
@@ -5820,6 +5830,10 @@ public:
     C2D *m_2d;   // 0x68
     zdb::CTextureRelocMgr *m_mgr;   // 0x6c
 };
+
+#if Z_PORT
+C2DVisual::C2DVisual(C2D *c2d, zdb::CTextureRelocMgr *mgr) : m_2d(c2d), m_mgr(mgr) {}
+#endif
 
 /* the object drawn through the matrix, faded to the pipe's opacity first when it is not opaque (a
  * fade within a hundredth of the end drawn opaque: SOCOM 1's C2DVisual::Render; the scale applied
