@@ -1050,7 +1050,7 @@ void CZLineMap::Draw(zdb::CCamera *camera)
             (*set)[j]->Draw(camera);
     }
     for (i = 0; i < m_vecBitmaps.size(); i++)
-        m_vecBitmaps[i]->Draw(camera);
+        ((CPlainBmp *)m_vecBitmaps[i])->Draw(camera);
     for (int i = 0; i < m_laststring && i < 32; i++)
         m_stringlist[i].Draw(camera);
 }

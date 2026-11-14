@@ -87,6 +87,12 @@ public:
     /* inline: the soft keyboard's ~CBmpWithNode (0x38E490) inlines it; its out-of-line copy is
      * 0x1FDBE0 (zui_2d.cpp's stand-in defines it) */
     virtual ~CPlainBmp() {}
+    /* zui_2d.cpp's overrides (slots +0x0C, +0x10, +0x38, +0x6C): the first inline, the base's draw. Undeclared
+     * here, the soft keyboard's CBmpWithNode table kept C2DBitmap's and C2D's on the host (M3) */
+    virtual void Draw(zdb::CCamera *cam) { C2DBitmap::Draw(cam); }
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    virtual void Tick(float dT);
+    virtual void SetMapOffset(int x, int y);
     virtual void UpdateUIVar(CUIVariable *var);
     /* set up from an image spec and its texture (0x379080, zui_2d.cpp's) */
     void LoadSpec(const CImageSpec &spec, zdb::CTexHandle *tex);

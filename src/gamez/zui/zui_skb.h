@@ -230,6 +230,9 @@ public:
 class CBmpWithNode : public CPlainBmp {
 public:
     CBmpWithNode() : m_node(0) {}
+    /* C2D's slot +0x30: the node taken (inline, its copy after PrepKeyBitmaps, its first caller: OVL1
+     * 0x38BAB0). Undeclared, the host's table kept C2D's empty one (M3) */
+    virtual void Slot10(zdb::CNode *node) { m_node = node; }
     /* its node shown or hidden, if it has one (ours: zui_skb.cpp defines it, beside znode.h's
      * CNode) */
     inline void SetShown(bool on);

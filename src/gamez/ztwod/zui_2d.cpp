@@ -238,6 +238,9 @@ public:
         m_pulsing = false;
         m_period = 1.0f;
     }
+    /* the base's draw, inline (slot +0x0C: its copy the tactical map's, OVL1 0x20D5E0, after CZLineMap::Draw).
+     * Undeclared here, the host's table kept C2DBitmap's -- the port forwarded the name instead (M3) */
+    virtual void Draw(zdb::CCamera *cam) { C2DBitmap::Draw(cam); }
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void SetMapOffset(int x, int y);
@@ -266,6 +269,17 @@ public:
     virtual void Update();
     virtual void UpdateUIVar(CUIVariable *var);
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    /* three inline overrides, their copies after ~CSecureText (0x36AFA0-0x36AFE0): the string's tick
+     * (slot +0x38), the height as the spacing (+0x88) and the map offset kept as a float point (+0x6C).
+     * Undeclared, the host's table kept C2DString's and C2D's (M3) */
+    virtual void Tick(float dT) { C2DString::Tick(dT); }
+    virtual float GetSpacing() { return m_height; }
+    virtual void SetMapOffset(int x, int y)
+    {
+        m_offset.x = x;
+        m_offset.y = y;
+        m_offset.z = 0.0f;
+    }
     void LoadSpec(const CTextSpec &spec);
 
     C2DFont *m_alternateFont;   // 0xa0
@@ -3110,6 +3124,9 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     /* the frame time kept for the pad's zooms (SOCOM II's: slot +0x38 of the table, C2D's Tick) */
+    /* C2D's slot +0x30: the map's node taken (inline, its copy after ~C2DClock: OVL1 0x37C090). Undeclared,
+     * the host's table kept C2D's empty one (M3) */
+    virtual void Slot10(zdb::CNode *node) { m_node = node; }
     virtual void Tick(float dT);
     /* a pan step (SOCOM 1's OnPan, 0x36CA30) and the two zooms towards a node (SOCOM II's,
      * 0x36C3B0 and 0x36BFF0: the scale first, the node, the time -- the call's argument order;

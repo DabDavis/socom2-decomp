@@ -1474,12 +1474,14 @@ void SkbPrepDisplay(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr, C2DFont *fon
     g_skbDisplayNode->SetActive(false);
     int w = s_rect.m_size[0], h = s_rect.m_size[1];
 
-    s_bmp3.Slot10(SkbLoadBitmap(&s_bmp3, g_skbDisplayNode, w, h, s_str0.c_str(), mgr));
+    /* (each static's node handed over through C2D's slot: on the object itself, now that CBmpWithNode declares
+     * its inline Slot10, MW calls it directly and inlines the store -- the target makes the virtual call) */
+    ((C2D &)s_bmp3).Slot10(SkbLoadBitmap(&s_bmp3, g_skbDisplayNode, w, h, s_str0.c_str(), mgr));
     if (s_bmp3.m_node)
         s_bmp3.m_node->SetActive(false);
-    s_bmp2.Slot10(SkbLoadBitmap(&s_bmp2, g_skbDisplayNode, 0, 0, "SkbHighlight.tif", mgr));
-    s_bmp6.Slot10(SkbLoadBitmap(&s_bmp6, g_skbDisplayNode, 0, 0, 0, mgr));
-    s_bmp7.Slot10(SkbLoadBitmap(&s_bmp7, g_skbDisplayNode, 0, 0, 0, mgr));
+    ((C2D &)s_bmp2).Slot10(SkbLoadBitmap(&s_bmp2, g_skbDisplayNode, 0, 0, "SkbHighlight.tif", mgr));
+    ((C2D &)s_bmp6).Slot10(SkbLoadBitmap(&s_bmp6, g_skbDisplayNode, 0, 0, 0, mgr));
+    ((C2D &)s_bmp7).Slot10(SkbLoadBitmap(&s_bmp7, g_skbDisplayNode, 0, 0, 0, mgr));
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 10; j++) {
             CBmpWithNode &bmp = s_keyRows[i][j];
