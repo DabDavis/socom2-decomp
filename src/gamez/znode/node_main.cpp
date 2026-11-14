@@ -203,6 +203,14 @@ void CNode::ReserveVisuals(int n)
     m_visual.reserve(m_visual.size() + n);
 }
 
+/* the node taken out of its parent's children (written for the port, M3: its draft called the
+ * parent's DeleteChild through MW's vtable layout, the table at 0x60) */
+void CNode::RemoveFromParent()
+{
+    if (m_parent)
+        m_parent->DeleteChild(this);
+}
+
 void CNode::ReserveChildren(int n)
 {
     m_child.reserve(m_child.size() + n);
@@ -413,6 +421,15 @@ void CNode::SetNodeEx(CNodeEx *ex, bool recurse)
         for (CNodeVector::iterator it = m_child.begin(); it != m_child.end(); it++)
             (*it)->SetNodeEx(ex, recurse);
     }
+}
+
+/* the matrix set: copied, the grid told, marked changed (written for the port, M3: its draft
+ * called UpdateGrid through MW's vtable layout and the copy without its arguments) */
+void CNode::SetMatrix(const CMatrix *m)
+{
+    m_matrix = *m;
+    UpdateGrid();
+    m_socom2_a1 |= 2;
 }
 
 /* a position set: the translation, the grid told, the matrix marked changed */

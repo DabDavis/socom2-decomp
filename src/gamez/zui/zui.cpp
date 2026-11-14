@@ -459,6 +459,20 @@ extern COurGame theGame;
 /* the sound PlayCountSound plays (SOCOM 1's gp static; the name ours) */
 static CSnd *s_countSound;
 
+/* the menu's selection sound and the counters' sound, played once (SOCOM 1's; written for the port,
+ * M3: their drafts called CSnd's slot 0x1C through MW's vtable layout) */
+void PlaySelectionSound()
+{
+    if (theGame.m_selectionSound)
+        theGame.m_selectionSound->PlaySound(true, 0, 0xFF);
+}
+
+void PlayCountSound()
+{
+    if (s_countSound)
+        s_countSound->PlaySound(true, 0, 0xFF);
+}
+
 /* the flags a design's rdr is read with (SOCOM 1's global, a byte there: 0x49EA70, loaded as a word) */
 int LoadDialogsFromReader;
 
