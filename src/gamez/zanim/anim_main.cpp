@@ -719,6 +719,16 @@ extern "C" void func_00269170(CPnt3D *dir, zdb::CNode *node)
     dir->Normalize();
 }
 
+/* an anim's task on the scheduler (zanim_anim.cpp's AddTask: the anim its data): its frame, or done
+ * without one (SOCOM 1's; written for the port, M3: the draft called Tick with the arguments still
+ * in a0 and f12 on the EE, none on the host) */
+bool CZAnimMain::AnimSchedulerTick(float dT, void *data)
+{
+    if (data)
+        return ((CZAnim *)data)->Tick(dT);
+    return true;
+}
+
 /* a pattern's stars found from its end (five at most), each standing for 0: the pattern with
  * the digits written in, or 0 without a star */
 const char *ZAnimWildcardInit(char *str)
