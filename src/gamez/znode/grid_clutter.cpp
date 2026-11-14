@@ -693,6 +693,27 @@ void CClutterAnimManager::ClearAnimations(bool detach)
     m_ClutterAnims.clear();
 }
 
+/* a body pushing the props within a radius put on the list: its owner, position and velocity
+ * borrowed, its two vectors zeroed (SOCOM 1's, 0x2D7F30; written for the port, M3: its draft
+ * inserted at MW's list offsets 0x5C/0x60, on the host inside the matrix -- the first SEAL's
+ * creation, PostCreateSeal, faulted in it) */
+#if Z_PORT   /* PS2: the draft auto/ovl1/002D7F30.c (this is 0xEC against 0xD8) */
+void CClutterAnimManager::RegisterEffector(const void *owner, const CPnt3D *pos, float r, const CPnt3D *vel)
+{
+    CClutterEffector *e = new CClutterEffector;
+
+    if (e) {
+        e->m_owner = owner;
+        e->m_pos = pos;
+        e->m_radius = r;
+        e->m_vel = vel;
+        e->m_18 = CPnt3D::zero;
+        e->m_c = CPnt3D::zero;
+    }
+    m_ClutterEffectors.push_back(e);
+}
+#endif
+
 /* an owner's effector deleted and taken off the list (SOCOM 1's) */
 void CClutterAnimManager::UnRegisterEffector(const void *owner)
 {

@@ -383,10 +383,10 @@ struct CTSelect {
 /* what PostCreateSeal reads of the world: a shadow's owner and the clutter's animations (zdb::CWorld at 0x56C
  * and 0x6AC; a view) */
 struct CWorldViews {
-    unsigned char _0[0x56c];
-    void *m_shadow_node;   // 0x56c
-    unsigned char _570[0x6ac - 0x570];
-    zdb::CClutterAnimManager *m_clutter_anims;   // 0x6ac
+    unsigned char _0[Z_OFS(0x56c, 0x578)];
+    void *m_shadow_node;   // 0x56c: m_shadows' size word (host 0x578)
+    unsigned char _570[Z_OFS(0x6ac, 0x6bc) - Z_OFS(0x570, 0x57c)];
+    zdb::CClutterAnimManager *m_clutter_anims;   // 0x6ac: m_grid.m_ClutterAnimManager (host 0x6bc)
 };
 
 /* a box made of two corners (a stand-in: zmath.h's CBBox has no constructor; the first corner's copy through
