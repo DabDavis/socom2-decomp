@@ -54,10 +54,11 @@ void CZAnim::OnWeaponHitInit()
     }
 }
 
-/* SOCOM II's: alive, and its shield no more than the given amount (not named) */
-extern "C" bool func_002739B0(CZAnimEx *ex, float amount)
+/* SOCOM II's: alive, and its shield no more than the given amount -- slot 0x10 of __vt__8CZAnimEx
+ * 0x406090 (zanim.h's Slot10; the name ours) */
+bool CZAnimEx::Slot10(float amount)
 {
-    return ex->m_health > 0.0f && !(ex->m_shield > amount);
+    return m_health > 0.0f && !(m_shield > amount);
 }
 
 /* the list's extensions reset to full: an MSL for_each over the vector (its class iterators

@@ -2816,7 +2816,13 @@ bool UISetScreenOrigin(C2DAnimCmdHdr *hdr, float *dT)
 extern float hackPitchFactor;              /* 0x3DF198 (SOCOM 1's): the pitch's direction, inverted when not above 0 */
 /* the dialog option (0x3DD4A0: SOCOM 1's bDialogIsOn, a static of this unit's anonymous namespace there,
  * 0x474D88 -- declared, not defined: the unit's data is not written yet) */
+#if Z_PORT
+/* the port: defined, with its image value -- MW's @unnamed@ names are global (data.txt's row resolves
+ * the PS2 build's), the host's internal, so nothing else could define it */
+namespace { unsigned char bDialogIsOn = 1; }
+#else
 namespace { extern unsigned char bDialogIsOn; }
+#endif
 extern unsigned char ShouldConfirmVoiceCommands;   /* 0x3DF1D0 (SOCOM 1's) */
 /* the first-person bobbing (SOCOM 1's static member, 0x3DF190) */
 class CSealCtrl {

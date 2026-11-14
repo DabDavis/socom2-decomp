@@ -1567,7 +1567,7 @@
 0x001F5020 0x3AC func_001F5020  # OVL1
 0x001F53D0 0x24C func_001F53D0  # OVL1
 0x001F5620 0xC GetReaderFileName__14CMenuStateMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F5630 0x8 func_001F5630  # OVL1
+0x001F5630 0x8 Slot14__9CGameMenuFv  # OVL1; by hand (M2's link: slot 0x14 of __vt__9CGameMenu 0x406F80 and of __vt__14CMenuStateMenu 0x405040, CMenuStateMenu not overriding it -- CGameMenu's inline Slot14 (fts_state.h's name, ours; returns 1), its copy emitted in st_menu.cpp after CMenuStateMenu::GetReaderFileName 0x1F5620)
 0x001F5640 0x5E4 insert__Q23std80__vector_imp<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>,0>FP20MediusChatFwdMessageUiRC20MediusChatFwdMessage  # OVL1; by hand (the states lane, round 38): the room chat vector insert(position, n, x) -- 0x1F5020 (the line added to the online rooms chat) calls it twice through push_back, st_menu.cpp template tail emits it byte-exact after the unit functions, as the deleter destructor 0x1F5C30 and clear 0x1F5CA0 follow it
 0x001F5C30 0x68 __dt__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: ~BriefingRoom calls it for the room's chat vector at +0x88; 0x1F5020 builds a 0x80-byte MediusChatFwdMessage and inserts it through 0x1F5640, whose deleter destructor this is; clear 0x1F5CA0 then the data deleted)
 0x001F5CA0 0x8 clear__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv  # OVL1; by hand (the online lane's round 7, vetted by the integrator: the chat vector's deleter destructor 0x1F5C30 calls it first)
@@ -3050,7 +3050,7 @@
 0x00273950 0x8 func_00273950  # OVL1
 0x00273960 0x14 func_00273960  # OVL1
 0x00273980 0x24 GetHealth__6CZAnimFv  # OVL1; s1:align
-0x002739B0 0x44 func_002739B0  # OVL1
+0x002739B0 0x44 Slot10__8CZAnimExFf  # OVL1; by hand (M2's link: slot 0x10 of __vt__8CZAnimEx 0x406090, its only table -- zanim.h's Slot10, the name ours; zanim_anim.cpp's, written as the member)
 0x00273A00 0x48 Reset__8CZAnimExFPfPf  # OVL1; s1:align
 0x00273A50 0x48C OnWeaponHit__8CZAnimExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00273EE0 0xA8 Reset__14CZAnimExVectorFv  # OVL1; s1:callee by hand (CZAnimSet::Reset calls it on the CZAnimEx list where SOCOM 1's does)
@@ -6860,7 +6860,7 @@
 0x00370690 0x28C Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370920 0x6C Tick__12CPopUpDialogFf  # OVL1; s1:vtable by hand (the HUD lane, round 20: zui_2d.cpp -- slot +0x38 of CPopUpDialog's table 0x4073A0 (Tick, as SOCOM 1's Tick__12CPopUpDialogFf, which ticks the pointer at its 0x18C alone): SOCOM II ticks two parts at 0x340 and 0x790 through their tables, then the pointer at 0x32C)
 0x00370990 0x284 HandlePad__12CPopUpDialogFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00370C20 0x88 func_00370C20  # OVL1
+0x00370C20 0x88 Slot27__9C2DButtonFv  # OVL1; by hand (M2's link: slot 0x74 of __vt__9C2DButton 0x407790 and of the four classes deriving it -- CRadioStrip, CCheckBox, CSliderBar, CHandlerButton -- none overriding it; C3StateButton's own table 0x407820 holds 0 there, the slot zui_2d.cpp's Slot27, ours)
 0x00370CB0 0x58 func_00370CB0  # OVL1
 0x00370D10 0x9C ShowChoice__11CRadioStripFv  # OVL1; ours by hand (the HUD lane, round 24: zui_2d.cpp -- the radio strip's buttons shown after a new choice, the chosen one through slot 18 (SetActive), the others slot 19 (SetNormal); CRadioStrip::TickZAnimCmd calls it out of line)
 0x00370DB0 0x1B0 PressActive__11CRadioStripFv  # OVL1; s1:order by hand (the HUD lane, round 38: zui_2d.cpp -- SOCOM 1's CRadioStrip::PressActive (0x38A880 there): the same two walks over the strip's check boxes, a checked one not chosen unchecked and its second action (+0x464) run, the chosen one checked and its first (+0x454) run; SOCOM II's HandlePad calls it right after ShowChoice where SOCOM 1's called it alone) -- byte-exact with the first walk's iterator initialised and its end a local, the second's end a second local and the iterator reassigned
