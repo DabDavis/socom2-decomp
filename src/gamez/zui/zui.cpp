@@ -977,6 +977,17 @@ static inline zdb::CNode *AddNode(C2D *obj, zdb::CTextureRelocMgr *mgr, zdb::CNo
     return node;
 }
 
+#if Z_PORT
+/* 0x36AB20: AddNode's out-of-line copy (the soft keyboard's key and text nodes are made through it:
+ * zui_skbview.cpp's CSkbKeyProps::PrepForDisplay, zui_skbkeys.cpp's 0x398FC0). Its only source was
+ * the draft auto/ovl1/0036AB20.cpp, whose calls go through MW's vtable layout (the object's table
+ * at +0xC, the node's at +0x60) */
+extern "C" zdb::CNode *func_0036AB20(C2D *obj, zdb::CTextureRelocMgr *mgr, zdb::CNode *parent)
+{
+    return AddNode(obj, mgr, parent);
+}
+#endif
+
 /* a design's script library by index, or none (ours) */
 static inline const char *ScriptLibrary(const CGameDlgDesign &design, unsigned int i)
 {
