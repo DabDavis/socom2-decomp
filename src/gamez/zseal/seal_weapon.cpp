@@ -530,3 +530,62 @@ WEAPON_STATE CZSealBody::GetWeaponState() const
 {
     return (WEAPON_STATE)(m_weapon_state & ~0x10);
 }
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood: they read and wrote
+ * MW's offsets -- the points at 0x14A0-0x14BC, on the host 0x10 higher, the times at 0xEE4-0xEF0, 0xc
+ * lower) ---- */
+
+/* (OVL2 0x5DF370, 0x5DF3E0) */
+bool CZSealBody::GetFP(CPnt3D &pos)
+{
+    CSealAimPoints *a = (CSealAimPoints *)this;
+
+    if (a->m_curr_firept) {
+        pos = a->m_curr_firepos;
+        pos.Add(&m_posW, &pos);
+        return true;
+    }
+    return GetFirepointPos(pos, "firepoint");
+}
+
+bool CZSealBody::GetAP(CPnt3D &pos)
+{
+    CSealAimPoints *a = (CSealAimPoints *)this;
+
+    if (a->m_curr_aimpt) {
+        pos = a->m_curr_aimpos;
+        pos.Add(&m_posW, &pos);
+        return true;
+    }
+    return GetFirepointPos(pos, "aimpoint");
+}
+
+/* the wait's times: up, held (all but for ever), down, and their sum (OVL2 0x5DFFC0), and cleared (OVL2
+ * 0x5DFFF0) */
+void CZSealBody::WepWaitOn()
+{
+    CSealWepView *v = (CSealWepView *)this;
+
+    v->m_wep_upT = 0.1f;
+    v->m_wep_holdT = 100000.0f;
+    v->m_wep_downT = 0.5f;
+    v->m_wep_lenT = 100000.6f;
+}
+
+void CZSealBody::WepWaitOff()
+{
+    CSealWepView *v = (CSealWepView *)this;
+
+    v->m_wep_upT = 0.0f;
+    v->m_wep_holdT = 0.0f;
+    v->m_wep_downT = 0.0f;
+    v->m_wep_lenT = 0.0f;
+}
+
+/* the aim's direction against its goal, a dot product (OVL2 0x5DEE90, before UpdateAimParams; the name
+ * unknown). Its draft read both at MW's 0x1440 and 0x144C (on the host 0x10 higher) */
+extern "C" float func_005DEE90(CZSealBody *seal)
+{
+    return seal->m_aim_dir.x * seal->m_aim_goal.x + seal->m_aim_dir.y * seal->m_aim_goal.y +
+           seal->m_aim_dir.z * seal->m_aim_goal.z;
+}

@@ -798,6 +798,18 @@ void CZSealBody::SetMaxMotion()
     else
         set->m_aparams.m_ladder_updn = 0.0f;
 }
+/* the height of a type's reference point when its script has one, else 0 (OVL2 0x58C2B0, before
+ * 0x58C2F0; seal_env.cpp's ledge climb asks it; the name unknown). Written for the port, M3: its draft
+ * read the set at MW's 0x528 (on the host 0xc lower) and passed GetScript no type */
+extern "C" float func_0058C2B0(CZSealBody *seal, AnimType type)
+{
+    CZSIScriptCommon *a = seal->m_animset->GetScript(type);
+
+    if (a->m_4b_0)
+        return a->m_4c.y;
+    return 0.0f;
+}
+
 /* an anim's reference point when it has one, else the origin (OVL2 0x58C2F0, SOCOM 1's RefPoint by
  * role -- SOCOM 1's searched a list of points; SOCOM II reads the script's own -- so the name stays
  * a placeholder; CheckDILadder and three more call it) */
@@ -902,3 +914,32 @@ CObjAnims::~CObjAnims()
         delete *i;
     FreeVector(m_obj_anims);
 }
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood) ---- */
+
+extern "C" {
+/* (OVL2 0x57D710, seal_body.cpp's: whether the SEAL may take a weapon -- its short taken here as the int
+ * the caller holds: the target hands a1 on unnarrowed) */
+bool func_0057D710(CZSealBody *seal, int weapon);
+}
+
+/* a weapon's test, none for a negative one (OVL2 0x58C5D0, after BindAnimSet; seal_tasks.cpp asks it; the
+ * name unknown). Its draft called 0x57D710 without the SEAL or the weapon */
+extern "C" bool func_0058C5D0(CZSealBody *seal, int weapon)
+{
+    if (weapon < 0)
+        return false;
+    return func_0057D710(seal, weapon);
+}
+
+/* an anim type for the item in hand (OVL2 0x58C960, 0x58C820 with the SEAL's item; the name unknown). For
+ * the port only, M3: its draft (src/auto/ovl2/0058C960.c, kept for the PS2 build and left out of the port)
+ * read the item at MW's 0xF79. Not byte-exact here: the target loads the item signed (lb), and through
+ * 0x58C820's SEAL_ITEM_BYTE (unsigned) MW loads it lbu whatever the cast -- the original's item was some
+ * signed view this unit lacks */
+#if Z_PORT
+extern "C" AnimType func_0058C960(CZSealBody *seal, AnimType type)
+{
+    return func_0058C820(seal, type, (SEAL_ITEM_BYTE)seal->m_item);
+}
+#endif

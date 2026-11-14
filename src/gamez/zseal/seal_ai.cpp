@@ -10807,6 +10807,15 @@ static inline float FlatDistSq(const CPnt3D *a, const CPnt3D *b)
  * read as a variable) */
 extern "C" float data_006504A0;
 
+/* (OVL2 0x5582B0, a tail call to the noise's record below: the sensors' hearing calls it; the name
+ * unknown). Written for the port, M3: its draft passed nothing on */
+extern "C" bool func_005582C0(CAlertLevel *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount);
+
+extern "C" bool func_005582B0(CAlertLevel *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount)
+{
+    return func_005582C0(a, ai, pos, amount);
+}
+
 /* a noise heard at a point (level 4): a first one keeps the point and its cell; more of it add up
  * unless it moved ten or more away, which restarts the record on the new point; whether the record
  * now holds an untaken level 4 (OVL2 0x5582C0, new in SOCOM II: 0x5582B0 tail-calls it, 0x5B0420
@@ -11590,3 +11599,63 @@ extern "C" void func_00567340(CEntityCtrl *ctrl, unsigned int axis, float value)
     ctrl->m_throttle[axis] = value;
 }
 
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood: each says what its
+ * draft got wrong) ---- */
+
+/* whether the AI's SEAL holds a sniper rifle (OVL2 0x558F80; seal_airesponse.cpp's response asks it;
+ * the name unknown). Its draft passed the kit at MW's 0x5E0 (on the host 0xc lower) */
+extern "C" bool func_00558F80(CSealCtrlAi *ai)
+{
+    return ((CZSealBody *)ai->m_entity)->m_kit.HasSniperRifle() ? true : false;
+}
+
+/* a plan copied into the AI's path, the AI then moving (mode 3) (OVL2 0x562790, after SetRoute's;
+ * seal_aistate.cpp's path state calls it; the name unknown). Its draft passed CopyPlan no plan */
+extern "C" bool func_00562790(CSealCtrlAi *ai, const CAiPath *plan)
+{
+    bool ok = ((CAiPath *)&ai->m_path)->CopyPlan(plan);
+
+    if (ok)
+        ai->SetAiMode((AI_MODE)3);
+    return ok;
+}
+
+/* (OVL2 0x56DD50; SOCOM 1's). Its draft called the base's without the controller */
+void CSealCtrlAi::ResetToInitialState()
+{
+    CSealCtrl::ResetToInitialState();
+    ClearAiState(true);
+    ActivateEx((SEAL_TASK)1, true, true, GetSelect(), 3, m_entity->GetNode(), 0);
+}
+
+/* (OVL2 0x56DDC0; SOCOM 1's). Its draft called OnMissionEnd through MW's vtable */
+void CSealCtrlAi::OnRecycleEntity(CEntity *e)
+{
+    if (m_entity == e) {
+        if (m_unit)
+            CSealUnit::SealLeaveUnit((CZSealBody *)m_entity);
+        OnMissionEnd();
+    }
+}
+
+/* (OVL2 0x574800). Its draft called GetAiState without the controller */
+AI_STATE CSealCtrlAi::GetJumpFlag() const
+{
+    const CAiState *s = GetAiState();
+
+    if (s)
+        return s->m_state;
+    return AI_STATE_UNKNOWN;
+}
+
+/* the AI's target taken from what its entity knows of a SEAL, when it knows it (OVL2 0x5668F0, after
+ * SetTarget; the name unknown). Its draft passed FindTarget no entity and called SetTarget through MW's
+ * vtable */
+extern "C" void func_005668F0(CSealCtrlAi *ai, CZSealBody *seal)
+{
+    CTarget *t = ai->m_entity->m_targets.FindTarget(seal);
+
+    if (t)
+        ai->SetTarget(t);
+}

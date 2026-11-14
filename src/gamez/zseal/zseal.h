@@ -389,6 +389,10 @@ public:
     /* a weapon's ammunition taken in, the rounds read and handed back (SOCOM 1's PickupAmmo by its
      * arguments, the kit lane's round 32; OVL2 0x5BB000 -- HandlePickupAck's eight takes call it) */
     void PickupAmmo(class CZFTSWeapon *weapon, class CZAmmo *ammo, int *rounds);
+    /* an ammunition pickup taken, and the projectile shown in the hand (kit.h's; OVL2 0x5BB990,
+     * 0x5B85A0) */
+    void PickupAmmo(class CPickup *pickup);
+    void ShowProjectile();
     /* the fire mode set (kit.h's; OVL2 0x5C37B0, the kit lane's -- FIREMODE comes through zchar.h's
      * zweapon.h) */
     bool SetCurFireMode(FIREMODE mode);
@@ -1630,6 +1634,11 @@ public:
     virtual unsigned int GetAiNetState() const;
     /* slot 0xA4 (OVL2 0x574800: the current state's kind, or 0 -- SOCOM 1's GetAiStateEnum's body) */
     virtual AI_STATE GetJumpFlag() const;
+    /* back to the mission's start: the base's, the states cleared, the first task (OVL2 0x56DD50), and an
+     * entity recycled: its own SEAL's out of its squad, the mission ended for it (OVL2 0x56DDC0) --
+     * slots 0x58 and 0x48, seal_ai.cpp's */
+    virtual void ResetToInitialState();
+    virtual void OnRecycleEntity(CEntity *e);
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
@@ -2222,6 +2231,15 @@ public:
      * seal_weapon.cpp) */
     bool GetNodePos(const zdb::CNode *node, CPnt3D &pos, bool world);
     virtual bool Virtual68(CPnt3D *out);
+    /* back to the mission's start: the controller's (CEntity's slot +0x44 overridden: OVL2 0x547780,
+     * seal.cpp's) */
+    virtual void ResetToInitialState();
+    /* the target's, the head's and the neck's places in the world: the part (the spine's top, the head,
+     * the neck) through the node's matrix (CEntity's slots +0x30-+0x38 overridden: OVL2 0x5A3220,
+     * 0x5A31C0, 0x5A3160, after GetHeadParams; seal_env.cpp's) */
+    virtual CPnt3D *GetTargetPosW(CPnt3D *out);
+    virtual CPnt3D *GetHeadPosW(CPnt3D *out);
+    virtual CPnt3D *GetNeckPosW(CPnt3D *out);
     /* the root part and the state set (CBody's virtuals, overridden), with one of the SEAL's own
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
      * primary pointer (Destroy's state set reads +0x90) */
@@ -2436,6 +2454,8 @@ public:
     void UpdateAimParams();
     /* the weapon's wait begun (OVL2 0x5DFFC0, seal_weapon.cpp's -- the constructor calls it) */
     void WepWaitOn();
+    /* and ended (OVL2 0x5DFFF0) */
+    void WepWaitOff();
     /* the aim at a point, with its surface normal, or none (SOCOM 1's; OVL2 0x5DF4E0, seal_weapon.cpp
      * -- the kit lane) */
     bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);

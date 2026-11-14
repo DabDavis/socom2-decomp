@@ -3592,3 +3592,28 @@ CAiSPlan::~CAiSPlan()
 CAiSAction::~CAiSAction()
 {
 }
+
+/* ---- Written for the port, M3 (OVL2 drafts the host could not run as they stood) ---- */
+
+extern "C" {
+/* the two lists' constructors (OVL2 0x5F8C00, 0x5F8C20: their drafts) */
+void *func_005F8C00(void *list);
+void *func_005F8C20(void *list);
+}
+
+/* the animate state's two lists built (OVL2 0x5F6F70, 0x5F6F40: copies its inline constructor calls,
+ * each the list's constructor with the list handed back). Their drafts called the constructors without
+ * the list. Kept from the auto-inliner: Create (0x5F6550) calls them out of line */
+#pragma auto_inline off
+extern "C" void *func_005F6F70(void *list)
+{
+    func_005F8C00(list);
+    return list;
+}
+
+extern "C" void *func_005F6F40(void *list)
+{
+    func_005F8C20(list);
+    return list;
+}
+#pragma auto_inline reset

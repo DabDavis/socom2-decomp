@@ -1082,6 +1082,16 @@ void CSealUnit::Revive(CZSealBody *seal)
             return;
 }
 
+/* a SEAL asked whether it is in a squad by number, the arguments turned round (OVL2 0x5EDDC0, a tail
+ * call between the two; seal_airesponse.cpp's response asks it; the name unknown). Written for the port,
+ * M3: its draft passed IsMemberOfUnit no recurse flag. The callee's definition below is kept from the
+ * auto-inliner, which otherwise expands it here even defined after: the target's is a tail call */
+extern "C" bool func_005EDDC0(CZSealBody *seal, unsigned int team, bool recurse)
+{
+    return CSealUnit::IsMemberOfUnit(team, seal, recurse);
+}
+
+#pragma auto_inline off
 /* (OVL2 0x5EDDD0; GetUnitByTeam inlined) */
 bool CSealUnit::IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse)
 {
@@ -1089,6 +1099,7 @@ bool CSealUnit::IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse
 
     return unit ? unit->IsMemberOfUnit(seal, recurse) : false;
 }
+#pragma auto_inline reset
 
 /* the SEALs walked, then the escortees, then the squads under this one (OVL2 0x5EDCC0; SOCOM 1's) */
 bool CSealUnit::IsMemberOfUnit(CZSealBody *seal, bool recurse)
