@@ -1527,7 +1527,7 @@
 0x001F3550 func_001F3550
 0x001F38F0 func_001F38F0
 0x001F3B00 GetReaderFileName__9CExitMenuFv
-0x001F3B10 func_001F3B10
+0x001F3B10 Slot14__9CExitMenuFv
 0x001F3B20 MyTick__9CGameMenuFf
 0x001F3B30 PrepControls__9CGameMenuFPQ23zdb16CTextureRelocMgr
 0x001F3B40 __dt__7CFileIOFv
@@ -1563,7 +1563,7 @@
 0x001F6920 __dt__10CLoadStateFv
 0x001F69F0 __ct__10CLoadStateFv
 0x001F6A70 GetReaderFileName__9CLoadMenuFv
-0x001F6A80 func_001F6A80
+0x001F6A80 Slot14__9CLoadMenuFv
 0x001F6A90 HideRangeText__4CHUDFv
 0x001F6AD0 ShowRangeText__4CHUDFv
 0x001F6AE0 SetRangeTextPos__4CHUDFff
@@ -6714,7 +6714,7 @@
 0x0036AE50 clear__Q23std72__vector_deleter<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv
 0x0036AF30 __dt__11CSecureTextFv
 0x0036AFA0 Tick__17CRenderableStringFf
-0x0036AFB0 func_0036AFB0
+0x0036AFB0 GetSpacing__17CRenderableStringFv
 0x0036AFC0 SetMapOffset__17CRenderableStringFii
 0x0036AFF0 SetString__11CSecureTextFPCcb
 0x0036B0A0 UpdateUIVar__8C2DClockFP11CUIVariable
@@ -6909,7 +6909,7 @@
 0x0037BF20 Tick__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFf
 0x0037BF40 AddToRdr__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFP10CRdrEditor
 0x0037C020 __dt__8C2DClockFv
-0x0037C090 func_0037C090
+0x0037C090 Slot10__10CUIMapCtrlFPQ23zdb5CNode
 0x0037C0A0 __dt__9C2DVisualFv
 0x0037C100 Get2DVisual__9C2DVisualFv
 0x0037C110 __dt__11CScrollTextFv
@@ -7172,7 +7172,7 @@
 0x0038B580 ShowElements__13CSoftKeyboardFb
 0x0038B8A0 func_0038B8A0
 0x0038B8F0 PrepKeyBitmaps__13CSoftKeyboardFP12CBmpWithNodeP12CBmpWithNodeUcPCcPCcPQ23zdb16CTextureRelocMgr
-0x0038BAB0 func_0038BAB0
+0x0038BAB0 Slot10__12CBmpWithNodeFPQ23zdb5CNode
 0x0038BAC0 PrepForDisplay__13CSoftKeyboardFPQ23zdb16CTextureRelocMgrP7C2DFont
 0x0038BE40 func_0038BE40
 0x0038BE80 SwitchToNamed__13CSoftKeyboardFi
@@ -10223,8 +10223,8 @@
 0x00575BE0 CanAttack__10CAiSDeployCFv
 0x00575BF0 GetSealCtrlAi__11CSealCtrlAiFv
 0x00575C00 OnActionButton__11CSealCtrlAiFv
-0x00575C10 func_00575C10
-0x00575C20 func_00575C20
+0x00575C10 PerformReticleActions__11CSealCtrlAiFv
+0x00575C20 PerformProximityActions__11CSealCtrlAiFv
 0x00575C30 IsPlayer__11CSealCtrlAiCFv
 0x00575C40 IsAi__11CSealCtrlAiCFv
 0x00575C50 _max<f>__2aiFRCfRCf_RCf
