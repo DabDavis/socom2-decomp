@@ -6173,6 +6173,12 @@ bool CHandlerButton::HandlePad(const CPad *pad, int port)
     return false;
 }
 
+/* the counter's destructor (implicit: the string's; its table 0x4070D0 goes with it, reached
+ * through the thunk 0x37CFF0) */
+C2DCounter::~C2DCounter()
+{
+}
+
 /* the handler button's destructor (implicit: the button's; reached through the thunk 0x37D050) */
 CHandlerButton::~CHandlerButton()
 {
@@ -6193,6 +6199,21 @@ CHProgressBar::~CHProgressBar()
 /* the check box's destructor (its implicit one: the check, the two actions, then the button's;
  * reached only through the thunk 0x37D0D0, the UIVarMixin's table's) */
 CCheckBox::~CCheckBox()
+{
+}
+
+/* the radio strip's destructor (implicit: the button's) */
+CRadioStrip::~CRadioStrip()
+{
+}
+
+/* the scrolling text's destructor (implicit: the wrapped text's) */
+CScrollText::~CScrollText()
+{
+}
+
+/* the clock's destructor (implicit: the string's; its tables 0x407190 and the mixin's 0x407220) */
+C2DClock::~C2DClock()
 {
 }
 
