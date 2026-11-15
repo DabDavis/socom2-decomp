@@ -594,7 +594,7 @@ public:
         return o;
     }
 
-    unsigned char _0[0x94];
+    unsigned char _0[Z_OFS(0x94, 0xa0)];   /* CNode's m_nodeEx: the host's, its vtable pointer first, tag_NODE_PARAMS at 16 */
     CDiTarget *m_owner;   // 0x94
 };
 class CNet111 {

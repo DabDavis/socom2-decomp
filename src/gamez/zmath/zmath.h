@@ -331,9 +331,12 @@ public:
 /* the port's stand-ins for the asm (VU0's register file and lane helpers, the fences): M1 */
 #include <zport.h>
 /* the port: vf4-vf7, the matrix's rows COPIED at the load as lqc2 copies them (a later write to
- * the matrix does not reach the transforms), for the transforms that follow; VU0 state lives
- * across these inlines within one function, so one copy per unit is enough */
-static float z_vu0_rows[16];
+ * the matrix does not reach the transforms), for the transforms that follow. ONE array, the
+ * platform's (vu0.c), as VU0's registers are one: these helpers are inline, and at -O0 each is
+ * emitted out of line and merged across units, so a `static` array here gave _LoadMatrix one
+ * unit's copy and _TransformPointXYZ another's -- every CMatrix::Transform on the host returned
+ * zeros (the front end's bitmaps drawn at a point) */
+extern "C" float z_vu0_rows[16];
 #endif
 inline void _LoadMatrix(const CMatrix *m)
 {
