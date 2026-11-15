@@ -38,7 +38,11 @@ void CSndGroup::LoadSoundGroups(const char *name)
     }
 }
 
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+#else
 int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+#endif
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 extern "C" unsigned int func_003A59C0(const char *name);   /* a name's hash (not named yet) */
 

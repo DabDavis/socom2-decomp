@@ -175,9 +175,21 @@ public:
 struct _zrdr;
 
 /* the reader's finders (zrdr) */
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+bool zrdr_findint(const _zrdr *rdr, const char *name, int *value, int n);
+#else
 int zrdr_findint(const _zrdr *rdr, const char *name, int *value, int n);
+#endif
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+bool zrdr_findPNT3D(const _zrdr *rdr, const char *name, PNT3D *value);
+#else
 int zrdr_findPNT3D(const _zrdr *rdr, const char *name, PNT3D *value);
+#endif
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+bool zrdr_findreal(const _zrdr *rdr, const char *name, float *value, int n);
+#else
 int zrdr_findreal(const _zrdr *rdr, const char *name, float *value, int n);
+#endif
 
 /* a line or polygon type's look (SOCOM 1's DWARF); built white, half opaque, one wide -- the
  * colour's three stores in reverse, as one chained assignment gives them (operator[]'s new
@@ -591,7 +603,11 @@ class CZSealBody : public CEntity {
 /* the maps a map's list shows, and the AI's maps (fts_mission.cpp's, ai_maps.cpp's) */
 int ftsGetNumVisibleMaps(unsigned int list);
 /* (an int here: Tick compares and passes the returned map with no narrowing, as SOCOM 1's) */
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+unsigned char ftsGetVisibleMap(unsigned int list, int i);
+#else
 int ftsGetVisibleMap(unsigned int list, int i);
+#endif
 
 class CAiMaps {
 public:

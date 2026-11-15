@@ -186,8 +186,15 @@ class CLocTable;
 class CStringTables : public std::vector<CLocTable *> {
 public:
     CStringTables() : m_last(0) { reserve(12); }
-    /* an int here (util_loc.cpp's is unsigned short): TranslateString tests the id unextended */
+    /* an int here (util_loc.cpp's is unsigned short): TranslateString tests the id unextended. The
+     * port declares the halfword the definition returns: on the host the callee sets only AX, so
+     * an int read the upper half of EAX as well -- every id a heap address's high bits over the
+     * real one, and every looked-up label "(UNLOCALIZED)" */
+#if Z_PORT
+    unsigned short GetId(const char *name, const char *table);
+#else
     int GetId(const char *name, const char *table);
+#endif
     const char *GetString(int id, const char *table);
     LOCENTRY *Find(int id, const char *table);
     /* a string's own scale and offsets (SOCOM II's: the entry looked up and nothing read from it --

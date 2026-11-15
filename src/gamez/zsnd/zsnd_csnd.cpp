@@ -60,7 +60,11 @@ extern char cur_mission_name[];         /* 0x3DFFF0 */
 
 extern int data_003DFFB0, data_003DFFB8, data_003DFFC0, data_003DFFC8;
 static bool snd_system_initialized;     /* SOCOM 1's static (LOCAL in its symbols) */
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+#else
 int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+#endif
 extern "C" int toupper(int c);
 extern "C" int atoi(const char *s);
 

@@ -11,7 +11,11 @@
 
 /* SOCOM 1's zrdr_findstring and zrdr_findreal, not written yet */
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+#else
 int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+#endif
 
 CSndSequence::CSndSequence()
     : m_current(-1), m_name(0), m_fading(false)

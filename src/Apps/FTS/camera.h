@@ -25,7 +25,11 @@ struct CDIKind {
 /* a hit along a ray (SOCOM 1's DWARF) */
 struct IntersectStruct {
     /* the hit's polygon read (int_main.cpp's, 0x2DC150-0x2DC1D0; the names the map's) */
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+    bool GetPolyFlag27();
+#else
     int GetPolyFlag27();
+#endif
     bool IsInside();
     unsigned int GetRegion();
     int GetMaterial();

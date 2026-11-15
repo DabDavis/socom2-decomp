@@ -42,8 +42,16 @@ public:
 
 /* the rdr reader (zrdr.h's: a file is read as its root value) */
 class CRdrFile;
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *v, int n);
+#else
 int zrdr_findint(const _zrdr *rdr, const char *tag, int *v, int n);
+#endif
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *v, int n);
+#else
 int zrdr_findreal(const _zrdr *rdr, const char *tag, float *v, int n);
+#endif
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 extern "C" int strcasecmp(const char *a, const char *b);

@@ -214,7 +214,11 @@ extern int CreateSecondPassTreeContext_ForChinese(CASR *c);
 extern void FreeSecondPassContext(CASR *c);
 extern int DoLabelStart(CASR *c);
 extern int DoLabelStop(CASR *c, const unsigned char *blocks);
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+extern unsigned char SendLabelsToEngine(CASR *c, const unsigned char *blocks, int a);
+#else
 extern int SendLabelsToEngine(CASR *c, const unsigned char *blocks, int a);
+#endif
 
 /* SOCOM 1's casrGetParamNoClearErrorLog and casrSetParamNoClearErrorLog, inlined here: the
  * parameter calls of a second pass keep the caller's error (their own copies are cb.c's rows) */

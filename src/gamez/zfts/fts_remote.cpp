@@ -368,7 +368,11 @@ public:
  * (OVL2's) */
 class CPickup {
 public:
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+    static unsigned short GetEntityIDFromNetID(unsigned int id);   /* OVL2 0x541CC0 */
+#else
     static int GetEntityIDFromNetID(unsigned int id);   /* OVL2 0x541CC0 */
+#endif
     static void NetTick(const CPnt3D *pos, float dT);   /* OVL2 0x5423E0 */
 };
 

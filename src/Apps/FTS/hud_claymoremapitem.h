@@ -45,7 +45,11 @@ public:
 class CZSealBody {
 public:
     /* whether its view cone is new: the flag at 0x105C, taken once (OVL2 0x5A5450, SOCOM 1's) */
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+    bool HudUpdateViewCone();
+#else
     int HudUpdateViewCone();
+#endif
 
     unsigned char _0[0x1c];
     CPnt3D m_posW;   // 0x1c

@@ -291,7 +291,11 @@ enum LOBBY_STATE {
  * offsets; the members the handlers call, by their map rows -- the online lane's names) */
 class CZOnlineLobby {
 public:
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+    bool RemovePlayerFromClan(const char *name);
+#else
     int RemovePlayerFromClan(const char *name);
+#endif
     void SetMissionSequence(unsigned char idx, unsigned char *seq);   /* 0x2F8270 */
     void ResetMissionSequence();                                      /* 0x2F8230 */
     void GetLadderInfo();                        /* 0x2EB2C0 (the online lane's names) */

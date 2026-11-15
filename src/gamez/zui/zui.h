@@ -55,7 +55,11 @@ struct _zrdr {
     /* (ours) */
     bool IsReal() { return type == 2; }
     /* the value's type, an array's count and its items (ours, as zrdr.h's) */
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+    unsigned char Type() const { return type; }
+#else
     unsigned int Type() const { return type; }
+#endif
     unsigned int Count() const { return IsArray() ? length : 0; }
     _zrdr *Item(unsigned int i) const { return i < Count() ? &array[i] : 0; }
     /* a number: a real as it is, an integer converted, anything else 0 (ours, as zanim.h's) */

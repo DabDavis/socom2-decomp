@@ -29,7 +29,11 @@ public:
     int GetNumMags(int index);
     int GetAmmoCount(int index);      // OVL2 0x5C38A0
     int GetMaxAmmoCount(int index);   // OVL2 0x5C3CF0
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+    bool isSelectableItem(int index);  // OVL2 0x5BDC30
+#else
     int isSelectableItem(int index);  // OVL2 0x5BDC30
+#endif
     int GetSelectedItemNum();         // OVL2 0x5BE040
     void SetCurItemByIndex(int index);   // OVL2 0x5C4B10
     const char *GetItemName(int index);
@@ -110,7 +114,11 @@ public:
 
     CZKit *GetKit() { return &m_kit; }
     /* SOCOM 1's CanChangeItem (OVL2 0x5A8CB0) and IsChangingWeapons with a flag added (0x5A7980) */
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+    bool CanChangeItem();
+#else
     int CanChangeItem();
+#endif
     bool IsChangingWeapons(bool flag);
 };
 

@@ -1351,7 +1351,11 @@ struct zanim_cmd_shadowlight {
 class CAiMapLoc;
 class CAiMaps {
 public:
+#if Z_PORT   /* the definition's narrow return: on the host the callee sets only AL/AX (tools/retcheck.py) */
+    bool GetLocation(const CPnt3D *p, CAiMapLoc &loc);                           /* 0x52DC70 */
+#else
     int GetLocation(const CPnt3D *p, CAiMapLoc &loc);                           /* 0x52DC70 */
+#endif
     float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *p, bool b);   /* 0x52CE10 */
 };
 extern CAiMaps AiMaps;
