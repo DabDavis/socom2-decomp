@@ -2254,6 +2254,17 @@ extern "C" void z_pipe_texcmd(unsigned int i, int *flush, zdb::CGSTexBuffer **lo
     *signal = c.m_signal;
 }
 
+/* the queued commands emptied (none to load, none to signal, no flush): the VIF1 interrupt then
+ * only restarts VIF1 */
+extern "C" void z_pipe_texcmds_clear()
+{
+    for (int i = 0; i < 128; i++) {
+        thePipe.m_texLoadChain[i].m_cmd = 0;
+        thePipe.m_texLoadChain[i].m_load = 0;
+        thePipe.m_texLoadChain[i].m_signal = 0;
+    }
+}
+
 /* the pipe's camera set, as CCoreState::Init sets it */
 extern "C" void z_pipe_set_camera(zdb::CCamera *cam)
 {
