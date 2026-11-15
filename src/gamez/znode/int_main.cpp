@@ -6,8 +6,7 @@
  * CDIPoly and the edge math -- are the next unit, int_shapes.cpp (0x2DC7A0-0x2DDC2F): SetCDIBBox and
  * the shapes' constructors and destructors call CDI() and ~CDI out of line and CDI::Create calls
  * CDIPoly() out of line, where one unit had needed all three pinned (README "The inlining mode,
- * measured"). Written so far: the small functions below. Unwritten: ~DiIntersect (0x2DC680),
- * IsInside and GetRegion. Defined in reverse of their image order
+ * measured"). Written so far: the small functions below. Unwritten: ~DiIntersect (0x2DC680). Defined in reverse of their image order
  * (-inline deferred). */
 
 #include "node_world.h"
@@ -147,6 +146,25 @@ int IntersectStruct::GetMaterial()
     if (!material)
         material = CMaterialExArray::m_defaultMaterial;
     return material;
+}
+
+/* the hit polygon's first word, every bit for none (SOCOM 1's). Its m2c draft read the word at
+ * MW's +0 of the polygon, where the host's CDI has its vtable pointer: the SEAL's ground probes
+ * masked their hits by a code address */
+unsigned int IntersectStruct::GetRegion()
+{
+    if (m_poly)
+        return m_poly->_0;
+    return -1;
+}
+
+/* whether the hit polygon is an inside one (SOCOM 1's). Its m2c draft read the flag's byte at
+ * MW's +0xA, on the host inside the polygon's m_refcount */
+bool IntersectStruct::IsInside()
+{
+    if (m_poly)
+        return m_poly->m_flags.m_inside;
+    return false;
 }
 
 /* whether the hit polygon has the flag at bit 27 of its parameters (new in SOCOM II, between

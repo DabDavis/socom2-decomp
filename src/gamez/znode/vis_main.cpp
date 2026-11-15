@@ -480,6 +480,16 @@ _word128 *CVisual::CopyBuffer(CVisBase **out, unsigned int vid)
     return (_word128 *)((char *)b->m_data + b->m_c);
 }
 
+/* the centroid zeroed (SOCOM 1's). Its m2c draft stored at MW's +0xC, the head's centroid, where
+ * the host's CVisual has its vtable pointer first: on the port it zeroed m_8/m_a and the centroid's
+ * x and y, leaving z */
+void CVisual::UpdateCentroid()
+{
+    m_centroid.x = 0.0f;
+    m_centroid.y = 0.0f;
+    m_centroid.z = 0.0f;
+}
+
 /* the head's parameters, then the detail layers: their count, the block's size and the block,
  * each layer's data pointer set into the block after the layers (SOCOM 1's) */
 bool CVisual::Read(zar::CZAR &zar)
