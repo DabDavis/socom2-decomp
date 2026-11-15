@@ -36,6 +36,8 @@ int sceGsSetDefDrawEnv(sceGsDrawEnv1 *dp, short psm, short w, short h, short zte
 		dp->test1 = SCE_GS_SET_TEST(0, 0, 0, 0, 0, 0, 1, ztest & 3);
 	else
 		dp->test1 = SCE_GS_SET_TEST(0, 0, 0, 0, 0, 0, 1, 1);
+#if !Z_PORT	/* the port's GS takes the packet synchronously */
 	__asm__ __volatile__("sync.l");
+#endif
 	return 8;
 }

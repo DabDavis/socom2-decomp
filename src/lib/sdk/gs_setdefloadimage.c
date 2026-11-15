@@ -58,6 +58,8 @@ int sceGsSetDefLoadImage(sceGsLoadImage *lp, short dbp, short dbw, short dpsm,
 	lp->giftag1.NLOOP = size;
 	lp->giftag1.EOP = 1;
 	lp->giftag1.FLG = SCE_GIF_IMAGE;
+#if !Z_PORT	/* the port's GS takes the packet synchronously */
 	__asm__ __volatile__("sync.l");
+#endif
 	return sizeof(sceGsLoadImage) >> 4;
 }

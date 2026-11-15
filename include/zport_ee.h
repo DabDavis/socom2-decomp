@@ -46,6 +46,8 @@ unsigned int z_ee_cop0_count(void);
  * zsys_fifo.cpp's kick, ~2,000 a mission frame at eight accesses each (M3's 4.5 frames/s) */
 unsigned int z_ee_reg_read(unsigned int addr);
 void z_ee_reg_write(unsigned int addr, unsigned int value);
+/* VU1 reset (FBRST bit 9 through VU0's vi28: libgraph's sceGsResetPath) */
+void z_ee_vu1_reset(void);
 
 /* ---- VU0 ------------------------------------------------------------------------------------ */
 

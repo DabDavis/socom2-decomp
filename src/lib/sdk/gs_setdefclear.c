@@ -24,6 +24,8 @@ int sceGsSetDefClear(sceGsClear *cp, short ztest, short x, short y, short w, sho
 		cp->testb = SCE_GS_SET_TEST(0, 0, 0, 0, 0, 0, 1, ztest & 3);
 	else
 		cp->testb = SCE_GS_SET_TEST(0, 0, 0, 0, 0, 0, 1, 1);
+#if !Z_PORT	/* the port's GS takes the packet synchronously */
 	__asm__ __volatile__("sync.l");
+#endif
 	return 6;
 }

@@ -38,7 +38,13 @@ static int checkModelVersion(void)
 
 static void _GetGsDxDyOffset(int mode, int *dx, int *dy, int *dw, int *dh)
 {
+#if Z_PORT
+	/* the BIOS's display offsets (syscall 128): none, as on the models the call skips */
+	*dx = *dy = *dw = *dh = 0;
+	(void)mode;
+#else
 	__asm__ __volatile__("li $3, 128\n\tsyscall");
+#endif
 }
 
 void sceGsSetDefDispEnv(sceGsDispEnv *disp, short psm, short w, short h, short dx, short dy)

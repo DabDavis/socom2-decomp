@@ -24,7 +24,11 @@
  * exit test copied before it (as every wait's), which jump.c's duplicate_loop_exit_test refuses
  * for a test holding an asm with operands -- read in the test, the loop is entered by a jump (8
  * bytes short); through a `$6` register variable, the test's AND is tied to a2 (4 words) */
+#if Z_PORT
+#define	VPU_STAT(s)	((s) = 0)	/* the port's VU1 runs each program to its end at MSCAL: idle here */
+#else
 #define	VPU_STAT(s)	__asm__ __volatile__("cfc2 %0, $vi29" : "=r"(s))
+#endif
 
 #define	TIMEOUT(msg) { \
 		scePrintf(msg); \

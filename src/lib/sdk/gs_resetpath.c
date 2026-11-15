@@ -21,6 +21,9 @@ void sceGsResetPath(void)
 
 	*VIF1_FBRST = 1;
 	*VIF1_ERR = 2;
+#if Z_PORT
+	z_ee_vu1_reset();	/* FBRST's bit 9 through vi28: the platform's VU1 */
+#else
 	__asm__ __volatile__(
 		"sync\n"
 		"cfc2 %0, $vi28\n"
@@ -28,6 +31,7 @@ void sceGsResetPath(void)
 		"ctc2 %0, $vi28\n"
 		"sync.p"
 		: : "r" (0));
+#endif
 	*VIF1_FIFO = *(u_long128 *)&init_vif_regs[0];
 	*VIF1_FIFO = *(u_long128 *)&init_vif_regs[4];
 	*GIF_CTRL = 1;

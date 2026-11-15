@@ -28,6 +28,8 @@ int sceGsSetDefStoreImage(sceGsStoreImage *sp, short sbp, short sbw, short spsm,
 	sp->finishaddr = SCE_GS_FINISH;
 	sp->trxdir = SCE_GS_SET_TRXDIR(1);
 	sp->trxdiraddr = SCE_GS_TRXDIR;
+#if !Z_PORT	/* the port's GS takes the packet synchronously */
 	__asm__ __volatile__("sync.l");
+#endif
 	return sizeof(sceGsStoreImage) >> 4;
 }

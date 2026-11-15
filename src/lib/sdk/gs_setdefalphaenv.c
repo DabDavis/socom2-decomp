@@ -15,6 +15,8 @@ int sceGsSetDefAlphaEnv(sceGsAlphaEnv *ap, short pabe)
 	ap->texa = (0x81UL << 32) | 0x807F;
 	ap->fba1addr = SCE_GS_FBA_1;
 	ap->fba1 = 0;
+#if !Z_PORT	/* the port's GS takes the packet synchronously */
 	__asm__ __volatile__("sync.l");
+#endif
 	return 4;
 }
