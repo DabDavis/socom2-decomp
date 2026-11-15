@@ -1367,7 +1367,13 @@ void CPipe::RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
     else
         m = s_stack.Multiply(&node->m_matrix, true);
     if (node->m_facade)
+#if Z_PORT
+        /* the camera's matrix: MW's CNode has its matrix at 0 (the vtable pointer after it), the
+         * host's the vtable pointer first -- the cast read it as a matrix's first row */
+        node->ComputeFacadeMatrix(&m_camera->m_matrix, m);
+#else
         node->ComputeFacadeMatrix((CMatrix *)m_camera, m);
+#endif
     if (fov != 1) {
         PNT4D corners[8];
 
