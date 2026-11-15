@@ -2216,3 +2216,48 @@ void CFlareSystem::Tick()
         }
     }
 }
+
+#if Z_PORT
+/* the port's oracle (socom-port's modules/oracle.cpp, op 17) reads the pipe's frame state through
+ * these: the class is this unit's own, so nothing outside can name its members. Nothing in the
+ * game calls them; the PS2 build has none */
+extern "C" unsigned int z_pipe_state(int what)
+{
+    switch (what) {
+    case 0: return thePipe.m_texLoadIdx;
+    case 1: return thePipe.m_delayedNodeNum;
+    case 2: return thePipe.m_LODFilter;
+    case 3: return thePipe.m_alpha.m_drawList.size();
+    case 4: return thePipe.m_polys;
+    case 5: return thePipe.m_simpletrans;
+    case 6: return thePipe.m_doUI;
+    case 7: return (unsigned int)thePipe.m_overlay;
+    case 8: return (unsigned int)(thePipe.m_alpha.m_next - thePipe.m_alpha.m_visualList);
+    case 9: return thePipe.m_opacity_stack_index;
+    }
+    return 0;
+}
+
+/* a texture command RenderWorld queued: its flush bit, the buffer to load and the one to signal */
+extern "C" void z_pipe_texcmd(unsigned int i, int *flush, zdb::CGSTexBuffer **load, zdb::CGSTexBuffer **signal)
+{
+    tag_TexLoadCmds &c = thePipe.m_texLoadChain[i & 127];
+
+    *flush = c.m_bits.m_flush;
+    *load = c.m_load;
+    *signal = c.m_signal;
+}
+
+/* the pipe's camera set, as CCoreState::Init sets it */
+extern "C" void z_pipe_set_camera(zdb::CCamera *cam)
+{
+    zdb::CVisual::m_camera = thePipe.m_camera = cam;
+}
+
+/* the alpha pass's per-frame texture list (CAlpha::m_dyntexlist), which RenderWorld hands the alpha
+ * buffer and empties at its end */
+extern "C" zdb::CDynTexList *z_pipe_alpha_dyntex()
+{
+    return &thePipe.m_alpha.m_dyntexlist;
+}
+#endif
