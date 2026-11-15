@@ -75,6 +75,11 @@ extern "C" void func_00307810(const CPnt3D *eye, const CPnt3D *dir, float a, flo
     sceVu0FMATRIX cam;
     sceVu0FMATRIX proj;
 
+#if Z_PORT
+    /* the port: the lanes the original leaves to the stack 0 -- on the host the stack's history
+     * is the port's own (an earlier request's frames), so the projector differed from call to call */
+    up[0] = up[1] = up[2] = up[3] = 0.0f;
+#endif
     sceVu0UnitMatrix(cam);
     sceVu0UnitMatrix(proj);
     VecSet(d, dir->x, dir->y, dir->z, 0.0f);
@@ -109,6 +114,12 @@ extern "C" void func_00307700(sceVu0FVECTOR zd, sceVu0FVECTOR p, sceVu0FMATRIX o
     sceVu0FMATRIX m1;
     float z;
 
+#if Z_PORT
+    /* the port: up's two lanes the original leaves to the stack 0 (the axis it means). On the host
+     * the stack's history is the port's own: VuSpecularSetup's frame came out a denormal apart from
+     * one oracle op 15 request to the next at one camera (M52's g20308_14, MP10, MP82) */
+    up[0] = up[1] = up[2] = 0.0f;
+#endif
     sceVu0UnitMatrix(m0);
     sceVu0UnitMatrix(m1);
     z = zd[2];
