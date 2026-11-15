@@ -7,7 +7,7 @@
  * the shapes' constructors and destructors call CDI() and ~CDI out of line and CDI::Create calls
  * CDIPoly() out of line, where one unit had needed all three pinned (README "The inlining mode,
  * measured"). Written so far: the small functions below. Unwritten: ~DiIntersect (0x2DC680),
- * IsInside, GetRegion and Release. Defined in reverse of their image order
+ * IsInside and GetRegion. Defined in reverse of their image order
  * (-inline deferred). */
 
 #include "node_world.h"
@@ -79,6 +79,16 @@ void CDI::Allocate(int n)
 {
     m_flags.m_ptcount = n;
     m_pnts = (CPnt4D *)_malloc(n * sizeof(CPnt4D), 0, 0);
+}
+
+/* one holder fewer, the count left given back (SOCOM 1's; re-read, as CVisual::Release). Its m2c
+ * draft addressed the count at MW's +4 -- the host's CDI has its vtable pointer first, so on the
+ * port the draft decremented _0 instead: a shape never freed, or freed while nodes still held it
+ * (UnloadTheWorld's heap corruption, MP10 then MP11) */
+int CDI::Release()
+{
+    m_refcount--;
+    return m_refcount;
 }
 
 /* the points freed and counted out (SOCOM 1's) */
