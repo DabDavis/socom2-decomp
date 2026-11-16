@@ -80,7 +80,20 @@ struct _zrdr {
 };
 
 /* a UI variable as the plain bitmap reads it: its type (3 a string) and the string */
+#if Z_PORT
+/* the port: the real class (zui.h's CUIVariable : _zrdr, UIVarMixin, with a vtable of its own) has
+ * the dynamic UIVarMixin as its primary base on the host, laid out first: its _zrdr is 8 bytes in
+ * (MW's at 0). This view keeps that head so a variable's pointer reaches its value (with the
+ * _zrdr first, Format read the mixin's table pointer as the type: dlgMenu's VERSION text stayed
+ * empty, oracle op 31) */
+struct CUIVarHostHead {
+    void *m_hostVptr;
+    void *m_hostUivar;
+};
+class CUIVariable : public CUIVarHostHead, public _zrdr {
+#else
 class CUIVariable : public _zrdr {
+#endif
 public:
     void UpdateDependents();
     /* the value replaced by a copy of an rdr's (zui_var.cpp's, 0x386460) */
@@ -124,7 +137,15 @@ public:
     /* an array's count and its items (zrdr.h's _zrdr::Count and Item: 4 an array) */
     bool IsArray() const { return m_type == 4; }
     unsigned int Count() const { return IsArray() ? m_length : 0; }
+#if Z_PORT
+    /* the port: the items are plain values, 8 bytes each (the view's head is not theirs) */
+    CUIVariable *Item(unsigned int i) const
+    {
+        return i < Count() ? static_cast<CUIVariable *>((_zrdr *)(void *)m_array + i) : 0;
+    }
+#else
     CUIVariable *Item(unsigned int i) const { return i < Count() ? &m_array[i] : 0; }
+#endif
 };
 
 /* the texture handle's name, first (zdb's) */
@@ -5564,7 +5585,11 @@ static inline int RdrInt(_zrdr *r)
 }
 static inline _zrdr *RdrElem(_zrdr *r, unsigned int i)
 {
+#if Z_PORT
+    return i < RdrCount(r) ? (_zrdr *)(void *)r->m_array + i : 0;   /* the port: Item's */
+#else
     return i < RdrCount(r) ? &r->m_array[i] : 0;
+#endif
 }
 
 /* the string table's id for a name, 0 if it has none (ztwod's, 0x361B20) */
