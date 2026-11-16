@@ -578,8 +578,17 @@ float s_colorFoeB = 24.0f;
 /* the seal's and the world's views UpdateColor needs: what the reticle hit, its owner (zseal.h's) */
 class CDiTarget {
 public:
+#if Z_PORT
+    /* the port: the owner is the node's zdb::CNodeEx (znode.h), whose table has no destructor --
+     * OnWeaponHit, OnAction, then this (Slot10) -- so the host's Itanium table has CanLock third, at
+     * +8; a virtual destructor here takes two host slots and the call read past the table's end
+     * (a reticle over a teammate faulted in the typeinfo after it: sim_turn.pad, lane S2) */
+    virtual int Slot08();
+    virtual int Slot0C();
+#else
     virtual ~CDiTarget();
     virtual void Slot0C();
+#endif
     virtual bool CanLock(float range);   // +0x10
 };
 class CDiHit {
