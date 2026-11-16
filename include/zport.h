@@ -145,4 +145,20 @@ template <class T> struct z_regp {
 
 #endif
 
+/* a restated CUIVariable's bases. zui.h's is `CUIVariable : public _zrdr, public UIVarMixin`: MW
+ * keeps _zrdr at 0, the host (Itanium) puts the polymorphic mixin first, its primary base -- the
+ * vtable pointer and m_uivar -- so _zrdr sits 8 bytes in. A restatement deriving from _zrdr alone
+ * then reads the vtable pointer's low byte as the value's type: UICompareValues found no string
+ * variable on the port and compared the names (rec5's Seal3Name). On the host the restatements
+ * take an 8-byte stand-in first: `class CUIVariable : public Z_UIVAR_BASES` */
+#if Z_PORT
+struct ZPortUIVarMixinPad {
+    void *m_vptr;
+    void *m_uivar;
+};
+#define Z_UIVAR_BASES ZPortUIVarMixinPad, public _zrdr
+#else
+#define Z_UIVAR_BASES _zrdr
+#endif
+
 #endif

@@ -7,6 +7,7 @@
 #define ZANIM_MENU_H
 
 #include <string>
+#include "zport.h"
 #include <queue>
 
 #include "zanim.h"
@@ -215,7 +216,7 @@ enum UIVAR_LONGEVITY {
     UIVAR_PERMANENT = 2
 };
 
-class CUIVariable : public _zrdr {
+class CUIVariable : public Z_UIVAR_BASES {   /* (zport.h: the host's base order) */
 public:
     /* a number set, unless it already holds it (ours: ClearUIVar's and the options' inline) */
     void SetInt(int value)

@@ -14,6 +14,7 @@
  * since round 53, SetFinalTeamTotalsUiVar since round 62, GetRoundResult and Init since round 65). Defined in reverse of their image order (-inline deferred). */
 
 #include "fts_state.h"
+#include "zport.h"
 #include "../../gamez/zrdr/zrdr.h"
 
 #include <stdio.h>
@@ -253,7 +254,7 @@ enum UIVAR_LONGEVITY {
     UIVL_PERSISTENT = 3
 };
 
-class CUIVariable : public _zrdr {
+class CUIVariable : public Z_UIVAR_BASES {   /* (zport.h: the host's base order) */
 public:
     void UpdateDependents();
     CUIVariable &operator=(const char *str);

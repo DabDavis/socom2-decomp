@@ -2,6 +2,7 @@
  * 0x1F3B40-0x1F5C2F). Defined in reverse of their image order (-inline deferred). */
 
 #include "fts_state.h"
+#include "zport.h"
 
 #include <iostream>
 
@@ -407,7 +408,7 @@ public:
 };
 
 /* a UI variable (zui.h's: its value set from an editor's tree) */
-class CUIVariable : public _zrdr {
+class CUIVariable : public Z_UIVAR_BASES {   /* (zport.h: the host's base order) */
 public:
     void Set(_zrdr *value);
 };

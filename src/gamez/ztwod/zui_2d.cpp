@@ -22,6 +22,7 @@
  * 0x4036C0, builds only <iostream>'s two init objects, as SOCOM 1's __sinit_zui_2d.cpp. */
 
 #include <iostream>
+#include "zport.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,7 +81,7 @@ struct _zrdr {
 };
 
 /* a UI variable as the plain bitmap reads it: its type (3 a string) and the string */
-class CUIVariable : public _zrdr {
+class CUIVariable : public Z_UIVAR_BASES {   /* (zport.h: the host's base order) */
 public:
     void UpdateDependents();
     /* the value replaced by a copy of an rdr's (zui_var.cpp's, 0x386460) */

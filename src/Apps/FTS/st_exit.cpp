@@ -2,6 +2,7 @@
  * 0x1F1A00-0x1F3B1F). Defined in reverse of their image order (-inline deferred). */
 
 #include "fts_state.h"
+#include "zport.h"
 
 #include <iostream>
 
@@ -296,7 +297,7 @@ struct _zrdr {
 };
 
 /* the UI's variables (zui.h's CUIVariable: only the integer assignment) */
-class CUIVariable : public _zrdr {
+class CUIVariable : public Z_UIVAR_BASES {   /* (zport.h: the host's base order) */
 public:
     void UpdateDependents();
     CUIVariable &operator=(const char *s);   /* 0x3862A0 */

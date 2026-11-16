@@ -15,6 +15,7 @@
  * scores alone, but the unit wants reordering before its inline copies are placed. */
 
 #include <string.h>
+#include "zport.h"
 #include <stdlib.h>
 #include <string>
 #include <vector>
@@ -49,7 +50,7 @@ enum UIVAR_LONGEVITY {
     UIVL_PERSISTENT = 3
 };
 
-class CUIVariable : public _zrdr {
+class CUIVariable : public Z_UIVAR_BASES {   /* (zport.h: the host's base order) */
 public:
     CUIVariable &operator=(const char *str);
 };

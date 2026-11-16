@@ -19,6 +19,7 @@
  * of their image order (-inline deferred). */
 
 #include "hud_weaponsel.h"
+#include "zport.h"
 #include "../../gamez/zinput/zinput.h"
 #include "../../gamez/zrdr/zrdr.h"
 
@@ -842,7 +843,7 @@ extern float data_003DC948;
 extern "C" unsigned char func_002C64E0(int func, CPad *pad);
 
 /* the UI variables (zui.h's: the name's value as a string, when it is one) */
-class CUIVariable : public _zrdr {
+class CUIVariable : public Z_UIVAR_BASES {   /* (zport.h: the host's base order) */
 public:
     const char *GetString() const { return type == 3 ? string : 0; }
 };
