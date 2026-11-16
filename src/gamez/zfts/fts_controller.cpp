@@ -238,6 +238,14 @@ namespace {
 /* the layout in use (SOCOM 1's) */
 CCtrlrConfig *g_pCurrentConfig;
 }
+#if Z_PORT
+/* the port: the layout in use for the m2c drafts that read it by its image address (002C6230.c, the
+ * turn stick) */
+extern "C" void *z_ctrlr_current_config(void)
+{
+    return g_pCurrentConfig;
+}
+#endif
 
 extern "C" {
 extern CCtrlrConfig *data_004415B0;   /* (a second layout: the one being edited) */

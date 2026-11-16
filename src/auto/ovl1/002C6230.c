@@ -6,7 +6,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+#if Z_PORT
+/* Z_PORT: fts_controller.cpp's g_pCurrentConfig (the layout in use, 0x4415A8 in the image) is a host
+ * object in that unit's namespace; the placeholder read the image's never-written word and the turn
+ * stick's read faulted at 0xE in the mission's first controlled frame */
+void *z_ctrlr_current_config(void);
+#define data_004415A8 (z_ctrlr_current_config())
+#else
 extern void *data_004415A8;
+#endif
 
 f32 func_002C6230(void *arg0) {
     f32 var_f0;
