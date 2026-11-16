@@ -135,9 +135,14 @@ public:
     int GetDepth() { return m_path.size(); }
     std::vector<int> &GetPath() { return m_path; }
 
-    unsigned char _0[Z_OFS(0x750, 0x738)];
-    unsigned char m_state;   // 0x750 (host 0x738: hud_tcm.h's, measured)
-    unsigned char _751[Z_OFS(0x754, 0x74c) - Z_OFS(0x751, 0x739)];
+    /* the host offsets are the port binary's own (gdb `ptype /o theTCM`): CTCMMode m_mode at 0x748,
+     * m_path at 0x74c -- clang puts the mode in CTCMNode's tail padding (its data ends at 0x748, the
+     * aligned(16) node is 0x750). 0x738, the earlier reading, is the root node's own TCM_STATE:
+     * TCM_HIDDEN, 1, read as "listening", so every s_quietMax frames the recogniser restarted and
+     * CCoreState::Tick held the scheduler while it ran (32 frames in 33, lane S2) */
+    unsigned char _0[Z_OFS(0x750, 0x748)];
+    unsigned char m_state;   // 0x750 (host 0x748: hud_tcm.h's CTCMMode)
+    unsigned char _751[Z_OFS(0x754, 0x74c) - Z_OFS(0x751, 0x749)];
     std::vector<int> m_path;   // 0x754 (host 0x74c)
 };
 
