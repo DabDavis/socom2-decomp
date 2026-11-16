@@ -247,6 +247,11 @@ CRenderMap::CRenderMap(CNode *node, _tag_render_map_type type, const CTexture *t
     }
     if (fabsf(dir[2]) < best)
         axis = 2;
+#if Z_PORT
+    /* the port: up's other lanes, which the original leaves to the stack, 0 (the axis it means). On
+     * the host the stack's history is the port's own: M51's m_axis.x came out 2.1e-32, not 0 */
+    up[0] = up[1] = up[2] = up[3] = 0.0f;
+#endif
     up[axis] = 1.0f;
     sceVu0OuterProduct(m_axis, dir, up);
     sceVu0Normalize(m_axis, m_axis);
@@ -264,7 +269,14 @@ CRenderMap::CRenderMap(CNode *node, _tag_render_map_type type, const CTexture *t
     p[18] = 0;
     p[20] = (unsigned long)(size << 4) | ((unsigned long)(size << 4) << 16);
     p[22] = (unsigned long)((2048 - (size >> 1)) << 4) | ((unsigned long)((2048 - (size >> 1)) << 4) << 32);
+#if Z_PORT
+    /* the port: `1UL` is the host's 32-bit unsigned long (abi.h widens the keyword, not the
+     * suffix), so `1UL << 32` overflowed and clang made the SCISSOR word all ones */
+    p[24] = (unsigned long)1 | ((unsigned long)(size - 2) << 16) | ((unsigned long)1 << 32) |
+            ((unsigned long)(size - 2) << 48);
+#else
     p[24] = 1UL | ((unsigned long)(size - 2) << 16) | (1UL << 32) | ((unsigned long)(size - 2) << 48);
+#endif
     m_mtx1.m_matrix[3][0] = 2048.0f;
     m_mtx1.m_matrix[3][1] = 2048.0f;
     m_mtx1.m_matrix[3][2] = 0.0f;
