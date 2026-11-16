@@ -1121,7 +1121,14 @@ void CAppCamera::Tick(float dT)
         if (m_camera_effects) {
             CMatrix tmp_mtx;
 
+#if Z_PORT
+            /* the port: the node's matrix where the host keeps it (after the vtable pointer, at
+             * 0x10); MW's CNode has it at 0, which the cast reads -- on the host the camera's rows
+             * came out shifted by one (row 0 the vtable's quadword, the eye 0) */
+            sceVu0MulMatrix(tmp_mtx.m_matrix, camMatrix.m_matrix, m_camera_effects->m_matrix.m_matrix);
+#else
             sceVu0MulMatrix(tmp_mtx.m_matrix, camMatrix.m_matrix, *(sceVu0FMATRIX *)m_camera_effects);
+#endif
             sceVu0CopyMatrix(camMatrix.m_matrix, tmp_mtx.m_matrix);
         }
         m_camera->SetMatrix(&camMatrix);
