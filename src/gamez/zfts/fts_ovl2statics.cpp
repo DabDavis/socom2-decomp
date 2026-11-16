@@ -123,6 +123,16 @@ zdb::DiIntersect dilr48(16);
 zdb::DiIntersect dilr49(16);
 }
 
+#if Z_PORT
+/* Z_PORT: the image's table of the fifty (OVL1 data 0x3DE940, seal.cpp's data_003DE940) holds the PS2's
+ * addresses of these statics, whose image bss the host never constructs -- every set read buffer count 0
+ * there, so no delayed probe of a SEAL ever kept a hit (lane S3: the [di] trace's player sets, 4888 of
+ * 4888 empty). seal.cpp reads this host table in its place */
+extern "C" zdb::DiIntersect *z_dilr[50];
+zdb::DiIntersect *z_dilr[50] = {
+    &dilr00, &dilr01, &dilr02, &dilr03, &dilr04, &dilr05, &dilr06, &dilr07, &dilr08, &dilr09, &dilr10, &dilr11, &dilr12, &dilr13, &dilr14, &dilr15, &dilr16, &dilr17, &dilr18, &dilr19, &dilr20, &dilr21, &dilr22, &dilr23, &dilr24, &dilr25, &dilr26, &dilr27, &dilr28, &dilr29, &dilr30, &dilr31, &dilr32, &dilr33, &dilr34, &dilr35, &dilr36, &dilr37, &dilr38, &dilr39, &dilr40, &dilr41, &dilr42, &dilr43, &dilr44, &dilr45, &dilr46, &dilr47, &dilr48, &dilr49};
+#endif
+
 /* the character's dynamics (zseal.h's CharacterDynamics, SOCOM 1's DWARF layout, 0x1BC bytes),
  * with SOCOM II's defaults: the constructor sets them member by member before the members of class
  * type are built (SOCOM 1's inlined all of it; SOCOM II's camera wiggle and throw limits have

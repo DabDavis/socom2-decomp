@@ -3339,7 +3339,14 @@ extern "C" bool func_0054F570(float dT, void *data)
 extern "C" {
 /* the SEAL's delayed ground probes: fifty intersection sets and the count used this frame (OVL1
  * data, the SEAL's alone: PreTick zeroes the count, 0x5483D0 reads the sets; the names unknown) */
+#if Z_PORT
+/* the host's table of fts_ovl2statics.cpp's dilr00-dilr49: the image's holds the PS2's addresses of
+ * statics the host never constructs (their buffer counts 0: no probe kept a hit) */
+extern zdb::DiIntersect *z_dilr[];
+#define data_003DE940 z_dilr
+#else
 extern zdb::DiIntersect *data_003DE940[];
+#endif
 extern int data_0044AF78;
 }
 
