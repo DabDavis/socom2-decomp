@@ -12,7 +12,12 @@ int sceGsSetDefAlphaEnv(sceGsAlphaEnv *ap, short pabe)
 	ap->pabeaddr = SCE_GS_PABE;
 	ap->pabe = pabe;
 	ap->texaaddr = SCE_GS_TEXA;
+#if Z_PORT	/* `0x81UL` is the host's 32-bit unsigned long (abi.h widens the keyword, not the suffix):
+		 * `<< 32` overflowed, and TA1 was lost */
+	ap->texa = ((unsigned long)0x81 << 32) | 0x807F;
+#else
 	ap->texa = (0x81UL << 32) | 0x807F;
+#endif
 	ap->fba1addr = SCE_GS_FBA_1;
 	ap->fba1 = 0;
 #if !Z_PORT	/* the port's GS takes the packet synchronously */
