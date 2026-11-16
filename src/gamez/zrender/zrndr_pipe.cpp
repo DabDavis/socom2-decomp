@@ -26,6 +26,13 @@
  * of both destructors match there, nothing in the HUD, UI or 2D units regresses (the world lane r3's
  * report). */
 
+/* a sub-mesh's palette matrix written through its uncached address (RenderMesh, RenderMeshShadow,
+ * BuildMatrixPalette); the host's heap has no uncached mirror */
+#if Z_PORT
+#define Z_UNCACHED(p) ((unsigned int)(p))
+#else
+#define Z_UNCACHED(p) ((unsigned int)(p) | 0x20000000)
+#endif
 #include <eetypes.h>
 #include <vector>
 #include <list>
@@ -1501,7 +1508,7 @@ void CPipe::RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb:
     if (!own && !sub)
         SaveDelayedNode(matrix, node, fov);
     if (sub)
-        sceVu0CopyMatrix((float (*)[4])((unsigned int)mesh->m_palette[sub->m_index] | 0x20000000), m->m_matrix);
+        sceVu0CopyMatrix((float (*)[4])Z_UNCACHED(mesh->m_palette[sub->m_index]), m->m_matrix);
     zdb::CNodeVector &c = node->m_child;
 
     for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i) {
@@ -1694,7 +1701,7 @@ void CPipe::RenderMeshShadow(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix
         matrix = m;
     }
     if (sub)
-        sceVu0CopyMatrix((float (*)[4])((unsigned int)mesh->m_palette[sub->m_index] | 0x20000000), m->m_matrix);
+        sceVu0CopyMatrix((float (*)[4])Z_UNCACHED(mesh->m_palette[sub->m_index]), m->m_matrix);
     zdb::CNodeVector &c = node->m_child;
 
     for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i) {

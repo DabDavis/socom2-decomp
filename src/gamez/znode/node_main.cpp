@@ -7,6 +7,13 @@
  * out-of-line copies follow the first function to call them (SetModeTree's iterator pieces and
  * SetMode, 0x313450-0x3134BB); template instances close the unit (from 0x3176B0). */
 
+/* a sub-mesh's palette matrix written through its uncached address (RenderMesh, RenderMeshShadow,
+ * BuildMatrixPalette); the host's heap has no uncached mirror */
+#if Z_PORT
+#define Z_UNCACHED(p) ((unsigned int)(p))
+#else
+#define Z_UNCACHED(p) ((unsigned int)(p) | 0x20000000)
+#endif
 #include <algorithm>
 #include <string.h>
 
@@ -1039,7 +1046,7 @@ void CNode::BuildMatrixPalette(CMesh *mesh)
     CSubMesh *sub = GetSubMesh();
 
     if (sub)
-        sceVu0CopyMatrix((float (*)[4])((unsigned int)mesh->m_palette[sub->m_index] | 0x20000000),
+        sceVu0CopyMatrix((float (*)[4])Z_UNCACHED(mesh->m_palette[sub->m_index]),
                          m->m_matrix);
     CNodeVector &children = m_child;
 
