@@ -302,7 +302,7 @@ public:
 
 class CCameraZoomView {
 public:
-    unsigned char _0[0x470];
+    unsigned char _0[Z_OFS(0x470, 0x480)];   /* the host's: CCamera's m_screenAspect, 0x10 later (zcamera.h) */
     float m_zoom;   // 0x470
 };
 
