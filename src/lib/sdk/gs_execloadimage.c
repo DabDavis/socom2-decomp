@@ -15,11 +15,23 @@
 #define	D2_QWC		((volatile u_int *)0x1000A020)
 
 /* a scratchpad address goes to the DMAC with SPR (bit 31) set: one store in each arm */
+#if Z_PORT
+/* the port: a host address is the DMAC's address as is (platform/hw.c's hw_dma_ptr); only the
+ * scratchpad's own page (0x70000000-0x70003FFF) goes with SPR. The PS2 test, `& 0x70000000`, took a
+ * host stack address (0xFF...) for the scratchpad: MADR 0x8F..., the GIF fed from nowhere (the
+ * mission's first frame faulted in CVideo::WriteGsMemory's load) */
+#define	SET_MADR(a) \
+		if ((u_int)(a) >= 0x70000000 && (u_int)(a) < 0x70004000) \
+			*D2_MADR = ((u_int)(a) & 0x0fffffff) | 0x80000000; \
+		else \
+			*D2_MADR = (u_int)(a)
+#else
 #define	SET_MADR(a) \
 		if (((u_int)(a) & 0x70000000) == 0x70000000) \
 			*D2_MADR = ((u_int)(a) & 0x0fffffff) | 0x80000000; \
 		else \
 			*D2_MADR = (u_int)(a) & 0x0fffffff
+#endif
 
 int sceGsExecLoadImage(sceGsLoadImage *lp, u_long128 *srcaddr)
 {
