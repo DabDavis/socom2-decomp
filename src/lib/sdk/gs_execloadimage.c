@@ -15,11 +15,22 @@
 #define	D2_QWC		((volatile u_int *)0x1000A020)
 
 /* a scratchpad address goes to the DMAC with SPR (bit 31) set: one store in each arm */
+#if Z_PORT
+/* the port: the scratchpad is the 16 KB at 0x70000000, and a host pointer is the address itself --
+ * the original's 0x70000000 test took a host buffer above 0x70000000 for the scratchpad and its
+ * 0x0fffffff mask cut its top bits (the mission's first frame faulted on 0x8f9ed3b0) */
+#define	SET_MADR(a) \
+		if (((u_int)(a) & 0xffffc000) == 0x70000000) \
+			*D2_MADR = ((u_int)(a) & 0x0fffffff) | 0x80000000; \
+		else \
+			*D2_MADR = (u_int)(a)
+#else
 #define	SET_MADR(a) \
 		if (((u_int)(a) & 0x70000000) == 0x70000000) \
 			*D2_MADR = ((u_int)(a) & 0x0fffffff) | 0x80000000; \
 		else \
 			*D2_MADR = (u_int)(a) & 0x0fffffff
+#endif
 
 int sceGsExecLoadImage(sceGsLoadImage *lp, u_long128 *srcaddr)
 {

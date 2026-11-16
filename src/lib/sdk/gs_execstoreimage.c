@@ -31,11 +31,22 @@ extern u_long GsGetIMR(void);
 extern u_long GsPutIMR(u_long);
 
 /* a scratchpad address goes to the DMAC with SPR (bit 31) set: one store in each arm */
+#if Z_PORT
+/* the port: the scratchpad is the 16 KB at 0x70000000, and a host pointer is the address itself --
+ * the original's 0x70000000 test took a host buffer above 0x70000000 for the scratchpad and its
+ * 0x0fffffff mask cut its top bits (the mission's first frame faulted on 0x8f9ed3b0) */
+#define	SET_MADR(a) \
+		if (((u_int)(a) & 0xffffc000) == 0x70000000) \
+			*D1_MADR = ((u_int)(a) & 0x0fffffff) | 0x80000000; \
+		else \
+			*D1_MADR = (u_int)(a)
+#else
 #define	SET_MADR(a) \
 		if (((u_int)(a) & 0x70000000) == 0x70000000) \
 			*D1_MADR = ((u_int)(a) & 0x0fffffff) | 0x80000000; \
 		else \
 			*D1_MADR = (u_int)(a) & 0x0fffffff
+#endif
 
 #define	WAIT_VIF1 \
 		while (!(*VIF1_STAT & 0x1f000000)) { \
