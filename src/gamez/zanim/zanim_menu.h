@@ -57,6 +57,12 @@ struct UIParsedCmd : public C2DAnimCmdHdr {
     }
 
     unsigned short m_c;   // 0xc
+#if Z_PORT
+    /* MW starts a derived record's members at 0x10; the host (Itanium) reuses a non-POD base's tail
+     * padding, which put CompareValues' m_value1 at 0xe and read the disc's records two bytes
+     * early (the port's CompareValues compared the wrong names). Named, the padding is no tail */
+    unsigned short m_port_e;   // 0xe
+#endif
 };
 
 /* GetPlayerInfo's record: the command and what to ask for, read by its parser out of the tags
