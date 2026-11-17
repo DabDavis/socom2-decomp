@@ -339,8 +339,10 @@ static inline bool AimAttainable(CZSealBody *s)
 
     if (e->m_velM.x * e->m_velM.x + e->m_velM.y * e->m_velM.y + e->m_velM.z * e->m_velM.z < 0.001f) {
         /* (read through a const reference and written direct: the target keeps &v.y and &v.z for the reads alone, frame
-         * slots for the stores) */
-        CPnt3D v = *(const CPnt3D *)((char *)zdb::CWorld::m_world->m_camera + 0x20);
+         * slots for the stores). The camera's z axis, its matrix's row 2: MW's 0x20 (the matrix first in CNode), the
+         * host's 0x30 (CNode's vtable pointer and base put the matrix at 0x10) -- read at 0x20 the port took the
+         * camera's y axis, and a still prone player's aim was never attainable (the port's s22-weapon-5) */
+        CPnt3D v = *(const CPnt3D *)((char *)zdb::CWorld::m_world->m_camera + Z_OFS(0x20, 0x30));
         const CPnt3D &p = v;
 
         v.x = -p.x;
