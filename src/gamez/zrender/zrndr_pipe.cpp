@@ -2284,4 +2284,25 @@ extern "C" zdb::CDynTexList *z_pipe_alpha_dyntex()
 {
     return &thePipe.m_alpha.m_dyntexlist;
 }
+
+/* lane M6: the alpha pass's draw list as CAlpha::Render finds it, entry i in draw order: the atom
+ * (0 for a line), the node, the visual, the range (m_40) and the opacity; 0 past its end */
+extern "C" int z_pipe_alpha_entry(unsigned int i, zdb::CNode **atom, zdb::CNode **node, zdb::CVisual **vis,
+                                  float *range, float *opacity)
+{
+    std::list<void *>::iterator it = thePipe.m_alpha.m_drawList.begin(), e = thePipe.m_alpha.m_drawList.end();
+
+    for (; it != e && i; ++it)
+        i--;
+    if (it == e)
+        return 0;
+    tag_DelayedNode *d = (tag_DelayedNode *)*it;
+
+    *atom = d->m_atom;
+    *node = d->m_node;
+    *vis = d->m_visual;
+    *range = d->m_40;
+    *opacity = d->m_opacity;
+    return 1;
+}
 #endif
