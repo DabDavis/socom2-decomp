@@ -1993,7 +1993,7 @@ int CAiSHold::Tick(CSealCtrlAi *ai)
         if (m_flags & 4)
             m_time = m_time + ai->m_stateStack.m_timer;
         if (m_flags & 1) {
-            func_00571150(ai, m_58, (SEAL_STATE)*((unsigned char *)seal + 0x174));
+            func_00571150(ai, m_58, (SEAL_STATE)*((unsigned char *)seal + Z_SEALBODY_OFS(0x174)));
             step = STEP_8;
             m_5a = m_58;
         } else if (m_flags & 2) {

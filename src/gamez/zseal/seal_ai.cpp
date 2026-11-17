@@ -2724,7 +2724,7 @@ extern "C" bool func_005712F0(CSealCtrlAi *ai, short anim)
     if (anim == -1)
         return false;
 
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)ai->m_entity + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)ai->m_entity + Z_SEALBODY_OFS(0x1c0));
     bool r = top ? anim == top->m_animType : false;
 
     if (r && anim == ai->m_sound) {
