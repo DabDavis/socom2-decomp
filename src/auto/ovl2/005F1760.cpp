@@ -9,7 +9,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 extern "C" {
+#if Z_PORT
+/* Z_PORT: GetMap's loc passed -- m2c wrote the call without it (a1 still holds the caller's arg1 on the EE); on the
+ * host the callee read a stray word and CAiSRush::Tick faulted (the port's sim_ai_meet5 run, frame 1154, lane S11) */
+s32 GetMap__7CAiMapsCFRC9CAiMapLoc(M2C_UNK *, s32);
+#else
 s32 GetMap__7CAiMapsCFRC9CAiMapLoc(M2C_UNK *);      /* extern */
+#endif
 s32 IsTraversable__6CAiMapCFRC9CAiMapLoc(s32, s32); /* extern */
 M2C_UNK func_005136B0(char *, s32, M2C_UNK, s32);   /* extern */
 extern M2C_UNK AiMaps;
@@ -21,7 +27,11 @@ bool func_005F1760(char *arg0, s32 arg1) {
 
     var_s0 = false;
     if (SC_MEMBER(arg0, u8 *, 0x34) == 0) {
+#if Z_PORT
+        temp_v0 = GetMap__7CAiMapsCFRC9CAiMapLoc(&AiMaps, arg1);
+#else
         temp_v0 = GetMap__7CAiMapsCFRC9CAiMapLoc(&AiMaps);
+#endif
         if (temp_v0 != 0) {
             var_v0 = IsTraversable__6CAiMapCFRC9CAiMapLoc(temp_v0, arg1);
         } else {
