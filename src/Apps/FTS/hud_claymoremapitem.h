@@ -21,7 +21,10 @@ public:
 /* the node as the map reads it: its matrix (zdb's CNode, the matrix first) */
 class CZMapNode {
 public:
-    CMatrix m_matrix;   // 0x0
+#if Z_PORT
+    unsigned char _host0[16];   /* the host's: the vtable pointer first, tag_NODE_PARAMS at 16 */
+#endif
+    CMatrix m_matrix;   // 0x0 (host 0x10)
 };
 
 /* a seal's zoom (zseal.h's ZOOMSTATE, a signed byte under -enum min: only what the map tests) */

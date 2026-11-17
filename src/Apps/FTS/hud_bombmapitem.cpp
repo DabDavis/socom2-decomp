@@ -44,7 +44,8 @@ public:
  * matrix first) */
 static inline CPnt3D NodePos(const zdb::CNode *node)
 {
-    return *(const CPnt3D *)((const CMatrix *)node)->m_matrix[3];
+    /* (Z_PORT: the host's CNode puts its vtable pointer and base first, the matrix at 0x10) */
+    return *(const CPnt3D *)((const CMatrix *)((const char *)node + Z_OFS(0, 0x10)))->m_matrix[3];
 }
 
 zdb::CTexture *CZMPBombMapItem::m_mpbombtex;

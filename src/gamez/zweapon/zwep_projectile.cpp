@@ -914,7 +914,11 @@ PROJECTILE_HIT CZProjectile::HandleBounce(IntersectStruct *hit, float dT, CPnt3D
         CZAnim *anim = m_weapon->GetHitAnim(mat);
 
         if (anim && CZWeapon::m_allowImpactAnimations)
+#if Z_PORT
+            anim->ActivateArg(1, 5, &hit->m_pos, 0);   /* the host's `...` takes a CPnt3D by value; ActivateArgV reads a pointer (MW passes a temporary's address) */
+#else
             anim->ActivateArg(1, 5, hit->m_pos, 0);
+#endif
         m_vel = m_vel * ex->m_elasticity;
         *pos = hit->m_pos + m_vel * 0.0001f;
         r = HIT_GOES_ON;
@@ -937,7 +941,11 @@ PROJECTILE_HIT CZProjectile::HandleBounce(IntersectStruct *hit, float dT, CPnt3D
 
         if (anim && (bool)ex->m_underwater == false && CZWeapon::m_allowImpactAnimations &&
             speed > 10.0f)
+#if Z_PORT
+            anim->ActivateArg(1, 5, &hit->m_pos, 0);   /* the host's `...` takes a CPnt3D by value; ActivateArgV reads a pointer (MW passes a temporary's address) */
+#else
             anim->ActivateArg(1, 5, hit->m_pos, 0);
+#endif
         unsigned char rested = m_hasrested;
 
         if (speed < 5.0f && m_state != PROJECTILE_AT_REST) {

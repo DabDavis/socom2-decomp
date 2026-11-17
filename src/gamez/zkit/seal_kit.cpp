@@ -4600,6 +4600,10 @@ extern "C" bool func_0055EAA0(void *ai, void *params, bool clear);
 struct CKitThrowBody {
     unsigned char _0[0x28];
     const CMatrix *m_node;   // 0x28: its node (the matrix first)
+    /* the node's matrix: MW's CNode holds it first; the host's after its vtable pointer and base, at 0x10
+     * (Z_PORT: read as MW's, the node itself taken for the matrix -- the player's thrown grenade left from
+     * z -1.9e33 at a velocity of 1e33, the port's s23-weapon-6) */
+    const CMatrix *NodeMatrix() const { return (const CMatrix *)((const char *)m_node + Z_OFS(0, 0x10)); }
     unsigned char _2c[Z_SEALBODY_OFS(0x2f8) - 0x2c];
     void *m_lhand;   // 0x2f8
     unsigned char _2fc[Z_SEALBODY_OFS(0x300) - Z_SEALBODY_OFS(0x2fc)];
@@ -4689,13 +4693,13 @@ void CZKit::OnDeath()
                     CKitThrowBody *b = (CKitThrowBody *)m_body;
                     CDynGrenade g;
 
-                    g.Initalize(b->m_node, b->m_aim, dist, 0.0f, p);
+                    g.Initalize(b->NodeMatrix(), b->m_aim, dist, 0.0f, p);
                     Fire(m_selected_item, &g.m_pos, &g.m_vel, zero);
                 } else if (KitIsAi((CKitBody *)m_body)) {
                     CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
                     CPnt3D q;
 
-                    ((CKitThrowBody *)m_body)->m_node->Transform(&p, &q, 1);
+                    ((CKitThrowBody *)m_body)->NodeMatrix()->Transform(&p, &q, 1);
                     CKitFireParams *fp = (CKitFireParams *)((char *)ai + 0x370);
 
                     func_0055EAA0(ai, fp, true);
@@ -5417,13 +5421,13 @@ bool CZKit::TickExplosives(float dT)
                 CKitThrowBody *b = (CKitThrowBody *)m_body;
                 CDynGrenade g;
 
-                g.Initalize(b->m_node, b->m_aim, dist, power, p);
+                g.Initalize(b->NodeMatrix(), b->m_aim, dist, power, p);
                 Fire(m_selected_item, &g.m_pos, &g.m_vel, zero);
             } else if (KitIsAi((CKitBody *)m_body)) {
                 CSealCtrlAi *ai = ((CKitSealCtrl *)((CKitBody *)m_body)->m_control)->GetSealCtrlAi();
                 CPnt3D q;
 
-                ((CKitThrowBody *)m_body)->m_node->Transform(&p, &q, 1);
+                ((CKitThrowBody *)m_body)->NodeMatrix()->Transform(&p, &q, 1);
                 CKitFireParams *fp = (CKitFireParams *)((char *)ai + 0x370);
 
                 func_0055EAA0(ai, fp, true);
