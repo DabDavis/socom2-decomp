@@ -7,6 +7,21 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+/* Z_PORT: the scheduler's task passes its dT on to the list -- m2c wrote the task and the call without it ($f12 still holds
+ * it from this function's own entry on the EE); on the host the list ticked on a stray stack word (lane S15) */
+#if Z_PORT
+M2C_UNK PostTick__16CZProjectileListFf(s32, f32);
+extern u8 data_004B52B0;
+extern s32 m_pProjectilelist__8CZWeapon;
+
+s32 PostTick__8CZWeaponFfPv(f32 dT, void *data) {
+    if (data_004B52B0 != 0) {
+        return 0;
+    }
+    PostTick__16CZProjectileListFf(m_pProjectilelist__8CZWeapon, dT);
+    return 0;
+}
+#else
 M2C_UNK PostTick__16CZProjectileListFf(s32);        /* extern */
 extern u8 data_004B52B0;
 extern s32 m_pProjectilelist__8CZWeapon;
@@ -18,3 +33,4 @@ s32 PostTick__8CZWeaponFfPv(void) {
     PostTick__16CZProjectileListFf(m_pProjectilelist__8CZWeapon);
     return 0;
 }
+#endif

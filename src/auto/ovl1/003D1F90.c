@@ -6,7 +6,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+#if Z_PORT
+M2C_UNK PreTick__16CZProjectileListFf(s32, f32);
+#else
 M2C_UNK PreTick__16CZProjectileListFf(s32);         /* extern */
+#endif
 M2C_UNK UpdateLocalBomb__11CZBombStateFv();         /* extern */
 s32 func_002A72A0(s32);                             /* extern */
 extern char theMission[];
@@ -14,11 +18,24 @@ extern char theMission[];
 extern u8 data_004B52B0;
 extern s32 m_pProjectilelist__8CZWeapon;
 
+/* Z_PORT: the scheduler's task ("weapon_pre_tick", st_core.cpp: (float dT, void *data)) passes its dT on to the list --
+ * m2c wrote the task and the call without it ($f12 still holds it from this function's own entry on the EE); on the host
+ * the list, and CFlyoutMachine::Tick first, ticked on a stray stack word: a tracer's distance flown and its place NaN from
+ * its first tick, the tracer animation's particle source placed there (lane S15: the [pt] NaN placements of s13-meet and
+ * the PLAT_EE_RTZ pairs, [fly] N) */
+#if Z_PORT
+s32 func_003D1F90(f32 dT, void *data) {
+    if (data_004B52B0 != 0) {
+        return 0;
+    }
+    PreTick__16CZProjectileListFf(m_pProjectilelist__8CZWeapon, dT);
+#else
 s32 func_003D1F90(void) {
     if (data_004B52B0 != 0) {
         return 0;
     }
     PreTick__16CZProjectileListFf(m_pProjectilelist__8CZWeapon);
+#endif
     if ((data_00437CE8 != 0) && (func_002A72A0(data_00437CE8) != 0)) {
         UpdateLocalBomb__11CZBombStateFv();
     }
