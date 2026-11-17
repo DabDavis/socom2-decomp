@@ -746,7 +746,7 @@ void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
 extern class CAppCamera *appCamera;
 /* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
 #if Z_PORT
-#define data_004086A0 (*(unsigned char (*)[])((char *)&::theGame + 0x1E0))   /* theGame+0x1E0 */ /* (a state in theGame, at 0x1E0) */
+#define data_004086A0 (*(unsigned char (*)[])((char *)&::theGame + Z_OFS(0x1E0, 0x1F0)))   /* theGame+0x1E0 (host 0x1F0: the host's CGame and CLoadState are 8 longer each -- the port's gdb, lane S12; the 0x1E0 pushed a float as the exit state at EndMission) */ /* (a state in theGame, at 0x1E0) */
 #else
 extern unsigned char data_004086A0[];                    /* (a state in theGame, at 0x1E0) */
 #endif
@@ -2729,7 +2729,7 @@ extern void *data_0045B718;
 void func_0030E6E0(void *voice, int arg);
 /* Z_PORT: through the host object; the PS2 build keeps the placeholders apart, as MW shares one %hi between accesses to one symbol */
 #if Z_PORT
-#define data_004086C8 (*(unsigned char (*)[])((char *)&::theGame + 0x208))   /* theGame+0x208 */ /* (a state in theGame, at 0x208) */
+#define data_004086C8 (*(unsigned char (*)[])((char *)&::theGame + Z_OFS(0x208, 0x218)))   /* theGame+0x208 (host 0x218, as 0x1E0) */ /* (a state in theGame, at 0x208) */
 #else
 extern unsigned char data_004086C8[];   /* (a state in theGame, at 0x208) */
 #endif

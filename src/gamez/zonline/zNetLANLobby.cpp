@@ -10,6 +10,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include "zport.h"   /* Z_OFS */
 #include "zonline.h"
 #include "../znet/znet.h"
 
@@ -281,7 +282,7 @@ void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27
 
 extern "C" {
 int sprintf(char *s, const char *format, ...);
-#define data_0044F434 (*(CUIVariable **)((char *)&::theLobby + 0xC4))   /* theLobby+0xC4 */ /* the game's name as the menus show it */
+#define data_0044F434 (*(CUIVariable **)((char *)&::theLobby + Z_OFS(0xC4, 0xC8)))   /* theLobby+0xC4 (host 0xC8: the host's state queue is 4 longer -- gdb, lane S12) */ /* the game's name as the menus show it */
 }
 
 /* a LAN game of the room joined: refused without a mission of ours; the menus' valves set from its
