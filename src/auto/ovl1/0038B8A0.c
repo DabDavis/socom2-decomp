@@ -16,5 +16,11 @@ extern s32 data_0049ECC8;
 void func_0038B8A0(s32 arg0, s32 arg1, s32 arg2) {
     data_0049ECC0 = arg1;
     data_0049ECC8 = arg2;
+    /* Z_PORT: GetCurKey's this passed -- m2c wrote the call without it (a0 still holds it from this function's own entry on the EE); on the
+     * host the callee read a stray stack word (tools/draftargs.py, lane S12) */
+#if Z_PORT
+    SkbPlaceCursor__FP12CSkbKeyProps(FindKeyProps__13CSoftKeyboardFRC7CSkbKey(arg0, GetCurKey__13CSoftKeyboardCFv(arg0)));
+#else
     SkbPlaceCursor__FP12CSkbKeyProps(FindKeyProps__13CSoftKeyboardFRC7CSkbKey(arg0, GetCurKey__13CSoftKeyboardCFv()));
+#endif
 }

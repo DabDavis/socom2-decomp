@@ -11,7 +11,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 s32 Find__13CSubtitleListFPCcPiPi(); /* extern */
 
 s32 func_0034D480(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    /* Z_PORT: the first Find's key and outputs passed -- m2c wrote the call without them (a1-a3 still holds it from this function's own entry on the EE); on the
+     * host the callee read a stray stack word (tools/draftargs.py, lane S12) */
+#if Z_PORT
+    if (Find__13CSubtitleListFPCcPiPi(arg0 + 0xC, arg1, arg2, arg3) != 0) {
+#else
     if (Find__13CSubtitleListFPCcPiPi(arg0 + 0xC) != 0) {
+#endif
         return 1;
     }
     return (!Find__13CSubtitleListFPCcPiPi(arg0, arg1, arg2, arg3)) ? 0 : 2;

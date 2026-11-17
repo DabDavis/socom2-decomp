@@ -7,8 +7,18 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+/* Z_PORT: the command and its dT passed on -- m2c wrote the call without them (a0 and $f12 still holds it from this function's own entry on the EE); on the
+ * host the callee read a stray stack word (tools/draftargs.py, lane S12) */
+#if Z_PORT
+M2C_UNK SkbOpen__FP13C2DAnimCmdHdrPf(s32, f32 *);
+
+void UIGetTextInput__FP13C2DAnimCmdHdrPf(s32 arg0, f32 *arg1) {
+    SkbOpen__FP13C2DAnimCmdHdrPf(arg0, arg1);
+}
+#else
 M2C_UNK SkbOpen__FP13C2DAnimCmdHdrPf();             /* extern */
 
 void UIGetTextInput__FP13C2DAnimCmdHdrPf(void) {
     SkbOpen__FP13C2DAnimCmdHdrPf();
 }
+#endif

@@ -7,8 +7,18 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+/* Z_PORT: the thunk passes the state on -- m2c wrote the call without it (a1 still holds it from this function's own entry on the EE); on the
+ * host the callee read a stray stack word (tools/draftargs.py, lane S12) */
+#if Z_PORT
+M2C_UNK BodySetState__10CZSealBodyFi(s32, s32);
+
+void func_00555290(s32 arg0, s32 arg1) {
+    BodySetState__10CZSealBodyFi(arg0 - 0x170, arg1);
+}
+#else
 M2C_UNK BodySetState__10CZSealBodyFi(s32);          /* extern */
 
 void func_00555290(s32 arg0) {
     BodySetState__10CZSealBodyFi(arg0 - 0x170);
 }
+#endif

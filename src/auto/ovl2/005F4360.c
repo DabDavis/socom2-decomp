@@ -6,6 +6,25 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+/* Z_PORT: the sequence's name passed on -- m2c wrote the call without it (a1 still holds it from this function's own entry on the EE); on the
+ * host the callee read a stray stack word (tools/draftargs.py, lane S12) */
+#if Z_PORT
+s32 SequenceExists__6CZAnimFPCc(s32, s32);
+
+s32 func_005F4360(char *arg0, s32 arg1) {
+    s32 temp_a0;
+    s32 var_v0;
+
+    var_v0 = 0;
+    if (((u64) ((s64) M2C_FIELD(arg0, u8 *, 0x4A) << 0x3E) >> 0x3F) != 0) {
+        temp_a0 = M2C_FIELD(arg0, s32 *, 0x58);
+        if (temp_a0 != 0) {
+            var_v0 = SequenceExists__6CZAnimFPCc(temp_a0, arg1) & 0xFF;
+        }
+    }
+    return var_v0;
+}
+#else
 s32 SequenceExists__6CZAnimFPCc(s32);               /* extern */
 
 s32 func_005F4360(char *arg0) {
@@ -21,3 +40,4 @@ s32 func_005F4360(char *arg0) {
     }
     return var_v0;
 }
+#endif

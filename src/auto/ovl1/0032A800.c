@@ -21,6 +21,12 @@ void *func_0032A800(void *arg0) {
     M2C_FIELD(arg0, s32 *, 0x104) = 0;
     M2C_FIELD(arg0, s32 *, 0x128) = 0;
     M2C_FIELD(arg0, s8 *, 0x120) = 0;
+    /* Z_PORT: the object passed on -- m2c wrote the call without it (a0 still holds it from this function's own entry on the EE); on the
+     * host the callee read a stray stack word (tools/draftargs.py, lane S12) */
+#if Z_PORT
+    func_0032AB20(arg0);
+#else
     func_0032AB20();
+#endif
     return arg0;
 }
