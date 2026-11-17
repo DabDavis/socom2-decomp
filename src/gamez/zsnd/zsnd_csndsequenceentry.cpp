@@ -10,11 +10,19 @@
 
 #include "zsnd.h"
 
+/* The voice is left unset, as the target leaves it: a pause's entry carries whatever the temporary's stack
+ * slot held, and FadeOut and IsFading read it as a voice. Under Z_PORT it is cleared -- on the host that slot
+ * held a code address (lane M12, the port's [ms] Js: 0x848015F in every pause of the calm list), so a music
+ * cue's Play read IsFading through it, took it for fading and never faded the sequence, and FadeOut would
+ * have written the fade time into the text */
 CSndSequenceEntry::CSndSequenceEntry(CSnd *sound, float pause)
 {
     m_sound = sound;
     m_pause = pause;
     m_timer = 0.0f;
+#if Z_PORT
+    m_instance = 0;
+#endif
 }
 
 bool CSndSequenceEntry::Tick(float dT)
