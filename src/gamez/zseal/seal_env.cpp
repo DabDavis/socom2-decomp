@@ -2127,9 +2127,20 @@ extern unsigned char _AutoAim;
 extern "C" {
 CZSealBody *func_005AB1C0(CZSealBody *seal, CPnt3D *out, CPnt3D *from);
 CPnt3D *func_005414F0(CPnt3D *p, float x, float y, float z);
+/* Z_PORT: the operators' rows called as their own members -- on the host the MW names alias C++
+ * operators that return the point by value, and i386's callee pops the hidden pointer a C caller
+ * never pushed back: each call left the stack 4 higher, and the caller's epilogue (add esp, pops, ret)
+ * returned through a slot 16 or 20 off (PerturbAim's five, as CSealCtrl::PerturbAimVector's four
+ * in seal_control.cpp: the first shot's `ret` to 0xffffffff) */
+#if Z_PORT
+#define __ml__6CPnt3DCFf(ret, p, s) ((p)->Scale((s), (ret)))
+#define __pl__6CPnt3DCFRC6CPnt3D(ret, p, b) ((p)->Add((b), (ret)))
+#define __mi__6CPnt3DCFRC6CPnt3D(ret, p, b) ((p)->Sub((b), (ret)))
+#else
 void __ml__6CPnt3DCFf(CPnt3D *ret, const CPnt3D *p, float s);
 void __pl__6CPnt3DCFRC6CPnt3D(CPnt3D *ret, const CPnt3D *p, const CPnt3D *b);
 void __mi__6CPnt3DCFRC6CPnt3D(CPnt3D *ret, const CPnt3D *p, const CPnt3D *b);
+#endif
 signed char GetCurReticule__5CZKitFv(CZKit *kit);
 }
 
