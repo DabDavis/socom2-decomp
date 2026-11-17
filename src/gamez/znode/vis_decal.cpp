@@ -145,8 +145,17 @@ public:
 
 using namespace zdb;
 
-/* a cached pointer from its uncached or accelerated mirror */
+/* a cached pointer from its uncached or accelerated mirror. The host has no mirrors, and its heap is not
+ * EE RAM's 256 MB: a block the host's malloc mmaps sits at 0xFxxxxxxx, which the PS2's mask turned into a
+ * stray address -- a mesh decal's DMA tags (func_003BD9E0) pointed the VIF feed at 0x5xxxxxxx and the run
+ * faulted in CVisual::VuUpdate (the port's sim_ai_meet5 run, frame 924: the first decal of the mission) */
+#if Z_PORT
+#define CACHED(p) ((void *)(unsigned int)(p))
+#define Z_DMA_ADDR(a) ((unsigned int)(a))
+#else
 #define CACHED(p) ((void *)((unsigned int)(p) & 0x0FFFFFFF))
+#define Z_DMA_ADDR(a) ((unsigned int)(a) & 0x0FFFFFFF)
+#endif
 
 namespace zdb {
 
@@ -625,7 +634,7 @@ extern "C" void func_003BD9E0(CMeshDecal *d, float life, unsigned int n, CTexHan
             tag[3] = 0x6C048000;
             start = data_004B50B8;
             tag[4] = 0x300A0000;
-            tag[5] = (unsigned int)&((unsigned int *)d->m_verts)[data_004B50B8] & 0x0FFFFFFF;
+            tag[5] = Z_DMA_ADDR(&((unsigned int *)d->m_verts)[data_004B50B8]);
             tag[6] = mat;
             tag[7] = k;
             MD_PUT(0x01000101);
@@ -671,7 +680,7 @@ extern "C" void func_003BD9E0(CMeshDecal *d, float life, unsigned int n, CTexHan
     unsigned int last = data_004B50B8;
 
     tag[0] = 0x300B0000;
-    tag[1] = (unsigned int)&((unsigned int *)d->m_verts)[data_004B50B8] & 0x0FFFFFFF;
+    tag[1] = Z_DMA_ADDR(&((unsigned int *)d->m_verts)[data_004B50B8]);
     tag[2] = j * 2;
     tag[3] = 0;
 

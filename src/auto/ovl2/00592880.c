@@ -14,7 +14,14 @@ extern char theCharacterDynamics[];
 
 /* Warning: Gap in callee-saved word stack region.
  * Saved: [0x0, 0x10, 0x14], gap at: 0x8. */
+/* Z_PORT: the arguments in the mangled name's order, (CSealCtrl *, float throttle, int axis), as its callers pass them
+ * (seal_ai.cpp, seal_aistate.cpp): m2c lists the integer registers before the float one, which the EE keeps apart
+ * (a1, f12) but the host's stack does not -- 00592910.c's GetThrottleFromSpeed had the same order (lane S11) */
+#if Z_PORT
+f32 GetSpeedFromThrottle__9CSealCtrlFfi(char *arg0, f32 fparg0, s32 arg1) {
+#else
 f32 GetSpeedFromThrottle__9CSealCtrlFfi(char *arg0, s32 arg1, f32 fparg0) {
+#endif
     f32 sp2C;
     M2C_UNK sp28;
     s32 temp_a0;
