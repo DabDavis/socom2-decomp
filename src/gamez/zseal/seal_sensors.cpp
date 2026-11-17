@@ -910,8 +910,9 @@ static inline bool NotDozing(const CSealCtrlAi *ai)
 /* the world's camera and its far plane (zdb::CWorld holds it at 0x128, the plane at 0xEC:
  * seal_control.cpp's view) */
 struct CSensorCamera {
-    unsigned char _0[0xec];
-    float m_far;   // 0xec
+    unsigned char _0[Z_OFS(0xec, 0xfc)];
+    float m_far;   // 0xec (host 0xfc: the host's CNode is 0x10 longer -- MW's 0xEC is tag_CAMERA_PARAMS's
+                   // m_mid_plane after a 0xC0 CNode; read at 0xEC the port's range was a word of the node, 0)
 };
 
 struct CSensorWorld {

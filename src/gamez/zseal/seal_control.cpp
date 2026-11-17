@@ -293,16 +293,17 @@ bool CSealCtrl::Tick(float dT)
 
 /* the world's camera and its far plane (zdb::CWorld holds it at 0x128, the plane at 0xEC) */
 struct CViewCamera {
-    unsigned char _0[0xec];
-    float m_far;   // 0xec
+    unsigned char _0[Z_OFS(0xec, 0xfc)];
+    float m_far;   // 0xec (host 0xfc: the host's CNode is 0x10 longer -- MW's 0xEC is tag_CAMERA_PARAMS's
+                   // m_mid_plane after a 0xC0 CNode)
 
     /* the far plane (an inline accessor: SetViewRange's product loads it first, into $f1) */
     float GetFar() const { return m_far; }
 };
 
 struct CViewWorld {
-    unsigned char _0[0x128];
-    CViewCamera *m_camera;   // 0x128
+    unsigned char _0[Z_OFS(0x128, 0x134)];
+    CViewCamera *m_camera;   // 0x128 (host 0x134, as seal_sensors.cpp's CSensorWorld)
 };
 
 /* the MP bomb's state machine (SOCOM 1's CZBombState, OVL1's): its status, the state first */
