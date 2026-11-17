@@ -1352,6 +1352,15 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
  * vectors' two-level wrappers too: FreeVector of a vector<float> or vector<int> calls all four
  * pieces out of line, as of a pointer vector (CSndJukebox::Cleanup's weights, 0x349920-0x349940;
  * the headset's queue, 0x2C7290-0x2C7350) */
+/* a scalar's 32 bits as the pod's element: MW reads `(const unsigned int &)x` as a reinterpret; the
+ * host's C++ tries a static_cast first, and a const reference binds to a converted TEMPORARY -- a
+ * vector<float>'s push_back stored (unsigned)0.1f, 0 (the port: CSndJukebox's playlist weights all
+ * zero, so PlayRandom never picked and the music never played; lane M11) */
+#if Z_PORT
+#define __MSL_SCALAR_BITS(x) (*(const unsigned int *)&(x))
+#else
+#define __MSL_SCALAR_BITS(x) ((const unsigned int &)(x))
+#endif
 #define __MSL_VECTOR_SCALAR(T)                                                                    \
     template <class Allocator>                                                                  \
     class __vector_imp<T, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > { \
@@ -1392,7 +1401,7 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
         unsigned int capacity() const { return this->capacity_; }                               \
         T &operator[](unsigned int n) { return ((T *)__base::data())[n]; }                      \
         T &at(unsigned int n) { return (T &)__base::at(n); }                                    \
-        void push_back(const T &x) { __base::push_back((const unsigned int &)x); }              \
+        void push_back(const T &x) { __base::push_back(__MSL_SCALAR_BITS(x)); }                 \
         /* (the HUD lane, round 23: the radio command menu's path, 0x2302D0's size decrement) */ \
         void pop_back() { this->size_--; }                                                      \
         /* the reverse walk (std::reverse_iterator, include/iterator), the end built in its      \
