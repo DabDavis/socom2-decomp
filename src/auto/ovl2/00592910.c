@@ -14,7 +14,16 @@ extern char theCharacterDynamics[];
 
 /* Warning: Gap in callee-saved word stack region.
  * Saved: [0x0, 0x10, 0x14], gap at: 0x8. */
+/* Z_PORT: the arguments in the mangled name's order, (CSealCtrl *, float speed, int axis), as every caller passes them
+ * (seal_aifollow.cpp, seal_aistate.cpp): m2c lists the integer registers before the float one, which the EE does
+ * not see (a1 and f12 are apart) but the host's stack does -- the speed's bits were read as the axis and the axis's
+ * 0 as the speed, so the throttle was 0 / an unset word: 0, or a NaN (CAiSFollow::Tick's follow speed for
+ * teammates 3 and 4 from frame 449, the port's [ai] S trace, lane S11) */
+#if Z_PORT
+f32 GetThrottleFromSpeed__9CSealCtrlFfi(char *arg0, f32 fparg0, s32 arg1) {
+#else
 f32 GetThrottleFromSpeed__9CSealCtrlFfi(char *arg0, s32 arg1, f32 fparg0) {
+#endif
     f32 sp2C;
     M2C_UNK sp28;
     s32 temp_a0;
