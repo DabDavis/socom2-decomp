@@ -547,8 +547,14 @@ void Source::Tick(float dT)
                             inst = 0;
                         if (inst)
                             new (inst) Instance(p, vel, rot, radius, life, age, tex, props, this);
-                        else
+                        else {
                             inst = new Instance(p, vel, rot, radius, life, age, tex, props, this);
+#if Z_PORT
+                            /* a slot new from the heap: its angle 0, as a fresh pool slot's (zparticle.h) */
+                            if (m_drawType == PT_ROTATED)
+                                inst->m_10[0] = 0.0f;
+#endif
+                        }
                         inst->m_listNext = Instance::list.m_head;
                         Instance::list.m_head = inst;
                         m_refcount++;

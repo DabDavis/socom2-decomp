@@ -489,6 +489,13 @@ public:
         m_props = 0;
         m_source = 0;
         m_listNext = 0;
+#if Z_PORT
+        /* never written here, and a rotated particle's angle (m_10[0]) is never written by the full
+         * constructor either: a slot of the mission's pool (func_00327E40's 2000) keeps what the heap
+         * held. The PS2's is the allocator's leftover (not reproducible), the host's another; under
+         * Z_PORT the slot starts at 0 (lane M14: the Rust client's 46 fed angles) */
+        m_10[0] = m_10[1] = m_10[2] = m_10[3] = 0.0f;
+#endif
     }
     /* inline: its table stored and the virtual Expire, in every destructor that inlines it (no
      * out-of-line copy in the image) */
