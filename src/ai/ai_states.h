@@ -678,6 +678,15 @@ public:
         func_00516900(m_f8);
         __ct__9CAiMapLocFv(&m_104);
         func_00516900(m_108);
+#if Z_PORT
+        /* the hide cell's reach and the goal group (cell, point, distance) are left as CAiState::Create's new found
+         * the heap until the Tick sets them -- the `[ai] F` line's first follow ticks printed the host's leftovers
+         * run to run (a word and four floats). Cleared on the host; the PS2 build leaves them as the target does */
+        m_c4 = 0;
+        *(unsigned int *)&m_104 = 0;
+        m_f8[0] = m_f8[1] = m_f8[2] = 0.0f;
+        m_114 = 0.0f;
+#endif
     }
     /* +0x3C (the name ours, by slot): close behind -- its distance under the follow range, and
      * its flag bit 3 set */

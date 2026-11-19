@@ -346,6 +346,12 @@ CTarget *CTargetList::FindTarget(CEntity *e)
 CTarget::CTarget()
     : m_ent(0), m_distSq(0), m_dist(0), m_visibility(0), m_unk20(0), m_unk24(0), m_unk28(0), m_flags(0)
 {
+#if Z_PORT
+    /* the target's alertness is left to the stack the temporary was built on (AddTarget's push_back of a
+     * CTarget()): a target no ray has come back for -- a teammate's, never perceived -- keeps it, the host's run to
+     * run (the `[ai] T` line's ~2^108 words). Cleared on the host; the PS2 build leaves it as the target does */
+    m_aware = 0;
+#endif
 }
 
 /* the range, its square root taken once (SOCOM 1's) */
